@@ -188,7 +188,7 @@ Status atual do bootstrap:
 - carga operacional incremental de handoffs disponível em `make db-seed-operational-load`
 - identity and policy base validadas com smoke tests de responsável, aluno, professor e financeiro
 - auth federada e vínculo Telegram validados com token real do `Keycloak` local
-- `RLS` ativo e validado diretamente no banco para tabelas sensíveis acadêmicas e financeiras, com contexto de ator por sessão no `api-core`
+- `RLS` ativo e validado diretamente no banco para tabelas sensíveis acadêmicas, financeiras, de apoio escolar e de atendimento humano, com contexto de ator por sessão no `api-core`
 - backup e restore de verificação já implementados para `Postgres`, `Qdrant` e `MinIO`, sempre restaurando em banco, coleção e bucket temporários
 - corpus documental mockado validado com 4 documentos e 21 chunks indexados
 

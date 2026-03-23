@@ -124,13 +124,13 @@ def run_checks(connection: psycopg.Connection) -> dict[str, object]:
         """,
         actor=ActorSpec(external_code='USR-GUARD-001', role_code='guardian'),
     )
-    bruno_visible_handoffs = query_scalar(
+    ana_visible_handoffs = query_scalar(
         connection,
         """
         select count(*)
         from conversation.handoffs handoffs
         """,
-        actor=ActorSpec(external_code='USR-STUD-003', role_code='student'),
+        actor=ActorSpec(external_code='USR-STUD-002', role_code='student'),
     )
     carla_visible_handoffs = query_scalar(
         connection,
@@ -139,6 +139,70 @@ def run_checks(connection: psycopg.Connection) -> dict[str, object]:
         from conversation.handoffs handoffs
         """,
         actor=ActorSpec(external_code='USR-FIN-001', role_code='finance'),
+    )
+    anonymous_public_calendar_events = query_scalar(
+        connection,
+        """
+        select count(*)
+        from calendar.calendar_events events
+        """,
+        actor=None,
+    )
+    maria_visible_classes = query_scalar(
+        connection,
+        """
+        select count(*)
+        from school.classes classes
+        """,
+        actor=ActorSpec(external_code='USR-GUARD-001', role_code='guardian'),
+    )
+    maria_visible_guardian_links = query_scalar(
+        connection,
+        """
+        select count(*)
+        from school.guardian_student_links links
+        """,
+        actor=ActorSpec(external_code='USR-GUARD-001', role_code='guardian'),
+    )
+    maria_visible_guardians = query_scalar(
+        connection,
+        """
+        select count(*)
+        from school.guardians guardians
+        """,
+        actor=ActorSpec(external_code='USR-GUARD-001', role_code='guardian'),
+    )
+    marcos_visible_teacher_assignments = query_scalar(
+        connection,
+        """
+        select count(*)
+        from academic.teacher_assignments assignments
+        """,
+        actor=ActorSpec(external_code='USR-TEACH-002', role_code='teacher'),
+    )
+    maria_visible_grade_items = query_scalar(
+        connection,
+        """
+        select count(*)
+        from academic.grade_items grade_items
+        """,
+        actor=ActorSpec(external_code='USR-GUARD-001', role_code='guardian'),
+    )
+    maria_visible_calendar_events = query_scalar(
+        connection,
+        """
+        select count(*)
+        from calendar.calendar_events events
+        """,
+        actor=ActorSpec(external_code='USR-GUARD-001', role_code='guardian'),
+    )
+    bruno_visible_calendar_events = query_scalar(
+        connection,
+        """
+        select count(*)
+        from calendar.calendar_events events
+        """,
+        actor=ActorSpec(external_code='USR-STUD-003', role_code='student'),
     )
 
     checks = {
@@ -151,8 +215,16 @@ def run_checks(connection: psycopg.Connection) -> dict[str, object]:
         'finance_team_visible_all_invoices': carla_visible_invoices == 3,
         'student_self_scope_only': lucas_visible_students == 1,
         'guardian_visible_own_conversations': maria_visible_conversations >= 1,
-        'unrelated_student_denied_handoffs': bruno_visible_handoffs == 0,
+        'unrelated_student_denied_handoffs': ana_visible_handoffs == 0,
         'finance_team_visible_handoffs': carla_visible_handoffs >= 1,
+        'anonymous_public_calendar_visible': anonymous_public_calendar_events == 1,
+        'guardian_visible_classes': maria_visible_classes == 1,
+        'guardian_visible_guardian_links': maria_visible_guardian_links == 2,
+        'guardian_visible_own_guardian_profile': maria_visible_guardians == 1,
+        'teacher_visible_accessible_assignments': marcos_visible_teacher_assignments == 3,
+        'guardian_visible_grade_items': maria_visible_grade_items == 2,
+        'guardian_visible_calendar_events': maria_visible_calendar_events == 2,
+        'student_visible_calendar_events': bruno_visible_calendar_events == 2,
     }
 
     return {
@@ -168,8 +240,16 @@ def run_checks(connection: psycopg.Connection) -> dict[str, object]:
             'finance_visible_invoices': carla_visible_invoices,
             'student_visible_students': lucas_visible_students,
             'guardian_visible_conversations': maria_visible_conversations,
-            'unrelated_student_visible_handoffs': bruno_visible_handoffs,
+            'unrelated_student_visible_handoffs': ana_visible_handoffs,
             'finance_visible_handoffs': carla_visible_handoffs,
+            'anonymous_public_calendar_events': anonymous_public_calendar_events,
+            'guardian_visible_classes': maria_visible_classes,
+            'guardian_visible_guardian_links': maria_visible_guardian_links,
+            'guardian_visible_guardians': maria_visible_guardians,
+            'teacher_visible_assignments': marcos_visible_teacher_assignments,
+            'guardian_visible_grade_items': maria_visible_grade_items,
+            'guardian_visible_calendar_events': maria_visible_calendar_events,
+            'student_visible_calendar_events': bruno_visible_calendar_events,
         },
     }
 

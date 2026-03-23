@@ -162,7 +162,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o `Grafana` agora também conta com o dashboard `EduAssist Ops Control Tower`, focado em backlog, breaches, envelhecimento, prioridade e carga da equipe humana;
 - o stack local agora também inclui `Loki + Promtail`, com ingestao dos logs dos containers do Compose para investigacao centralizada no `Grafana`;
 - o runtime dos serviços que acessam o banco agora pode ser executado com um papel dedicado de aplicação (`eduassist_app`), separado do superuser administrativo usado para migrações e seeds;
-- o `api-core` agora aplica contexto de ator por sessão e o banco já reforça acesso sensível com `PostgreSQL RLS` ativo em tabelas acadêmicas e financeiras selecionadas;
+- o `api-core` agora aplica contexto de ator por sessão e o banco já reforça acesso sensível com `PostgreSQL RLS` ativo em tabelas acadêmicas, financeiras e tabelas auxiliares de apoio como classes, vínculos familiares, atribuições docentes, itens de nota e calendário restrito;
 - o banco agora também reforça o domínio de atendimento humano com `RLS` em conversas, mensagens, tool calls e handoffs, preservando visão global só para papéis internos;
 - o detalhe de handoff em escopo pessoal não expõe notas internas de operador para o usuário final autenticado;
 - o projeto agora também possui ciclo operacional local de `backup + restore drill` para `Postgres`, `Qdrant` e `MinIO`, sem restaurar por cima da base principal;
@@ -182,8 +182,7 @@ Expansões já aprovadas para a próxima etapa:
 ## Próximos passos imediatos
 
 1. Expandir os dashboards do `Grafana` com leituras mais profundas de SLA operacional, evolucao temporal por fila e logs correlacionados por `trace_id`.
-2. Expandir a cobertura de `RLS` para outras tabelas sensíveis do domínio, mantendo a resolução de identidade estável.
-3. Expandir a suite de testes e evals com cenarios adversariais adicionais, casos de exfiltracao e regressao operacional.
-4. Ampliar o drill de backup/restore para incluir cenarios mais ricos de recuperação e retenção.
-5. Expandir ainda mais a seed para cenários amplos de tickets, filas, operadores e resoluções, partindo da carga operacional incremental já disponível.
-6. Preparar benchmark comparativo para `GraphRAG` seletivo sobre o corpus institucional.
+2. Expandir a suite de testes e evals com cenarios adversariais adicionais, casos de exfiltracao e regressao operacional.
+3. Ampliar o drill de backup/restore para incluir cenarios mais ricos de recuperação e retenção.
+4. Expandir ainda mais a seed para cenários amplos de tickets, filas, operadores e resoluções, partindo da carga operacional incremental já disponível.
+5. Preparar benchmark comparativo para `GraphRAG` seletivo sobre o corpus institucional.

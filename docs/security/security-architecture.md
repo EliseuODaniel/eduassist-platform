@@ -69,6 +69,7 @@ Exemplos:
 - aluno vê apenas seus próprios dados;
 - professor vê apenas turmas atribuídas;
 - financeiro acessa domínio financeiro, não acadêmico amplo;
+- tabelas auxiliares como `classes`, `guardian_student_links`, `teacher_assignments`, `grade_items` e `calendar_events` também seguem escopo mínimo por papel;
 - conversas, mensagens, `tool_calls` e handoffs seguem a mesma lógica de escopo próprio vs visão global interna;
 - notas internas de operador não devem aparecer no detalhe de handoff para o solicitante final;
 - direção tem acesso ampliado com auditoria reforçada.
@@ -148,6 +149,7 @@ Mesmo com dados mockados, a arquitetura deve nascer compatível com:
 - autenticação funcional;
 - policy engine ativo;
 - RLS habilitado em tabelas sensíveis;
+- RLS também habilitado nas tabelas auxiliares que sustentam respostas acadêmicas, docentes e calendárias restritas;
 - runtime do `api-core`, `ai-orchestrator` e `worker` executando com usuário de aplicação não-superuser;
 - webhook protegido;
 - auditoria de acessos sensíveis;
