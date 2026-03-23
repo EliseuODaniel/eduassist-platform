@@ -16,5 +16,6 @@ O bootstrap inicial está implementado em:
 Estado atual relevante:
 
 - `Qdrant` ja integrado ao ambiente local;
+- foundation transacional do `api-core` ja validada em `PostgreSQL`;
 - `Postgres`, `Redis`, `MinIO`, `Keycloak`, `OPA` e apps bootstrapados;
 - observabilidade dedicada ainda prevista para a proxima fase.

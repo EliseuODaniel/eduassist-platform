@@ -65,6 +65,7 @@ Status atual:
 - os serviços já possuem esqueletos executáveis e healthchecks básicos;
 - `Qdrant` já foi adicionado ao Compose e validado junto do `ai-orchestrator`;
 - o `ai-orchestrator` já possui preview de grafo, capacidades e contratos de tools;
+- o `api-core` já possui base relacional inicial, migracao Alembic e seed foundation;
 - observabilidade dedicada ainda ficará para a próxima etapa do roadmap.
 
 ### `compose:observability`
@@ -136,6 +137,7 @@ Status atual do bootstrap:
 - stack Compose pronta para validação local
 - runtime validado após reinicialização e atualização do Docker Desktop
 - fundação inicial de retrieval e orquestração agentica já implementada
+- foundation transacional validada com migração e seed mockada
 
 ## 9. Variáveis de ambiente previstas
 
@@ -153,6 +155,8 @@ Status atual do bootstrap:
 - `GOOGLE_API_KEY`
 - `GRAPH_RAG_ENABLED`
 - `DOCUMENT_PIPELINE_BACKEND`
+- `DATABASE_URL_LOCAL`
+- `FOUNDATION_SEED`
 
 ## 10. Critérios de pronto para desenvolvimento
 
@@ -162,3 +166,9 @@ Status atual do bootstrap:
 - keycloak sobe realm inicial;
 - webhook local consegue ser exposto;
 - logs e traces mínimos aparecem corretamente.
+
+## 11. Comandos úteis desta fase
+
+- `make db-upgrade`
+- `make db-seed-foundation`
+- `GET /v1/foundation/summary` no `api-core`

@@ -131,6 +131,8 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - `Qdrant` já integrado ao ambiente local para a fundação do retrieval;
 - esqueletos executáveis para `api-core`, `ai-orchestrator`, `telegram-gateway`, `worker` e `admin-web`;
 - `ai-orchestrator` já expõe preview do grafo, capabilities e contratos de tools;
+- `api-core` já possui foundation transacional com `SQLAlchemy + Alembic`, migração inicial e endpoint de resumo;
+- seed foundation idempotente já disponível em `tools/mockgen`;
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;
 - base documental sincronizada com a direção arquitetural atual.
 
@@ -141,8 +143,8 @@ Expansões já aprovadas para a próxima etapa:
 
 ## Próximos passos imediatos
 
-1. Definir schemas iniciais do banco e migrações.
-2. Preparar a fundação do pipeline documental com `Docling`.
-3. Implementar identidade, policy engine e auditoria mínima.
-4. Conectar `Qdrant` e services ao fluxo completo de ingestão e retrieval.
-5. Subir a primeira vertical funcional de FAQ pública com retrieval híbrido e citações.
+1. Preparar a fundação do pipeline documental com `Docling`.
+2. Implementar identidade, policy engine e auditoria mínima.
+3. Conectar `Qdrant` e services ao fluxo completo de ingestão e retrieval.
+4. Subir a primeira vertical funcional de FAQ pública com retrieval híbrido e citações.
+5. Expandir a seed para cenários mais amplos de acadêmico, financeiro e handoff.

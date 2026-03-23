@@ -1,30 +1,19 @@
-from functools import lru_cache
+from __future__ import annotations
+
+from sqlalchemy import text
 
 from fastapi import FastAPI
 from pydantic import BaseModel
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(case_sensitive=False)
-
-    app_env: str = 'development'
-    log_level: str = 'INFO'
-    port: int = 8000
-    database_url: str = 'postgresql://eduassist:eduassist@postgres:5432/eduassist'
-    redis_url: str = 'redis://redis:6379/0'
-    opa_url: str = 'http://opa:8181'
-
-
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()
+from api_core.config import Settings, get_settings
+from api_core.db.session import session_scope
 
 
 class HealthResponse(BaseModel):
     status: str
     service: str
     environment: str
+    database: str
 
 
 app = FastAPI(
@@ -41,6 +30,7 @@ async def healthz() -> HealthResponse:
         status='ok',
         service='api-core',
         environment=settings.app_env,
+        database='configured',
     )
 
 
@@ -66,6 +56,40 @@ async def status() -> dict[str, object]:
             'authz-gateway',
             'domain-services',
             'audit-trail',
+            'schema-foundation',
         ],
     }
 
+
+@app.get('/v1/foundation/summary')
+async def foundation_summary() -> dict[str, object]:
+    counts: dict[str, int] = {}
+    queries = {
+        'users': 'select count(*) from identity.users',
+        'students': 'select count(*) from school.students',
+        'guardians': 'select count(*) from school.guardians',
+        'teachers': 'select count(*) from school.teachers',
+        'classes': 'select count(*) from school.classes',
+        'enrollments': 'select count(*) from school.enrollments',
+        'grade_items': 'select count(*) from academic.grade_items',
+        'grades': 'select count(*) from academic.grades',
+        'contracts': 'select count(*) from finance.contracts',
+        'invoices': 'select count(*) from finance.invoices',
+        'calendar_events': 'select count(*) from calendar.calendar_events',
+        'documents': 'select count(*) from documents.documents',
+        'document_chunks': 'select count(*) from documents.document_chunks',
+    }
+
+    try:
+        with session_scope() as session:
+            for key, sql in queries.items():
+                counts[key] = int(session.execute(text(sql)).scalar_one())
+        database = 'reachable'
+    except Exception as exc:  # pragma: no cover - bootstrap resilience path
+        database = f'unavailable: {exc.__class__.__name__}'
+
+    return {
+        'service': 'api-core',
+        'database': database,
+        'counts': counts,
+    }

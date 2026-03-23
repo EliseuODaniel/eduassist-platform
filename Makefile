@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE_FILE := infra/compose/compose.yaml
 ENV_FILE := .env
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs python-fmt python-lint admin-install
+.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs db-upgrade db-downgrade db-seed-foundation python-fmt python-lint admin-install
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -27,6 +27,15 @@ compose-down: env
 compose-logs: env
 	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs -f --tail=200
 
+db-upgrade:
+	DATABASE_URL=$${DATABASE_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core alembic -c apps/api-core/alembic.ini upgrade head
+
+db-downgrade:
+	DATABASE_URL=$${DATABASE_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core alembic -c apps/api-core/alembic.ini downgrade -1
+
+db-seed-foundation:
+	DATABASE_URL=$${DATABASE_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core python tools/mockgen/seed_foundation.py
+
 python-fmt:
 	uv tool run ruff format apps/**/src
 
@@ -35,4 +44,3 @@ python-lint:
 
 admin-install:
 	cd apps/admin-web && npm install
-
