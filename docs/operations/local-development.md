@@ -66,6 +66,7 @@ Status atual:
 - `Qdrant` já foi adicionado ao Compose e validado junto do `ai-orchestrator`;
 - o `ai-orchestrator` já possui preview de grafo, capacidades e contratos de tools;
 - o `api-core` já possui base relacional inicial, migracao Alembic e seed foundation;
+- o `api-core` já expõe resolução de identidade, checagem de policy via `OPA` e consultas protegidas com auditoria básica;
 - observabilidade dedicada ainda ficará para a próxima etapa do roadmap.
 
 ### `compose:observability`
@@ -138,6 +139,7 @@ Status atual do bootstrap:
 - runtime validado após reinicialização e atualização do Docker Desktop
 - fundação inicial de retrieval e orquestração agentica já implementada
 - foundation transacional validada com migração e seed mockada
+- identity and policy base validadas com smoke tests de responsável, aluno, professor e financeiro
 
 ## 9. Variáveis de ambiente previstas
 
@@ -172,3 +174,16 @@ Status atual do bootstrap:
 - `make db-upgrade`
 - `make db-seed-foundation`
 - `GET /v1/foundation/summary` no `api-core`
+- `GET /v1/identity/context?telegram_chat_id=987654321`
+- `GET /v1/identity/context?user_external_code=USR-TEACH-001`
+- `GET /v1/students/{student_id}/academic-summary?...`
+- `GET /v1/students/{student_id}/financial-summary?...`
+- `GET /v1/teachers/me/schedule?user_external_code=USR-TEACH-001`
+- `POST /v1/authz/check`
+
+Identidades mockadas úteis nesta fase:
+
+- `telegram_chat_id=987654321` para `Maria Oliveira` (`guardian`)
+- `user_external_code=USR-STUD-001` para `Lucas Oliveira` (`student`)
+- `user_external_code=USR-TEACH-001` para `Helena Rocha` (`teacher`)
+- `user_external_code=USR-FIN-001` para `Carla Nogueira` (`finance`)

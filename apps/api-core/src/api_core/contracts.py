@@ -1,0 +1,142 @@
+from __future__ import annotations
+
+import uuid
+from decimal import Decimal
+
+from pydantic import BaseModel, Field
+
+
+class LinkedStudentReference(BaseModel):
+    student_id: uuid.UUID
+    full_name: str
+    enrollment_code: str
+    class_id: uuid.UUID | None = None
+    class_name: str | None = None
+    can_view_academic: bool = True
+    can_view_finance: bool = True
+
+
+class AccessibleClassReference(BaseModel):
+    class_id: uuid.UUID
+    class_name: str
+    subject_name: str | None = None
+
+
+class ActorContext(BaseModel):
+    user_id: uuid.UUID
+    role_code: str
+    external_code: str
+    full_name: str
+    authenticated: bool = True
+    telegram_chat_id: int | None = None
+    telegram_linked: bool = False
+    guardian_id: uuid.UUID | None = None
+    student_id: uuid.UUID | None = None
+    teacher_id: uuid.UUID | None = None
+    linked_student_ids: list[uuid.UUID] = Field(default_factory=list)
+    academic_student_ids: list[uuid.UUID] = Field(default_factory=list)
+    financial_student_ids: list[uuid.UUID] = Field(default_factory=list)
+    accessible_class_ids: list[uuid.UUID] = Field(default_factory=list)
+    linked_students: list[LinkedStudentReference] = Field(default_factory=list)
+    accessible_classes: list[AccessibleClassReference] = Field(default_factory=list)
+
+    def to_policy_subject(self) -> dict[str, object]:
+        return {
+            'user_id': str(self.user_id),
+            'role': self.role_code,
+            'authenticated': self.authenticated,
+            'telegram_linked': self.telegram_linked,
+            'guardian_id': str(self.guardian_id) if self.guardian_id else None,
+            'student_id': str(self.student_id) if self.student_id else None,
+            'teacher_id': str(self.teacher_id) if self.teacher_id else None,
+            'linked_student_ids': [str(student_id) for student_id in self.linked_student_ids],
+            'academic_student_ids': [str(student_id) for student_id in self.academic_student_ids],
+            'financial_student_ids': [str(student_id) for student_id in self.financial_student_ids],
+            'accessible_class_ids': [str(class_id) for class_id in self.accessible_class_ids],
+        }
+
+
+class PolicyDecision(BaseModel):
+    allow: bool
+    reason: str
+    source: str
+
+
+class PolicyCheckRequest(BaseModel):
+    action: str
+    telegram_chat_id: int | None = None
+    user_external_code: str | None = None
+    resource: dict[str, object] = Field(default_factory=dict)
+
+
+class PolicyCheckResponse(BaseModel):
+    actor: ActorContext
+    decision: PolicyDecision
+    action: str
+    resource: dict[str, object]
+
+
+class GradeEntry(BaseModel):
+    subject_code: str
+    subject_name: str
+    item_title: str
+    term_code: str
+    score: Decimal
+    max_score: Decimal
+    feedback: str | None = None
+
+
+class AttendanceEntry(BaseModel):
+    subject_code: str
+    subject_name: str
+    present_count: int
+    late_count: int
+    absent_count: int
+    absent_minutes: int
+
+
+class StudentAcademicSummary(BaseModel):
+    student_id: uuid.UUID
+    class_id: uuid.UUID | None = None
+    class_name: str | None = None
+    student_name: str
+    enrollment_code: str
+    grade_level: int
+    grades: list[GradeEntry]
+    attendance: list[AttendanceEntry]
+
+
+class InvoiceEntry(BaseModel):
+    invoice_id: uuid.UUID
+    reference_month: str
+    due_date: str
+    amount_due: Decimal
+    status: str
+    paid_amount: Decimal = Decimal('0.00')
+
+
+class StudentFinancialSummary(BaseModel):
+    student_id: uuid.UUID
+    student_name: str
+    contract_code: str
+    guardian_name: str
+    monthly_amount: Decimal
+    invoices: list[InvoiceEntry]
+    open_invoice_count: int
+    overdue_invoice_count: int
+
+
+class TeacherScheduleEntry(BaseModel):
+    class_id: uuid.UUID
+    class_name: str
+    subject_code: str
+    subject_name: str
+    academic_year: int
+
+
+class TeacherScheduleSummary(BaseModel):
+    teacher_id: uuid.UUID
+    teacher_name: str
+    employee_code: str
+    department: str
+    assignments: list[TeacherScheduleEntry]

@@ -132,6 +132,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - esqueletos executáveis para `api-core`, `ai-orchestrator`, `telegram-gateway`, `worker` e `admin-web`;
 - `ai-orchestrator` já expõe preview do grafo, capabilities e contratos de tools;
 - `api-core` já possui foundation transacional com `SQLAlchemy + Alembic`, migração inicial e endpoint de resumo;
+- `api-core` já resolve contexto de identidade, consulta o `OPA`, aplica autorização contextual e registra trilha de auditoria básica para acessos protegidos;
 - seed foundation idempotente já disponível em `tools/mockgen`;
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;
 - base documental sincronizada com a direção arquitetural atual.
@@ -139,12 +140,13 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 Expansões já aprovadas para a próxima etapa:
 
 - introduzir pipeline documental com `Docling`;
+- integrar `Keycloak` ao fluxo de identidade e vínculo com Telegram;
 - preparar modo avançado de retrieval com `GraphRAG` somente após baseline híbrido estar medido.
 
 ## Próximos passos imediatos
 
 1. Preparar a fundação do pipeline documental com `Docling`.
-2. Implementar identidade, policy engine e auditoria mínima.
+2. Integrar `Keycloak` e o fluxo de vínculo seguro entre identidade escolar e canal Telegram.
 3. Conectar `Qdrant` e services ao fluxo completo de ingestão e retrieval.
 4. Subir a primeira vertical funcional de FAQ pública com retrieval híbrido e citações.
 5. Expandir a seed para cenários mais amplos de acadêmico, financeiro e handoff.
