@@ -19,6 +19,8 @@ __pycache__/
 
 .idea/
 .vscode/
+!.vscode/
+!.vscode/mcp.json
 
 tmp/
 .tmp/
@@ -30,4 +32,3 @@ minio-data/
 grafana-data/
 loki-data/
 tempo-data/
-

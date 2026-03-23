@@ -1,0 +1,11 @@
+name: eduassist-architecture-sync
+description: Keep architecture, security, AI strategy, and Codex workflow documentation synchronized for eduassist-platform.
+policy:
+  allow_implicit_invocation: true
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "openaiDeveloperDocs"
+      description: "OpenAI Docs MCP server"
+      transport: "streamable_http"
+      url: "https://developers.openai.com/mcp"

@@ -38,6 +38,7 @@ Motivo:
 - manter camada de abstração por provedor;
 - rodar benchmark comparativo em datasets do domínio escolar;
 - escolher por combinação de qualidade, custo e latência.
+- se OpenAI for o provedor selecionado para a primeira implementação, preferir `Responses API` em vez de interfaces legadas para fluxos tool-using e agentic.
 
 ## 4. Orquestração
 
@@ -118,21 +119,34 @@ Para este projeto:
 
 ### MCP
 
-Útil como padrão de integração, mas não deve ser a base central do sistema neste momento.
+Útil em duas frentes distintas:
+
+- no produto, como padrão emergente para integrações futuras, sem virar pilar do MVP;
+- no workflow de desenvolvimento, como meio oficial de consultar documentação da OpenAI diretamente no editor e no Codex.
 
 ### A2A
 
 Relevante como tendência de interoperabilidade, porém não prioritário para o MVP.
+
+### AGENTS.md, skills e custom agents
+
+Para o desenvolvimento deste repositório, eles devem ser tratados como recursos de engenharia, não como componentes do runtime:
+
+- `AGENTS.md` como camada principal de instruções locais;
+- `skills` para workflows repetíveis e sincronização documental;
+- `custom agents` estreitos e opinados para pesquisa e revisão especializada.
 
 ## 10. Escolhas finais recomendadas
 
 - modelo principal: `GPT-5.4`
 - benchmark secundário: `Gemini 2.5 Pro`
 - orquestração: `LangGraph`
+- interface OpenAI preferida quando aplicável: `Responses API`
 - retrieval: `FTS + pgvector + reranking`
 - dados estruturados: tools determinísticas
 - avaliação: datasets + evals contínuos
 - segurança: `OPA + RLS + audit trail`
+- workflow de engenharia: `AGENTS.md + Docs MCP + skills + custom agents`
 
 ## 11. Fontes pesquisadas
 
@@ -140,6 +154,12 @@ Relevante como tendência de interoperabilidade, porém não prioritário para o
 - OpenAI Retrieval: https://developers.openai.com/api/docs/guides/retrieval
 - OpenAI Evals: https://developers.openai.com/api/docs/guides/evals
 - OpenAI MCP: https://developers.openai.com/api/docs/mcp
+- OpenAI Responses API: https://developers.openai.com/api/docs/guides/migrate-to-responses
+- Codex AGENTS.md: https://developers.openai.com/codex/guides/agents-md
+- Codex MCP: https://developers.openai.com/codex/mcp
+- Codex Skills: https://developers.openai.com/codex/skills
+- Codex Subagents: https://developers.openai.com/codex/subagents
+- Docs MCP: https://developers.openai.com/learn/docs-mcp
 - LangGraph overview: https://docs.langchain.com/oss/python/langgraph/overview
 - Anthropic Contextual Retrieval: https://www.anthropic.com/engineering/contextual-retrieval
 - Vertex grounding: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/grounding/grounding-with-vertex-ai-search
@@ -150,4 +170,3 @@ Relevante como tendência de interoperabilidade, porém não prioritário para o
 - Telegram Bot API: https://core.telegram.org/bots/api
 - Telegram Login/OIDC: https://core.telegram.org/bots/telegram-login
 - Telegram Secret Chats/E2E: https://core.telegram.org/api/end-to-end
-

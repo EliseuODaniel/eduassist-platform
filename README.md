@@ -45,6 +45,7 @@ Construir uma plataforma robusta e funcional de atendimento escolar com IA para 
 - `MinIO` para documentos e objetos.
 - `Redis` para cache, locks, idempotência e filas leves.
 - `OpenTelemetry + Grafana + Loki + Tempo` para observabilidade.
+- quando a trilha OpenAI for adotada, `Responses API` como interface preferencial para fluxos agentic e tool-using.
 - LLM remota via API paga, com benchmark inicial em `GPT-5.4` e benchmark paralelo em `Gemini 2.5 Pro`.
 
 ## Índice da documentação
@@ -54,6 +55,7 @@ Construir uma plataforma robusta e funcional de atendimento escolar com IA para 
 - [Segurança da informação](/home/edann/projects/eduassist-platform/docs/security/security-architecture.md)
 - [Modelo de dados](/home/edann/projects/eduassist-platform/docs/data/data-model.md)
 - [Operação local](/home/edann/projects/eduassist-platform/docs/operations/local-development.md)
+- [Workflow de Codex e MCP](/home/edann/projects/eduassist-platform/docs/operations/codex-workflow.md)
 - [Pesquisa de tecnologias de IA](/home/edann/projects/eduassist-platform/docs/research/ai-technology-review.md)
 - [Roadmap de implementação](/home/edann/projects/eduassist-platform/docs/roadmap/implementation-roadmap.md)
 - [ADR 0001 - Rebuild do zero](/home/edann/projects/eduassist-platform/docs/adr/0001-greenfield-rebuild.md)
@@ -74,6 +76,9 @@ eduassist-platform/
 │   ├── research/
 │   ├── roadmap/
 │   └── security/
+├── .agents/
+├── .codex/
+├── .vscode/
 ├── infra/
 ├── packages/
 ├── tests/
@@ -87,6 +92,7 @@ eduassist-platform/
 - `telegram-gateway`: webhook do Telegram, normalização de mensagens, idempotência e rate limiting.
 - `ai-orchestrator`: orquestração LangGraph, retrieval, tool calling, grounding e composição de respostas.
 - `worker`: jobs assíncronos, mock data generation, ingestão documental, embeddings e evals.
+- `AGENTS.md`, skills, custom agents e Docs MCP: governança de desenvolvimento e pesquisa para manter o projeto alinhado às práticas atuais do ecossistema Codex/OpenAI.
 
 ## Fluxos principais planejados
 
@@ -124,4 +130,3 @@ Este repositório contém apenas a base documental e a estrutura inicial. A impl
 3. Definir schemas iniciais do banco.
 4. Implementar identidade, policy engine e auditoria mínima.
 5. Subir a primeira versão do fluxo de FAQ pública.
-

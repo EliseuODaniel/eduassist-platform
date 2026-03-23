@@ -12,7 +12,7 @@ Este diretório concentra a documentação formal do projeto.
 - [Matriz de controle de acesso](/home/edann/projects/eduassist-platform/docs/security/access-control-matrix.md)
 - [Modelo de dados](/home/edann/projects/eduassist-platform/docs/data/data-model.md)
 - [Operação local](/home/edann/projects/eduassist-platform/docs/operations/local-development.md)
+- [Workflow de Codex, MCP, Skills e AGENTS.md](/home/edann/projects/eduassist-platform/docs/operations/codex-workflow.md)
 - [Pesquisa de tecnologias de IA](/home/edann/projects/eduassist-platform/docs/research/ai-technology-review.md)
 - [Roadmap de implementação](/home/edann/projects/eduassist-platform/docs/roadmap/implementation-roadmap.md)
 - [Plano de refatoração do documento acadêmico](/home/edann/projects/eduassist-platform/docs/article/refactor-outline.md)
-

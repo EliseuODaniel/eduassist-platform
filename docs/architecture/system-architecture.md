@@ -111,6 +111,7 @@ Estratégia:
 - tools fechadas e auditáveis;
 - sem SQL livre;
 - sem múltiplos agentes autônomos no MVP.
+- se o provedor OpenAI for o escolhido na implementação, preferir `Responses API` como interface principal para tool use e workflows agentic.
 
 Tools previstas:
 
@@ -164,5 +165,5 @@ admin-web
 - nenhum acesso direto do modelo ao banco;
 - nenhum documento privado entrando em retrieval público;
 - toda ação sensível com trilha auditável;
+- decisões específicas de OpenAI/Codex documentadas e mantidas atrás de abstração de provedor;
 - stack local executável dentro do orçamento de memória observado.
-
