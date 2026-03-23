@@ -132,10 +132,20 @@ def main() -> int:
     retrieval_metrics = wait_for_prometheus_result(settings, "sum(eduassist_retrieval_requests_total)")
     handoff_metrics = wait_for_prometheus_result(settings, "sum(eduassist_support_handoff_events_total)")
     orchestration_metrics = wait_for_prometheus_result(settings, "sum(eduassist_orchestration_responses_total)")
+    backlog_metrics = wait_for_prometheus_result(
+        settings,
+        'sum(eduassist_support_backlog_current{queue_name="all",status="all",sla_state="all"})',
+    )
+    unassigned_metrics = wait_for_prometheus_result(
+        settings,
+        'sum(eduassist_support_unassigned_current{queue_name="all"})',
+    )
     assert_condition(float(policy_metrics[0]["value"][1]) > 0, "prometheus_policy_metrics_empty")
     assert_condition(float(retrieval_metrics[0]["value"][1]) > 0, "prometheus_retrieval_metrics_empty")
     assert_condition(float(handoff_metrics[0]["value"][1]) > 0, "prometheus_handoff_metrics_empty")
     assert_condition(float(orchestration_metrics[0]["value"][1]) > 0, "prometheus_orchestration_metrics_empty")
+    assert_condition(float(backlog_metrics[0]["value"][1]) > 0, "prometheus_support_backlog_metrics_empty")
+    assert_condition(float(unassigned_metrics[0]["value"][1]) >= 0, "prometheus_support_unassigned_metrics_missing")
     prometheus_health_payload = prometheus_query(settings, "up{job=\"otel-collector\"}")
     prometheus_health_result = prometheus_health_payload.get("data", {}).get("result", [])
     assert_condition(isinstance(prometheus_health_result, list) and prometheus_health_result, "prometheus_otel_scrape_missing")

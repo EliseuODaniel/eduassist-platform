@@ -38,6 +38,7 @@ from api_core.services.audit import (
     list_recent_audit_events,
     record_audit_event,
     record_access_decision,
+    register_support_operational_metrics,
     resolve_operations_scope,
 )
 from api_core.services.auth import decode_access_token, extract_bearer_token
@@ -80,6 +81,7 @@ configure_observability(
     sqlalchemy_engine=get_engine(),
     excluded_urls='/healthz,/meta',
 )
+register_support_operational_metrics()
 
 
 def _resolve_request_context(

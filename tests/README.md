@@ -19,6 +19,7 @@ Estado atual:
   - verificacao basica de `Tempo`, `Grafana`, `Loki` e `Prometheus`
   - validacao dos dashboards `EduAssist Tracing Overview` e `EduAssist Metrics Overview`
   - validacao das metricas OTEL de `policy`, `retrieval`, `handoff` e `orquestracao`
+  - validacao dos gauges vivos de backlog e handoffs sem responsavel
 - `tests/e2e/authz_regression.py` cobre regressao de seguranca funcional:
   - negacao para usuario anonimo em fluxo protegido
   - clarificacao de responsavel com mais de um aluno

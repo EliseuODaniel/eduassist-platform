@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import uuid
+from functools import lru_cache
 from datetime import datetime, timedelta, timezone
 
+from eduassist_observability import get_meter
+from opentelemetry.metrics import Observation
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, aliased
 
@@ -49,6 +52,12 @@ def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
+def _normalize_queue_metric_label(queue_name: str | None) -> str:
+    if not queue_name:
+        return 'unknown'
+    return queue_name.strip().lower()
 
 
 def _priority_weight(priority_code: str) -> int:
@@ -421,6 +430,141 @@ def build_handoff_operations_overview(
     overview.critical_total = len(alert_candidates)
     overview.observability = build_handoff_observability_overview(session)
     return overview
+
+
+def _load_live_support_metric_rows(session: Session) -> list[tuple[Handoff, str | None, str | None]]:
+    assignee = aliased(User)
+    return session.execute(
+        select(Handoff, assignee.external_code, assignee.full_name)
+        .select_from(Handoff)
+        .outerjoin(assignee, assignee.id == Handoff.assigned_user_id)
+        .where(Handoff.status.in_(('queued', 'in_progress')))
+    ).all()
+
+
+def _support_backlog_observations(_: object) -> list[Observation]:
+    from api_core.db.session import session_scope
+
+    with session_scope() as session:
+        rows = _load_live_support_metric_rows(session)
+
+    counts: dict[tuple[str, str, str], int] = {}
+    for handoff, _, _ in rows:
+        queue_name = _normalize_queue_metric_label(handoff.queue_name)
+        sla_state = calculate_handoff_sla_state(handoff)
+        key = (queue_name, handoff.status, sla_state)
+        counts[key] = counts.get(key, 0) + 1
+
+    observations: list[Observation] = []
+    total_open = 0
+    for (queue_name, status, sla_state), count in counts.items():
+        total_open += count
+        observations.append(
+            Observation(
+                count,
+                {
+                    'queue_name': queue_name,
+                    'status': status,
+                    'sla_state': sla_state,
+                },
+            )
+        )
+    observations.append(
+        Observation(
+            total_open,
+            {
+                'queue_name': 'all',
+                'status': 'all',
+                'sla_state': 'all',
+            },
+        )
+    )
+    return observations
+
+
+def _support_unassigned_observations(_: object) -> list[Observation]:
+    from api_core.db.session import session_scope
+
+    with session_scope() as session:
+        rows = _load_live_support_metric_rows(session)
+
+    counts: dict[str, int] = {}
+    total_unassigned = 0
+    for handoff, _, _ in rows:
+        if handoff.assigned_user_id is not None:
+            continue
+        queue_name = _normalize_queue_metric_label(handoff.queue_name)
+        counts[queue_name] = counts.get(queue_name, 0) + 1
+        total_unassigned += 1
+
+    observations = [
+        Observation(count, {'queue_name': queue_name})
+        for queue_name, count in sorted(counts.items())
+    ]
+    observations.append(Observation(total_unassigned, {'queue_name': 'all'}))
+    return observations
+
+
+def _support_operator_observations(_: object) -> list[Observation]:
+    from api_core.db.session import session_scope
+
+    with session_scope() as session:
+        rows = _load_live_support_metric_rows(session)
+
+    counts: dict[tuple[str, str, str], int] = {}
+    total_assigned = 0
+    for handoff, operator_external_code, operator_name in rows:
+        if handoff.assigned_user_id is None:
+            continue
+        operator_code = operator_external_code or 'unknown'
+        operator_label = operator_name or operator_code
+        key = (operator_code, operator_label, handoff.status)
+        counts[key] = counts.get(key, 0) + 1
+        total_assigned += 1
+
+    observations = [
+        Observation(
+            count,
+            {
+                'operator_external_code': operator_code,
+                'operator_name': operator_name,
+                'status': status,
+            },
+        )
+        for (operator_code, operator_name, status), count in sorted(counts.items())
+    ]
+    observations.append(
+        Observation(
+            total_assigned,
+            {
+                'operator_external_code': 'all',
+                'operator_name': 'all',
+                'status': 'all',
+            },
+        )
+    )
+    return observations
+
+
+@lru_cache(maxsize=1)
+def register_support_operational_metrics() -> bool:
+    meter = get_meter('eduassist.api_core.support.live')
+    meter.create_observable_gauge(
+        'eduassist_support_backlog_current',
+        callbacks=[_support_backlog_observations],
+        description='Current open handoffs grouped by queue, status and SLA state.',
+    )
+    meter.create_observable_gauge(
+        'eduassist_support_unassigned_current',
+        callbacks=[_support_unassigned_observations],
+        description='Current unassigned handoffs grouped by queue.',
+    )
+    meter.create_observable_gauge(
+        'eduassist_support_operator_active_current',
+        callbacks=[_support_operator_observations],
+        description='Current assigned handoffs grouped by operator and status.',
+    )
+    return True
 
 
 def build_handoff_observability_overview(session: Session) -> HandoffObservabilityOverview:

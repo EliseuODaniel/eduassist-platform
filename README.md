@@ -154,6 +154,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - os serviços Python instrumentados já devolvem `X-Trace-Id` e `X-Span-Id` nas respostas, facilitando o drill-down operacional no ambiente local;
 - o tracing agora também inclui spans de dominio para policy, retrieval híbrido e operacoes de handoff, com dashboard provisionado em `Grafana` para cribsheet de TraceQL e runbook local;
 - a stack de observabilidade agora também expõe metricas de dominio para `policy`, `retrieval`, `handoff` e `orquestracao`, com dashboard provisionado em `Grafana` para acompanhamento analitico;
+- a stack de observabilidade agora também expõe gauges operacionais vivos da fila humana, incluindo backlog atual, tickets sem responsavel, saturacao por fila e carga por operador;
 - o stack local agora também inclui `Loki + Promtail`, com ingestao dos logs dos containers do Compose para investigacao centralizada no `Grafana`;
 - existe uma suite de smoke local em `tests/e2e/local_smoke.py` para validar os fluxos principais e a pilha de observabilidade;
 - existe uma suite de regressao de autorizacao em `tests/e2e/authz_regression.py` para validar negativas, ambiguidades, bearer ausente e segredos invalidos;
@@ -169,7 +170,7 @@ Expansões já aprovadas para a próxima etapa:
 
 ## Próximos passos imediatos
 
-1. Expandir os dashboards do `Grafana` com leituras mais profundas de SLA operacional, filas, attribution e logs correlacionados.
+1. Expandir os dashboards do `Grafana` com leituras mais profundas de SLA operacional, evolucao temporal por fila e logs correlacionados por `trace_id`.
 2. Expandir a suite de testes e evals com cenarios adversariais adicionais, casos de exfiltracao e regressao operacional.
 3. Expandir a seed para cenários mais amplos de tickets, filas, operadores e resoluções.
 4. Expandir a revisão detalhada do atendimento com histórico mais rico, paginação e buscas mais profundas no `admin-web`.
