@@ -151,6 +151,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o stack local já inclui `OpenTelemetry Collector`, `Tempo` e `Grafana`, com propagacao de trace context entre `telegram-gateway`, `ai-orchestrator` e `api-core`;
 - o tracing distribuido já foi validado ponta a ponta via webhook do Telegram, incluindo spans HTTP entre serviços, spans SQLAlchemy no `api-core` e consulta direta do trace no `Tempo`;
 - os serviços Python instrumentados já devolvem `X-Trace-Id` e `X-Span-Id` nas respostas, facilitando o drill-down operacional no ambiente local;
+- o tracing agora também inclui spans de dominio para policy, retrieval híbrido e operacoes de handoff, com dashboard provisionado em `Grafana` para cribsheet de TraceQL e runbook local;
 - seed foundation idempotente já disponível em `tools/mockgen`;
 - sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;
@@ -163,7 +164,7 @@ Expansões já aprovadas para a próxima etapa:
 ## Próximos passos imediatos
 
 1. Expandir a seed para cenários mais amplos de tickets, filas, operadores e resoluções.
-2. Instrumentar retrieval, tool calls e decisões de policy com spans de dominio mais ricos e dashboards dedicados no `Grafana`.
+2. Expandir os dashboards do `Grafana` com painéis dinamicos para SLA, policy decisions e retrieval, aproveitando a nova base de spans de dominio.
 3. Expandir a revisão detalhada do atendimento com histórico mais rico, paginação e buscas mais profundas no `admin-web`.
 4. Adicionar agregação central de logs com `Loki` para complementar o tracing distribuido.
 5. Preparar benchmark comparativo para `GraphRAG` seletivo sobre o corpus institucional.

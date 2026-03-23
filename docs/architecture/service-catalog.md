@@ -221,7 +221,8 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 
 - expõe a visualização dos traces armazenados no `tempo`;
 - hospeda dashboards e drill-down operacional do ambiente local;
-- já sobe com datasource do `tempo` provisionado.
+- já sobe com datasource do `tempo` provisionado;
+- já inclui dashboard provisionado para tracing do fluxo `Telegram -> AI -> API Core`.
 
 ### `loki`
 

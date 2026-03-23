@@ -107,6 +107,7 @@ Status atual:
 - os serviços Python instrumentados já exportam spans OTLP via `HTTP` para o collector;
 - o `Tempo` já persiste traces e responde `GET /api/traces/{trace_id}` em `http://localhost:3200`;
 - o `Grafana` já sobe com datasource do `Tempo` provisionado em `http://localhost:3004`;
+- o `Grafana` agora também provisiona o dashboard `EduAssist Tracing Overview`, com cribsheet de `TraceQL`, atributos de dominio e runbook de investigacao;
 - `X-Trace-Id` e `X-Span-Id` já são devolvidos nas respostas dos serviços Python instrumentados;
 - a agregação central de logs via `Loki` continua aprovada para a próxima etapa, mas ainda não foi ligada ao Compose.
 
@@ -252,6 +253,7 @@ Status atual do bootstrap:
 - `POST /v1/messages/respond` no `ai-orchestrator` com `X-Internal-Api-Token`
 - `GET /api/traces/{trace_id}` no `Tempo` em `http://localhost:3200`
 - `GET /` no `Grafana` em `http://localhost:3004`
+- dashboard provisionado: `EduAssist / EduAssist Tracing Overview` no `Grafana`
 
 Observacao sobre o pipeline documental local:
 

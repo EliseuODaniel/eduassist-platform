@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from eduassist_observability import set_span_attributes, start_span
 from sqlalchemy import select
 from sqlalchemy.orm import Session, aliased
 
@@ -256,20 +257,45 @@ def list_support_handoffs(
     scope: str,
     filters: SupportHandoffFilters,
 ) -> tuple[dict[str, int], list[SupportHandoffEntry], SupportHandoffFilters]:
-    normalized_filters = normalize_support_handoff_filters(filters)
-    rows = session.execute(
-        _base_handoff_stmt(actor=actor, scope=scope).order_by(Handoff.updated_at.desc(), Handoff.created_at.desc())
-    ).all()
+    with start_span(
+        'eduassist.support.list_handoffs',
+        tracer_name='eduassist.api_core.support',
+        **{
+            'eduassist.actor.role': actor.role_code,
+            'eduassist.support.scope': scope,
+        },
+    ):
+        normalized_filters = normalize_support_handoff_filters(filters)
+        set_span_attributes(
+            **{
+                'eduassist.support.filter.status': normalized_filters.status,
+                'eduassist.support.filter.queue': normalized_filters.queue_name,
+                'eduassist.support.filter.assignment': normalized_filters.assignment,
+                'eduassist.support.filter.sla_state': normalized_filters.sla_state,
+                'eduassist.support.filter.search_present': normalized_filters.search is not None,
+                'eduassist.support.limit': normalized_filters.limit,
+            }
+        )
+        rows = session.execute(
+            _base_handoff_stmt(actor=actor, scope=scope).order_by(Handoff.updated_at.desc(), Handoff.created_at.desc())
+        ).all()
 
-    items = _serialize_handoff_rows(session, rows)
-    filtered_items = [
-        item for item in items if _matches_handoff_filters(item, actor=actor, filters=normalized_filters)
-    ]
-    counts = {
-        status: sum(1 for item in filtered_items if item.status == status)
-        for status in SUPPORTED_HANDOFF_STATUSES
-    }
-    return counts, filtered_items[: normalized_filters.limit], normalized_filters
+        items = _serialize_handoff_rows(session, rows)
+        filtered_items = [
+            item for item in items if _matches_handoff_filters(item, actor=actor, filters=normalized_filters)
+        ]
+        counts = {
+            status: sum(1 for item in filtered_items if item.status == status)
+            for status in SUPPORTED_HANDOFF_STATUSES
+        }
+        set_span_attributes(
+            **{
+                'eduassist.support.total_rows': len(rows),
+                'eduassist.support.result_count': len(filtered_items),
+                'eduassist.support.result_statuses': [status for status, count in counts.items() if count > 0],
+            }
+        )
+        return counts, filtered_items[: normalized_filters.limit], normalized_filters
 
 
 def get_support_handoff_detail(
@@ -279,31 +305,50 @@ def get_support_handoff_detail(
     scope: str,
     handoff_id: uuid.UUID,
 ) -> tuple[SupportHandoffEntry, str, list[SupportConversationMessageEntry]] | None:
-    row = session.execute(
-        _base_handoff_stmt(actor=actor, scope=scope).where(Handoff.id == handoff_id)
-    ).first()
-    if row is None:
-        return None
+    with start_span(
+        'eduassist.support.get_handoff_detail',
+        tracer_name='eduassist.api_core.support',
+        **{
+            'eduassist.actor.role': actor.role_code,
+            'eduassist.support.scope': scope,
+            'eduassist.support.handoff_id': handoff_id,
+        },
+    ):
+        row = session.execute(
+            _base_handoff_stmt(actor=actor, scope=scope).where(Handoff.id == handoff_id)
+        ).first()
+        if row is None:
+            set_span_attributes(**{'eduassist.support.found': False})
+            return None
 
-    handoff, conversation, requester_name, requester_role, assigned_name, assigned_code = row
-    item = _serialize_handoff_rows(
-        session,
-        [(handoff, conversation, requester_name, requester_role, assigned_name, assigned_code)],
-    )[0]
-    messages = [
-        SupportConversationMessageEntry(
-            message_id=message.id,
-            sender_type=message.sender_type,
-            content=message.content,
-            created_at=message.created_at,
+        handoff, conversation, requester_name, requester_role, assigned_name, assigned_code = row
+        item = _serialize_handoff_rows(
+            session,
+            [(handoff, conversation, requester_name, requester_role, assigned_name, assigned_code)],
+        )[0]
+        messages = [
+            SupportConversationMessageEntry(
+                message_id=message.id,
+                sender_type=message.sender_type,
+                content=message.content,
+                created_at=message.created_at,
+            )
+            for message in session.execute(
+                select(Message)
+                .where(Message.conversation_id == conversation.id)
+                .order_by(Message.created_at.asc(), Message.id.asc())
+            ).scalars()
+        ]
+        set_span_attributes(
+            **{
+                'eduassist.support.found': True,
+                'eduassist.support.status': conversation.status,
+                'eduassist.support.message_count': len(messages),
+                'eduassist.queue.name': item.queue_name,
+                'eduassist.support.sla_state': item.sla_state,
+            }
         )
-        for message in session.execute(
-            select(Message)
-            .where(Message.conversation_id == conversation.id)
-            .order_by(Message.created_at.asc(), Message.id.asc())
-        ).scalars()
-    ]
-    return item, conversation.status, messages
+        return item, conversation.status, messages
 
 
 def create_support_handoff(
@@ -316,98 +361,119 @@ def create_support_handoff(
     summary: str,
     user_message: str | None = None,
 ) -> SupportHandoffCreateResponse:
-    conversation = session.execute(
-        select(Conversation)
-        .where(Conversation.channel == channel)
-        .where(Conversation.external_thread_id == conversation_external_id)
-        .order_by(Conversation.created_at.desc())
-    ).scalar_one_or_none()
+    with start_span(
+        'eduassist.support.create_handoff',
+        tracer_name='eduassist.api_core.support',
+        **{
+            'eduassist.channel': channel,
+            'eduassist.queue.name': queue_name,
+            'eduassist.support.has_actor': actor_user_id is not None,
+            'eduassist.support.has_user_message': bool(user_message),
+        },
+    ):
+        conversation = session.execute(
+            select(Conversation)
+            .where(Conversation.channel == channel)
+            .where(Conversation.external_thread_id == conversation_external_id)
+            .order_by(Conversation.created_at.desc())
+        ).scalar_one_or_none()
 
-    if conversation is None:
-        conversation = Conversation(
-            user_id=actor_user_id,
-            channel=channel,
-            external_thread_id=conversation_external_id,
-            status='open',
-        )
-        session.add(conversation)
-        session.flush()
-    elif actor_user_id is not None and conversation.user_id is None:
-        conversation.user_id = actor_user_id
+        reused_conversation = conversation is not None
+        if conversation is None:
+            conversation = Conversation(
+                user_id=actor_user_id,
+                channel=channel,
+                external_thread_id=conversation_external_id,
+                status='open',
+            )
+            session.add(conversation)
+            session.flush()
+        elif actor_user_id is not None and conversation.user_id is None:
+            conversation.user_id = actor_user_id
 
-    if user_message:
-        latest_message = session.execute(
-            select(Message)
-            .where(Message.conversation_id == conversation.id)
-            .order_by(Message.created_at.desc())
+        if user_message:
+            latest_message = session.execute(
+                select(Message)
+                .where(Message.conversation_id == conversation.id)
+                .order_by(Message.created_at.desc())
+                .limit(1)
+            ).scalar_one_or_none()
+            if latest_message is None or latest_message.content != user_message or latest_message.sender_type != 'user':
+                session.add(
+                    Message(
+                        conversation_id=conversation.id,
+                        sender_type='user',
+                        content=user_message,
+                    )
+                )
+
+        handoff = session.execute(
+            select(Handoff)
+            .where(Handoff.conversation_id == conversation.id)
+            .where(Handoff.status.in_(OPEN_HANDOFF_STATUSES))
+            .order_by(Handoff.updated_at.desc(), Handoff.created_at.desc())
             .limit(1)
         ).scalar_one_or_none()
-        if latest_message is None or latest_message.content != user_message or latest_message.sender_type != 'user':
-            session.add(
-                Message(
-                    conversation_id=conversation.id,
-                    sender_type='user',
-                    content=user_message,
-                )
+
+        priority_code = _priority_for_queue(queue_name)
+        created = handoff is None
+        if handoff is None:
+            handoff = Handoff(
+                conversation_id=conversation.id,
+                queue_name=queue_name,
+                priority_code=priority_code,
+                status='queued',
+                summary=summary,
             )
-
-    handoff = session.execute(
-        select(Handoff)
-        .where(Handoff.conversation_id == conversation.id)
-        .where(Handoff.status.in_(OPEN_HANDOFF_STATUSES))
-        .order_by(Handoff.updated_at.desc(), Handoff.created_at.desc())
-        .limit(1)
-    ).scalar_one_or_none()
-
-    priority_code = _priority_for_queue(queue_name)
-    created = handoff is None
-    if handoff is None:
-        handoff = Handoff(
-            conversation_id=conversation.id,
-            queue_name=queue_name,
-            priority_code=priority_code,
-            status='queued',
-            summary=summary,
-        )
-        session.add(handoff)
-        session.flush()
-        response_due_at, resolution_due_at = _sla_deadlines(
-            priority_code=priority_code,
-            anchor=handoff.created_at,
-        )
-        handoff.response_due_at = response_due_at
-        handoff.resolution_due_at = resolution_due_at
-    else:
-        handoff.queue_name = queue_name
-        handoff.priority_code = priority_code
-        handoff.summary = summary
-        if handoff.response_due_at is None or handoff.resolution_due_at is None:
+            session.add(handoff)
+            session.flush()
             response_due_at, resolution_due_at = _sla_deadlines(
                 priority_code=priority_code,
                 anchor=handoff.created_at,
             )
             handoff.response_due_at = response_due_at
             handoff.resolution_due_at = resolution_due_at
+        else:
+            handoff.queue_name = queue_name
+            handoff.priority_code = priority_code
+            handoff.summary = summary
+            if handoff.response_due_at is None or handoff.resolution_due_at is None:
+                response_due_at, resolution_due_at = _sla_deadlines(
+                    priority_code=priority_code,
+                    anchor=handoff.created_at,
+                )
+                handoff.response_due_at = response_due_at
+                handoff.resolution_due_at = resolution_due_at
 
-    conversation.status = 'open'
-    session.flush()
+        conversation.status = 'open'
+        session.flush()
 
-    requester = session.execute(
-        select(User.full_name, User.role_code).where(User.id == conversation.user_id)
-    ).first()
-    requester_name = requester[0] if requester else None
-    requester_role = requester[1] if requester else None
-    assignee = session.execute(
-        select(User.full_name, User.external_code).where(User.id == handoff.assigned_user_id)
-    ).first()
-    assigned_name = assignee[0] if assignee else None
-    assigned_code = assignee[1] if assignee else None
+        requester = session.execute(
+            select(User.full_name, User.role_code).where(User.id == conversation.user_id)
+        ).first()
+        requester_name = requester[0] if requester else None
+        requester_role = requester[1] if requester else None
+        assignee = session.execute(
+            select(User.full_name, User.external_code).where(User.id == handoff.assigned_user_id)
+        ).first()
+        assigned_name = assignee[0] if assignee else None
+        assigned_code = assignee[1] if assignee else None
 
-    item = _serialize_handoff_rows(
-        session,
-        [(handoff, conversation, requester_name, requester_role, assigned_name, assigned_code)],
-    )[0]
-    return SupportHandoffCreateResponse(created=created, deduplicated=not created, item=item)
+        item = _serialize_handoff_rows(
+            session,
+            [(handoff, conversation, requester_name, requester_role, assigned_name, assigned_code)],
+        )[0]
+        set_span_attributes(
+            **{
+                'eduassist.support.created': created,
+                'eduassist.support.deduplicated': not created,
+                'eduassist.support.conversation_reused': reused_conversation,
+                'eduassist.support.status': item.status,
+                'eduassist.support.priority': item.priority_code,
+                'eduassist.support.sla_state': item.sla_state,
+            }
+        )
+        return SupportHandoffCreateResponse(created=created, deduplicated=not created, item=item)
 
 
 def update_support_handoff_status(
@@ -420,68 +486,90 @@ def update_support_handoff_status(
     assigned_user_id: uuid.UUID | None = None,
     clear_assignment: bool = False,
 ) -> SupportHandoffEntry | None:
-    if status is not None and status not in SUPPORTED_HANDOFF_STATUSES:
-        raise ValueError('unsupported_handoff_status')
-    if assigned_user_id is not None and clear_assignment:
-        raise ValueError('conflicting_assignment_change')
-    if status is None and not operator_note and assigned_user_id is None and not clear_assignment:
-        raise ValueError('empty_handoff_update')
+    with start_span(
+        'eduassist.support.update_handoff',
+        tracer_name='eduassist.api_core.support',
+        **{
+            'eduassist.support.handoff_id': handoff_id,
+            'eduassist.support.requested_status': status,
+            'eduassist.support.has_operator_note': bool(operator_note),
+            'eduassist.support.clear_assignment': clear_assignment,
+            'eduassist.support.assigned_user_requested': assigned_user_id is not None,
+        },
+    ):
+        if status is not None and status not in SUPPORTED_HANDOFF_STATUSES:
+            raise ValueError('unsupported_handoff_status')
+        if assigned_user_id is not None and clear_assignment:
+            raise ValueError('conflicting_assignment_change')
+        if status is None and not operator_note and assigned_user_id is None and not clear_assignment:
+            raise ValueError('empty_handoff_update')
 
-    requester = aliased(User)
-    assignee_alias = aliased(User)
-    row = session.execute(
-        select(
-            Handoff,
-            Conversation,
-            requester.full_name,
-            requester.role_code,
-            assignee_alias.full_name,
-            assignee_alias.external_code,
-        )
-        .join(Conversation, Conversation.id == Handoff.conversation_id)
-        .outerjoin(requester, requester.id == Conversation.user_id)
-        .outerjoin(assignee_alias, assignee_alias.id == Handoff.assigned_user_id)
-        .where(Handoff.id == handoff_id)
-    ).first()
-    if row is None:
-        return None
+        requester = aliased(User)
+        assignee_alias = aliased(User)
+        row = session.execute(
+            select(
+                Handoff,
+                Conversation,
+                requester.full_name,
+                requester.role_code,
+                assignee_alias.full_name,
+                assignee_alias.external_code,
+            )
+            .join(Conversation, Conversation.id == Handoff.conversation_id)
+            .outerjoin(requester, requester.id == Conversation.user_id)
+            .outerjoin(assignee_alias, assignee_alias.id == Handoff.assigned_user_id)
+            .where(Handoff.id == handoff_id)
+        ).first()
+        if row is None:
+            set_span_attributes(**{'eduassist.support.found': False})
+            return None
 
-    handoff, conversation, requester_name, requester_role, assigned_name, assigned_code = row
+        handoff, conversation, requester_name, requester_role, assigned_name, assigned_code = row
 
-    if clear_assignment:
-        handoff.assigned_user_id = None
-        handoff.assigned_at = None
-    elif assigned_user_id is not None:
-        assignee = session.get(User, assigned_user_id)
-        if assignee is None or assignee.role_code not in INTERNAL_OPERATOR_ROLES:
-            raise ValueError('unsupported_assignee')
-        handoff.assigned_user_id = assignee.id
-        handoff.assigned_at = datetime.now(timezone.utc)
-        assigned_name = assignee.full_name
-        assigned_code = assignee.external_code
-    elif status == 'in_progress' and handoff.assigned_user_id is None and actor_user_id is not None:
-        assignee = session.get(User, actor_user_id)
-        if assignee is not None and assignee.role_code in INTERNAL_OPERATOR_ROLES:
+        if clear_assignment:
+            handoff.assigned_user_id = None
+            handoff.assigned_at = None
+        elif assigned_user_id is not None:
+            assignee = session.get(User, assigned_user_id)
+            if assignee is None or assignee.role_code not in INTERNAL_OPERATOR_ROLES:
+                raise ValueError('unsupported_assignee')
             handoff.assigned_user_id = assignee.id
             handoff.assigned_at = datetime.now(timezone.utc)
             assigned_name = assignee.full_name
             assigned_code = assignee.external_code
+        elif status == 'in_progress' and handoff.assigned_user_id is None and actor_user_id is not None:
+            assignee = session.get(User, actor_user_id)
+            if assignee is not None and assignee.role_code in INTERNAL_OPERATOR_ROLES:
+                handoff.assigned_user_id = assignee.id
+                handoff.assigned_at = datetime.now(timezone.utc)
+                assigned_name = assignee.full_name
+                assigned_code = assignee.external_code
 
-    if status is not None:
-        handoff.status = status
-        conversation.status = 'closed' if status in {'resolved', 'cancelled'} else 'open'
+        if status is not None:
+            handoff.status = status
+            conversation.status = 'closed' if status in {'resolved', 'cancelled'} else 'open'
 
-    if operator_note:
-        session.add(
-            Message(
-                conversation_id=conversation.id,
-                sender_type='operator',
-                content=operator_note,
+        if operator_note:
+            session.add(
+                Message(
+                    conversation_id=conversation.id,
+                    sender_type='operator',
+                    content=operator_note,
+                )
             )
-        )
 
-    session.flush()
-    return _serialize_handoff_rows(
-        session,
-        [(handoff, conversation, requester_name, requester_role, assigned_name, assigned_code)],
-    )[0]
+        session.flush()
+        item = _serialize_handoff_rows(
+            session,
+            [(handoff, conversation, requester_name, requester_role, assigned_name, assigned_code)],
+        )[0]
+        set_span_attributes(
+            **{
+                'eduassist.support.found': True,
+                'eduassist.support.status': item.status,
+                'eduassist.support.priority': item.priority_code,
+                'eduassist.support.sla_state': item.sla_state,
+                'eduassist.support.assigned': item.assigned_user_id is not None,
+            }
+        )
+        return item

@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from typing import Any
 
 import httpx
+from eduassist_observability import set_span_attributes, start_span
 from openai import AsyncOpenAI
 
 from .graph import build_orchestration_graph, to_preview
@@ -184,18 +185,28 @@ async def _api_core_get(
     params: dict[str, object] | None = None,
 ) -> tuple[dict[str, Any] | None, int | None]:
     headers = {'X-Internal-Api-Token': settings.internal_api_token}
-    try:
-        async with httpx.AsyncClient(timeout=12.0) as client:
-            response = await client.get(f'{settings.api_core_url}{path}', params=params, headers=headers)
-        response.raise_for_status()
-        payload = response.json()
-        if isinstance(payload, dict):
-            return payload, response.status_code
-        return None, response.status_code
-    except httpx.HTTPStatusError as exc:
-        return None, exc.response.status_code
-    except Exception:
-        return None, None
+    with start_span(
+        'eduassist.api_core.get',
+        tracer_name='eduassist.ai_orchestrator.runtime',
+        **{
+            'eduassist.api_core.path': path,
+            'eduassist.api_core.has_params': bool(params),
+        },
+    ):
+        try:
+            async with httpx.AsyncClient(timeout=12.0) as client:
+                response = await client.get(f'{settings.api_core_url}{path}', params=params, headers=headers)
+            response.raise_for_status()
+            payload = response.json()
+            set_span_attributes(**{'http.status_code': response.status_code})
+            if isinstance(payload, dict):
+                return payload, response.status_code
+            return None, response.status_code
+        except httpx.HTTPStatusError as exc:
+            set_span_attributes(**{'http.status_code': exc.response.status_code})
+            return None, exc.response.status_code
+        except Exception:
+            return None, None
 
 
 async def _api_core_post(
@@ -208,18 +219,28 @@ async def _api_core_post(
         'X-Internal-Api-Token': settings.internal_api_token,
         'Content-Type': 'application/json',
     }
-    try:
-        async with httpx.AsyncClient(timeout=12.0) as client:
-            response = await client.post(f'{settings.api_core_url}{path}', json=payload, headers=headers)
-        response.raise_for_status()
-        body = response.json()
-        if isinstance(body, dict):
-            return body, response.status_code
-        return None, response.status_code
-    except httpx.HTTPStatusError as exc:
-        return None, exc.response.status_code
-    except Exception:
-        return None, None
+    with start_span(
+        'eduassist.api_core.post',
+        tracer_name='eduassist.ai_orchestrator.runtime',
+        **{
+            'eduassist.api_core.path': path,
+            'eduassist.api_core.has_payload': bool(payload),
+        },
+    ):
+        try:
+            async with httpx.AsyncClient(timeout=12.0) as client:
+                response = await client.post(f'{settings.api_core_url}{path}', json=payload, headers=headers)
+            response.raise_for_status()
+            body = response.json()
+            set_span_attributes(**{'http.status_code': response.status_code})
+            if isinstance(body, dict):
+                return body, response.status_code
+            return None, response.status_code
+        except httpx.HTTPStatusError as exc:
+            set_span_attributes(**{'http.status_code': exc.response.status_code})
+            return None, exc.response.status_code
+        except Exception:
+            return None, None
 
 
 async def _fetch_actor_context(*, settings: Any, telegram_chat_id: int | None) -> dict[str, Any] | None:
@@ -918,80 +939,134 @@ async def _compose_with_openai(
 
 
 async def generate_message_response(*, request: MessageResponseRequest, settings: Any) -> MessageResponse:
-    actor = await _fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
-    effective_user = _user_context_from_actor(actor) if actor else request.user
-
-    graph = build_orchestration_graph(settings.graph_rag_enabled)
-    state = graph.invoke({'request': _map_request(request, effective_user)})
-    preview = to_preview(state)
-
-    retrieval_hits: list[Any] = []
-    citations: list[MessageResponseCitation] = []
-    calendar_events: list[CalendarEventCard] = []
-
-    if preview.mode is OrchestrationMode.hybrid_retrieval:
-        retrieval_service = get_retrieval_service(
-            database_url=settings.database_url,
-            qdrant_url=settings.qdrant_url,
-            collection_name=settings.qdrant_documents_collection,
-            embedding_model=settings.document_embedding_model,
+    with start_span(
+        'eduassist.orchestration.message_response',
+        tracer_name='eduassist.ai_orchestrator.runtime',
+        **{
+            'eduassist.channel': request.channel.value,
+            'eduassist.request.message_length': len(request.message),
+            'eduassist.request.has_telegram_chat': request.telegram_chat_id is not None,
+            'eduassist.orchestration.allow_graph_rag': request.allow_graph_rag,
+            'eduassist.orchestration.allow_handoff': request.allow_handoff,
+        },
+    ):
+        actor = await _fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
+        effective_user = _user_context_from_actor(actor) if actor else request.user
+        set_span_attributes(
+            **{
+                'eduassist.actor.role': effective_user.role.value,
+                'eduassist.actor.authenticated': effective_user.authenticated,
+                'eduassist.actor.linked_student_count': len(effective_user.linked_student_ids),
+            }
         )
-        search = retrieval_service.hybrid_search(
-            query=request.message,
-            top_k=4,
-            visibility='public',
-            category=_category_for_domain(preview.classification.domain),
-        )
-        retrieval_hits = search.hits
-        citations = _collect_citations(search.hits)
 
-        if preview.classification.domain is QueryDomain.calendar:
-            calendar_events = await _fetch_public_calendar(settings=settings)
+        graph = build_orchestration_graph(settings.graph_rag_enabled)
+        with start_span('eduassist.orchestration.graph_preview', tracer_name='eduassist.ai_orchestrator.runtime'):
+            state = graph.invoke({'request': _map_request(request, effective_user)})
+            preview = to_preview(state)
+        set_span_attributes(
+            **{
+                'eduassist.orchestration.mode': preview.mode.value,
+                'eduassist.orchestration.domain': preview.classification.domain.value,
+                'eduassist.orchestration.access_tier': preview.classification.access_tier.value,
+                'eduassist.orchestration.needs_authentication': preview.needs_authentication,
+                'eduassist.orchestration.selected_tools': preview.selected_tools,
+                'eduassist.orchestration.graph_path': preview.graph_path,
+                'eduassist.orchestration.retrieval_backend': preview.retrieval_backend.value,
+            }
+        )
 
-    if preview.mode is OrchestrationMode.structured_tool:
-        message_text = await _compose_structured_tool_answer(
-            settings=settings,
-            request=request,
-            preview=preview,
-            actor=actor,
-        )
-    elif preview.mode is OrchestrationMode.handoff:
-        handoff_payload = await _create_support_handoff(
-            settings=settings,
-            request=request,
-            actor=actor,
-        )
-        message_text = _compose_handoff_answer(handoff_payload)
-    else:
-        llm_text = await _compose_with_openai(
-            settings=settings,
-            request=request,
-            preview=preview,
+        retrieval_hits: list[Any] = []
+        citations: list[MessageResponseCitation] = []
+        calendar_events: list[CalendarEventCard] = []
+
+        if preview.mode is OrchestrationMode.hybrid_retrieval:
+            with start_span('eduassist.orchestration.public_retrieval', tracer_name='eduassist.ai_orchestrator.runtime'):
+                retrieval_service = get_retrieval_service(
+                    database_url=settings.database_url,
+                    qdrant_url=settings.qdrant_url,
+                    collection_name=settings.qdrant_documents_collection,
+                    embedding_model=settings.document_embedding_model,
+                )
+                search = retrieval_service.hybrid_search(
+                    query=request.message,
+                    top_k=4,
+                    visibility='public',
+                    category=_category_for_domain(preview.classification.domain),
+                )
+                retrieval_hits = search.hits
+                citations = _collect_citations(search.hits)
+                set_span_attributes(
+                    **{
+                        'eduassist.retrieval.hit_count': len(retrieval_hits),
+                        'eduassist.retrieval.citation_count': len(citations),
+                    }
+                )
+
+                if preview.classification.domain is QueryDomain.calendar:
+                    calendar_events = await _fetch_public_calendar(settings=settings)
+                    set_span_attributes(**{'eduassist.calendar.event_count': len(calendar_events)})
+
+        if preview.mode is OrchestrationMode.structured_tool:
+            with start_span('eduassist.orchestration.structured_tool', tracer_name='eduassist.ai_orchestrator.runtime'):
+                message_text = await _compose_structured_tool_answer(
+                    settings=settings,
+                    request=request,
+                    preview=preview,
+                    actor=actor,
+                )
+        elif preview.mode is OrchestrationMode.handoff:
+            with start_span('eduassist.orchestration.handoff', tracer_name='eduassist.ai_orchestrator.runtime'):
+                handoff_payload = await _create_support_handoff(
+                    settings=settings,
+                    request=request,
+                    actor=actor,
+                )
+                if isinstance(handoff_payload, dict):
+                    item = handoff_payload.get('item')
+                    if isinstance(item, dict):
+                        set_span_attributes(
+                            **{
+                                'eduassist.queue.name': item.get('queue_name'),
+                                'eduassist.support.status': item.get('status'),
+                                'eduassist.support.priority': item.get('priority_code'),
+                                'eduassist.support.sla_state': item.get('sla_state'),
+                            }
+                        )
+                message_text = _compose_handoff_answer(handoff_payload)
+        else:
+            with start_span('eduassist.orchestration.answer_composition', tracer_name='eduassist.ai_orchestrator.runtime'):
+                llm_text = await _compose_with_openai(
+                    settings=settings,
+                    request=request,
+                    preview=preview,
+                    citations=citations,
+                    calendar_events=calendar_events,
+                )
+                set_span_attributes(**{'eduassist.orchestration.used_llm': bool(llm_text)})
+                message_text = llm_text or _compose_deterministic_answer(
+                    preview=preview,
+                    retrieval_hits=retrieval_hits,
+                    citations=citations,
+                    calendar_events=calendar_events,
+                )
+
+        if citations:
+            sources = _render_source_lines(citations)
+            if sources and sources not in message_text:
+                message_text = f'{message_text}\n\n{sources}'
+
+        set_span_attributes(**{'eduassist.response.length': len(message_text)})
+        return MessageResponse(
+            message_text=message_text,
+            mode=preview.mode,
+            classification=preview.classification,
+            retrieval_backend=preview.retrieval_backend,
+            selected_tools=preview.selected_tools,
             citations=citations,
             calendar_events=calendar_events,
+            needs_authentication=preview.needs_authentication,
+            graph_path=preview.graph_path,
+            risk_flags=preview.risk_flags,
+            reason=preview.reason,
         )
-        message_text = llm_text or _compose_deterministic_answer(
-            preview=preview,
-            retrieval_hits=retrieval_hits,
-            citations=citations,
-            calendar_events=calendar_events,
-        )
-
-    if citations:
-        sources = _render_source_lines(citations)
-        if sources and sources not in message_text:
-            message_text = f'{message_text}\n\n{sources}'
-
-    return MessageResponse(
-        message_text=message_text,
-        mode=preview.mode,
-        classification=preview.classification,
-        retrieval_backend=preview.retrieval_backend,
-        selected_tools=preview.selected_tools,
-        citations=citations,
-        calendar_events=calendar_events,
-        needs_authentication=preview.needs_authentication,
-        graph_path=preview.graph_path,
-        risk_flags=preview.risk_flags,
-        reason=preview.reason,
-    )

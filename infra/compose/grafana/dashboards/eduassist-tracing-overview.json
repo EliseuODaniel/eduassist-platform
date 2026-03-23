@@ -1,0 +1,95 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "content": "# EduAssist tracing\n\nUse o header `X-Trace-Id` devolvido por `telegram-gateway`, `ai-orchestrator` e `api-core` para abrir o trace correspondente no Tempo.\n\nFluxo principal observado:\n\n1. `telegram-gateway`\n2. `ai-orchestrator`\n3. `api-core`\n4. spans HTTP, SQLAlchemy e spans de dominio\n\nPortas locais:\n\n- Grafana: `http://localhost:3004`\n- Tempo API: `http://localhost:3200`\n- OTLP HTTP: `http://localhost:4318`\n",
+        "mode": "markdown"
+      },
+      "pluginVersion": "11.6.0",
+      "title": "Fluxo principal",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "content": "## TraceQL util\n\nCole estas consultas no Explore com a datasource `Tempo`:\n\n- Todos os traces do gateway: `{ resource.service.name = \"telegram-gateway\" }`\n- Todos os traces do orquestrador: `{ resource.service.name = \"ai-orchestrator\" }`\n- Todos os traces do core: `{ resource.service.name = \"api-core\" }`\n- Decisoes de policy: `{ name = \"eduassist.policy.decide\" }`\n- Retrieval hibrido: `{ name = \"eduassist.retrieval.hybrid_search\" }`\n- Handoffs criados: `{ name = \"eduassist.support.create_handoff\" }`\n- Atualizacoes de ticket: `{ name = \"eduassist.support.update_handoff\" }`\n",
+        "mode": "markdown"
+      },
+      "pluginVersion": "11.6.0",
+      "title": "Consultas prontas",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "content": "## Atributos de dominio\n\nOs spans novos usam estes atributos para drill-down:\n\n- `eduassist.orchestration.mode`\n- `eduassist.orchestration.domain`\n- `eduassist.orchestration.retrieval_backend`\n- `eduassist.retrieval.hit_count`\n- `eduassist.policy.action`\n- `eduassist.policy.allow`\n- `eduassist.queue.name`\n- `eduassist.support.priority`\n- `eduassist.support.sla_state`\n- `eduassist.response.length`\n\nEsses campos foram desenhados para evitar vazamento de conteudo sensivel: a observabilidade registra contagens, papeis, filas e rotas, nao a mensagem completa do usuario.\n",
+        "mode": "markdown"
+      },
+      "pluginVersion": "11.6.0",
+      "title": "Atributos de dominio",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "content": "## Procedimento rapido\n\n1. Gere uma interacao real pelo Telegram webhook ou pelo `admin-web`.\n2. Copie o `X-Trace-Id` da resposta HTTP.\n3. Abra o Explore no Grafana com a datasource `Tempo`.\n4. Busque pelo `trace_id` ou por uma consulta TraceQL acima.\n5. Use os atributos de dominio para filtrar por handoff, policy ou retrieval.\n\nExemplos de testes uteis:\n\n- `quero falar com um humano sobre o financeiro`\n- `quais documentos sao exigidos para matricula?`\n- `quero ver as notas do Lucas Oliveira`\n",
+        "mode": "markdown"
+      },
+      "pluginVersion": "11.6.0",
+      "title": "Runbook local",
+      "type": "text"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": [
+    "eduassist",
+    "observability",
+    "tracing"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "EduAssist Tracing Overview",
+  "uid": "eduassist-tracing-overview",
+  "version": 1,
+  "weekStart": ""
+}

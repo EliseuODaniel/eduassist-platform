@@ -144,6 +144,7 @@ services:
       - '${GRAFANA_PORT:-3004}:3000'
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
     depends_on:
       tempo:
