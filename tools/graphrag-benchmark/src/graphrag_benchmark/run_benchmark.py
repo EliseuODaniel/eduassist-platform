@@ -10,6 +10,8 @@ from time import monotonic
 from typing import Any
 from urllib.request import Request, urlopen
 
+from graphrag_benchmark.preflight import get_workspace_provider_status
+
 
 ROOT_DIR = Path(__file__).resolve().parents[4]
 PROJECT_DIR = ROOT_DIR / 'tools' / 'graphrag-benchmark'
@@ -64,21 +66,17 @@ def _run_baseline(*, baseline_url: str, token: str, chat_id: int, query: str) ->
     }
 
 
-def _graphrag_ready(workspace: Path) -> tuple[bool, str]:
+def _graphrag_ready(workspace: Path) -> tuple[bool, str, dict[str, Any]]:
     if not (workspace / 'settings.yaml').exists():
-        return False, 'workspace_not_bootstrapped'
+        return False, 'workspace_not_bootstrapped', {}
     if not (workspace / 'output').exists():
-        return False, 'index_output_missing'
-    env_path = workspace / '.env'
-    env_value = os.getenv('GRAPHRAG_API_KEY')
-    if env_value:
-        return True, 'ready'
-    if not env_path.exists():
-        return False, 'missing_env_file'
-    content = env_path.read_text(encoding='utf-8')
-    if '<API_KEY>' in content or 'GRAPHRAG_API_KEY=' not in content:
-        return False, 'missing_api_key'
-    return True, 'ready'
+        return False, 'index_output_missing', {}
+    provider_status = get_workspace_provider_status(workspace)
+    return (
+        bool(provider_status.get('provider_ready')),
+        str(provider_status.get('provider_reason', 'provider_not_ready')),
+        provider_status,
+    )
 
 
 def _run_graphrag_query(
@@ -164,7 +162,7 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     cases = json.loads(dataset_path.read_text(encoding='utf-8'))
-    ready, readiness_reason = _graphrag_ready(workspace)
+    ready, readiness_reason, provider_status = _graphrag_ready(workspace)
 
     report: dict[str, Any] = {
         'generated_at': datetime.now(UTC).isoformat(),
@@ -173,6 +171,7 @@ def main() -> int:
         'baseline_url': args.baseline_url,
         'graphrag_ready': ready,
         'graphrag_readiness_reason': readiness_reason,
+        'provider_status': provider_status,
         'cases': [],
     }
 
@@ -228,6 +227,7 @@ def main() -> int:
                 'markdown_report': markdown_target.as_posix(),
                 'graphrag_ready': ready,
                 'graphrag_readiness_reason': readiness_reason,
+                'provider_profile': provider_status.get('provider_profile'),
                 'cases': len(report['cases']),
             },
             ensure_ascii=False,

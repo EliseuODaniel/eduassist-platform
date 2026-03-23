@@ -9,6 +9,11 @@ from typing import Any
 
 import yaml
 
+from graphrag_benchmark.preflight import (
+    LOCAL_OPENAI_COMPATIBLE_PROFILE,
+    REMOTE_OPENAI_PROFILE,
+)
+
 
 ROOT_DIR = Path(__file__).resolve().parents[4]
 DEFAULT_WORKSPACE = ROOT_DIR / 'artifacts' / 'graphrag' / 'eduassist-public-benchmark'
@@ -21,9 +26,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--workspace', type=Path, default=DEFAULT_WORKSPACE)
     parser.add_argument('--corpus-dir', type=Path, default=DEFAULT_CORPUS_DIR)
     parser.add_argument('--dataset', type=Path, default=DEFAULT_DATASET)
+    parser.add_argument(
+        '--profile',
+        choices=[REMOTE_OPENAI_PROFILE, LOCAL_OPENAI_COMPATIBLE_PROFILE],
+        default=REMOTE_OPENAI_PROFILE,
+    )
     parser.add_argument('--model', default='gpt-4.1')
     parser.add_argument('--embedding-model', default='text-embedding-3-large')
     parser.add_argument('--force-init', action='store_true')
+    parser.add_argument('--rewrite-env', action='store_true')
     return parser.parse_args()
 
 
@@ -74,8 +85,77 @@ def _run_graphrag_init(*, workspace: Path, model: str, embedding_model: str) -> 
     )
 
 
-def _patch_settings(settings_path: Path) -> None:
+def _detect_ollama_models() -> tuple[str | None, str | None]:
+    try:
+        result = subprocess.run(
+            ['ollama', 'list'],
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return None, None
+
+    completion_candidates: list[str] = []
+    embedding_candidates: list[str] = []
+    for raw_line in result.stdout.splitlines():
+        line = raw_line.strip()
+        if not line or line.lower().startswith('name'):
+            continue
+        model_name = line.split()[0]
+        lowered = model_name.lower()
+        if 'embed' in lowered:
+            embedding_candidates.append(model_name)
+        else:
+            completion_candidates.append(model_name)
+
+    completion_model = completion_candidates[0] if completion_candidates else None
+    embedding_model = embedding_candidates[0] if embedding_candidates else None
+    return completion_model, embedding_model
+
+
+def _patch_settings(*, settings_path: Path, profile: str, model: str, embedding_model: str) -> None:
     payload = yaml.safe_load(settings_path.read_text(encoding='utf-8')) or {}
+    if profile == REMOTE_OPENAI_PROFILE:
+        payload['completion_models'] = {
+            'default_completion_model': {
+                'model_provider': 'openai',
+                'model': model,
+                'auth_method': 'api_key',
+                'api_key': '${GRAPHRAG_API_KEY}',
+                'retry': {'type': 'exponential_backoff'},
+            }
+        }
+        payload['embedding_models'] = {
+            'default_embedding_model': {
+                'model_provider': 'openai',
+                'model': embedding_model,
+                'auth_method': 'api_key',
+                'api_key': '${GRAPHRAG_API_KEY}',
+                'retry': {'type': 'exponential_backoff'},
+            }
+        }
+    else:
+        payload['completion_models'] = {
+            'default_completion_model': {
+                'model_provider': 'openai',
+                'model': '${GRAPHRAG_LOCAL_CHAT_MODEL}',
+                'auth_method': 'api_key',
+                'api_key': '${GRAPHRAG_LOCAL_API_KEY}',
+                'api_base': '${GRAPHRAG_LOCAL_API_BASE}',
+                'retry': {'type': 'exponential_backoff'},
+            }
+        }
+        payload['embedding_models'] = {
+            'default_embedding_model': {
+                'model_provider': 'openai',
+                'model': '${GRAPHRAG_LOCAL_EMBEDDING_MODEL}',
+                'auth_method': 'api_key',
+                'api_key': '${GRAPHRAG_LOCAL_API_KEY}',
+                'api_base': '${GRAPHRAG_LOCAL_API_BASE}',
+                'retry': {'type': 'exponential_backoff'},
+            }
+        }
     payload.setdefault('input', {})['type'] = 'text'
     chunking = payload.setdefault('chunking', {})
     chunking['type'] = 'tokens'
@@ -88,6 +168,31 @@ def _patch_settings(settings_path: Path) -> None:
     settings_path.write_text(
         yaml.safe_dump(payload, allow_unicode=False, sort_keys=False),
         encoding='utf-8',
+    )
+
+
+def _build_env_template(*, profile: str) -> str:
+    if profile == REMOTE_OPENAI_PROFILE:
+        return '\n'.join(
+            [
+                f'GRAPHRAG_PROVIDER_PROFILE={REMOTE_OPENAI_PROFILE}',
+                'GRAPHRAG_API_KEY=<API_KEY>',
+                '',
+            ]
+        )
+
+    completion_model, embedding_model = _detect_ollama_models()
+    chat_value = completion_model or 'qwen2.5:7b'
+    embedding_value = embedding_model or 'nomic-embed-text'
+    return '\n'.join(
+        [
+            f'GRAPHRAG_PROVIDER_PROFILE={LOCAL_OPENAI_COMPATIBLE_PROFILE}',
+            'GRAPHRAG_LOCAL_API_BASE=http://127.0.0.1:11434/v1',
+            'GRAPHRAG_LOCAL_API_KEY=ollama',
+            f'GRAPHRAG_LOCAL_CHAT_MODEL={chat_value}',
+            f'GRAPHRAG_LOCAL_EMBEDDING_MODEL={embedding_value}',
+            '',
+        ]
     )
 
 
@@ -113,7 +218,15 @@ def _export_corpus(*, corpus_dir: Path, input_dir: Path) -> list[dict[str, Any]]
     return manifest
 
 
-def _write_workspace_readme(workspace: Path) -> None:
+def _write_workspace_readme(*, workspace: Path, profile: str) -> None:
+    provider_note = (
+        '- `.env`: definir `GRAPHRAG_API_KEY`\n'
+        '- perfil ativo: `openai-remote`'
+        if profile == REMOTE_OPENAI_PROFILE
+        else '- `.env`: definir `GRAPHRAG_LOCAL_API_BASE`, `GRAPHRAG_LOCAL_CHAT_MODEL` e '
+        '`GRAPHRAG_LOCAL_EMBEDDING_MODEL`\n'
+        '- perfil ativo: `local-openai-compatible`'
+    )
     content = f"""# EduAssist GraphRAG Benchmark Workspace
 
 Workspace gerado automaticamente para benchmark seletivo do GraphRAG.
@@ -127,7 +240,7 @@ Objetivo:
 Arquivos importantes:
 
 - `settings.yaml`: configuracao atual do GraphRAG
-- `.env`: definir `GRAPHRAG_API_KEY`
+{provider_note}
 - `input/`: corpus exportado do projeto
 - `benchmark-dataset.json`: perguntas padrao para comparacao
 - `input/manifest.json`: mapeamento entre documentos do repo e documentos exportados
@@ -135,8 +248,9 @@ Arquivos importantes:
 Fluxo sugerido:
 
 1. preencher `.env`
-2. `make graphrag-benchmark-index`
-3. `make graphrag-benchmark-run`
+2. se usar provider local, validar com `make graphrag-benchmark-local-check`
+3. `make graphrag-benchmark-index`
+4. `make graphrag-benchmark-run`
 
 Nota importante:
 
@@ -153,6 +267,7 @@ def main() -> int:
     input_dir = workspace / 'input'
     dataset_target = workspace / 'benchmark-dataset.json'
     env_example_path = workspace / '.env.example'
+    env_target = workspace / '.env'
 
     if args.force_init or not settings_path.exists():
         _run_graphrag_init(
@@ -161,7 +276,12 @@ def main() -> int:
             embedding_model=args.embedding_model,
         )
 
-    _patch_settings(settings_path)
+    _patch_settings(
+        settings_path=settings_path,
+        profile=args.profile,
+        model=args.model,
+        embedding_model=args.embedding_model,
+    )
 
     if input_dir.exists():
         shutil.rmtree(input_dir)
@@ -173,18 +293,18 @@ def main() -> int:
 
     shutil.copyfile(args.dataset.resolve(), dataset_target)
 
-    generated_env = workspace / '.env'
-    if generated_env.exists() and not env_example_path.exists():
-        shutil.copyfile(generated_env, env_example_path)
-    elif not env_example_path.exists():
-        env_example_path.write_text('GRAPHRAG_API_KEY=<API_KEY>\n', encoding='utf-8')
+    env_template = _build_env_template(profile=args.profile)
+    env_example_path.write_text(env_template, encoding='utf-8')
+    if args.rewrite_env or not env_target.exists():
+        env_target.write_text(env_template, encoding='utf-8')
 
-    _write_workspace_readme(workspace)
+    _write_workspace_readme(workspace=workspace, profile=args.profile)
 
     print(
         json.dumps(
             {
                 'workspace': workspace.as_posix(),
+                'profile': args.profile,
                 'documents_exported': len(manifest),
                 'settings': settings_path.as_posix(),
                 'dataset': dataset_target.as_posix(),

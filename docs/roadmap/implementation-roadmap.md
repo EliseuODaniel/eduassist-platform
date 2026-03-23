@@ -150,7 +150,7 @@ Estado atual:
 
 - os gates minimos de release ja existem em `make release-readiness`;
 - o benchmark seletivo de `GraphRAG` ja possui trilha experimental pronta;
-- o fechamento estrito dessa fase ainda depende de executar o benchmark completo com API key valida.
+- o fechamento estrito dessa fase ainda depende de executar o benchmark completo com provider valido, remoto ou local compativel.
 
 ## 11. Fase 9 - Kubernetes local
 

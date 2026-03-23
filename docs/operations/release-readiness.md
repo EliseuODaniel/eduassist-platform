@@ -32,7 +32,7 @@ Esse modo exige, alem dos gates obrigatorios, um benchmark completo de `GraphRAG
 Na pratica, ele depende de:
 
 1. `make graphrag-benchmark-bootstrap`
-2. preencher `artifacts/graphrag/eduassist-public-benchmark/.env`
+2. preencher `artifacts/graphrag/eduassist-public-benchmark/.env` com provider remoto ou local compativel
 3. `make graphrag-benchmark-index`
 4. `make graphrag-benchmark-run`
 
@@ -61,7 +61,7 @@ Significa, alem do baseline local:
 
 ## Estado esperado atual
 
-Sem `GRAPHRAG_API_KEY`, o gate padrao deve passar e o gate estrito deve falhar.
+Sem provider `GraphRAG` configurado e acessivel, o gate padrao deve passar e o gate estrito deve falhar.
 
 Esse comportamento e intencional:
 

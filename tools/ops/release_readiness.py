@@ -2,14 +2,21 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
+GRAPH_RAG_SRC_DIR = ROOT_DIR / 'tools' / 'graphrag-benchmark' / 'src'
+if GRAPH_RAG_SRC_DIR.as_posix() not in sys.path:
+    sys.path.insert(0, GRAPH_RAG_SRC_DIR.as_posix())
+
+from graphrag_benchmark.preflight import get_workspace_provider_status  # noqa: E402
+
+
 DEFAULT_OUTPUT_DIR = ROOT_DIR / 'artifacts' / 'readiness'
 DEFAULT_GRAPH_RAG_WORKSPACE = ROOT_DIR / 'artifacts' / 'graphrag' / 'eduassist-public-benchmark'
 DEFAULT_GRAPH_RAG_REPORTS = ROOT_DIR / 'artifacts' / 'graphrag' / 'benchmark-runs'
@@ -55,14 +62,6 @@ def _load_latest_graphrag_report(report_dir: Path) -> dict[str, Any] | None:
 
 
 def _graphrag_status(*, workspace: Path, report_dir: Path) -> dict[str, Any]:
-    env_path = workspace / '.env'
-    env_value = None
-    if env_path.exists():
-        for line in env_path.read_text(encoding='utf-8').splitlines():
-            if line.startswith('GRAPHRAG_API_KEY='):
-                env_value = line.split('=', 1)[1].strip()
-                break
-
     latest_report = _load_latest_graphrag_report(report_dir)
     full_benchmark_completed = False
     if latest_report is not None:
@@ -75,12 +74,20 @@ def _graphrag_status(*, workspace: Path, report_dir: Path) -> dict[str, Any]:
             if full_benchmark_completed:
                 break
 
+    provider_status = get_workspace_provider_status(workspace)
+
     return {
         'workspace_exists': workspace.exists(),
         'settings_exists': (workspace / 'settings.yaml').exists(),
         'input_exists': (workspace / 'input').exists(),
         'output_exists': (workspace / 'output').exists(),
-        'api_key_configured': bool(env_value) and env_value != '<API_KEY>',
+        'provider_profile': provider_status.get('provider_profile'),
+        'provider_configured': provider_status.get('provider_configured'),
+        'provider_ready': provider_status.get('provider_ready'),
+        'provider_reason': provider_status.get('provider_reason'),
+        'endpoint_reachable': provider_status.get('endpoint_reachable'),
+        'available_models': provider_status.get('available_models'),
+        'missing_models': provider_status.get('missing_models'),
         'latest_report': latest_report,
         'full_benchmark_completed': full_benchmark_completed,
     }
@@ -112,10 +119,17 @@ def _write_markdown(target: Path, payload: dict[str, Any]) -> None:
             f"- settings_exists: `{graphrag['settings_exists']}`",
             f"- input_exists: `{graphrag['input_exists']}`",
             f"- output_exists: `{graphrag['output_exists']}`",
-            f"- api_key_configured: `{graphrag['api_key_configured']}`",
+            f"- provider_profile: `{graphrag['provider_profile']}`",
+            f"- provider_configured: `{graphrag['provider_configured']}`",
+            f"- provider_ready: `{graphrag['provider_ready']}`",
+            f"- provider_reason: `{graphrag['provider_reason']}`",
+            f"- endpoint_reachable: `{graphrag['endpoint_reachable']}`",
             f"- full_benchmark_completed: `{graphrag['full_benchmark_completed']}`",
         ]
     )
+    missing_models = graphrag.get('missing_models') or []
+    if missing_models:
+        lines.append(f"- missing_models: `{', '.join(missing_models)}`")
     latest_report = graphrag.get('latest_report')
     if isinstance(latest_report, dict):
         lines.append(f"- latest_report: `{latest_report.get('_report_path')}`")
@@ -161,7 +175,7 @@ def main() -> int:
     elif overall_ok:
         summary = (
             'Todos os gates obrigatorios passaram. O sistema esta pronto para demo/operacao local; '
-            'o benchmark completo de GraphRAG continua opcional e depende da API key.'
+            'o benchmark completo de GraphRAG continua opcional e depende de provider configurado.'
         )
     elif mandatory_ok:
         summary = (

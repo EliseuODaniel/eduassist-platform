@@ -2,7 +2,7 @@
 
 ## Resumo
 
-Este documento apresenta a proposta arquitetural e o estado atual de implementação da `EduAssist Platform`, uma plataforma de atendimento escolar com IA conversacional voltada a uma escola fictícia de ensino médio. O sistema combina atendimento público e consultas protegidas via Telegram, dados 100% mockados sobre infraestrutura real, controle de acesso em múltiplas camadas, observabilidade ponta a ponta e orquestração governada de modelos de linguagem. A proposta parte do reconhecimento de que chatbots escolares não podem ser tratados apenas como interfaces de FAQ, pois também precisam lidar com dados acadêmicos, financeiros e operacionais sujeitos a restrições de identidade, vínculo e finalidade. Para responder a esse problema, a plataforma foi estruturada com separação explícita entre canal, regras de negócio, orquestração de IA, plano transacional, plano de retrieval e operação humana. O texto descreve requisitos do domínio, arquitetura, estratégia de IA, modelo de segurança, dados mockados, operação local e plano experimental. Também registra o que já foi efetivamente implementado no repositório e o que permanece como trilha avançada, com destaque para o benchmark seletivo de `GraphRAG`, já preparado, mas ainda dependente de chave de API para execução completa.
+Este documento apresenta a proposta arquitetural e o estado atual de implementação da `EduAssist Platform`, uma plataforma de atendimento escolar com IA conversacional voltada a uma escola fictícia de ensino médio. O sistema combina atendimento público e consultas protegidas via Telegram, dados 100% mockados sobre infraestrutura real, controle de acesso em múltiplas camadas, observabilidade ponta a ponta e orquestração governada de modelos de linguagem. A proposta parte do reconhecimento de que chatbots escolares não podem ser tratados apenas como interfaces de FAQ, pois também precisam lidar com dados acadêmicos, financeiros e operacionais sujeitos a restrições de identidade, vínculo e finalidade. Para responder a esse problema, a plataforma foi estruturada com separação explícita entre canal, regras de negócio, orquestração de IA, plano transacional, plano de retrieval e operação humana. O texto descreve requisitos do domínio, arquitetura, estratégia de IA, modelo de segurança, dados mockados, operação local e plano experimental. Também registra o que já foi efetivamente implementado no repositório e o que permanece como trilha avançada, com destaque para o benchmark seletivo de `GraphRAG`, já preparado e agora compatível tanto com provider remoto quanto com endpoint local compativel com OpenAI.
 
 ## 1. Introdução
 
@@ -246,7 +246,7 @@ No momento da redação deste texto, o sistema já possui implementação funcio
 
 O gate [release-readiness.md](/home/edann/projects/eduassist-platform/docs/operations/release-readiness.md) já passa no modo padrão, o que significa que o sistema está pronto para demo e operação local.
 
-O principal item ainda não concluído em modo estrito é a execução completa do benchmark de `GraphRAG`, já que o workspace experimental depende de chave de API para indexação e consultas reais.
+O principal item ainda não concluído em modo estrito é a execução completa do benchmark de `GraphRAG`, já que o workspace experimental ainda precisa de um provider efetivamente configurado para indexação e consultas reais, seja remoto ou local.
 
 ## 12. Limitações
 

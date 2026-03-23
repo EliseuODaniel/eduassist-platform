@@ -130,6 +130,7 @@ Motivo:
 - a documentação do GraphRAG mostra modos distintos como `Global Search`, `Local Search`, `DRIFT Search` e `Basic Search`;
 - isso o torna valioso para raciocínio sobre o corpus como um todo, mas desnecessário para perguntas simples que já são bem resolvidas por retrieval híbrido.
 - para um corpus majoritariamente em portugues, o benchmark principal deve preferir indexacao `standard`; inferencia a partir da documentacao oficial e do CLI atual: o modo `fast` usa extracao NLP padrao `regex_english`, o que tende a ser mais adequado a ingles do que ao nosso corpus escolar.
+- a documentacao oficial tambem deixa claro que o `GraphRAG` usa `LiteLLM`, aceita modelos alem de OpenAI e pode operar via proxy APIs como `Ollama`, desde que o provider consiga devolver saídas estruturadas de forma confiavel.
 
 ## 6. Dados estruturados
 

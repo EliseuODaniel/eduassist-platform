@@ -171,7 +171,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - existe uma suite de regressao de autorizacao em `tests/e2e/authz_regression.py` para validar negativas, ambiguidades, bearer ausente e segredos invalidos;
 - existe uma suite adversarial em `tests/e2e/adversarial_regression.py` para validar tentativas de exfiltracao, prompt disclosure e resistencia operacional a consultas maliciosas;
 - existe uma suite formal de evals do `ai-orchestrator` em `tests/evals/orchestrator_quality.py`, com dataset versionado em `tests/evals/datasets/orchestrator_cases.json`, para validar grounding publico, calendario, negacao segura, ambiguidade controlada, handoff e retrieval documental;
-- existe uma trilha experimental em `tools/graphrag-benchmark` para benchmark seletivo de `GraphRAG` sobre o corpus institucional publico, com workspace bootstrapado, dataset de comparacao e runner que salva baseline hibrido e consultas `basic/local/global/drift` em artefatos;
+- existe uma trilha experimental em `tools/graphrag-benchmark` para benchmark seletivo de `GraphRAG` sobre o corpus institucional publico, com workspace bootstrapado, dataset de comparacao e runner que salva baseline hibrido e consultas `basic/local/global/drift` em artefatos, aceitando tanto provider remoto quanto endpoint local compativel com OpenAI;
 - existe um gate operacional final em `make release-readiness`, com relatorio salvo em `artifacts/readiness`, para consolidar runtime role, `RLS`, evals, smoke completo e baseline do benchmark seletivo;
 - existe um pipeline de exportacao do artigo academico para `.docx` via `make article-docx`, com metadados versionados no repositório;
 - seed foundation idempotente já disponível em `tools/mockgen`;
@@ -186,7 +186,7 @@ Expansões já aprovadas para a próxima etapa:
 
 ## Próximos passos imediatos
 
-1. Rodar o benchmark comparativo seletivo de `GraphRAG` com API key real e decidir se algum fluxo merece incorporacao.
+1. Rodar o benchmark comparativo seletivo de `GraphRAG` com provider remoto ou endpoint local compativel e decidir se algum fluxo merece incorporacao.
 2. Ampliar a suite formal de evals com comparativos de qualidade multi-provedor e cenarios adversariais ainda mais amplos.
 3. Expandir o drill de backup/restore para politicas mais ricas de retenção e cenarios de recuperação.
 4. Expandir ainda mais a seed para cenários amplos de tickets, filas, operadores e resoluções, partindo da carga operacional incremental já disponível.

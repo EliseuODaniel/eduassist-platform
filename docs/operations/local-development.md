@@ -315,6 +315,10 @@ Observacao sobre o benchmark seletivo de `GraphRAG`:
 - o workspace padrao fica em `artifacts/graphrag/eduassist-public-benchmark`;
 - o bootstrap exporta o corpus publico versionado do projeto para `input/` em formato texto, preservando metadados principais;
 - o benchmark compara o baseline atual do `ai-orchestrator` com consultas `GraphRAG` via CLI;
+- o benchmark agora aceita dois perfis de provider: `openai-remote` e `local-openai-compatible`;
+- para fluxo local com GPU, use `make graphrag-benchmark-bootstrap-local` e valide com `make graphrag-benchmark-local-check`;
+- o perfil local foi pensado para endpoints compativeis com OpenAI, como `Ollama`, apontando por padrao para `http://127.0.0.1:11434/v1`;
+- o template local padrao sugere `qwen2.5:7b` para chat e `nomic-embed-text` para embeddings, com troca livre no `.env`;
 - para benchmark de qualidade em portugues, prefira `GRAPHRAG_INDEX_METHOD=standard`;
 - o modo `fast` continua util para ensaios de custo/latencia e validacao de config via `--dry-run`.
 

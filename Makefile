@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE_FILE := infra/compose/compose.yaml
 ENV_FILE := .env
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all eval-orchestrator eval-all graphrag-benchmark-bootstrap graphrag-benchmark-index graphrag-benchmark-index-dry-run graphrag-benchmark-baseline graphrag-benchmark-run release-readiness release-readiness-strict article-docx db-upgrade db-downgrade db-seed-foundation db-seed-operational-load db-seed-auth-bindings db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install
+.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all eval-orchestrator eval-all graphrag-benchmark-bootstrap graphrag-benchmark-bootstrap-local graphrag-benchmark-local-check graphrag-benchmark-index graphrag-benchmark-index-dry-run graphrag-benchmark-baseline graphrag-benchmark-run release-readiness release-readiness-strict article-docx db-upgrade db-downgrade db-seed-foundation db-seed-operational-load db-seed-auth-bindings db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -53,7 +53,13 @@ eval-orchestrator: env
 eval-all: eval-orchestrator
 
 graphrag-benchmark-bootstrap: env
-	uv run --project tools/graphrag-benchmark python -m graphrag_benchmark.bootstrap_workspace
+	uv run --project tools/graphrag-benchmark python -m graphrag_benchmark.bootstrap_workspace --profile $${GRAPHRAG_BENCHMARK_PROFILE:-openai-remote} $${GRAPHRAG_BENCHMARK_BOOTSTRAP_ARGS:-}
+
+graphrag-benchmark-bootstrap-local: env
+	uv run --project tools/graphrag-benchmark python -m graphrag_benchmark.bootstrap_workspace --profile local-openai-compatible --rewrite-env $${GRAPHRAG_BENCHMARK_BOOTSTRAP_ARGS:-}
+
+graphrag-benchmark-local-check: env
+	uv run --project tools/graphrag-benchmark python -m graphrag_benchmark.local_check
 
 graphrag-benchmark-index: env
 	uv run --project tools/graphrag-benchmark graphrag index -r $${GRAPHRAG_BENCHMARK_WORKSPACE:-artifacts/graphrag/eduassist-public-benchmark} -m $${GRAPHRAG_INDEX_METHOD:-standard}
