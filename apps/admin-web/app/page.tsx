@@ -8,6 +8,7 @@ import {
   getSupportHandoffs,
   type AccessDecisionFeedEntry,
   type AuditEventFeedEntry,
+  type HandoffOperationsOverview,
   type OperationsOverview,
   type PortalActor,
 } from '../lib/auth';
@@ -78,6 +79,12 @@ function formatMetricLabel(metricKey: string): string {
     active_users: 'Usuários ativos',
     linked_telegram_accounts: 'Contas Telegram vinculadas',
     pending_telegram_links: 'Vínculos pendentes',
+    open_handoffs: 'Handoffs abertos',
+    queued_handoffs: 'Na fila',
+    in_progress_handoffs: 'Em atendimento',
+    handoff_sla_attention: 'SLA em atenção',
+    handoff_sla_breached: 'SLA estourado',
+    handoffs_without_assignee: 'Sem responsável',
   };
   return labels[metricKey] ?? formatTokenLabel(metricKey);
 }
@@ -184,6 +191,126 @@ function renderAccessDecisions(decisions: AccessDecisionFeedEntry[], overview: O
         );
       })}
     </ul>
+  );
+}
+
+function formatQueueName(queueName: string): string {
+  const labels: Record<string, string> = {
+    atendimento: 'Atendimento',
+    secretaria: 'Secretaria',
+    financeiro: 'Financeiro',
+    coordenacao: 'Coordenação',
+  };
+  return labels[queueName] ?? formatTokenLabel(queueName);
+}
+
+function renderHandoffOverview(handoffOverview: HandoffOperationsOverview) {
+  return (
+    <>
+      <section className="panel panel-strong section-stack">
+        <div className="section-head">
+          <div>
+            <p className="eyebrow">Handoff Ops</p>
+            <h2>Saúde operacional da fila humana</h2>
+          </div>
+          <span className="status-chip is-linked">{handoffOverview.open_total} ativos</span>
+        </div>
+
+        <div className="summary-grid summary-grid-compact">
+          <article className="metric-card">
+            <p className="label">Na fila</p>
+            <strong>{handoffOverview.queued_total}</strong>
+          </article>
+          <article className="metric-card">
+            <p className="label">Em atendimento</p>
+            <strong>{handoffOverview.in_progress_total}</strong>
+          </article>
+          <article className="metric-card">
+            <p className="label">SLA em atenção</p>
+            <strong>{handoffOverview.attention_total}</strong>
+          </article>
+          <article className="metric-card">
+            <p className="label">SLA estourado</p>
+            <strong>{handoffOverview.breached_total}</strong>
+          </article>
+          <article className="metric-card">
+            <p className="label">Sem responsável</p>
+            <strong>{handoffOverview.unassigned_total}</strong>
+          </article>
+        </div>
+      </section>
+
+      <section className="workspace-grid">
+        <article className="panel">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">Por fila</p>
+              <h2>Distribuição por setor</h2>
+            </div>
+          </div>
+
+          {handoffOverview.queues.length === 0 ? (
+            <p className="muted-copy">Ainda não há handoffs ativos para agregar por fila.</p>
+          ) : (
+            <ul className="feed-list">
+              {handoffOverview.queues.map((queue) => (
+                <li className="feed-item" key={queue.queue_name}>
+                  <div className="feed-head">
+                    <div>
+                      <strong>{formatQueueName(queue.queue_name)}</strong>
+                      <p className="muted-copy">{queue.open_count} handoffs ativos</p>
+                    </div>
+                  </div>
+                  <div className="tag-row">
+                    <span className="event-tag">Fila: {queue.queued_count}</span>
+                    <span className="event-tag">Em atendimento: {queue.in_progress_count}</span>
+                    <span className="event-tag">Atenção: {queue.attention_count}</span>
+                    <span className="event-tag">Estourado: {queue.breached_count}</span>
+                    <span className="event-tag">Sem responsável: {queue.unassigned_count}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+
+        <article className="panel">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">Por operador</p>
+              <h2>Carga da equipe</h2>
+            </div>
+          </div>
+
+          {handoffOverview.operators.length === 0 ? (
+            <p className="muted-copy">
+              Nenhum operador assumiu handoffs ativos ainda. Os atendimentos não atribuídos
+              aparecem como fila livre.
+            </p>
+          ) : (
+            <ul className="feed-list">
+              {handoffOverview.operators.map((operator) => (
+                <li className="feed-item" key={operator.operator_user_id}>
+                  <div className="feed-head">
+                    <div>
+                      <strong>{operator.operator_name}</strong>
+                      <p className="muted-copy">{operator.operator_external_code}</p>
+                    </div>
+                    <span className="status-chip is-linked">{operator.assigned_count} ativos</span>
+                  </div>
+                  <div className="tag-row">
+                    <span className="event-tag">Fila: {operator.queued_count}</span>
+                    <span className="event-tag">Em atendimento: {operator.in_progress_count}</span>
+                    <span className="event-tag">Atenção: {operator.attention_count}</span>
+                    <span className="event-tag">Estourado: {operator.breached_count}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+      </section>
+    </>
   );
 }
 
@@ -424,6 +551,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               {renderAccessDecisions(overview.access_decisions, overview)}
             </article>
           </section>
+
+          {overview.handoff_overview ? renderHandoffOverview(overview.handoff_overview) : null}
 
           {handoffs ? (
             <>

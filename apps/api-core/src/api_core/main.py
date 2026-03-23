@@ -29,6 +29,7 @@ from api_core.contracts import (
 )
 from api_core.db.session import session_scope
 from api_core.services.audit import (
+    build_handoff_operations_overview,
     build_operations_metrics,
     get_foundation_counts,
     list_recent_access_decisions,
@@ -343,13 +344,27 @@ async def operations_overview(
         )
         if decision.allow:
             actor_user_id = None if scope == 'global' else actor.user_id
+            metrics = build_operations_metrics(session, actor=actor, scope=scope)
+            handoff_overview = build_handoff_operations_overview(session, actor=actor, scope=scope)
+            if handoff_overview is not None:
+                metrics.update(
+                    {
+                        'open_handoffs': handoff_overview.open_total,
+                        'queued_handoffs': handoff_overview.queued_total,
+                        'in_progress_handoffs': handoff_overview.in_progress_total,
+                        'handoff_sla_attention': handoff_overview.attention_total,
+                        'handoff_sla_breached': handoff_overview.breached_total,
+                        'handoffs_without_assignee': handoff_overview.unassigned_total,
+                    }
+                )
             overview = OperationsOverviewResponse(
                 actor=_sanitize_actor_for_external_response(actor, auth_mode=auth_mode),
                 scope=scope,
-                metrics=build_operations_metrics(session, actor=actor, scope=scope),
+                metrics=metrics,
                 foundation_counts=get_foundation_counts(session) if scope == 'global' else None,
                 audit_events=list_recent_audit_events(session, actor_user_id=actor_user_id),
                 access_decisions=list_recent_access_decisions(session, actor_user_id=actor_user_id),
+                handoff_overview=handoff_overview,
             )
 
     if not decision.allow:

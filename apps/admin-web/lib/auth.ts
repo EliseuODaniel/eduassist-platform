@@ -101,6 +101,39 @@ export type OperationsOverview = {
   foundation_counts: Record<string, number> | null;
   audit_events: AuditEventFeedEntry[];
   access_decisions: AccessDecisionFeedEntry[];
+  handoff_overview: HandoffOperationsOverview | null;
+};
+
+export type HandoffQueueOverviewEntry = {
+  queue_name: string;
+  open_count: number;
+  queued_count: number;
+  in_progress_count: number;
+  attention_count: number;
+  breached_count: number;
+  unassigned_count: number;
+};
+
+export type HandoffOperatorOverviewEntry = {
+  operator_user_id: string;
+  operator_external_code: string;
+  operator_name: string;
+  assigned_count: number;
+  queued_count: number;
+  in_progress_count: number;
+  attention_count: number;
+  breached_count: number;
+};
+
+export type HandoffOperationsOverview = {
+  open_total: number;
+  queued_total: number;
+  in_progress_total: number;
+  attention_total: number;
+  breached_total: number;
+  unassigned_total: number;
+  queues: HandoffQueueOverviewEntry[];
+  operators: HandoffOperatorOverviewEntry[];
 };
 
 export type SessionState = {

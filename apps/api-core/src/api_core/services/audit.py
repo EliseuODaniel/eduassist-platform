@@ -6,13 +6,21 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, aliased
 
-from api_core.contracts import AccessDecisionFeedEntry, ActorContext, AuditEventFeedEntry
+from api_core.contracts import (
+    AccessDecisionFeedEntry,
+    ActorContext,
+    AuditEventFeedEntry,
+    HandoffOperationsOverview,
+    HandoffOperatorOverviewEntry,
+    HandoffQueueOverviewEntry,
+)
 from api_core.db.models import (
     AccessDecision,
     AttendanceRecord,
     AuditEvent,
     CalendarEvent,
     Class,
+    Conversation,
     Contract,
     Document,
     DocumentChunk,
@@ -21,6 +29,7 @@ from api_core.db.models import (
     Grade,
     GradeItem,
     Guardian,
+    Handoff,
     Invoice,
     Student,
     Teacher,
@@ -28,6 +37,7 @@ from api_core.db.models import (
     User,
     UserTelegramLink,
 )
+from api_core.services.support import calculate_handoff_sla_state
 
 INTERNAL_OPERATIONS_ROLES = frozenset({'staff', 'finance', 'coordinator', 'admin'})
 
@@ -212,6 +222,104 @@ def build_operations_metrics(
         )
 
     return metrics
+
+
+def build_handoff_operations_overview(
+    session: Session,
+    *,
+    actor: ActorContext,
+    scope: str,
+) -> HandoffOperationsOverview | None:
+    if scope != 'global':
+        return None
+
+    assignee = aliased(User)
+    rows = session.execute(
+        select(Handoff, assignee.id, assignee.external_code, assignee.full_name)
+        .select_from(Handoff)
+        .join(Conversation, Conversation.id == Handoff.conversation_id)
+        .outerjoin(assignee, assignee.id == Handoff.assigned_user_id)
+        .where(Handoff.status.in_(('queued', 'in_progress')))
+        .order_by(Handoff.updated_at.desc(), Handoff.created_at.desc())
+    ).all()
+
+    queue_stats: dict[str, dict[str, int]] = {}
+    operator_stats: dict[uuid.UUID, dict[str, object]] = {}
+    overview = HandoffOperationsOverview()
+
+    for handoff, operator_user_id, operator_external_code, operator_name in rows:
+        sla_state = calculate_handoff_sla_state(handoff)
+        queue_name = handoff.queue_name
+        queue_entry = queue_stats.setdefault(
+            queue_name,
+            {
+                'open_count': 0,
+                'queued_count': 0,
+                'in_progress_count': 0,
+                'attention_count': 0,
+                'breached_count': 0,
+                'unassigned_count': 0,
+            },
+        )
+
+        overview.open_total += 1
+        queue_entry['open_count'] += 1
+
+        if handoff.status == 'queued':
+            overview.queued_total += 1
+            queue_entry['queued_count'] += 1
+        elif handoff.status == 'in_progress':
+            overview.in_progress_total += 1
+            queue_entry['in_progress_count'] += 1
+
+        if sla_state == 'attention':
+            overview.attention_total += 1
+            queue_entry['attention_count'] += 1
+        elif sla_state == 'breached':
+            overview.breached_total += 1
+            queue_entry['breached_count'] += 1
+
+        if handoff.assigned_user_id is None:
+            overview.unassigned_total += 1
+            queue_entry['unassigned_count'] += 1
+        elif operator_user_id and operator_external_code and operator_name:
+            operator_entry = operator_stats.setdefault(
+                operator_user_id,
+                {
+                    'operator_external_code': operator_external_code,
+                    'operator_name': operator_name,
+                    'assigned_count': 0,
+                    'queued_count': 0,
+                    'in_progress_count': 0,
+                    'attention_count': 0,
+                    'breached_count': 0,
+                },
+            )
+            operator_entry['assigned_count'] += 1
+            if handoff.status == 'queued':
+                operator_entry['queued_count'] += 1
+            elif handoff.status == 'in_progress':
+                operator_entry['in_progress_count'] += 1
+            if sla_state == 'attention':
+                operator_entry['attention_count'] += 1
+            elif sla_state == 'breached':
+                operator_entry['breached_count'] += 1
+
+    overview.queues = [
+        HandoffQueueOverviewEntry(queue_name=queue_name, **stats)
+        for queue_name, stats in sorted(
+            queue_stats.items(),
+            key=lambda item: (-item[1]['open_count'], item[0]),
+        )
+    ]
+    overview.operators = [
+        HandoffOperatorOverviewEntry(operator_user_id=operator_user_id, **stats)
+        for operator_user_id, stats in sorted(
+            operator_stats.items(),
+            key=lambda item: (-int(item[1]['assigned_count']), str(item[1]['operator_name'])),
+        )
+    ]
+    return overview
 
 
 def get_foundation_counts(session: Session) -> dict[str, int]:

@@ -224,6 +224,38 @@ class AccessDecisionFeedEntry(BaseModel):
     reason: str | None = None
 
 
+class HandoffQueueOverviewEntry(BaseModel):
+    queue_name: str
+    open_count: int = 0
+    queued_count: int = 0
+    in_progress_count: int = 0
+    attention_count: int = 0
+    breached_count: int = 0
+    unassigned_count: int = 0
+
+
+class HandoffOperatorOverviewEntry(BaseModel):
+    operator_user_id: uuid.UUID
+    operator_external_code: str
+    operator_name: str
+    assigned_count: int = 0
+    queued_count: int = 0
+    in_progress_count: int = 0
+    attention_count: int = 0
+    breached_count: int = 0
+
+
+class HandoffOperationsOverview(BaseModel):
+    open_total: int = 0
+    queued_total: int = 0
+    in_progress_total: int = 0
+    attention_total: int = 0
+    breached_total: int = 0
+    unassigned_total: int = 0
+    queues: list[HandoffQueueOverviewEntry] = Field(default_factory=list)
+    operators: list[HandoffOperatorOverviewEntry] = Field(default_factory=list)
+
+
 class OperationsOverviewResponse(BaseModel):
     actor: ActorContext
     scope: str
@@ -231,6 +263,7 @@ class OperationsOverviewResponse(BaseModel):
     foundation_counts: dict[str, int] | None = None
     audit_events: list[AuditEventFeedEntry] = Field(default_factory=list)
     access_decisions: list[AccessDecisionFeedEntry] = Field(default_factory=list)
+    handoff_overview: HandoffOperationsOverview | None = None
 
 
 class InternalSupportHandoffCreateRequest(BaseModel):

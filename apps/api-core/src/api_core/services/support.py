@@ -65,7 +65,7 @@ def _as_utc(value: datetime | None) -> datetime | None:
     return value.astimezone(timezone.utc)
 
 
-def _sla_state_for_handoff(handoff: Handoff) -> str:
+def calculate_handoff_sla_state(handoff: Handoff) -> str:
     if handoff.status in {'resolved', 'cancelled'}:
         return 'closed'
 
@@ -136,7 +136,7 @@ def _serialize_handoff_rows(
             assigned_at=handoff.assigned_at,
             response_due_at=handoff.response_due_at,
             resolution_due_at=handoff.resolution_due_at,
-            sla_state=_sla_state_for_handoff(handoff),
+            sla_state=calculate_handoff_sla_state(handoff),
             last_message_excerpt=_truncate_excerpt(latest_messages.get(conversation.id)),
             created_at=handoff.created_at,
             updated_at=handoff.updated_at,
