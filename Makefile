@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE_FILE := infra/compose/compose.yaml
 ENV_FILE := .env
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all db-upgrade db-downgrade db-seed-foundation db-seed-auth-bindings db-bootstrap-app-role db-check-runtime-role documents-sync python-fmt python-lint admin-install
+.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all db-upgrade db-downgrade db-seed-foundation db-seed-auth-bindings db-bootstrap-app-role db-check-runtime-role db-check-rls documents-sync python-fmt python-lint admin-install
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -64,6 +64,9 @@ db-bootstrap-app-role: env
 
 db-check-runtime-role:
 	DATABASE_URL=$${DATABASE_APP_URL_LOCAL:-postgresql://eduassist_app:eduassist_app@localhost:5432/eduassist} uv run --project apps/api-core python tools/ops/check_db_runtime_role.py
+
+db-check-rls:
+	DATABASE_URL=$${DATABASE_APP_URL_LOCAL:-postgresql://eduassist_app:eduassist_app@localhost:5432/eduassist} uv run --project apps/api-core python tools/ops/check_db_rls.py
 
 documents-sync: env
 	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) exec -T worker uv run python -m worker_app.main --sync-once

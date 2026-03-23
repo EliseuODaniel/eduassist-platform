@@ -159,6 +159,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - a stack de observabilidade agora também expõe gauges operacionais vivos da fila humana, incluindo backlog atual, tickets sem responsavel, saturacao por fila e carga por operador;
 - o stack local agora também inclui `Loki + Promtail`, com ingestao dos logs dos containers do Compose para investigacao centralizada no `Grafana`;
 - o runtime dos serviços que acessam o banco agora pode ser executado com um papel dedicado de aplicação (`eduassist_app`), separado do superuser administrativo usado para migrações e seeds;
+- o `api-core` agora aplica contexto de ator por sessão e o banco já reforça acesso sensível com `PostgreSQL RLS` ativo em tabelas acadêmicas e financeiras selecionadas;
 - existe uma suite de smoke local em `tests/e2e/local_smoke.py` para validar os fluxos principais e a pilha de observabilidade;
 - existe uma suite de regressao de autorizacao em `tests/e2e/authz_regression.py` para validar negativas, ambiguidades, bearer ausente e segredos invalidos;
 - existe uma suite adversarial em `tests/e2e/adversarial_regression.py` para validar tentativas de exfiltracao, prompt disclosure e resistencia operacional a consultas maliciosas;
@@ -174,7 +175,7 @@ Expansões já aprovadas para a próxima etapa:
 ## Próximos passos imediatos
 
 1. Expandir os dashboards do `Grafana` com leituras mais profundas de SLA operacional, evolucao temporal por fila e logs correlacionados por `trace_id`.
-2. Fechar o hardening do banco com `RLS` real sobre tabelas sensíveis, agora que o runtime já suporta um papel não-superuser.
+2. Expandir a cobertura de `RLS` para outras tabelas sensíveis do domínio, mantendo a resolução de identidade estável.
 3. Expandir a suite de testes e evals com cenarios adversariais adicionais, casos de exfiltracao e regressao operacional.
 4. Expandir a seed para cenários mais amplos de tickets, filas, operadores e resoluções.
 5. Preparar benchmark comparativo para `GraphRAG` seletivo sobre o corpus institucional.

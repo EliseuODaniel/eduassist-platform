@@ -29,7 +29,7 @@ from api_core.contracts import (
     TelegramLinkConsumeRequest,
     TelegramLinkConsumeResponse,
 )
-from api_core.db.session import get_engine, session_scope
+from api_core.db.session import apply_rls_actor_context, get_engine, session_scope
 from api_core.services.audit import (
     build_handoff_operations_overview,
     build_operations_metrics,
@@ -144,28 +144,56 @@ async def _student_academic_summary_payload(
     auth_mode: str,
     student_id: uuid.UUID,
 ) -> dict[str, object]:
-    with session_scope() as session:
-        summary = get_student_academic_summary(session, student_id)
-        if summary is None:
-            raise HTTPException(status_code=404, detail='student_not_found')
-
+    decision = None
+    if actor.role_code != 'teacher':
         decision = await decide_policy(
             action='student.academic.read',
             actor=actor,
             resource={
-                'student_id': str(summary.student_id),
-                'class_id': str(summary.class_id) if summary.class_id else None,
+                'student_id': str(student_id),
+                'class_id': None,
                 'resource_type': 'student_academic_summary',
             },
         )
-        record_access_decision(
-            session,
-            actor_user_id=actor.user_id,
-            resource_type='student_academic_summary',
-            action='student.academic.read',
-            decision='allow' if decision.allow else 'deny',
-            reason=decision.reason,
-        )
+
+    with session_scope() as session:
+        if decision is not None:
+            record_access_decision(
+                session,
+                actor_user_id=actor.user_id,
+                resource_type='student_academic_summary',
+                action='student.academic.read',
+                decision='allow' if decision.allow else 'deny',
+                reason=decision.reason,
+            )
+            if not decision.allow:
+                raise HTTPException(status_code=403, detail=decision.reason)
+
+        apply_rls_actor_context(session, actor)
+        summary = get_student_academic_summary(session, student_id)
+        if summary is None:
+            raise HTTPException(status_code=404, detail='student_not_found')
+
+        if actor.role_code == 'teacher':
+            decision = await decide_policy(
+                action='student.academic.read',
+                actor=actor,
+                resource={
+                    'student_id': str(summary.student_id),
+                    'class_id': str(summary.class_id) if summary.class_id else None,
+                    'resource_type': 'student_academic_summary',
+                },
+            )
+            record_access_decision(
+                session,
+                actor_user_id=actor.user_id,
+                resource_type='student_academic_summary',
+                action='student.academic.read',
+                decision='allow' if decision.allow else 'deny',
+                reason=decision.reason,
+            )
+        if decision is None:
+            raise HTTPException(status_code=500, detail='policy_decision_missing')
         response = {
             'service': 'api-core',
             'auth_mode': auth_mode,
@@ -185,19 +213,16 @@ async def _student_financial_summary_payload(
     auth_mode: str,
     student_id: uuid.UUID,
 ) -> dict[str, object]:
-    with session_scope() as session:
-        summary = get_student_financial_summary(session, student_id)
-        if summary is None:
-            raise HTTPException(status_code=404, detail='student_not_found')
+    decision = await decide_policy(
+        action='student.finance.read',
+        actor=actor,
+        resource={
+            'student_id': str(student_id),
+            'resource_type': 'student_financial_summary',
+        },
+    )
 
-        decision = await decide_policy(
-            action='student.finance.read',
-            actor=actor,
-            resource={
-                'student_id': str(summary.student_id),
-                'resource_type': 'student_financial_summary',
-            },
-        )
+    with session_scope() as session:
         record_access_decision(
             session,
             actor_user_id=actor.user_id,
@@ -206,6 +231,13 @@ async def _student_financial_summary_payload(
             decision='allow' if decision.allow else 'deny',
             reason=decision.reason,
         )
+        if not decision.allow:
+            raise HTTPException(status_code=403, detail=decision.reason)
+
+        apply_rls_actor_context(session, actor)
+        summary = get_student_financial_summary(session, student_id)
+        if summary is None:
+            raise HTTPException(status_code=404, detail='student_not_found')
         response = {
             'service': 'api-core',
             'auth_mode': auth_mode,
@@ -225,6 +257,7 @@ async def _teacher_schedule_payload(
     auth_mode: str,
 ) -> dict[str, object]:
     with session_scope() as session:
+        apply_rls_actor_context(session, actor)
         summary = get_teacher_schedule(session, actor.user_id)
         if summary is None:
             raise HTTPException(status_code=404, detail='teacher_not_found')

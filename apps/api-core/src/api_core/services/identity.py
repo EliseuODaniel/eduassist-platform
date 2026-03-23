@@ -4,6 +4,7 @@ from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from api_core.contracts import ActorContext, AccessibleClassReference, LinkedStudentReference
+from api_core.db.session import apply_rls_actor_context, apply_rls_identity_context
 from api_core.db.models import (
     Class,
     Enrollment,
@@ -71,6 +72,7 @@ def resolve_actor_context(
         telegram_chat_id=linked_chat_id,
         telegram_linked=linked_chat_id is not None,
     )
+    apply_rls_identity_context(session, user_id=user.id, role_code=role.code)
 
     if role.code == 'guardian':
         guardian = session.execute(select(Guardian).where(Guardian.user_id == user.id)).scalar_one_or_none()
@@ -161,4 +163,5 @@ def resolve_actor_context(
     actor.academic_student_ids = list(dict.fromkeys(actor.academic_student_ids))
     actor.financial_student_ids = list(dict.fromkeys(actor.financial_student_ids))
     actor.accessible_class_ids = list(dict.fromkeys(actor.accessible_class_ids))
+    apply_rls_actor_context(session, actor)
     return actor

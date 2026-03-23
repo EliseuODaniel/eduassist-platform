@@ -35,6 +35,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - autenticação e sessão;
 - integração com `Keycloak`;
 - consulta a `OPA`;
+- aplicação de contexto de ator por sessão para enforcement de `RLS` no banco;
 - coordenação de workflows;
 - chamada ao `ai-orchestrator`;
 - acesso a services de domínio;

@@ -179,10 +179,12 @@ Status atual do bootstrap:
 - runtime validado após reinicialização e atualização do Docker Desktop
 - bootstrap idempotente do papel `eduassist_app` disponível em `make db-bootstrap-app-role`
 - checagem operacional do papel de runtime disponível em `make db-check-runtime-role`
+- checagem operacional da barreira `RLS` disponível em `make db-check-rls`
 - fundação inicial de retrieval e orquestração agentica já implementada
 - foundation transacional validada com migração e seed mockada
 - identity and policy base validadas com smoke tests de responsável, aluno, professor e financeiro
 - auth federada e vínculo Telegram validados com token real do `Keycloak` local
+- `RLS` ativo e validado diretamente no banco para tabelas sensíveis acadêmicas e financeiras, com contexto de ator por sessão no `api-core`
 - corpus documental mockado validado com 4 documentos e 21 chunks indexados
 
 ## 9. Variáveis de ambiente previstas

@@ -5,7 +5,7 @@ APP_USER="${POSTGRES_APP_USER:-eduassist_app}"
 APP_PASSWORD="${POSTGRES_APP_PASSWORD:-eduassist_app}"
 ADMIN_USER="${POSTGRES_USER:-eduassist}"
 DB_NAME="${POSTGRES_DB:-eduassist}"
-SCHEMAS=(identity school academic finance calendar documents conversation audit)
+SCHEMAS=(identity school academic finance calendar documents conversation audit runtime)
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<EOSQL
 DO \$\$
@@ -31,12 +31,16 @@ EOSQL
 
 for schema_name in "${SCHEMAS[@]}"; do
   psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<EOSQL
+CREATE SCHEMA IF NOT EXISTS "${schema_name}";
 GRANT USAGE ON SCHEMA "${schema_name}" TO "${APP_USER}";
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "${schema_name}" TO "${APP_USER}";
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "${schema_name}" TO "${APP_USER}";
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA "${schema_name}" TO "${APP_USER}";
 ALTER DEFAULT PRIVILEGES FOR ROLE "${ADMIN_USER}" IN SCHEMA "${schema_name}"
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "${APP_USER}";
 ALTER DEFAULT PRIVILEGES FOR ROLE "${ADMIN_USER}" IN SCHEMA "${schema_name}"
   GRANT USAGE, SELECT ON SEQUENCES TO "${APP_USER}";
+ALTER DEFAULT PRIVILEGES FOR ROLE "${ADMIN_USER}" IN SCHEMA "${schema_name}"
+  GRANT EXECUTE ON FUNCTIONS TO "${APP_USER}";
 EOSQL
 done
