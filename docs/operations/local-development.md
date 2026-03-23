@@ -23,15 +23,17 @@ Observação:
 
 ## 3. Estado atual do runtime
 
-Foi detectado:
+Estado validado:
 
 - `git` e `gh` funcionais;
-- `docker` e `kubectl` apontando para binários do Docker Desktop via `/mnt/wsl/...`;
-- erro de `Input/output error` ao invocar esses binários.
+- `docker` e `docker compose` funcionais no ambiente atual;
+- bootstrap local validado com build e subida completa da stack base;
+- o runtime foi considerado estável o suficiente para seguir para as próximas fases.
 
-Implicação:
+Observação:
 
-- antes da implementação, será necessário corrigir a integração `Docker Desktop <-> WSL2`.
+- a etapa de bootstrap já foi executada e testada;
+- a próxima expansão operacional prevista é a entrada de `Qdrant` na stack local quando a fase de retrieval começar.
 
 ## 4. Estratégia de ambientes
 
@@ -40,6 +42,7 @@ Implicação:
 Serviços:
 
 - postgres
+- qdrant
 - redis
 - minio
 - keycloak
@@ -59,6 +62,7 @@ Status atual:
 
 - bootstrap implementado em [compose.yaml](/home/edann/projects/eduassist-platform/infra/compose/compose.yaml);
 - os serviços já possuem esqueletos executáveis e healthchecks básicos;
+- `Qdrant` já está aprovado no planejamento, mas ainda não foi adicionado ao Compose nesta fase de bootstrap;
 - observabilidade dedicada ainda ficará para a próxima etapa do roadmap.
 
 ### `compose:observability`
@@ -128,6 +132,7 @@ Status atual do bootstrap:
 - arquivo de ambiente base em [.env.example](/home/edann/projects/eduassist-platform/.env.example)
 - Dockerfiles iniciais nos apps
 - stack Compose pronta para validação local
+- runtime validado após reinicialização e atualização do Docker Desktop
 
 ## 9. Variáveis de ambiente previstas
 
