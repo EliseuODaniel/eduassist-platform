@@ -20,3 +20,4 @@ Estado atual relevante:
 - `Postgres`, `Redis`, `MinIO`, `Keycloak`, `OPA` e apps bootstrapados;
 - bootstrap do papel `eduassist_app` versionado em `postgres/init/02-create-app-role.sh`;
 - observabilidade dedicada ja integrada ao Compose com `OpenTelemetry`, `Tempo`, `Prometheus`, `Loki` e `Grafana`.
+- backup operacional local de `Postgres` e `MinIO` disponivel em `tools/ops`, com restore de verificacao nao-destrutivo.

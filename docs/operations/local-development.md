@@ -180,12 +180,20 @@ Status atual do bootstrap:
 - bootstrap idempotente do papel `eduassist_app` disponível em `make db-bootstrap-app-role`
 - checagem operacional do papel de runtime disponível em `make db-check-runtime-role`
 - checagem operacional da barreira `RLS` disponível em `make db-check-rls`
+- backup operacional local disponível em `make backup-local`
+- drill de restore de verificação disponível em `make backup-verify BACKUP_DIR=...`
 - fundação inicial de retrieval e orquestração agentica já implementada
 - foundation transacional validada com migração e seed mockada
 - identity and policy base validadas com smoke tests de responsável, aluno, professor e financeiro
 - auth federada e vínculo Telegram validados com token real do `Keycloak` local
 - `RLS` ativo e validado diretamente no banco para tabelas sensíveis acadêmicas e financeiras, com contexto de ator por sessão no `api-core`
+- backup e restore de verificação já implementados para `Postgres` e `MinIO`, sempre restaurando em banco e bucket temporários
 - corpus documental mockado validado com 4 documentos e 21 chunks indexados
+
+Uso rápido do drill operacional:
+
+- `BACKUP_LABEL=drill-local make backup-local`
+- `BACKUP_DIR=/abs/path/para/artifacts/backups/drill-local make backup-verify`
 
 ## 9. Variáveis de ambiente previstas
 

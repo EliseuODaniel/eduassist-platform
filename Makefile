@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE_FILE := infra/compose/compose.yaml
 ENV_FILE := .env
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all db-upgrade db-downgrade db-seed-foundation db-seed-auth-bindings db-bootstrap-app-role db-check-runtime-role db-check-rls documents-sync python-fmt python-lint admin-install
+.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all db-upgrade db-downgrade db-seed-foundation db-seed-auth-bindings db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -67,6 +67,13 @@ db-check-runtime-role:
 
 db-check-rls:
 	DATABASE_URL=$${DATABASE_APP_URL_LOCAL:-postgresql://eduassist_app:eduassist_app@localhost:5432/eduassist} uv run --project apps/api-core python tools/ops/check_db_rls.py
+
+backup-local: env
+	bash tools/ops/backup_local_stack.sh $${BACKUP_LABEL:-}
+
+backup-verify: env
+	@if [ -z "$${BACKUP_DIR:-}" ]; then echo "BACKUP_DIR is required"; exit 1; fi
+	bash tools/ops/verify_local_backup.sh "$${BACKUP_DIR}"
 
 documents-sync: env
 	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) exec -T worker uv run python -m worker_app.main --sync-once
