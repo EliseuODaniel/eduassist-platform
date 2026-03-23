@@ -47,7 +47,7 @@ Construir uma plataforma robusta e funcional de atendimento escolar com IA para 
 - `Keycloak + OPA + PostgreSQL RLS` para identidade e autorização.
 - `MinIO` para documentos e objetos.
 - `Redis` para cache, locks, idempotência e filas leves.
-- `OpenTelemetry + Grafana + Tempo` para tracing distribuido e investigacao operacional, com `Loki` reservado para a proxima etapa de agregacao central de logs.
+- `OpenTelemetry + Grafana + Tempo + Loki` para tracing distribuido, logs centralizados e investigacao operacional.
 - quando a trilha OpenAI for adotada, `Responses API` como interface preferencial para fluxos agentic e tool-using.
 - LLM remota via API paga, com benchmark inicial em `GPT-5.4` e benchmark paralelo em `Gemini 2.5 Pro`.
 
@@ -152,6 +152,8 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o tracing distribuido já foi validado ponta a ponta via webhook do Telegram, incluindo spans HTTP entre serviços, spans SQLAlchemy no `api-core` e consulta direta do trace no `Tempo`;
 - os serviços Python instrumentados já devolvem `X-Trace-Id` e `X-Span-Id` nas respostas, facilitando o drill-down operacional no ambiente local;
 - o tracing agora também inclui spans de dominio para policy, retrieval híbrido e operacoes de handoff, com dashboard provisionado em `Grafana` para cribsheet de TraceQL e runbook local;
+- o stack local agora também inclui `Loki + Promtail`, com ingestao dos logs dos containers do Compose para investigacao centralizada no `Grafana`;
+- existe uma suite de smoke local em `tests/e2e/local_smoke.py` para validar os fluxos principais e a pilha de observabilidade;
 - seed foundation idempotente já disponível em `tools/mockgen`;
 - sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;
@@ -164,7 +166,7 @@ Expansões já aprovadas para a próxima etapa:
 ## Próximos passos imediatos
 
 1. Expandir a seed para cenários mais amplos de tickets, filas, operadores e resoluções.
-2. Expandir os dashboards do `Grafana` com painéis dinamicos para SLA, policy decisions e retrieval, aproveitando a nova base de spans de dominio.
+2. Expandir os dashboards do `Grafana` com painéis dinamicos para SLA, policy decisions, retrieval e logs.
 3. Expandir a revisão detalhada do atendimento com histórico mais rico, paginação e buscas mais profundas no `admin-web`.
-4. Adicionar agregação central de logs com `Loki` para complementar o tracing distribuido.
+4. Fortalecer a suite de testes e evals com cenarios adversariais e autorizacao negativa.
 5. Preparar benchmark comparativo para `GraphRAG` seletivo sobre o corpus institucional.

@@ -133,6 +133,30 @@ services:
       - tempo-data:/tmp/tempo
     restart: unless-stopped
 
+  loki:
+    image: ${LOKI_IMAGE:-grafana/loki:3.5.5}
+    container_name: eduassist-loki
+    command: ['-config.file=/etc/loki/config.yaml']
+    ports:
+      - '${LOKI_PORT:-3100}:3100'
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    restart: unless-stopped
+
+  promtail:
+    image: ${PROMTAIL_IMAGE:-grafana/promtail:3.5.5}
+    container_name: eduassist-promtail
+    command: ['-config.file=/etc/promtail/config.yaml']
+    volumes:
+      - ./promtail/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      loki:
+        condition: service_started
+    restart: unless-stopped
+
   grafana:
     image: ${GRAFANA_IMAGE:-grafana/grafana:11.6.0}
     container_name: eduassist-grafana
@@ -148,6 +172,8 @@ services:
       - grafana-data:/var/lib/grafana
     depends_on:
       tempo:
+        condition: service_started
+      loki:
         condition: service_started
     restart: unless-stopped
 
@@ -356,4 +382,5 @@ volumes:
   redis-data:
   minio-data:
   tempo-data:
+  loki-data:
   grafana-data:

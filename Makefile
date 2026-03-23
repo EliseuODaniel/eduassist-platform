@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE_FILE := infra/compose/compose.yaml
 ENV_FILE := .env
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs db-upgrade db-downgrade db-seed-foundation db-seed-auth-bindings documents-sync python-fmt python-lint admin-install
+.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local db-upgrade db-downgrade db-seed-foundation db-seed-auth-bindings documents-sync python-fmt python-lint admin-install
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -28,13 +28,16 @@ compose-logs: env
 	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs -f --tail=200
 
 observability-up: env
-	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d otel-collector tempo grafana
+	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d otel-collector tempo loki promtail grafana
 
 observability-down: env
-	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) stop grafana tempo otel-collector
+	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) stop grafana promtail loki tempo otel-collector
 
 observability-logs: env
-	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs -f --tail=200 otel-collector tempo grafana
+	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs -f --tail=200 otel-collector tempo loki promtail grafana
+
+smoke-local: env
+	python3 tests/e2e/local_smoke.py
 
 db-upgrade:
 	DATABASE_URL=$${DATABASE_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core alembic -c apps/api-core/alembic.ini upgrade head

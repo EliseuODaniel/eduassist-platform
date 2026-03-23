@@ -93,6 +93,8 @@ Serviços:
 
 - `otel-collector`
 - `tempo`
+- `loki`
+- `promtail`
 - `grafana`
 
 Uso:
@@ -104,12 +106,14 @@ Uso:
 Status atual:
 
 - `otel-collector`, `tempo` e `grafana` já sobem no mesmo `compose.yaml`;
+- `loki` e `promtail` agora completam a agregacao central de logs dos containers do Compose;
 - os serviços Python instrumentados já exportam spans OTLP via `HTTP` para o collector;
 - o `Tempo` já persiste traces e responde `GET /api/traces/{trace_id}` em `http://localhost:3200`;
+- o `Loki` já responde em `http://localhost:3100` e recebe logs dos containers via `Promtail`;
 - o `Grafana` já sobe com datasource do `Tempo` provisionado em `http://localhost:3004`;
 - o `Grafana` agora também provisiona o dashboard `EduAssist Tracing Overview`, com cribsheet de `TraceQL`, atributos de dominio e runbook de investigacao;
 - `X-Trace-Id` e `X-Span-Id` já são devolvidos nas respostas dos serviços Python instrumentados;
-- a agregação central de logs via `Loki` continua aprovada para a próxima etapa, mas ainda não foi ligada ao Compose.
+- a observabilidade local agora cobre traces e logs centralizados.
 
 ### `compose:full`
 
@@ -196,6 +200,7 @@ Status atual do bootstrap:
 - `OTEL_GRPC_PORT`
 - `OTEL_HTTP_PORT`
 - `TEMPO_PORT`
+- `LOKI_PORT`
 - `GRAFANA_PORT`
 
 ## 10. Critérios de pronto para desenvolvimento
@@ -217,6 +222,7 @@ Status atual do bootstrap:
 - `make observability-up`
 - `make observability-down`
 - `make observability-logs`
+- `make smoke-local`
 - `GET /v1/foundation/summary` no `api-core`
 - `GET /v1/identity/context?user_external_code=USR-TEACH-001`
 - `GET /v1/internal/identity/context?telegram_chat_id=<chat_id>` com `X-Internal-Api-Token`
@@ -252,6 +258,7 @@ Status atual do bootstrap:
 - `POST /v1/retrieval/search` no `ai-orchestrator`
 - `POST /v1/messages/respond` no `ai-orchestrator` com `X-Internal-Api-Token`
 - `GET /api/traces/{trace_id}` no `Tempo` em `http://localhost:3200`
+- `GET /ready` no `Loki` em `http://localhost:3100`
 - `GET /` no `Grafana` em `http://localhost:3004`
 - dashboard provisionado: `EduAssist / EduAssist Tracing Overview` no `Grafana`
 

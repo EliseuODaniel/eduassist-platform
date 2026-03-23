@@ -226,5 +226,10 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 
 ### `loki`
 
-- permanece aprovado como próxima expansão para agregação central de logs;
-- ainda não está conectado ao `compose` atual.
+- agrega logs centralizados do ambiente local;
+- serve como backend de investigacao textual no `Grafana`.
+
+### `promtail`
+
+- coleta logs dos containers do Docker local;
+- publica esses logs no `loki` com labels de container e serviço do Compose.
