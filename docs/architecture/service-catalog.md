@@ -109,6 +109,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - leitura de overview operacional autenticado no `api-core`, incluindo agregados globais da fila humana, alertas críticos e tendências recentes de volume/tempo;
 - leitura e gestão da fila de handoffs humanos no `api-core`, com detalhe da conversa, nota operacional, atribuição, SLA mockado e filtros operacionais por status, fila, atribuição e criticidade;
 - leitura e gestão da fila de handoffs humanos com paginação explícita para suportar volume operacional crescente no painel;
+- leitura detalhada do transcript da conversa com exploração local por remetente, busca textual e navegação por janela no painel operacional;
 - geração de challenge de vínculo para o Telegram;
 - curadoria documental;
 - revisão de conversas;
