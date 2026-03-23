@@ -79,11 +79,11 @@ Status atual:
 - o fluxo protegido do Telegram já responde resumo acadêmico com filtros por disciplina e bimestre, resumo financeiro com filtros por status e panorama consolidado para responsáveis, além de grade docente por turmas, disciplinas e horário para contas vinculadas;
 - o `admin-web` já expõe login real via `Keycloak` com OIDC + PKCE, leitura de sessão autenticada do `api-core` e emissão de challenge de vínculo em `/api/telegram-link/challenge`;
 - o `api-core` já expõe `GET /v1/operations/overview` com visão pessoal para responsáveis, alunos e professores, e visão global para secretaria, financeiro, coordenação e administração, incluindo agregados operacionais de handoff no escopo global;
-- a home autenticada do `admin-web` já mostra métricas operacionais, feed de auditoria, feed de decisões de acesso e um painel de saúde da fila humana por setor e por operador;
+- o `admin-web` roda em modo estável de produção dentro do Compose e a home autenticada já mostra métricas operacionais, feed de auditoria, feed de decisões de acesso e um painel de saúde da fila humana por setor, operador e exceções críticas;
 - o `api-core` já expõe `GET /v1/support/handoffs`, `GET /v1/support/handoffs/{handoff_id}` e `PATCH /v1/support/handoffs/{handoff_id}` para operação humana autenticada, com prioridade, SLA mockado e atribuição;
 - o `api-core` já expõe `POST /v1/internal/support/handoffs` para criação interna de tickets/handoffs por serviços confiáveis;
 - o `ai-orchestrator` já cria handoffs reais quando a classificação cai em `support` e a política do fluxo permite encaminhamento humano;
-- o `admin-web` já exibe a fila de handoffs, abre o detalhe completo da conversa e permite registrar nota operacional, assumir atribuição, iniciar ou resolver tickets via sessão autenticada;
+- o `admin-web` já exibe a fila de handoffs com filtros por status, fila, atribuição, SLA e texto livre, abre o detalhe completo da conversa e permite registrar nota operacional, assumir atribuição, iniciar ou resolver tickets via sessão autenticada;
 - `telegram_chat_id` em rotas protegidas do `api-core` e `POST /v1/messages/respond` no `ai-orchestrator` agora exigem `X-Internal-Api-Token`;
 - observabilidade dedicada ainda ficará para a próxima etapa do roadmap.
 
@@ -219,6 +219,7 @@ Status atual do bootstrap:
 - `GET /auth/login` no `admin-web` para iniciar o fluxo OIDC com `Keycloak`
 - `GET /` no `admin-web` com cookie `eduassist_access_token=<token>` para validar a visao operacional autenticada
 - `GET /?handoff={handoff_id}` no `admin-web` com cookie `eduassist_access_token=<token>` para validar o detalhe da conversa
+- `GET /?handoffStatus=queued&handoffSla=breached` no `admin-web` com cookie `eduassist_access_token=<token>` para validar os filtros operacionais da fila
 - `PATCH /api/support-handoffs/{handoff_id}` no `admin-web` com cookie de sessão autenticada
 - `POST /api/telegram-link/challenge` no `admin-web` com cookie de sessão autenticada
 - `GET /v1/students/{student_id}/academic-summary?...`

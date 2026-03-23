@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, aliased
 
 from api_core.contracts import (
@@ -11,12 +11,15 @@ from api_core.contracts import (
     SupportConversationMessageEntry,
     SupportHandoffCreateResponse,
     SupportHandoffEntry,
+    SupportHandoffFilters,
 )
 from api_core.db.models import Conversation, Handoff, Message, User
 
 INTERNAL_OPERATOR_ROLES = frozenset({'staff', 'finance', 'coordinator', 'admin'})
 OPEN_HANDOFF_STATUSES = frozenset({'queued', 'in_progress'})
 SUPPORTED_HANDOFF_STATUSES = frozenset({'queued', 'in_progress', 'resolved', 'cancelled'})
+SUPPORTED_HANDOFF_ASSIGNMENTS = frozenset({'mine', 'unassigned', 'assigned'})
+SUPPORTED_HANDOFF_SLA_STATES = frozenset({'on_track', 'attention', 'breached', 'closed', 'unknown'})
 
 
 def build_ticket_code(*, handoff_id: uuid.UUID, created_at) -> str:
@@ -152,6 +155,78 @@ def _serialize_handoff_rows(
     ]
 
 
+def normalize_support_handoff_filters(filters: SupportHandoffFilters) -> SupportHandoffFilters:
+    status = filters.status.strip().lower() if filters.status else None
+    if status not in SUPPORTED_HANDOFF_STATUSES:
+        status = None
+
+    queue_name = filters.queue_name.strip().lower() if filters.queue_name else None
+    if queue_name == '':
+        queue_name = None
+
+    assignment = filters.assignment.strip().lower() if filters.assignment else None
+    if assignment not in SUPPORTED_HANDOFF_ASSIGNMENTS:
+        assignment = None
+
+    sla_state = filters.sla_state.strip().lower() if filters.sla_state else None
+    if sla_state not in SUPPORTED_HANDOFF_SLA_STATES:
+        sla_state = None
+
+    search = ' '.join(filters.search.split()) if filters.search else None
+    if not search:
+        search = None
+
+    limit = max(1, min(int(filters.limit or 10), 25))
+    return SupportHandoffFilters(
+        status=status,
+        queue_name=queue_name,
+        assignment=assignment,
+        sla_state=sla_state,
+        search=search,
+        limit=limit,
+    )
+
+
+def _matches_handoff_filters(
+    item: SupportHandoffEntry,
+    *,
+    actor: ActorContext,
+    filters: SupportHandoffFilters,
+) -> bool:
+    if filters.status and item.status != filters.status:
+        return False
+
+    if filters.queue_name and item.queue_name != filters.queue_name:
+        return False
+
+    if filters.assignment == 'mine' and item.assigned_user_id != actor.user_id:
+        return False
+    if filters.assignment == 'unassigned' and item.assigned_user_id is not None:
+        return False
+    if filters.assignment == 'assigned' and item.assigned_user_id is None:
+        return False
+
+    if filters.sla_state and item.sla_state != filters.sla_state:
+        return False
+
+    if filters.search:
+        haystack = ' '.join(
+            value
+            for value in [
+                item.ticket_code,
+                item.summary,
+                item.requester_name or '',
+                item.assigned_operator_name or '',
+                item.last_message_excerpt or '',
+            ]
+            if value
+        ).lower()
+        if filters.search.lower() not in haystack:
+            return False
+
+    return True
+
+
 def _base_handoff_stmt(*, actor: ActorContext, scope: str):
     requester = aliased(User)
     assignee = aliased(User)
@@ -179,25 +254,22 @@ def list_support_handoffs(
     *,
     actor: ActorContext,
     scope: str,
-    limit: int = 10,
-) -> tuple[dict[str, int], list[SupportHandoffEntry]]:
+    filters: SupportHandoffFilters,
+) -> tuple[dict[str, int], list[SupportHandoffEntry], SupportHandoffFilters]:
+    normalized_filters = normalize_support_handoff_filters(filters)
     rows = session.execute(
-        _base_handoff_stmt(actor=actor, scope=scope)
-        .order_by(Handoff.updated_at.desc(), Handoff.created_at.desc())
-        .limit(limit)
+        _base_handoff_stmt(actor=actor, scope=scope).order_by(Handoff.updated_at.desc(), Handoff.created_at.desc())
     ).all()
 
-    count_stmt = (
-        select(Handoff.status, func.count())
-        .join(Conversation, Conversation.id == Handoff.conversation_id)
-        .group_by(Handoff.status)
-    )
-    if scope == 'self':
-        count_stmt = count_stmt.where(Conversation.user_id == actor.user_id)
-
-    counts = {status: int(total) for status, total in session.execute(count_stmt).all()}
     items = _serialize_handoff_rows(session, rows)
-    return counts, items
+    filtered_items = [
+        item for item in items if _matches_handoff_filters(item, actor=actor, filters=normalized_filters)
+    ]
+    counts = {
+        status: sum(1 for item in filtered_items if item.status == status)
+        for status in SUPPORTED_HANDOFF_STATUSES
+    }
+    return counts, filtered_items[: normalized_filters.limit], normalized_filters
 
 
 def get_support_handoff_detail(

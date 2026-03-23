@@ -10,6 +10,7 @@ from api_core.contracts import (
     AccessDecisionFeedEntry,
     ActorContext,
     AuditEventFeedEntry,
+    HandoffAlertEntry,
     HandoffOperationsOverview,
     HandoffOperatorOverviewEntry,
     HandoffQueueOverviewEntry,
@@ -40,6 +41,51 @@ from api_core.db.models import (
 from api_core.services.support import calculate_handoff_sla_state
 
 INTERNAL_OPERATIONS_ROLES = frozenset({'staff', 'finance', 'coordinator', 'admin'})
+
+
+def _priority_weight(priority_code: str) -> int:
+    weights = {
+        'urgent': 3,
+        'high': 2,
+        'standard': 1,
+    }
+    return weights.get(priority_code, 0)
+
+
+def _handoff_alert_flags(*, sla_state: str, priority_code: str, assigned_user_id: uuid.UUID | None) -> list[str]:
+    flags: list[str] = []
+    if sla_state == 'breached':
+        flags.append('sla_breached')
+    elif sla_state == 'attention':
+        flags.append('sla_attention')
+
+    if priority_code in {'urgent', 'high'}:
+        flags.append(f'priority_{priority_code}')
+
+    if assigned_user_id is None:
+        flags.append('unassigned')
+    return flags
+
+
+def _handoff_alert_sort_key(
+    *,
+    sla_state: str,
+    priority_code: str,
+    assigned_user_id: uuid.UUID | None,
+    due_at: datetime | None,
+    updated_at: datetime,
+) -> tuple[int, int, int, datetime, datetime]:
+    severity = {
+        'breached': 0,
+        'attention': 1,
+        'on_track': 2,
+        'closed': 3,
+        'unknown': 4,
+    }.get(sla_state, 5)
+    unassigned_rank = 0 if assigned_user_id is None else 1
+    priority_rank = -_priority_weight(priority_code)
+    due_rank = due_at or updated_at
+    return severity, unassigned_rank, priority_rank, due_rank, updated_at
 
 
 def record_access_decision(
@@ -233,11 +279,19 @@ def build_handoff_operations_overview(
     if scope != 'global':
         return None
 
+    requester = aliased(User)
     assignee = aliased(User)
     rows = session.execute(
-        select(Handoff, assignee.id, assignee.external_code, assignee.full_name)
+        select(
+            Handoff,
+            requester.full_name,
+            assignee.id,
+            assignee.external_code,
+            assignee.full_name,
+        )
         .select_from(Handoff)
         .join(Conversation, Conversation.id == Handoff.conversation_id)
+        .outerjoin(requester, requester.id == Conversation.user_id)
         .outerjoin(assignee, assignee.id == Handoff.assigned_user_id)
         .where(Handoff.status.in_(('queued', 'in_progress')))
         .order_by(Handoff.updated_at.desc(), Handoff.created_at.desc())
@@ -245,10 +299,17 @@ def build_handoff_operations_overview(
 
     queue_stats: dict[str, dict[str, int]] = {}
     operator_stats: dict[uuid.UUID, dict[str, object]] = {}
+    alert_candidates: list[tuple[tuple[int, int, int, datetime, datetime], HandoffAlertEntry]] = []
     overview = HandoffOperationsOverview()
 
-    for handoff, operator_user_id, operator_external_code, operator_name in rows:
+    for handoff, requester_name, operator_user_id, operator_external_code, operator_name in rows:
         sla_state = calculate_handoff_sla_state(handoff)
+        due_at = handoff.response_due_at if handoff.status == 'queued' else handoff.resolution_due_at
+        alert_flags = _handoff_alert_flags(
+            sla_state=sla_state,
+            priority_code=handoff.priority_code,
+            assigned_user_id=handoff.assigned_user_id,
+        )
         queue_name = handoff.queue_name
         queue_entry = queue_stats.setdefault(
             queue_name,
@@ -305,6 +366,35 @@ def build_handoff_operations_overview(
             elif sla_state == 'breached':
                 operator_entry['breached_count'] += 1
 
+        if alert_flags:
+            alert_entry = HandoffAlertEntry(
+                handoff_id=handoff.id,
+                ticket_code=f'ATD-{handoff.created_at:%Y%m%d}-{str(handoff.id).split("-")[0].upper()}',
+                queue_name=handoff.queue_name,
+                priority_code=handoff.priority_code,
+                status=handoff.status,
+                summary=handoff.summary,
+                requester_name=requester_name,
+                assigned_operator_name=operator_name,
+                updated_at=handoff.updated_at,
+                response_due_at=handoff.response_due_at,
+                resolution_due_at=handoff.resolution_due_at,
+                sla_state=sla_state,
+                alert_flags=alert_flags,
+            )
+            alert_candidates.append(
+                (
+                    _handoff_alert_sort_key(
+                        sla_state=sla_state,
+                        priority_code=handoff.priority_code,
+                        assigned_user_id=handoff.assigned_user_id,
+                        due_at=due_at,
+                        updated_at=handoff.updated_at,
+                    ),
+                    alert_entry,
+                )
+            )
+
     overview.queues = [
         HandoffQueueOverviewEntry(queue_name=queue_name, **stats)
         for queue_name, stats in sorted(
@@ -319,6 +409,8 @@ def build_handoff_operations_overview(
             key=lambda item: (-int(item[1]['assigned_count']), str(item[1]['operator_name'])),
         )
     ]
+    overview.alerts = [entry for _, entry in sorted(alert_candidates, key=lambda item: item[0])[:6]]
+    overview.critical_total = len(alert_candidates)
     return overview
 
 

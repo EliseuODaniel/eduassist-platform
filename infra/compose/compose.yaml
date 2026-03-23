@@ -263,7 +263,7 @@ services:
         NODE_BASE_IMAGE: ${NODE_BASE_IMAGE:-node:24-bookworm-slim}
     container_name: eduassist-admin-web
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: '1'
       PORT: 3000
       API_CORE_URL: http://api-core:8000

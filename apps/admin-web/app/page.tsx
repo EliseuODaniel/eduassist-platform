@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { LinkChallengePanel } from './link-challenge-panel';
 import { SupportHandoffDetailPanel } from './support-handoff-detail-panel';
 import { SupportHandoffPanel } from './support-handoff-panel';
@@ -11,6 +13,7 @@ import {
   type HandoffOperationsOverview,
   type OperationsOverview,
   type PortalActor,
+  type SupportHandoffFilters,
 } from '../lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -42,6 +45,18 @@ function formatAuthError(code: string): string {
     token_exchange_failed: 'Não consegui concluir a troca do código por tokens no Keycloak.',
   };
   return messages[code] ?? 'Não consegui concluir o login agora. Tente novamente.';
+}
+
+function getStringSearchParam(
+  value: string | string[] | undefined,
+): string | null {
+  if (typeof value === 'string') {
+    return value.length > 0 ? value : null;
+  }
+  if (Array.isArray(value) && value.length > 0) {
+    return value[0] || null;
+  }
+  return null;
 }
 
 function buildAccessHighlights(actor: PortalActor): string[] {
@@ -85,6 +100,7 @@ function formatMetricLabel(metricKey: string): string {
     handoff_sla_attention: 'SLA em atenção',
     handoff_sla_breached: 'SLA estourado',
     handoffs_without_assignee: 'Sem responsável',
+    critical_handoffs: 'Exceções críticas',
   };
   return labels[metricKey] ?? formatTokenLabel(metricKey);
 }
@@ -204,6 +220,105 @@ function formatQueueName(queueName: string): string {
   return labels[queueName] ?? formatTokenLabel(queueName);
 }
 
+function formatPriority(priorityCode: string): string {
+  const labels: Record<string, string> = {
+    urgent: 'Urgente',
+    high: 'Alta prioridade',
+    standard: 'Prioridade padrão',
+  };
+  return labels[priorityCode] ?? formatTokenLabel(priorityCode);
+}
+
+function formatSlaState(slaState: string): string {
+  const labels: Record<string, string> = {
+    breached: 'SLA estourado',
+    attention: 'SLA em atenção',
+    on_track: 'SLA em dia',
+    closed: 'SLA encerrado',
+    unknown: 'SLA indefinido',
+  };
+  return labels[slaState] ?? formatTokenLabel(slaState);
+}
+
+function formatAlertFlag(flag: string): string {
+  const labels: Record<string, string> = {
+    sla_breached: 'SLA estourado',
+    sla_attention: 'SLA em atenção',
+    priority_urgent: 'Urgente',
+    priority_high: 'Alta prioridade',
+    unassigned: 'Sem responsável',
+  };
+  return labels[flag] ?? formatTokenLabel(flag);
+}
+
+function formatDueLabel(alert: HandoffOperationsOverview['alerts'][number]): string {
+  const dueAt = alert.status === 'queued' ? alert.response_due_at : alert.resolution_due_at;
+  if (!dueAt) {
+    return 'Sem prazo calculado';
+  }
+  return `Prazo: ${formatTimestamp(dueAt)}`;
+}
+
+function renderHandoffAlertFeed(handoffOverview: HandoffOperationsOverview) {
+  return (
+    <section className="panel panel-strong section-stack">
+      <div className="section-head">
+        <div>
+          <p className="eyebrow">Exceções</p>
+          <h2>Fila crítica e tickets prioritários</h2>
+        </div>
+        <span className="status-chip is-pending">{handoffOverview.critical_total} alertas</span>
+      </div>
+
+      {handoffOverview.alerts.length === 0 ? (
+        <p className="muted-copy">
+          Não há exceções abertas no momento. Quando surgir um SLA em atenção, breach ou ticket
+          prioritário, ele aparecerá aqui.
+        </p>
+      ) : (
+        <ul className="feed-list">
+          {handoffOverview.alerts.map((alert) => (
+            <li className="feed-item" key={alert.handoff_id}>
+              <div className="feed-head">
+                <div>
+                  <strong>{alert.ticket_code}</strong>
+                  <p className="muted-copy">
+                    {formatQueueName(alert.queue_name)} · {formatPriority(alert.priority_code)} ·{' '}
+                    {formatSlaState(alert.sla_state)}
+                  </p>
+                </div>
+                <Link className="secondary-link" href={`/?handoff=${alert.handoff_id}`}>
+                  Abrir ticket
+                </Link>
+              </div>
+
+              <p className="feed-copy">{alert.summary}</p>
+
+              <div className="tag-row">
+                <span className="event-tag">{formatDueLabel(alert)}</span>
+                <span className="event-tag">
+                  Solicitante: {alert.requester_name ?? 'Visitante do bot'}
+                </span>
+                <span className="event-tag">
+                  Responsável: {alert.assigned_operator_name ?? 'Fila livre'}
+                </span>
+              </div>
+
+              <div className="tag-row">
+                {alert.alert_flags.map((flag) => (
+                  <span className="event-tag" key={flag}>
+                    {formatAlertFlag(flag)}
+                  </span>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function renderHandoffOverview(handoffOverview: HandoffOperationsOverview) {
   return (
     <>
@@ -239,6 +354,8 @@ function renderHandoffOverview(handoffOverview: HandoffOperationsOverview) {
           </article>
         </div>
       </section>
+
+      {renderHandoffAlertFeed(handoffOverview)}
 
       <section className="workspace-grid">
         <article className="panel">
@@ -320,30 +437,29 @@ type HomePageProps = {
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = (await searchParams) ?? {};
-  const authErrorValue = params.authError;
-  const handoffValue = params.handoff;
-  const authError =
-    typeof authErrorValue === 'string' && authErrorValue.length > 0
-      ? formatAuthError(authErrorValue)
-      : null;
-  const requestedHandoffId =
-    typeof handoffValue === 'string'
-      ? handoffValue
-      : Array.isArray(handoffValue) && handoffValue.length > 0
-        ? handoffValue[0]
-        : null;
+  const authErrorValue = getStringSearchParam(params.authError);
+  const requestedHandoffId = getStringSearchParam(params.handoff);
+  const authError = authErrorValue ? formatAuthError(authErrorValue) : null;
+  const handoffFilters: Partial<SupportHandoffFilters> = {
+    status: getStringSearchParam(params.handoffStatus),
+    queue_name: getStringSearchParam(params.handoffQueue),
+    assignment: getStringSearchParam(params.handoffAssignment),
+    sla_state: getStringSearchParam(params.handoffSla),
+    search: getStringSearchParam(params.handoffSearch),
+  };
 
   const { session, error } = await getPortalSession();
   const { overview, error: overviewError } = session
     ? await getOperationsOverview()
     : { overview: null, error: null };
   const { handoffs, error: handoffsError } = session
-    ? await getSupportHandoffs()
+    ? await getSupportHandoffs(handoffFilters)
     : { handoffs: null, error: null };
-  const selectedHandoffId =
-    requestedHandoffId && handoffs?.items.some((item) => item.handoff_id === requestedHandoffId)
-      ? requestedHandoffId
-      : handoffs?.items[0]?.handoff_id ?? null;
+  const selectedHandoffId = requestedHandoffId ?? handoffs?.items[0]?.handoff_id ?? null;
+  const highlightedHandoffId =
+    selectedHandoffId && handoffs?.items.some((item) => item.handoff_id === selectedHandoffId)
+      ? selectedHandoffId
+      : null;
   const { detail: handoffDetail, error: handoffDetailError } =
     session && selectedHandoffId
       ? await getSupportHandoffDetail(selectedHandoffId)
@@ -559,9 +675,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <SupportHandoffPanel
                 canManage={handoffs.scope === 'global'}
                 counts={handoffs.counts}
+                filters={handoffs.filters}
                 items={handoffs.items}
                 scope={handoffs.scope}
-                selectedHandoffId={selectedHandoffId}
+                selectedHandoffId={highlightedHandoffId}
               />
 
               {handoffDetailError ? (

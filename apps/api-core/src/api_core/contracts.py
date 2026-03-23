@@ -245,6 +245,22 @@ class HandoffOperatorOverviewEntry(BaseModel):
     breached_count: int = 0
 
 
+class HandoffAlertEntry(BaseModel):
+    handoff_id: uuid.UUID
+    ticket_code: str
+    queue_name: str
+    priority_code: str
+    status: str
+    summary: str
+    requester_name: str | None = None
+    assigned_operator_name: str | None = None
+    updated_at: datetime
+    response_due_at: datetime | None = None
+    resolution_due_at: datetime | None = None
+    sla_state: str
+    alert_flags: list[str] = Field(default_factory=list)
+
+
 class HandoffOperationsOverview(BaseModel):
     open_total: int = 0
     queued_total: int = 0
@@ -252,8 +268,10 @@ class HandoffOperationsOverview(BaseModel):
     attention_total: int = 0
     breached_total: int = 0
     unassigned_total: int = 0
+    critical_total: int = 0
     queues: list[HandoffQueueOverviewEntry] = Field(default_factory=list)
     operators: list[HandoffOperatorOverviewEntry] = Field(default_factory=list)
+    alerts: list[HandoffAlertEntry] = Field(default_factory=list)
 
 
 class OperationsOverviewResponse(BaseModel):
@@ -306,6 +324,15 @@ class SupportHandoffEntry(BaseModel):
     updated_at: datetime
 
 
+class SupportHandoffFilters(BaseModel):
+    status: str | None = None
+    queue_name: str | None = None
+    assignment: str | None = None
+    sla_state: str | None = None
+    search: str | None = None
+    limit: int = 10
+
+
 class SupportConversationMessageEntry(BaseModel):
     message_id: uuid.UUID
     sender_type: str
@@ -323,6 +350,7 @@ class SupportHandoffListResponse(BaseModel):
     actor: ActorContext
     scope: str
     counts: dict[str, int] = Field(default_factory=dict)
+    filters: SupportHandoffFilters = Field(default_factory=SupportHandoffFilters)
     items: list[SupportHandoffEntry] = Field(default_factory=list)
 
 

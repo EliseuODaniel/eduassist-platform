@@ -132,8 +132,26 @@ export type HandoffOperationsOverview = {
   attention_total: number;
   breached_total: number;
   unassigned_total: number;
+  critical_total: number;
   queues: HandoffQueueOverviewEntry[];
   operators: HandoffOperatorOverviewEntry[];
+  alerts: HandoffAlertEntry[];
+};
+
+export type HandoffAlertEntry = {
+  handoff_id: string;
+  ticket_code: string;
+  queue_name: string;
+  priority_code: string;
+  status: string;
+  summary: string;
+  requester_name: string | null;
+  assigned_operator_name: string | null;
+  updated_at: string;
+  response_due_at: string | null;
+  resolution_due_at: string | null;
+  sla_state: string;
+  alert_flags: string[];
 };
 
 export type SessionState = {
@@ -170,6 +188,15 @@ export type SupportHandoffItem = {
   updated_at: string;
 };
 
+export type SupportHandoffFilters = {
+  status: string | null;
+  queue_name: string | null;
+  assignment: string | null;
+  sla_state: string | null;
+  search: string | null;
+  limit: number;
+};
+
 export type SupportConversationMessage = {
   message_id: string;
   sender_type: string;
@@ -181,6 +208,7 @@ export type SupportHandoffList = {
   actor: PortalActor;
   scope: string;
   counts: Record<string, number>;
+  filters: SupportHandoffFilters;
   items: SupportHandoffItem[];
 };
 
@@ -445,7 +473,9 @@ export async function getOperationsOverview(): Promise<OperationsOverviewState> 
   };
 }
 
-export async function getSupportHandoffs(): Promise<SupportHandoffListState> {
+export async function getSupportHandoffs(
+  filters?: Partial<SupportHandoffFilters>,
+): Promise<SupportHandoffListState> {
   let accessToken = await getAccessTokenForApiRequest();
   if (!accessToken) {
     return {
@@ -455,7 +485,31 @@ export async function getSupportHandoffs(): Promise<SupportHandoffListState> {
   }
 
   const config = getPortalConfig();
-  let response = await fetch(`${config.apiCoreUrl}/v1/support/handoffs`, {
+  const query = new URLSearchParams();
+  if (filters?.status) {
+    query.set('status', filters.status);
+  }
+  if (filters?.queue_name) {
+    query.set('queue_name', filters.queue_name);
+  }
+  if (filters?.assignment) {
+    query.set('assignment', filters.assignment);
+  }
+  if (filters?.sla_state) {
+    query.set('sla_state', filters.sla_state);
+  }
+  if (filters?.search) {
+    query.set('search', filters.search);
+  }
+  if (typeof filters?.limit === 'number') {
+    query.set('limit', String(filters.limit));
+  }
+
+  const handoffsUrl = `${config.apiCoreUrl}/v1/support/handoffs${
+    query.size > 0 ? `?${query.toString()}` : ''
+  }`;
+
+  let response = await fetch(handoffsUrl, {
     method: 'GET',
     cache: 'no-store',
     headers: {
@@ -482,7 +536,7 @@ export async function getSupportHandoffs(): Promise<SupportHandoffListState> {
         error: 'session_expired',
       };
     }
-    response = await fetch(`${config.apiCoreUrl}/v1/support/handoffs`, {
+    response = await fetch(handoffsUrl, {
       method: 'GET',
       cache: 'no-store',
       headers: {

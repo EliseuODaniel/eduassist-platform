@@ -20,6 +20,7 @@ from api_core.contracts import (
     PolicyCheckResponse,
     SupportHandoffCreateResponse,
     SupportHandoffDetailResponse,
+    SupportHandoffFilters,
     SupportHandoffListResponse,
     SupportHandoffStatusUpdateRequest,
     SupportHandoffUpdateResponse,
@@ -355,6 +356,7 @@ async def operations_overview(
                         'handoff_sla_attention': handoff_overview.attention_total,
                         'handoff_sla_breached': handoff_overview.breached_total,
                         'handoffs_without_assignee': handoff_overview.unassigned_total,
+                        'critical_handoffs': handoff_overview.critical_total,
                     }
                 )
             overview = OperationsOverviewResponse(
@@ -377,6 +379,12 @@ async def operations_overview(
 @app.get('/v1/support/handoffs', response_model=SupportHandoffListResponse)
 async def support_handoffs(
     authorization: str | None = Header(default=None, alias='Authorization'),
+    status: str | None = Query(default=None),
+    queue_name: str | None = Query(default=None),
+    assignment: str | None = Query(default=None),
+    sla_state: str | None = Query(default=None),
+    search: str | None = Query(default=None),
+    limit: int = Query(default=10, ge=1, le=25),
 ) -> SupportHandoffListResponse:
     if extract_bearer_token(authorization) is None:
         raise HTTPException(status_code=401, detail='bearer_token_required')
@@ -399,6 +407,15 @@ async def support_handoffs(
         },
     )
 
+    filters = SupportHandoffFilters(
+        status=status,
+        queue_name=queue_name,
+        assignment=assignment,
+        sla_state=sla_state,
+        search=search,
+        limit=limit,
+    )
+
     response_payload: SupportHandoffListResponse | None = None
     with session_scope() as session:
         record_access_decision(
@@ -411,11 +428,17 @@ async def support_handoffs(
         )
 
         if decision.allow:
-            counts, items = list_support_handoffs(session, actor=actor, scope=scope)
+            counts, items, filters = list_support_handoffs(
+                session,
+                actor=actor,
+                scope=scope,
+                filters=filters,
+            )
             response_payload = SupportHandoffListResponse(
                 actor=_sanitize_actor_for_external_response(actor, auth_mode=auth_mode),
                 scope=scope,
                 counts=counts,
+                filters=filters,
                 items=items,
             )
 

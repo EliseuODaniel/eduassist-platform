@@ -1,13 +1,14 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
-import type { SupportHandoffItem } from '../lib/auth';
+import type { SupportHandoffFilters, SupportHandoffItem } from '../lib/auth';
 
 type Props = {
   items: SupportHandoffItem[];
   counts: Record<string, number>;
+  filters: SupportHandoffFilters;
   scope: string;
   canManage: boolean;
   selectedHandoffId: string | null;
@@ -67,6 +68,7 @@ function formatSlaState(slaState: string): string {
 export function SupportHandoffPanel({
   items,
   counts,
+  filters,
   scope,
   canManage,
   selectedHandoffId,
@@ -75,11 +77,52 @@ export function SupportHandoffPanel({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [draftFilters, setDraftFilters] = useState<SupportHandoffFilters>(filters);
+
+  useEffect(() => {
+    setDraftFilters(filters);
+  }, [filters]);
 
   function handleSelect(handoffId: string) {
     const params = new URLSearchParams(window.location.search);
     params.set('handoff', handoffId);
     router.push(`/?${params.toString()}`, { scroll: false });
+  }
+
+  function handleApplyFilters() {
+    const params = new URLSearchParams(window.location.search);
+    params.delete('handoff');
+
+    const filterEntries: Array<[string, string | null]> = [
+      ['handoffStatus', draftFilters.status],
+      ['handoffQueue', draftFilters.queue_name],
+      ['handoffAssignment', draftFilters.assignment],
+      ['handoffSla', draftFilters.sla_state],
+      ['handoffSearch', draftFilters.search],
+    ];
+
+    for (const [key, value] of filterEntries) {
+      const normalized = value?.trim() ?? '';
+      if (normalized) {
+        params.set(key, normalized);
+      } else {
+        params.delete(key);
+      }
+    }
+
+    router.push(`/?${params.toString()}`, { scroll: false });
+  }
+
+  function handleClearFilters() {
+    setDraftFilters({
+      status: null,
+      queue_name: null,
+      assignment: null,
+      sla_state: null,
+      search: null,
+      limit: filters.limit,
+    });
+    router.push('/', { scroll: false });
   }
 
   function handleStatusUpdate(handoffId: string, status: 'in_progress' | 'resolved') {
@@ -127,6 +170,109 @@ export function SupportHandoffPanel({
             {formatStatus(status)}: {total}
           </span>
         ))}
+      </div>
+
+      <div className="filter-shell">
+        <div className="filter-grid">
+          <label className="filter-field">
+            <span>Status</span>
+            <select
+              value={draftFilters.status ?? ''}
+              onChange={(event) =>
+                setDraftFilters((current) => ({
+                  ...current,
+                  status: event.target.value || null,
+                }))
+              }
+            >
+              <option value="">Todos</option>
+              <option value="queued">Na fila</option>
+              <option value="in_progress">Em atendimento</option>
+              <option value="resolved">Resolvido</option>
+              <option value="cancelled">Cancelado</option>
+            </select>
+          </label>
+
+          <label className="filter-field">
+            <span>Fila</span>
+            <select
+              value={draftFilters.queue_name ?? ''}
+              onChange={(event) =>
+                setDraftFilters((current) => ({
+                  ...current,
+                  queue_name: event.target.value || null,
+                }))
+              }
+            >
+              <option value="">Todas</option>
+              <option value="atendimento">Atendimento</option>
+              <option value="secretaria">Secretaria</option>
+              <option value="financeiro">Financeiro</option>
+              <option value="coordenacao">Coordenação</option>
+            </select>
+          </label>
+
+          <label className="filter-field">
+            <span>Atribuição</span>
+            <select
+              value={draftFilters.assignment ?? ''}
+              onChange={(event) =>
+                setDraftFilters((current) => ({
+                  ...current,
+                  assignment: event.target.value || null,
+                }))
+              }
+            >
+              <option value="">Qualquer</option>
+              <option value="mine">Meus tickets</option>
+              <option value="unassigned">Sem responsável</option>
+              <option value="assigned">Já atribuídos</option>
+            </select>
+          </label>
+
+          <label className="filter-field">
+            <span>SLA</span>
+            <select
+              value={draftFilters.sla_state ?? ''}
+              onChange={(event) =>
+                setDraftFilters((current) => ({
+                  ...current,
+                  sla_state: event.target.value || null,
+                }))
+              }
+            >
+              <option value="">Todos</option>
+              <option value="on_track">Em dia</option>
+              <option value="attention">Em atenção</option>
+              <option value="breached">Estourado</option>
+              <option value="closed">Encerrado</option>
+            </select>
+          </label>
+
+          <label className="filter-field filter-field-search">
+            <span>Busca</span>
+            <input
+              placeholder="Ticket, solicitante ou resumo"
+              type="search"
+              value={draftFilters.search ?? ''}
+              onChange={(event) =>
+                setDraftFilters((current) => ({
+                  ...current,
+                  search: event.target.value || null,
+                }))
+              }
+            />
+          </label>
+        </div>
+
+        <div className="action-row">
+          <button className="secondary-button" onClick={handleApplyFilters} type="button">
+            Aplicar filtros
+          </button>
+          <button className="secondary-button" onClick={handleClearFilters} type="button">
+            Limpar
+          </button>
+        </div>
       </div>
 
       {error ? <p className="feedback error-text">{error}</p> : null}
