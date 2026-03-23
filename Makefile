@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE_FILE := infra/compose/compose.yaml
 ENV_FILE := .env
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs db-upgrade db-downgrade db-seed-foundation python-fmt python-lint admin-install
+.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs db-upgrade db-downgrade db-seed-foundation db-seed-auth-bindings python-fmt python-lint admin-install
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -35,6 +35,9 @@ db-downgrade:
 
 db-seed-foundation:
 	DATABASE_URL=$${DATABASE_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core python tools/mockgen/seed_foundation.py
+
+db-seed-auth-bindings:
+	DATABASE_URL=$${DATABASE_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core python tools/mockgen/sync_auth_bindings.py
 
 python-fmt:
 	uv tool run ruff format apps/**/src

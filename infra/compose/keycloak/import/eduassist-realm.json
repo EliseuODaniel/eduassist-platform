@@ -1,0 +1,192 @@
+{
+  "realm": "eduassist",
+  "enabled": true,
+  "displayName": "EduAssist Platform",
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "roles": {
+    "realm": [
+      { "name": "guardian" },
+      { "name": "student" },
+      { "name": "teacher" },
+      { "name": "staff" },
+      { "name": "finance" },
+      { "name": "coordinator" },
+      { "name": "admin" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "eduassist-web",
+      "name": "EduAssist Web",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "eduassist-cli",
+      "name": "EduAssist CLI",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true
+    }
+  ],
+  "users": [
+    {
+      "id": "9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b1001",
+      "username": "maria.oliveira",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Maria",
+      "lastName": "Oliveira",
+      "email": "maria.oliveira@mock.eduassist.local",
+      "attributes": {
+        "external_code": ["USR-GUARD-001"]
+      },
+      "realmRoles": ["guardian"],
+      "credentials": [
+        { "type": "password", "value": "Eduassist123!", "temporary": false }
+      ]
+    },
+    {
+      "id": "9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b1002",
+      "username": "paulo.santos",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Paulo",
+      "lastName": "Santos",
+      "email": "paulo.santos@mock.eduassist.local",
+      "attributes": {
+        "external_code": ["USR-GUARD-002"]
+      },
+      "realmRoles": ["guardian"],
+      "credentials": [
+        { "type": "password", "value": "Eduassist123!", "temporary": false }
+      ]
+    },
+    {
+      "id": "9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b2001",
+      "username": "lucas.oliveira",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Lucas",
+      "lastName": "Oliveira",
+      "email": "lucas.oliveira@mock.eduassist.local",
+      "attributes": {
+        "external_code": ["USR-STUD-001"]
+      },
+      "realmRoles": ["student"],
+      "credentials": [
+        { "type": "password", "value": "Eduassist123!", "temporary": false }
+      ]
+    },
+    {
+      "id": "9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b2002",
+      "username": "ana.oliveira",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ana",
+      "lastName": "Oliveira",
+      "email": "ana.oliveira@mock.eduassist.local",
+      "attributes": {
+        "external_code": ["USR-STUD-002"]
+      },
+      "realmRoles": ["student"],
+      "credentials": [
+        { "type": "password", "value": "Eduassist123!", "temporary": false }
+      ]
+    },
+    {
+      "id": "9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b2003",
+      "username": "bruno.santos",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Bruno",
+      "lastName": "Santos",
+      "email": "bruno.santos@mock.eduassist.local",
+      "attributes": {
+        "external_code": ["USR-STUD-003"]
+      },
+      "realmRoles": ["student"],
+      "credentials": [
+        { "type": "password", "value": "Eduassist123!", "temporary": false }
+      ]
+    },
+    {
+      "id": "9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b3001",
+      "username": "helena.rocha",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Helena",
+      "lastName": "Rocha",
+      "email": "helena.rocha@mock.eduassist.local",
+      "attributes": {
+        "external_code": ["USR-TEACH-001"]
+      },
+      "realmRoles": ["teacher"],
+      "credentials": [
+        { "type": "password", "value": "Eduassist123!", "temporary": false }
+      ]
+    },
+    {
+      "id": "9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b3002",
+      "username": "marcos.lima",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Marcos",
+      "lastName": "Lima",
+      "email": "marcos.lima@mock.eduassist.local",
+      "attributes": {
+        "external_code": ["USR-TEACH-002"]
+      },
+      "realmRoles": ["teacher"],
+      "credentials": [
+        { "type": "password", "value": "Eduassist123!", "temporary": false }
+      ]
+    },
+    {
+      "id": "9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b4001",
+      "username": "beatriz.costa",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Beatriz",
+      "lastName": "Costa",
+      "email": "beatriz.costa@mock.eduassist.local",
+      "attributes": {
+        "external_code": ["USR-STAFF-001"]
+      },
+      "realmRoles": ["staff"],
+      "credentials": [
+        { "type": "password", "value": "Eduassist123!", "temporary": false }
+      ]
+    },
+    {
+      "id": "9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b4002",
+      "username": "carla.nogueira",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Carla",
+      "lastName": "Nogueira",
+      "email": "carla.nogueira@mock.eduassist.local",
+      "attributes": {
+        "external_code": ["USR-FIN-001"]
+      },
+      "realmRoles": ["finance"],
+      "credentials": [
+        { "type": "password", "value": "Eduassist123!", "temporary": false }
+      ]
+    }
+  ]
+}

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, ForeignKey, String, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -67,3 +68,37 @@ class UserTelegramLink(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     user: Mapped[User] = relationship()
     telegram_account: Mapped[TelegramAccount] = relationship()
+
+
+class FederatedIdentity(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = 'federated_identities'
+    __table_args__ = (
+        UniqueConstraint('provider', 'subject'),
+        UniqueConstraint('user_id', 'provider'),
+        {'schema': 'identity'},
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('identity.users.id'), nullable=False)
+    provider: Mapped[str] = mapped_column(String(50), nullable=False)
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    username: Mapped[str | None] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(String(255))
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    user: Mapped[User] = relationship()
+
+
+class TelegramLinkChallenge(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = 'telegram_link_challenges'
+    __table_args__ = (
+        UniqueConstraint('code_hash'),
+        {'schema': 'identity'},
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('identity.users.id'), nullable=False)
+    code_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    purpose: Mapped[str] = mapped_column(String(50), default='telegram_link', nullable=False)
+
+    user: Mapped[User] = relationship()

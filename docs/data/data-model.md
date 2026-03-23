@@ -19,7 +19,9 @@ O sistema usará:
 
 - `users`
 - `roles`
+- `federated_identities`
 - `telegram_accounts`
+- `telegram_link_challenges`
 - `user_telegram_links`
 - `consents`
 - `sessions`
@@ -97,6 +99,8 @@ O sistema usará:
 - contratos financeiros pertencem a aluno e responsável;
 - avaliações e frequência pertencem ao aluno dentro de uma matrícula;
 - documentos possuem visibilidade, vigência e categoria.
+- identidades federadas conectam usuários locais aos sujeitos emitidos pelo `Keycloak`;
+- challenges de Telegram expiram e suportam vínculo seguro via deep link `/start`.
 
 ## 5. Estratégia de mock data
 
@@ -178,4 +182,3 @@ Para cada chunk:
 - o modelo só enxerga resultados de tools;
 - tools devolvem payload mínimo;
 - dados sensíveis entram no contexto apenas quando já aprovados por policy.
-

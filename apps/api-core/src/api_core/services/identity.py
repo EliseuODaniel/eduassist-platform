@@ -7,6 +7,7 @@ from api_core.contracts import ActorContext, AccessibleClassReference, LinkedStu
 from api_core.db.models import (
     Class,
     Enrollment,
+    FederatedIdentity,
     Guardian,
     GuardianStudentLink,
     Role,
@@ -34,12 +35,24 @@ def resolve_actor_context(
     *,
     telegram_chat_id: int | None = None,
     user_external_code: str | None = None,
+    federated_provider: str | None = None,
+    federated_subject: str | None = None,
 ) -> ActorContext | None:
-    if telegram_chat_id is None and user_external_code is None:
+    if (
+        telegram_chat_id is None
+        and user_external_code is None
+        and (federated_provider is None or federated_subject is None)
+    ):
         return None
 
     query = _base_user_query()
-    if telegram_chat_id is not None:
+    if federated_provider is not None and federated_subject is not None:
+        query = (
+            query.join(FederatedIdentity, FederatedIdentity.user_id == User.id)
+            .where(FederatedIdentity.provider == federated_provider)
+            .where(FederatedIdentity.subject == federated_subject)
+        )
+    elif telegram_chat_id is not None:
         query = query.where(TelegramAccount.telegram_chat_id == telegram_chat_id)
     else:
         query = query.where(User.external_code == user_external_code)

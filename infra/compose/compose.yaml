@@ -79,7 +79,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: ['start-dev', '--health-enabled=true', '--hostname-strict=false']
+    command: ['start-dev', '--health-enabled=true', '--hostname-strict=false', '--import-realm']
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_KEYCLOAK_DB:-keycloak}
@@ -89,6 +89,8 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
     ports:
       - '8080:8080'
+    volumes:
+      - ./keycloak/import:/opt/keycloak/data/import:ro
     healthcheck:
       test: ['CMD-SHELL', 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf "GET /realms/master HTTP/1.1\r\nHost: localhost\r\n\r\n" >&3 && grep -q "200" <&3']
       interval: 20s
@@ -120,6 +122,14 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://eduassist:eduassist@postgres:5432/eduassist}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       OPA_URL: ${OPA_URL:-http://opa:8181}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8080}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-eduassist}
+      KEYCLOAK_ALLOWED_CLIENTS: ${KEYCLOAK_ALLOWED_CLIENTS:-eduassist-web,eduassist-cli}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
+      ALLOW_TEST_IDENTITY_OVERRIDES: ${ALLOW_TEST_IDENTITY_OVERRIDES:-true}
+      TELEGRAM_LINK_TTL_MINUTES: ${TELEGRAM_LINK_TTL_MINUTES:-15}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
     ports:
       - '${API_CORE_PORT:-8001}:8000'
     depends_on:
@@ -182,8 +192,10 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8000
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-change-me}
       API_CORE_URL: http://api-core:8000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
     ports:
       - '${TELEGRAM_GATEWAY_PORT:-8003}:8000'
     depends_on:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, Field
@@ -74,6 +75,48 @@ class PolicyCheckResponse(BaseModel):
     decision: PolicyDecision
     action: str
     resource: dict[str, object]
+
+
+class AuthPrincipal(BaseModel):
+    provider: str
+    subject: str
+    issuer: str
+    azp: str | None = None
+    audiences: list[str] = Field(default_factory=list)
+    preferred_username: str | None = None
+    email: str | None = None
+    email_verified: bool = False
+    realm_roles: list[str] = Field(default_factory=list)
+
+
+class AuthSessionResponse(BaseModel):
+    actor: ActorContext
+    principal: AuthPrincipal
+    auth_mode: str
+
+
+class TelegramLinkChallengeResponse(BaseModel):
+    challenge_code: str
+    expires_at: datetime
+    bot_username: str | None = None
+    telegram_deep_link: str | None = None
+    telegram_command: str
+
+
+class TelegramLinkConsumeRequest(BaseModel):
+    challenge_code: str
+    telegram_user_id: int | None = None
+    telegram_chat_id: int
+    username: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+
+
+class TelegramLinkConsumeResponse(BaseModel):
+    linked: bool
+    actor: ActorContext
+    telegram_chat_id: int
+    telegram_username: str | None = None
 
 
 class GradeEntry(BaseModel):

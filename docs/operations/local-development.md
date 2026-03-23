@@ -67,6 +67,9 @@ Status atual:
 - o `ai-orchestrator` já possui preview de grafo, capacidades e contratos de tools;
 - o `api-core` já possui base relacional inicial, migracao Alembic e seed foundation;
 - o `api-core` já expõe resolução de identidade, checagem de policy via `OPA` e consultas protegidas com auditoria básica;
+- o `Keycloak` já importa automaticamente o realm `eduassist` com usuários mockados;
+- o `api-core` já valida bearer tokens reais do `Keycloak` e expõe challenge de vínculo com Telegram;
+- o `telegram-gateway` já processa `/start link_<codigo>` e conclui o vínculo pelo endpoint interno;
 - observabilidade dedicada ainda ficará para a próxima etapa do roadmap.
 
 ### `compose:observability`
@@ -140,6 +143,7 @@ Status atual do bootstrap:
 - fundação inicial de retrieval e orquestração agentica já implementada
 - foundation transacional validada com migração e seed mockada
 - identity and policy base validadas com smoke tests de responsável, aluno, professor e financeiro
+- auth federada e vínculo Telegram validados com token real do `Keycloak` local
 
 ## 9. Variáveis de ambiente previstas
 
@@ -173,9 +177,13 @@ Status atual do bootstrap:
 
 - `make db-upgrade`
 - `make db-seed-foundation`
+- `make db-seed-auth-bindings`
 - `GET /v1/foundation/summary` no `api-core`
 - `GET /v1/identity/context?telegram_chat_id=987654321`
 - `GET /v1/identity/context?user_external_code=USR-TEACH-001`
+- `GET /v1/auth/session` com `Authorization: Bearer <token>`
+- `POST /v1/auth/telegram-link/challenges` com `Authorization: Bearer <token>`
+- `POST /webhooks/telegram` no `telegram-gateway` com `/start link_<codigo>`
 - `GET /v1/students/{student_id}/academic-summary?...`
 - `GET /v1/students/{student_id}/financial-summary?...`
 - `GET /v1/teachers/me/schedule?user_external_code=USR-TEACH-001`
@@ -187,3 +195,25 @@ Identidades mockadas úteis nesta fase:
 - `user_external_code=USR-STUD-001` para `Lucas Oliveira` (`student`)
 - `user_external_code=USR-TEACH-001` para `Helena Rocha` (`teacher`)
 - `user_external_code=USR-FIN-001` para `Carla Nogueira` (`finance`)
+
+Credenciais mockadas do `Keycloak` local:
+
+- realm: `eduassist`
+- client de teste por senha: `eduassist-cli`
+- senha padrao dos usuarios importados: `Eduassist123!`
+- exemplos de username:
+  - `maria.oliveira`
+  - `lucas.oliveira`
+  - `helena.rocha`
+  - `carla.nogueira`
+
+Exemplo de obtenção de token local:
+
+```bash
+curl -s http://localhost:8080/realms/eduassist/protocol/openid-connect/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'client_id=eduassist-cli' \
+  -d 'grant_type=password' \
+  -d 'username=maria.oliveira' \
+  -d 'password=Eduassist123!'
+```

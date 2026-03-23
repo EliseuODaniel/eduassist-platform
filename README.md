@@ -133,20 +133,23 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - `ai-orchestrator` já expõe preview do grafo, capabilities e contratos de tools;
 - `api-core` já possui foundation transacional com `SQLAlchemy + Alembic`, migração inicial e endpoint de resumo;
 - `api-core` já resolve contexto de identidade, consulta o `OPA`, aplica autorização contextual e registra trilha de auditoria básica para acessos protegidos;
+- `api-core` já valida `JWT` do `Keycloak` via `JWKS`, resolve sessão autenticada por identidade federada e emite challenges de vínculo com Telegram;
+- `telegram-gateway` já consome `/start link_<codigo>` e conclui o vínculo via endpoint interno autenticado;
+- `Keycloak` já sobe com import automático do realm `eduassist` e usuários mockados para testes locais;
 - seed foundation idempotente já disponível em `tools/mockgen`;
+- sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;
 - base documental sincronizada com a direção arquitetural atual.
 
 Expansões já aprovadas para a próxima etapa:
 
 - introduzir pipeline documental com `Docling`;
-- integrar `Keycloak` ao fluxo de identidade e vínculo com Telegram;
 - preparar modo avançado de retrieval com `GraphRAG` somente após baseline híbrido estar medido.
 
 ## Próximos passos imediatos
 
 1. Preparar a fundação do pipeline documental com `Docling`.
-2. Integrar `Keycloak` e o fluxo de vínculo seguro entre identidade escolar e canal Telegram.
-3. Conectar `Qdrant` e services ao fluxo completo de ingestão e retrieval.
-4. Subir a primeira vertical funcional de FAQ pública com retrieval híbrido e citações.
-5. Expandir a seed para cenários mais amplos de acadêmico, financeiro e handoff.
+2. Conectar `Qdrant` e services ao fluxo completo de ingestão e retrieval.
+3. Subir a primeira vertical funcional de FAQ pública com retrieval híbrido e citações.
+4. Expandir a seed para cenários mais amplos de acadêmico, financeiro e handoff.
+5. Evoluir o `admin-web` para consumir login real, sessão autenticada e geração de challenge de vínculo.

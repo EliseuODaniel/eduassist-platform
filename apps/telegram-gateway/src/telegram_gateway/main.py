@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from functools import lru_cache
 
+import httpx
 from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -11,8 +14,12 @@ class Settings(BaseSettings):
     app_env: str = 'development'
     log_level: str = 'INFO'
     port: int = 8000
+    telegram_bot_token: str | None = None
+    telegram_bot_username: str | None = None
     telegram_webhook_secret: str = 'change-me'
     api_core_url: str = 'http://api-core:8000'
+    internal_api_token: str = 'dev-internal-token'
+    telegram_api_base_url: str = 'https://api.telegram.org'
 
 
 @lru_cache
@@ -28,9 +35,75 @@ class HealthResponse(BaseModel):
 
 app = FastAPI(
     title='EduAssist Telegram Gateway',
-    version='0.1.0',
+    version='0.2.0',
     summary='Telegram ingress bootstrap for EduAssist Platform.',
 )
+
+
+def _extract_message(payload: dict[str, object]) -> dict[str, object] | None:
+    for key in ('message', 'edited_message'):
+        value = payload.get(key)
+        if isinstance(value, dict):
+            return value
+    return None
+
+
+def _extract_link_code(text: str) -> str | None:
+    if text.startswith('/start '):
+        payload = text.split(' ', 1)[1].strip()
+        if payload.startswith('link_'):
+            return payload[len('link_') :]
+    if text.startswith('/link '):
+        return text.split(' ', 1)[1].strip()
+    return None
+
+
+async def _send_telegram_message(chat_id: int, text: str) -> None:
+    settings = get_settings()
+    if not settings.telegram_bot_token:
+        return
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(
+                f'{settings.telegram_api_base_url}/bot{settings.telegram_bot_token}/sendMessage',
+                json={'chat_id': chat_id, 'text': text},
+            )
+    except Exception:
+        return
+
+
+async def _consume_link_code(message: dict[str, object], challenge_code: str) -> dict[str, object]:
+    settings = get_settings()
+
+    chat = message.get('chat') if isinstance(message.get('chat'), dict) else {}
+    sender = message.get('from') if isinstance(message.get('from'), dict) else {}
+    chat_id = int(chat['id'])
+
+    payload = {
+        'challenge_code': challenge_code,
+        'telegram_user_id': int(sender['id']) if sender.get('id') is not None else None,
+        'telegram_chat_id': chat_id,
+        'username': sender.get('username'),
+        'first_name': sender.get('first_name'),
+        'last_name': sender.get('last_name'),
+    }
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.post(
+            f'{settings.api_core_url}/v1/internal/telegram/link/consume',
+            headers={'X-Internal-Api-Token': settings.internal_api_token},
+            json=payload,
+        )
+    response.raise_for_status()
+    data = response.json()
+
+    actor_name = data.get('actor', {}).get('full_name', 'usuario')
+    await _send_telegram_message(
+        chat_id,
+        f'Conta vinculada com sucesso a {actor_name}. Agora voce pode usar os fluxos autenticados do bot.',
+    )
+    return data
 
 
 @app.get('/healthz', response_model=HealthResponse)
@@ -44,12 +117,13 @@ async def healthz() -> HealthResponse:
 
 
 @app.get('/meta')
-async def meta() -> dict[str, str]:
+async def meta() -> dict[str, str | None]:
     settings = get_settings()
     return {
         'service': 'telegram-gateway',
         'environment': settings.app_env,
         'apiCoreUrl': settings.api_core_url,
+        'botUsername': settings.telegram_bot_username,
     }
 
 
@@ -72,9 +146,53 @@ async def telegram_webhook(
         raise HTTPException(status_code=401, detail='Invalid Telegram webhook secret.')
 
     payload = await request.json()
-    return {
-        'accepted': True,
-        'service': 'telegram-gateway',
-        'payloadKeys': sorted(payload.keys()),
-    }
+    message = _extract_message(payload if isinstance(payload, dict) else {})
+    if message is None:
+        return {
+            'accepted': True,
+            'service': 'telegram-gateway',
+            'processed': 'noop',
+            'payloadKeys': sorted(payload.keys()) if isinstance(payload, dict) else [],
+        }
 
+    text = message.get('text')
+    if not isinstance(text, str):
+        return {
+            'accepted': True,
+            'service': 'telegram-gateway',
+            'processed': 'non_text_message',
+            'payloadKeys': sorted(payload.keys()),
+        }
+
+    challenge_code = _extract_link_code(text)
+    if challenge_code is None:
+        return {
+            'accepted': True,
+            'service': 'telegram-gateway',
+            'processed': 'message_received',
+            'text': text,
+        }
+
+    try:
+        link_response = await _consume_link_code(message, challenge_code)
+        return {
+            'accepted': True,
+            'service': 'telegram-gateway',
+            'processed': 'telegram_link',
+            'linkResponse': link_response,
+        }
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text
+        chat = message.get('chat') if isinstance(message.get('chat'), dict) else {}
+        if chat.get('id') is not None:
+            await _send_telegram_message(
+                int(chat['id']),
+                'Nao foi possivel concluir o vinculo agora. Gere um novo codigo no portal e tente novamente.',
+            )
+        return {
+            'accepted': True,
+            'service': 'telegram-gateway',
+            'processed': 'telegram_link_error',
+            'statusCode': exc.response.status_code,
+            'detail': detail,
+        }

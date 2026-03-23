@@ -4,7 +4,7 @@ from .calendar import CalendarEvent
 from .conversation import Conversation, Handoff, Message, ToolCall
 from .documents import Document, DocumentChunk, DocumentSet, DocumentVersion, RetrievalLabel
 from .finance import Contract, Invoice, Payment
-from .identity import Role, TelegramAccount, User, UserTelegramLink
+from .identity import FederatedIdentity, Role, TelegramAccount, TelegramLinkChallenge, User, UserTelegramLink
 from .school import (
     Class,
     Enrollment,
@@ -29,6 +29,7 @@ __all__ = [
     'DocumentSet',
     'DocumentVersion',
     'Enrollment',
+    'FederatedIdentity',
     'Grade',
     'GradeItem',
     'Guardian',
@@ -45,6 +46,7 @@ __all__ = [
     'Teacher',
     'TeacherAssignment',
     'TelegramAccount',
+    'TelegramLinkChallenge',
     'ToolCall',
     'User',
     'UserTelegramLink',
