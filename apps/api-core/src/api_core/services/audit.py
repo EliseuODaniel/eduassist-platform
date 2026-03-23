@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, aliased
@@ -11,9 +11,11 @@ from api_core.contracts import (
     ActorContext,
     AuditEventFeedEntry,
     HandoffAlertEntry,
+    HandoffObservabilityOverview,
     HandoffOperationsOverview,
     HandoffOperatorOverviewEntry,
     HandoffQueueOverviewEntry,
+    HandoffTrendPoint,
 )
 from api_core.db.models import (
     AccessDecision,
@@ -41,6 +43,12 @@ from api_core.db.models import (
 from api_core.services.support import calculate_handoff_sla_state
 
 INTERNAL_OPERATIONS_ROLES = frozenset({'staff', 'finance', 'coordinator', 'admin'})
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 def _priority_weight(priority_code: str) -> int:
@@ -411,7 +419,108 @@ def build_handoff_operations_overview(
     ]
     overview.alerts = [entry for _, entry in sorted(alert_candidates, key=lambda item: item[0])[:6]]
     overview.critical_total = len(alert_candidates)
+    overview.observability = build_handoff_observability_overview(session)
     return overview
+
+
+def build_handoff_observability_overview(session: Session) -> HandoffObservabilityOverview:
+    now = datetime.utcnow()
+    now_utc = now.replace(tzinfo=timezone.utc)
+    since_24h = now - timedelta(hours=24)
+    since_7d = now - timedelta(days=7)
+    since_24h_utc = now_utc - timedelta(hours=24)
+    start_of_today = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    timeline_starts = [start_of_today - timedelta(days=offset) for offset in range(6, -1, -1)]
+    timeline = {
+        point.date(): HandoffTrendPoint(
+            period_start=point,
+            label=point.strftime('%d/%m'),
+        )
+        for point in timeline_starts
+    }
+
+    event_rows = session.execute(
+        select(AuditEvent.created_at, AuditEvent.event_type, AuditEvent.metadata_json)
+        .where(AuditEvent.resource_type == 'support_handoff')
+        .where(AuditEvent.created_at >= since_7d)
+        .where(
+            AuditEvent.event_type.in_(
+                (
+                    'support_handoff.created',
+                    'support_handoff.status_updated',
+                )
+            )
+        )
+        .order_by(AuditEvent.created_at.asc())
+    ).all()
+
+    opened_last_24h = 0
+    started_last_24h = 0
+    resolved_last_24h = 0
+    opened_last_7d = 0
+    started_last_7d = 0
+    resolved_last_7d = 0
+
+    for occurred_at, event_type, metadata in event_rows:
+        event_at = _as_utc(occurred_at)
+        bucket = timeline.get(event_at.date())
+        event_status = (metadata or {}).get('status')
+
+        if event_type == 'support_handoff.created':
+            opened_last_7d += 1
+            if event_at >= since_24h_utc:
+                opened_last_24h += 1
+            if bucket is not None:
+                bucket.opened_count += 1
+            continue
+
+        if event_type == 'support_handoff.status_updated' and event_status == 'in_progress':
+            started_last_7d += 1
+            if event_at >= since_24h_utc:
+                started_last_24h += 1
+            if bucket is not None:
+                bucket.started_count += 1
+            continue
+
+        if event_type == 'support_handoff.status_updated' and event_status == 'resolved':
+            resolved_last_7d += 1
+            if event_at >= since_24h_utc:
+                resolved_last_24h += 1
+            if bucket is not None:
+                bucket.resolved_count += 1
+
+    resolved_rows = session.execute(
+        select(Handoff.created_at, Handoff.assigned_at, Handoff.updated_at, Handoff.status)
+        .where(Handoff.updated_at >= since_7d)
+    ).all()
+
+    assignment_durations: list[float] = []
+    resolution_durations: list[float] = []
+    for created_at, assigned_at, updated_at, status in resolved_rows:
+        created_utc = _as_utc(created_at)
+        if assigned_at is not None:
+            assigned_utc = _as_utc(assigned_at)
+            assignment_durations.append(max((assigned_utc - created_utc).total_seconds() / 60, 0.0))
+
+        if status in {'resolved', 'cancelled'}:
+            updated_utc = _as_utc(updated_at)
+            resolution_durations.append(max((updated_utc - created_utc).total_seconds() / 60, 0.0))
+
+    return HandoffObservabilityOverview(
+        opened_last_24h=opened_last_24h,
+        started_last_24h=started_last_24h,
+        resolved_last_24h=resolved_last_24h,
+        opened_last_7d=opened_last_7d,
+        started_last_7d=started_last_7d,
+        resolved_last_7d=resolved_last_7d,
+        avg_assignment_minutes_7d=round(sum(assignment_durations) / len(assignment_durations), 1)
+        if assignment_durations
+        else None,
+        avg_resolution_minutes_7d=round(sum(resolution_durations) / len(resolution_durations), 1)
+        if resolution_durations
+        else None,
+        timeline=[timeline[key.date()] for key in timeline_starts],
+    )
 
 
 def get_foundation_counts(session: Session) -> dict[str, int]:

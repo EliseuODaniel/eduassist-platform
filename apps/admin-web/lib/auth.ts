@@ -136,6 +136,7 @@ export type HandoffOperationsOverview = {
   queues: HandoffQueueOverviewEntry[];
   operators: HandoffOperatorOverviewEntry[];
   alerts: HandoffAlertEntry[];
+  observability: HandoffObservabilityOverview | null;
 };
 
 export type HandoffAlertEntry = {
@@ -152,6 +153,26 @@ export type HandoffAlertEntry = {
   resolution_due_at: string | null;
   sla_state: string;
   alert_flags: string[];
+};
+
+export type HandoffTrendPoint = {
+  period_start: string;
+  label: string;
+  opened_count: number;
+  started_count: number;
+  resolved_count: number;
+};
+
+export type HandoffObservabilityOverview = {
+  opened_last_24h: number;
+  started_last_24h: number;
+  resolved_last_24h: number;
+  opened_last_7d: number;
+  started_last_7d: number;
+  resolved_last_7d: number;
+  avg_assignment_minutes_7d: number | null;
+  avg_resolution_minutes_7d: number | null;
+  timeline: HandoffTrendPoint[];
 };
 
 export type SessionState = {

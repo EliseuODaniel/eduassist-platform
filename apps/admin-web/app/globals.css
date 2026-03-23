@@ -333,6 +333,51 @@ body {
   margin-top: 16px;
 }
 
+.timeline-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.timeline-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(18, 32, 51, 0.08);
+}
+
+.timeline-labels {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.timeline-bars {
+  display: grid;
+  gap: 8px;
+}
+
+.timeline-bar {
+  display: block;
+  min-height: 10px;
+  border-radius: 999px;
+}
+
+.timeline-bar-opened {
+  background: rgba(15, 118, 110, 0.32);
+}
+
+.timeline-bar-started {
+  background: rgba(20, 83, 45, 0.38);
+}
+
+.timeline-bar-resolved {
+  background: rgba(15, 23, 42, 0.3);
+}
+
 .count-item {
   display: grid;
   gap: 8px;
@@ -560,7 +605,8 @@ body {
 
   .account-list li,
   .access-list li,
-  .feed-head {
+  .feed-head,
+  .timeline-labels {
     align-items: flex-start;
     flex-direction: column;
   }

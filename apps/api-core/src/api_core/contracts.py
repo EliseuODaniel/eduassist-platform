@@ -261,6 +261,26 @@ class HandoffAlertEntry(BaseModel):
     alert_flags: list[str] = Field(default_factory=list)
 
 
+class HandoffTrendPoint(BaseModel):
+    period_start: datetime
+    label: str
+    opened_count: int = 0
+    started_count: int = 0
+    resolved_count: int = 0
+
+
+class HandoffObservabilityOverview(BaseModel):
+    opened_last_24h: int = 0
+    started_last_24h: int = 0
+    resolved_last_24h: int = 0
+    opened_last_7d: int = 0
+    started_last_7d: int = 0
+    resolved_last_7d: int = 0
+    avg_assignment_minutes_7d: float | None = None
+    avg_resolution_minutes_7d: float | None = None
+    timeline: list[HandoffTrendPoint] = Field(default_factory=list)
+
+
 class HandoffOperationsOverview(BaseModel):
     open_total: int = 0
     queued_total: int = 0
@@ -272,6 +292,7 @@ class HandoffOperationsOverview(BaseModel):
     queues: list[HandoffQueueOverviewEntry] = Field(default_factory=list)
     operators: list[HandoffOperatorOverviewEntry] = Field(default_factory=list)
     alerts: list[HandoffAlertEntry] = Field(default_factory=list)
+    observability: HandoffObservabilityOverview | None = None
 
 
 class OperationsOverviewResponse(BaseModel):

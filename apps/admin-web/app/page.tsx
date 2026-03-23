@@ -290,6 +290,136 @@ function formatDueLabel(alert: HandoffOperationsOverview['alerts'][number]): str
   return `Prazo: ${formatTimestamp(dueAt)}`;
 }
 
+function formatDurationMinutes(value: number | null): string {
+  if (value === null || Number.isNaN(value)) {
+    return 'Sem base suficiente';
+  }
+
+  if (value >= 60) {
+    const hours = value / 60;
+    return `${hours.toFixed(1)} h`;
+  }
+
+  return `${Math.round(value)} min`;
+}
+
+function renderHandoffObservability(handoffOverview: HandoffOperationsOverview) {
+  const observability = handoffOverview.observability;
+  if (!observability) {
+    return null;
+  }
+
+  const maxTimelineValue = Math.max(
+    1,
+    ...observability.timeline.flatMap((point) => [
+      point.opened_count,
+      point.started_count,
+      point.resolved_count,
+    ]),
+  );
+
+  return (
+    <section className="workspace-grid">
+      <article className="panel">
+        <div className="section-head">
+          <div>
+            <p className="eyebrow">Ritmo operacional</p>
+            <h2>Volume recente de handoffs</h2>
+          </div>
+        </div>
+
+        <div className="summary-grid summary-grid-compact">
+          <article className="metric-card">
+            <p className="label">Abertos 24h</p>
+            <strong>{observability.opened_last_24h}</strong>
+          </article>
+          <article className="metric-card">
+            <p className="label">Assumidos 24h</p>
+            <strong>{observability.started_last_24h}</strong>
+          </article>
+          <article className="metric-card">
+            <p className="label">Resolvidos 24h</p>
+            <strong>{observability.resolved_last_24h}</strong>
+          </article>
+          <article className="metric-card">
+            <p className="label">Abertos 7d</p>
+            <strong>{observability.opened_last_7d}</strong>
+          </article>
+          <article className="metric-card">
+            <p className="label">Assumidos 7d</p>
+            <strong>{observability.started_last_7d}</strong>
+          </article>
+          <article className="metric-card">
+            <p className="label">Resolvidos 7d</p>
+            <strong>{observability.resolved_last_7d}</strong>
+          </article>
+        </div>
+
+        <div className="timeline-list">
+          {observability.timeline.map((point) => (
+            <div className="timeline-row" key={point.period_start}>
+              <div className="timeline-labels">
+                <strong>{point.label}</strong>
+                <span className="muted-copy">
+                  {point.opened_count} abertos · {point.started_count} assumidos · {point.resolved_count} resolvidos
+                </span>
+              </div>
+              <div className="timeline-bars">
+                <span
+                  className="timeline-bar timeline-bar-opened"
+                  style={{ width: `${(point.opened_count / maxTimelineValue) * 100}%` }}
+                />
+                <span
+                  className="timeline-bar timeline-bar-started"
+                  style={{ width: `${(point.started_count / maxTimelineValue) * 100}%` }}
+                />
+                <span
+                  className="timeline-bar timeline-bar-resolved"
+                  style={{ width: `${(point.resolved_count / maxTimelineValue) * 100}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </article>
+
+      <article className="panel">
+        <div className="section-head">
+          <div>
+            <p className="eyebrow">Tempo de resposta</p>
+            <h2>Eficiência operacional recente</h2>
+          </div>
+        </div>
+
+        <div className="summary-grid summary-grid-compact">
+          <article className="metric-card">
+            <p className="label">Atribuição média 7d</p>
+            <strong>{formatDurationMinutes(observability.avg_assignment_minutes_7d)}</strong>
+          </article>
+          <article className="metric-card">
+            <p className="label">Resolução média 7d</p>
+            <strong>{formatDurationMinutes(observability.avg_resolution_minutes_7d)}</strong>
+          </article>
+          <article className="metric-card">
+            <p className="label">Backlog crítico</p>
+            <strong>{handoffOverview.critical_total}</strong>
+          </article>
+          <article className="metric-card">
+            <p className="label">Tickets sem dono</p>
+            <strong>{handoffOverview.unassigned_total}</strong>
+          </article>
+        </div>
+
+        <p className="muted-copy section-copy">
+          Esses indicadores usam eventos auditados do próprio domínio de handoff para mostrar ritmo
+          de abertura, assunção e resolução, além do tempo médio até alguém assumir ou concluir um
+          atendimento.
+        </p>
+      </article>
+    </section>
+  );
+}
+
 function renderHandoffAlertFeed(handoffOverview: HandoffOperationsOverview) {
   return (
     <section className="panel panel-strong section-stack">
@@ -415,6 +545,8 @@ function renderHandoffOverview(handoffOverview: HandoffOperationsOverview) {
           </Link>
         </div>
       </section>
+
+      {renderHandoffObservability(handoffOverview)}
 
       {renderHandoffAlertFeed(handoffOverview)}
 
