@@ -18,7 +18,7 @@ Estado atual:
   - consulta protegida
   - handoff humano
   - verificacao basica de `Tempo`, `Grafana`, `Loki` e `Prometheus`
-  - validacao dos dashboards `EduAssist Tracing Overview` e `EduAssist Metrics Overview`
+  - validacao dos dashboards `EduAssist Tracing Overview`, `EduAssist Metrics Overview` e `EduAssist Ops Control Tower`
   - validacao das metricas OTEL de `policy`, `retrieval`, `handoff` e `orquestracao`
   - validacao dos gauges vivos de backlog, idade do backlog, prioridade e handoffs sem responsavel
   - validacao da paginacao da fila humana em `GET /v1/support/handoffs`

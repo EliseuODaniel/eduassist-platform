@@ -171,6 +171,17 @@ def main() -> int:
     )
     print('[ok] grafana metrics dashboard')
 
+    ops_dashboard_status, _, ops_dashboard_payload = request(
+        'GET',
+        f'{settings.grafana_url}/api/search?query=EduAssist%20Ops%20Control%20Tower',
+        headers=grafana_basic_auth_header(settings),
+    )
+    assert_condition(
+        ops_dashboard_status == 200 and isinstance(ops_dashboard_payload, list) and ops_dashboard_payload,
+        'grafana_ops_dashboard_missing',
+    )
+    print('[ok] grafana ops dashboard')
+
     public_trace = wait_for_trace_span(
         settings, public_trace_id, 'eduassist.retrieval.hybrid_search'
     )

@@ -118,7 +118,7 @@ Status atual:
 - o `Prometheus` já responde em `http://localhost:9090` e raspa o endpoint de metricas do collector;
 - o `Loki` já responde em `http://localhost:3100` e recebe logs dos containers via `Promtail`;
 - o `Grafana` já sobe com datasources de `Tempo`, `Loki` e `Prometheus` provisionados em `http://localhost:3004`;
-- o `Grafana` agora também provisiona os dashboards `EduAssist Tracing Overview` e `EduAssist Metrics Overview`;
+- o `Grafana` agora também provisiona os dashboards `EduAssist Tracing Overview`, `EduAssist Metrics Overview` e `EduAssist Ops Control Tower`;
 - o dashboard de metricas já mostra backlog atual, handoffs com `SLA` estourado, tickets sem responsavel, distribuicao por fila e carga ativa por operador;
 - `X-Trace-Id` e `X-Span-Id` já são devolvidos nas respostas dos serviços Python instrumentados;
 - a observabilidade local agora cobre traces, logs e metricas centralizadas.
@@ -290,6 +290,7 @@ Uso rápido do drill operacional:
 - `GET /` no `Grafana` em `http://localhost:3004`
 - dashboard provisionado: `EduAssist / EduAssist Tracing Overview` no `Grafana`
 - dashboard provisionado: `EduAssist / EduAssist Metrics Overview` no `Grafana`
+- dashboard provisionado: `EduAssist / EduAssist Ops Control Tower` no `Grafana`
 
 Observacao sobre o pipeline documental local:
 

@@ -159,6 +159,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - a stack de observabilidade agora também expõe metricas de dominio para `policy`, `retrieval`, `handoff` e `orquestracao`, com dashboard provisionado em `Grafana` para acompanhamento analitico;
 - a stack de observabilidade agora também expõe gauges operacionais vivos da fila humana, incluindo backlog atual, tickets sem responsavel, saturacao por fila e carga por operador;
 - a stack de observabilidade agora também expõe gauges operacionais vivos para envelhecimento do backlog e distribuicao de prioridade por fila humana;
+- o `Grafana` agora também conta com o dashboard `EduAssist Ops Control Tower`, focado em backlog, breaches, envelhecimento, prioridade e carga da equipe humana;
 - o stack local agora também inclui `Loki + Promtail`, com ingestao dos logs dos containers do Compose para investigacao centralizada no `Grafana`;
 - o runtime dos serviços que acessam o banco agora pode ser executado com um papel dedicado de aplicação (`eduassist_app`), separado do superuser administrativo usado para migrações e seeds;
 - o `api-core` agora aplica contexto de ator por sessão e o banco já reforça acesso sensível com `PostgreSQL RLS` ativo em tabelas acadêmicas e financeiras selecionadas;
