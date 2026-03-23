@@ -44,6 +44,26 @@ function formatQueue(queueName: string): string {
   return labels[queueName] ?? queueName;
 }
 
+function formatPriority(priorityCode: string): string {
+  const labels: Record<string, string> = {
+    urgent: 'Urgente',
+    high: 'Alta prioridade',
+    standard: 'Prioridade padrão',
+  };
+  return labels[priorityCode] ?? priorityCode;
+}
+
+function formatSlaState(slaState: string): string {
+  const labels: Record<string, string> = {
+    on_track: 'SLA em dia',
+    attention: 'SLA em atenção',
+    breached: 'SLA estourado',
+    closed: 'SLA encerrado',
+    unknown: 'SLA indefinido',
+  };
+  return labels[slaState] ?? slaState;
+}
+
 export function SupportHandoffPanel({
   items,
   counts,
@@ -144,6 +164,8 @@ export function SupportHandoffPanel({
 
                 <div className="tag-row">
                   <span className="event-tag">Canal: {item.channel}</span>
+                  <span className="event-tag">{formatPriority(item.priority_code)}</span>
+                  <span className="event-tag">{formatSlaState(item.sla_state)}</span>
                   {item.requester_name ? (
                     <span className="event-tag">
                       Solicitante: {item.requester_name}
@@ -151,6 +173,13 @@ export function SupportHandoffPanel({
                     </span>
                   ) : (
                     <span className="event-tag">Solicitante: visitante do bot</span>
+                  )}
+                  {item.assigned_operator_name ? (
+                    <span className="event-tag">
+                      Responsável: {item.assigned_operator_name}
+                    </span>
+                  ) : (
+                    <span className="event-tag">Responsável: fila livre</span>
                   )}
                   <span className="event-tag">Atualizado: {formatDateTime(item.updated_at)}</span>
                 </div>

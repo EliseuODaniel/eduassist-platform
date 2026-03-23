@@ -145,9 +145,9 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o `telegram-gateway` já responde consultas protegidas reais para contas vinculadas: resumo acadêmico com filtros por disciplina e bimestre, resumo financeiro com filtros por status e panorama multi-aluno para responsáveis, além de grade docente com consultas por turmas, disciplinas e horário para professores;
 - o `admin-web` já expõe login real via `Keycloak` com OIDC + PKCE, leitura de sessão autenticada no `api-core`, emissão de challenge de vínculo para o Telegram e overview operacional autenticado com visão pessoal ou global conforme o papel;
 - o `api-core` já expõe `GET /v1/operations/overview` com métricas, feed de auditoria, feed de decisões de acesso e contagens estruturais para papéis internos;
-- o `api-core` já expõe a fila de `handoffs` humanos com escopo pessoal ou global, além de atualização de status por perfis operacionais;
+- o `api-core` já expõe a fila de `handoffs` humanos com escopo pessoal ou global, incluindo prioridade, SLA mockado e atribuição operacional;
 - o `ai-orchestrator` já cria handoffs reais ao entrar em modo `handoff`, devolvendo protocolo e fila ao usuário no Telegram;
-- o `admin-web` já renderiza a fila de handoffs, abre o detalhe completo da conversa e permite registrar nota operacional, iniciar ou resolver atendimentos para perfis internos;
+- o `admin-web` já renderiza a fila de handoffs, abre o detalhe completo da conversa e permite registrar nota operacional, assumir atribuição, iniciar ou resolver atendimentos para perfis internos;
 - seed foundation idempotente já disponível em `tools/mockgen`;
 - sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;
@@ -161,6 +161,6 @@ Expansões já aprovadas para a próxima etapa:
 
 1. Expandir a seed para cenários mais amplos de tickets, filas, operadores e resoluções.
 2. Adicionar observabilidade ponta a ponta para tracing de retrieval, tool calls, handoffs e decisões de policy.
-3. Evoluir o handoff com atribuição e SLA mockado.
-4. Levar a revisão detalhada do atendimento para filtros, busca e histórico mais rico no `admin-web`.
+3. Levar a revisão detalhada do atendimento para filtros, busca e histórico mais rico no `admin-web`.
+4. Evoluir o handoff com fila por operador, SLA breach feed e métricas operacionais agregadas.
 5. Preparar benchmark comparativo para `GraphRAG` seletivo sobre o corpus institucional.

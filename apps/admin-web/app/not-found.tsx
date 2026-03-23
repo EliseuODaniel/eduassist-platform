@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function NotFound() {
   return (
     <main className="console-shell">
@@ -10,9 +12,9 @@ export default function NotFound() {
             ou volte para a home autenticada.
           </p>
         </div>
-        <a className="primary-button" href="/">
+        <Link className="primary-button" href="/">
           Voltar ao painel
-        </a>
+        </Link>
       </section>
     </main>
   );

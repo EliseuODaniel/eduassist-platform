@@ -43,6 +43,26 @@ function formatQueue(queueName: string): string {
   return labels[queueName] ?? queueName;
 }
 
+function formatPriority(priorityCode: string): string {
+  const labels: Record<string, string> = {
+    urgent: 'Urgente',
+    high: 'Alta prioridade',
+    standard: 'Prioridade padrão',
+  };
+  return labels[priorityCode] ?? priorityCode;
+}
+
+function formatSlaState(slaState: string): string {
+  const labels: Record<string, string> = {
+    on_track: 'SLA em dia',
+    attention: 'SLA em atenção',
+    breached: 'SLA estourado',
+    closed: 'SLA encerrado',
+    unknown: 'SLA indefinido',
+  };
+  return labels[slaState] ?? slaState;
+}
+
 function formatSender(senderType: string): string {
   const labels: Record<string, string> = {
     user: 'Usuário',
@@ -64,7 +84,12 @@ export function SupportHandoffDetailPanel({ detail, canManage }: Props) {
     setError(null);
   }, [detail.item.handoff_id, detail.item.updated_at]);
 
-  function submitUpdate(status: string) {
+  function submitUpdate(payload: {
+    status?: string;
+    assigned_user_id?: string;
+    clear_assignment?: boolean;
+    includeNote?: boolean;
+  }) {
     startTransition(async () => {
       setError(null);
 
@@ -75,8 +100,10 @@ export function SupportHandoffDetailPanel({ detail, canManage }: Props) {
           Accept: 'application/json',
         },
         body: JSON.stringify({
-          status,
-          operator_note: note.trim() || undefined,
+          status: payload.status,
+          assigned_user_id: payload.assigned_user_id,
+          clear_assignment: payload.clear_assignment,
+          operator_note: payload.includeNote && note.trim() ? note.trim() : undefined,
         }),
       });
 
@@ -102,7 +129,7 @@ export function SupportHandoffDetailPanel({ detail, canManage }: Props) {
           <h2>{detail.item.ticket_code}</h2>
           <p className="muted-copy">
             {formatQueue(detail.item.queue_name)} · {formatStatus(detail.item.status)} · Conversa{' '}
-            {formatStatus(detail.conversation_status)}
+            {formatStatus(detail.conversation_status)} · {formatSlaState(detail.item.sla_state)}
           </p>
         </div>
         <span
@@ -129,6 +156,18 @@ export function SupportHandoffDetailPanel({ detail, canManage }: Props) {
           </strong>
         </div>
         <div>
+          <p className="label">Prioridade</p>
+          <strong>{formatPriority(detail.item.priority_code)}</strong>
+        </div>
+        <div>
+          <p className="label">Responsável</p>
+          <strong>
+            {detail.item.assigned_operator_name
+              ? `${detail.item.assigned_operator_name}${detail.item.assigned_operator_external_code ? ` · ${detail.item.assigned_operator_external_code}` : ''}`
+              : 'Fila livre'}
+          </strong>
+        </div>
+        <div>
           <p className="label">Criado em</p>
           <strong>{formatDateTime(detail.item.created_at)}</strong>
         </div>
@@ -136,6 +175,27 @@ export function SupportHandoffDetailPanel({ detail, canManage }: Props) {
           <p className="label">Última atualização</p>
           <strong>{formatDateTime(detail.item.updated_at)}</strong>
         </div>
+        <div>
+          <p className="label">Primeira resposta até</p>
+          <strong>
+            {detail.item.response_due_at ? formatDateTime(detail.item.response_due_at) : 'n/d'}
+          </strong>
+        </div>
+        <div>
+          <p className="label">Resolução até</p>
+          <strong>
+            {detail.item.resolution_due_at ? formatDateTime(detail.item.resolution_due_at) : 'n/d'}
+          </strong>
+        </div>
+      </div>
+
+      <div className="tag-row">
+        <span className="event-tag">{formatSlaState(detail.item.sla_state)}</span>
+        {detail.item.assigned_at ? (
+          <span className="event-tag">Assumido em: {formatDateTime(detail.item.assigned_at)}</span>
+        ) : (
+          <span className="event-tag">Ainda sem operador atribuído</span>
+        )}
       </div>
 
       <div className="section-block">
@@ -182,18 +242,53 @@ export function SupportHandoffDetailPanel({ detail, canManage }: Props) {
           <div className="action-row">
             <button
               className="secondary-button"
-              disabled={isPending}
-              onClick={() => submitUpdate(detail.item.status)}
+              disabled={isPending || note.trim().length === 0}
+              onClick={() => submitUpdate({ includeNote: true })}
               type="button"
             >
               {isPending ? 'Salvando...' : 'Salvar nota'}
             </button>
 
+            {detail.item.status !== 'resolved' && detail.item.status !== 'cancelled' ? (
+              <button
+                className="secondary-button"
+                disabled={isPending}
+                onClick={() =>
+                  submitUpdate({
+                    assigned_user_id: detail.actor.user_id,
+                  })
+                }
+                type="button"
+              >
+                {isPending ? 'Atualizando...' : 'Assumir atendimento'}
+              </button>
+            ) : null}
+
+            {detail.item.assigned_user_id ? (
+              <button
+                className="secondary-button"
+                disabled={isPending}
+                onClick={() =>
+                  submitUpdate({
+                    clear_assignment: true,
+                  })
+                }
+                type="button"
+              >
+                {isPending ? 'Atualizando...' : 'Liberar atribuição'}
+              </button>
+            ) : null}
+
             {detail.item.status === 'queued' ? (
               <button
                 className="secondary-button"
                 disabled={isPending}
-                onClick={() => submitUpdate('in_progress')}
+                onClick={() =>
+                  submitUpdate({
+                    status: 'in_progress',
+                    includeNote: true,
+                  })
+                }
                 type="button"
               >
                 {isPending ? 'Atualizando...' : 'Iniciar atendimento'}
@@ -204,7 +299,12 @@ export function SupportHandoffDetailPanel({ detail, canManage }: Props) {
               <button
                 className="primary-button"
                 disabled={isPending}
-                onClick={() => submitUpdate('resolved')}
+                onClick={() =>
+                  submitUpdate({
+                    status: 'resolved',
+                    includeNote: true,
+                  })
+                }
                 type="button"
               >
                 {isPending ? 'Atualizando...' : 'Marcar como resolvido'}

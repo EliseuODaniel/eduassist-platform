@@ -107,7 +107,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - login web autenticado com `Keycloak`;
 - leitura de sessão autenticada no `api-core`;
 - leitura de overview operacional autenticado no `api-core`;
-- leitura e gestão da fila de handoffs humanos no `api-core`, com detalhe da conversa e nota operacional;
+- leitura e gestão da fila de handoffs humanos no `api-core`, com detalhe da conversa, nota operacional, atribuição e SLA mockado;
 - geração de challenge de vínculo para o Telegram;
 - curadoria documental;
 - revisão de conversas;

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, aliased
@@ -13,6 +14,7 @@ from api_core.contracts import (
 )
 from api_core.db.models import Conversation, Handoff, Message, User
 
+INTERNAL_OPERATOR_ROLES = frozenset({'staff', 'finance', 'coordinator', 'admin'})
 OPEN_HANDOFF_STATUSES = frozenset({'queued', 'in_progress'})
 SUPPORTED_HANDOFF_STATUSES = frozenset({'queued', 'in_progress', 'resolved', 'cancelled'})
 
@@ -22,7 +24,7 @@ def build_ticket_code(*, handoff_id: uuid.UUID, created_at) -> str:
 
 
 def resolve_support_scope(actor: ActorContext) -> str:
-    if actor.role_code in {'staff', 'finance', 'coordinator', 'admin'}:
+    if actor.role_code in INTERNAL_OPERATOR_ROLES:
         return 'global'
     return 'self'
 
@@ -34,6 +36,56 @@ def _truncate_excerpt(text: str | None, *, limit: int = 180) -> str | None:
     if len(compact) <= limit:
         return compact
     return f'{compact[: limit - 1].rstrip()}...'
+
+
+def _priority_for_queue(queue_name: str) -> str:
+    normalized = queue_name.strip().lower()
+    priorities = {
+        'coordenacao': 'high',
+        'financeiro': 'high',
+        'secretaria': 'standard',
+        'atendimento': 'standard',
+    }
+    return priorities.get(normalized, 'standard')
+
+
+def _sla_deadlines(*, priority_code: str, anchor: datetime) -> tuple[datetime, datetime]:
+    if priority_code == 'urgent':
+        return anchor + timedelta(minutes=30), anchor + timedelta(hours=4)
+    if priority_code == 'high':
+        return anchor + timedelta(hours=1), anchor + timedelta(hours=8)
+    return anchor + timedelta(hours=4), anchor + timedelta(hours=24)
+
+
+def _as_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _sla_state_for_handoff(handoff: Handoff) -> str:
+    if handoff.status in {'resolved', 'cancelled'}:
+        return 'closed'
+
+    now = datetime.now(timezone.utc)
+    started_at = _as_utc(handoff.created_at)
+    target = _as_utc(handoff.response_due_at if handoff.status == 'queued' else handoff.resolution_due_at)
+    if target is None:
+        return 'unknown'
+
+    remaining = target - now
+    if remaining <= timedelta(0):
+        return 'breached'
+
+    if started_at is None:
+        return 'attention' if remaining <= timedelta(minutes=30) else 'on_track'
+
+    total_window = target - started_at
+    if total_window > timedelta(0) and remaining <= total_window / 4:
+        return 'attention'
+    return 'on_track'
 
 
 def _load_latest_user_messages(
@@ -60,9 +112,9 @@ def _load_latest_user_messages(
 
 def _serialize_handoff_rows(
     session: Session,
-    rows: list[tuple[Handoff, Conversation, str | None, str | None]],
+    rows: list[tuple[Handoff, Conversation, str | None, str | None, str | None, str | None]],
 ) -> list[SupportHandoffEntry]:
-    conversation_ids = [conversation.id for _, conversation, _, _ in rows]
+    conversation_ids = [conversation.id for _, conversation, _, _, _, _ in rows]
     latest_messages = _load_latest_user_messages(session, conversation_ids=conversation_ids)
 
     return [
@@ -73,16 +125,53 @@ def _serialize_handoff_rows(
             channel=conversation.channel,
             external_thread_id=conversation.external_thread_id,
             queue_name=handoff.queue_name,
+            priority_code=handoff.priority_code,
             status=handoff.status,
             summary=handoff.summary,
             requester_name=requester_name,
             requester_role=requester_role,
+            assigned_user_id=handoff.assigned_user_id,
+            assigned_operator_name=assigned_operator_name,
+            assigned_operator_external_code=assigned_operator_external_code,
+            assigned_at=handoff.assigned_at,
+            response_due_at=handoff.response_due_at,
+            resolution_due_at=handoff.resolution_due_at,
+            sla_state=_sla_state_for_handoff(handoff),
             last_message_excerpt=_truncate_excerpt(latest_messages.get(conversation.id)),
             created_at=handoff.created_at,
             updated_at=handoff.updated_at,
         )
-        for handoff, conversation, requester_name, requester_role in rows
+        for (
+            handoff,
+            conversation,
+            requester_name,
+            requester_role,
+            assigned_operator_name,
+            assigned_operator_external_code,
+        ) in rows
     ]
+
+
+def _base_handoff_stmt(*, actor: ActorContext, scope: str):
+    requester = aliased(User)
+    assignee = aliased(User)
+    stmt = (
+        select(
+            Handoff,
+            Conversation,
+            requester.full_name,
+            requester.role_code,
+            assignee.full_name,
+            assignee.external_code,
+        )
+        .join(Conversation, Conversation.id == Handoff.conversation_id)
+        .outerjoin(requester, requester.id == Conversation.user_id)
+        .outerjoin(assignee, assignee.id == Handoff.assigned_user_id)
+    )
+
+    if scope == 'self':
+        stmt = stmt.where(Conversation.user_id == actor.user_id)
+    return stmt
 
 
 def list_support_handoffs(
@@ -92,18 +181,10 @@ def list_support_handoffs(
     scope: str,
     limit: int = 10,
 ) -> tuple[dict[str, int], list[SupportHandoffEntry]]:
-    requester = aliased(User)
-    base_stmt = (
-        select(Handoff, Conversation, requester.full_name, requester.role_code)
-        .join(Conversation, Conversation.id == Handoff.conversation_id)
-        .outerjoin(requester, requester.id == Conversation.user_id)
-    )
-
-    if scope == 'self':
-        base_stmt = base_stmt.where(Conversation.user_id == actor.user_id)
-
     rows = session.execute(
-        base_stmt.order_by(Handoff.updated_at.desc(), Handoff.created_at.desc()).limit(limit)
+        _base_handoff_stmt(actor=actor, scope=scope)
+        .order_by(Handoff.updated_at.desc(), Handoff.created_at.desc())
+        .limit(limit)
     ).all()
 
     count_stmt = (
@@ -126,23 +207,17 @@ def get_support_handoff_detail(
     scope: str,
     handoff_id: uuid.UUID,
 ) -> tuple[SupportHandoffEntry, str, list[SupportConversationMessageEntry]] | None:
-    requester = aliased(User)
-    stmt = (
-        select(Handoff, Conversation, requester.full_name, requester.role_code)
-        .join(Conversation, Conversation.id == Handoff.conversation_id)
-        .outerjoin(requester, requester.id == Conversation.user_id)
-        .where(Handoff.id == handoff_id)
-    )
-
-    if scope == 'self':
-        stmt = stmt.where(Conversation.user_id == actor.user_id)
-
-    row = session.execute(stmt).first()
+    row = session.execute(
+        _base_handoff_stmt(actor=actor, scope=scope).where(Handoff.id == handoff_id)
+    ).first()
     if row is None:
         return None
 
-    handoff, conversation, requester_name, requester_role = row
-    item = _serialize_handoff_rows(session, [(handoff, conversation, requester_name, requester_role)])[0]
+    handoff, conversation, requester_name, requester_role, assigned_name, assigned_code = row
+    item = _serialize_handoff_rows(
+        session,
+        [(handoff, conversation, requester_name, requester_role, assigned_name, assigned_code)],
+    )[0]
     messages = [
         SupportConversationMessageEntry(
             message_id=message.id,
@@ -212,18 +287,35 @@ def create_support_handoff(
         .limit(1)
     ).scalar_one_or_none()
 
+    priority_code = _priority_for_queue(queue_name)
     created = handoff is None
     if handoff is None:
         handoff = Handoff(
             conversation_id=conversation.id,
             queue_name=queue_name,
+            priority_code=priority_code,
             status='queued',
             summary=summary,
         )
         session.add(handoff)
+        session.flush()
+        response_due_at, resolution_due_at = _sla_deadlines(
+            priority_code=priority_code,
+            anchor=handoff.created_at,
+        )
+        handoff.response_due_at = response_due_at
+        handoff.resolution_due_at = resolution_due_at
     else:
         handoff.queue_name = queue_name
+        handoff.priority_code = priority_code
         handoff.summary = summary
+        if handoff.response_due_at is None or handoff.resolution_due_at is None:
+            response_due_at, resolution_due_at = _sla_deadlines(
+                priority_code=priority_code,
+                anchor=handoff.created_at,
+            )
+            handoff.response_due_at = response_due_at
+            handoff.resolution_due_at = resolution_due_at
 
     conversation.status = 'open'
     session.flush()
@@ -233,8 +325,16 @@ def create_support_handoff(
     ).first()
     requester_name = requester[0] if requester else None
     requester_role = requester[1] if requester else None
+    assignee = session.execute(
+        select(User.full_name, User.external_code).where(User.id == handoff.assigned_user_id)
+    ).first()
+    assigned_name = assignee[0] if assignee else None
+    assigned_code = assignee[1] if assignee else None
 
-    item = _serialize_handoff_rows(session, [(handoff, conversation, requester_name, requester_role)])[0]
+    item = _serialize_handoff_rows(
+        session,
+        [(handoff, conversation, requester_name, requester_role, assigned_name, assigned_code)],
+    )[0]
     return SupportHandoffCreateResponse(created=created, deduplicated=not created, item=item)
 
 
@@ -242,25 +342,62 @@ def update_support_handoff_status(
     session: Session,
     *,
     handoff_id: uuid.UUID,
-    status: str,
+    actor_user_id: uuid.UUID | None,
+    status: str | None = None,
     operator_note: str | None = None,
+    assigned_user_id: uuid.UUID | None = None,
+    clear_assignment: bool = False,
 ) -> SupportHandoffEntry | None:
-    if status not in SUPPORTED_HANDOFF_STATUSES:
+    if status is not None and status not in SUPPORTED_HANDOFF_STATUSES:
         raise ValueError('unsupported_handoff_status')
+    if assigned_user_id is not None and clear_assignment:
+        raise ValueError('conflicting_assignment_change')
+    if status is None and not operator_note and assigned_user_id is None and not clear_assignment:
+        raise ValueError('empty_handoff_update')
 
     requester = aliased(User)
+    assignee_alias = aliased(User)
     row = session.execute(
-        select(Handoff, Conversation, requester.full_name, requester.role_code)
+        select(
+            Handoff,
+            Conversation,
+            requester.full_name,
+            requester.role_code,
+            assignee_alias.full_name,
+            assignee_alias.external_code,
+        )
         .join(Conversation, Conversation.id == Handoff.conversation_id)
         .outerjoin(requester, requester.id == Conversation.user_id)
+        .outerjoin(assignee_alias, assignee_alias.id == Handoff.assigned_user_id)
         .where(Handoff.id == handoff_id)
     ).first()
     if row is None:
         return None
 
-    handoff, conversation, requester_name, requester_role = row
-    handoff.status = status
-    conversation.status = 'closed' if status in {'resolved', 'cancelled'} else 'open'
+    handoff, conversation, requester_name, requester_role, assigned_name, assigned_code = row
+
+    if clear_assignment:
+        handoff.assigned_user_id = None
+        handoff.assigned_at = None
+    elif assigned_user_id is not None:
+        assignee = session.get(User, assigned_user_id)
+        if assignee is None or assignee.role_code not in INTERNAL_OPERATOR_ROLES:
+            raise ValueError('unsupported_assignee')
+        handoff.assigned_user_id = assignee.id
+        handoff.assigned_at = datetime.now(timezone.utc)
+        assigned_name = assignee.full_name
+        assigned_code = assignee.external_code
+    elif status == 'in_progress' and handoff.assigned_user_id is None and actor_user_id is not None:
+        assignee = session.get(User, actor_user_id)
+        if assignee is not None and assignee.role_code in INTERNAL_OPERATOR_ROLES:
+            handoff.assigned_user_id = assignee.id
+            handoff.assigned_at = datetime.now(timezone.utc)
+            assigned_name = assignee.full_name
+            assigned_code = assignee.external_code
+
+    if status is not None:
+        handoff.status = status
+        conversation.status = 'closed' if status in {'resolved', 'cancelled'} else 'open'
 
     if operator_note:
         session.add(
@@ -272,4 +409,7 @@ def update_support_handoff_status(
         )
 
     session.flush()
-    return _serialize_handoff_rows(session, [(handoff, conversation, requester_name, requester_role)])[0]
+    return _serialize_handoff_rows(
+        session,
+        [(handoff, conversation, requester_name, requester_role, assigned_name, assigned_code)],
+    )[0]

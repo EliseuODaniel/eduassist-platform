@@ -511,6 +511,8 @@ async def support_handoff_update(
             'resource_type': 'support_handoff',
             'handoff_id': str(handoff_id),
             'target_status': payload.status,
+            'assigned_user_id': str(payload.assigned_user_id) if payload.assigned_user_id else None,
+            'clear_assignment': payload.clear_assignment,
         },
     )
 
@@ -530,8 +532,11 @@ async def support_handoff_update(
                 updated_item = update_support_handoff_status(
                     session,
                     handoff_id=handoff_id,
+                    actor_user_id=actor.user_id,
                     status=payload.status,
                     operator_note=payload.operator_note,
+                    assigned_user_id=payload.assigned_user_id,
+                    clear_assignment=payload.clear_assignment,
                 )
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -546,9 +551,14 @@ async def support_handoff_update(
                 resource_type='support_handoff',
                 resource_id=str(handoff_id),
                 metadata={
-                    'status': payload.status,
+                    'status': payload.status or updated_item.status,
                     'queue_name': updated_item.queue_name,
                     'operator_note_attached': bool(payload.operator_note and payload.operator_note.strip()),
+                    'priority_code': updated_item.priority_code,
+                    'assigned_user_id': str(updated_item.assigned_user_id)
+                    if updated_item.assigned_user_id
+                    else None,
+                    'clear_assignment': payload.clear_assignment,
                 },
             )
 
@@ -593,6 +603,7 @@ async def internal_support_handoff_create(
             resource_id=str(response_payload.item.handoff_id),
             metadata={
                 'queue_name': response_payload.item.queue_name,
+                'priority_code': response_payload.item.priority_code,
                 'channel': response_payload.item.channel,
                 'conversation_external_id': response_payload.item.external_thread_id,
                 'deduplicated': response_payload.deduplicated,

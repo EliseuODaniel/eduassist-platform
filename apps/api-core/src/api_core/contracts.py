@@ -243,8 +243,10 @@ class InternalSupportHandoffCreateRequest(BaseModel):
 
 
 class SupportHandoffStatusUpdateRequest(BaseModel):
-    status: str
+    status: str | None = None
     operator_note: str | None = None
+    assigned_user_id: uuid.UUID | None = None
+    clear_assignment: bool = False
 
 
 class SupportHandoffEntry(BaseModel):
@@ -254,10 +256,18 @@ class SupportHandoffEntry(BaseModel):
     channel: str
     external_thread_id: str
     queue_name: str
+    priority_code: str
     status: str
     summary: str
     requester_name: str | None = None
     requester_role: str | None = None
+    assigned_user_id: uuid.UUID | None = None
+    assigned_operator_name: str | None = None
+    assigned_operator_external_code: str | None = None
+    assigned_at: datetime | None = None
+    response_due_at: datetime | None = None
+    resolution_due_at: datetime | None = None
+    sla_state: str = 'unknown'
     last_message_excerpt: str | None = None
     created_at: datetime
     updated_at: datetime

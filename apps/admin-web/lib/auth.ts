@@ -120,10 +120,18 @@ export type SupportHandoffItem = {
   channel: string;
   external_thread_id: string;
   queue_name: string;
+  priority_code: string;
   status: string;
   summary: string;
   requester_name: string | null;
   requester_role: string | null;
+  assigned_user_id: string | null;
+  assigned_operator_name: string | null;
+  assigned_operator_external_code: string | null;
+  assigned_at: string | null;
+  response_due_at: string | null;
+  resolution_due_at: string | null;
+  sla_state: string;
   last_message_excerpt: string | null;
   created_at: string;
   updated_at: string;
