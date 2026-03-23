@@ -1,0 +1,140 @@
+# Operação Local e Estratégia de Desenvolvimento
+
+## 1. Objetivo
+
+Definir como o sistema deve ser executado localmente durante desenvolvimento e testes.
+
+## 2. Perfil da máquina observado
+
+Durante o planejamento, o ambiente local reportou:
+
+- `Ubuntu 24.04.3 LTS`
+- `WSL2`
+- `32 vCPUs`
+- `~15 GiB` de RAM visível ao Linux
+- `NVIDIA RTX 4070 Laptop GPU` com `8 GiB` de VRAM
+- `~893 GiB` livres em disco
+
+Observação:
+
+- o usuário informou `32 GiB` de RAM na máquina;
+- o Linux no WSL estava vendo aproximadamente `15 GiB`;
+- portanto, o planejamento local deve caber no orçamento efetivamente visível no ambiente Linux.
+
+## 3. Estado atual do runtime
+
+Foi detectado:
+
+- `git` e `gh` funcionais;
+- `docker` e `kubectl` apontando para binários do Docker Desktop via `/mnt/wsl/...`;
+- erro de `Input/output error` ao invocar esses binários.
+
+Implicação:
+
+- antes da implementação, será necessário corrigir a integração `Docker Desktop <-> WSL2`.
+
+## 4. Estratégia de ambientes
+
+### `compose:core`
+
+Serviços:
+
+- postgres
+- redis
+- minio
+- keycloak
+- opa
+- api-core
+- telegram-gateway
+- ai-orchestrator
+- worker
+- admin-web
+
+Uso:
+
+- desenvolvimento diário;
+- testes funcionais essenciais.
+
+### `compose:observability`
+
+Serviços:
+
+- otel-collector
+- grafana
+- loki
+- tempo
+
+Uso:
+
+- tracing, logs e debugging operacional.
+
+### `compose:full`
+
+Combina:
+
+- `core + observability + tunnel helper`
+
+## 5. Orçamento de recursos
+
+Meta de memória:
+
+- `core`: 6-8 GiB
+- `observability`: +2-3 GiB
+- `full`: 9-11 GiB
+
+Isso preserva margem de segurança no ambiente atual.
+
+## 6. Exposição do Telegram webhook
+
+Opções:
+
+- `Cloudflare Tunnel`
+- `ngrok`
+
+Recomendação inicial:
+
+- usar o mais simples e estável no ambiente local;
+- versionar instruções, não credenciais.
+
+## 7. Kubernetes local
+
+Uso posterior:
+
+- `k3d` ou `kind`
+
+Condição:
+
+- somente após o stack Compose estar estável;
+- não é requisito para a primeira entrega funcional.
+
+## 8. Estrutura operacional desejada
+
+- `Makefile` ou task runner único
+- perfis de ambiente
+- seed data reproduzível
+- bootstrap de auth
+- bootstrap de docs
+- smoke tests
+
+## 9. Variáveis de ambiente previstas
+
+- `DATABASE_URL`
+- `REDIS_URL`
+- `MINIO_ENDPOINT`
+- `KEYCLOAK_*`
+- `OPA_URL`
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_WEBHOOK_SECRET`
+- `LLM_PROVIDER`
+- `OPENAI_API_KEY`
+- `GOOGLE_API_KEY`
+
+## 10. Critérios de pronto para desenvolvimento
+
+- docker funcional no WSL;
+- compose sobe stack mínima;
+- banco recebe seed;
+- keycloak sobe realm inicial;
+- webhook local consegue ser exposto;
+- logs e traces mínimos aparecem corretamente.
+
