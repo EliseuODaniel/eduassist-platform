@@ -51,22 +51,38 @@ Entregáveis:
 - vínculo Telegram-usuário;
 - roles e policies básicas.
 
-## 5. Fase 3 - FAQ pública e calendário
+## 5. Fase 3 - Inteligência documental e retrieval
 
 Objetivos:
 
+- pipeline de parsing com `Docling`;
 - pipeline de ingestão documental;
-- retrieval híbrido;
+- `Qdrant` na stack;
+- retrieval híbrido com dense + sparse + reranking;
 - respostas com citações;
-- calendário escolar como serviço estruturado.
+- baseline de avaliação de retrieval.
+
+Entregáveis:
+
+- corpus institucional processado;
+- índices híbridos prontos;
+- evals iniciais de groundedness e retrieval.
+
+## 6. Fase 4 - FAQ pública e calendário
+
+Objetivos:
+
+- FAQ institucional pública sobre a base documental;
+- calendário escolar como serviço estruturado;
+- integração Telegram + retrieval.
 
 Entregáveis:
 
 - FAQ pública funcional;
 - calendário público e autenticado;
-- evals iniciais.
+- citações e respostas auditáveis.
 
-## 6. Fase 4 - Acadêmico
+## 7. Fase 5 - Acadêmico
 
 Objetivos:
 
@@ -82,7 +98,7 @@ Entregáveis:
 - horários e avaliações;
 - negação correta para acessos indevidos.
 
-## 7. Fase 5 - Financeiro
+## 8. Fase 6 - Financeiro
 
 Objetivos:
 
@@ -96,7 +112,7 @@ Entregáveis:
 - detalhes de cobrança autorizados;
 - trilha de auditoria reforçada.
 
-## 8. Fase 6 - Operação e handoff
+## 9. Fase 7 - Operação e handoff
 
 Objetivos:
 
@@ -111,10 +127,12 @@ Entregáveis:
 - fluxo de escalonamento;
 - métricas de atendimento.
 
-## 9. Fase 7 - Hardening
+## 10. Fase 8 - Retrieval avançado e hardening
 
 Objetivos:
 
+- habilitar `late interaction` e multivectors nos corpora de maior valor;
+- pilotar `GraphRAG` para perguntas globais, locais e multi-documento complexas;
 - testes adversariais;
 - revisão de LGPD;
 - backup/restore;
@@ -123,11 +141,12 @@ Objetivos:
 
 Entregáveis:
 
+- baseline comparativa entre retrieval híbrido e `GraphRAG`;
 - baseline de segurança;
 - baseline de performance;
 - gates mínimos de release.
 
-## 10. Fase 8 - Kubernetes local
+## 11. Fase 9 - Kubernetes local
 
 Objetivos:
 
@@ -139,7 +158,7 @@ Entregáveis:
 - ambiente alternativo em Kubernetes;
 - documentação de operação local avançada.
 
-## 11. Roadmap por sprints sugerido
+## 12. Roadmap por sprints sugerido
 
 ### Sprint 0
 
@@ -159,37 +178,44 @@ Entregáveis:
 
 ### Sprint 3
 
-- Keycloak + vínculo Telegram
-- OPA + RLS base
+- qdrant na stack
+- pipeline Docling v1
 
 ### Sprint 4
 
-- ingestão documental
-- FAQ pública
+- Keycloak + vínculo Telegram
+- OPA + RLS base
 
 ### Sprint 5
+
+- ingestão documental
+- retrieval híbrido
+- FAQ pública
+
+### Sprint 6
 
 - calendário
 - observabilidade v1
 
-### Sprint 6
+### Sprint 7
 
 - academic-service
 - tools acadêmicas
 
-### Sprint 7
+### Sprint 8
 
 - finance-service
 - tools financeiras
 
-### Sprint 8
+### Sprint 9
 
 - handoff humano
 - painel operacional
 
-### Sprint 9
+### Sprint 10
 
+- late interaction
+- piloto GraphRAG
 - evals
 - testes adversariais
 - hardening
-

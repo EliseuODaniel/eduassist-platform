@@ -61,6 +61,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 
 - API remota de LLM
 - `postgres`
+- `qdrant`
 - `minio`
 - `redis`
 
@@ -75,7 +76,10 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 ### Responsabilidades
 
 - ingestão documental;
-- embeddings;
+- parsing com `Docling`;
+- embeddings densos e esparsos;
+- indexação híbrida em `Qdrant`;
+- geração de artefatos de `GraphRAG`;
 - reindexação;
 - mock data generation;
 - backfills;
@@ -109,9 +113,11 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 ### Responsabilidades
 
 - catalogar documentos;
+- normalizar documentos processados pelo pipeline;
 - resolver visibilidade;
 - devolver chunks elegíveis;
-- gerenciar versões e metadados.
+- gerenciar versões e metadados;
+- publicar material pronto para indexação híbrida e pipelines de `GraphRAG`.
 
 ## 8. `academic-service`
 
@@ -152,7 +158,14 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - RLS;
 - auditoria;
 - busca textual;
-- embeddings via `pgvector`.
+- suporte a metadata filtering e fallback experimental via `pgvector`.
+
+### `qdrant`
+
+- engine principal de retrieval vetorial e híbrido;
+- suporte a dense + sparse retrieval;
+- suporte a multivectors e estratégias de late interaction;
+- coleções de documentos institucionais e índices auxiliares de conhecimento.
 
 ### `redis`
 
@@ -181,4 +194,3 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 ### `otel-collector`, `grafana`, `loki`, `tempo`
 
 - observabilidade ponta a ponta.
-

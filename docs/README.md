@@ -5,6 +5,7 @@ Este diretório concentra a documentação formal do projeto.
 ## Índice
 
 - [ADR 0001 - Rebuild do zero](/home/edann/projects/eduassist-platform/docs/adr/0001-greenfield-rebuild.md)
+- [ADR 0002 - Retrieval e runtime agentic](/home/edann/projects/eduassist-platform/docs/adr/0002-retrieval-and-agent-runtime.md)
 - [PRD](/home/edann/projects/eduassist-platform/docs/prd/product-requirements.md)
 - [Arquitetura do sistema](/home/edann/projects/eduassist-platform/docs/architecture/system-architecture.md)
 - [Catálogo de serviços](/home/edann/projects/eduassist-platform/docs/architecture/service-catalog.md)

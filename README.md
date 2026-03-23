@@ -9,7 +9,7 @@ Este repositório nasce como um `greenfield rebuild`. O objetivo é substituir i
 - atendimento de `pais`, `alunos`, `professores`, `secretaria`, `financeiro`, `coordenação` e `direção`;
 - uso de `Telegram` como canal principal;
 - consulta segura a dados escolares reais em bancos reais, mas com conteúdo `100% mockado`;
-- uso de IA generativa com `RAG`, tool calling, grounding, citações e forte governança;
+- uso de IA generativa com `RAG`, `GraphRAG` seletivo, tool calling, grounding, citações e forte governança;
 - execução local via `Docker Compose`, com caminho opcional para `k3d` depois.
 
 ## Nome do projeto
@@ -38,9 +38,12 @@ Construir uma plataforma robusta e funcional de atendimento escolar com IA para 
 ## Decisões de alto nível
 
 - `Python + FastAPI` no backend principal.
-- `LangGraph` para orquestração controlada da IA.
+- `LangGraph` como motor principal de orquestração controlada, com trilha OpenAI nativa em `Responses API` e padrões do `Agents SDK` quando fizer sentido.
 - `Next.js` para painel administrativo.
-- `PostgreSQL + pgvector + Full Text Search` para dados estruturados e retrieval híbrido.
+- `PostgreSQL` como source of truth transacional.
+- `Qdrant + PostgreSQL Full Text Search` como plano principal de retrieval para documentos e conhecimento institucional.
+- `Docling` para parsing, normalização e enriquecimento documental.
+- `pgvector` apenas como fallback de experimentação local e não como plano principal de retrieval.
 - `Keycloak + OPA + PostgreSQL RLS` para identidade e autorização.
 - `MinIO` para documentos e objetos.
 - `Redis` para cache, locks, idempotência e filas leves.
@@ -59,6 +62,7 @@ Construir uma plataforma robusta e funcional de atendimento escolar com IA para 
 - [Pesquisa de tecnologias de IA](/home/edann/projects/eduassist-platform/docs/research/ai-technology-review.md)
 - [Roadmap de implementação](/home/edann/projects/eduassist-platform/docs/roadmap/implementation-roadmap.md)
 - [ADR 0001 - Rebuild do zero](/home/edann/projects/eduassist-platform/docs/adr/0001-greenfield-rebuild.md)
+- [ADR 0002 - Retrieval e runtime agentic](/home/edann/projects/eduassist-platform/docs/adr/0002-retrieval-and-agent-runtime.md)
 - [Plano de refatoração do documento acadêmico](/home/edann/projects/eduassist-platform/docs/article/refactor-outline.md)
 
 ## Estrutura inicial do repositório
@@ -128,10 +132,16 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;
 - base documental sincronizada com a direção arquitetural atual.
 
+Expansões já aprovadas para a próxima etapa:
+
+- adicionar `Qdrant` à stack local;
+- introduzir pipeline documental com `Docling`;
+- preparar modo avançado de retrieval com `GraphRAG` somente após baseline híbrido estar medido.
+
 ## Próximos passos imediatos
 
 1. Validar `docker compose up` e build local do bootstrap.
 2. Definir schemas iniciais do banco e migrações.
-3. Implementar identidade, policy engine e auditoria mínima.
-4. Conectar o painel e os serviços à infraestrutura base.
-5. Subir a primeira vertical funcional de FAQ pública.
+3. Adicionar `Qdrant` e preparar a fundação do pipeline documental.
+4. Implementar identidade, policy engine e auditoria mínima.
+5. Subir a primeira vertical funcional de FAQ pública com retrieval híbrido e citações.

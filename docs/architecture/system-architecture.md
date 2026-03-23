@@ -12,6 +12,7 @@ Arquitetura lógica:
 - `worker`
 - `admin-web`
 - `postgres`
+- `qdrant`
 - `redis`
 - `minio`
 - `keycloak`
@@ -23,6 +24,7 @@ Arquitetura lógica:
 
 - canal desacoplado do domínio;
 - IA desacoplada do banco;
+- plano transacional separado do plano de retrieval;
 - autorização centralizada e reforçada no banco;
 - contexto mínimo para a LLM;
 - respostas documentais com citações;
@@ -34,10 +36,12 @@ Arquitetura lógica:
 1. Usuário envia mensagem ao bot.
 2. `telegram-gateway` valida webhook e normaliza o evento.
 3. `api-core` classifica a mensagem como pública.
-4. `ai-orchestrator` executa retrieval híbrido.
-5. chunks aprovados por visibilidade entram no contexto.
-6. LLM gera resposta com referências.
-7. `api-core` registra trilha e envia resposta ao Telegram.
+4. `ai-orchestrator` seleciona o modo de recuperação mais adequado.
+5. baseline: retrieval híbrido em `Qdrant + PostgreSQL FTS`.
+6. modo avançado: `GraphRAG` apenas quando a pergunta exigir raciocínio multi-documento ou corpus-level.
+7. chunks aprovados por visibilidade entram no contexto.
+8. LLM gera resposta com referências.
+9. `api-core` registra trilha e envia resposta ao Telegram.
 
 ## 4. Fluxo de consulta protegida
 
@@ -69,14 +73,18 @@ Arquitetura lógica:
 
 - classifica intenção;
 - seleciona tools;
-- executa fluxo LangGraph;
+- executa fluxo LangGraph ou adapter OpenAI-native quando aplicável;
+- seleciona entre `hybrid retrieval`, `late-interaction retrieval`, `GraphRAG` ou tools determinísticas;
 - gera resposta final com grounding.
 
 ### `worker`
 
 - tarefas assíncronas e batch;
+- parsing documental com `Docling`;
 - ingestão documental;
-- embeddings;
+- embeddings densos e esparsos;
+- indexação híbrida em `Qdrant`;
+- geração de artefatos de `GraphRAG`;
 - geração de dados mockados;
 - avaliações offline.
 
@@ -109,9 +117,12 @@ Estratégia:
 
 - um único orquestrador principal;
 - tools fechadas e auditáveis;
+- retrieval em múltiplas camadas, com `Qdrant` como engine principal para documentos;
+- `late interaction` e multivectors para corpora de maior valor quando os evals justificarem;
+- `GraphRAG` como modo avançado e não como padrão cego para toda pergunta;
 - sem SQL livre;
-- sem múltiplos agentes autônomos no MVP.
-- se o provedor OpenAI for o escolhido na implementação, preferir `Responses API` como interface principal para tool use e workflows agentic.
+- sem múltiplos agentes autônomos no MVP;
+- se o provedor OpenAI for o escolhido na implementação, preferir `Responses API` como interface principal para tool use e workflows agentic, com padrões do `Agents SDK` para tools, handoffs estreitos e tracing.
 
 Tools previstas:
 
@@ -147,7 +158,8 @@ Telegram
   -> api-core
      -> keycloak / opa
      -> ai-orchestrator
-        -> retrieval over postgres + minio metadata
+        -> retrieval over qdrant + postgres FTS + minio metadata
+        -> GraphRAG query artifacts when needed
         -> llm remote api
      -> academic-service / finance-service / calendar-service
         -> postgres
@@ -164,6 +176,8 @@ admin-web
 - nenhum fluxo sensível sem policy check;
 - nenhum acesso direto do modelo ao banco;
 - nenhum documento privado entrando em retrieval público;
+- `Qdrant` e `GraphRAG` nunca se tornam source of truth para dados estruturados;
+- `GraphRAG` só pode ser habilitado em fluxos com ganho demonstrado por evals;
 - toda ação sensível com trilha auditável;
 - decisões específicas de OpenAI/Codex documentadas e mantidas atrás de abstração de provedor;
 - stack local executável dentro do orçamento de memória observado.

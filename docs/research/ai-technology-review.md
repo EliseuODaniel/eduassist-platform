@@ -8,7 +8,11 @@ Mapear tecnologias atuais e decidir a estratégia de IA mais adequada para uma p
 
 A melhor abordagem para este projeto não é um sistema de agentes autônomos livres. A melhor abordagem é um `orquestrador governado`, com:
 
+- parsing documental forte antes do retrieval;
+- plano de retrieval dedicado;
 - retrieval híbrido;
+- late interaction nos corpora certos;
+- `GraphRAG` seletivo;
 - grounding com citações;
 - tool calling com contratos rígidos;
 - services determinísticos para dados estruturados;
@@ -42,7 +46,7 @@ Motivo:
 
 ## 4. Orquestração
 
-### Tecnologia escolhida
+### Tecnologia escolhida para o controle principal
 
 - `LangGraph`
 
@@ -53,17 +57,57 @@ Justificativa:
 - facilidade para human-in-the-loop;
 - melhor controle do que arquiteturas “multiagente” abertas.
 
+### Tecnologia complementar para a trilha OpenAI
+
+- `Responses API`
+- padrões do `OpenAI Agents SDK`
+
+Justificativa:
+
+- a documentação oficial da OpenAI hoje centraliza modelos, tool use e estado de conversa na `Responses API`;
+- o `Agents SDK` já formaliza ferramentas, handoffs e traces, então é útil como adapter OpenAI-native para workflows específicos e benchmarking;
+- manter `LangGraph` como camada principal preserva portabilidade entre provedores e maior controle arquitetural.
+
 ## 5. Retrieval
 
-### Estratégia escolhida
+### Estratégia escolhida para o baseline forte
 
 - `hybrid retrieval`
 
 Componentes:
 
-- PostgreSQL Full Text Search
-- `pgvector`
+- `Qdrant` como engine principal de dense + sparse retrieval
+- PostgreSQL Full Text Search para plano lexical e filtros relacionais
 - reranking
+
+### Banco vetorial recomendado
+
+- `Qdrant`
+
+Motivo:
+
+- oferece hybrid search, multivectors e estratégias de late interaction, o que o torna mais forte do que usar apenas `pgvector` como plano principal;
+- roda localmente em container com baixo atrito, o que combina com o objetivo `local-first`;
+- separa o plano de retrieval do banco transacional sem exigir infraestrutura pesada demais.
+
+### Papel de `pgvector`
+
+Decisão:
+
+- manter `pgvector` apenas como fallback experimental, utilidade local e comparação de baseline;
+- não tratá-lo como engine principal do produto.
+
+### Parsing e preparação documental
+
+Tecnologia recomendada:
+
+- `Docling`
+
+Motivo:
+
+- parsing multimodal e forte entendimento de PDF, layout, reading order e tabelas;
+- capacidade de execução local, importante para dados sensíveis e ambiente controlado;
+- encaixa muito bem na fase de ingestão institucional deste projeto.
 
 ### Contextual Retrieval
 
@@ -76,8 +120,14 @@ Recomendação:
 
 Decisão:
 
-- não usar como padrão inicial;
-- considerar apenas em fase posterior, se surgirem consultas relacionais complexas multi-documento.
+- não usar como padrão cego para todas as consultas;
+- adotar `Microsoft GraphRAG` como modo avançado de recuperação para perguntas globais, locais e multi-documento complexas;
+- habilitar somente depois que o baseline híbrido estiver medido e quando houver ganho comprovado nos evals.
+
+Motivo:
+
+- a documentação do GraphRAG mostra modos distintos como `Global Search`, `Local Search`, `DRIFT Search` e `Basic Search`;
+- isso o torna valioso para raciocínio sobre o corpus como um todo, mas desnecessário para perguntas simples que já são bem resolvidas por retrieval híbrido.
 
 ## 6. Dados estruturados
 
@@ -140,9 +190,12 @@ Para o desenvolvimento deste repositório, eles devem ser tratados como recursos
 
 - modelo principal: `GPT-5.4`
 - benchmark secundário: `Gemini 2.5 Pro`
-- orquestração: `LangGraph`
-- interface OpenAI preferida quando aplicável: `Responses API`
-- retrieval: `FTS + pgvector + reranking`
+- orquestração principal: `LangGraph`
+- trilha OpenAI-native quando aplicável: `Responses API + Agents SDK`
+- parsing documental: `Docling`
+- retrieval baseline: `Qdrant + PostgreSQL FTS + reranking`
+- retrieval avançado: `late interaction` e multivectors em `Qdrant`
+- GraphRAG: `Microsoft GraphRAG` apenas em fluxos com ganho medido
 - dados estruturados: tools determinísticas
 - avaliação: datasets + evals contínuos
 - segurança: `OPA + RLS + audit trail`
@@ -155,16 +208,20 @@ Para o desenvolvimento deste repositório, eles devem ser tratados como recursos
 - OpenAI Evals: https://developers.openai.com/api/docs/guides/evals
 - OpenAI MCP: https://developers.openai.com/api/docs/mcp
 - OpenAI Responses API: https://developers.openai.com/api/docs/guides/migrate-to-responses
+- OpenAI Agents SDK: https://openai.github.io/openai-agents-python/quickstart/
 - Codex AGENTS.md: https://developers.openai.com/codex/guides/agents-md
 - Codex MCP: https://developers.openai.com/codex/mcp
 - Codex Skills: https://developers.openai.com/codex/skills
 - Codex Subagents: https://developers.openai.com/codex/subagents
 - Docs MCP: https://developers.openai.com/learn/docs-mcp
 - LangGraph overview: https://docs.langchain.com/oss/python/langgraph/overview
+- Microsoft GraphRAG: https://microsoft.github.io/graphrag/
+- Docling: https://docling-project.github.io/docling/
 - Anthropic Contextual Retrieval: https://www.anthropic.com/engineering/contextual-retrieval
 - Vertex grounding: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/grounding/grounding-with-vertex-ai-search
 - PostgreSQL Full Text Search: https://www.postgresql.org/docs/current/textsearch.html
 - pgvector: https://github.com/pgvector/pgvector
+- Qdrant: https://qdrant.tech/documentation/concepts/hybrid-queries/
 - OPA: https://www.openpolicyagent.org/docs
 - Keycloak Authorization Services: https://www.keycloak.org/docs/latest/authorization_services/index.html
 - Telegram Bot API: https://core.telegram.org/bots/api
