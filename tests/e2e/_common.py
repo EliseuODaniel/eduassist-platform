@@ -122,25 +122,40 @@ def wait_for_tempo_trace(settings: Settings, trace_id: str) -> dict[str, Any]:
 
 
 def wait_for_loki_logs(settings: Settings, query: str) -> dict[str, Any]:
-    encoded = quote(query, safe="")
-    end_ns = int(time.time() * 1_000_000_000)
-    start_ns = end_ns - (30 * 60 * 1_000_000_000)
     for _ in range(6):
-        status, _, payload = request(
-            "GET",
-            (
-                f"{settings.loki_url}/loki/api/v1/query_range"
-                f"?query={encoded}&limit=20&start={start_ns}&end={end_ns}"
-            ),
-            timeout=10.0,
-        )
-        if status == 200 and isinstance(payload, dict):
-            data = payload.get("data", {})
-            result = data.get("result", [])
-            if isinstance(result, list) and result:
-                return payload
+        payload = loki_query_range(settings, query)
+        if loki_has_results(payload):
+            return payload
         time.sleep(2)
     raise AssertionError(f"loki_query_empty:{query}")
+
+
+def loki_query_range(
+    settings: Settings,
+    query: str,
+    *,
+    limit: int = 20,
+    lookback_minutes: int = 30,
+) -> dict[str, Any]:
+    encoded = quote(query, safe="")
+    end_ns = int(time.time() * 1_000_000_000)
+    start_ns = end_ns - (lookback_minutes * 60 * 1_000_000_000)
+    status, _, payload = request(
+        "GET",
+        (
+            f"{settings.loki_url}/loki/api/v1/query_range"
+            f"?query={encoded}&limit={limit}&start={start_ns}&end={end_ns}"
+        ),
+        timeout=10.0,
+    )
+    assert_condition(status == 200 and isinstance(payload, dict), f"loki_query_failed:{query}")
+    return payload
+
+
+def loki_has_results(payload: dict[str, Any]) -> bool:
+    data = payload.get("data", {})
+    result = data.get("result", [])
+    return isinstance(result, list) and bool(result)
 
 
 def trace_span_names(payload: dict[str, Any]) -> set[str]:

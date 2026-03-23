@@ -224,6 +224,7 @@ Status atual do bootstrap:
 - `make observability-logs`
 - `make smoke-local`
 - `make smoke-authz`
+- `make smoke-adversarial`
 - `make smoke-all`
 - `GET /v1/foundation/summary` no `api-core`
 - `GET /v1/identity/context?user_external_code=USR-TEACH-001`
