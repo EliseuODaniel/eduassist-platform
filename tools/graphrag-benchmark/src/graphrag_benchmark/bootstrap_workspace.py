@@ -141,8 +141,8 @@ def _patch_settings(*, settings_path: Path, profile: str, model: str, embedding_
                 'model_provider': 'openai',
                 'model': '${GRAPHRAG_LOCAL_CHAT_MODEL}',
                 'auth_method': 'api_key',
-                'api_key': '${GRAPHRAG_LOCAL_API_KEY}',
-                'api_base': '${GRAPHRAG_LOCAL_API_BASE}',
+                'api_key': '${GRAPHRAG_LOCAL_CHAT_API_KEY}',
+                'api_base': '${GRAPHRAG_LOCAL_CHAT_API_BASE}',
                 'retry': {'type': 'exponential_backoff'},
             }
         }
@@ -151,11 +151,13 @@ def _patch_settings(*, settings_path: Path, profile: str, model: str, embedding_
                 'model_provider': 'openai',
                 'model': '${GRAPHRAG_LOCAL_EMBEDDING_MODEL}',
                 'auth_method': 'api_key',
-                'api_key': '${GRAPHRAG_LOCAL_API_KEY}',
-                'api_base': '${GRAPHRAG_LOCAL_API_BASE}',
+                'api_key': '${GRAPHRAG_LOCAL_EMBEDDING_API_KEY}',
+                'api_base': '${GRAPHRAG_LOCAL_EMBEDDING_API_BASE}',
                 'retry': {'type': 'exponential_backoff'},
             }
         }
+        vector_store = payload.setdefault('vector_store', {})
+        vector_store['vector_size'] = 768
     payload.setdefault('input', {})['type'] = 'text'
     chunking = payload.setdefault('chunking', {})
     chunking['type'] = 'tokens'
@@ -187,10 +189,12 @@ def _build_env_template(*, profile: str) -> str:
     return '\n'.join(
         [
             f'GRAPHRAG_PROVIDER_PROFILE={LOCAL_OPENAI_COMPATIBLE_PROFILE}',
-            'GRAPHRAG_LOCAL_API_BASE=http://127.0.0.1:11434/v1',
-            'GRAPHRAG_LOCAL_API_KEY=ollama',
+            'GRAPHRAG_LOCAL_CHAT_API_BASE=http://127.0.0.1:18080/v1',
+            'GRAPHRAG_LOCAL_CHAT_API_KEY=llama.cpp',
             f'GRAPHRAG_LOCAL_CHAT_MODEL={chat_value}',
-            f'GRAPHRAG_LOCAL_EMBEDDING_MODEL={embedding_value}',
+            'GRAPHRAG_LOCAL_EMBEDDING_API_BASE=http://127.0.0.1:11435/v1',
+            'GRAPHRAG_LOCAL_EMBEDDING_API_KEY=ollama',
+            f'GRAPHRAG_LOCAL_EMBEDDING_MODEL={embedding_value or "nomic-embed-text:latest"}',
             '',
         ]
     )
@@ -223,8 +227,8 @@ def _write_workspace_readme(*, workspace: Path, profile: str) -> None:
         '- `.env`: definir `GRAPHRAG_API_KEY`\n'
         '- perfil ativo: `openai-remote`'
         if profile == REMOTE_OPENAI_PROFILE
-        else '- `.env`: definir `GRAPHRAG_LOCAL_API_BASE`, `GRAPHRAG_LOCAL_CHAT_MODEL` e '
-        '`GRAPHRAG_LOCAL_EMBEDDING_MODEL`\n'
+        else '- `.env`: definir `GRAPHRAG_LOCAL_CHAT_API_BASE`, `GRAPHRAG_LOCAL_EMBEDDING_API_BASE`, '
+        '`GRAPHRAG_LOCAL_CHAT_MODEL` e `GRAPHRAG_LOCAL_EMBEDDING_MODEL`\n'
         '- perfil ativo: `local-openai-compatible`'
     )
     content = f"""# EduAssist GraphRAG Benchmark Workspace

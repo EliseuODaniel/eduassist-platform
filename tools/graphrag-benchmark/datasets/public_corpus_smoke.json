@@ -1,0 +1,16 @@
+[
+  {
+    "case_id": "admissions_smoke",
+    "query": "Quais documentos sao exigidos para matricula no ensino medio?",
+    "review_focus": [
+      "historico escolar",
+      "documento de identidade",
+      "cpf",
+      "comprovante de residencia",
+      "foto"
+    ],
+    "methods": [
+      "basic"
+    ]
+  }
+]

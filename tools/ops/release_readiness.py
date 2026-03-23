@@ -49,30 +49,39 @@ def _run_command(name: str, command: list[str]) -> dict[str, Any]:
     }
 
 
-def _load_latest_graphrag_report(report_dir: Path) -> dict[str, Any] | None:
+def _report_has_completed_graphrag(payload: dict[str, Any]) -> bool:
+    for case in payload.get('cases', []):
+        methods = case.get('graphrag', {})
+        for result in methods.values():
+            if isinstance(result, dict) and result.get('status') == 'completed':
+                return True
+    return False
+
+
+def _load_latest_graphrag_report(
+    report_dir: Path,
+    *,
+    require_completed: bool = False,
+) -> dict[str, Any] | None:
     if not report_dir.exists():
         return None
     candidates = sorted(report_dir.glob('graphrag-benchmark-*.json'))
     if not candidates:
         return None
-    latest = candidates[-1]
-    payload = json.loads(latest.read_text(encoding='utf-8'))
-    payload['_report_path'] = latest.as_posix()
-    return payload
+
+    for candidate in reversed(candidates):
+        payload = json.loads(candidate.read_text(encoding='utf-8'))
+        if require_completed and not _report_has_completed_graphrag(payload):
+            continue
+        payload['_report_path'] = candidate.as_posix()
+        return payload
+    return None
 
 
 def _graphrag_status(*, workspace: Path, report_dir: Path) -> dict[str, Any]:
     latest_report = _load_latest_graphrag_report(report_dir)
-    full_benchmark_completed = False
-    if latest_report is not None:
-        for case in latest_report.get('cases', []):
-            methods = case.get('graphrag', {})
-            for result in methods.values():
-                if isinstance(result, dict) and result.get('status') == 'completed':
-                    full_benchmark_completed = True
-                    break
-            if full_benchmark_completed:
-                break
+    latest_completed_report = _load_latest_graphrag_report(report_dir, require_completed=True)
+    full_benchmark_completed = latest_completed_report is not None
 
     provider_status = get_workspace_provider_status(workspace)
 
@@ -89,6 +98,7 @@ def _graphrag_status(*, workspace: Path, report_dir: Path) -> dict[str, Any]:
         'available_models': provider_status.get('available_models'),
         'missing_models': provider_status.get('missing_models'),
         'latest_report': latest_report,
+        'latest_completed_report': latest_completed_report,
         'full_benchmark_completed': full_benchmark_completed,
     }
 

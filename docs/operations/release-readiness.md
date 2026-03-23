@@ -29,12 +29,15 @@ Use:
 
 Esse modo exige, alem dos gates obrigatorios, um benchmark completo de `GraphRAG` concluido com sucesso.
 
+Para esse criterio, o gate considera o benchmark mais recente com execucao real de `GraphRAG`, sem confundir o baseline comparativo que roda com `skip-graphrag`.
+
 Na pratica, ele depende de:
 
 1. `make graphrag-benchmark-bootstrap`
 2. preencher `artifacts/graphrag/eduassist-public-benchmark/.env` com provider remoto ou local compativel
-3. `make graphrag-benchmark-index`
-4. `make graphrag-benchmark-run`
+3. se for fluxo local com GPU, subir `make graphrag-local-runtime-up`
+4. `make graphrag-benchmark-index`
+5. `make graphrag-benchmark-run` ou `make graphrag-benchmark-run-smoke`
 
 ## Interpretacao
 

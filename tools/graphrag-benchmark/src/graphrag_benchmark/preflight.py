@@ -63,6 +63,35 @@ def _request_json(*, url: str, headers: dict[str, str]) -> dict[str, Any]:
         return json.loads(response.read().decode('utf-8'))
 
 
+def _resolve_local_provider_value(
+    env_values: dict[str, str],
+    *,
+    specific_key: str,
+    shared_key: str,
+    default: str | None = None,
+) -> str | None:
+    specific_value = env_values.get(specific_key)
+    if specific_value is not None and specific_value.strip():
+        return specific_value.strip()
+
+    shared_value = env_values.get(shared_key)
+    if shared_value is not None and shared_value.strip():
+        return shared_value.strip()
+
+    return default
+
+
+def _model_present(*, expected_model: str, available_models: list[str]) -> bool:
+    normalized_expected = expected_model.strip()
+    variants = {
+        normalized_expected,
+        f'{normalized_expected}:latest',
+    }
+    if normalized_expected.endswith(':latest'):
+        variants.add(normalized_expected.rsplit(':', 1)[0])
+    return any(candidate in available_models for candidate in variants)
+
+
 def _check_openai_compatible_endpoint(*, api_base: str, api_key: str, models: list[str]) -> dict[str, Any]:
     base_url = _normalize_base_url(api_base)
     headers = {'Authorization': f'Bearer {api_key}'}
@@ -83,13 +112,17 @@ def _check_openai_compatible_endpoint(*, api_base: str, api_key: str, models: li
             'available_models': [],
         }
 
-    data = payload.get('data', [])
+    data = payload.get('data') or []
     available_models = sorted(
         item.get('id', '')
         for item in data
         if isinstance(item, dict) and item.get('id')
     )
-    missing_models = [model for model in models if model not in available_models]
+    missing_models = [
+        model
+        for model in models
+        if not _model_present(expected_model=model, available_models=available_models)
+    ]
     return {
         'endpoint_reachable': True,
         'provider_ready': not missing_models,
@@ -129,26 +162,93 @@ def get_workspace_provider_status(workspace: Path) -> dict[str, Any]:
         return status
 
     if profile == LOCAL_OPENAI_COMPATIBLE_PROFILE:
-        api_base = env_values.get('GRAPHRAG_LOCAL_API_BASE')
+        chat_api_base = _resolve_local_provider_value(
+            env_values,
+            specific_key='GRAPHRAG_LOCAL_CHAT_API_BASE',
+            shared_key='GRAPHRAG_LOCAL_API_BASE',
+        )
+        embedding_api_base = _resolve_local_provider_value(
+            env_values,
+            specific_key='GRAPHRAG_LOCAL_EMBEDDING_API_BASE',
+            shared_key='GRAPHRAG_LOCAL_API_BASE',
+        )
         chat_model = env_values.get('GRAPHRAG_LOCAL_CHAT_MODEL')
         embedding_model = env_values.get('GRAPHRAG_LOCAL_EMBEDDING_MODEL')
-        api_key = env_values.get('GRAPHRAG_LOCAL_API_KEY', 'ollama')
+        chat_api_key = _resolve_local_provider_value(
+            env_values,
+            specific_key='GRAPHRAG_LOCAL_CHAT_API_KEY',
+            shared_key='GRAPHRAG_LOCAL_API_KEY',
+            default='ollama',
+        )
+        embedding_api_key = _resolve_local_provider_value(
+            env_values,
+            specific_key='GRAPHRAG_LOCAL_EMBEDDING_API_KEY',
+            shared_key='GRAPHRAG_LOCAL_API_KEY',
+            default='ollama',
+        )
 
         configured = all(
             _is_configured(value)
-            for value in [api_base, chat_model, embedding_model]
+            for value in [chat_api_base, embedding_api_base, chat_model, embedding_model]
         )
         status['provider_configured'] = configured
         if not configured:
             status['provider_reason'] = 'missing_local_provider_values'
             return status
 
-        endpoint_status = _check_openai_compatible_endpoint(
-            api_base=str(api_base),
-            api_key=str(api_key or 'ollama'),
-            models=[str(chat_model), str(embedding_model)],
+        chat_endpoint_status = _check_openai_compatible_endpoint(
+            api_base=str(chat_api_base),
+            api_key=str(chat_api_key or 'ollama'),
+            models=[str(chat_model)],
         )
-        status.update(endpoint_status)
+        embedding_endpoint_status = _check_openai_compatible_endpoint(
+            api_base=str(embedding_api_base),
+            api_key=str(embedding_api_key or 'ollama'),
+            models=[str(embedding_model)],
+        )
+        available_models = sorted(
+            {
+                *chat_endpoint_status.get('available_models', []),
+                *embedding_endpoint_status.get('available_models', []),
+            }
+        )
+        missing_models = [
+            *chat_endpoint_status.get('missing_models', []),
+            *embedding_endpoint_status.get('missing_models', []),
+        ]
+        provider_ready = bool(chat_endpoint_status.get('provider_ready')) and bool(
+            embedding_endpoint_status.get('provider_ready')
+        )
+
+        if provider_ready:
+            provider_reason = 'ready'
+        elif not chat_endpoint_status.get('endpoint_reachable'):
+            provider_reason = 'local_chat_endpoint_unreachable'
+        elif not embedding_endpoint_status.get('endpoint_reachable'):
+            provider_reason = 'local_embedding_endpoint_unreachable'
+        elif chat_endpoint_status.get('missing_models'):
+            provider_reason = 'local_chat_models_missing'
+        elif embedding_endpoint_status.get('missing_models'):
+            provider_reason = 'local_embedding_models_missing'
+        else:
+            provider_reason = 'local_provider_not_ready'
+
+        status.update(
+            {
+                'provider_ready': provider_ready,
+                'provider_reason': provider_reason,
+                'endpoint_reachable': bool(chat_endpoint_status.get('endpoint_reachable'))
+                and bool(embedding_endpoint_status.get('endpoint_reachable')),
+                'chat_endpoint_reachable': chat_endpoint_status.get('endpoint_reachable'),
+                'embedding_endpoint_reachable': embedding_endpoint_status.get('endpoint_reachable'),
+                'chat_api_base': chat_api_base,
+                'embedding_api_base': embedding_api_base,
+                'chat_available_models': chat_endpoint_status.get('available_models', []),
+                'embedding_available_models': embedding_endpoint_status.get('available_models', []),
+                'available_models': available_models,
+                'missing_models': missing_models,
+            }
+        )
         return status
 
     status['provider_reason'] = 'unsupported_provider_profile'

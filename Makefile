@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE_FILE := infra/compose/compose.yaml
 ENV_FILE := .env
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all eval-orchestrator eval-all graphrag-benchmark-bootstrap graphrag-benchmark-bootstrap-local graphrag-benchmark-local-check graphrag-benchmark-index graphrag-benchmark-index-dry-run graphrag-benchmark-baseline graphrag-benchmark-run release-readiness release-readiness-strict article-docx db-upgrade db-downgrade db-seed-foundation db-seed-operational-load db-seed-auth-bindings db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install
+.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all eval-orchestrator eval-all graphrag-benchmark-bootstrap graphrag-benchmark-bootstrap-local graphrag-benchmark-local-check graphrag-benchmark-index graphrag-benchmark-index-dry-run graphrag-benchmark-baseline graphrag-benchmark-run graphrag-benchmark-run-smoke graphrag-local-runtime-up graphrag-local-runtime-down graphrag-local-runtime-logs release-readiness release-readiness-strict article-docx db-upgrade db-downgrade db-seed-foundation db-seed-operational-load db-seed-auth-bindings db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -61,6 +61,15 @@ graphrag-benchmark-bootstrap-local: env
 graphrag-benchmark-local-check: env
 	uv run --project tools/graphrag-benchmark python -m graphrag_benchmark.local_check
 
+graphrag-local-runtime-up: env
+	bash tools/graphrag-benchmark/start_local_llamacpp_stack.sh
+
+graphrag-local-runtime-down: env
+	bash tools/graphrag-benchmark/stop_local_llamacpp_stack.sh
+
+graphrag-local-runtime-logs: env
+	docker logs --tail=120 -f $${GRAPHRAG_LOCAL_CHAT_CONTAINER:-eduassist-graphrag-chat}
+
 graphrag-benchmark-index: env
 	uv run --project tools/graphrag-benchmark graphrag index -r $${GRAPHRAG_BENCHMARK_WORKSPACE:-artifacts/graphrag/eduassist-public-benchmark} -m $${GRAPHRAG_INDEX_METHOD:-standard}
 
@@ -72,6 +81,9 @@ graphrag-benchmark-baseline: env
 
 graphrag-benchmark-run: env
 	uv run --project tools/graphrag-benchmark python -m graphrag_benchmark.run_benchmark
+
+graphrag-benchmark-run-smoke: env
+	uv run --project tools/graphrag-benchmark python -m graphrag_benchmark.run_benchmark --dataset tools/graphrag-benchmark/datasets/public_corpus_smoke.json
 
 release-readiness: env
 	python3 tools/ops/release_readiness.py
