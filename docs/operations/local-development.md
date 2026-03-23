@@ -55,6 +55,12 @@ Uso:
 - desenvolvimento diário;
 - testes funcionais essenciais.
 
+Status atual:
+
+- bootstrap implementado em [compose.yaml](/home/edann/projects/eduassist-platform/infra/compose/compose.yaml);
+- os serviços já possuem esqueletos executáveis e healthchecks básicos;
+- observabilidade dedicada ainda ficará para a próxima etapa do roadmap.
+
 ### `compose:observability`
 
 Serviços:
@@ -116,6 +122,13 @@ Condição:
 - bootstrap de docs
 - smoke tests
 
+Status atual do bootstrap:
+
+- `Makefile` criado em [Makefile](/home/edann/projects/eduassist-platform/Makefile)
+- arquivo de ambiente base em [.env.example](/home/edann/projects/eduassist-platform/.env.example)
+- Dockerfiles iniciais nos apps
+- stack Compose pronta para validação local
+
 ## 9. Variáveis de ambiente previstas
 
 - `DATABASE_URL`
@@ -137,4 +150,3 @@ Condição:
 - keycloak sobe realm inicial;
 - webhook local consegue ser exposto;
 - logs e traces mínimos aparecem corretamente.
-

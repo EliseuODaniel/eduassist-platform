@@ -121,12 +121,17 @@ Estratégia:
 
 ## Estado atual
 
-Este repositório contém apenas a base documental e a estrutura inicial. A implementação do sistema deverá seguir o roadmap definido na documentação.
+Este repositório já contém o bootstrap técnico inicial do projeto:
+
+- stack local em [compose.yaml](/home/edann/projects/eduassist-platform/infra/compose/compose.yaml);
+- esqueletos executáveis para `api-core`, `ai-orchestrator`, `telegram-gateway`, `worker` e `admin-web`;
+- `Makefile`, `.env.example`, Dockerfiles e healthchecks;
+- base documental sincronizada com a direção arquitetural atual.
 
 ## Próximos passos imediatos
 
-1. Corrigir a integração `Docker Desktop <-> WSL2` no ambiente local.
-2. Bootstrapar a infraestrutura base em `Compose`.
-3. Definir schemas iniciais do banco.
-4. Implementar identidade, policy engine e auditoria mínima.
-5. Subir a primeira versão do fluxo de FAQ pública.
+1. Validar `docker compose up` e build local do bootstrap.
+2. Definir schemas iniciais do banco e migrações.
+3. Implementar identidade, policy engine e auditoria mínima.
+4. Conectar o painel e os serviços à infraestrutura base.
+5. Subir a primeira vertical funcional de FAQ pública.

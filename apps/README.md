@@ -8,3 +8,8 @@ Diretório reservado para aplicações executáveis do projeto:
 - `ai-orchestrator`
 - `worker`
 
+No bootstrap atual:
+
+- os serviços Python usam `FastAPI` com `uv`;
+- o painel usa `Next.js`;
+- todos os apps já possuem `Dockerfile` e endpoints/comportamentos mínimos para validação da stack.

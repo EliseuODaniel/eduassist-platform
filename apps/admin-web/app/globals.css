@@ -1,0 +1,127 @@
+:root {
+  --bg: #f4f1ea;
+  --panel: rgba(255, 255, 255, 0.72);
+  --panel-border: rgba(30, 41, 59, 0.12);
+  --text: #142033;
+  --muted: #516079;
+  --accent: #0f766e;
+  --accent-2: #14532d;
+  --shadow: 0 24px 48px rgba(20, 32, 51, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.14), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(20, 83, 45, 0.14), transparent 24%),
+    linear-gradient(135deg, #f8f5ef 0%, #eef3f6 100%);
+  font-family:
+    "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.shell {
+  width: min(1100px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 48px 0 72px;
+}
+
+.hero,
+.card,
+.footnote {
+  backdrop-filter: blur(16px);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 28px;
+  box-shadow: var(--shadow);
+}
+
+.hero {
+  padding: 40px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  margin: 0;
+  max-width: 12ch;
+  font-size: clamp(2.5rem, 6vw, 4.8rem);
+  line-height: 0.95;
+}
+
+.lede {
+  max-width: 60ch;
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.card {
+  min-height: 180px;
+  padding: 24px;
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
+
+.card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.footnote {
+  margin-top: 22px;
+  padding: 22px 24px;
+}
+
+.footnote p {
+  margin: 0;
+  color: var(--accent-2);
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .shell {
+    width: min(100vw - 20px, 1100px);
+    padding: 24px 0 48px;
+  }
+
+  .hero,
+  .card,
+  .footnote {
+    border-radius: 22px;
+  }
+
+  .hero {
+    padding: 28px;
+  }
+}
+
