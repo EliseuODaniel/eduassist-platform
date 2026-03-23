@@ -185,6 +185,7 @@ Status atual do bootstrap:
 - drill de restore de verificação disponível em `make backup-verify BACKUP_DIR=...`
 - fundação inicial de retrieval e orquestração agentica já implementada
 - foundation transacional validada com migração e seed mockada
+- carga operacional incremental de handoffs disponível em `make db-seed-operational-load`
 - identity and policy base validadas com smoke tests de responsável, aluno, professor e financeiro
 - auth federada e vínculo Telegram validados com token real do `Keycloak` local
 - `RLS` ativo e validado diretamente no banco para tabelas sensíveis acadêmicas e financeiras, com contexto de ator por sessão no `api-core`
@@ -195,6 +196,7 @@ Uso rápido do drill operacional:
 
 - `BACKUP_LABEL=drill-local make backup-local`
 - `BACKUP_DIR=/abs/path/para/artifacts/backups/drill-local make backup-verify`
+- `make db-seed-operational-load`
 
 ## 9. Variáveis de ambiente previstas
 

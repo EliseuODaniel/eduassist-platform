@@ -245,6 +245,25 @@ class HandoffOperatorOverviewEntry(BaseModel):
     breached_count: int = 0
 
 
+class HandoffPriorityOverviewEntry(BaseModel):
+    priority_code: str
+    open_count: int = 0
+    queued_count: int = 0
+    in_progress_count: int = 0
+    attention_count: int = 0
+    breached_count: int = 0
+
+
+class HandoffAgingBucketEntry(BaseModel):
+    bucket_code: str
+    label: str
+    open_count: int = 0
+    queued_count: int = 0
+    in_progress_count: int = 0
+    attention_count: int = 0
+    breached_count: int = 0
+
+
 class HandoffAlertEntry(BaseModel):
     handoff_id: uuid.UUID
     ticket_code: str
@@ -291,7 +310,11 @@ class HandoffOperationsOverview(BaseModel):
     critical_total: int = 0
     queues: list[HandoffQueueOverviewEntry] = Field(default_factory=list)
     operators: list[HandoffOperatorOverviewEntry] = Field(default_factory=list)
+    priorities: list[HandoffPriorityOverviewEntry] = Field(default_factory=list)
+    aging_buckets: list[HandoffAgingBucketEntry] = Field(default_factory=list)
     alerts: list[HandoffAlertEntry] = Field(default_factory=list)
+    oldest_open_ticket_code: str | None = None
+    oldest_open_minutes: float | None = None
     observability: HandoffObservabilityOverview | None = None
 
 

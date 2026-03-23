@@ -150,6 +150,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o `admin-web` já roda em modo estável de produção dentro do `Docker Compose`, renderiza a fila de handoffs com filtros por status, fila, atribuição, SLA e texto livre, abre o detalhe completo da conversa e mostra saúde operacional da fila humana com visão por setor, operador, exceções críticas, atalhos diretos de drill-down e uma leitura temporal de volume/tempo operacional;
 - a fila operacional do `admin-web` agora também suporta paginação, navegação por página e controle de densidade por quantidade de tickets exibidos;
 - o detalhe do handoff no `admin-web` agora oferece exploração mais rica do transcript, com filtros por remetente, busca textual, janelas de navegação e atalhos operacionais mais claros para triagem;
+- o overview global da fila humana agora também mostra mix de prioridade, envelhecimento do backlog e o ticket aberto mais antigo para acelerar triagem operacional;
 - o stack local já inclui `OpenTelemetry Collector`, `Tempo` e `Grafana`, com propagacao de trace context entre `telegram-gateway`, `ai-orchestrator` e `api-core`;
 - o stack local agora também inclui `Prometheus`, alimentado por metricas OTEL exportadas via collector;
 - o tracing distribuido já foi validado ponta a ponta via webhook do Telegram, incluindo spans HTTP entre serviços, spans SQLAlchemy no `api-core` e consulta direta do trace no `Tempo`;
@@ -157,6 +158,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o tracing agora também inclui spans de dominio para policy, retrieval híbrido e operacoes de handoff, com dashboard provisionado em `Grafana` para cribsheet de TraceQL e runbook local;
 - a stack de observabilidade agora também expõe metricas de dominio para `policy`, `retrieval`, `handoff` e `orquestracao`, com dashboard provisionado em `Grafana` para acompanhamento analitico;
 - a stack de observabilidade agora também expõe gauges operacionais vivos da fila humana, incluindo backlog atual, tickets sem responsavel, saturacao por fila e carga por operador;
+- a stack de observabilidade agora também expõe gauges operacionais vivos para envelhecimento do backlog e distribuicao de prioridade por fila humana;
 - o stack local agora também inclui `Loki + Promtail`, com ingestao dos logs dos containers do Compose para investigacao centralizada no `Grafana`;
 - o runtime dos serviços que acessam o banco agora pode ser executado com um papel dedicado de aplicação (`eduassist_app`), separado do superuser administrativo usado para migrações e seeds;
 - o `api-core` agora aplica contexto de ator por sessão e o banco já reforça acesso sensível com `PostgreSQL RLS` ativo em tabelas acadêmicas e financeiras selecionadas;
@@ -167,6 +169,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - existe uma suite de regressao de autorizacao em `tests/e2e/authz_regression.py` para validar negativas, ambiguidades, bearer ausente e segredos invalidos;
 - existe uma suite adversarial em `tests/e2e/adversarial_regression.py` para validar tentativas de exfiltracao, prompt disclosure e resistencia operacional a consultas maliciosas;
 - seed foundation idempotente já disponível em `tools/mockgen`;
+- seed operacional incremental para carga mais realista de handoffs disponível em `tools/mockgen/seed_operational_load.py`;
 - sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;
 - base documental sincronizada com a direção arquitetural atual.
@@ -181,5 +184,5 @@ Expansões já aprovadas para a próxima etapa:
 2. Expandir a cobertura de `RLS` para outras tabelas sensíveis do domínio, mantendo a resolução de identidade estável.
 3. Expandir a suite de testes e evals com cenarios adversariais adicionais, casos de exfiltracao e regressao operacional.
 4. Ampliar o drill de backup/restore para incluir cenarios mais ricos de recuperação e retenção.
-5. Expandir a seed para cenários mais amplos de tickets, filas, operadores e resoluções.
+5. Expandir ainda mais a seed para cenários amplos de tickets, filas, operadores e resoluções, partindo da carga operacional incremental já disponível.
 6. Preparar benchmark comparativo para `GraphRAG` seletivo sobre o corpus institucional.

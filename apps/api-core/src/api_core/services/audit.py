@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from functools import lru_cache
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from eduassist_observability import get_meter
 from opentelemetry.metrics import Observation
@@ -12,11 +12,13 @@ from sqlalchemy.orm import Session, aliased
 from api_core.contracts import (
     AccessDecisionFeedEntry,
     ActorContext,
+    HandoffAgingBucketEntry,
     AuditEventFeedEntry,
     HandoffAlertEntry,
     HandoffObservabilityOverview,
     HandoffOperationsOverview,
     HandoffOperatorOverviewEntry,
+    HandoffPriorityOverviewEntry,
     HandoffQueueOverviewEntry,
     HandoffTrendPoint,
 )
@@ -51,8 +53,8 @@ INTERNAL_OPERATIONS_ROLES = frozenset({'staff', 'finance', 'coordinator', 'admin
 
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 def _normalize_queue_metric_label(queue_name: str | None) -> str:
@@ -70,7 +72,22 @@ def _priority_weight(priority_code: str) -> int:
     return weights.get(priority_code, 0)
 
 
-def _handoff_alert_flags(*, sla_state: str, priority_code: str, assigned_user_id: uuid.UUID | None) -> list[str]:
+def _handoff_age_bucket(*, created_at: datetime, now: datetime) -> tuple[str, str]:
+    age = max(now - _as_utc(created_at), timedelta(0))
+    if age < timedelta(hours=1):
+        return 'lt_1h', 'Menos de 1h'
+    if age < timedelta(hours=4):
+        return '1h_4h', '1h a 4h'
+    if age < timedelta(hours=8):
+        return '4h_8h', '4h a 8h'
+    if age < timedelta(hours=24):
+        return '8h_24h', '8h a 24h'
+    return 'gte_24h', '24h ou mais'
+
+
+def _handoff_alert_flags(
+    *, sla_state: str, priority_code: str, assigned_user_id: uuid.UUID | None
+) -> list[str]:
     flags: list[str] = []
     if sla_state == 'breached':
         flags.append('sla_breached')
@@ -187,7 +204,9 @@ def list_recent_audit_events(
             resource_id=resource_id,
             metadata=metadata or {},
         )
-        for occurred_at, row_actor_user_id, actor_external_code, actor_full_name, event_type, resource_type, resource_id, metadata in session.execute(stmt).all()
+        for occurred_at, row_actor_user_id, actor_external_code, actor_full_name, event_type, resource_type, resource_id, metadata in session.execute(
+            stmt
+        ).all()
     ]
 
 
@@ -228,7 +247,9 @@ def list_recent_access_decisions(
             decision=decision,
             reason=reason,
         )
-        for occurred_at, row_actor_user_id, actor_external_code, actor_full_name, resource_type, action, decision, reason in session.execute(stmt).all()
+        for occurred_at, row_actor_user_id, actor_external_code, actor_full_name, resource_type, action, decision, reason in session.execute(
+            stmt
+        ).all()
     ]
 
 
@@ -242,7 +263,9 @@ def build_operations_metrics(
     since = datetime.utcnow() - timedelta(days=recent_days)
 
     audit_stmt = select(func.count()).select_from(AuditEvent).where(AuditEvent.created_at >= since)
-    access_stmt = select(func.count()).select_from(AccessDecision).where(AccessDecision.created_at >= since)
+    access_stmt = (
+        select(func.count()).select_from(AccessDecision).where(AccessDecision.created_at >= since)
+    )
     deny_stmt = (
         select(func.count())
         .select_from(AccessDecision)
@@ -266,7 +289,9 @@ def build_operations_metrics(
         total_users = int(session.execute(select(func.count()).select_from(User)).scalar_one() or 0)
         linked_users = int(
             session.execute(
-                select(func.count(func.distinct(UserTelegramLink.user_id))).select_from(UserTelegramLink)
+                select(func.count(func.distinct(UserTelegramLink.user_id))).select_from(
+                    UserTelegramLink
+                )
             ).scalar_one()
             or 0
         )
@@ -317,12 +342,20 @@ def build_handoff_operations_overview(
 
     queue_stats: dict[str, dict[str, int]] = {}
     operator_stats: dict[uuid.UUID, dict[str, object]] = {}
+    priority_stats: dict[str, dict[str, int]] = {}
+    aging_stats: dict[str, dict[str, object]] = {}
     alert_candidates: list[tuple[tuple[int, int, int, datetime, datetime], HandoffAlertEntry]] = []
     overview = HandoffOperationsOverview()
+    now_utc = datetime.now(UTC)
+    oldest_open_minutes: float | None = None
+    oldest_open_ticket_code: str | None = None
 
     for handoff, requester_name, operator_user_id, operator_external_code, operator_name in rows:
         sla_state = calculate_handoff_sla_state(handoff)
-        due_at = handoff.response_due_at if handoff.status == 'queued' else handoff.resolution_due_at
+        due_at = (
+            handoff.response_due_at if handoff.status == 'queued' else handoff.resolution_due_at
+        )
+        ticket_code = f'ATD-{handoff.created_at:%Y%m%d}-{str(handoff.id).split("-")[0].upper()}'
         alert_flags = _handoff_alert_flags(
             sla_state=sla_state,
             priority_code=handoff.priority_code,
@@ -340,23 +373,62 @@ def build_handoff_operations_overview(
                 'unassigned_count': 0,
             },
         )
+        priority_entry = priority_stats.setdefault(
+            handoff.priority_code,
+            {
+                'open_count': 0,
+                'queued_count': 0,
+                'in_progress_count': 0,
+                'attention_count': 0,
+                'breached_count': 0,
+            },
+        )
+        age_bucket_code, age_bucket_label = _handoff_age_bucket(
+            created_at=handoff.created_at, now=now_utc
+        )
+        aging_entry = aging_stats.setdefault(
+            age_bucket_code,
+            {
+                'label': age_bucket_label,
+                'open_count': 0,
+                'queued_count': 0,
+                'in_progress_count': 0,
+                'attention_count': 0,
+                'breached_count': 0,
+            },
+        )
 
         overview.open_total += 1
         queue_entry['open_count'] += 1
+        priority_entry['open_count'] += 1
+        aging_entry['open_count'] += 1
+
+        age_minutes = max((now_utc - _as_utc(handoff.created_at)).total_seconds() / 60, 0.0)
+        if oldest_open_minutes is None or age_minutes > oldest_open_minutes:
+            oldest_open_minutes = age_minutes
+            oldest_open_ticket_code = ticket_code
 
         if handoff.status == 'queued':
             overview.queued_total += 1
             queue_entry['queued_count'] += 1
+            priority_entry['queued_count'] += 1
+            aging_entry['queued_count'] += 1
         elif handoff.status == 'in_progress':
             overview.in_progress_total += 1
             queue_entry['in_progress_count'] += 1
+            priority_entry['in_progress_count'] += 1
+            aging_entry['in_progress_count'] += 1
 
         if sla_state == 'attention':
             overview.attention_total += 1
             queue_entry['attention_count'] += 1
+            priority_entry['attention_count'] += 1
+            aging_entry['attention_count'] += 1
         elif sla_state == 'breached':
             overview.breached_total += 1
             queue_entry['breached_count'] += 1
+            priority_entry['breached_count'] += 1
+            aging_entry['breached_count'] += 1
 
         if handoff.assigned_user_id is None:
             overview.unassigned_total += 1
@@ -387,7 +459,7 @@ def build_handoff_operations_overview(
         if alert_flags:
             alert_entry = HandoffAlertEntry(
                 handoff_id=handoff.id,
-                ticket_code=f'ATD-{handoff.created_at:%Y%m%d}-{str(handoff.id).split("-")[0].upper()}',
+                ticket_code=ticket_code,
                 queue_name=handoff.queue_name,
                 priority_code=handoff.priority_code,
                 status=handoff.status,
@@ -427,13 +499,48 @@ def build_handoff_operations_overview(
             key=lambda item: (-int(item[1]['assigned_count']), str(item[1]['operator_name'])),
         )
     ]
+    overview.priorities = [
+        HandoffPriorityOverviewEntry(priority_code=priority_code, **stats)
+        for priority_code, stats in sorted(
+            priority_stats.items(),
+            key=lambda item: (-_priority_weight(item[0]), item[0]),
+        )
+    ]
+    bucket_order = {
+        'lt_1h': 0,
+        '1h_4h': 1,
+        '4h_8h': 2,
+        '8h_24h': 3,
+        'gte_24h': 4,
+    }
+    overview.aging_buckets = [
+        HandoffAgingBucketEntry(
+            bucket_code=bucket_code,
+            label=str(stats['label']),
+            open_count=int(stats['open_count']),
+            queued_count=int(stats['queued_count']),
+            in_progress_count=int(stats['in_progress_count']),
+            attention_count=int(stats['attention_count']),
+            breached_count=int(stats['breached_count']),
+        )
+        for bucket_code, stats in sorted(
+            aging_stats.items(),
+            key=lambda item: bucket_order.get(item[0], 99),
+        )
+    ]
     overview.alerts = [entry for _, entry in sorted(alert_candidates, key=lambda item: item[0])[:6]]
     overview.critical_total = len(alert_candidates)
+    overview.oldest_open_ticket_code = oldest_open_ticket_code
+    overview.oldest_open_minutes = (
+        round(oldest_open_minutes, 1) if oldest_open_minutes is not None else None
+    )
     overview.observability = build_handoff_observability_overview(session)
     return overview
 
 
-def _load_live_support_metric_rows(session: Session) -> list[tuple[Handoff, str | None, str | None]]:
+def _load_live_support_metric_rows(
+    session: Session,
+) -> list[tuple[Handoff, str | None, str | None]]:
     assignee = aliased(User)
     return session.execute(
         select(Handoff, assignee.external_code, assignee.full_name)
@@ -550,6 +657,77 @@ def _support_operator_observations(_: object) -> list[Observation]:
     return observations
 
 
+def _support_age_bucket_observations(_: object) -> list[Observation]:
+    from api_core.db.session import session_scope
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='support-metrics')
+        rows = _load_live_support_metric_rows(session)
+
+    counts: dict[tuple[str, str], int] = {}
+    total_open = 0
+    now_utc = datetime.now(UTC)
+    for handoff, _, _ in rows:
+        queue_name = _normalize_queue_metric_label(handoff.queue_name)
+        bucket_code, _ = _handoff_age_bucket(created_at=handoff.created_at, now=now_utc)
+        key = (queue_name, bucket_code)
+        counts[key] = counts.get(key, 0) + 1
+        total_open += 1
+
+    observations = [
+        Observation(
+            count,
+            {
+                'queue_name': queue_name,
+                'bucket_code': bucket_code,
+            },
+        )
+        for (queue_name, bucket_code), count in sorted(counts.items())
+    ]
+    observations.append(Observation(total_open, {'queue_name': 'all', 'bucket_code': 'all'}))
+    return observations
+
+
+def _support_priority_observations(_: object) -> list[Observation]:
+    from api_core.db.session import session_scope
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='support-metrics')
+        rows = _load_live_support_metric_rows(session)
+
+    counts: dict[tuple[str, str, str], int] = {}
+    total_open = 0
+    for handoff, _, _ in rows:
+        queue_name = _normalize_queue_metric_label(handoff.queue_name)
+        sla_state = calculate_handoff_sla_state(handoff)
+        key = (queue_name, handoff.priority_code, sla_state)
+        counts[key] = counts.get(key, 0) + 1
+        total_open += 1
+
+    observations = [
+        Observation(
+            count,
+            {
+                'queue_name': queue_name,
+                'priority_code': priority_code,
+                'sla_state': sla_state,
+            },
+        )
+        for (queue_name, priority_code, sla_state), count in sorted(counts.items())
+    ]
+    observations.append(
+        Observation(
+            total_open,
+            {
+                'queue_name': 'all',
+                'priority_code': 'all',
+                'sla_state': 'all',
+            },
+        )
+    )
+    return observations
+
+
 @lru_cache(maxsize=1)
 def register_support_operational_metrics() -> bool:
     meter = get_meter('eduassist.api_core.support.live')
@@ -568,13 +746,22 @@ def register_support_operational_metrics() -> bool:
         callbacks=[_support_operator_observations],
         description='Current assigned handoffs grouped by operator and status.',
     )
+    meter.create_observable_gauge(
+        'eduassist_support_backlog_age_current',
+        callbacks=[_support_age_bucket_observations],
+        description='Current open handoffs grouped by queue and backlog age bucket.',
+    )
+    meter.create_observable_gauge(
+        'eduassist_support_priority_current',
+        callbacks=[_support_priority_observations],
+        description='Current open handoffs grouped by queue, priority and SLA state.',
+    )
     return True
 
 
 def build_handoff_observability_overview(session: Session) -> HandoffObservabilityOverview:
     now = datetime.utcnow()
-    now_utc = now.replace(tzinfo=timezone.utc)
-    since_24h = now - timedelta(hours=24)
+    now_utc = now.replace(tzinfo=UTC)
     since_7d = now - timedelta(days=7)
     since_24h_utc = now_utc - timedelta(hours=24)
     start_of_today = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -638,8 +825,9 @@ def build_handoff_observability_overview(session: Session) -> HandoffObservabili
                 bucket.resolved_count += 1
 
     resolved_rows = session.execute(
-        select(Handoff.created_at, Handoff.assigned_at, Handoff.updated_at, Handoff.status)
-        .where(Handoff.updated_at >= since_7d)
+        select(Handoff.created_at, Handoff.assigned_at, Handoff.updated_at, Handoff.status).where(
+            Handoff.updated_at >= since_7d
+        )
     ).all()
 
     assignment_durations: list[float] = []

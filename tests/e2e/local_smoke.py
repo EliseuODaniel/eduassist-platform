@@ -20,160 +20,246 @@ from _common import (
 
 def main() -> int:
     settings = Settings()
-    print("Smoke suite starting...")
+    print('Smoke suite starting...')
 
     for name, url in [
-        ("api-core", f"{settings.api_core_url}/healthz"),
-        ("ai-orchestrator", f"{settings.ai_orchestrator_url}/healthz"),
-        ("telegram-gateway", f"{settings.telegram_gateway_url}/healthz"),
-        ("tempo", f"{settings.tempo_url}/ready"),
-        ("loki", f"{settings.loki_url}/ready"),
-        ("prometheus", f"{settings.prometheus_url}/-/ready"),
+        ('api-core', f'{settings.api_core_url}/healthz'),
+        ('ai-orchestrator', f'{settings.ai_orchestrator_url}/healthz'),
+        ('telegram-gateway', f'{settings.telegram_gateway_url}/healthz'),
+        ('tempo', f'{settings.tempo_url}/ready'),
+        ('loki', f'{settings.loki_url}/ready'),
+        ('prometheus', f'{settings.prometheus_url}/-/ready'),
     ]:
         wait_for_health(name, url)
-        print(f"[ok] health {name}")
+        print(f'[ok] health {name}')
 
     token = fetch_token(settings)
-    print("[ok] keycloak token")
+    global_token = fetch_token(settings, username='carla.nogueira')
+    print('[ok] keycloak token')
 
     status, _, payload = request(
-        "GET",
-        f"{settings.api_core_url}/v1/operations/overview",
-        headers={"Authorization": f"Bearer {token}"},
+        'GET',
+        f'{settings.api_core_url}/v1/operations/overview',
+        headers={'Authorization': f'Bearer {token}'},
     )
-    assert_condition(status == 200 and isinstance(payload, dict), "operations_overview_failed")
-    print("[ok] operations overview")
+    assert_condition(status == 200 and isinstance(payload, dict), 'operations_overview_failed')
+    print('[ok] operations overview')
+
+    global_status, _, global_payload = request(
+        'GET',
+        f'{settings.api_core_url}/v1/operations/overview',
+        headers={'Authorization': f'Bearer {global_token}'},
+    )
+    assert_condition(
+        global_status == 200 and isinstance(global_payload, dict),
+        'operations_overview_global_failed',
+    )
+    handoff_overview = global_payload.get('handoff_overview')
+    assert_condition(isinstance(handoff_overview, dict), 'operations_handoff_overview_missing')
+    assert_condition(
+        isinstance(handoff_overview.get('priorities'), list) and handoff_overview['priorities'],
+        'operations_handoff_priorities_missing',
+    )
+    assert_condition(
+        isinstance(handoff_overview.get('aging_buckets'), list)
+        and handoff_overview['aging_buckets'],
+        'operations_handoff_aging_missing',
+    )
+    assert_condition(
+        handoff_overview.get('oldest_open_ticket_code') is not None,
+        'operations_oldest_open_ticket_missing',
+    )
+    print('[ok] global handoff overview')
 
     public_status, public_headers, public_payload = telegram_webhook_request(
         settings,
         update_id=9901,
         message_id=1,
-        text="quais documentos sao exigidos para matricula?",
+        text='quais documentos sao exigidos para matricula?',
         chat_id=777001,
-        username="visitante.publico",
-        first_name="Visitante",
+        username='visitante.publico',
+        first_name='Visitante',
     )
-    assert_condition(public_status == 200 and isinstance(public_payload, dict), "public_webhook_failed")
-    assert_condition("reply" in public_payload and "document" in str(public_payload["reply"]).lower(), "public_reply_unexpected")
+    assert_condition(
+        public_status == 200 and isinstance(public_payload, dict), 'public_webhook_failed'
+    )
+    assert_condition(
+        'reply' in public_payload and 'document' in str(public_payload['reply']).lower(),
+        'public_reply_unexpected',
+    )
     public_trace_id = extract_trace_id(public_headers)
-    print("[ok] public faq")
+    print('[ok] public faq')
 
     protected_status, protected_headers, protected_payload = telegram_webhook_request(
         settings,
         update_id=9902,
         message_id=2,
-        text="quero ver as notas do Lucas Oliveira",
+        text='quero ver as notas do Lucas Oliveira',
         chat_id=555001,
-        username="maria.oliveira",
-        first_name="Maria",
+        username='maria.oliveira',
+        first_name='Maria',
     )
-    assert_condition(protected_status == 200 and isinstance(protected_payload, dict), "protected_webhook_failed")
-    assert_condition("Resumo academico de Lucas Oliveira" in str(protected_payload.get("reply", "")), "protected_reply_unexpected")
+    assert_condition(
+        protected_status == 200 and isinstance(protected_payload, dict), 'protected_webhook_failed'
+    )
+    assert_condition(
+        'Resumo academico de Lucas Oliveira' in str(protected_payload.get('reply', '')),
+        'protected_reply_unexpected',
+    )
     protected_trace_id = extract_trace_id(protected_headers)
-    print("[ok] protected academic")
+    print('[ok] protected academic')
 
     handoff_status, handoff_headers, handoff_payload = telegram_webhook_request(
         settings,
         update_id=9903,
         message_id=3,
-        text="quero falar com um humano sobre o financeiro",
+        text='quero falar com um humano sobre o financeiro',
         chat_id=555001,
-        username="maria.oliveira",
-        first_name="Maria",
+        username='maria.oliveira',
+        first_name='Maria',
     )
-    assert_condition(handoff_status == 200 and isinstance(handoff_payload, dict), "handoff_webhook_failed")
-    assert_condition("Protocolo:" in str(handoff_payload.get("reply", "")), "handoff_reply_unexpected")
+    assert_condition(
+        handoff_status == 200 and isinstance(handoff_payload, dict), 'handoff_webhook_failed'
+    )
+    assert_condition(
+        'Protocolo:' in str(handoff_payload.get('reply', '')), 'handoff_reply_unexpected'
+    )
     handoff_trace_id = extract_trace_id(handoff_headers)
-    print("[ok] human handoff")
+    print('[ok] human handoff')
 
     handoff_list_status, _, handoff_list_payload = request(
-        "GET",
-        f"{settings.api_core_url}/v1/support/handoffs?page=1&limit=1",
-        headers={"Authorization": f"Bearer {token}"},
+        'GET',
+        f'{settings.api_core_url}/v1/support/handoffs?page=1&limit=1',
+        headers={'Authorization': f'Bearer {token}'},
     )
     assert_condition(
         handoff_list_status == 200 and isinstance(handoff_list_payload, dict),
-        "support_handoff_list_failed",
+        'support_handoff_list_failed',
     )
-    pagination = handoff_list_payload.get("pagination")
-    assert_condition(isinstance(pagination, dict), "support_handoff_pagination_missing")
-    assert_condition(pagination.get("page") == 1, "support_handoff_pagination_page_invalid")
-    assert_condition(pagination.get("page_size") == 1, "support_handoff_pagination_page_size_invalid")
-    assert_condition(int(pagination.get("total_items", 0)) >= 1, "support_handoff_pagination_total_invalid")
-    print("[ok] support handoff pagination")
+    pagination = handoff_list_payload.get('pagination')
+    assert_condition(isinstance(pagination, dict), 'support_handoff_pagination_missing')
+    assert_condition(pagination.get('page') == 1, 'support_handoff_pagination_page_invalid')
+    assert_condition(
+        pagination.get('page_size') == 1, 'support_handoff_pagination_page_size_invalid'
+    )
+    assert_condition(
+        int(pagination.get('total_items', 0)) >= 1, 'support_handoff_pagination_total_invalid'
+    )
+    print('[ok] support handoff pagination')
 
     dashboard_status, _, dashboard_payload = request(
-        "GET",
-        f"{settings.grafana_url}/api/search?query=EduAssist%20Tracing%20Overview",
+        'GET',
+        f'{settings.grafana_url}/api/search?query=EduAssist%20Tracing%20Overview',
         headers=grafana_basic_auth_header(settings),
     )
     assert_condition(
         dashboard_status == 200 and isinstance(dashboard_payload, list) and dashboard_payload,
-        "grafana_dashboard_missing",
+        'grafana_dashboard_missing',
     )
-    print("[ok] grafana dashboard")
+    print('[ok] grafana dashboard')
 
     metrics_dashboard_status, _, metrics_dashboard_payload = request(
-        "GET",
-        f"{settings.grafana_url}/api/search?query=EduAssist%20Metrics%20Overview",
+        'GET',
+        f'{settings.grafana_url}/api/search?query=EduAssist%20Metrics%20Overview',
         headers=grafana_basic_auth_header(settings),
     )
     assert_condition(
-        metrics_dashboard_status == 200 and isinstance(metrics_dashboard_payload, list) and metrics_dashboard_payload,
-        "grafana_metrics_dashboard_missing",
+        metrics_dashboard_status == 200
+        and isinstance(metrics_dashboard_payload, list)
+        and metrics_dashboard_payload,
+        'grafana_metrics_dashboard_missing',
     )
-    print("[ok] grafana metrics dashboard")
+    print('[ok] grafana metrics dashboard')
 
-    public_trace = wait_for_trace_span(settings, public_trace_id, "eduassist.retrieval.hybrid_search")
+    public_trace = wait_for_trace_span(
+        settings, public_trace_id, 'eduassist.retrieval.hybrid_search'
+    )
     public_spans = trace_span_names(public_trace)
-    assert_condition("eduassist.retrieval.hybrid_search" in public_spans, "missing_public_retrieval_span")
-    print("[ok] tempo retrieval span")
+    assert_condition(
+        'eduassist.retrieval.hybrid_search' in public_spans, 'missing_public_retrieval_span'
+    )
+    print('[ok] tempo retrieval span')
 
-    protected_trace = wait_for_trace_span(settings, protected_trace_id, "eduassist.policy.decide")
+    protected_trace = wait_for_trace_span(settings, protected_trace_id, 'eduassist.policy.decide')
     protected_spans = trace_span_names(protected_trace)
-    assert_condition("eduassist.policy.decide" in protected_spans, "missing_policy_span")
-    print("[ok] tempo policy span")
+    assert_condition('eduassist.policy.decide' in protected_spans, 'missing_policy_span')
+    print('[ok] tempo policy span')
 
-    handoff_trace = wait_for_trace_span(settings, handoff_trace_id, "eduassist.support.create_handoff")
+    handoff_trace = wait_for_trace_span(
+        settings, handoff_trace_id, 'eduassist.support.create_handoff'
+    )
     handoff_spans = trace_span_names(handoff_trace)
-    assert_condition("eduassist.support.create_handoff" in handoff_spans, "missing_handoff_span")
-    print("[ok] tempo handoff span")
+    assert_condition('eduassist.support.create_handoff' in handoff_spans, 'missing_handoff_span')
+    print('[ok] tempo handoff span')
 
     loki_payload = wait_for_loki_logs(settings, '{compose_service="telegram-gateway"}')
-    loki_results = loki_payload.get("data", {}).get("result", [])
-    assert_condition(isinstance(loki_results, list) and loki_results, "loki_no_gateway_logs")
-    print("[ok] loki gateway logs")
+    loki_results = loki_payload.get('data', {}).get('result', [])
+    assert_condition(isinstance(loki_results, list) and loki_results, 'loki_no_gateway_logs')
+    print('[ok] loki gateway logs')
 
-    policy_metrics = wait_for_prometheus_result(settings, "sum(eduassist_policy_decisions_total)")
-    retrieval_metrics = wait_for_prometheus_result(settings, "sum(eduassist_retrieval_requests_total)")
-    handoff_metrics = wait_for_prometheus_result(settings, "sum(eduassist_support_handoff_events_total)")
-    orchestration_metrics = wait_for_prometheus_result(settings, "sum(eduassist_orchestration_responses_total)")
+    policy_metrics = wait_for_prometheus_result(settings, 'sum(eduassist_policy_decisions_total)')
+    retrieval_metrics = wait_for_prometheus_result(
+        settings, 'sum(eduassist_retrieval_requests_total)'
+    )
+    handoff_metrics = wait_for_prometheus_result(
+        settings, 'sum(eduassist_support_handoff_events_total)'
+    )
+    orchestration_metrics = wait_for_prometheus_result(
+        settings, 'sum(eduassist_orchestration_responses_total)'
+    )
     backlog_metrics = wait_for_prometheus_result(
         settings,
         'sum(eduassist_support_backlog_current{queue_name="all",status="all",sla_state="all"})',
+    )
+    backlog_age_metrics = wait_for_prometheus_result(
+        settings,
+        'sum(eduassist_support_backlog_age_current{queue_name="all",bucket_code="all"})',
+    )
+    priority_metrics = wait_for_prometheus_result(
+        settings,
+        'sum(eduassist_support_priority_current{queue_name="all",priority_code="all",sla_state="all"})',
     )
     unassigned_metrics = wait_for_prometheus_result(
         settings,
         'sum(eduassist_support_unassigned_current{queue_name="all"})',
     )
-    assert_condition(float(policy_metrics[0]["value"][1]) > 0, "prometheus_policy_metrics_empty")
-    assert_condition(float(retrieval_metrics[0]["value"][1]) > 0, "prometheus_retrieval_metrics_empty")
-    assert_condition(float(handoff_metrics[0]["value"][1]) > 0, "prometheus_handoff_metrics_empty")
-    assert_condition(float(orchestration_metrics[0]["value"][1]) > 0, "prometheus_orchestration_metrics_empty")
-    assert_condition(float(backlog_metrics[0]["value"][1]) > 0, "prometheus_support_backlog_metrics_empty")
-    assert_condition(float(unassigned_metrics[0]["value"][1]) >= 0, "prometheus_support_unassigned_metrics_missing")
-    prometheus_health_payload = prometheus_query(settings, "up{job=\"otel-collector\"}")
-    prometheus_health_result = prometheus_health_payload.get("data", {}).get("result", [])
-    assert_condition(isinstance(prometheus_health_result, list) and prometheus_health_result, "prometheus_otel_scrape_missing")
-    print("[ok] prometheus domain metrics")
+    assert_condition(float(policy_metrics[0]['value'][1]) > 0, 'prometheus_policy_metrics_empty')
+    assert_condition(
+        float(retrieval_metrics[0]['value'][1]) > 0, 'prometheus_retrieval_metrics_empty'
+    )
+    assert_condition(float(handoff_metrics[0]['value'][1]) > 0, 'prometheus_handoff_metrics_empty')
+    assert_condition(
+        float(orchestration_metrics[0]['value'][1]) > 0, 'prometheus_orchestration_metrics_empty'
+    )
+    assert_condition(
+        float(backlog_metrics[0]['value'][1]) > 0, 'prometheus_support_backlog_metrics_empty'
+    )
+    assert_condition(
+        float(backlog_age_metrics[0]['value'][1]) > 0,
+        'prometheus_support_backlog_age_metrics_empty',
+    )
+    assert_condition(
+        float(priority_metrics[0]['value'][1]) > 0, 'prometheus_support_priority_metrics_empty'
+    )
+    assert_condition(
+        float(unassigned_metrics[0]['value'][1]) >= 0,
+        'prometheus_support_unassigned_metrics_missing',
+    )
+    prometheus_health_payload = prometheus_query(settings, 'up{job="otel-collector"}')
+    prometheus_health_result = prometheus_health_payload.get('data', {}).get('result', [])
+    assert_condition(
+        isinstance(prometheus_health_result, list) and prometheus_health_result,
+        'prometheus_otel_scrape_missing',
+    )
+    print('[ok] prometheus domain metrics')
 
-    print("Smoke suite finished successfully.")
+    print('Smoke suite finished successfully.')
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     try:
         raise SystemExit(main())
     except AssertionError as exc:
-        print(f"[fail] {exc}", file=sys.stderr)
+        print(f'[fail] {exc}', file=sys.stderr)
         raise SystemExit(1)

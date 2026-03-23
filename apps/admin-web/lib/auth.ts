@@ -125,6 +125,25 @@ export type HandoffOperatorOverviewEntry = {
   breached_count: number;
 };
 
+export type HandoffPriorityOverviewEntry = {
+  priority_code: string;
+  open_count: number;
+  queued_count: number;
+  in_progress_count: number;
+  attention_count: number;
+  breached_count: number;
+};
+
+export type HandoffAgingBucketEntry = {
+  bucket_code: string;
+  label: string;
+  open_count: number;
+  queued_count: number;
+  in_progress_count: number;
+  attention_count: number;
+  breached_count: number;
+};
+
 export type HandoffOperationsOverview = {
   open_total: number;
   queued_total: number;
@@ -135,7 +154,11 @@ export type HandoffOperationsOverview = {
   critical_total: number;
   queues: HandoffQueueOverviewEntry[];
   operators: HandoffOperatorOverviewEntry[];
+  priorities: HandoffPriorityOverviewEntry[];
+  aging_buckets: HandoffAgingBucketEntry[];
   alerts: HandoffAlertEntry[];
+  oldest_open_ticket_code: string | null;
+  oldest_open_minutes: number | null;
   observability: HandoffObservabilityOverview | null;
 };
 

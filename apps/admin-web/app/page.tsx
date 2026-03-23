@@ -506,6 +506,87 @@ function renderHandoffAlertFeed(handoffOverview: HandoffOperationsOverview) {
   );
 }
 
+function renderHandoffBacklogSignals(handoffOverview: HandoffOperationsOverview) {
+  return (
+    <section className="workspace-grid">
+      <article className="panel">
+        <div className="section-head">
+          <div>
+            <p className="eyebrow">Prioridade</p>
+            <h2>Mix operacional da fila</h2>
+          </div>
+        </div>
+
+        {handoffOverview.priorities.length === 0 ? (
+          <p className="muted-copy">Ainda não há handoffs ativos para segmentar por prioridade.</p>
+        ) : (
+          <ul className="feed-list">
+            {handoffOverview.priorities.map((priority) => (
+              <li className="feed-item" key={priority.priority_code}>
+                <div className="feed-head">
+                  <div>
+                    <strong>{formatPriority(priority.priority_code)}</strong>
+                    <p className="muted-copy">{priority.open_count} handoffs ativos</p>
+                  </div>
+                </div>
+                <div className="tag-row">
+                  <span className="event-tag">Na fila: {priority.queued_count}</span>
+                  <span className="event-tag">Em atendimento: {priority.in_progress_count}</span>
+                  <span className="event-tag">Atenção: {priority.attention_count}</span>
+                  <span className="event-tag">Estourado: {priority.breached_count}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </article>
+
+      <article className="panel">
+        <div className="section-head">
+          <div>
+            <p className="eyebrow">Envelhecimento</p>
+            <h2>Idade do backlog aberto</h2>
+          </div>
+        </div>
+
+        <div className="summary-grid summary-grid-compact">
+          <article className="metric-card">
+            <p className="label">Ticket mais antigo</p>
+            <strong>{handoffOverview.oldest_open_ticket_code ?? 'Sem backlog aberto'}</strong>
+          </article>
+          <article className="metric-card">
+            <p className="label">Idade do mais antigo</p>
+            <strong>{formatDurationMinutes(handoffOverview.oldest_open_minutes)}</strong>
+          </article>
+        </div>
+
+        {handoffOverview.aging_buckets.length === 0 ? (
+          <p className="muted-copy">Ainda não há handoffs ativos para segmentar por idade.</p>
+        ) : (
+          <ul className="feed-list">
+            {handoffOverview.aging_buckets.map((bucket) => (
+              <li className="feed-item" key={bucket.bucket_code}>
+                <div className="feed-head">
+                  <div>
+                    <strong>{bucket.label}</strong>
+                    <p className="muted-copy">{bucket.open_count} handoffs ativos</p>
+                  </div>
+                </div>
+                <div className="tag-row">
+                  <span className="event-tag">Na fila: {bucket.queued_count}</span>
+                  <span className="event-tag">Em atendimento: {bucket.in_progress_count}</span>
+                  <span className="event-tag">Atenção: {bucket.attention_count}</span>
+                  <span className="event-tag">Estourado: {bucket.breached_count}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </article>
+    </section>
+  );
+}
+
 function renderHandoffOverview(handoffOverview: HandoffOperationsOverview) {
   return (
     <>
@@ -555,6 +636,8 @@ function renderHandoffOverview(handoffOverview: HandoffOperationsOverview) {
       </section>
 
       {renderHandoffObservability(handoffOverview)}
+
+      {renderHandoffBacklogSignals(handoffOverview)}
 
       {renderHandoffAlertFeed(handoffOverview)}
 
