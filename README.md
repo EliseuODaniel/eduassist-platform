@@ -147,7 +147,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o `api-core` já expõe `GET /v1/operations/overview` com métricas, feed de auditoria, feed de decisões de acesso, contagens estruturais e agregados operacionais de handoff para papéis internos;
 - o `api-core` já expõe a fila de `handoffs` humanos com escopo pessoal ou global, incluindo prioridade, SLA mockado e atribuição operacional;
 - o `ai-orchestrator` já cria handoffs reais ao entrar em modo `handoff`, devolvendo protocolo e fila ao usuário no Telegram;
-- o `admin-web` já roda em modo estável de produção dentro do `Docker Compose`, renderiza a fila de handoffs com filtros por status, fila, atribuição, SLA e texto livre, abre o detalhe completo da conversa e mostra saúde operacional da fila humana com visão por setor, operador e exceções críticas;
+- o `admin-web` já roda em modo estável de produção dentro do `Docker Compose`, renderiza a fila de handoffs com filtros por status, fila, atribuição, SLA e texto livre, abre o detalhe completo da conversa e mostra saúde operacional da fila humana com visão por setor, operador, exceções críticas e atalhos diretos de drill-down;
 - seed foundation idempotente já disponível em `tools/mockgen`;
 - sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;

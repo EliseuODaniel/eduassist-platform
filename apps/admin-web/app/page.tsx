@@ -124,6 +124,37 @@ function formatTokenLabel(value: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function buildHandoffHref(filters: {
+  handoff?: string | null;
+  status?: string | null;
+  queue?: string | null;
+  assignment?: string | null;
+  sla?: string | null;
+  search?: string | null;
+}): string {
+  const params = new URLSearchParams();
+  if (filters.handoff) {
+    params.set('handoff', filters.handoff);
+  }
+  if (filters.status) {
+    params.set('handoffStatus', filters.status);
+  }
+  if (filters.queue) {
+    params.set('handoffQueue', filters.queue);
+  }
+  if (filters.assignment) {
+    params.set('handoffAssignment', filters.assignment);
+  }
+  if (filters.sla) {
+    params.set('handoffSla', filters.sla);
+  }
+  if (filters.search) {
+    params.set('handoffSearch', filters.search);
+  }
+  const query = params.toString();
+  return query ? `/?${query}` : '/';
+}
+
 function renderAuditMetadata(metadata: Record<string, unknown>) {
   const entries = Object.entries(metadata).slice(0, 3);
   if (entries.length === 0) {
@@ -287,9 +318,27 @@ function renderHandoffAlertFeed(handoffOverview: HandoffOperationsOverview) {
                     {formatSlaState(alert.sla_state)}
                   </p>
                 </div>
-                <Link className="secondary-link" href={`/?handoff=${alert.handoff_id}`}>
-                  Abrir ticket
-                </Link>
+                <div className="action-row action-row-tight">
+                  <Link
+                    className="secondary-link"
+                    href={buildHandoffHref({
+                      handoff: alert.handoff_id,
+                    })}
+                  >
+                    Abrir ticket
+                  </Link>
+                  <Link
+                    className="secondary-link"
+                    href={buildHandoffHref({
+                      handoff: alert.handoff_id,
+                      status: alert.status,
+                      queue: alert.queue_name,
+                      sla: alert.sla_state,
+                    })}
+                  >
+                    Filtrar fila
+                  </Link>
+                </div>
               </div>
 
               <p className="feed-copy">{alert.summary}</p>
@@ -332,26 +381,38 @@ function renderHandoffOverview(handoffOverview: HandoffOperationsOverview) {
         </div>
 
         <div className="summary-grid summary-grid-compact">
-          <article className="metric-card">
+          <Link className="metric-card metric-link-card" href={buildHandoffHref({ status: 'queued' })}>
             <p className="label">Na fila</p>
             <strong>{handoffOverview.queued_total}</strong>
-          </article>
-          <article className="metric-card">
+          </Link>
+          <Link
+            className="metric-card metric-link-card"
+            href={buildHandoffHref({ status: 'in_progress' })}
+          >
             <p className="label">Em atendimento</p>
             <strong>{handoffOverview.in_progress_total}</strong>
-          </article>
-          <article className="metric-card">
+          </Link>
+          <Link
+            className="metric-card metric-link-card"
+            href={buildHandoffHref({ sla: 'attention' })}
+          >
             <p className="label">SLA em atenção</p>
             <strong>{handoffOverview.attention_total}</strong>
-          </article>
-          <article className="metric-card">
+          </Link>
+          <Link
+            className="metric-card metric-link-card"
+            href={buildHandoffHref({ sla: 'breached' })}
+          >
             <p className="label">SLA estourado</p>
             <strong>{handoffOverview.breached_total}</strong>
-          </article>
-          <article className="metric-card">
+          </Link>
+          <Link
+            className="metric-card metric-link-card"
+            href={buildHandoffHref({ assignment: 'unassigned' })}
+          >
             <p className="label">Sem responsável</p>
             <strong>{handoffOverview.unassigned_total}</strong>
-          </article>
+          </Link>
         </div>
       </section>
 
@@ -384,6 +445,22 @@ function renderHandoffOverview(handoffOverview: HandoffOperationsOverview) {
                     <span className="event-tag">Atenção: {queue.attention_count}</span>
                     <span className="event-tag">Estourado: {queue.breached_count}</span>
                     <span className="event-tag">Sem responsável: {queue.unassigned_count}</span>
+                  </div>
+                  <div className="action-row">
+                    <Link
+                      className="secondary-link"
+                      href={buildHandoffHref({ queue: queue.queue_name })}
+                    >
+                      Ver fila
+                    </Link>
+                    {queue.breached_count > 0 ? (
+                      <Link
+                        className="secondary-link"
+                        href={buildHandoffHref({ queue: queue.queue_name, sla: 'breached' })}
+                      >
+                        Ver críticos
+                      </Link>
+                    ) : null}
                   </div>
                 </li>
               ))}
