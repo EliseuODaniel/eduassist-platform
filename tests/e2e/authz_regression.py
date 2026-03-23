@@ -6,6 +6,7 @@ from _common import (
     Settings,
     assert_condition,
     extract_trace_id,
+    fetch_token,
     request,
     telegram_webhook_request,
     trace_span_names,
@@ -104,6 +105,71 @@ def main() -> int:
     assert_condition(unauth_status == 401 and isinstance(unauth_payload, dict), "operations_unauth_failed")
     assert_condition(unauth_payload.get("detail") == "bearer_token_required", "operations_unauth_detail_unexpected")
     print("[ok] operations bearer required")
+
+    guardian_token = fetch_token(settings, username="maria.oliveira")
+    operator_token = fetch_token(settings, username="carla.nogueira")
+
+    handoff_list_status, _, handoff_list_payload = request(
+        "GET",
+        f"{settings.api_core_url}/v1/support/handoffs?page=1&limit=5",
+        headers={"Authorization": f"Bearer {guardian_token}"},
+    )
+    assert_condition(
+        handoff_list_status == 200 and isinstance(handoff_list_payload, dict),
+        "support_self_list_failed",
+    )
+    items = handoff_list_payload.get("items", [])
+    assert_condition(isinstance(items, list) and items, "support_self_list_empty")
+    handoff_id = items[0].get("handoff_id")
+    conversation_id = items[0].get("conversation_id")
+    assert_condition(isinstance(handoff_id, str) and len(handoff_id) > 20, "support_self_handoff_id_missing")
+    assert_condition(
+        isinstance(conversation_id, str) and len(conversation_id) > 20,
+        "support_self_conversation_id_missing",
+    )
+
+    note_text = "Nota interna confidencial de operacao"
+    update_status, _, update_payload = request(
+        "PATCH",
+        f"{settings.api_core_url}/v1/support/handoffs/{handoff_id}",
+        headers={"Authorization": f"Bearer {operator_token}"},
+        json_body={"operator_note": note_text},
+    )
+    assert_condition(
+        update_status == 200 and isinstance(update_payload, dict),
+        "support_operator_note_update_failed",
+    )
+
+    self_detail_status, _, self_detail_payload = request(
+        "GET",
+        f"{settings.api_core_url}/v1/support/handoffs/{handoff_id}",
+        headers={"Authorization": f"Bearer {guardian_token}"},
+    )
+    assert_condition(
+        self_detail_status == 200 and isinstance(self_detail_payload, dict),
+        "support_self_detail_failed",
+    )
+    self_messages = self_detail_payload.get("messages", [])
+    assert_condition(isinstance(self_messages, list), "support_self_detail_messages_missing")
+    self_joined = " ".join(str(message.get("content", "")) for message in self_messages if isinstance(message, dict))
+    assert_condition(note_text not in self_joined, "support_self_detail_leaked_operator_note")
+
+    operator_detail_status, _, operator_detail_payload = request(
+        "GET",
+        f"{settings.api_core_url}/v1/support/handoffs/{handoff_id}",
+        headers={"Authorization": f"Bearer {operator_token}"},
+    )
+    assert_condition(
+        operator_detail_status == 200 and isinstance(operator_detail_payload, dict),
+        "support_operator_detail_failed",
+    )
+    operator_messages = operator_detail_payload.get("messages", [])
+    assert_condition(isinstance(operator_messages, list), "support_operator_detail_messages_missing")
+    operator_joined = " ".join(
+        str(message.get("content", "")) for message in operator_messages if isinstance(message, dict)
+    )
+    assert_condition(note_text in operator_joined, "support_operator_detail_missing_note")
+    print("[ok] support operator note hidden from self scope")
 
     print("Authz regression finished successfully.")
     return 0

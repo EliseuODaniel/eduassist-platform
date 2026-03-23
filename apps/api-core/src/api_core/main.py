@@ -29,7 +29,7 @@ from api_core.contracts import (
     TelegramLinkConsumeRequest,
     TelegramLinkConsumeResponse,
 )
-from api_core.db.session import apply_rls_actor_context, get_engine, session_scope
+from api_core.db.session import apply_rls_actor_context, apply_rls_service_context, get_engine, session_scope
 from api_core.services.audit import (
     build_handoff_operations_overview,
     build_operations_metrics,
@@ -389,6 +389,7 @@ async def operations_overview(
             reason=decision.reason,
         )
         if decision.allow:
+            apply_rls_actor_context(session, actor)
             actor_user_id = None if scope == 'global' else actor.user_id
             metrics = build_operations_metrics(session, actor=actor, scope=scope)
             handoff_overview = build_handoff_operations_overview(session, actor=actor, scope=scope)
@@ -475,6 +476,7 @@ async def support_handoffs(
         )
 
         if decision.allow:
+            apply_rls_actor_context(session, actor)
             counts, items, filters, pagination = list_support_handoffs(
                 session,
                 actor=actor,
@@ -536,6 +538,7 @@ async def support_handoff_detail(
         )
 
         if decision.allow:
+            apply_rls_actor_context(session, actor)
             detail = get_support_handoff_detail(
                 session,
                 actor=actor,
@@ -614,6 +617,7 @@ async def support_handoff_update(
         )
 
         if decision.allow:
+            apply_rls_actor_context(session, actor)
             try:
                 updated_item = update_support_handoff_status(
                     session,
@@ -667,9 +671,11 @@ async def internal_support_handoff_create(
     _require_internal_api_token(x_internal_api_token)
 
     with session_scope() as session:
+        apply_rls_service_context(session, service_name='internal-support-api')
         actor = None
         if payload.telegram_chat_id is not None:
             actor = resolve_actor_context(session, telegram_chat_id=payload.telegram_chat_id)
+            apply_rls_service_context(session, service_name='internal-support-api')
 
         response_payload = create_support_handoff(
             session,

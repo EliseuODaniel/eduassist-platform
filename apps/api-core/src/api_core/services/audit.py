@@ -43,6 +43,7 @@ from api_core.db.models import (
     User,
     UserTelegramLink,
 )
+from api_core.db.session import apply_rls_service_context
 from api_core.services.support import calculate_handoff_sla_state
 
 INTERNAL_OPERATIONS_ROLES = frozenset({'staff', 'finance', 'coordinator', 'admin'})
@@ -446,6 +447,7 @@ def _support_backlog_observations(_: object) -> list[Observation]:
     from api_core.db.session import session_scope
 
     with session_scope() as session:
+        apply_rls_service_context(session, service_name='support-metrics')
         rows = _load_live_support_metric_rows(session)
 
     counts: dict[tuple[str, str, str], int] = {}
@@ -486,6 +488,7 @@ def _support_unassigned_observations(_: object) -> list[Observation]:
     from api_core.db.session import session_scope
 
     with session_scope() as session:
+        apply_rls_service_context(session, service_name='support-metrics')
         rows = _load_live_support_metric_rows(session)
 
     counts: dict[str, int] = {}
@@ -509,6 +512,7 @@ def _support_operator_observations(_: object) -> list[Observation]:
     from api_core.db.session import session_scope
 
     with session_scope() as session:
+        apply_rls_service_context(session, service_name='support-metrics')
         rows = _load_live_support_metric_rows(session)
 
     counts: dict[tuple[str, str, str], int] = {}

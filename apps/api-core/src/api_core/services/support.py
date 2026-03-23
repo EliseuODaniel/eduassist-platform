@@ -36,6 +36,10 @@ def resolve_support_scope(actor: ActorContext) -> str:
     return 'self'
 
 
+def can_view_internal_support_notes(actor: ActorContext, *, scope: str) -> bool:
+    return scope == 'global' or actor.role_code in INTERNAL_OPERATOR_ROLES
+
+
 def _truncate_excerpt(text: str | None, *, limit: int = 180) -> str | None:
     if not text:
         return None
@@ -361,6 +365,15 @@ def get_support_handoff_detail(
             session,
             [(handoff, conversation, requester_name, requester_role, assigned_name, assigned_code)],
         )[0]
+        include_operator_messages = can_view_internal_support_notes(actor, scope=scope)
+        messages_stmt = (
+            select(Message)
+            .where(Message.conversation_id == conversation.id)
+            .order_by(Message.created_at.asc(), Message.id.asc())
+        )
+        if not include_operator_messages:
+            messages_stmt = messages_stmt.where(Message.sender_type != 'operator')
+
         messages = [
             SupportConversationMessageEntry(
                 message_id=message.id,
@@ -368,11 +381,7 @@ def get_support_handoff_detail(
                 content=message.content,
                 created_at=message.created_at,
             )
-            for message in session.execute(
-                select(Message)
-                .where(Message.conversation_id == conversation.id)
-                .order_by(Message.created_at.asc(), Message.id.asc())
-            ).scalars()
+            for message in session.execute(messages_stmt).scalars()
         ]
         set_span_attributes(
             **{

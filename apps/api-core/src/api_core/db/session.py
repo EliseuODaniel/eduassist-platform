@@ -55,10 +55,27 @@ def apply_rls_identity_context(
     )
 
 
+def apply_rls_service_context(
+    session: Session,
+    *,
+    service_role: str = 'system_internal',
+    service_name: str = 'api-core',
+) -> None:
+    apply_rls_context(
+        session,
+        context_payload={
+            'user_id': None,
+            'role_code': service_role,
+            'service_name': service_name,
+        },
+    )
+
+
 def apply_rls_actor_context(session: Session, actor: ActorContext) -> None:
     payload: dict[str, object] = {
         'user_id': str(actor.user_id),
         'role_code': actor.role_code,
+        'service_name': None,
         'guardian_id': str(actor.guardian_id) if actor.guardian_id else None,
         'student_id': str(actor.student_id) if actor.student_id else None,
         'teacher_id': str(actor.teacher_id) if actor.teacher_id else None,

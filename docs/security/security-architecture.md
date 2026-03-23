@@ -69,6 +69,8 @@ Exemplos:
 - aluno vê apenas seus próprios dados;
 - professor vê apenas turmas atribuídas;
 - financeiro acessa domínio financeiro, não acadêmico amplo;
+- conversas, mensagens, `tool_calls` e handoffs seguem a mesma lógica de escopo próprio vs visão global interna;
+- notas internas de operador não devem aparecer no detalhe de handoff para o solicitante final;
 - direção tem acesso ampliado com auditoria reforçada.
 
 ## 6. Telegram

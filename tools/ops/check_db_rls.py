@@ -116,6 +116,31 @@ def run_checks(connection: psycopg.Connection) -> dict[str, object]:
         actor=ActorSpec(external_code='USR-STUD-001', role_code='student'),
     )
 
+    maria_visible_conversations = query_scalar(
+        connection,
+        """
+        select count(*)
+        from conversation.conversations conversations
+        """,
+        actor=ActorSpec(external_code='USR-GUARD-001', role_code='guardian'),
+    )
+    bruno_visible_handoffs = query_scalar(
+        connection,
+        """
+        select count(*)
+        from conversation.handoffs handoffs
+        """,
+        actor=ActorSpec(external_code='USR-STUD-003', role_code='student'),
+    )
+    carla_visible_handoffs = query_scalar(
+        connection,
+        """
+        select count(*)
+        from conversation.handoffs handoffs
+        """,
+        actor=ActorSpec(external_code='USR-FIN-001', role_code='finance'),
+    )
+
     checks = {
         'default_deny_students': zero_visibility == 0,
         'guardian_student_scope': maria_visible_students == 2,
@@ -125,6 +150,9 @@ def run_checks(connection: psycopg.Connection) -> dict[str, object]:
         'teacher_denied_other_class_grades': marcos_bruno_grades == 0,
         'finance_team_visible_all_invoices': carla_visible_invoices == 3,
         'student_self_scope_only': lucas_visible_students == 1,
+        'guardian_visible_own_conversations': maria_visible_conversations >= 1,
+        'unrelated_student_denied_handoffs': bruno_visible_handoffs == 0,
+        'finance_team_visible_handoffs': carla_visible_handoffs >= 1,
     }
 
     return {
@@ -139,6 +167,9 @@ def run_checks(connection: psycopg.Connection) -> dict[str, object]:
             'teacher_bruno_grades': marcos_bruno_grades,
             'finance_visible_invoices': carla_visible_invoices,
             'student_visible_students': lucas_visible_students,
+            'guardian_visible_conversations': maria_visible_conversations,
+            'unrelated_student_visible_handoffs': bruno_visible_handoffs,
+            'finance_visible_handoffs': carla_visible_handoffs,
         },
     }
 
