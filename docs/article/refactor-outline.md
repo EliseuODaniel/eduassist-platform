@@ -78,3 +78,13 @@ Um novo documento consistente com o estado atual do projeto e capaz de servir co
 - documentação de arquitetura;
 - referência para implementação.
 
+## 9. Estado atual da refatoração
+
+O outline acima ja foi materializado em um rascunho academico completo em [eduassist-platform-academic-draft.md](/home/edann/projects/eduassist-platform/docs/article/eduassist-platform-academic-draft.md).
+
+Esse rascunho:
+
+- substitui a tese antiga centrada em prototipo multiagente;
+- descreve a arquitetura real do repositório atual;
+- explicita o que ja foi implementado e o que ainda esta pendente;
+- pode servir como base imediata para conversao posterior em `.docx` ou artigo formal.

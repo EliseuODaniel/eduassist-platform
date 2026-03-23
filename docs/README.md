@@ -17,3 +17,4 @@ Este diretório concentra a documentação formal do projeto.
 - [Pesquisa de tecnologias de IA](/home/edann/projects/eduassist-platform/docs/research/ai-technology-review.md)
 - [Roadmap de implementação](/home/edann/projects/eduassist-platform/docs/roadmap/implementation-roadmap.md)
 - [Plano de refatoração do documento acadêmico](/home/edann/projects/eduassist-platform/docs/article/refactor-outline.md)
+- [Rascunho acadêmico do projeto](/home/edann/projects/eduassist-platform/docs/article/eduassist-platform-academic-draft.md)
