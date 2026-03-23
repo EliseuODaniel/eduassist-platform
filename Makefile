@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE_FILE := infra/compose/compose.yaml
 ENV_FILE := .env
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local db-upgrade db-downgrade db-seed-foundation db-seed-auth-bindings documents-sync python-fmt python-lint admin-install
+.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-all db-upgrade db-downgrade db-seed-foundation db-seed-auth-bindings documents-sync python-fmt python-lint admin-install
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -38,6 +38,11 @@ observability-logs: env
 
 smoke-local: env
 	python3 tests/e2e/local_smoke.py
+
+smoke-authz: env
+	python3 tests/e2e/authz_regression.py
+
+smoke-all: smoke-local smoke-authz
 
 db-upgrade:
 	DATABASE_URL=$${DATABASE_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core alembic -c apps/api-core/alembic.ini upgrade head

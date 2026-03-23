@@ -223,6 +223,8 @@ Status atual do bootstrap:
 - `make observability-down`
 - `make observability-logs`
 - `make smoke-local`
+- `make smoke-authz`
+- `make smoke-all`
 - `GET /v1/foundation/summary` no `api-core`
 - `GET /v1/identity/context?user_external_code=USR-TEACH-001`
 - `GET /v1/internal/identity/context?telegram_chat_id=<chat_id>` com `X-Internal-Api-Token`

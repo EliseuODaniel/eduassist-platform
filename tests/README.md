@@ -17,3 +17,9 @@ Estado atual:
   - consulta protegida
   - handoff humano
   - verificacao basica de `Tempo`, `Grafana` e `Loki`
+- `tests/e2e/authz_regression.py` cobre regressao de seguranca funcional:
+  - negacao para usuario anonimo em fluxo protegido
+  - clarificacao de responsavel com mais de um aluno
+  - `403` de policy no `api-core`
+  - `401` por secret invalido no webhook
+  - `401` para rota web protegida sem bearer

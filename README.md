@@ -154,6 +154,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o tracing agora também inclui spans de dominio para policy, retrieval híbrido e operacoes de handoff, com dashboard provisionado em `Grafana` para cribsheet de TraceQL e runbook local;
 - o stack local agora também inclui `Loki + Promtail`, com ingestao dos logs dos containers do Compose para investigacao centralizada no `Grafana`;
 - existe uma suite de smoke local em `tests/e2e/local_smoke.py` para validar os fluxos principais e a pilha de observabilidade;
+- existe uma suite de regressao de autorizacao em `tests/e2e/authz_regression.py` para validar negativas, ambiguidades, bearer ausente e segredos invalidos;
 - seed foundation idempotente já disponível em `tools/mockgen`;
 - sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;
@@ -165,8 +166,8 @@ Expansões já aprovadas para a próxima etapa:
 
 ## Próximos passos imediatos
 
-1. Expandir a seed para cenários mais amplos de tickets, filas, operadores e resoluções.
-2. Expandir os dashboards do `Grafana` com painéis dinamicos para SLA, policy decisions, retrieval e logs.
-3. Expandir a revisão detalhada do atendimento com histórico mais rico, paginação e buscas mais profundas no `admin-web`.
-4. Fortalecer a suite de testes e evals com cenarios adversariais e autorizacao negativa.
+1. Expandir os dashboards do `Grafana` com painéis dinamicos para SLA, policy decisions, retrieval e logs.
+2. Expandir a suite de testes e evals com cenarios adversariais adicionais, casos de exfiltracao e regressao operacional.
+3. Expandir a seed para cenários mais amplos de tickets, filas, operadores e resoluções.
+4. Expandir a revisão detalhada do atendimento com histórico mais rico, paginação e buscas mais profundas no `admin-web`.
 5. Preparar benchmark comparativo para `GraphRAG` seletivo sobre o corpus institucional.
