@@ -128,20 +128,21 @@ Estratégia:
 Este repositório já contém o bootstrap técnico inicial do projeto:
 
 - stack local em [compose.yaml](/home/edann/projects/eduassist-platform/infra/compose/compose.yaml);
+- `Qdrant` já integrado ao ambiente local para a fundação do retrieval;
 - esqueletos executáveis para `api-core`, `ai-orchestrator`, `telegram-gateway`, `worker` e `admin-web`;
+- `ai-orchestrator` já expõe preview do grafo, capabilities e contratos de tools;
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;
 - base documental sincronizada com a direção arquitetural atual.
 
 Expansões já aprovadas para a próxima etapa:
 
-- adicionar `Qdrant` à stack local;
 - introduzir pipeline documental com `Docling`;
 - preparar modo avançado de retrieval com `GraphRAG` somente após baseline híbrido estar medido.
 
 ## Próximos passos imediatos
 
-1. Validar `docker compose up` e build local do bootstrap.
-2. Definir schemas iniciais do banco e migrações.
-3. Adicionar `Qdrant` e preparar a fundação do pipeline documental.
-4. Implementar identidade, policy engine e auditoria mínima.
+1. Definir schemas iniciais do banco e migrações.
+2. Preparar a fundação do pipeline documental com `Docling`.
+3. Implementar identidade, policy engine e auditoria mínima.
+4. Conectar `Qdrant` e services ao fluxo completo de ingestão e retrieval.
 5. Subir a primeira vertical funcional de FAQ pública com retrieval híbrido e citações.

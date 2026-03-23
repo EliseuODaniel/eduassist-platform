@@ -36,6 +36,16 @@ services:
       retries: 10
     restart: unless-stopped
 
+  qdrant:
+    image: ${QDRANT_IMAGE:-qdrant/qdrant:latest}
+    container_name: eduassist-qdrant
+    ports:
+      - '${QDRANT_PORT:-6333}:6333'
+      - '${QDRANT_GRPC_PORT:-6334}:6334'
+    volumes:
+      - qdrant-data:/qdrant/storage
+    restart: unless-stopped
+
   minio:
     image: ${MINIO_IMAGE:-minio/minio:latest}
     container_name: eduassist-minio
@@ -143,11 +153,16 @@ services:
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-pro}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_DOCUMENTS_COLLECTION: ${QDRANT_DOCUMENTS_COLLECTION:-school_documents}
+      GRAPH_RAG_ENABLED: ${GRAPH_RAG_ENABLED:-false}
     ports:
       - '${AI_ORCHESTRATOR_PORT:-8002}:8000'
     depends_on:
       redis:
         condition: service_healthy
+      qdrant:
+        condition: service_started
     healthcheck:
       test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
       interval: 10s
@@ -193,11 +208,17 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DATABASE_URL: ${DATABASE_URL:-postgresql://eduassist:eduassist@postgres:5432/eduassist}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      MINIO_BUCKET_DOCUMENTS: ${MINIO_BUCKET_DOCUMENTS:-documents}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      DOCUMENT_PIPELINE_BACKEND: ${DOCUMENT_PIPELINE_BACKEND:-docling}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      qdrant:
+        condition: service_started
     healthcheck:
       test: ['CMD-SHELL', 'test -f /tmp/worker-ready']
       interval: 10s
@@ -239,5 +260,6 @@ services:
 
 volumes:
   postgres-data:
+  qdrant-data:
   redis-data:
   minio-data:

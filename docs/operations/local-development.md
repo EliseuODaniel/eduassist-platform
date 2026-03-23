@@ -33,7 +33,8 @@ Estado validado:
 Observação:
 
 - a etapa de bootstrap já foi executada e testada;
-- a próxima expansão operacional prevista é a entrada de `Qdrant` na stack local quando a fase de retrieval começar.
+- `Qdrant` ja foi integrado a stack local como base da fase de retrieval;
+- a proxima expansao operacional prevista e a entrada do pipeline documental com `Docling`.
 
 ## 4. Estratégia de ambientes
 
@@ -62,7 +63,8 @@ Status atual:
 
 - bootstrap implementado em [compose.yaml](/home/edann/projects/eduassist-platform/infra/compose/compose.yaml);
 - os serviços já possuem esqueletos executáveis e healthchecks básicos;
-- `Qdrant` já está aprovado no planejamento, mas ainda não foi adicionado ao Compose nesta fase de bootstrap;
+- `Qdrant` já foi adicionado ao Compose e validado junto do `ai-orchestrator`;
+- o `ai-orchestrator` já possui preview de grafo, capacidades e contratos de tools;
 - observabilidade dedicada ainda ficará para a próxima etapa do roadmap.
 
 ### `compose:observability`
@@ -133,11 +135,14 @@ Status atual do bootstrap:
 - Dockerfiles iniciais nos apps
 - stack Compose pronta para validação local
 - runtime validado após reinicialização e atualização do Docker Desktop
+- fundação inicial de retrieval e orquestração agentica já implementada
 
 ## 9. Variáveis de ambiente previstas
 
 - `DATABASE_URL`
 - `REDIS_URL`
+- `QDRANT_URL`
+- `QDRANT_DOCUMENTS_COLLECTION`
 - `MINIO_ENDPOINT`
 - `KEYCLOAK_*`
 - `OPA_URL`
@@ -146,6 +151,8 @@ Status atual do bootstrap:
 - `LLM_PROVIDER`
 - `OPENAI_API_KEY`
 - `GOOGLE_API_KEY`
+- `GRAPH_RAG_ENABLED`
+- `DOCUMENT_PIPELINE_BACKEND`
 
 ## 10. Critérios de pronto para desenvolvimento
 

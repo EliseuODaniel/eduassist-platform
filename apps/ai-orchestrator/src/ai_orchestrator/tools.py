@@ -1,0 +1,203 @@
+from __future__ import annotations
+
+from .models import AccessTier, ToolContract, ToolKind
+
+
+TOOL_CONTRACTS: tuple[ToolContract, ...] = (
+    ToolContract(
+        name='search_public_documents',
+        description='Busca documentos institucionais publicos com retrieval hibrido e retorno citavel.',
+        kind=ToolKind.retrieval,
+        access_tier=AccessTier.public,
+        source_of_truth='qdrant + postgres_fts + minio',
+        deterministic=False,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'query': {'type': 'string'},
+                'top_k': {'type': 'integer', 'minimum': 1, 'maximum': 20},
+            },
+            'required': ['query'],
+        },
+        output_contract='chunks citaveis com metadata de documento, score e nivel de suporte',
+        triggers=['faq', 'regimento', 'secretaria', 'matricula', 'institucional'],
+        notes=['usa corpus publico apenas', 'deve devolver referencias suficientes para citacao'],
+    ),
+    ToolContract(
+        name='search_private_documents',
+        description='Busca documentos internos filtrados por visibilidade e papel autorizado.',
+        kind=ToolKind.retrieval,
+        access_tier=AccessTier.authenticated,
+        source_of_truth='qdrant + postgres_fts + minio',
+        deterministic=False,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'query': {'type': 'string'},
+                'audience': {'type': 'string'},
+                'top_k': {'type': 'integer', 'minimum': 1, 'maximum': 20},
+            },
+            'required': ['query', 'audience'],
+        },
+        output_contract='chunks autorizados com metadata e referencias auditaveis',
+        triggers=['manual do professor', 'comunicado interno', 'norma interna'],
+        notes=['so deve ser usada apos policy positiva', 'nunca bypassa filtro de visibilidade'],
+    ),
+    ToolContract(
+        name='get_school_calendar',
+        description='Consulta calendario escolar estruturado para eventos, provas, reunioes e feriados.',
+        kind=ToolKind.data_service,
+        access_tier=AccessTier.public,
+        source_of_truth='calendar_service',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'audience': {'type': 'string'},
+                'date_from': {'type': 'string'},
+                'date_to': {'type': 'string'},
+            },
+            'required': ['date_from', 'date_to'],
+        },
+        output_contract='lista estruturada de eventos com escopo e datas',
+        triggers=['calendario', 'provas', 'reuniao', 'feriado', 'evento'],
+    ),
+    ToolContract(
+        name='get_student_academic_summary',
+        description='Resumo academico do aluno autenticado ou vinculado ao responsavel.',
+        kind=ToolKind.data_service,
+        access_tier=AccessTier.authenticated,
+        source_of_truth='academic_service',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'student_id': {'type': 'string'},
+                'term': {'type': 'string'},
+            },
+            'required': ['student_id'],
+        },
+        output_contract='resumo estruturado com componentes academicos auditaveis',
+        triggers=['boletim', 'resumo academico', 'notas', 'frequencia'],
+        notes=['exige vinculo legitimo entre usuario e aluno'],
+    ),
+    ToolContract(
+        name='get_student_attendance',
+        description='Consulta faltas e frequencia de um aluno autorizado.',
+        kind=ToolKind.data_service,
+        access_tier=AccessTier.authenticated,
+        source_of_truth='academic_service',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'student_id': {'type': 'string'},
+                'date_from': {'type': 'string'},
+                'date_to': {'type': 'string'},
+            },
+            'required': ['student_id'],
+        },
+        output_contract='frequencia consolidada e registros relevantes',
+        triggers=['falta', 'faltas', 'frequencia', 'presenca'],
+    ),
+    ToolContract(
+        name='get_student_grades',
+        description='Consulta notas e avaliacoes de um aluno autorizado.',
+        kind=ToolKind.data_service,
+        access_tier=AccessTier.authenticated,
+        source_of_truth='academic_service',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'student_id': {'type': 'string'},
+                'term': {'type': 'string'},
+                'subject_code': {'type': 'string'},
+            },
+            'required': ['student_id'],
+        },
+        output_contract='notas estruturadas por disciplina e periodo',
+        triggers=['nota', 'notas', 'boletim', 'avaliacao', 'prova'],
+    ),
+    ToolContract(
+        name='get_financial_summary',
+        description='Consulta resumo financeiro autorizado do aluno ou responsavel.',
+        kind=ToolKind.data_service,
+        access_tier=AccessTier.sensitive,
+        source_of_truth='finance_service',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'student_id': {'type': 'string'},
+                'include_overdue': {'type': 'boolean'},
+            },
+            'required': ['student_id'],
+        },
+        output_contract='resumo financeiro consolidado com pendencias e situacao',
+        triggers=['mensalidade', 'pagamento', 'boleto', 'financeiro', 'inadimplencia'],
+        notes=['sempre gera trilha de auditoria sensivel'],
+    ),
+    ToolContract(
+        name='get_teacher_schedule',
+        description='Consulta horarios e turmas do professor autenticado.',
+        kind=ToolKind.data_service,
+        access_tier=AccessTier.authenticated,
+        source_of_truth='academic_service',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'teacher_id': {'type': 'string'},
+                'date_from': {'type': 'string'},
+                'date_to': {'type': 'string'},
+            },
+            'required': ['teacher_id'],
+        },
+        output_contract='grade de horarios, turmas e alocacoes do professor',
+        triggers=['horario do professor', 'turmas', 'grade docente'],
+    ),
+    ToolContract(
+        name='create_support_ticket',
+        description='Abre chamado operacional para secretaria, financeiro ou suporte humano.',
+        kind=ToolKind.operation,
+        access_tier=AccessTier.public,
+        source_of_truth='ticket_service',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'queue': {'type': 'string'},
+                'summary': {'type': 'string'},
+                'conversation_id': {'type': 'string'},
+            },
+            'required': ['queue', 'summary'],
+        },
+        output_contract='ticket criado com protocolo e fila de atendimento',
+        triggers=['protocolo', 'chamado', 'abrir atendimento'],
+    ),
+    ToolContract(
+        name='handoff_to_human',
+        description='Encaminha a conversa para atendimento humano com contexto resumido e seguro.',
+        kind=ToolKind.operation,
+        access_tier=AccessTier.public,
+        source_of_truth='ticket_service',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'queue': {'type': 'string'},
+                'reason': {'type': 'string'},
+                'conversation_id': {'type': 'string'},
+            },
+            'required': ['queue', 'reason'],
+        },
+        output_contract='encaminhamento registrado com status e orientacao ao usuario',
+        triggers=['atendente', 'humano', 'secretaria', 'nao resolveu'],
+        notes=['deve receber resumo seguro da conversa, sem excesso de PII'],
+    ),
+)
+
+
+def get_tool_contracts() -> list[ToolContract]:
+    return list(TOOL_CONTRACTS)
