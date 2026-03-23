@@ -88,3 +88,9 @@ Esse rascunho:
 - descreve a arquitetura real do repositório atual;
 - explicita o que ja foi implementado e o que ainda esta pendente;
 - pode servir como base imediata para conversao posterior em `.docx` ou artigo formal.
+
+O repositório agora tambem inclui:
+
+- uma versao mais formal de artigo em [eduassist-platform-academic-article.md](/home/edann/projects/eduassist-platform/docs/article/eduassist-platform-academic-article.md);
+- metadados editaveis em [article-export-metadata.yaml](/home/edann/projects/eduassist-platform/docs/article/article-export-metadata.yaml);
+- pipeline de exportacao para `.docx` via `make article-docx`.

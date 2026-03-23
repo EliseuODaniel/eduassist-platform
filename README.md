@@ -64,6 +64,7 @@ Construir uma plataforma robusta e funcional de atendimento escolar com IA para 
 - [ADR 0001 - Rebuild do zero](/home/edann/projects/eduassist-platform/docs/adr/0001-greenfield-rebuild.md)
 - [ADR 0002 - Retrieval e runtime agentic](/home/edann/projects/eduassist-platform/docs/adr/0002-retrieval-and-agent-runtime.md)
 - [Plano de refatoração do documento acadêmico](/home/edann/projects/eduassist-platform/docs/article/refactor-outline.md)
+- [Versão formal de artigo](/home/edann/projects/eduassist-platform/docs/article/eduassist-platform-academic-article.md)
 
 ## Estrutura inicial do repositório
 
@@ -172,6 +173,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - existe uma suite formal de evals do `ai-orchestrator` em `tests/evals/orchestrator_quality.py`, com dataset versionado em `tests/evals/datasets/orchestrator_cases.json`, para validar grounding publico, calendario, negacao segura, ambiguidade controlada, handoff e retrieval documental;
 - existe uma trilha experimental em `tools/graphrag-benchmark` para benchmark seletivo de `GraphRAG` sobre o corpus institucional publico, com workspace bootstrapado, dataset de comparacao e runner que salva baseline hibrido e consultas `basic/local/global/drift` em artefatos;
 - existe um gate operacional final em `make release-readiness`, com relatorio salvo em `artifacts/readiness`, para consolidar runtime role, `RLS`, evals, smoke completo e baseline do benchmark seletivo;
+- existe um pipeline de exportacao do artigo academico para `.docx` via `make article-docx`, com metadados versionados no repositório;
 - seed foundation idempotente já disponível em `tools/mockgen`;
 - seed operacional incremental para carga mais realista de handoffs disponível em `tools/mockgen/seed_operational_load.py`;
 - sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
