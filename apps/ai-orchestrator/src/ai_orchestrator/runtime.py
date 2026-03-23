@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import unicodedata
 from datetime import date, timedelta
 from typing import Any
@@ -30,7 +31,41 @@ DEFAULT_PUBLIC_HELP = (
 
 ATTENDANCE_TERMS = {'frequencia', 'falta', 'faltas', 'presenca', 'presencas'}
 GRADE_TERMS = {'nota', 'notas', 'boletim', 'avaliacao', 'avaliacoes', 'prova', 'provas'}
-TEACHER_SCHEDULE_TERMS = {'horario', 'grade', 'agenda', 'turma', 'turmas', 'aula', 'aulas'}
+TEACHER_SCHEDULE_TERMS = {
+    'horario',
+    'grade',
+    'agenda',
+    'turma',
+    'turmas',
+    'aula',
+    'aulas',
+    'disciplina',
+    'disciplinas',
+    'materia',
+    'materias',
+}
+TEACHER_CLASS_TERMS = {'turma', 'turmas', 'classe', 'classes'}
+TEACHER_SUBJECT_TERMS = {'disciplina', 'disciplinas', 'materia', 'materias'}
+FINANCE_OPEN_TERMS = {'aberto', 'abertos', 'em aberto', 'pendencia', 'pendencias', 'boleto', 'boletos'}
+FINANCE_OVERDUE_TERMS = {'vencido', 'vencidos', 'vencida', 'vencidas', 'atrasado', 'atrasados', 'inadimplencia'}
+FINANCE_PAID_TERMS = {
+    'pago',
+    'pagos',
+    'paga',
+    'pagas',
+    'quitado',
+    'quitados',
+    'quitada',
+    'quitadas',
+    'pagamento',
+    'pagamentos',
+}
+FINANCE_SECOND_COPY_TERMS = {'segunda via', '2a via', 'boleto', 'boletos'}
+SUBJECT_HINTS = {
+    'matematica': {'matematica'},
+    'portugues': {'portugues', 'redacao'},
+    'biologia': {'biologia', 'bio'},
+}
 
 
 def _normalize_text(text: str) -> str:
@@ -97,6 +132,20 @@ def _format_event_line(event: CalendarEventCard) -> str:
 def _contains_any(message: str, terms: set[str]) -> bool:
     lowered = _normalize_text(message)
     return any(term in lowered for term in terms)
+
+
+def _extract_term_filter(message: str) -> str | None:
+    lowered = _normalize_text(message)
+    patterns = {
+        'B1': [r'\bb1\b', r'\b1o?\s*bimestre\b', r'\bprimeiro\s*bimestre\b'],
+        'B2': [r'\bb2\b', r'\b2o?\s*bimestre\b', r'\bsegundo\s*bimestre\b'],
+        'B3': [r'\bb3\b', r'\b3o?\s*bimestre\b', r'\bterceiro\s*bimestre\b'],
+        'B4': [r'\bb4\b', r'\b4o?\s*bimestre\b', r'\bquarto\s*bimestre\b'],
+    }
+    for suffix, candidates in patterns.items():
+        if any(re.search(candidate, lowered) for candidate in candidates):
+            return suffix
+    return None
 
 
 def _user_role_from_actor(actor: dict[str, Any] | None) -> UserRole:
@@ -188,6 +237,15 @@ def _linked_students(actor: dict[str, Any] | None) -> list[dict[str, Any]]:
     return [student for student in linked_students if isinstance(student, dict)]
 
 
+def _eligible_students(actor: dict[str, Any] | None, *, capability: str) -> list[dict[str, Any]]:
+    students = _linked_students(actor)
+    if capability == 'academic':
+        return [student for student in students if bool(student.get('can_view_academic', False))]
+    if capability == 'finance':
+        return [student for student in students if bool(student.get('can_view_finance', False))]
+    return students
+
+
 def _select_linked_student(actor: dict[str, Any] | None, message: str) -> tuple[dict[str, Any] | None, str | None]:
     students = _linked_students(actor)
     if not students:
@@ -217,6 +275,68 @@ def _select_linked_student(actor: dict[str, Any] | None, message: str) -> tuple[
         for student in students
     )
     return None, f'Sua conta tem mais de um aluno vinculado. Diga qual aluno deseja consultar: {options}.'
+
+
+def _detect_subject_filter(message: str, summary: dict[str, Any]) -> str | None:
+    lowered = _normalize_text(message)
+    available_subjects: dict[str, str] = {}
+
+    for key in ('grades', 'attendance'):
+        rows = summary.get(key)
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            subject_name = row.get('subject_name')
+            if not isinstance(subject_name, str):
+                continue
+            normalized_subject = _normalize_text(subject_name)
+            available_subjects[normalized_subject] = subject_name
+
+    for normalized_subject in available_subjects:
+        if normalized_subject in lowered:
+            return normalized_subject
+        for hint in SUBJECT_HINTS.get(normalized_subject, set()):
+            if hint in lowered:
+                return normalized_subject
+
+    return None
+
+
+def _filter_grade_rows(summary: dict[str, Any], *, subject_filter: str | None, term_filter: str | None) -> list[dict[str, Any]]:
+    grades = summary.get('grades')
+    if not isinstance(grades, list):
+        return []
+
+    filtered: list[dict[str, Any]] = []
+    for grade in grades:
+        if not isinstance(grade, dict):
+            continue
+        subject_name = _normalize_text(str(grade.get('subject_name', '')))
+        term_code = str(grade.get('term_code', ''))
+        if subject_filter and subject_name != subject_filter:
+            continue
+        if term_filter and not term_code.endswith(term_filter):
+            continue
+        filtered.append(grade)
+    return filtered
+
+
+def _filter_attendance_rows(summary: dict[str, Any], *, subject_filter: str | None) -> list[dict[str, Any]]:
+    attendance = summary.get('attendance')
+    if not isinstance(attendance, list):
+        return []
+
+    filtered: list[dict[str, Any]] = []
+    for row in attendance:
+        if not isinstance(row, dict):
+            continue
+        subject_name = _normalize_text(str(row.get('subject_name', '')))
+        if subject_filter and subject_name != subject_filter:
+            continue
+        filtered.append(row)
+    return filtered
 
 
 def _format_grades(summary: dict[str, Any]) -> list[str]:
@@ -277,6 +397,49 @@ def _format_invoices(summary: dict[str, Any]) -> list[str]:
     return lines or ['- Nenhuma fatura encontrada para o contrato atual.']
 
 
+def _filter_invoice_rows(summary: dict[str, Any], *, status_filter: set[str] | None) -> list[dict[str, Any]]:
+    invoices = summary.get('invoices')
+    if not isinstance(invoices, list):
+        return []
+    if not status_filter:
+        return [invoice for invoice in invoices if isinstance(invoice, dict)]
+    filtered: list[dict[str, Any]] = []
+    for invoice in invoices:
+        if not isinstance(invoice, dict):
+            continue
+        status = str(invoice.get('status', '')).lower()
+        if status in status_filter:
+            filtered.append(invoice)
+    return filtered
+
+
+def _detect_finance_status_filter(message: str) -> set[str] | None:
+    lowered = _normalize_text(message)
+    if any(term in lowered for term in FINANCE_OVERDUE_TERMS):
+        return {'overdue'}
+    if any(term in lowered for term in FINANCE_PAID_TERMS):
+        return {'paid'}
+    if any(term in lowered for term in FINANCE_OPEN_TERMS):
+        return {'open', 'overdue'}
+    return None
+
+
+def _format_invoice_lines(invoices: list[dict[str, Any]]) -> list[str]:
+    if not invoices:
+        return ['- Nenhuma fatura compativel com esse filtro foi encontrada.']
+    lines = []
+    for invoice in invoices[:6]:
+        lines.append(
+            '- {reference_month}: vencimento {due_date}, status {status}, valor {amount_due}'.format(
+                reference_month=invoice.get('reference_month', '---'),
+                due_date=invoice.get('due_date', '---'),
+                status=invoice.get('status', 'desconhecido'),
+                amount_due=invoice.get('amount_due', '0.00'),
+            )
+        )
+    return lines
+
+
 def _format_assignments(summary: dict[str, Any]) -> list[str]:
     assignments = summary.get('assignments')
     if not isinstance(assignments, list) or not assignments:
@@ -293,6 +456,40 @@ def _format_assignments(summary: dict[str, Any]) -> list[str]:
             )
         )
     return lines or ['- Nenhuma alocacao docente encontrada.']
+
+
+def _format_unique_classes(summary: dict[str, Any]) -> list[str]:
+    assignments = summary.get('assignments')
+    if not isinstance(assignments, list) or not assignments:
+        return ['- Nenhuma turma encontrada.']
+    seen: set[str] = set()
+    lines: list[str] = []
+    for assignment in assignments:
+        if not isinstance(assignment, dict):
+            continue
+        class_name = str(assignment.get('class_name', 'Turma'))
+        if class_name in seen:
+            continue
+        seen.add(class_name)
+        lines.append(f'- {class_name}')
+    return lines or ['- Nenhuma turma encontrada.']
+
+
+def _format_unique_subjects(summary: dict[str, Any]) -> list[str]:
+    assignments = summary.get('assignments')
+    if not isinstance(assignments, list) or not assignments:
+        return ['- Nenhuma disciplina encontrada.']
+    seen: set[str] = set()
+    lines: list[str] = []
+    for assignment in assignments:
+        if not isinstance(assignment, dict):
+            continue
+        subject_name = str(assignment.get('subject_name', 'Disciplina'))
+        if subject_name in seen:
+            continue
+        seen.add(subject_name)
+        lines.append(f'- {subject_name}')
+    return lines or ['- Nenhuma disciplina encontrada.']
 
 
 def _compose_structured_deny(actor: dict[str, Any] | None) -> str:
@@ -321,6 +518,7 @@ async def _compose_structured_tool_answer(
 
     role_code = str(actor.get('role_code', 'anonymous'))
     message = request.message
+    normalized_message = _normalize_text(message)
 
     if preview.classification.domain is QueryDomain.academic and role_code == 'teacher':
         if not _contains_any(message, TEACHER_SCHEDULE_TERMS):
@@ -337,10 +535,76 @@ async def _compose_structured_tool_answer(
             return 'Nao consegui consultar sua grade docente agora. Tente novamente em instantes.'
         summary = payload.get('summary', {})
         teacher_name = summary.get('teacher_name', actor.get('full_name', 'Professor'))
-        assignments = _format_assignments(summary if isinstance(summary, dict) else {})
-        return '\n'.join([f'Grade docente de {teacher_name}:', *assignments])
+        if not isinstance(summary, dict):
+            return 'Nao consegui interpretar o retorno da grade docente.'
+
+        if _contains_any(message, TEACHER_CLASS_TERMS) and not _contains_any(message, TEACHER_SUBJECT_TERMS):
+            lines = [f'Turmas de {teacher_name}:', *_format_unique_classes(summary)]
+            return '\n'.join(lines)
+
+        if _contains_any(message, TEACHER_SUBJECT_TERMS) and not _contains_any(message, TEACHER_CLASS_TERMS):
+            lines = [f'Disciplinas de {teacher_name}:', *_format_unique_subjects(summary)]
+            return '\n'.join(lines)
+
+        assignments = _format_assignments(summary)
+        lines = [f'Grade docente de {teacher_name}:', *assignments]
+        if 'horario' in normalized_message or 'agenda' in normalized_message:
+            lines.append(
+                'Nesta base mockada atual, o detalhamento por bloco de horario ainda nao foi modelado; '
+                'por enquanto eu mostro suas alocacoes de turmas e disciplinas.'
+            )
+        return '\n'.join(lines)
 
     if preview.classification.domain in {QueryDomain.academic, QueryDomain.finance}:
+        if preview.classification.domain is QueryDomain.finance:
+            requested_status = _detect_finance_status_filter(message)
+            if len(_eligible_students(actor, capability='finance')) > 1:
+                student, clarification = _select_linked_student(actor, message)
+                if student is None and clarification is not None:
+                    summaries: list[dict[str, Any]] = []
+                    for candidate in _eligible_students(actor, capability='finance'):
+                        candidate_id = candidate.get('student_id')
+                        if not isinstance(candidate_id, str):
+                            continue
+                        payload, status_code = await _api_core_get(
+                            settings=settings,
+                            path=f'/v1/students/{candidate_id}/financial-summary',
+                            params={'telegram_chat_id': request.telegram_chat_id},
+                        )
+                        if status_code == 200 and isinstance(payload, dict):
+                            summary = payload.get('summary')
+                            if isinstance(summary, dict):
+                                summaries.append(summary)
+
+                    if summaries and not any(
+                        _normalize_text(str(student.get('full_name', ''))) in normalized_message
+                        for student in _eligible_students(actor, capability='finance')
+                    ):
+                        lines = ['Panorama financeiro das contas vinculadas:']
+                        total_open = 0
+                        total_overdue = 0
+                        for summary in summaries:
+                            open_count = int(summary.get('open_invoice_count', 0) or 0)
+                            overdue_count = int(summary.get('overdue_invoice_count', 0) or 0)
+                            total_open += open_count
+                            total_overdue += overdue_count
+                            filtered_invoices = _filter_invoice_rows(summary, status_filter=requested_status)
+                            status_line = (
+                                f"- {summary.get('student_name', 'Aluno')}: "
+                                f"{open_count} em aberto, {overdue_count} vencidas"
+                            )
+                            lines.append(status_line)
+                            for invoice_line in _format_invoice_lines(filtered_invoices)[:2]:
+                                lines.append(f'  {invoice_line[2:]}' if invoice_line.startswith('- ') else invoice_line)
+                        lines.insert(1, f'- Total de faturas em aberto: {total_open}')
+                        lines.insert(2, f'- Total de faturas vencidas: {total_overdue}')
+                        if any(term in normalized_message for term in FINANCE_SECOND_COPY_TERMS):
+                            lines.append(
+                                'A emissao automatica de segunda via ainda entra na proxima etapa; '
+                                'por enquanto eu consigo informar a situacao das faturas.'
+                            )
+                        return '\n'.join(lines)
+
         student, clarification = _select_linked_student(actor, message)
         if clarification is not None:
             return clarification
@@ -367,22 +631,34 @@ async def _compose_structured_tool_answer(
             if not isinstance(summary, dict):
                 return 'Nao consegui interpretar o retorno academico desta consulta.'
 
+            term_filter = _extract_term_filter(message)
+            subject_filter = _detect_subject_filter(message, summary)
+            filtered_grades = _filter_grade_rows(summary, subject_filter=subject_filter, term_filter=term_filter)
+            filtered_attendance = _filter_attendance_rows(summary, subject_filter=subject_filter)
+            filtered_summary = dict(summary)
+            filtered_summary['grades'] = filtered_grades
+            filtered_summary['attendance'] = filtered_attendance
+
             focus_attendance = _contains_any(message, ATTENDANCE_TERMS) and not _contains_any(message, GRADE_TERMS)
             lines = [
                 f'Resumo academico de {student_name}:',
                 f"- Turma: {summary.get('class_name', 'nao informada')}",
                 f"- Serie atual: {summary.get('grade_level', 'nao informada')}",
             ]
+            if subject_filter:
+                lines.append(f"- Disciplina filtrada: {subject_filter.title()}")
+            if term_filter:
+                lines.append(f'- Bimestre filtrado: {term_filter[-1]}')
             if focus_attendance:
                 lines.append('Frequencia:')
-                lines.extend(_format_attendance(summary))
+                lines.extend(_format_attendance(filtered_summary))
                 lines.append('Notas mais recentes:')
-                lines.extend(_format_grades(summary))
+                lines.extend(_format_grades(filtered_summary))
             else:
                 lines.append('Notas mais recentes:')
-                lines.extend(_format_grades(summary))
+                lines.extend(_format_grades(filtered_summary))
                 lines.append('Frequencia:')
-                lines.extend(_format_attendance(summary))
+                lines.extend(_format_attendance(filtered_summary))
             return '\n'.join(lines)
 
         payload, status_code = await _api_core_get(
@@ -399,6 +675,8 @@ async def _compose_structured_tool_answer(
         if not isinstance(summary, dict):
             return 'Nao consegui interpretar o retorno financeiro desta consulta.'
 
+        requested_status = _detect_finance_status_filter(message)
+        filtered_invoices = _filter_invoice_rows(summary, status_filter=requested_status)
         lines = [
             f"Resumo financeiro de {summary.get('student_name', student_name)}:",
             f"- Contrato: {summary.get('contract_code', 'nao informado')}",
@@ -406,9 +684,21 @@ async def _compose_structured_tool_answer(
             f"- Mensalidade base: {summary.get('monthly_amount', '0.00')}",
             f"- Faturas em aberto: {summary.get('open_invoice_count', 0)}",
             f"- Faturas vencidas: {summary.get('overdue_invoice_count', 0)}",
-            'Ultimas faturas:',
-            *_format_invoices(summary),
         ]
+        if requested_status == {'paid'}:
+            lines.append('Faturas pagas:')
+        elif requested_status == {'overdue'}:
+            lines.append('Faturas vencidas:')
+        elif requested_status == {'open', 'overdue'}:
+            lines.append('Faturas em aberto ou vencidas:')
+        else:
+            lines.append('Ultimas faturas:')
+        lines.extend(_format_invoice_lines(filtered_invoices))
+        if any(term in normalized_message for term in FINANCE_SECOND_COPY_TERMS):
+            lines.append(
+                'A emissao automatica de segunda via ainda entra na proxima etapa; '
+                'por enquanto eu consigo informar a situacao e os vencimentos.'
+            )
         return '\n'.join(lines)
 
     return (

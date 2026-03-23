@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import TypedDict
+import unicodedata
 
 from langgraph.graph import END, START, StateGraph
 
@@ -36,24 +37,81 @@ class GraphRuntimeConfig(TypedDict):
 
 
 PUBLIC_CALENDAR_TERMS = {'calendario', 'feriado', 'evento', 'prova', 'reuniao', 'horario'}
-ACADEMIC_TERMS = {'nota', 'notas', 'boletim', 'frequencia', 'faltas', 'avaliacao', 'turma'}
-FINANCE_TERMS = {'mensalidade', 'boleto', 'financeiro', 'pagamento', 'inadimplencia', 'bolsa'}
+ACADEMIC_TERMS = {
+    'nota',
+    'notas',
+    'boletim',
+    'frequencia',
+    'falta',
+    'faltas',
+    'avaliacao',
+    'avaliacoes',
+    'turma',
+    'turmas',
+    'disciplina',
+    'disciplinas',
+    'materia',
+    'materias',
+    'bimestre',
+}
+FINANCE_TERMS = {
+    'mensalidade',
+    'boleto',
+    'boletos',
+    'financeiro',
+    'pagamento',
+    'pagamentos',
+    'inadimplencia',
+    'bolsa',
+    'fatura',
+    'faturas',
+    'conta',
+    'contas',
+    'pago',
+    'pagos',
+    'paga',
+    'pagas',
+    'quitado',
+    'quitados',
+    'quitada',
+    'quitadas',
+    'vencido',
+    'vencidos',
+    'vencida',
+    'vencidas',
+    'aberto',
+    'abertos',
+    'pendencia',
+    'pendencias',
+}
 SUPPORT_TERMS = {'humano', 'atendente', 'secretaria', 'suporte', 'protocolo', 'chamado'}
 GRAPH_RAG_TERMS = {'visao geral', 'compare', 'comparar', 'tendencias', 'corpus', 'relacione'}
+TEACHER_SELF_SERVICE_TERMS = {'horario', 'agenda', 'turma', 'turmas', 'disciplina', 'disciplinas', 'materia', 'materias'}
 
 
 def _append_path(state: OrchestrationState, node_name: str) -> list[str]:
     return [*state.get('graph_path', []), node_name]
 
 
+def _normalize_text(text: str) -> str:
+    normalized = unicodedata.normalize('NFKD', text)
+    without_accents = ''.join(char for char in normalized if not unicodedata.combining(char))
+    return without_accents.lower()
+
+
 def _contains_any(message: str, terms: set[str]) -> bool:
-    lowered = message.lower()
+    lowered = _normalize_text(message)
     return any(term in lowered for term in terms)
+
+
+def _is_teacher_self_service_request(message: str, role: UserRole) -> bool:
+    lowered = _normalize_text(message)
+    return role is UserRole.teacher and any(term in lowered for term in TEACHER_SELF_SERVICE_TERMS)
 
 
 def classify_request(state: OrchestrationState) -> OrchestrationState:
     request = state['request']
-    message = request.message.lower()
+    message = _normalize_text(request.message)
 
     if _contains_any(message, SUPPORT_TERMS):
         classification = IntentClassification(
@@ -61,6 +119,13 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
             access_tier=AccessTier.public,
             confidence=0.92,
             reason='mensagem contem termos de atendimento humano ou suporte',
+        )
+    elif _is_teacher_self_service_request(message, request.user.role):
+        classification = IntentClassification(
+            domain=QueryDomain.academic,
+            access_tier=AccessTier.authenticated,
+            confidence=0.94,
+            reason='mensagem indica autoatendimento docente sobre turmas, disciplinas ou horario',
         )
     elif _contains_any(message, FINANCE_TERMS):
         classification = IntentClassification(

@@ -76,7 +76,7 @@ Status atual:
 - o `ai-orchestrator` já expõe `retrieval/status` e `retrieval/search` com fusão de `Qdrant` e `PostgreSQL FTS`;
 - o `ai-orchestrator` já expõe `POST /v1/messages/respond` para FAQ pública, calendário público e negações seguras;
 - o `telegram-gateway` já encaminha mensagens públicas ao `ai-orchestrator` e responde `/help`, FAQ e calendário pelo webhook;
-- o fluxo protegido do Telegram já responde resumo acadêmico, resumo financeiro e grade docente para contas vinculadas;
+- o fluxo protegido do Telegram já responde resumo acadêmico com filtros por disciplina e bimestre, resumo financeiro com filtros por status e panorama consolidado para responsáveis, além de grade docente por turmas, disciplinas e horário para contas vinculadas;
 - `telegram_chat_id` em rotas protegidas do `api-core` e `POST /v1/messages/respond` no `ai-orchestrator` agora exigem `X-Internal-Api-Token`;
 - observabilidade dedicada ainda ficará para a próxima etapa do roadmap.
 
@@ -197,8 +197,13 @@ Status atual do bootstrap:
 - `POST /webhooks/telegram` no `telegram-gateway` com `/start link_<codigo>`
 - `POST /webhooks/telegram` no `telegram-gateway` com perguntas como `quais documentos sao exigidos para matricula?`
 - `POST /webhooks/telegram` no `telegram-gateway` com `quero ver as notas do Lucas Oliveira`
+- `POST /webhooks/telegram` no `telegram-gateway` com `quero ver notas de portugues da Ana Oliveira`
+- `POST /webhooks/telegram` no `telegram-gateway` com `quero ver notas do 1o bimestre do Lucas Oliveira`
 - `POST /webhooks/telegram` no `telegram-gateway` com `quero ver o financeiro da Ana Oliveira`
+- `POST /webhooks/telegram` no `telegram-gateway` com `quero ver boletos em aberto`
+- `POST /webhooks/telegram` no `telegram-gateway` com `quero ver faturas pagas do Lucas Oliveira`
 - `POST /webhooks/telegram` no `telegram-gateway` com `qual meu horario e minhas turmas?`
+- `POST /webhooks/telegram` no `telegram-gateway` com `quais sao minhas disciplinas?`
 - `GET /v1/students/{student_id}/academic-summary?...`
 - `GET /v1/students/{student_id}/financial-summary?...`
 - `GET /v1/teachers/me/schedule?user_external_code=USR-TEACH-001`
