@@ -58,6 +58,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - retrieval documental;
 - consulta a calendário público estruturado no `api-core`;
 - consulta a dados protegidos do `api-core` por rotas internas autenticadas entre serviços;
+- criação de handoffs humanos reais no `api-core` quando o fluxo entrar em suporte operacional;
 - composição da resposta final;
 - emissão de metadados de confiança e fontes.
 
@@ -106,6 +107,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - login web autenticado com `Keycloak`;
 - leitura de sessão autenticada no `api-core`;
 - leitura de overview operacional autenticado no `api-core`;
+- leitura e gestão da fila de handoffs humanos no `api-core`, com detalhe da conversa e nota operacional;
 - geração de challenge de vínculo para o Telegram;
 - curadoria documental;
 - revisão de conversas;
@@ -158,7 +160,9 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 
 - abrir chamados;
 - registrar encaminhamentos;
-- controlar status de atendimento humano.
+- controlar status de atendimento humano;
+- devolver protocolo operacional e fila ao bot e ao painel;
+- permitir visão pessoal para usuários finais autenticados e visão global para perfis internos.
 
 ## 12. Infra serviços
 

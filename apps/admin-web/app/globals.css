@@ -251,6 +251,18 @@ body {
   margin-top: 12px;
 }
 
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.feed-item.is-selected {
+  border-color: rgba(15, 118, 110, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.16);
+}
+
 .event-tag,
 .timestamp-chip {
   display: inline-flex;
@@ -401,6 +413,52 @@ body {
 
 .challenge-note {
   margin-bottom: 0;
+}
+
+.message-thread {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+.message-bubble {
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(18, 32, 51, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.message-bubble.is-user {
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.message-bubble.is-operator {
+  background: rgba(20, 83, 45, 0.1);
+}
+
+.message-bubble.is-assistant,
+.message-bubble.is-system {
+  background: rgba(18, 32, 51, 0.05);
+}
+
+.operator-note {
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(18, 32, 51, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.operator-note:focus {
+  outline: 2px solid rgba(15, 118, 110, 0.22);
+  outline-offset: 2px;
 }
 
 @media (max-width: 720px) {

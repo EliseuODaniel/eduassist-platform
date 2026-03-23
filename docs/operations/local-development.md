@@ -80,6 +80,10 @@ Status atual:
 - o `admin-web` já expõe login real via `Keycloak` com OIDC + PKCE, leitura de sessão autenticada do `api-core` e emissão de challenge de vínculo em `/api/telegram-link/challenge`;
 - o `api-core` já expõe `GET /v1/operations/overview` com visão pessoal para responsáveis, alunos e professores, e visão global para secretaria, financeiro, coordenação e administração;
 - a home autenticada do `admin-web` já mostra métricas operacionais, feed de auditoria e feed de decisões de acesso adequados ao papel autenticado;
+- o `api-core` já expõe `GET /v1/support/handoffs`, `GET /v1/support/handoffs/{handoff_id}` e `PATCH /v1/support/handoffs/{handoff_id}` para operação humana autenticada;
+- o `api-core` já expõe `POST /v1/internal/support/handoffs` para criação interna de tickets/handoffs por serviços confiáveis;
+- o `ai-orchestrator` já cria handoffs reais quando a classificação cai em `support` e a política do fluxo permite encaminhamento humano;
+- o `admin-web` já exibe a fila de handoffs, abre o detalhe completo da conversa e permite registrar nota operacional, iniciar ou resolver tickets via sessão autenticada;
 - `telegram_chat_id` em rotas protegidas do `api-core` e `POST /v1/messages/respond` no `ai-orchestrator` agora exigem `X-Internal-Api-Token`;
 - observabilidade dedicada ainda ficará para a próxima etapa do roadmap.
 
@@ -196,6 +200,9 @@ Status atual do bootstrap:
 - `GET /v1/internal/identity/context?telegram_chat_id=<chat_id>` com `X-Internal-Api-Token`
 - `GET /v1/auth/session` com `Authorization: Bearer <token>`
 - `GET /v1/operations/overview` com `Authorization: Bearer <token>`
+- `GET /v1/support/handoffs` com `Authorization: Bearer <token>`
+- `GET /v1/support/handoffs/{handoff_id}` com `Authorization: Bearer <token>`
+- `PATCH /v1/support/handoffs/{handoff_id}` com `Authorization: Bearer <token>`
 - `POST /v1/auth/telegram-link/challenges` com `Authorization: Bearer <token>`
 - `GET /v1/calendar/public?date_from=2026-03-01&date_to=2026-04-30`
 - `POST /webhooks/telegram` no `telegram-gateway` com `/start link_<codigo>`
@@ -208,8 +215,11 @@ Status atual do bootstrap:
 - `POST /webhooks/telegram` no `telegram-gateway` com `quero ver faturas pagas do Lucas Oliveira`
 - `POST /webhooks/telegram` no `telegram-gateway` com `qual meu horario e minhas turmas?`
 - `POST /webhooks/telegram` no `telegram-gateway` com `quais sao minhas disciplinas?`
+- `POST /webhooks/telegram` no `telegram-gateway` com `quero falar com um humano sobre a secretaria`
 - `GET /auth/login` no `admin-web` para iniciar o fluxo OIDC com `Keycloak`
 - `GET /` no `admin-web` com cookie `eduassist_access_token=<token>` para validar a visao operacional autenticada
+- `GET /?handoff={handoff_id}` no `admin-web` com cookie `eduassist_access_token=<token>` para validar o detalhe da conversa
+- `PATCH /api/support-handoffs/{handoff_id}` no `admin-web` com cookie de sessão autenticada
 - `POST /api/telegram-link/challenge` no `admin-web` com cookie de sessão autenticada
 - `GET /v1/students/{student_id}/academic-summary?...`
 - `GET /v1/students/{student_id}/financial-summary?...`

@@ -52,6 +52,15 @@ reason := "self_operations_overview" if self_operations_overview
 allow if global_operations_overview
 reason := "global_operations_overview" if global_operations_overview
 
+allow if self_support_handoffs_read
+reason := "self_support_handoffs_read" if self_support_handoffs_read
+
+allow if global_support_handoffs_read
+reason := "global_support_handoffs_read" if global_support_handoffs_read
+
+allow if manage_support_handoffs
+reason := "manage_support_handoffs" if manage_support_handoffs
+
 health_check if {
     input.action == "health.read"
 }
@@ -141,5 +150,24 @@ global_operations_overview if {
     input.action == "operations.overview.read"
     input.subject.authenticated
     input.resource.scope == "global"
+    input.subject.role in {"staff", "finance", "coordinator", "admin"}
+}
+
+self_support_handoffs_read if {
+    input.action == "support.handoffs.read"
+    input.subject.authenticated
+    input.resource.scope == "self"
+}
+
+global_support_handoffs_read if {
+    input.action == "support.handoffs.read"
+    input.subject.authenticated
+    input.resource.scope == "global"
+    input.subject.role in {"staff", "finance", "coordinator", "admin"}
+}
+
+manage_support_handoffs if {
+    input.action == "support.handoffs.manage"
+    input.subject.authenticated
     input.subject.role in {"staff", "finance", "coordinator", "admin"}
 }

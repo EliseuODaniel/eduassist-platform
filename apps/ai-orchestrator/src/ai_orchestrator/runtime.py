@@ -66,6 +66,9 @@ SUBJECT_HINTS = {
     'portugues': {'portugues', 'redacao'},
     'biologia': {'biologia', 'bio'},
 }
+SUPPORT_FINANCE_TERMS = {'financeiro', 'boleto', 'mensalidade', 'pagamento', 'fatura', 'faturas'}
+SUPPORT_COORDINATION_TERMS = {'coordenacao', 'pedagogico', 'ocorrencia', 'professor', 'disciplina'}
+SUPPORT_SECRETARIAT_TERMS = {'secretaria', 'matricula', 'documento', 'declaracao', 'historico', 'transferencia'}
 
 
 def _normalize_text(text: str) -> str:
@@ -195,6 +198,30 @@ async def _api_core_get(
         return None, None
 
 
+async def _api_core_post(
+    *,
+    settings: Any,
+    path: str,
+    payload: dict[str, object],
+) -> tuple[dict[str, Any] | None, int | None]:
+    headers = {
+        'X-Internal-Api-Token': settings.internal_api_token,
+        'Content-Type': 'application/json',
+    }
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            response = await client.post(f'{settings.api_core_url}{path}', json=payload, headers=headers)
+        response.raise_for_status()
+        body = response.json()
+        if isinstance(body, dict):
+            return body, response.status_code
+        return None, response.status_code
+    except httpx.HTTPStatusError as exc:
+        return None, exc.response.status_code
+    except Exception:
+        return None, None
+
+
 async def _fetch_actor_context(*, settings: Any, telegram_chat_id: int | None) -> dict[str, Any] | None:
     if telegram_chat_id is None:
         return None
@@ -226,6 +253,89 @@ async def _fetch_public_calendar(*, settings: Any) -> list[CalendarEventCard]:
     if not isinstance(events, list):
         return []
     return [CalendarEventCard.model_validate(event) for event in events]
+
+
+def _select_handoff_queue(message: str) -> str:
+    normalized = _normalize_text(message)
+    if any(term in normalized for term in SUPPORT_FINANCE_TERMS):
+        return 'financeiro'
+    if any(term in normalized for term in SUPPORT_COORDINATION_TERMS):
+        return 'coordenacao'
+    if any(term in normalized for term in SUPPORT_SECRETARIAT_TERMS):
+        return 'secretaria'
+    return 'atendimento'
+
+
+def _build_handoff_summary(*, request: MessageResponseRequest, actor: dict[str, Any] | None) -> str:
+    requester = 'Visitante do bot'
+    if actor and isinstance(actor.get('full_name'), str):
+        requester = str(actor['full_name'])
+
+    message_excerpt = ' '.join(request.message.split())
+    if len(message_excerpt) > 220:
+        message_excerpt = f'{message_excerpt[:219].rstrip()}...'
+
+    return f'{requester} solicitou apoio humano pelo canal {request.channel.value}: {message_excerpt}'
+
+
+async def _create_support_handoff(
+    *,
+    settings: Any,
+    request: MessageResponseRequest,
+    actor: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    conversation_external_id = request.conversation_id
+    if not conversation_external_id:
+        conversation_external_id = f'{request.channel.value}:{request.telegram_chat_id or "anonymous"}:handoff'
+
+    payload = {
+        'conversation_external_id': conversation_external_id,
+        'channel': request.channel.value,
+        'queue_name': _select_handoff_queue(request.message),
+        'summary': _build_handoff_summary(request=request, actor=actor),
+        'telegram_chat_id': request.telegram_chat_id,
+        'user_message': request.message,
+    }
+    response_payload, status_code = await _api_core_post(
+        settings=settings,
+        path='/v1/internal/support/handoffs',
+        payload=payload,
+    )
+    if status_code != 200 or response_payload is None:
+        return None
+    return response_payload
+
+
+def _compose_handoff_answer(handoff_payload: dict[str, Any] | None) -> str:
+    if not handoff_payload:
+        return (
+            'Posso seguir com orientacoes publicas por aqui, mas nao consegui registrar o '
+            'encaminhamento humano agora. Tente novamente em instantes ou use a secretaria.'
+        )
+
+    item = handoff_payload.get('item')
+    if not isinstance(item, dict):
+        return (
+            'Registrei a necessidade de atendimento humano, mas nao consegui recuperar o protocolo. '
+            'Use a secretaria para confirmar a fila.'
+        )
+
+    queue_name = str(item.get('queue_name', 'atendimento'))
+    ticket_code = str(item.get('ticket_code', 'protocolo indisponivel'))
+    status = str(item.get('status', 'queued'))
+    created = bool(handoff_payload.get('created', False))
+
+    if created:
+        return (
+            f'Encaminhei sua solicitacao para a fila de {queue_name}. '
+            f'Protocolo: {ticket_code}. Status atual: {status}. '
+            'A equipe humana podera continuar esse atendimento no portal operacional.'
+        )
+
+    return (
+        f'Sua solicitacao ja estava registrada na fila de {queue_name}. '
+        f'Protocolo: {ticket_code}. Status atual: {status}.'
+    )
 
 
 def _linked_students(actor: dict[str, Any] | None) -> list[dict[str, Any]]:
@@ -845,6 +955,13 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
             preview=preview,
             actor=actor,
         )
+    elif preview.mode is OrchestrationMode.handoff:
+        handoff_payload = await _create_support_handoff(
+            settings=settings,
+            request=request,
+            actor=actor,
+        )
+        message_text = _compose_handoff_answer(handoff_payload)
     else:
         llm_text = await _compose_with_openai(
             settings=settings,

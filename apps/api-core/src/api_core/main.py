@@ -14,9 +14,15 @@ from api_core.contracts import (
     AuthPrincipal,
     AuthSessionResponse,
     CalendarEventsResponse,
+    InternalSupportHandoffCreateRequest,
     OperationsOverviewResponse,
     PolicyCheckRequest,
     PolicyCheckResponse,
+    SupportHandoffCreateResponse,
+    SupportHandoffDetailResponse,
+    SupportHandoffListResponse,
+    SupportHandoffStatusUpdateRequest,
+    SupportHandoffUpdateResponse,
     TelegramLinkChallengeResponse,
     TelegramLinkConsumeRequest,
     TelegramLinkConsumeResponse,
@@ -27,6 +33,7 @@ from api_core.services.audit import (
     get_foundation_counts,
     list_recent_access_decisions,
     list_recent_audit_events,
+    record_audit_event,
     record_access_decision,
     resolve_operations_scope,
 )
@@ -39,6 +46,13 @@ from api_core.services.domain import (
 )
 from api_core.services.identity import resolve_actor_context
 from api_core.services.policy import decide_policy
+from api_core.services.support import (
+    create_support_handoff,
+    get_support_handoff_detail,
+    list_support_handoffs,
+    resolve_support_scope,
+    update_support_handoff_status,
+)
 from api_core.services.telegram_link import create_telegram_link_challenge, consume_telegram_link_challenge
 
 
@@ -343,6 +357,249 @@ async def operations_overview(
     if overview is None:
         raise HTTPException(status_code=500, detail='operations_overview_unavailable')
     return overview
+
+
+@app.get('/v1/support/handoffs', response_model=SupportHandoffListResponse)
+async def support_handoffs(
+    authorization: str | None = Header(default=None, alias='Authorization'),
+) -> SupportHandoffListResponse:
+    if extract_bearer_token(authorization) is None:
+        raise HTTPException(status_code=401, detail='bearer_token_required')
+
+    actor, principal, auth_mode = _resolve_request_context(
+        authorization=authorization,
+        telegram_chat_id=None,
+        user_external_code=None,
+    )
+    if principal is None:
+        raise HTTPException(status_code=401, detail='bearer_token_required')
+
+    scope = resolve_support_scope(actor)
+    decision = await decide_policy(
+        action='support.handoffs.read',
+        actor=actor,
+        resource={
+            'resource_type': 'support_handoff_list',
+            'scope': scope,
+        },
+    )
+
+    response_payload: SupportHandoffListResponse | None = None
+    with session_scope() as session:
+        record_access_decision(
+            session,
+            actor_user_id=actor.user_id,
+            resource_type='support_handoff_list',
+            action='support.handoffs.read',
+            decision='allow' if decision.allow else 'deny',
+            reason=decision.reason,
+        )
+
+        if decision.allow:
+            counts, items = list_support_handoffs(session, actor=actor, scope=scope)
+            response_payload = SupportHandoffListResponse(
+                actor=_sanitize_actor_for_external_response(actor, auth_mode=auth_mode),
+                scope=scope,
+                counts=counts,
+                items=items,
+            )
+
+    if not decision.allow:
+        raise HTTPException(status_code=403, detail=decision.reason)
+    if response_payload is None:
+        raise HTTPException(status_code=500, detail='support_handoffs_unavailable')
+    return response_payload
+
+
+@app.get('/v1/support/handoffs/{handoff_id}', response_model=SupportHandoffDetailResponse)
+async def support_handoff_detail(
+    handoff_id: uuid.UUID,
+    authorization: str | None = Header(default=None, alias='Authorization'),
+) -> SupportHandoffDetailResponse:
+    if extract_bearer_token(authorization) is None:
+        raise HTTPException(status_code=401, detail='bearer_token_required')
+
+    actor, principal, auth_mode = _resolve_request_context(
+        authorization=authorization,
+        telegram_chat_id=None,
+        user_external_code=None,
+    )
+    if principal is None:
+        raise HTTPException(status_code=401, detail='bearer_token_required')
+
+    scope = resolve_support_scope(actor)
+    decision = await decide_policy(
+        action='support.handoffs.read',
+        actor=actor,
+        resource={
+            'resource_type': 'support_handoff',
+            'scope': scope,
+            'handoff_id': str(handoff_id),
+        },
+    )
+
+    response_payload: SupportHandoffDetailResponse | None = None
+    with session_scope() as session:
+        record_access_decision(
+            session,
+            actor_user_id=actor.user_id,
+            resource_type='support_handoff',
+            action='support.handoffs.read',
+            decision='allow' if decision.allow else 'deny',
+            reason=decision.reason,
+        )
+
+        if decision.allow:
+            detail = get_support_handoff_detail(
+                session,
+                actor=actor,
+                scope=scope,
+                handoff_id=handoff_id,
+            )
+            if detail is None:
+                raise HTTPException(status_code=404, detail='support_handoff_not_found')
+
+            item, conversation_status, messages = detail
+            record_audit_event(
+                session,
+                actor_user_id=actor.user_id,
+                event_type='support_handoff.viewed',
+                resource_type='support_handoff',
+                resource_id=str(handoff_id),
+                metadata={
+                    'scope': scope,
+                    'queue_name': item.queue_name,
+                    'status': item.status,
+                },
+            )
+            response_payload = SupportHandoffDetailResponse(
+                actor=_sanitize_actor_for_external_response(actor, auth_mode=auth_mode),
+                scope=scope,
+                item=item,
+                conversation_status=conversation_status,
+                messages=messages,
+            )
+
+    if not decision.allow:
+        raise HTTPException(status_code=403, detail=decision.reason)
+    if response_payload is None:
+        raise HTTPException(status_code=500, detail='support_handoff_detail_unavailable')
+    return response_payload
+
+
+@app.patch('/v1/support/handoffs/{handoff_id}', response_model=SupportHandoffUpdateResponse)
+async def support_handoff_update(
+    handoff_id: uuid.UUID,
+    payload: SupportHandoffStatusUpdateRequest,
+    authorization: str | None = Header(default=None, alias='Authorization'),
+) -> SupportHandoffUpdateResponse:
+    if extract_bearer_token(authorization) is None:
+        raise HTTPException(status_code=401, detail='bearer_token_required')
+
+    actor, principal, auth_mode = _resolve_request_context(
+        authorization=authorization,
+        telegram_chat_id=None,
+        user_external_code=None,
+    )
+    if principal is None:
+        raise HTTPException(status_code=401, detail='bearer_token_required')
+
+    decision = await decide_policy(
+        action='support.handoffs.manage',
+        actor=actor,
+        resource={
+            'resource_type': 'support_handoff',
+            'handoff_id': str(handoff_id),
+            'target_status': payload.status,
+        },
+    )
+
+    updated_item = None
+    with session_scope() as session:
+        record_access_decision(
+            session,
+            actor_user_id=actor.user_id,
+            resource_type='support_handoff',
+            action='support.handoffs.manage',
+            decision='allow' if decision.allow else 'deny',
+            reason=decision.reason,
+        )
+
+        if decision.allow:
+            try:
+                updated_item = update_support_handoff_status(
+                    session,
+                    handoff_id=handoff_id,
+                    status=payload.status,
+                    operator_note=payload.operator_note,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+            if updated_item is None:
+                raise HTTPException(status_code=404, detail='support_handoff_not_found')
+
+            record_audit_event(
+                session,
+                actor_user_id=actor.user_id,
+                event_type='support_handoff.status_updated',
+                resource_type='support_handoff',
+                resource_id=str(handoff_id),
+                metadata={
+                    'status': payload.status,
+                    'queue_name': updated_item.queue_name,
+                    'operator_note_attached': bool(payload.operator_note and payload.operator_note.strip()),
+                },
+            )
+
+    if not decision.allow:
+        raise HTTPException(status_code=403, detail=decision.reason)
+    if updated_item is None:
+        raise HTTPException(status_code=500, detail='support_handoff_update_unavailable')
+
+    return SupportHandoffUpdateResponse(
+        actor=_sanitize_actor_for_external_response(actor, auth_mode=auth_mode),
+        item=updated_item,
+    )
+
+
+@app.post('/v1/internal/support/handoffs', response_model=SupportHandoffCreateResponse)
+async def internal_support_handoff_create(
+    payload: InternalSupportHandoffCreateRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> SupportHandoffCreateResponse:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        actor = None
+        if payload.telegram_chat_id is not None:
+            actor = resolve_actor_context(session, telegram_chat_id=payload.telegram_chat_id)
+
+        response_payload = create_support_handoff(
+            session,
+            actor_user_id=actor.user_id if actor else None,
+            channel=payload.channel,
+            conversation_external_id=payload.conversation_external_id,
+            queue_name=payload.queue_name.strip().lower(),
+            summary=payload.summary.strip(),
+            user_message=payload.user_message.strip() if payload.user_message else None,
+        )
+
+        record_audit_event(
+            session,
+            actor_user_id=actor.user_id if actor else None,
+            event_type='support_handoff.created' if response_payload.created else 'support_handoff.reused',
+            resource_type='support_handoff',
+            resource_id=str(response_payload.item.handoff_id),
+            metadata={
+                'queue_name': response_payload.item.queue_name,
+                'channel': response_payload.item.channel,
+                'conversation_external_id': response_payload.item.external_thread_id,
+                'deduplicated': response_payload.deduplicated,
+            },
+        )
+
+    return response_payload
 
 
 @app.get('/v1/auth/session', response_model=AuthSessionResponse)

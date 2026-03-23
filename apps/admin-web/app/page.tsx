@@ -1,7 +1,11 @@
 import { LinkChallengePanel } from './link-challenge-panel';
+import { SupportHandoffDetailPanel } from './support-handoff-detail-panel';
+import { SupportHandoffPanel } from './support-handoff-panel';
 import {
+  getSupportHandoffDetail,
   getOperationsOverview,
   getPortalSession,
+  getSupportHandoffs,
   type AccessDecisionFeedEntry,
   type AuditEventFeedEntry,
   type OperationsOverview,
@@ -190,15 +194,33 @@ type HomePageProps = {
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = (await searchParams) ?? {};
   const authErrorValue = params.authError;
+  const handoffValue = params.handoff;
   const authError =
     typeof authErrorValue === 'string' && authErrorValue.length > 0
       ? formatAuthError(authErrorValue)
       : null;
+  const requestedHandoffId =
+    typeof handoffValue === 'string'
+      ? handoffValue
+      : Array.isArray(handoffValue) && handoffValue.length > 0
+        ? handoffValue[0]
+        : null;
 
   const { session, error } = await getPortalSession();
   const { overview, error: overviewError } = session
     ? await getOperationsOverview()
     : { overview: null, error: null };
+  const { handoffs, error: handoffsError } = session
+    ? await getSupportHandoffs()
+    : { handoffs: null, error: null };
+  const selectedHandoffId =
+    requestedHandoffId && handoffs?.items.some((item) => item.handoff_id === requestedHandoffId)
+      ? requestedHandoffId
+      : handoffs?.items[0]?.handoff_id ?? null;
+  const { detail: handoffDetail, error: handoffDetailError } =
+    session && selectedHandoffId
+      ? await getSupportHandoffDetail(selectedHandoffId)
+      : { detail: null, error: null };
   const accessHighlights = session ? buildAccessHighlights(session.actor) : [];
   const metricEntries = overview ? Object.entries(overview.metrics) : [];
   const foundationEntries = overview?.foundation_counts
@@ -342,6 +364,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
       {overview ? (
         <>
+          {handoffsError ? (
+            <p className="feedback warning-text">
+              O overview operacional carregou, mas a fila de handoffs não respondeu agora.
+            </p>
+          ) : null}
+
           <section className="panel panel-strong section-stack">
             <div className="section-head">
               <div>
@@ -396,6 +424,31 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               {renderAccessDecisions(overview.access_decisions, overview)}
             </article>
           </section>
+
+          {handoffs ? (
+            <>
+              <SupportHandoffPanel
+                canManage={handoffs.scope === 'global'}
+                counts={handoffs.counts}
+                items={handoffs.items}
+                scope={handoffs.scope}
+                selectedHandoffId={selectedHandoffId}
+              />
+
+              {handoffDetailError ? (
+                <p className="feedback warning-text">
+                  A fila carregou, mas o detalhe da conversa selecionada não respondeu agora.
+                </p>
+              ) : null}
+
+              {handoffDetail ? (
+                <SupportHandoffDetailPanel
+                  canManage={handoffs.scope === 'global'}
+                  detail={handoffDetail}
+                />
+              ) : null}
+            </>
+          ) : null}
         </>
       ) : null}
     </main>

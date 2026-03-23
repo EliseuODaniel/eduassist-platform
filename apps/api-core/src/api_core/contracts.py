@@ -231,3 +231,66 @@ class OperationsOverviewResponse(BaseModel):
     foundation_counts: dict[str, int] | None = None
     audit_events: list[AuditEventFeedEntry] = Field(default_factory=list)
     access_decisions: list[AccessDecisionFeedEntry] = Field(default_factory=list)
+
+
+class InternalSupportHandoffCreateRequest(BaseModel):
+    conversation_external_id: str
+    channel: str = 'telegram'
+    queue_name: str
+    summary: str
+    telegram_chat_id: int | None = None
+    user_message: str | None = None
+
+
+class SupportHandoffStatusUpdateRequest(BaseModel):
+    status: str
+    operator_note: str | None = None
+
+
+class SupportHandoffEntry(BaseModel):
+    handoff_id: uuid.UUID
+    conversation_id: uuid.UUID
+    ticket_code: str
+    channel: str
+    external_thread_id: str
+    queue_name: str
+    status: str
+    summary: str
+    requester_name: str | None = None
+    requester_role: str | None = None
+    last_message_excerpt: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class SupportConversationMessageEntry(BaseModel):
+    message_id: uuid.UUID
+    sender_type: str
+    content: str
+    created_at: datetime
+
+
+class SupportHandoffCreateResponse(BaseModel):
+    created: bool
+    deduplicated: bool = False
+    item: SupportHandoffEntry
+
+
+class SupportHandoffListResponse(BaseModel):
+    actor: ActorContext
+    scope: str
+    counts: dict[str, int] = Field(default_factory=dict)
+    items: list[SupportHandoffEntry] = Field(default_factory=list)
+
+
+class SupportHandoffUpdateResponse(BaseModel):
+    actor: ActorContext
+    item: SupportHandoffEntry
+
+
+class SupportHandoffDetailResponse(BaseModel):
+    actor: ActorContext
+    scope: str
+    item: SupportHandoffEntry
+    conversation_status: str
+    messages: list[SupportConversationMessageEntry] = Field(default_factory=list)

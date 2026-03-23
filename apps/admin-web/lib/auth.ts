@@ -113,6 +113,54 @@ export type OperationsOverviewState = {
   error: string | null;
 };
 
+export type SupportHandoffItem = {
+  handoff_id: string;
+  conversation_id: string;
+  ticket_code: string;
+  channel: string;
+  external_thread_id: string;
+  queue_name: string;
+  status: string;
+  summary: string;
+  requester_name: string | null;
+  requester_role: string | null;
+  last_message_excerpt: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SupportConversationMessage = {
+  message_id: string;
+  sender_type: string;
+  content: string;
+  created_at: string;
+};
+
+export type SupportHandoffList = {
+  actor: PortalActor;
+  scope: string;
+  counts: Record<string, number>;
+  items: SupportHandoffItem[];
+};
+
+export type SupportHandoffListState = {
+  handoffs: SupportHandoffList | null;
+  error: string | null;
+};
+
+export type SupportHandoffDetail = {
+  actor: PortalActor;
+  scope: string;
+  item: SupportHandoffItem;
+  conversation_status: string;
+  messages: SupportConversationMessage[];
+};
+
+export type SupportHandoffDetailState = {
+  detail: SupportHandoffDetail | null;
+  error: string | null;
+};
+
 function buildRealmEndpoint(pathname: string, publicFacing: boolean): URL {
   const config = getPortalConfig();
   const base = publicFacing ? config.keycloakPublicUrl : config.keycloakInternalUrl;
@@ -261,6 +309,10 @@ async function getAccessTokenForApiRequest(): Promise<string | null> {
   return accessToken;
 }
 
+export async function getPortalAccessToken(): Promise<string | null> {
+  return getAccessTokenForApiRequest();
+}
+
 export async function getPortalSession(): Promise<SessionState> {
   let accessToken = await getAccessTokenForApiRequest();
   if (!accessToken) {
@@ -348,6 +400,134 @@ export async function getOperationsOverview(): Promise<OperationsOverviewState> 
 
   return {
     overview: (await response.json()) as OperationsOverview,
+    error: null,
+  };
+}
+
+export async function getSupportHandoffs(): Promise<SupportHandoffListState> {
+  let accessToken = await getAccessTokenForApiRequest();
+  if (!accessToken) {
+    return {
+      handoffs: null,
+      error: 'session_missing',
+    };
+  }
+
+  const config = getPortalConfig();
+  let response = await fetch(`${config.apiCoreUrl}/v1/support/handoffs`, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (response.status === 401) {
+    const cookieStore = await cookies();
+    const refreshToken = cookieStore.get(REFRESH_TOKEN_COOKIE)?.value ?? null;
+    if (!refreshToken) {
+      await clearPortalSession();
+      return {
+        handoffs: null,
+        error: 'session_expired',
+      };
+    }
+
+    accessToken = await refreshAccessToken(refreshToken);
+    if (!accessToken) {
+      await clearPortalSession();
+      return {
+        handoffs: null,
+        error: 'session_expired',
+      };
+    }
+    response = await fetch(`${config.apiCoreUrl}/v1/support/handoffs`, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
+
+  if (!response.ok) {
+    return {
+      handoffs: null,
+      error: `api_core_${response.status}`,
+    };
+  }
+
+  return {
+    handoffs: (await response.json()) as SupportHandoffList,
+    error: null,
+  };
+}
+
+export async function getSupportHandoffDetail(
+  handoffId: string | null,
+): Promise<SupportHandoffDetailState> {
+  if (!handoffId) {
+    return {
+      detail: null,
+      error: null,
+    };
+  }
+
+  let accessToken = await getAccessTokenForApiRequest();
+  if (!accessToken) {
+    return {
+      detail: null,
+      error: 'session_missing',
+    };
+  }
+
+  const config = getPortalConfig();
+  let response = await fetch(`${config.apiCoreUrl}/v1/support/handoffs/${handoffId}`, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (response.status === 401) {
+    const cookieStore = await cookies();
+    const refreshToken = cookieStore.get(REFRESH_TOKEN_COOKIE)?.value ?? null;
+    if (!refreshToken) {
+      await clearPortalSession();
+      return {
+        detail: null,
+        error: 'session_expired',
+      };
+    }
+
+    accessToken = await refreshAccessToken(refreshToken);
+    if (!accessToken) {
+      await clearPortalSession();
+      return {
+        detail: null,
+        error: 'session_expired',
+      };
+    }
+
+    response = await fetch(`${config.apiCoreUrl}/v1/support/handoffs/${handoffId}`, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
+
+  if (!response.ok) {
+    return {
+      detail: null,
+      error: `api_core_${response.status}`,
+    };
+  }
+
+  return {
+    detail: (await response.json()) as SupportHandoffDetail,
     error: null,
   };
 }
