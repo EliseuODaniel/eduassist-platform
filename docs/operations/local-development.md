@@ -29,6 +29,7 @@ Estado validado:
 - `docker` e `docker compose` funcionais no ambiente atual;
 - bootstrap local validado com build e subida completa da stack base;
 - o runtime foi considerado estável o suficiente para seguir para as próximas fases.
+- o stack agora diferencia `DATABASE_ADMIN_URL` para migrações/seeds e `DATABASE_APP_URL` para runtime.
 
 Observação:
 
@@ -176,6 +177,8 @@ Status atual do bootstrap:
 - Dockerfiles iniciais nos apps
 - stack Compose pronta para validação local
 - runtime validado após reinicialização e atualização do Docker Desktop
+- bootstrap idempotente do papel `eduassist_app` disponível em `make db-bootstrap-app-role`
+- checagem operacional do papel de runtime disponível em `make db-check-runtime-role`
 - fundação inicial de retrieval e orquestração agentica já implementada
 - foundation transacional validada com migração e seed mockada
 - identity and policy base validadas com smoke tests de responsável, aluno, professor e financeiro

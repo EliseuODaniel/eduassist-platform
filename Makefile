@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE_FILE := infra/compose/compose.yaml
 ENV_FILE := .env
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all db-upgrade db-downgrade db-seed-foundation db-seed-auth-bindings documents-sync python-fmt python-lint admin-install
+.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all db-upgrade db-downgrade db-seed-foundation db-seed-auth-bindings db-bootstrap-app-role db-check-runtime-role documents-sync python-fmt python-lint admin-install
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -48,16 +48,22 @@ smoke-adversarial: env
 smoke-all: smoke-local smoke-authz smoke-adversarial
 
 db-upgrade:
-	DATABASE_URL=$${DATABASE_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core alembic -c apps/api-core/alembic.ini upgrade head
+	DATABASE_URL=$${DATABASE_ADMIN_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core alembic -c apps/api-core/alembic.ini upgrade head
 
 db-downgrade:
-	DATABASE_URL=$${DATABASE_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core alembic -c apps/api-core/alembic.ini downgrade -1
+	DATABASE_URL=$${DATABASE_ADMIN_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core alembic -c apps/api-core/alembic.ini downgrade -1
 
 db-seed-foundation:
-	DATABASE_URL=$${DATABASE_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core python tools/mockgen/seed_foundation.py
+	DATABASE_URL=$${DATABASE_ADMIN_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core python tools/mockgen/seed_foundation.py
 
 db-seed-auth-bindings:
-	DATABASE_URL=$${DATABASE_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core python tools/mockgen/sync_auth_bindings.py
+	DATABASE_URL=$${DATABASE_ADMIN_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core python tools/mockgen/sync_auth_bindings.py
+
+db-bootstrap-app-role: env
+	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) exec -T postgres bash /docker-entrypoint-initdb.d/02-create-app-role.sh
+
+db-check-runtime-role:
+	DATABASE_URL=$${DATABASE_APP_URL_LOCAL:-postgresql://eduassist_app:eduassist_app@localhost:5432/eduassist} uv run --project apps/api-core python tools/ops/check_db_runtime_role.py
 
 documents-sync: env
 	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) exec -T worker uv run python -m worker_app.main --sync-once

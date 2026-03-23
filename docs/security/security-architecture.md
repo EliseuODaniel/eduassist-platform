@@ -57,6 +57,7 @@ Camadas:
 - `Keycloak` para papéis e identidade;
 - `OPA` para decisão contextual;
 - `PostgreSQL RLS` para enforcement adicional sobre dados.
+- papel de aplicação dedicado no banco, sem `SUPERUSER`, distinto do papel administrativo usado para bootstrap, migração e seed.
 
 Regra geral:
 
@@ -145,8 +146,8 @@ Mesmo com dados mockados, a arquitetura deve nascer compatível com:
 - autenticação funcional;
 - policy engine ativo;
 - RLS habilitado em tabelas sensíveis;
+- runtime do `api-core`, `ai-orchestrator` e `worker` executando com usuário de aplicação não-superuser;
 - webhook protegido;
 - auditoria de acessos sensíveis;
 - logs sem PII crua;
 - testes de negação indevida e acesso indevido.
-

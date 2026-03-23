@@ -6,6 +6,7 @@ Arquivos principais:
 
 - `compose.yaml`: stack principal do ambiente local
 - `postgres/init/01-create-databases.sh`: criação das bases iniciais
+- `postgres/init/02-create-app-role.sh`: bootstrap do papel de aplicação do Postgres
 - `opa/policy.rego`: política bootstrap do OPA
 
 Serviços-base já contemplados:
@@ -27,3 +28,4 @@ Uso rápido:
 1. `cp .env.example .env`
 2. `make compose-config`
 3. `make compose-up`
+4. `make db-bootstrap-app-role`

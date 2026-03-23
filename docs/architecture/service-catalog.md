@@ -175,6 +175,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - auditoria;
 - busca textual;
 - suporte a metadata filtering e fallback experimental via `pgvector`.
+- separação entre papel administrativo de migração/seed e papel de aplicação para runtime.
 
 ### `qdrant`
 

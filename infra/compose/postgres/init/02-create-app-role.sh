@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_USER="${POSTGRES_APP_USER:-eduassist_app}"
+APP_PASSWORD="${POSTGRES_APP_PASSWORD:-eduassist_app}"
+ADMIN_USER="${POSTGRES_USER:-eduassist}"
+DB_NAME="${POSTGRES_DB:-eduassist}"
+SCHEMAS=(identity school academic finance calendar documents conversation audit)
+
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<EOSQL
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${APP_USER}') THEN
+    EXECUTE format(
+      'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT',
+      '${APP_USER}',
+      '${APP_PASSWORD}'
+    );
+  ELSE
+    EXECUTE format(
+      'ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT',
+      '${APP_USER}',
+      '${APP_PASSWORD}'
+    );
+  END IF;
+END
+\$\$;
+
+GRANT CONNECT ON DATABASE "${DB_NAME}" TO "${APP_USER}";
+EOSQL
+
+for schema_name in "${SCHEMAS[@]}"; do
+  psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<EOSQL
+GRANT USAGE ON SCHEMA "${schema_name}" TO "${APP_USER}";
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "${schema_name}" TO "${APP_USER}";
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "${schema_name}" TO "${APP_USER}";
+ALTER DEFAULT PRIVILEGES FOR ROLE "${ADMIN_USER}" IN SCHEMA "${schema_name}"
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "${APP_USER}";
+ALTER DEFAULT PRIVILEGES FOR ROLE "${ADMIN_USER}" IN SCHEMA "${schema_name}"
+  GRANT USAGE, SELECT ON SEQUENCES TO "${APP_USER}";
+EOSQL
+done
