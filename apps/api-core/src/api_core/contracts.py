@@ -183,3 +183,19 @@ class TeacherScheduleSummary(BaseModel):
     employee_code: str
     department: str
     assignments: list[TeacherScheduleEntry]
+
+
+class CalendarEventEntry(BaseModel):
+    event_id: uuid.UUID
+    class_id: uuid.UUID | None = None
+    title: str
+    description: str | None = None
+    category: str
+    audience: str
+    visibility: str
+    starts_at: datetime
+    ends_at: datetime
+
+
+class CalendarEventsResponse(BaseModel):
+    events: list[CalendarEventEntry]

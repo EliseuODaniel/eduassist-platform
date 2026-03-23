@@ -135,7 +135,12 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - `api-core` já resolve contexto de identidade, consulta o `OPA`, aplica autorização contextual e registra trilha de auditoria básica para acessos protegidos;
 - `api-core` já valida `JWT` do `Keycloak` via `JWKS`, resolve sessão autenticada por identidade federada e emite challenges de vínculo com Telegram;
 - `telegram-gateway` já consome `/start link_<codigo>` e conclui o vínculo via endpoint interno autenticado;
+- `api-core` já expõe calendário público estruturado e resolução interna de ator por `telegram_chat_id` para uso seguro do gateway;
 - `Keycloak` já sobe com import automático do realm `eduassist` e usuários mockados para testes locais;
+- o `worker` já sincroniza corpus documental mockado para `MinIO`, `Postgres` e `Qdrant`;
+- o `ai-orchestrator` já expõe busca híbrida real via `Qdrant + PostgreSQL FTS` com citações;
+- o `ai-orchestrator` já responde mensagens reais com FAQ pública, calendário público, negação segura de fluxos protegidos e fallback determinístico quando não houver chave de LLM configurada;
+- o `telegram-gateway` já encaminha mensagens públicas ao `ai-orchestrator` e devolve respostas úteis no formato do Telegram;
 - seed foundation idempotente já disponível em `tools/mockgen`;
 - sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;
@@ -143,13 +148,12 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 
 Expansões já aprovadas para a próxima etapa:
 
-- introduzir pipeline documental com `Docling`;
 - preparar modo avançado de retrieval com `GraphRAG` somente após baseline híbrido estar medido.
 
 ## Próximos passos imediatos
 
-1. Preparar a fundação do pipeline documental com `Docling`.
-2. Conectar `Qdrant` e services ao fluxo completo de ingestão e retrieval.
-3. Subir a primeira vertical funcional de FAQ pública com retrieval híbrido e citações.
-4. Expandir a seed para cenários mais amplos de acadêmico, financeiro e handoff.
-5. Evoluir o `admin-web` para consumir login real, sessão autenticada e geração de challenge de vínculo.
+1. Conectar os `structured tools` do Telegram às consultas acadêmicas, financeiras e docentes já existentes no `api-core`.
+2. Expandir a seed para cenários mais amplos de acadêmico, financeiro, calendário e handoff.
+3. Evoluir o `admin-web` para consumir login real, sessão autenticada e geração de challenge de vínculo.
+4. Adicionar observabilidade ponta a ponta para tracing de retrieval, tool calls e decisões de policy.
+5. Preparar benchmark comparativo para `GraphRAG` seletivo sobre o corpus institucional.

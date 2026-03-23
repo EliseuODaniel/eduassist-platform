@@ -34,7 +34,8 @@ Observação:
 
 - a etapa de bootstrap já foi executada e testada;
 - `Qdrant` ja foi integrado a stack local como base da fase de retrieval;
-- a proxima expansao operacional prevista e a entrada do pipeline documental com `Docling`.
+- a fundacao documental ja sincroniza corpus mockado para `MinIO`, `Postgres` e `Qdrant`;
+- o backend padrao local de parsing documental esta em `markdown`, com interface preparada para um backend `Docling` opcional nas fases seguintes.
 
 ## 4. Estratégia de ambientes
 
@@ -70,6 +71,11 @@ Status atual:
 - o `Keycloak` já importa automaticamente o realm `eduassist` com usuários mockados;
 - o `api-core` já valida bearer tokens reais do `Keycloak` e expõe challenge de vínculo com Telegram;
 - o `telegram-gateway` já processa `/start link_<codigo>` e conclui o vínculo pelo endpoint interno;
+- o `api-core` já expõe `GET /v1/calendar/public` e `GET /v1/internal/identity/context`;
+- o `worker` já faz sync idempotente do corpus documental mockado e reconstrói a coleção `school_documents` no `Qdrant`;
+- o `ai-orchestrator` já expõe `retrieval/status` e `retrieval/search` com fusão de `Qdrant` e `PostgreSQL FTS`;
+- o `ai-orchestrator` já expõe `POST /v1/messages/respond` para FAQ pública, calendário público e negações seguras;
+- o `telegram-gateway` já encaminha mensagens públicas ao `ai-orchestrator` e responde `/help`, FAQ e calendário pelo webhook;
 - observabilidade dedicada ainda ficará para a próxima etapa do roadmap.
 
 ### `compose:observability`
@@ -144,6 +150,7 @@ Status atual do bootstrap:
 - foundation transacional validada com migração e seed mockada
 - identity and policy base validadas com smoke tests de responsável, aluno, professor e financeiro
 - auth federada e vínculo Telegram validados com token real do `Keycloak` local
+- corpus documental mockado validado com 4 documentos e 21 chunks indexados
 
 ## 9. Variáveis de ambiente previstas
 
@@ -178,23 +185,36 @@ Status atual do bootstrap:
 - `make db-upgrade`
 - `make db-seed-foundation`
 - `make db-seed-auth-bindings`
+- `make documents-sync`
 - `GET /v1/foundation/summary` no `api-core`
-- `GET /v1/identity/context?telegram_chat_id=987654321`
 - `GET /v1/identity/context?user_external_code=USR-TEACH-001`
+- `GET /v1/internal/identity/context?telegram_chat_id=<chat_id>` com `X-Internal-Api-Token`
 - `GET /v1/auth/session` com `Authorization: Bearer <token>`
 - `POST /v1/auth/telegram-link/challenges` com `Authorization: Bearer <token>`
+- `GET /v1/calendar/public?date_from=2026-03-01&date_to=2026-04-30`
 - `POST /webhooks/telegram` no `telegram-gateway` com `/start link_<codigo>`
+- `POST /webhooks/telegram` no `telegram-gateway` com perguntas como `quais documentos sao exigidos para matricula?`
 - `GET /v1/students/{student_id}/academic-summary?...`
 - `GET /v1/students/{student_id}/financial-summary?...`
 - `GET /v1/teachers/me/schedule?user_external_code=USR-TEACH-001`
 - `POST /v1/authz/check`
+- `GET /v1/retrieval/status` no `ai-orchestrator`
+- `POST /v1/retrieval/search` no `ai-orchestrator`
+- `POST /v1/messages/respond` no `ai-orchestrator`
+
+Observacao sobre o pipeline documental local:
+
+- o corpus inicial versionado em [data/corpus/public](/home/edann/projects/eduassist-platform/data/corpus/public) e composto por documentos `Markdown` com frontmatter;
+- o `worker` envia os arquivos fonte para `MinIO`, replica metadados e chunks no schema `documents` e reconstrói a coleção `school_documents` no `Qdrant`;
+- o primeiro boot baixa o modelo multilíngue de embeddings do `FastEmbed`, o que torna a primeira sincronização mais lenta;
+- por padrao, o parsing local usa o backend `markdown`; a interface continua pronta para um backend `Docling` posterior sem alterar os contratos do sistema.
 
 Identidades mockadas úteis nesta fase:
 
-- `telegram_chat_id=987654321` para `Maria Oliveira` (`guardian`)
 - `user_external_code=USR-STUD-001` para `Lucas Oliveira` (`student`)
 - `user_external_code=USR-TEACH-001` para `Helena Rocha` (`teacher`)
 - `user_external_code=USR-FIN-001` para `Carla Nogueira` (`finance`)
+- para obter um `telegram_chat_id` funcional, gere o challenge no portal ou por token e conclua o fluxo `/start link_<codigo>` no `telegram-gateway`
 
 Credenciais mockadas do `Keycloak` local:
 

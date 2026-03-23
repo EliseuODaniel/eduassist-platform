@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import Integer, func, select
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session, aliased
 
 from api_core.contracts import (
     AttendanceEntry,
+    CalendarEventEntry,
     GradeEntry,
     InvoiceEntry,
     StudentAcademicSummary,
@@ -17,6 +19,7 @@ from api_core.contracts import (
 )
 from api_core.db.models import (
     AttendanceRecord,
+    CalendarEvent,
     Class,
     Contract,
     Enrollment,
@@ -215,3 +218,50 @@ def get_teacher_schedule(session: Session, teacher_user_id: uuid.UUID) -> Teache
             for class_id, class_name, subject_code, subject_name, academic_year in assignments
         ],
     )
+
+
+def list_public_calendar_events(
+    session: Session,
+    *,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    limit: int = 6,
+) -> list[CalendarEventEntry]:
+    start_date = date_from or date.today()
+    end_date = date_to or (start_date + timedelta(days=120))
+    starts_at_from = datetime.combine(start_date, time.min, tzinfo=timezone.utc)
+    starts_at_to = datetime.combine(end_date, time.max, tzinfo=timezone.utc)
+
+    rows = session.execute(
+        select(
+            CalendarEvent.id,
+            CalendarEvent.class_id,
+            CalendarEvent.title,
+            CalendarEvent.description,
+            CalendarEvent.category,
+            CalendarEvent.audience,
+            CalendarEvent.visibility,
+            CalendarEvent.starts_at,
+            CalendarEvent.ends_at,
+        )
+        .where(CalendarEvent.visibility == 'public')
+        .where(CalendarEvent.starts_at >= starts_at_from)
+        .where(CalendarEvent.starts_at <= starts_at_to)
+        .order_by(CalendarEvent.starts_at.asc(), CalendarEvent.title.asc())
+        .limit(limit)
+    ).all()
+
+    return [
+        CalendarEventEntry(
+            event_id=event_id,
+            class_id=class_id,
+            title=title,
+            description=description,
+            category=category,
+            audience=audience,
+            visibility=visibility,
+            starts_at=starts_at,
+            ends_at=ends_at,
+        )
+        for event_id, class_id, title, description, category, audience, visibility, starts_at, ends_at in rows
+    ]

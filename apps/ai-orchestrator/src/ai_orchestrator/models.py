@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -110,3 +111,88 @@ class RuntimeCapabilities(BaseModel):
     graph_rag_enabled: bool
     available_modes: list[OrchestrationMode]
     retrieval_backends: list[RetrievalBackend]
+
+
+class RetrievalSearchRequest(BaseModel):
+    query: str = Field(min_length=3, max_length=4000)
+    top_k: int = Field(default=6, ge=1, le=20)
+    visibility: str = Field(default='public')
+    category: str | None = None
+
+
+class RetrievalCitation(BaseModel):
+    document_title: str
+    version_label: str
+    storage_path: str
+    chunk_id: str
+    chunk_index: int
+
+
+class RetrievalHit(BaseModel):
+    chunk_id: str
+    document_title: str
+    category: str
+    audience: str
+    visibility: str
+    text_excerpt: str
+    contextual_summary: str | None = None
+    fused_score: float
+    lexical_score: float | None = None
+    vector_score: float | None = None
+    citation: RetrievalCitation
+
+
+class RetrievalSearchResponse(BaseModel):
+    query: str
+    retrieval_backend: RetrievalBackend
+    total_hits: int
+    hits: list[RetrievalHit]
+
+
+class ConversationChannel(StrEnum):
+    telegram = 'telegram'
+    web = 'web'
+    api = 'api'
+
+
+class CalendarEventCard(BaseModel):
+    event_id: str
+    title: str
+    description: str | None = None
+    category: str
+    audience: str
+    visibility: str
+    starts_at: datetime
+    ends_at: datetime
+
+
+class MessageResponseCitation(BaseModel):
+    document_title: str
+    version_label: str
+    storage_path: str
+    chunk_id: str
+    excerpt: str
+
+
+class MessageResponseRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
+    conversation_id: str | None = None
+    telegram_chat_id: int | None = None
+    channel: ConversationChannel = ConversationChannel.telegram
+    user: UserContext = Field(default_factory=UserContext)
+    allow_graph_rag: bool = True
+    allow_handoff: bool = True
+
+
+class MessageResponse(BaseModel):
+    message_text: str
+    mode: OrchestrationMode
+    classification: IntentClassification
+    retrieval_backend: RetrievalBackend = RetrievalBackend.none
+    selected_tools: list[str] = Field(default_factory=list)
+    citations: list[MessageResponseCitation] = Field(default_factory=list)
+    calendar_events: list[CalendarEventCard] = Field(default_factory=list)
+    needs_authentication: bool = False
+    graph_path: list[str] = Field(default_factory=list)
+    risk_flags: list[str] = Field(default_factory=list)
+    reason: str

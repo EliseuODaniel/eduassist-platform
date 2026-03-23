@@ -158,17 +158,22 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8000
       LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      API_CORE_URL: http://api-core:8000
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-pro}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://eduassist:eduassist@postgres:5432/eduassist}
       QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
       QDRANT_DOCUMENTS_COLLECTION: ${QDRANT_DOCUMENTS_COLLECTION:-school_documents}
+      DOCUMENT_EMBEDDING_MODEL: ${DOCUMENT_EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
       GRAPH_RAG_ENABLED: ${GRAPH_RAG_ENABLED:-false}
     ports:
       - '${AI_ORCHESTRATOR_PORT:-8002}:8000'
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       qdrant:
@@ -195,11 +200,14 @@ services:
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-change-me}
       API_CORE_URL: http://api-core:8000
+      AI_ORCHESTRATOR_URL: http://ai-orchestrator:8000
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
     ports:
       - '${TELEGRAM_GATEWAY_PORT:-8003}:8000'
     depends_on:
       api-core:
+        condition: service_healthy
+      ai-orchestrator:
         condition: service_healthy
     healthcheck:
       test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
@@ -221,15 +229,23 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://eduassist:eduassist@postgres:5432/eduassist}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
       MINIO_BUCKET_DOCUMENTS: ${MINIO_BUCKET_DOCUMENTS:-documents}
       QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
-      DOCUMENT_PIPELINE_BACKEND: ${DOCUMENT_PIPELINE_BACKEND:-docling}
+      QDRANT_DOCUMENTS_COLLECTION: ${QDRANT_DOCUMENTS_COLLECTION:-school_documents}
+      DOCUMENT_PIPELINE_BACKEND: ${DOCUMENT_PIPELINE_BACKEND:-markdown}
+      DOCUMENT_CORPUS_DIR: ${DOCUMENT_CORPUS_DIR:-/workspace/data/corpus}
+      DOCUMENT_EMBEDDING_MODEL: ${DOCUMENT_EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      WORKER_BOOTSTRAP_DOCUMENTS: ${WORKER_BOOTSTRAP_DOCUMENTS:-true}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       qdrant:
+        condition: service_started
+      minio:
         condition: service_started
     healthcheck:
       test: ['CMD-SHELL', 'test -f /tmp/worker-ready']

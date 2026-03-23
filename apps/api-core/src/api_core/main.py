@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import secrets
 import uuid
+from datetime import date
 
 from fastapi import FastAPI, Header, HTTPException, Query
 from pydantic import BaseModel
@@ -12,6 +13,7 @@ from api_core.contracts import (
     ActorContext,
     AuthPrincipal,
     AuthSessionResponse,
+    CalendarEventsResponse,
     PolicyCheckRequest,
     PolicyCheckResponse,
     TelegramLinkChallengeResponse,
@@ -25,6 +27,7 @@ from api_core.services.domain import (
     get_student_academic_summary,
     get_student_financial_summary,
     get_teacher_schedule,
+    list_public_calendar_events,
 )
 from api_core.services.identity import resolve_actor_context
 from api_core.services.policy import decide_policy
@@ -250,6 +253,23 @@ async def identity_context(
     }
 
 
+@app.get('/v1/internal/identity/context')
+async def internal_identity_context(
+    telegram_chat_id: int = Query(...),
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        actor = resolve_actor_context(session, telegram_chat_id=telegram_chat_id)
+
+    return {
+        'service': 'api-core',
+        'actor': actor.model_dump(mode='json') if actor else None,
+        'auth_mode': 'telegram_chat' if actor else 'anonymous',
+    }
+
+
 @app.post('/v1/authz/check', response_model=PolicyCheckResponse)
 async def authz_check(
     payload: PolicyCheckRequest,
@@ -373,6 +393,22 @@ async def student_financial_summary(
     if not decision.allow:
         raise HTTPException(status_code=403, detail=decision.reason)
     return response
+
+
+@app.get('/v1/calendar/public', response_model=CalendarEventsResponse)
+async def public_calendar_events(
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    limit: int = Query(default=6, ge=1, le=20),
+) -> CalendarEventsResponse:
+    with session_scope() as session:
+        events = list_public_calendar_events(
+            session,
+            date_from=date_from,
+            date_to=date_to,
+            limit=limit,
+        )
+    return CalendarEventsResponse(events=events)
 
 
 @app.get('/v1/teachers/me/schedule')

@@ -10,8 +10,8 @@ WORKDIR /workspace/apps/worker
 
 COPY apps/worker/pyproject.toml ./
 COPY apps/worker/src ./src
+COPY data/corpus /workspace/data/corpus
 
 RUN uv sync --no-dev
 
 CMD ["uv", "run", "python", "-m", "worker_app.main"]
-

@@ -7,7 +7,18 @@ from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .graph import build_orchestration_graph, get_graph_blueprint, to_preview
-from .models import OrchestrationMode, OrchestrationRequest, RetrievalBackend, RuntimeCapabilities
+from .models import (
+    MessageResponse,
+    MessageResponseRequest,
+    OrchestrationMode,
+    OrchestrationRequest,
+    RetrievalBackend,
+    RetrievalSearchRequest,
+    RetrievalSearchResponse,
+    RuntimeCapabilities,
+)
+from .retrieval import get_retrieval_service
+from .runtime import generate_message_response
 from .tools import get_tool_contracts
 
 
@@ -18,11 +29,16 @@ class Settings(BaseSettings):
     log_level: str = 'INFO'
     port: int = 8000
     llm_provider: str = 'openai'
+    api_core_url: str = 'http://api-core:8000'
+    openai_api_key: str | None = None
     openai_base_url: str = 'https://api.openai.com/v1'
     openai_model: str = 'gpt-5.4'
+    google_api_key: str | None = None
     google_model: str = 'gemini-2.5-pro'
+    database_url: str = 'postgresql://eduassist:eduassist@postgres:5432/eduassist'
     qdrant_url: str = 'http://qdrant:6333'
     qdrant_documents_collection: str = 'school_documents'
+    document_embedding_model: str = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
     graph_rag_enabled: bool = False
 
 
@@ -52,7 +68,7 @@ async def healthz() -> HealthResponse:
         status='ok',
         service='ai-orchestrator',
         provider=settings.llm_provider,
-        retrieval='qdrant-hybrid-bootstrap',
+        retrieval='qdrant-hybrid-live',
     )
 
 
@@ -63,11 +79,14 @@ async def meta() -> dict[str, object]:
         'service': 'ai-orchestrator',
         'environment': settings.app_env,
         'provider': settings.llm_provider,
+        'apiCoreUrl': settings.api_core_url,
         'openaiBaseUrl': settings.openai_base_url,
         'openaiModel': settings.openai_model,
         'googleModel': settings.google_model,
+        'databaseUrl': settings.database_url,
         'qdrantUrl': settings.qdrant_url,
         'qdrantDocumentsCollection': settings.qdrant_documents_collection,
+        'documentEmbeddingModel': settings.document_embedding_model,
         'graphRagEnabled': settings.graph_rag_enabled,
     }
 
@@ -81,7 +100,7 @@ async def status() -> dict[str, object]:
         'capabilities': [
             'langgraph-state-machine',
             'tool-routing',
-            'qdrant-hybrid-planning',
+            'qdrant-hybrid-retrieval',
             'graph-rag-routing',
             'provider-abstraction',
         ],
@@ -113,6 +132,45 @@ async def capabilities() -> RuntimeCapabilities:
             RetrievalBackend.none,
         ],
     )
+
+
+@app.get('/v1/retrieval/status')
+async def retrieval_status() -> dict[str, object]:
+    settings = get_settings()
+    service = get_retrieval_service(
+        database_url=settings.database_url,
+        qdrant_url=settings.qdrant_url,
+        collection_name=settings.qdrant_documents_collection,
+        embedding_model=settings.document_embedding_model,
+    )
+    return {
+        'service': 'ai-orchestrator',
+        'retrievalBackend': RetrievalBackend.qdrant_hybrid.value,
+        'qdrant': service.collection_status(),
+    }
+
+
+@app.post('/v1/retrieval/search', response_model=RetrievalSearchResponse)
+async def retrieval_search(request: RetrievalSearchRequest) -> RetrievalSearchResponse:
+    settings = get_settings()
+    service = get_retrieval_service(
+        database_url=settings.database_url,
+        qdrant_url=settings.qdrant_url,
+        collection_name=settings.qdrant_documents_collection,
+        embedding_model=settings.document_embedding_model,
+    )
+    return service.hybrid_search(
+        query=request.query,
+        top_k=request.top_k,
+        visibility=request.visibility,
+        category=request.category,
+    )
+
+
+@app.post('/v1/messages/respond', response_model=MessageResponse)
+async def message_response(request: MessageResponseRequest) -> MessageResponse:
+    settings = get_settings()
+    return await generate_message_response(request=request, settings=settings)
 
 
 @app.get('/v1/tools')

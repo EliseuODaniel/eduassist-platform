@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     telegram_bot_username: str | None = None
     telegram_webhook_secret: str = 'change-me'
     api_core_url: str = 'http://api-core:8000'
+    ai_orchestrator_url: str = 'http://ai-orchestrator:8000'
     internal_api_token: str = 'dev-internal-token'
     telegram_api_base_url: str = 'https://api.telegram.org'
 
@@ -31,6 +32,7 @@ class HealthResponse(BaseModel):
     status: str
     service: str
     api_core_url: str
+    ai_orchestrator_url: str
 
 
 app = FastAPI(
@@ -113,6 +115,7 @@ async def healthz() -> HealthResponse:
         status='ok',
         service='telegram-gateway',
         api_core_url=settings.api_core_url,
+        ai_orchestrator_url=settings.ai_orchestrator_url,
     )
 
 
@@ -123,6 +126,7 @@ async def meta() -> dict[str, str | None]:
         'service': 'telegram-gateway',
         'environment': settings.app_env,
         'apiCoreUrl': settings.api_core_url,
+        'aiOrchestratorUrl': settings.ai_orchestrator_url,
         'botUsername': settings.telegram_bot_username,
     }
 
@@ -136,6 +140,92 @@ async def webhook_info() -> dict[str, object]:
     }
 
 
+def _map_role(role_code: str | None) -> str:
+    allowed = {
+        'guardian',
+        'student',
+        'teacher',
+        'staff',
+        'finance',
+        'coordinator',
+        'admin',
+    }
+    if role_code in allowed:
+        return role_code
+    return 'anonymous'
+
+
+async def _resolve_actor_context(chat_id: int) -> dict[str, object] | None:
+    settings = get_settings()
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            response = await client.get(
+                f'{settings.api_core_url}/v1/internal/identity/context',
+                headers={'X-Internal-Api-Token': settings.internal_api_token},
+                params={'telegram_chat_id': chat_id},
+            )
+        response.raise_for_status()
+    except Exception:
+        return None
+
+    payload = response.json()
+    actor = payload.get('actor')
+    return actor if isinstance(actor, dict) else None
+
+
+def _build_user_context(actor: dict[str, object] | None) -> dict[str, object]:
+    if actor is None:
+        return {
+            'role': 'anonymous',
+            'authenticated': False,
+            'linked_student_ids': [],
+            'scopes': [],
+        }
+
+    linked_student_ids = actor.get('linked_student_ids')
+    return {
+        'role': _map_role(actor.get('role_code') if isinstance(actor.get('role_code'), str) else None),
+        'authenticated': True,
+        'linked_student_ids': linked_student_ids if isinstance(linked_student_ids, list) else [],
+        'scopes': [],
+    }
+
+
+def _default_help_message() -> str:
+    return (
+        'EduAssist esta pronto para orientar sobre informacoes publicas da escola. '
+        'Voce pode perguntar sobre calendario, matricula, secretaria e atendimento digital. '
+        'Para consultas protegidas, vincule sua conta pelo portal e envie o codigo ao bot.'
+    )
+
+
+async def _orchestrate_message(
+    *,
+    chat_id: int,
+    text: str,
+    update_id: int | None,
+) -> dict[str, object]:
+    settings = get_settings()
+    actor = await _resolve_actor_context(chat_id)
+    user_context = _build_user_context(actor)
+
+    payload = {
+        'message': text,
+        'conversation_id': f'telegram:{chat_id}:{update_id or 0}',
+        'telegram_chat_id': chat_id,
+        'channel': 'telegram',
+        'user': user_context,
+    }
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        response = await client.post(
+            f'{settings.ai_orchestrator_url}/v1/messages/respond',
+            json=payload,
+        )
+    response.raise_for_status()
+    return response.json()
+
+
 @app.post('/webhooks/telegram')
 async def telegram_webhook(
     request: Request,
@@ -146,6 +236,7 @@ async def telegram_webhook(
         raise HTTPException(status_code=401, detail='Invalid Telegram webhook secret.')
 
     payload = await request.json()
+    update_id = payload.get('update_id') if isinstance(payload, dict) else None
     message = _extract_message(payload if isinstance(payload, dict) else {})
     if message is None:
         return {
@@ -166,12 +257,53 @@ async def telegram_webhook(
 
     challenge_code = _extract_link_code(text)
     if challenge_code is None:
-        return {
-            'accepted': True,
-            'service': 'telegram-gateway',
-            'processed': 'message_received',
-            'text': text,
-        }
+        chat = message.get('chat') if isinstance(message.get('chat'), dict) else {}
+        chat_id = int(chat['id']) if chat.get('id') is not None else None
+        if chat_id is None:
+            return {
+                'accepted': True,
+                'service': 'telegram-gateway',
+                'processed': 'missing_chat',
+            }
+
+        if text.strip() in {'/start', '/help'}:
+            help_text = _default_help_message()
+            await _send_telegram_message(chat_id, help_text)
+            return {
+                'accepted': True,
+                'service': 'telegram-gateway',
+                'processed': 'help_message',
+                'reply': help_text,
+            }
+
+        try:
+            orchestration = await _orchestrate_message(
+                chat_id=chat_id,
+                text=text,
+                update_id=update_id if isinstance(update_id, int) else None,
+            )
+            reply_text = str(orchestration.get('message_text', _default_help_message()))
+            await _send_telegram_message(chat_id, reply_text)
+            return {
+                'accepted': True,
+                'service': 'telegram-gateway',
+                'processed': 'orchestrated_message',
+                'reply': reply_text,
+                'orchestration': orchestration,
+            }
+        except httpx.HTTPError as exc:
+            fallback_text = (
+                'Nao consegui consultar a base da escola agora. '
+                'Tente novamente em instantes ou use o portal institucional.'
+            )
+            await _send_telegram_message(chat_id, fallback_text)
+            return {
+                'accepted': True,
+                'service': 'telegram-gateway',
+                'processed': 'orchestration_error',
+                'reply': fallback_text,
+                'detail': str(exc),
+            }
 
     try:
         link_response = await _consume_link_code(message, challenge_code)

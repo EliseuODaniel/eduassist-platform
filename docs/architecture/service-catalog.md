@@ -13,11 +13,13 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - normalizar eventos;
 - controlar idempotência;
 - aplicar rate limiting;
-- encaminhar mensagens para `api-core`.
+- resolver contexto de ator via `api-core`;
+- encaminhar mensagens conversacionais para o `ai-orchestrator`.
 
 ### Dependências
 
 - `api-core`
+- `ai-orchestrator`
 - `redis`
 
 ### Não responsabilidades
@@ -54,6 +56,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - execução de fluxo LangGraph;
 - tool calling;
 - retrieval documental;
+- consulta a calendário público estruturado no `api-core`;
 - composição da resposta final;
 - emissão de metadados de confiança e fontes.
 
@@ -64,6 +67,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - `qdrant`
 - `minio`
 - `redis`
+- `api-core`
 
 ### Regras
 
@@ -76,9 +80,10 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 ### Responsabilidades
 
 - ingestão documental;
-- parsing com `Docling`;
-- embeddings densos e esparsos;
-- indexação híbrida em `Qdrant`;
+- parsing documental por backend configurável, com baseline local em `Markdown` e interface pronta para `Docling`;
+- embeddings densos para recuperação vetorial local;
+- publicação de chunks e metadados em `Postgres`;
+- indexação vetorial em `Qdrant`;
 - geração de artefatos de `GraphRAG`;
 - reindexação;
 - mock data generation;
@@ -89,8 +94,8 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 
 - `postgres`
 - `minio`
-- `redis`
-- APIs de modelo/embedding
+- `qdrant`
+- APIs de modelo/embedding quando a trilha remota for habilitada
 
 ## 6. `admin-web`
 
