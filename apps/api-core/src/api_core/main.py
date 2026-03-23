@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import secrets
 import uuid
 from datetime import date
@@ -53,9 +54,13 @@ def _resolve_request_context(
     authorization: str | None,
     telegram_chat_id: int | None,
     user_external_code: str | None,
+    x_internal_api_token: str | None = None,
 ) -> tuple[ActorContext, AuthPrincipal | None, str]:
     settings = get_settings()
     bearer_token = extract_bearer_token(authorization)
+
+    if telegram_chat_id is not None:
+        _require_internal_api_token(x_internal_api_token)
 
     with session_scope() as session:
         if bearer_token:
@@ -89,6 +94,133 @@ def _require_internal_api_token(x_internal_api_token: str | None) -> None:
     settings = get_settings()
     if not x_internal_api_token or not secrets.compare_digest(x_internal_api_token, settings.internal_api_token):
         raise HTTPException(status_code=401, detail='invalid_internal_api_token')
+
+
+def _sanitize_actor_for_external_response(actor: ActorContext, *, auth_mode: str) -> ActorContext:
+    sanitized = copy.deepcopy(actor)
+    if auth_mode == 'telegram_chat':
+        sanitized.telegram_chat_id = None
+    return sanitized
+
+
+async def _student_academic_summary_payload(
+    *,
+    actor: ActorContext,
+    auth_mode: str,
+    student_id: uuid.UUID,
+) -> dict[str, object]:
+    with session_scope() as session:
+        summary = get_student_academic_summary(session, student_id)
+        if summary is None:
+            raise HTTPException(status_code=404, detail='student_not_found')
+
+        decision = await decide_policy(
+            action='student.academic.read',
+            actor=actor,
+            resource={
+                'student_id': str(summary.student_id),
+                'class_id': str(summary.class_id) if summary.class_id else None,
+                'resource_type': 'student_academic_summary',
+            },
+        )
+        record_access_decision(
+            session,
+            actor_user_id=actor.user_id,
+            resource_type='student_academic_summary',
+            action='student.academic.read',
+            decision='allow' if decision.allow else 'deny',
+            reason=decision.reason,
+        )
+        response = {
+            'service': 'api-core',
+            'auth_mode': auth_mode,
+            'actor': _sanitize_actor_for_external_response(actor, auth_mode=auth_mode).model_dump(mode='json'),
+            'decision': decision.model_dump(mode='json'),
+            'summary': summary.model_dump(mode='json'),
+        }
+
+    if not decision.allow:
+        raise HTTPException(status_code=403, detail=decision.reason)
+    return response
+
+
+async def _student_financial_summary_payload(
+    *,
+    actor: ActorContext,
+    auth_mode: str,
+    student_id: uuid.UUID,
+) -> dict[str, object]:
+    with session_scope() as session:
+        summary = get_student_financial_summary(session, student_id)
+        if summary is None:
+            raise HTTPException(status_code=404, detail='student_not_found')
+
+        decision = await decide_policy(
+            action='student.finance.read',
+            actor=actor,
+            resource={
+                'student_id': str(summary.student_id),
+                'resource_type': 'student_financial_summary',
+            },
+        )
+        record_access_decision(
+            session,
+            actor_user_id=actor.user_id,
+            resource_type='student_financial_summary',
+            action='student.finance.read',
+            decision='allow' if decision.allow else 'deny',
+            reason=decision.reason,
+        )
+        response = {
+            'service': 'api-core',
+            'auth_mode': auth_mode,
+            'actor': _sanitize_actor_for_external_response(actor, auth_mode=auth_mode).model_dump(mode='json'),
+            'decision': decision.model_dump(mode='json'),
+            'summary': summary.model_dump(mode='json'),
+        }
+
+    if not decision.allow:
+        raise HTTPException(status_code=403, detail=decision.reason)
+    return response
+
+
+async def _teacher_schedule_payload(
+    *,
+    actor: ActorContext,
+    auth_mode: str,
+) -> dict[str, object]:
+    with session_scope() as session:
+        summary = get_teacher_schedule(session, actor.user_id)
+        if summary is None:
+            raise HTTPException(status_code=404, detail='teacher_not_found')
+
+        decision = await decide_policy(
+            action='teacher.schedule.read',
+            actor=actor,
+            resource={
+                'teacher_id': str(summary.teacher_id),
+                'resource_type': 'teacher_schedule',
+            },
+        )
+        record_access_decision(
+            session,
+            actor_user_id=actor.user_id,
+            resource_type='teacher_schedule',
+            action='teacher.schedule.read',
+            decision='allow' if decision.allow else 'deny',
+            reason=decision.reason,
+        )
+        response = {
+            'service': 'api-core',
+            'auth_mode': auth_mode,
+            'actor': _sanitize_actor_for_external_response(actor, auth_mode=auth_mode).model_dump(mode='json'),
+            'decision': decision.model_dump(mode='json'),
+            'summary': summary.model_dump(mode='json'),
+        }
+
+    if not decision.allow:
+        raise HTTPException(status_code=403, detail=decision.reason)
+    return response
 
 
 @app.get('/healthz', response_model=HealthResponse)
@@ -239,15 +371,17 @@ async def identity_context(
     authorization: str | None = Header(default=None, alias='Authorization'),
     telegram_chat_id: int | None = Query(default=None),
     user_external_code: str | None = Query(default=None),
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
 ) -> dict[str, object]:
     actor, principal, auth_mode = _resolve_request_context(
         authorization=authorization,
         telegram_chat_id=telegram_chat_id,
         user_external_code=user_external_code,
+        x_internal_api_token=x_internal_api_token,
     )
     return {
         'service': 'api-core',
-        'actor': actor.model_dump(mode='json'),
+        'actor': _sanitize_actor_for_external_response(actor, auth_mode=auth_mode).model_dump(mode='json'),
         'principal': principal.model_dump(mode='json') if principal else None,
         'auth_mode': auth_mode,
     }
@@ -274,11 +408,13 @@ async def internal_identity_context(
 async def authz_check(
     payload: PolicyCheckRequest,
     authorization: str | None = Header(default=None, alias='Authorization'),
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
 ) -> PolicyCheckResponse:
     actor, _principal, _auth_mode = _resolve_request_context(
         authorization=authorization,
         telegram_chat_id=payload.telegram_chat_id,
         user_external_code=payload.user_external_code,
+        x_internal_api_token=x_internal_api_token,
     )
     decision = await decide_policy(action=payload.action, actor=actor, resource=payload.resource)
 
@@ -293,7 +429,10 @@ async def authz_check(
         )
 
     return PolicyCheckResponse(
-        actor=actor,
+        actor=_sanitize_actor_for_external_response(
+            actor,
+            auth_mode='telegram_chat' if payload.telegram_chat_id is not None else 'external',
+        ),
         decision=decision,
         action=payload.action,
         resource=payload.resource,
@@ -306,46 +445,15 @@ async def student_academic_summary(
     authorization: str | None = Header(default=None, alias='Authorization'),
     telegram_chat_id: int | None = Query(default=None),
     user_external_code: str | None = Query(default=None),
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
 ) -> dict[str, object]:
     actor, _principal, auth_mode = _resolve_request_context(
         authorization=authorization,
         telegram_chat_id=telegram_chat_id,
         user_external_code=user_external_code,
+        x_internal_api_token=x_internal_api_token,
     )
-
-    with session_scope() as session:
-        summary = get_student_academic_summary(session, student_id)
-        if summary is None:
-            raise HTTPException(status_code=404, detail='student_not_found')
-
-        decision = await decide_policy(
-            action='student.academic.read',
-            actor=actor,
-            resource={
-                'student_id': str(summary.student_id),
-                'class_id': str(summary.class_id) if summary.class_id else None,
-                'resource_type': 'student_academic_summary',
-            },
-        )
-        record_access_decision(
-            session,
-            actor_user_id=actor.user_id,
-            resource_type='student_academic_summary',
-            action='student.academic.read',
-            decision='allow' if decision.allow else 'deny',
-            reason=decision.reason,
-        )
-        response = {
-            'service': 'api-core',
-            'auth_mode': auth_mode,
-            'actor': actor.model_dump(mode='json'),
-            'decision': decision.model_dump(mode='json'),
-            'summary': summary.model_dump(mode='json'),
-        }
-
-    if not decision.allow:
-        raise HTTPException(status_code=403, detail=decision.reason)
-    return response
+    return await _student_academic_summary_payload(actor=actor, auth_mode=auth_mode, student_id=student_id)
 
 
 @app.get('/v1/students/{student_id}/financial-summary')
@@ -354,45 +462,15 @@ async def student_financial_summary(
     authorization: str | None = Header(default=None, alias='Authorization'),
     telegram_chat_id: int | None = Query(default=None),
     user_external_code: str | None = Query(default=None),
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
 ) -> dict[str, object]:
     actor, _principal, auth_mode = _resolve_request_context(
         authorization=authorization,
         telegram_chat_id=telegram_chat_id,
         user_external_code=user_external_code,
+        x_internal_api_token=x_internal_api_token,
     )
-
-    with session_scope() as session:
-        summary = get_student_financial_summary(session, student_id)
-        if summary is None:
-            raise HTTPException(status_code=404, detail='student_not_found')
-
-        decision = await decide_policy(
-            action='student.finance.read',
-            actor=actor,
-            resource={
-                'student_id': str(summary.student_id),
-                'resource_type': 'student_financial_summary',
-            },
-        )
-        record_access_decision(
-            session,
-            actor_user_id=actor.user_id,
-            resource_type='student_financial_summary',
-            action='student.finance.read',
-            decision='allow' if decision.allow else 'deny',
-            reason=decision.reason,
-        )
-        response = {
-            'service': 'api-core',
-            'auth_mode': auth_mode,
-            'actor': actor.model_dump(mode='json'),
-            'decision': decision.model_dump(mode='json'),
-            'summary': summary.model_dump(mode='json'),
-        }
-
-    if not decision.allow:
-        raise HTTPException(status_code=403, detail=decision.reason)
-    return response
+    return await _student_financial_summary_payload(actor=actor, auth_mode=auth_mode, student_id=student_id)
 
 
 @app.get('/v1/calendar/public', response_model=CalendarEventsResponse)
@@ -416,42 +494,12 @@ async def teacher_schedule(
     authorization: str | None = Header(default=None, alias='Authorization'),
     telegram_chat_id: int | None = Query(default=None),
     user_external_code: str | None = Query(default=None),
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
 ) -> dict[str, object]:
     actor, _principal, auth_mode = _resolve_request_context(
         authorization=authorization,
         telegram_chat_id=telegram_chat_id,
         user_external_code=user_external_code,
+        x_internal_api_token=x_internal_api_token,
     )
-
-    with session_scope() as session:
-        summary = get_teacher_schedule(session, actor.user_id)
-        if summary is None:
-            raise HTTPException(status_code=404, detail='teacher_not_found')
-
-        decision = await decide_policy(
-            action='teacher.schedule.read',
-            actor=actor,
-            resource={
-                'teacher_id': str(summary.teacher_id),
-                'resource_type': 'teacher_schedule',
-            },
-        )
-        record_access_decision(
-            session,
-            actor_user_id=actor.user_id,
-            resource_type='teacher_schedule',
-            action='teacher.schedule.read',
-            decision='allow' if decision.allow else 'deny',
-            reason=decision.reason,
-        )
-        response = {
-            'service': 'api-core',
-            'auth_mode': auth_mode,
-            'actor': actor.model_dump(mode='json'),
-            'decision': decision.model_dump(mode='json'),
-            'summary': summary.model_dump(mode='json'),
-        }
-
-    if not decision.allow:
-        raise HTTPException(status_code=403, detail=decision.reason)
-    return response
+    return await _teacher_schedule_payload(actor=actor, auth_mode=auth_mode)

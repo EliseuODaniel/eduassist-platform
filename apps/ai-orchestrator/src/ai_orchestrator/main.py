@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import secrets
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -30,6 +31,7 @@ class Settings(BaseSettings):
     port: int = 8000
     llm_provider: str = 'openai'
     api_core_url: str = 'http://api-core:8000'
+    internal_api_token: str = 'dev-internal-token'
     openai_api_key: str | None = None
     openai_base_url: str = 'https://api.openai.com/v1'
     openai_model: str = 'gpt-5.4'
@@ -45,6 +47,12 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def _require_internal_api_token(x_internal_api_token: str | None) -> None:
+    settings = get_settings()
+    if not x_internal_api_token or not secrets.compare_digest(x_internal_api_token, settings.internal_api_token):
+        raise HTTPException(status_code=401, detail='invalid_internal_api_token')
 
 
 class HealthResponse(BaseModel):
@@ -168,7 +176,11 @@ async def retrieval_search(request: RetrievalSearchRequest) -> RetrievalSearchRe
 
 
 @app.post('/v1/messages/respond', response_model=MessageResponse)
-async def message_response(request: MessageResponseRequest) -> MessageResponse:
+async def message_response(
+    request: MessageResponseRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> MessageResponse:
+    _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
     return await generate_message_response(request=request, settings=settings)
 

@@ -141,6 +141,8 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o `ai-orchestrator` já expõe busca híbrida real via `Qdrant + PostgreSQL FTS` com citações;
 - o `ai-orchestrator` já responde mensagens reais com FAQ pública, calendário público, negação segura de fluxos protegidos e fallback determinístico quando não houver chave de LLM configurada;
 - o `telegram-gateway` já encaminha mensagens públicas ao `ai-orchestrator` e devolve respostas úteis no formato do Telegram;
+- o `telegram-gateway`, o `ai-orchestrator` e o `api-core` agora trocam chamadas internas protegidas por `X-Internal-Api-Token`;
+- o `telegram-gateway` já responde consultas protegidas reais para contas vinculadas: resumo acadêmico e financeiro para responsáveis/alunos e grade docente para professores;
 - seed foundation idempotente já disponível em `tools/mockgen`;
 - sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;
@@ -152,7 +154,7 @@ Expansões já aprovadas para a próxima etapa:
 
 ## Próximos passos imediatos
 
-1. Conectar os `structured tools` do Telegram às consultas acadêmicas, financeiras e docentes já existentes no `api-core`.
+1. Expandir os `structured tools` para casos protegidos mais ricos, como filtros por período, faltas, boletos e múltiplas intenções.
 2. Expandir a seed para cenários mais amplos de acadêmico, financeiro, calendário e handoff.
 3. Evoluir o `admin-web` para consumir login real, sessão autenticada e geração de challenge de vínculo.
 4. Adicionar observabilidade ponta a ponta para tracing de retrieval, tool calls e decisões de policy.

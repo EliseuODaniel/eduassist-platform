@@ -14,7 +14,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - controlar idempotência;
 - aplicar rate limiting;
 - resolver contexto de ator via `api-core`;
-- encaminhar mensagens conversacionais para o `ai-orchestrator`.
+- encaminhar mensagens conversacionais para o `ai-orchestrator` com token interno de serviço.
 
 ### Dependências
 
@@ -57,6 +57,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - tool calling;
 - retrieval documental;
 - consulta a calendário público estruturado no `api-core`;
+- consulta a dados protegidos do `api-core` por rotas internas autenticadas entre serviços;
 - composição da resposta final;
 - emissão de metadados de confiança e fontes.
 

@@ -76,6 +76,8 @@ Status atual:
 - o `ai-orchestrator` já expõe `retrieval/status` e `retrieval/search` com fusão de `Qdrant` e `PostgreSQL FTS`;
 - o `ai-orchestrator` já expõe `POST /v1/messages/respond` para FAQ pública, calendário público e negações seguras;
 - o `telegram-gateway` já encaminha mensagens públicas ao `ai-orchestrator` e responde `/help`, FAQ e calendário pelo webhook;
+- o fluxo protegido do Telegram já responde resumo acadêmico, resumo financeiro e grade docente para contas vinculadas;
+- `telegram_chat_id` em rotas protegidas do `api-core` e `POST /v1/messages/respond` no `ai-orchestrator` agora exigem `X-Internal-Api-Token`;
 - observabilidade dedicada ainda ficará para a próxima etapa do roadmap.
 
 ### `compose:observability`
@@ -194,13 +196,16 @@ Status atual do bootstrap:
 - `GET /v1/calendar/public?date_from=2026-03-01&date_to=2026-04-30`
 - `POST /webhooks/telegram` no `telegram-gateway` com `/start link_<codigo>`
 - `POST /webhooks/telegram` no `telegram-gateway` com perguntas como `quais documentos sao exigidos para matricula?`
+- `POST /webhooks/telegram` no `telegram-gateway` com `quero ver as notas do Lucas Oliveira`
+- `POST /webhooks/telegram` no `telegram-gateway` com `quero ver o financeiro da Ana Oliveira`
+- `POST /webhooks/telegram` no `telegram-gateway` com `qual meu horario e minhas turmas?`
 - `GET /v1/students/{student_id}/academic-summary?...`
 - `GET /v1/students/{student_id}/financial-summary?...`
 - `GET /v1/teachers/me/schedule?user_external_code=USR-TEACH-001`
 - `POST /v1/authz/check`
 - `GET /v1/retrieval/status` no `ai-orchestrator`
 - `POST /v1/retrieval/search` no `ai-orchestrator`
-- `POST /v1/messages/respond` no `ai-orchestrator`
+- `POST /v1/messages/respond` no `ai-orchestrator` com `X-Internal-Api-Token`
 
 Observacao sobre o pipeline documental local:
 

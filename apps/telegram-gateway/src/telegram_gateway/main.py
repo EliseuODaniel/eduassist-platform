@@ -220,6 +220,7 @@ async def _orchestrate_message(
     async with httpx.AsyncClient(timeout=20.0) as client:
         response = await client.post(
             f'{settings.ai_orchestrator_url}/v1/messages/respond',
+            headers={'X-Internal-Api-Token': settings.internal_api_token},
             json=payload,
         )
     response.raise_for_status()
