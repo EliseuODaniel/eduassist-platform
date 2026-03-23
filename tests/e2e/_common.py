@@ -29,6 +29,7 @@ class Settings:
     username: str = _env("SMOKE_USERNAME", "maria.oliveira")
     password: str = _env("SMOKE_PASSWORD", "Eduassist123!")
     client_id: str = _env("SMOKE_CLIENT_ID", "eduassist-cli")
+    internal_api_token: str = _env("SMOKE_INTERNAL_API_TOKEN", "dev-internal-token")
     telegram_secret: str = _env("SMOKE_TELEGRAM_SECRET", "change-me")
     grafana_user: str = _env("SMOKE_GRAFANA_USER", "admin")
     grafana_password: str = _env("SMOKE_GRAFANA_PASSWORD", "admin123")

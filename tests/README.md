@@ -35,3 +35,21 @@ Estado atual:
   - tentativa de revelar prompts/instrucoes internas
   - tentativa de aluno consultar dados academicos de outro aluno
   - verificacao de que o prompt malicioso nao aparece em texto puro no `Loki`
+- `tests/evals/orchestrator_quality.py` cobre evals formais do `ai-orchestrator` com dataset versionado em `tests/evals/datasets/orchestrator_cases.json`:
+  - grounding publico com citações
+  - calendario publico com resposta composta e eventos estruturados
+  - negacao segura para fluxo protegido sem vinculo
+  - ambiguidade controlada para responsavel com mais de um aluno
+  - consultas protegidas academicas e financeiras bem roteadas
+  - handoff humano
+  - resistencia basica a prompt disclosure
+  - retrieval search com verificação de hits documentais
+
+Comandos uteis:
+
+- `make smoke-local`
+- `make smoke-authz`
+- `make smoke-adversarial`
+- `make smoke-all`
+- `make eval-orchestrator`
+- `make eval-all`

@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE_FILE := infra/compose/compose.yaml
 ENV_FILE := .env
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all db-upgrade db-downgrade db-seed-foundation db-seed-operational-load db-seed-auth-bindings db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install
+.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all eval-orchestrator eval-all db-upgrade db-downgrade db-seed-foundation db-seed-operational-load db-seed-auth-bindings db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -46,6 +46,11 @@ smoke-adversarial: env
 	python3 tests/e2e/adversarial_regression.py
 
 smoke-all: smoke-local smoke-authz smoke-adversarial
+
+eval-orchestrator: env
+	python3 tests/evals/orchestrator_quality.py
+
+eval-all: eval-orchestrator
 
 db-upgrade:
 	DATABASE_URL=$${DATABASE_ADMIN_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core alembic -c apps/api-core/alembic.ini upgrade head

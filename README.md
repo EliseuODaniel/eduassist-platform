@@ -169,6 +169,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - existe uma suite de smoke local em `tests/e2e/local_smoke.py` para validar os fluxos principais e a pilha de observabilidade;
 - existe uma suite de regressao de autorizacao em `tests/e2e/authz_regression.py` para validar negativas, ambiguidades, bearer ausente e segredos invalidos;
 - existe uma suite adversarial em `tests/e2e/adversarial_regression.py` para validar tentativas de exfiltracao, prompt disclosure e resistencia operacional a consultas maliciosas;
+- existe uma suite formal de evals do `ai-orchestrator` em `tests/evals/orchestrator_quality.py`, com dataset versionado em `tests/evals/datasets/orchestrator_cases.json`, para validar grounding publico, calendario, negacao segura, ambiguidade controlada, handoff e retrieval documental;
 - seed foundation idempotente já disponível em `tools/mockgen`;
 - seed operacional incremental para carga mais realista de handoffs disponível em `tools/mockgen/seed_operational_load.py`;
 - sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
@@ -182,7 +183,7 @@ Expansões já aprovadas para a próxima etapa:
 ## Próximos passos imediatos
 
 1. Expandir os dashboards do `Grafana` com leituras mais profundas de SLA operacional, evolucao temporal por fila e logs correlacionados por `trace_id`.
-2. Expandir a suite de testes e evals com cenarios adversariais adicionais, casos de exfiltracao e regressao operacional.
+2. Expandir a suite formal de evals com comparativos de qualidade, cenarios adversariais mais amplos e benchmark seletivo de `GraphRAG`.
 3. Ampliar o drill de backup/restore para incluir cenarios mais ricos de recuperação e retenção.
 4. Expandir ainda mais a seed para cenários amplos de tickets, filas, operadores e resoluções, partindo da carga operacional incremental já disponível.
 5. Preparar benchmark comparativo para `GraphRAG` seletivo sobre o corpus institucional.
