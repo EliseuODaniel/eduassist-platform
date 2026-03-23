@@ -1,0 +1,69 @@
+# Release Readiness
+
+Este documento registra os gates minimos para considerar o projeto pronto para demo local, handoff tecnico ou fechamento de etapa.
+
+## Gate principal
+
+Use:
+
+- `make release-readiness`
+
+Esse comando consolida:
+
+- `make db-check-runtime-role`
+- `make db-check-rls`
+- `make eval-orchestrator`
+- `make smoke-all`
+- `make graphrag-benchmark-baseline`
+
+Artefatos:
+
+- `artifacts/readiness/release-readiness-<timestamp>.json`
+- `artifacts/readiness/release-readiness-<timestamp>.md`
+
+## Modo estrito
+
+Use:
+
+- `make release-readiness-strict`
+
+Esse modo exige, alem dos gates obrigatorios, um benchmark completo de `GraphRAG` concluido com sucesso.
+
+Na pratica, ele depende de:
+
+1. `make graphrag-benchmark-bootstrap`
+2. preencher `artifacts/graphrag/eduassist-public-benchmark/.env`
+3. `make graphrag-benchmark-index`
+4. `make graphrag-benchmark-run`
+
+## Interpretacao
+
+### Pronto para demo local
+
+Quando `make release-readiness` retorna `ok: true`.
+
+Significa que:
+
+- o runtime do banco nao esta em papel superuser;
+- as politicas de `RLS` estao funcionando;
+- o `ai-orchestrator` passou na suite formal de evals;
+- os fluxos principais, autorizacao e cenarios adversariais passaram;
+- existe baseline comparativo do benchmark de `GraphRAG`.
+
+### Pronto para comparacao completa de retrieval avancado
+
+Quando `make release-readiness-strict` retorna `ok: true`.
+
+Significa, alem do baseline local:
+
+- o benchmark completo de `GraphRAG` foi executado;
+- existe material concreto para decidir se `GraphRAG` entra em algum fluxo real.
+
+## Estado esperado atual
+
+Sem `GRAPHRAG_API_KEY`, o gate padrao deve passar e o gate estrito deve falhar.
+
+Esse comportamento e intencional:
+
+- o produto principal nao depende de `GraphRAG` para funcionar;
+- `GraphRAG` continua sendo uma trilha avancada, medida e opcional.

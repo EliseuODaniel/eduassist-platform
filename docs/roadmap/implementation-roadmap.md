@@ -146,6 +146,12 @@ Entregáveis:
 - baseline de performance;
 - gates mínimos de release.
 
+Estado atual:
+
+- os gates minimos de release ja existem em `make release-readiness`;
+- o benchmark seletivo de `GraphRAG` ja possui trilha experimental pronta;
+- o fechamento estrito dessa fase ainda depende de executar o benchmark completo com API key valida.
+
 ## 11. Fase 9 - Kubernetes local
 
 Objetivos:

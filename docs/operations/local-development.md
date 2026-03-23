@@ -256,6 +256,8 @@ Uso rápido do drill operacional:
 - `make graphrag-benchmark-index-dry-run`
 - `make graphrag-benchmark-baseline`
 - `make graphrag-benchmark-run`
+- `make release-readiness`
+- `make release-readiness-strict`
 - `GET /v1/foundation/summary` no `api-core`
 - `GET /v1/identity/context?user_external_code=USR-TEACH-001`
 - `GET /v1/internal/identity/context?telegram_chat_id=<chat_id>` com `X-Internal-Api-Token`
@@ -292,6 +294,7 @@ Uso rápido do drill operacional:
 - `POST /v1/messages/respond` no `ai-orchestrator` com `X-Internal-Api-Token`
 - dataset formal de evals versionado em [orchestrator_cases.json](/home/edann/projects/eduassist-platform/tests/evals/datasets/orchestrator_cases.json)
 - trilha experimental de benchmark em [tools/graphrag-benchmark](/home/edann/projects/eduassist-platform/tools/graphrag-benchmark)
+- gate operacional final documentado em [release-readiness.md](/home/edann/projects/eduassist-platform/docs/operations/release-readiness.md)
 - `GET /api/traces/{trace_id}` no `Tempo` em `http://localhost:3200`
 - `GET /-/ready` no `Prometheus` em `http://localhost:9090`
 - `GET /ready` no `Loki` em `http://localhost:3100`

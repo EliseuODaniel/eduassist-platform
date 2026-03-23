@@ -1,0 +1,206 @@
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+DEFAULT_OUTPUT_DIR = ROOT_DIR / 'artifacts' / 'readiness'
+DEFAULT_GRAPH_RAG_WORKSPACE = ROOT_DIR / 'artifacts' / 'graphrag' / 'eduassist-public-benchmark'
+DEFAULT_GRAPH_RAG_REPORTS = ROOT_DIR / 'artifacts' / 'graphrag' / 'benchmark-runs'
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description='Run minimum release gates and emit a readiness report.')
+    parser.add_argument('--strict-graphrag', action='store_true')
+    parser.add_argument('--output-dir', type=Path, default=DEFAULT_OUTPUT_DIR)
+    return parser.parse_args()
+
+
+def _run_command(name: str, command: list[str]) -> dict[str, Any]:
+    started_at = datetime.now(UTC)
+    result = subprocess.run(
+        command,
+        cwd=str(ROOT_DIR),
+        text=True,
+        capture_output=True,
+    )
+    duration_ms = round((datetime.now(UTC) - started_at).total_seconds() * 1000, 2)
+    return {
+        'name': name,
+        'command': command,
+        'ok': result.returncode == 0,
+        'return_code': result.returncode,
+        'duration_ms': duration_ms,
+        'stdout_excerpt': result.stdout.strip()[:2000],
+        'stderr_excerpt': result.stderr.strip()[:2000],
+    }
+
+
+def _load_latest_graphrag_report(report_dir: Path) -> dict[str, Any] | None:
+    if not report_dir.exists():
+        return None
+    candidates = sorted(report_dir.glob('graphrag-benchmark-*.json'))
+    if not candidates:
+        return None
+    latest = candidates[-1]
+    payload = json.loads(latest.read_text(encoding='utf-8'))
+    payload['_report_path'] = latest.as_posix()
+    return payload
+
+
+def _graphrag_status(*, workspace: Path, report_dir: Path) -> dict[str, Any]:
+    env_path = workspace / '.env'
+    env_value = None
+    if env_path.exists():
+        for line in env_path.read_text(encoding='utf-8').splitlines():
+            if line.startswith('GRAPHRAG_API_KEY='):
+                env_value = line.split('=', 1)[1].strip()
+                break
+
+    latest_report = _load_latest_graphrag_report(report_dir)
+    full_benchmark_completed = False
+    if latest_report is not None:
+        for case in latest_report.get('cases', []):
+            methods = case.get('graphrag', {})
+            for result in methods.values():
+                if isinstance(result, dict) and result.get('status') == 'completed':
+                    full_benchmark_completed = True
+                    break
+            if full_benchmark_completed:
+                break
+
+    return {
+        'workspace_exists': workspace.exists(),
+        'settings_exists': (workspace / 'settings.yaml').exists(),
+        'input_exists': (workspace / 'input').exists(),
+        'output_exists': (workspace / 'output').exists(),
+        'api_key_configured': bool(env_value) and env_value != '<API_KEY>',
+        'latest_report': latest_report,
+        'full_benchmark_completed': full_benchmark_completed,
+    }
+
+
+def _write_markdown(target: Path, payload: dict[str, Any]) -> None:
+    lines = [
+        '# Release Readiness Report',
+        '',
+        f"- generated_at: `{payload['generated_at']}`",
+        f"- overall_ok: `{payload['ok']}`",
+        f"- strict_graphrag: `{payload['strict_graphrag']}`",
+        '',
+        '## Command Gates',
+        '',
+        '| gate | ok | duration_ms |',
+        '| --- | --- | ---: |',
+    ]
+    for check in payload['checks']:
+        lines.append(f"| {check['name']} | {check['ok']} | {check['duration_ms']} |")
+
+    graphrag = payload['graphrag']
+    lines.extend(
+        [
+            '',
+            '## GraphRAG Status',
+            '',
+            f"- workspace_exists: `{graphrag['workspace_exists']}`",
+            f"- settings_exists: `{graphrag['settings_exists']}`",
+            f"- input_exists: `{graphrag['input_exists']}`",
+            f"- output_exists: `{graphrag['output_exists']}`",
+            f"- api_key_configured: `{graphrag['api_key_configured']}`",
+            f"- full_benchmark_completed: `{graphrag['full_benchmark_completed']}`",
+        ]
+    )
+    latest_report = graphrag.get('latest_report')
+    if isinstance(latest_report, dict):
+        lines.append(f"- latest_report: `{latest_report.get('_report_path')}`")
+        lines.append(f"- latest_report_ready: `{latest_report.get('graphrag_ready')}`")
+        lines.append(f"- latest_report_reason: `{latest_report.get('graphrag_readiness_reason')}`")
+
+    lines.extend(
+        [
+            '',
+            '## Summary',
+            '',
+            payload['summary'],
+            '',
+        ]
+    )
+    target.write_text('\n'.join(lines), encoding='utf-8')
+
+
+def main() -> int:
+    args = parse_args()
+    output_dir = args.output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    checks = [
+        _run_command('db-check-runtime-role', ['make', 'db-check-runtime-role']),
+        _run_command('db-check-rls', ['make', 'db-check-rls']),
+        _run_command('eval-orchestrator', ['make', 'eval-orchestrator']),
+        _run_command('smoke-all', ['make', 'smoke-all']),
+        _run_command('graphrag-benchmark-baseline', ['make', 'graphrag-benchmark-baseline']),
+    ]
+
+    graphrag = _graphrag_status(
+        workspace=DEFAULT_GRAPH_RAG_WORKSPACE,
+        report_dir=DEFAULT_GRAPH_RAG_REPORTS,
+    )
+
+    mandatory_ok = all(check['ok'] for check in checks)
+    graphrag_ok = graphrag['full_benchmark_completed']
+    overall_ok = mandatory_ok and (graphrag_ok if args.strict_graphrag else True)
+
+    if overall_ok and args.strict_graphrag:
+        summary = 'Todos os gates passaram, incluindo benchmark completo de GraphRAG.'
+    elif overall_ok:
+        summary = (
+            'Todos os gates obrigatorios passaram. O sistema esta pronto para demo/operacao local; '
+            'o benchmark completo de GraphRAG continua opcional e depende da API key.'
+        )
+    elif mandatory_ok:
+        summary = (
+            'Os gates obrigatorios passaram, mas o modo estrito falhou porque o benchmark completo '
+            'de GraphRAG ainda nao foi executado.'
+        )
+    else:
+        summary = 'Um ou mais gates obrigatorios falharam. Revise os checks antes de considerar release.'
+
+    payload = {
+        'generated_at': datetime.now(UTC).isoformat(),
+        'ok': overall_ok,
+        'strict_graphrag': args.strict_graphrag,
+        'checks': checks,
+        'graphrag': graphrag,
+        'summary': summary,
+    }
+
+    mode = 'strict' if args.strict_graphrag else 'standard'
+    stamp = datetime.now(UTC).strftime('%Y%m%dT%H%M%S%fZ')
+    json_target = output_dir / f'release-readiness-{mode}-{stamp}.json'
+    markdown_target = output_dir / f'release-readiness-{mode}-{stamp}.md'
+    json_target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
+    _write_markdown(markdown_target, payload)
+    print(
+        json.dumps(
+            {
+                'ok': overall_ok,
+                'strict_graphrag': args.strict_graphrag,
+                'json_report': json_target.as_posix(),
+                'markdown_report': markdown_target.as_posix(),
+                'summary': summary,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+    return 0 if overall_ok else 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

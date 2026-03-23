@@ -171,6 +171,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - existe uma suite adversarial em `tests/e2e/adversarial_regression.py` para validar tentativas de exfiltracao, prompt disclosure e resistencia operacional a consultas maliciosas;
 - existe uma suite formal de evals do `ai-orchestrator` em `tests/evals/orchestrator_quality.py`, com dataset versionado em `tests/evals/datasets/orchestrator_cases.json`, para validar grounding publico, calendario, negacao segura, ambiguidade controlada, handoff e retrieval documental;
 - existe uma trilha experimental em `tools/graphrag-benchmark` para benchmark seletivo de `GraphRAG` sobre o corpus institucional publico, com workspace bootstrapado, dataset de comparacao e runner que salva baseline hibrido e consultas `basic/local/global/drift` em artefatos;
+- existe um gate operacional final em `make release-readiness`, com relatorio salvo em `artifacts/readiness`, para consolidar runtime role, `RLS`, evals, smoke completo e baseline do benchmark seletivo;
 - seed foundation idempotente já disponível em `tools/mockgen`;
 - seed operacional incremental para carga mais realista de handoffs disponível em `tools/mockgen/seed_operational_load.py`;
 - sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
@@ -183,8 +184,7 @@ Expansões já aprovadas para a próxima etapa:
 
 ## Próximos passos imediatos
 
-1. Expandir os dashboards do `Grafana` com leituras mais profundas de SLA operacional, evolucao temporal por fila e logs correlacionados por `trace_id`.
-2. Expandir a suite formal de evals com comparativos de qualidade, cenarios adversariais mais amplos e benchmark seletivo de `GraphRAG`.
-3. Ampliar o drill de backup/restore para incluir cenarios mais ricos de recuperação e retenção.
+1. Rodar o benchmark comparativo seletivo de `GraphRAG` com API key real e decidir se algum fluxo merece incorporacao.
+2. Ampliar a suite formal de evals com comparativos de qualidade multi-provedor e cenarios adversariais ainda mais amplos.
+3. Expandir o drill de backup/restore para politicas mais ricas de retenção e cenarios de recuperação.
 4. Expandir ainda mais a seed para cenários amplos de tickets, filas, operadores e resoluções, partindo da carga operacional incremental já disponível.
-5. Rodar o benchmark comparativo seletivo de `GraphRAG` sobre o corpus institucional, agora que a trilha experimental já existe.
