@@ -15,6 +15,8 @@ fi
 
 : "${POSTGRES_USER:=eduassist}"
 : "${POSTGRES_DB:=eduassist}"
+: "${QDRANT_PORT:=6333}"
+: "${QDRANT_DOCUMENTS_COLLECTION:=school_documents}"
 : "${MINIO_ROOT_USER:=minioadmin}"
 : "${MINIO_ROOT_PASSWORD:=minioadmin123}"
 : "${MINIO_BUCKET_DOCUMENTS:=documents}"
@@ -32,6 +34,9 @@ if [[ ! -d "$BACKUP_DIR" ]]; then
 fi
 
 POSTGRES_DUMP_PATH="$BACKUP_DIR/postgres/${POSTGRES_DB}.dump"
+QDRANT_HOST_URL="${QDRANT_URL_LOCAL:-http://localhost:${QDRANT_PORT}}"
+QDRANT_RESTORE_COLLECTION="${QDRANT_RESTORE_COLLECTION:-${QDRANT_DOCUMENTS_COLLECTION}_restore_check}"
+QDRANT_SNAPSHOT_PATH="$(find "$BACKUP_DIR/qdrant" -maxdepth 1 -type f -name '*.snapshot' | head -n 1)"
 MINIO_BUCKET_PATH="$BACKUP_DIR/minio/$MINIO_BUCKET_DOCUMENTS"
 RESTORE_DB="${RESTORE_DB:-eduassist_restore_check}"
 RESTORE_BUCKET="${RESTORE_BUCKET:-${MINIO_BUCKET_DOCUMENTS}-restore-check}"
@@ -39,6 +44,11 @@ NETWORK_NAME="${COMPOSE_PROJECT_NAME}_default"
 
 if [[ ! -f "$POSTGRES_DUMP_PATH" ]]; then
   echo "postgres dump not found: $POSTGRES_DUMP_PATH" >&2
+  exit 1
+fi
+
+if [[ -z "$QDRANT_SNAPSHOT_PATH" || ! -f "$QDRANT_SNAPSHOT_PATH" ]]; then
+  echo "qdrant snapshot not found under: $BACKUP_DIR/qdrant" >&2
   exit 1
 fi
 
@@ -103,6 +113,32 @@ if [[ "$LIVE_COUNTS" != "$RESTORE_COUNTS" ]]; then
   exit 1
 fi
 
+QDRANT_LIVE_POINTS="$(
+  curl -fsS "${QDRANT_HOST_URL}/collections/${QDRANT_DOCUMENTS_COLLECTION}" \
+    | python3 -c 'import sys, json; print(int(json.load(sys.stdin)["result"]["points_count"]))'
+)"
+
+curl -sS -X DELETE "${QDRANT_HOST_URL}/collections/${QDRANT_RESTORE_COLLECTION}" >/dev/null || true
+curl -fsS \
+  -X POST \
+  "${QDRANT_HOST_URL}/collections/${QDRANT_RESTORE_COLLECTION}/snapshots/upload?wait=true&priority=snapshot" \
+  -F "snapshot=@${QDRANT_SNAPSHOT_PATH}" \
+  >/dev/null
+
+QDRANT_RESTORE_POINTS="$(
+  curl -fsS "${QDRANT_HOST_URL}/collections/${QDRANT_RESTORE_COLLECTION}" \
+    | python3 -c 'import sys, json; print(int(json.load(sys.stdin)["result"]["points_count"]))'
+)"
+
+curl -sS -X DELETE "${QDRANT_HOST_URL}/collections/${QDRANT_RESTORE_COLLECTION}" >/dev/null || true
+
+if [[ "$QDRANT_LIVE_POINTS" != "$QDRANT_RESTORE_POINTS" ]]; then
+  echo "restored qdrant point count does not match live collection" >&2
+  echo "live:    $QDRANT_LIVE_POINTS" >&2
+  echo "restore: $QDRANT_RESTORE_POINTS" >&2
+  exit 1
+fi
+
 BACKUP_OBJECT_COUNT="$(find "$MINIO_BUCKET_PATH" -type f | wc -l | tr -d ' ')"
 
 docker run --rm \
@@ -135,8 +171,10 @@ cat <<EOF
   "ok": true,
   "backup_dir": "$BACKUP_DIR",
   "restore_db": "$RESTORE_DB",
+  "qdrant_restore_collection": "$QDRANT_RESTORE_COLLECTION",
   "restore_bucket": "$RESTORE_BUCKET",
   "postgres_counts": $LIVE_COUNTS,
+  "qdrant_point_count": $QDRANT_RESTORE_POINTS,
   "minio_object_count": $RESTORE_OBJECT_COUNT
 }
 EOF

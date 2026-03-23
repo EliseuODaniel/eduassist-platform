@@ -187,7 +187,7 @@ Status atual do bootstrap:
 - identity and policy base validadas com smoke tests de responsável, aluno, professor e financeiro
 - auth federada e vínculo Telegram validados com token real do `Keycloak` local
 - `RLS` ativo e validado diretamente no banco para tabelas sensíveis acadêmicas e financeiras, com contexto de ator por sessão no `api-core`
-- backup e restore de verificação já implementados para `Postgres` e `MinIO`, sempre restaurando em banco e bucket temporários
+- backup e restore de verificação já implementados para `Postgres`, `Qdrant` e `MinIO`, sempre restaurando em banco, coleção e bucket temporários
 - corpus documental mockado validado com 4 documentos e 21 chunks indexados
 
 Uso rápido do drill operacional:

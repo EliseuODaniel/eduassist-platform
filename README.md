@@ -160,7 +160,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o stack local agora também inclui `Loki + Promtail`, com ingestao dos logs dos containers do Compose para investigacao centralizada no `Grafana`;
 - o runtime dos serviços que acessam o banco agora pode ser executado com um papel dedicado de aplicação (`eduassist_app`), separado do superuser administrativo usado para migrações e seeds;
 - o `api-core` agora aplica contexto de ator por sessão e o banco já reforça acesso sensível com `PostgreSQL RLS` ativo em tabelas acadêmicas e financeiras selecionadas;
-- o projeto agora também possui ciclo operacional local de `backup + restore drill` para `Postgres` e `MinIO`, sem restaurar por cima da base principal;
+- o projeto agora também possui ciclo operacional local de `backup + restore drill` para `Postgres`, `Qdrant` e `MinIO`, sem restaurar por cima da base principal;
 - existe uma suite de smoke local em `tests/e2e/local_smoke.py` para validar os fluxos principais e a pilha de observabilidade;
 - existe uma suite de regressao de autorizacao em `tests/e2e/authz_regression.py` para validar negativas, ambiguidades, bearer ausente e segredos invalidos;
 - existe uma suite adversarial em `tests/e2e/adversarial_regression.py` para validar tentativas de exfiltracao, prompt disclosure e resistencia operacional a consultas maliciosas;
