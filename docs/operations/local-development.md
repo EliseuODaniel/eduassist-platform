@@ -77,6 +77,7 @@ Status atual:
 - o `ai-orchestrator` já expõe `POST /v1/messages/respond` para FAQ pública, calendário público e negações seguras;
 - o `telegram-gateway` já encaminha mensagens públicas ao `ai-orchestrator` e responde `/help`, FAQ e calendário pelo webhook;
 - o fluxo protegido do Telegram já responde resumo acadêmico com filtros por disciplina e bimestre, resumo financeiro com filtros por status e panorama consolidado para responsáveis, além de grade docente por turmas, disciplinas e horário para contas vinculadas;
+- o `admin-web` já expõe login real via `Keycloak` com OIDC + PKCE, leitura de sessão autenticada do `api-core` e emissão de challenge de vínculo em `/api/telegram-link/challenge`;
 - `telegram_chat_id` em rotas protegidas do `api-core` e `POST /v1/messages/respond` no `ai-orchestrator` agora exigem `X-Internal-Api-Token`;
 - observabilidade dedicada ainda ficará para a próxima etapa do roadmap.
 
@@ -204,6 +205,8 @@ Status atual do bootstrap:
 - `POST /webhooks/telegram` no `telegram-gateway` com `quero ver faturas pagas do Lucas Oliveira`
 - `POST /webhooks/telegram` no `telegram-gateway` com `qual meu horario e minhas turmas?`
 - `POST /webhooks/telegram` no `telegram-gateway` com `quais sao minhas disciplinas?`
+- `GET /auth/login` no `admin-web` para iniciar o fluxo OIDC com `Keycloak`
+- `POST /api/telegram-link/challenge` no `admin-web` com cookie de sessão autenticada
 - `GET /v1/students/{student_id}/academic-summary?...`
 - `GET /v1/students/{student_id}/financial-summary?...`
 - `GET /v1/teachers/me/schedule?user_external_code=USR-TEACH-001`

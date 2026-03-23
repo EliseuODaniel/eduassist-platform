@@ -270,6 +270,11 @@ services:
       AI_ORCHESTRATOR_URL: http://ai-orchestrator:8000
       TELEGRAM_GATEWAY_URL: http://telegram-gateway:8000
       KEYCLOAK_HOST: ${KEYCLOAK_HOST:-http://keycloak:8080}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8080}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-eduassist}
+      KEYCLOAK_WEB_CLIENT_ID: ${KEYCLOAK_WEB_CLIENT_ID:-eduassist-web}
+      ADMIN_WEB_PUBLIC_URL: ${ADMIN_WEB_PUBLIC_URL:-http://localhost:3000}
       OPA_URL: ${OPA_URL:-http://opa:8181}
     ports:
       - '${ADMIN_WEB_PORT:-3000}:3000'

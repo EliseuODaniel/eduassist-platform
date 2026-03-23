@@ -103,6 +103,9 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 ### Responsabilidades
 
 - operação do sistema;
+- login web autenticado com `Keycloak`;
+- leitura de sessão autenticada no `api-core`;
+- geração de challenge de vínculo para o Telegram;
 - curadoria documental;
 - revisão de conversas;
 - dashboards;
