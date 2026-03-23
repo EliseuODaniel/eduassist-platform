@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE_FILE := infra/compose/compose.yaml
 ENV_FILE := .env
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all eval-orchestrator eval-all db-upgrade db-downgrade db-seed-foundation db-seed-operational-load db-seed-auth-bindings db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install
+.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all eval-orchestrator eval-all graphrag-benchmark-bootstrap graphrag-benchmark-index graphrag-benchmark-index-dry-run graphrag-benchmark-baseline graphrag-benchmark-run db-upgrade db-downgrade db-seed-foundation db-seed-operational-load db-seed-auth-bindings db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -51,6 +51,21 @@ eval-orchestrator: env
 	python3 tests/evals/orchestrator_quality.py
 
 eval-all: eval-orchestrator
+
+graphrag-benchmark-bootstrap: env
+	uv run --project tools/graphrag-benchmark python -m graphrag_benchmark.bootstrap_workspace
+
+graphrag-benchmark-index: env
+	uv run --project tools/graphrag-benchmark graphrag index -r $${GRAPHRAG_BENCHMARK_WORKSPACE:-artifacts/graphrag/eduassist-public-benchmark} -m $${GRAPHRAG_INDEX_METHOD:-standard}
+
+graphrag-benchmark-index-dry-run: env
+	uv run --project tools/graphrag-benchmark python -m graphrag_benchmark.dry_run_index
+
+graphrag-benchmark-baseline: env
+	uv run --project tools/graphrag-benchmark python -m graphrag_benchmark.run_benchmark --skip-graphrag
+
+graphrag-benchmark-run: env
+	uv run --project tools/graphrag-benchmark python -m graphrag_benchmark.run_benchmark
 
 db-upgrade:
 	DATABASE_URL=$${DATABASE_ADMIN_URL_LOCAL:-postgresql://eduassist:eduassist@localhost:5432/eduassist} uv run --project apps/api-core alembic -c apps/api-core/alembic.ini upgrade head

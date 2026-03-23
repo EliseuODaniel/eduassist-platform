@@ -123,11 +123,13 @@ Decisão:
 - não usar como padrão cego para todas as consultas;
 - adotar `Microsoft GraphRAG` como modo avançado de recuperação para perguntas globais, locais e multi-documento complexas;
 - habilitar somente depois que o baseline híbrido estiver medido e quando houver ganho comprovado nos evals.
+- manter uma trilha experimental separada do runtime principal para benchmark seletivo, usando o corpus institucional publico e comparando `basic`, `local`, `global` e `drift` contra o baseline atual.
 
 Motivo:
 
 - a documentação do GraphRAG mostra modos distintos como `Global Search`, `Local Search`, `DRIFT Search` e `Basic Search`;
 - isso o torna valioso para raciocínio sobre o corpus como um todo, mas desnecessário para perguntas simples que já são bem resolvidas por retrieval híbrido.
+- para um corpus majoritariamente em portugues, o benchmark principal deve preferir indexacao `standard`; inferencia a partir da documentacao oficial e do CLI atual: o modo `fast` usa extracao NLP padrao `regex_english`, o que tende a ser mais adequado a ingles do que ao nosso corpus escolar.
 
 ## 6. Dados estruturados
 

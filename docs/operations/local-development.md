@@ -252,6 +252,10 @@ Uso rápido do drill operacional:
 - `make smoke-all`
 - `make eval-orchestrator`
 - `make eval-all`
+- `make graphrag-benchmark-bootstrap`
+- `make graphrag-benchmark-index-dry-run`
+- `make graphrag-benchmark-baseline`
+- `make graphrag-benchmark-run`
 - `GET /v1/foundation/summary` no `api-core`
 - `GET /v1/identity/context?user_external_code=USR-TEACH-001`
 - `GET /v1/internal/identity/context?telegram_chat_id=<chat_id>` com `X-Internal-Api-Token`
@@ -287,6 +291,7 @@ Uso rápido do drill operacional:
 - `POST /v1/retrieval/search` no `ai-orchestrator`
 - `POST /v1/messages/respond` no `ai-orchestrator` com `X-Internal-Api-Token`
 - dataset formal de evals versionado em [orchestrator_cases.json](/home/edann/projects/eduassist-platform/tests/evals/datasets/orchestrator_cases.json)
+- trilha experimental de benchmark em [tools/graphrag-benchmark](/home/edann/projects/eduassist-platform/tools/graphrag-benchmark)
 - `GET /api/traces/{trace_id}` no `Tempo` em `http://localhost:3200`
 - `GET /-/ready` no `Prometheus` em `http://localhost:9090`
 - `GET /ready` no `Loki` em `http://localhost:3100`
@@ -301,6 +306,14 @@ Observacao sobre o pipeline documental local:
 - o `worker` envia os arquivos fonte para `MinIO`, replica metadados e chunks no schema `documents` e reconstrói a coleção `school_documents` no `Qdrant`;
 - o primeiro boot baixa o modelo multilíngue de embeddings do `FastEmbed`, o que torna a primeira sincronização mais lenta;
 - por padrao, o parsing local usa o backend `markdown`; a interface continua pronta para um backend `Docling` posterior sem alterar os contratos do sistema.
+
+Observacao sobre o benchmark seletivo de `GraphRAG`:
+
+- o workspace padrao fica em `artifacts/graphrag/eduassist-public-benchmark`;
+- o bootstrap exporta o corpus publico versionado do projeto para `input/` em formato texto, preservando metadados principais;
+- o benchmark compara o baseline atual do `ai-orchestrator` com consultas `GraphRAG` via CLI;
+- para benchmark de qualidade em portugues, prefira `GRAPHRAG_INDEX_METHOD=standard`;
+- o modo `fast` continua util para ensaios de custo/latencia e validacao de config via `--dry-run`.
 
 Identidades mockadas úteis nesta fase:
 

@@ -1,0 +1,54 @@
+[
+  {
+    "case_id": "admissions_end_to_end",
+    "query": "Explique as etapas da matricula do ensino medio, os documentos exigidos e em que momento a vaga e confirmada.",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "pre-cadastro",
+      "documentos exigidos",
+      "historico escolar",
+      "responsavel legal",
+      "assinatura contratual",
+      "confirmacao da vaga"
+    ]
+  },
+  {
+    "case_id": "digital_service_security",
+    "query": "Resuma como funciona o atendimento digital da escola e quando o usuario precisa de identificacao ou autenticacao para consultas.",
+    "methods": ["basic", "local", "global", "drift"],
+    "review_focus": [
+      "canais digitais",
+      "atendimento institucional",
+      "dados pessoais",
+      "identificacao",
+      "autenticacao",
+      "portal",
+      "telegram"
+    ]
+  },
+  {
+    "case_id": "first_bimester_parent_view",
+    "query": "Quais sao os principais marcos publicos do primeiro bimestre de 2026 e quais eventos sao relevantes para pais e responsaveis?",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "2 de fevereiro de 2026",
+      "17 de abril de 2026",
+      "semana de provas",
+      "reuniao de pais",
+      "responsaveis"
+    ]
+  },
+  {
+    "case_id": "public_bot_scope",
+    "query": "Que tipo de perguntas publicas o bot escolar pode responder e em quais casos ele deve redirecionar para autenticacao ou portal?",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "informacoes publicas",
+      "calendario",
+      "matricula",
+      "documentos exigidos",
+      "autenticacao",
+      "portal"
+    ]
+  }
+]
