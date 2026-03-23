@@ -36,7 +36,7 @@ class GraphRuntimeConfig(TypedDict):
     graph_rag_enabled: bool
 
 
-PUBLIC_CALENDAR_TERMS = {'calendario', 'feriado', 'evento', 'prova', 'reuniao', 'horario'}
+PUBLIC_CALENDAR_TERMS = {'calendario', 'feriado', 'evento', 'prova', 'reuniao'}
 ACADEMIC_TERMS = {
     'nota',
     'notas',
@@ -84,9 +84,28 @@ FINANCE_TERMS = {
     'pendencia',
     'pendencias',
 }
-SUPPORT_TERMS = {'humano', 'atendente', 'secretaria', 'suporte', 'protocolo', 'chamado'}
+SUPPORT_TERMS = {'humano', 'atendente', 'suporte', 'protocolo', 'chamado'}
+SUPPORT_PHRASES = {
+    'falar com',
+    'atendimento humano',
+    'ajuda humana',
+    'me transfira',
+    'me encaminhe',
+}
 GRAPH_RAG_TERMS = {'visao geral', 'compare', 'comparar', 'tendencias', 'corpus', 'relacione'}
 TEACHER_SELF_SERVICE_TERMS = {'horario', 'agenda', 'turma', 'turmas', 'disciplina', 'disciplinas', 'materia', 'materias'}
+PUBLIC_SERVICE_TERMS = {
+    'biblioteca',
+    'cantina',
+    'laboratorio',
+    'laboratorio de ciencias',
+    'portaria',
+    'secretaria',
+    'atendimento',
+    'funcionamento',
+    'horario de atendimento',
+}
+INSTITUTION_TERMS = {'escola', 'matricula', 'regimento', 'instituicao', 'endereco'}
 
 
 def _append_path(state: OrchestrationState, node_name: str) -> list[str]:
@@ -104,6 +123,13 @@ def _contains_any(message: str, terms: set[str]) -> bool:
     return any(term in lowered for term in terms)
 
 
+def _wants_human_support(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return any(term in lowered for term in SUPPORT_TERMS) or any(
+        phrase in lowered for phrase in SUPPORT_PHRASES
+    )
+
+
 def _is_teacher_self_service_request(message: str, role: UserRole) -> bool:
     lowered = _normalize_text(message)
     return role is UserRole.teacher and any(term in lowered for term in TEACHER_SELF_SERVICE_TERMS)
@@ -113,7 +139,7 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
     request = state['request']
     message = _normalize_text(request.message)
 
-    if _contains_any(message, SUPPORT_TERMS):
+    if _wants_human_support(message):
         classification = IntentClassification(
             domain=QueryDomain.support,
             access_tier=AccessTier.public,
@@ -148,12 +174,12 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
             confidence=0.84,
             reason='mensagem contem termos de calendario e eventos escolares',
         )
-    elif any(term in message for term in {'escola', 'matricula', 'regimento', 'instituicao', 'endereco'}):
+    elif _contains_any(message, PUBLIC_SERVICE_TERMS) or any(term in message for term in INSTITUTION_TERMS):
         classification = IntentClassification(
             domain=QueryDomain.institution,
             access_tier=AccessTier.public,
             confidence=0.78,
-            reason='mensagem aparenta ser institucional ou de faq publica',
+            reason='mensagem aparenta ser institucional, de servico escolar ou de faq publica',
         )
     else:
         classification = IntentClassification(

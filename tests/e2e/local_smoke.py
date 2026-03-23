@@ -90,6 +90,27 @@ def main() -> int:
     public_trace_id = extract_trace_id(public_headers)
     print('[ok] public faq')
 
+    library_status, _, library_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o horario da biblioteca? qual o nome da biblioteca?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        library_status == 200 and isinstance(library_payload, dict), 'public_library_query_failed'
+    )
+    library_message = str(library_payload.get('message_text', ''))
+    assert_condition('Biblioteca Aurora' in library_message, 'public_library_name_missing')
+    assert_condition('7h30 as 18h00' in library_message, 'public_library_hours_missing')
+    assert_condition('reuniao geral de pais' not in library_message.lower(), 'public_library_calendar_leak')
+    print('[ok] public library faq')
+
     protected_status, protected_headers, protected_payload = telegram_webhook_request(
         settings,
         update_id=9902,

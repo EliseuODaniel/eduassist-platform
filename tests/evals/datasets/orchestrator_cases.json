@@ -41,6 +41,27 @@
     }
   },
   {
+    "case_id": "public_library_hours",
+    "type": "message_response",
+    "request": {
+      "message": "qual o horario da biblioteca? qual o nome da biblioteca?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "hybrid_retrieval",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "qdrant_hybrid",
+      "needs_authentication": false,
+      "selected_tools_includes": ["search_public_documents"],
+      "graph_path_includes": ["hybrid_retrieval"],
+      "min_citations": 1,
+      "message_contains": ["Biblioteca Aurora", "7h30 as 18h00"],
+      "message_excludes": ["calendario escolar", "reuniao geral de pais"],
+      "reason_contains": "retrieval hibrido"
+    }
+  },
+  {
     "case_id": "anonymous_protected_denial",
     "type": "message_response",
     "request": {

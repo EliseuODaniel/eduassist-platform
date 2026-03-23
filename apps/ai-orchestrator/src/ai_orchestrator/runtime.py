@@ -71,6 +71,14 @@ SUBJECT_HINTS = {
 SUPPORT_FINANCE_TERMS = {'financeiro', 'boleto', 'mensalidade', 'pagamento', 'fatura', 'faturas'}
 SUPPORT_COORDINATION_TERMS = {'coordenacao', 'pedagogico', 'ocorrencia', 'professor', 'disciplina'}
 SUPPORT_SECRETARIAT_TERMS = {'secretaria', 'matricula', 'documento', 'declaracao', 'historico', 'transferencia'}
+PUBLIC_ENTITY_HINTS = {
+    'biblioteca': 'biblioteca',
+    'cantina': 'cantina',
+    'laboratorio': 'laboratorio',
+    'laboratorio de ciencias': 'laboratorio',
+    'secretaria': 'secretaria',
+    'portaria': 'portaria',
+}
 
 
 def _normalize_text(text: str) -> str:
@@ -137,6 +145,72 @@ def _format_event_line(event: CalendarEventCard) -> str:
 def _contains_any(message: str, terms: set[str]) -> bool:
     lowered = _normalize_text(message)
     return any(term in lowered for term in terms)
+
+
+def _extract_public_entity_hints(message: str) -> set[str]:
+    lowered = _normalize_text(message)
+    return {canonical for term, canonical in PUBLIC_ENTITY_HINTS.items() if term in lowered}
+
+
+def _retrieval_hits_cover_query_hints(retrieval_hits: list[Any], query_hints: set[str]) -> bool:
+    if not query_hints:
+        return True
+    if not retrieval_hits:
+        return False
+
+    haystack = ' '.join(
+        _normalize_text(
+            ' '.join(
+                filter(
+                    None,
+                    [
+                        getattr(hit, 'document_title', None),
+                        getattr(hit, 'text_excerpt', None),
+                        getattr(hit, 'contextual_summary', None),
+                    ],
+                )
+            )
+        )
+        for hit in retrieval_hits
+    )
+    return all(hint in haystack for hint in query_hints)
+
+
+def _filter_retrieval_hits_by_query_hints(retrieval_hits: list[Any], query_hints: set[str]) -> list[Any]:
+    if not query_hints:
+        return retrieval_hits
+
+    filtered_hits = []
+    for hit in retrieval_hits:
+        haystack = _normalize_text(
+            ' '.join(
+                filter(
+                    None,
+                    [
+                        getattr(hit, 'document_title', None),
+                        getattr(hit, 'text_excerpt', None),
+                        getattr(hit, 'contextual_summary', None),
+                    ],
+                )
+            )
+        )
+        if any(hint in haystack for hint in query_hints):
+            filtered_hits.append(hit)
+    return filtered_hits or retrieval_hits
+
+
+def _compose_public_gap_answer(query_hints: set[str]) -> str:
+    if query_hints:
+        labels = ', '.join(sorted(query_hints))
+        return (
+            f'Ainda nao encontrei uma resposta suficientemente suportada na base publica sobre {labels}. '
+            'Se esse servico existir, preciso que a base documental seja atualizada ou que voce reformule a pergunta '
+            'com o nome oficial do setor.'
+        )
+    return (
+        'Ainda nao encontrei uma resposta suficientemente suportada na base publica. '
+        'Tente reformular a pergunta com termos como matricula, calendario, secretaria ou atendimento.'
+    )
 
 
 def _extract_term_filter(message: str) -> str | None:
@@ -845,6 +919,7 @@ def _compose_deterministic_answer(
     retrieval_hits: list[Any],
     citations: list[MessageResponseCitation],
     calendar_events: list[CalendarEventCard],
+    query_hints: set[str],
 ) -> str:
     if preview.mode is OrchestrationMode.deny:
         return (
@@ -880,10 +955,7 @@ def _compose_deterministic_answer(
         sections.extend(f'- {hit.text_excerpt}' for hit in retrieval_hits[:2])
 
     if not sections:
-        return (
-            'Ainda nao encontrei uma resposta suficientemente suportada na base publica. '
-            'Tente reformular a pergunta com termos como matricula, calendario, secretaria ou atendimento.'
-        )
+        return _compose_public_gap_answer(query_hints)
 
     source_lines = _render_source_lines(citations)
     if source_lines:
@@ -981,6 +1053,8 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
         retrieval_hits: list[Any] = []
         citations: list[MessageResponseCitation] = []
         calendar_events: list[CalendarEventCard] = []
+        query_hints: set[str] = set()
+        retrieval_supported = True
 
         if preview.mode is OrchestrationMode.hybrid_retrieval:
             with start_span('eduassist.orchestration.public_retrieval', tracer_name='eduassist.ai_orchestrator.runtime'):
@@ -997,13 +1071,22 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                     category=_category_for_domain(preview.classification.domain),
                 )
                 retrieval_hits = search.hits
-                citations = _collect_citations(search.hits)
+                query_hints = _extract_public_entity_hints(request.message)
+                retrieval_supported = _retrieval_hits_cover_query_hints(retrieval_hits, query_hints)
+                if retrieval_supported:
+                    retrieval_hits = _filter_retrieval_hits_by_query_hints(retrieval_hits, query_hints)
+                citations = _collect_citations(retrieval_hits)
                 set_span_attributes(
                     **{
                         'eduassist.retrieval.hit_count': len(retrieval_hits),
                         'eduassist.retrieval.citation_count': len(citations),
+                        'eduassist.retrieval.query_hint_count': len(query_hints),
+                        'eduassist.retrieval.hints_supported': retrieval_supported,
                     }
                 )
+                if not retrieval_supported:
+                    retrieval_hits = []
+                    citations = []
 
                 if preview.classification.domain is QueryDomain.calendar:
                     calendar_events = await _fetch_public_calendar(settings=settings)
@@ -1038,20 +1121,25 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                 message_text = _compose_handoff_answer(handoff_payload)
         else:
             with start_span('eduassist.orchestration.answer_composition', tracer_name='eduassist.ai_orchestrator.runtime'):
-                llm_text = await _compose_with_openai(
-                    settings=settings,
-                    request=request,
-                    preview=preview,
-                    citations=citations,
-                    calendar_events=calendar_events,
-                )
-                set_span_attributes(**{'eduassist.orchestration.used_llm': bool(llm_text)})
-                message_text = llm_text or _compose_deterministic_answer(
-                    preview=preview,
-                    retrieval_hits=retrieval_hits,
-                    citations=citations,
-                    calendar_events=calendar_events,
-                )
+                if preview.mode is OrchestrationMode.hybrid_retrieval and not retrieval_supported:
+                    set_span_attributes(**{'eduassist.orchestration.used_llm': False})
+                    message_text = _compose_public_gap_answer(query_hints)
+                else:
+                    llm_text = await _compose_with_openai(
+                        settings=settings,
+                        request=request,
+                        preview=preview,
+                        citations=citations,
+                        calendar_events=calendar_events,
+                    )
+                    set_span_attributes(**{'eduassist.orchestration.used_llm': bool(llm_text)})
+                    message_text = llm_text or _compose_deterministic_answer(
+                        preview=preview,
+                        retrieval_hits=retrieval_hits,
+                        citations=citations,
+                        calendar_events=calendar_events,
+                        query_hints=query_hints,
+                    )
 
         if citations:
             sources = _render_source_lines(citations)
