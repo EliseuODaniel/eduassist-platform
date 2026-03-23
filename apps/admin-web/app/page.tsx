@@ -131,6 +131,8 @@ function buildHandoffHref(filters: {
   assignment?: string | null;
   sla?: string | null;
   search?: string | null;
+  page?: number | null;
+  limit?: number | null;
 }): string {
   const params = new URLSearchParams();
   if (filters.handoff) {
@@ -150,6 +152,12 @@ function buildHandoffHref(filters: {
   }
   if (filters.search) {
     params.set('handoffSearch', filters.search);
+  }
+  if (typeof filters.page === 'number' && filters.page > 0) {
+    params.set('handoffPage', String(filters.page));
+  }
+  if (typeof filters.limit === 'number' && filters.limit > 0) {
+    params.set('handoffLimit', String(filters.limit));
   }
   const query = params.toString();
   return query ? `/?${query}` : '/';
@@ -644,6 +652,19 @@ type HomePageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
+function getPositiveIntegerSearchParam(
+  value: string | string[] | undefined,
+  fallback: number,
+): number {
+  const raw = getStringSearchParam(value);
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = (await searchParams) ?? {};
   const authErrorValue = getStringSearchParam(params.authError);
@@ -655,6 +676,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     assignment: getStringSearchParam(params.handoffAssignment),
     sla_state: getStringSearchParam(params.handoffSla),
     search: getStringSearchParam(params.handoffSearch),
+    page: getPositiveIntegerSearchParam(params.handoffPage, 1),
+    limit: getPositiveIntegerSearchParam(params.handoffLimit, 10),
   };
 
   const { session, error } = await getPortalSession();
@@ -886,6 +909,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 counts={handoffs.counts}
                 filters={handoffs.filters}
                 items={handoffs.items}
+                pagination={handoffs.pagination}
                 scope={handoffs.scope}
                 selectedHandoffId={highlightedHandoffId}
               />

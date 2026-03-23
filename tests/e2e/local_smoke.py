@@ -86,6 +86,22 @@ def main() -> int:
     handoff_trace_id = extract_trace_id(handoff_headers)
     print("[ok] human handoff")
 
+    handoff_list_status, _, handoff_list_payload = request(
+        "GET",
+        f"{settings.api_core_url}/v1/support/handoffs?page=1&limit=1",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert_condition(
+        handoff_list_status == 200 and isinstance(handoff_list_payload, dict),
+        "support_handoff_list_failed",
+    )
+    pagination = handoff_list_payload.get("pagination")
+    assert_condition(isinstance(pagination, dict), "support_handoff_pagination_missing")
+    assert_condition(pagination.get("page") == 1, "support_handoff_pagination_page_invalid")
+    assert_condition(pagination.get("page_size") == 1, "support_handoff_pagination_page_size_invalid")
+    assert_condition(int(pagination.get("total_items", 0)) >= 1, "support_handoff_pagination_total_invalid")
+    print("[ok] support handoff pagination")
+
     dashboard_status, _, dashboard_payload = request(
         "GET",
         f"{settings.grafana_url}/api/search?query=EduAssist%20Tracing%20Overview",

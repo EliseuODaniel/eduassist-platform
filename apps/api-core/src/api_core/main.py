@@ -396,6 +396,7 @@ async def support_handoffs(
     assignment: str | None = Query(default=None),
     sla_state: str | None = Query(default=None),
     search: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
     limit: int = Query(default=10, ge=1, le=25),
 ) -> SupportHandoffListResponse:
     if extract_bearer_token(authorization) is None:
@@ -425,6 +426,7 @@ async def support_handoffs(
         assignment=assignment,
         sla_state=sla_state,
         search=search,
+        page=page,
         limit=limit,
     )
 
@@ -440,7 +442,7 @@ async def support_handoffs(
         )
 
         if decision.allow:
-            counts, items, filters = list_support_handoffs(
+            counts, items, filters, pagination = list_support_handoffs(
                 session,
                 actor=actor,
                 scope=scope,
@@ -451,6 +453,7 @@ async def support_handoffs(
                 scope=scope,
                 counts=counts,
                 filters=filters,
+                pagination=pagination,
                 items=items,
             )
 

@@ -3,12 +3,17 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 
-import type { SupportHandoffFilters, SupportHandoffItem } from '../lib/auth';
+import type {
+  SupportHandoffFilters,
+  SupportHandoffItem,
+  SupportHandoffPagination,
+} from '../lib/auth';
 
 type Props = {
   items: SupportHandoffItem[];
   counts: Record<string, number>;
   filters: SupportHandoffFilters;
+  pagination: SupportHandoffPagination;
   scope: string;
   canManage: boolean;
   selectedHandoffId: string | null;
@@ -69,6 +74,7 @@ export function SupportHandoffPanel({
   items,
   counts,
   filters,
+  pagination,
   scope,
   canManage,
   selectedHandoffId,
@@ -83,15 +89,20 @@ export function SupportHandoffPanel({
     setDraftFilters(filters);
   }, [filters]);
 
+  function buildCurrentParams(): URLSearchParams {
+    return new URLSearchParams(window.location.search);
+  }
+
   function handleSelect(handoffId: string) {
-    const params = new URLSearchParams(window.location.search);
+    const params = buildCurrentParams();
     params.set('handoff', handoffId);
     router.push(`/?${params.toString()}`, { scroll: false });
   }
 
   function handleApplyFilters() {
-    const params = new URLSearchParams(window.location.search);
+    const params = buildCurrentParams();
     params.delete('handoff');
+    params.set('handoffPage', '1');
 
     const filterEntries: Array<[string, string | null]> = [
       ['handoffStatus', draftFilters.status],
@@ -110,6 +121,8 @@ export function SupportHandoffPanel({
       }
     }
 
+    params.set('handoffLimit', String(draftFilters.limit));
+
     router.push(`/?${params.toString()}`, { scroll: false });
   }
 
@@ -120,9 +133,18 @@ export function SupportHandoffPanel({
       assignment: null,
       sla_state: null,
       search: null,
+      page: 1,
       limit: filters.limit,
     });
-    router.push('/', { scroll: false });
+    router.push(`/?handoffLimit=${filters.limit}`, { scroll: false });
+  }
+
+  function handlePageChange(page: number) {
+    const params = buildCurrentParams();
+    params.delete('handoff');
+    params.set('handoffPage', String(page));
+    params.set('handoffLimit', String(filters.limit));
+    router.push(`/?${params.toString()}`, { scroll: false });
   }
 
   function handleStatusUpdate(handoffId: string, status: 'in_progress' | 'resolved') {
@@ -263,6 +285,24 @@ export function SupportHandoffPanel({
               }
             />
           </label>
+
+          <label className="filter-field">
+            <span>Itens por página</span>
+            <select
+              value={String(draftFilters.limit)}
+              onChange={(event) =>
+                setDraftFilters((current) => ({
+                  ...current,
+                  limit: Number(event.target.value),
+                }))
+              }
+            >
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="25">25</option>
+            </select>
+          </label>
         </div>
 
         <div className="action-row">
@@ -283,93 +323,127 @@ export function SupportHandoffPanel({
           ela aparecerá aqui.
         </p>
       ) : (
-        <ul className="feed-list">
-          {items.map((item) => {
-            const busy = isPending && pendingId === item.handoff_id;
-            const selected = item.handoff_id === selectedHandoffId;
+        <>
+          <div className="pagination-summary">
+            <p className="muted-copy">
+              Mostrando {pagination.visible_from}-{pagination.visible_to} de {pagination.total_items}{' '}
+              tickets neste recorte.
+            </p>
+            <span className="event-tag">
+              Página {pagination.page} de {pagination.total_pages}
+            </span>
+          </div>
 
-            return (
-              <li className={`feed-item ${selected ? 'is-selected' : ''}`} key={item.handoff_id}>
-                <div className="feed-head">
-                  <div>
-                    <strong>{item.ticket_code}</strong>
-                    <p className="muted-copy">
-                      {formatQueue(item.queue_name)} · {formatStatus(item.status)}
-                    </p>
+          <ul className="feed-list">
+            {items.map((item) => {
+              const busy = isPending && pendingId === item.handoff_id;
+              const selected = item.handoff_id === selectedHandoffId;
+
+              return (
+                <li className={`feed-item ${selected ? 'is-selected' : ''}`} key={item.handoff_id}>
+                  <div className="feed-head">
+                    <div>
+                      <strong>{item.ticket_code}</strong>
+                      <p className="muted-copy">
+                        {formatQueue(item.queue_name)} · {formatStatus(item.status)}
+                      </p>
+                    </div>
+                    <span
+                      className={`status-chip ${
+                        item.status === 'resolved' ? 'is-linked' : 'is-pending'
+                      }`}
+                    >
+                      {formatStatus(item.status)}
+                    </span>
                   </div>
-                  <span
-                    className={`status-chip ${
-                      item.status === 'resolved' ? 'is-linked' : 'is-pending'
-                    }`}
-                  >
-                    {formatStatus(item.status)}
-                  </span>
-                </div>
 
-                <p className="feed-copy">{item.summary}</p>
+                  <p className="feed-copy">{item.summary}</p>
 
-                <div className="tag-row">
-                  <span className="event-tag">Canal: {item.channel}</span>
-                  <span className="event-tag">{formatPriority(item.priority_code)}</span>
-                  <span className="event-tag">{formatSlaState(item.sla_state)}</span>
-                  {item.requester_name ? (
-                    <span className="event-tag">
-                      Solicitante: {item.requester_name}
-                      {item.requester_role ? ` (${item.requester_role})` : ''}
-                    </span>
-                  ) : (
-                    <span className="event-tag">Solicitante: visitante do bot</span>
-                  )}
-                  {item.assigned_operator_name ? (
-                    <span className="event-tag">
-                      Responsável: {item.assigned_operator_name}
-                    </span>
-                  ) : (
-                    <span className="event-tag">Responsável: fila livre</span>
-                  )}
-                  <span className="event-tag">Atualizado: {formatDateTime(item.updated_at)}</span>
-                </div>
+                  <div className="tag-row">
+                    <span className="event-tag">Canal: {item.channel}</span>
+                    <span className="event-tag">{formatPriority(item.priority_code)}</span>
+                    <span className="event-tag">{formatSlaState(item.sla_state)}</span>
+                    {item.requester_name ? (
+                      <span className="event-tag">
+                        Solicitante: {item.requester_name}
+                        {item.requester_role ? ` (${item.requester_role})` : ''}
+                      </span>
+                    ) : (
+                      <span className="event-tag">Solicitante: visitante do bot</span>
+                    )}
+                    {item.assigned_operator_name ? (
+                      <span className="event-tag">
+                        Responsável: {item.assigned_operator_name}
+                      </span>
+                    ) : (
+                      <span className="event-tag">Responsável: fila livre</span>
+                    )}
+                    <span className="event-tag">Atualizado: {formatDateTime(item.updated_at)}</span>
+                  </div>
 
-                {item.last_message_excerpt ? (
-                  <p className="feed-foot">Última mensagem: {item.last_message_excerpt}</p>
-                ) : null}
+                  {item.last_message_excerpt ? (
+                    <p className="feed-foot">Última mensagem: {item.last_message_excerpt}</p>
+                  ) : null}
 
-                <div className="action-row">
-                  <button
-                    className={selected ? 'primary-button' : 'secondary-button'}
-                    onClick={() => handleSelect(item.handoff_id)}
-                    type="button"
-                  >
-                    {selected ? 'Conversa aberta' : 'Abrir conversa'}
-                  </button>
+                  <div className="action-row">
+                    <button
+                      className={selected ? 'primary-button' : 'secondary-button'}
+                      onClick={() => handleSelect(item.handoff_id)}
+                      type="button"
+                    >
+                      {selected ? 'Conversa aberta' : 'Abrir conversa'}
+                    </button>
 
-                  {canManage && item.status !== 'resolved' && item.status !== 'cancelled' ? (
-                    <>
-                      {item.status === 'queued' ? (
+                    {canManage && item.status !== 'resolved' && item.status !== 'cancelled' ? (
+                      <>
+                        {item.status === 'queued' ? (
+                          <button
+                            className="secondary-button"
+                            disabled={busy}
+                            onClick={() => handleStatusUpdate(item.handoff_id, 'in_progress')}
+                            type="button"
+                          >
+                            {busy ? 'Atualizando...' : 'Iniciar atendimento'}
+                          </button>
+                        ) : null}
                         <button
-                          className="secondary-button"
+                          className="primary-button"
                           disabled={busy}
-                          onClick={() => handleStatusUpdate(item.handoff_id, 'in_progress')}
+                          onClick={() => handleStatusUpdate(item.handoff_id, 'resolved')}
                           type="button"
                         >
-                          {busy ? 'Atualizando...' : 'Iniciar atendimento'}
+                          {busy ? 'Atualizando...' : 'Marcar como resolvido'}
                         </button>
-                      ) : null}
-                      <button
-                        className="primary-button"
-                        disabled={busy}
-                        onClick={() => handleStatusUpdate(item.handoff_id, 'resolved')}
-                        type="button"
-                      >
-                        {busy ? 'Atualizando...' : 'Marcar como resolvido'}
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                      </>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="pagination-bar">
+            <button
+              className="secondary-button"
+              disabled={!pagination.has_previous_page}
+              onClick={() => handlePageChange(pagination.page - 1)}
+              type="button"
+            >
+              Página anterior
+            </button>
+            <p className="muted-copy">
+              Navegue pela fila sem perder os filtros atuais.
+            </p>
+            <button
+              className="secondary-button"
+              disabled={!pagination.has_next_page}
+              onClick={() => handlePageChange(pagination.page + 1)}
+              type="button"
+            >
+              Próxima página
+            </button>
+          </div>
+        </>
       )}
     </section>
   );

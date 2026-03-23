@@ -148,6 +148,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o `api-core` já expõe a fila de `handoffs` humanos com escopo pessoal ou global, incluindo prioridade, SLA mockado e atribuição operacional;
 - o `ai-orchestrator` já cria handoffs reais ao entrar em modo `handoff`, devolvendo protocolo e fila ao usuário no Telegram;
 - o `admin-web` já roda em modo estável de produção dentro do `Docker Compose`, renderiza a fila de handoffs com filtros por status, fila, atribuição, SLA e texto livre, abre o detalhe completo da conversa e mostra saúde operacional da fila humana com visão por setor, operador, exceções críticas, atalhos diretos de drill-down e uma leitura temporal de volume/tempo operacional;
+- a fila operacional do `admin-web` agora também suporta paginação, navegação por página e controle de densidade por quantidade de tickets exibidos;
 - o stack local já inclui `OpenTelemetry Collector`, `Tempo` e `Grafana`, com propagacao de trace context entre `telegram-gateway`, `ai-orchestrator` e `api-core`;
 - o stack local agora também inclui `Prometheus`, alimentado por metricas OTEL exportadas via collector;
 - o tracing distribuido já foi validado ponta a ponta via webhook do Telegram, incluindo spans HTTP entre serviços, spans SQLAlchemy no `api-core` e consulta direta do trace no `Tempo`;

@@ -351,6 +351,7 @@ class SupportHandoffFilters(BaseModel):
     assignment: str | None = None
     sla_state: str | None = None
     search: str | None = None
+    page: int = 1
     limit: int = 10
 
 
@@ -367,11 +368,23 @@ class SupportHandoffCreateResponse(BaseModel):
     item: SupportHandoffEntry
 
 
+class SupportHandoffPagination(BaseModel):
+    page: int = 1
+    page_size: int = 10
+    total_items: int = 0
+    total_pages: int = 1
+    has_previous_page: bool = False
+    has_next_page: bool = False
+    visible_from: int = 0
+    visible_to: int = 0
+
+
 class SupportHandoffListResponse(BaseModel):
     actor: ActorContext
     scope: str
     counts: dict[str, int] = Field(default_factory=dict)
     filters: SupportHandoffFilters = Field(default_factory=SupportHandoffFilters)
+    pagination: SupportHandoffPagination = Field(default_factory=SupportHandoffPagination)
     items: list[SupportHandoffEntry] = Field(default_factory=list)
 
 

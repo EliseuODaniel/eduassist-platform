@@ -81,9 +81,10 @@ Status atual:
 - o `api-core` já expõe `GET /v1/operations/overview` com visão pessoal para responsáveis, alunos e professores, e visão global para secretaria, financeiro, coordenação e administração, incluindo agregados operacionais de handoff no escopo global;
 - o `admin-web` roda em modo estável de produção dentro do Compose e a home autenticada já mostra métricas operacionais, feed de auditoria, feed de decisões de acesso e um painel de saúde da fila humana por setor, operador e exceções críticas, com links diretos para drill-down filtrado e uma leitura temporal de volume/tempo dos handoffs;
 - o `api-core` já expõe `GET /v1/support/handoffs`, `GET /v1/support/handoffs/{handoff_id}` e `PATCH /v1/support/handoffs/{handoff_id}` para operação humana autenticada, com prioridade, SLA mockado e atribuição;
+- `GET /v1/support/handoffs` agora também retorna metadados de paginação para suportar filas maiores no painel;
 - o `api-core` já expõe `POST /v1/internal/support/handoffs` para criação interna de tickets/handoffs por serviços confiáveis;
 - o `ai-orchestrator` já cria handoffs reais quando a classificação cai em `support` e a política do fluxo permite encaminhamento humano;
-- o `admin-web` já exibe a fila de handoffs com filtros por status, fila, atribuição, SLA e texto livre, abre o detalhe completo da conversa e permite registrar nota operacional, assumir atribuição, iniciar ou resolver tickets via sessão autenticada;
+- o `admin-web` já exibe a fila de handoffs com filtros por status, fila, atribuição, SLA, texto livre, paginação e controle de itens por página, abre o detalhe completo da conversa e permite registrar nota operacional, assumir atribuição, iniciar ou resolver tickets via sessão autenticada;
 - `telegram_chat_id` em rotas protegidas do `api-core` e `POST /v1/messages/respond` no `ai-orchestrator` agora exigem `X-Internal-Api-Token`;
 - observabilidade distribuida base já esta ativa no Compose, com tracing entre `telegram-gateway`, `ai-orchestrator` e `api-core`.
 

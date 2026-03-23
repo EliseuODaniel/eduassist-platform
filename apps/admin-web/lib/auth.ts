@@ -215,7 +215,19 @@ export type SupportHandoffFilters = {
   assignment: string | null;
   sla_state: string | null;
   search: string | null;
+  page: number;
   limit: number;
+};
+
+export type SupportHandoffPagination = {
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+  has_previous_page: boolean;
+  has_next_page: boolean;
+  visible_from: number;
+  visible_to: number;
 };
 
 export type SupportConversationMessage = {
@@ -230,6 +242,7 @@ export type SupportHandoffList = {
   scope: string;
   counts: Record<string, number>;
   filters: SupportHandoffFilters;
+  pagination: SupportHandoffPagination;
   items: SupportHandoffItem[];
 };
 
@@ -521,6 +534,9 @@ export async function getSupportHandoffs(
   }
   if (filters?.search) {
     query.set('search', filters.search);
+  }
+  if (typeof filters?.page === 'number') {
+    query.set('page', String(filters.page));
   }
   if (typeof filters?.limit === 'number') {
     query.set('limit', String(filters.limit));

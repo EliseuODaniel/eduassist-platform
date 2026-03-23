@@ -304,6 +304,19 @@ body {
   margin-top: 0;
 }
 
+.pagination-summary,
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.pagination-bar {
+  padding-top: 4px;
+}
+
 .feed-item.is-selected {
   border-color: rgba(15, 118, 110, 0.28);
   box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.16);
@@ -606,7 +619,9 @@ body {
   .account-list li,
   .access-list li,
   .feed-head,
-  .timeline-labels {
+  .timeline-labels,
+  .pagination-summary,
+  .pagination-bar {
     align-items: flex-start;
     flex-direction: column;
   }

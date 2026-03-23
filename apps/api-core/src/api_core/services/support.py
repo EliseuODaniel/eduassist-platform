@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from math import ceil
 from time import monotonic
 
 from eduassist_observability import record_counter, record_histogram, set_span_attributes, start_span
@@ -14,6 +15,7 @@ from api_core.contracts import (
     SupportHandoffCreateResponse,
     SupportHandoffEntry,
     SupportHandoffFilters,
+    SupportHandoffPagination,
 )
 from api_core.db.models import Conversation, Handoff, Message, User
 
@@ -178,6 +180,7 @@ def normalize_support_handoff_filters(filters: SupportHandoffFilters) -> Support
     if not search:
         search = None
 
+    page = max(1, int(filters.page or 1))
     limit = max(1, min(int(filters.limit or 10), 25))
     return SupportHandoffFilters(
         status=status,
@@ -185,6 +188,7 @@ def normalize_support_handoff_filters(filters: SupportHandoffFilters) -> Support
         assignment=assignment,
         sla_state=sla_state,
         search=search,
+        page=page,
         limit=limit,
     )
 
@@ -257,7 +261,7 @@ def list_support_handoffs(
     actor: ActorContext,
     scope: str,
     filters: SupportHandoffFilters,
-) -> tuple[dict[str, int], list[SupportHandoffEntry], SupportHandoffFilters]:
+) -> tuple[dict[str, int], list[SupportHandoffEntry], SupportHandoffFilters, SupportHandoffPagination]:
     with start_span(
         'eduassist.support.list_handoffs',
         tracer_name='eduassist.api_core.support',
@@ -274,6 +278,7 @@ def list_support_handoffs(
                 'eduassist.support.filter.assignment': normalized_filters.assignment,
                 'eduassist.support.filter.sla_state': normalized_filters.sla_state,
                 'eduassist.support.filter.search_present': normalized_filters.search is not None,
+                'eduassist.support.page': normalized_filters.page,
                 'eduassist.support.limit': normalized_filters.limit,
             }
         )
@@ -289,14 +294,43 @@ def list_support_handoffs(
             status: sum(1 for item in filtered_items if item.status == status)
             for status in SUPPORTED_HANDOFF_STATUSES
         }
+        total_items = len(filtered_items)
+        total_pages = max(1, ceil(total_items / normalized_filters.limit)) if total_items > 0 else 1
+        effective_page = min(normalized_filters.page, total_pages)
+        start = (effective_page - 1) * normalized_filters.limit
+        end = start + normalized_filters.limit
+        paged_items = filtered_items[start:end]
+        visible_from = start + 1 if total_items > 0 and paged_items else 0
+        visible_to = start + len(paged_items) if paged_items else 0
+        pagination = SupportHandoffPagination(
+            page=effective_page,
+            page_size=normalized_filters.limit,
+            total_items=total_items,
+            total_pages=total_pages,
+            has_previous_page=effective_page > 1,
+            has_next_page=effective_page < total_pages,
+            visible_from=visible_from,
+            visible_to=visible_to,
+        )
+        normalized_filters = SupportHandoffFilters(
+            status=normalized_filters.status,
+            queue_name=normalized_filters.queue_name,
+            assignment=normalized_filters.assignment,
+            sla_state=normalized_filters.sla_state,
+            search=normalized_filters.search,
+            page=effective_page,
+            limit=normalized_filters.limit,
+        )
         set_span_attributes(
             **{
                 'eduassist.support.total_rows': len(rows),
-                'eduassist.support.result_count': len(filtered_items),
+                'eduassist.support.result_count': total_items,
+                'eduassist.support.page_result_count': len(paged_items),
                 'eduassist.support.result_statuses': [status for status, count in counts.items() if count > 0],
+                'eduassist.support.total_pages': total_pages,
             }
         )
-        return counts, filtered_items[: normalized_filters.limit], normalized_filters
+        return counts, paged_items, normalized_filters, pagination
 
 
 def get_support_handoff_detail(
