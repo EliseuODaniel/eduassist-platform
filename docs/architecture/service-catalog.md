@@ -221,8 +221,8 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 
 - expõe a visualização dos traces armazenados no `tempo`;
 - hospeda dashboards e drill-down operacional do ambiente local;
-- já sobe com datasource do `tempo` provisionado;
-- já inclui dashboard provisionado para tracing do fluxo `Telegram -> AI -> API Core`.
+- já sobe com datasources de `tempo`, `loki` e `prometheus` provisionados;
+- já inclui dashboards provisionados para tracing e metricas do fluxo `Telegram -> AI -> API Core`.
 
 ### `loki`
 
@@ -233,3 +233,9 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 
 - coleta logs dos containers do Docker local;
 - publica esses logs no `loki` com labels de container e serviço do Compose.
+
+### `prometheus`
+
+- raspa o endpoint de metricas do `otel-collector`;
+- expõe PromQL para leitura analitica das metricas OTEL do dominio;
+- sustenta o dashboard de metricas operacionais no `Grafana`.

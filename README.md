@@ -149,9 +149,11 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o `ai-orchestrator` já cria handoffs reais ao entrar em modo `handoff`, devolvendo protocolo e fila ao usuário no Telegram;
 - o `admin-web` já roda em modo estável de produção dentro do `Docker Compose`, renderiza a fila de handoffs com filtros por status, fila, atribuição, SLA e texto livre, abre o detalhe completo da conversa e mostra saúde operacional da fila humana com visão por setor, operador, exceções críticas, atalhos diretos de drill-down e uma leitura temporal de volume/tempo operacional;
 - o stack local já inclui `OpenTelemetry Collector`, `Tempo` e `Grafana`, com propagacao de trace context entre `telegram-gateway`, `ai-orchestrator` e `api-core`;
+- o stack local agora também inclui `Prometheus`, alimentado por metricas OTEL exportadas via collector;
 - o tracing distribuido já foi validado ponta a ponta via webhook do Telegram, incluindo spans HTTP entre serviços, spans SQLAlchemy no `api-core` e consulta direta do trace no `Tempo`;
 - os serviços Python instrumentados já devolvem `X-Trace-Id` e `X-Span-Id` nas respostas, facilitando o drill-down operacional no ambiente local;
 - o tracing agora também inclui spans de dominio para policy, retrieval híbrido e operacoes de handoff, com dashboard provisionado em `Grafana` para cribsheet de TraceQL e runbook local;
+- a stack de observabilidade agora também expõe metricas de dominio para `policy`, `retrieval`, `handoff` e `orquestracao`, com dashboard provisionado em `Grafana` para acompanhamento analitico;
 - o stack local agora também inclui `Loki + Promtail`, com ingestao dos logs dos containers do Compose para investigacao centralizada no `Grafana`;
 - existe uma suite de smoke local em `tests/e2e/local_smoke.py` para validar os fluxos principais e a pilha de observabilidade;
 - existe uma suite de regressao de autorizacao em `tests/e2e/authz_regression.py` para validar negativas, ambiguidades, bearer ausente e segredos invalidos;
@@ -167,7 +169,7 @@ Expansões já aprovadas para a próxima etapa:
 
 ## Próximos passos imediatos
 
-1. Expandir os dashboards do `Grafana` com painéis dinamicos para SLA, policy decisions, retrieval e logs.
+1. Expandir os dashboards do `Grafana` com leituras mais profundas de SLA operacional, filas, attribution e logs correlacionados.
 2. Expandir a suite de testes e evals com cenarios adversariais adicionais, casos de exfiltracao e regressao operacional.
 3. Expandir a seed para cenários mais amplos de tickets, filas, operadores e resoluções.
 4. Expandir a revisão detalhada do atendimento com histórico mais rico, paginação e buscas mais profundas no `admin-web`.

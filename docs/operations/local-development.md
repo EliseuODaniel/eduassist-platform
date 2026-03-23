@@ -95,25 +95,28 @@ Serviços:
 - `tempo`
 - `loki`
 - `promtail`
+- `prometheus`
 - `grafana`
 
 Uso:
 
 - tracing distribuido;
+- metricas OTEL e consultas PromQL;
 - consulta de traces por `trace_id`;
 - debugging operacional do fluxo `telegram-gateway -> ai-orchestrator -> api-core`.
 
 Status atual:
 
-- `otel-collector`, `tempo` e `grafana` já sobem no mesmo `compose.yaml`;
-- `loki` e `promtail` agora completam a agregacao central de logs dos containers do Compose;
-- os serviços Python instrumentados já exportam spans OTLP via `HTTP` para o collector;
+- `otel-collector`, `tempo`, `prometheus` e `grafana` já sobem no mesmo `compose.yaml`;
+- `loki` e `promtail` completam a agregacao central de logs dos containers do Compose;
+- os serviços Python instrumentados já exportam spans e metricas OTLP via `HTTP` para o collector;
 - o `Tempo` já persiste traces e responde `GET /api/traces/{trace_id}` em `http://localhost:3200`;
+- o `Prometheus` já responde em `http://localhost:9090` e raspa o endpoint de metricas do collector;
 - o `Loki` já responde em `http://localhost:3100` e recebe logs dos containers via `Promtail`;
-- o `Grafana` já sobe com datasource do `Tempo` provisionado em `http://localhost:3004`;
-- o `Grafana` agora também provisiona o dashboard `EduAssist Tracing Overview`, com cribsheet de `TraceQL`, atributos de dominio e runbook de investigacao;
+- o `Grafana` já sobe com datasources de `Tempo`, `Loki` e `Prometheus` provisionados em `http://localhost:3004`;
+- o `Grafana` agora também provisiona os dashboards `EduAssist Tracing Overview` e `EduAssist Metrics Overview`;
 - `X-Trace-Id` e `X-Span-Id` já são devolvidos nas respostas dos serviços Python instrumentados;
-- a observabilidade local agora cobre traces e logs centralizados.
+- a observabilidade local agora cobre traces, logs e metricas centralizadas.
 
 ### `compose:full`
 
@@ -197,8 +200,10 @@ Status atual do bootstrap:
 - `OTEL_ENABLED`
 - `OTEL_SERVICE_NAMESPACE`
 - `OTEL_EXPORTER_OTLP_ENDPOINT`
+- `OTEL_PROMETHEUS_PORT`
 - `OTEL_GRPC_PORT`
 - `OTEL_HTTP_PORT`
+- `PROMETHEUS_PORT`
 - `TEMPO_PORT`
 - `LOKI_PORT`
 - `GRAFANA_PORT`
@@ -261,9 +266,11 @@ Status atual do bootstrap:
 - `POST /v1/retrieval/search` no `ai-orchestrator`
 - `POST /v1/messages/respond` no `ai-orchestrator` com `X-Internal-Api-Token`
 - `GET /api/traces/{trace_id}` no `Tempo` em `http://localhost:3200`
+- `GET /-/ready` no `Prometheus` em `http://localhost:9090`
 - `GET /ready` no `Loki` em `http://localhost:3100`
 - `GET /` no `Grafana` em `http://localhost:3004`
 - dashboard provisionado: `EduAssist / EduAssist Tracing Overview` no `Grafana`
+- dashboard provisionado: `EduAssist / EduAssist Metrics Overview` no `Grafana`
 
 Observacao sobre o pipeline documental local:
 

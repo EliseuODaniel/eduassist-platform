@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from time import monotonic
 
-from eduassist_observability import set_span_attributes, start_span
+from eduassist_observability import record_counter, record_histogram, set_span_attributes, start_span
 from sqlalchemy import select
 from sqlalchemy.orm import Session, aliased
 
@@ -361,6 +362,7 @@ def create_support_handoff(
     summary: str,
     user_message: str | None = None,
 ) -> SupportHandoffCreateResponse:
+    started_at = monotonic()
     with start_span(
         'eduassist.support.create_handoff',
         tracer_name='eduassist.api_core.support',
@@ -473,6 +475,24 @@ def create_support_handoff(
                 'eduassist.support.sla_state': item.sla_state,
             }
         )
+        metric_attributes = {
+            'event': 'created' if created else 'deduplicated',
+            'queue_name': item.queue_name,
+            'priority': item.priority_code,
+            'status': item.status,
+            'channel': channel,
+        }
+        record_counter(
+            'eduassist_support_handoff_events',
+            attributes=metric_attributes,
+            description='Support handoff lifecycle events.',
+        )
+        record_histogram(
+            'eduassist_support_handoff_latency_ms',
+            (monotonic() - started_at) * 1000,
+            attributes={'operation': 'create', 'queue_name': item.queue_name},
+            description='Latency of support handoff operations in milliseconds.',
+        )
         return SupportHandoffCreateResponse(created=created, deduplicated=not created, item=item)
 
 
@@ -486,6 +506,7 @@ def update_support_handoff_status(
     assigned_user_id: uuid.UUID | None = None,
     clear_assignment: bool = False,
 ) -> SupportHandoffEntry | None:
+    started_at = monotonic()
     with start_span(
         'eduassist.support.update_handoff',
         tracer_name='eduassist.api_core.support',
@@ -571,5 +592,22 @@ def update_support_handoff_status(
                 'eduassist.support.sla_state': item.sla_state,
                 'eduassist.support.assigned': item.assigned_user_id is not None,
             }
+        )
+        record_counter(
+            'eduassist_support_handoff_events',
+            attributes={
+                'event': 'updated',
+                'queue_name': item.queue_name,
+                'priority': item.priority_code,
+                'status': item.status,
+                'assigned': item.assigned_user_id is not None,
+            },
+            description='Support handoff lifecycle events.',
+        )
+        record_histogram(
+            'eduassist_support_handoff_latency_ms',
+            (monotonic() - started_at) * 1000,
+            attributes={'operation': 'update', 'queue_name': item.queue_name},
+            description='Latency of support handoff operations in milliseconds.',
         )
         return item

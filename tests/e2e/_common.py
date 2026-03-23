@@ -22,6 +22,7 @@ class Settings:
     telegram_gateway_url: str = _env("SMOKE_TELEGRAM_GATEWAY_URL", "http://localhost:8003")
     keycloak_url: str = _env("SMOKE_KEYCLOAK_URL", "http://localhost:8080")
     grafana_url: str = _env("SMOKE_GRAFANA_URL", "http://localhost:3004")
+    prometheus_url: str = _env("SMOKE_PROMETHEUS_URL", "http://localhost:9090")
     tempo_url: str = _env("SMOKE_TEMPO_URL", "http://localhost:3200")
     loki_url: str = _env("SMOKE_LOKI_URL", "http://localhost:3100")
     keycloak_realm: str = _env("SMOKE_KEYCLOAK_REALM", "eduassist")
@@ -156,6 +157,34 @@ def loki_has_results(payload: dict[str, Any]) -> bool:
     data = payload.get("data", {})
     result = data.get("result", [])
     return isinstance(result, list) and bool(result)
+
+
+def prometheus_query(settings: Settings, query: str) -> dict[str, Any]:
+    encoded = quote(query, safe="")
+    status, _, payload = request(
+        "GET",
+        f"{settings.prometheus_url}/api/v1/query?query={encoded}",
+        timeout=10.0,
+    )
+    assert_condition(status == 200 and isinstance(payload, dict), f"prometheus_query_failed:{query}")
+    return payload
+
+
+def wait_for_prometheus_result(
+    settings: Settings,
+    query: str,
+    *,
+    attempts: int = 8,
+    delay_seconds: float = 2.0,
+) -> list[dict[str, Any]]:
+    for _ in range(attempts):
+        payload = prometheus_query(settings, query)
+        data = payload.get("data", {})
+        result = data.get("result", [])
+        if isinstance(result, list) and result:
+            return result
+        time.sleep(delay_seconds)
+    raise AssertionError(f"prometheus_query_empty:{query}")
 
 
 def trace_span_names(payload: dict[str, Any]) -> set[str]:

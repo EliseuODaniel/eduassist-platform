@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from time import monotonic
 from typing import Any
 
 import psycopg
-from eduassist_observability import set_span_attributes, start_span
+from eduassist_observability import record_counter, record_histogram, set_span_attributes, start_span
 from fastembed import TextEmbedding
 from psycopg.rows import dict_row
 from qdrant_client import QdrantClient, models
@@ -31,6 +32,7 @@ class RetrievalService:
         visibility: str,
         category: str | None = None,
     ) -> RetrievalSearchResponse:
+        started_at = monotonic()
         with start_span(
             'eduassist.retrieval.hybrid_search',
             tracer_name='eduassist.ai_orchestrator.retrieval',
@@ -52,6 +54,28 @@ class RetrievalService:
                     'eduassist.retrieval.fused_hits': len(fused_hits),
                     'eduassist.retrieval.backend': RetrievalBackend.qdrant_hybrid.value,
                 }
+            )
+            metric_attributes = {
+                'backend': RetrievalBackend.qdrant_hybrid.value,
+                'visibility': visibility,
+                'category': category or 'all',
+            }
+            record_counter(
+                'eduassist_retrieval_requests',
+                attributes=metric_attributes,
+                description='Hybrid retrieval requests handled by the orchestrator.',
+            )
+            record_histogram(
+                'eduassist_retrieval_latency_ms',
+                (monotonic() - started_at) * 1000,
+                attributes=metric_attributes,
+                description='Hybrid retrieval latency in milliseconds.',
+            )
+            record_histogram(
+                'eduassist_retrieval_fused_hits',
+                len(fused_hits),
+                attributes=metric_attributes,
+                description='Number of fused hits returned by hybrid retrieval.',
             )
             return RetrievalSearchResponse(
                 query=query,

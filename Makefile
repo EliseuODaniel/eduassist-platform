@@ -28,13 +28,13 @@ compose-logs: env
 	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs -f --tail=200
 
 observability-up: env
-	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d otel-collector tempo loki promtail grafana
+	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d otel-collector tempo loki promtail prometheus grafana
 
 observability-down: env
-	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) stop grafana promtail loki tempo otel-collector
+	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) stop grafana prometheus promtail loki tempo otel-collector
 
 observability-logs: env
-	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs -f --tail=200 otel-collector tempo loki promtail grafana
+	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs -f --tail=200 otel-collector tempo loki promtail prometheus grafana
 
 smoke-local: env
 	python3 tests/e2e/local_smoke.py

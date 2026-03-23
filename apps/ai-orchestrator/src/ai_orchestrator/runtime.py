@@ -3,10 +3,11 @@ from __future__ import annotations
 import re
 import unicodedata
 from datetime import date, timedelta
+from time import monotonic
 from typing import Any
 
 import httpx
-from eduassist_observability import set_span_attributes, start_span
+from eduassist_observability import record_counter, record_histogram, set_span_attributes, start_span
 from openai import AsyncOpenAI
 
 from .graph import build_orchestration_graph, to_preview
@@ -939,6 +940,7 @@ async def _compose_with_openai(
 
 
 async def generate_message_response(*, request: MessageResponseRequest, settings: Any) -> MessageResponse:
+    started_at = monotonic()
     with start_span(
         'eduassist.orchestration.message_response',
         tracer_name='eduassist.ai_orchestrator.runtime',
@@ -1057,6 +1059,30 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                 message_text = f'{message_text}\n\n{sources}'
 
         set_span_attributes(**{'eduassist.response.length': len(message_text)})
+        metric_attributes = {
+            'mode': preview.mode.value,
+            'domain': preview.classification.domain.value,
+            'channel': request.channel.value,
+            'authenticated': effective_user.authenticated,
+            'retrieval_backend': preview.retrieval_backend.value,
+        }
+        record_counter(
+            'eduassist_orchestration_responses',
+            attributes=metric_attributes,
+            description='Responses emitted by the AI orchestrator.',
+        )
+        record_histogram(
+            'eduassist_orchestration_latency_ms',
+            (monotonic() - started_at) * 1000,
+            attributes=metric_attributes,
+            description='End-to-end orchestration latency in milliseconds.',
+        )
+        record_histogram(
+            'eduassist_orchestration_response_length',
+            len(message_text),
+            attributes=metric_attributes,
+            description='Length of final responses emitted by the AI orchestrator.',
+        )
         return MessageResponse(
             message_text=message_text,
             mode=preview.mode,

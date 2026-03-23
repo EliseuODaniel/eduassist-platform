@@ -7,11 +7,13 @@ from _common import (
     extract_trace_id,
     fetch_token,
     grafana_basic_auth_header,
+    prometheus_query,
     request,
     telegram_webhook_request,
     trace_span_names,
     wait_for_health,
     wait_for_loki_logs,
+    wait_for_prometheus_result,
     wait_for_trace_span,
 )
 
@@ -26,6 +28,7 @@ def main() -> int:
         ("telegram-gateway", f"{settings.telegram_gateway_url}/healthz"),
         ("tempo", f"{settings.tempo_url}/ready"),
         ("loki", f"{settings.loki_url}/ready"),
+        ("prometheus", f"{settings.prometheus_url}/-/ready"),
     ]:
         wait_for_health(name, url)
         print(f"[ok] health {name}")
@@ -94,6 +97,17 @@ def main() -> int:
     )
     print("[ok] grafana dashboard")
 
+    metrics_dashboard_status, _, metrics_dashboard_payload = request(
+        "GET",
+        f"{settings.grafana_url}/api/search?query=EduAssist%20Metrics%20Overview",
+        headers=grafana_basic_auth_header(settings),
+    )
+    assert_condition(
+        metrics_dashboard_status == 200 and isinstance(metrics_dashboard_payload, list) and metrics_dashboard_payload,
+        "grafana_metrics_dashboard_missing",
+    )
+    print("[ok] grafana metrics dashboard")
+
     public_trace = wait_for_trace_span(settings, public_trace_id, "eduassist.retrieval.hybrid_search")
     public_spans = trace_span_names(public_trace)
     assert_condition("eduassist.retrieval.hybrid_search" in public_spans, "missing_public_retrieval_span")
@@ -113,6 +127,19 @@ def main() -> int:
     loki_results = loki_payload.get("data", {}).get("result", [])
     assert_condition(isinstance(loki_results, list) and loki_results, "loki_no_gateway_logs")
     print("[ok] loki gateway logs")
+
+    policy_metrics = wait_for_prometheus_result(settings, "sum(eduassist_policy_decisions_total)")
+    retrieval_metrics = wait_for_prometheus_result(settings, "sum(eduassist_retrieval_requests_total)")
+    handoff_metrics = wait_for_prometheus_result(settings, "sum(eduassist_support_handoff_events_total)")
+    orchestration_metrics = wait_for_prometheus_result(settings, "sum(eduassist_orchestration_responses_total)")
+    assert_condition(float(policy_metrics[0]["value"][1]) > 0, "prometheus_policy_metrics_empty")
+    assert_condition(float(retrieval_metrics[0]["value"][1]) > 0, "prometheus_retrieval_metrics_empty")
+    assert_condition(float(handoff_metrics[0]["value"][1]) > 0, "prometheus_handoff_metrics_empty")
+    assert_condition(float(orchestration_metrics[0]["value"][1]) > 0, "prometheus_orchestration_metrics_empty")
+    prometheus_health_payload = prometheus_query(settings, "up{job=\"otel-collector\"}")
+    prometheus_health_result = prometheus_health_payload.get("data", {}).get("result", [])
+    assert_condition(isinstance(prometheus_health_result, list) and prometheus_health_result, "prometheus_otel_scrape_missing")
+    print("[ok] prometheus domain metrics")
 
     print("Smoke suite finished successfully.")
     return 0

@@ -16,7 +16,9 @@ Estado atual:
   - webhook publico
   - consulta protegida
   - handoff humano
-  - verificacao basica de `Tempo`, `Grafana` e `Loki`
+  - verificacao basica de `Tempo`, `Grafana`, `Loki` e `Prometheus`
+  - validacao dos dashboards `EduAssist Tracing Overview` e `EduAssist Metrics Overview`
+  - validacao das metricas OTEL de `policy`, `retrieval`, `handoff` e `orquestracao`
 - `tests/e2e/authz_regression.py` cobre regressao de seguranca funcional:
   - negacao para usuario anonimo em fluxo protegido
   - clarificacao de responsavel com mais de um aluno

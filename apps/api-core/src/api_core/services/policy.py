@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from time import monotonic
 from typing import Any
 
 import httpx
-from eduassist_observability import set_span_attributes, start_span
+from eduassist_observability import record_counter, record_histogram, set_span_attributes, start_span
 
 from api_core.contracts import ActorContext, PolicyDecision
 from api_core.config import get_settings
@@ -16,6 +17,7 @@ async def decide_policy(
     resource: dict[str, Any] | None = None,
 ) -> PolicyDecision:
     settings = get_settings()
+    started_at = monotonic()
     payload = {
         'input': {
             'action': action,
@@ -52,6 +54,13 @@ async def decide_policy(
                         'eduassist.policy.source': decision.source,
                     },
                 )
+                _record_policy_metrics(
+                    action=action,
+                    actor=actor,
+                    decision=decision,
+                    resource=resource,
+                    latency_ms=(monotonic() - started_at) * 1000,
+                )
                 return decision
         except Exception as exc:  # pragma: no cover - network fallback path
             decision = PolicyDecision(
@@ -66,4 +75,44 @@ async def decide_policy(
                     'eduassist.policy.source': decision.source,
                 }
             )
+            _record_policy_metrics(
+                action=action,
+                actor=actor,
+                decision=decision,
+                resource=resource,
+                latency_ms=(monotonic() - started_at) * 1000,
+            )
             return decision
+
+
+def _record_policy_metrics(
+    *,
+    action: str,
+    actor: ActorContext,
+    decision: PolicyDecision,
+    resource: dict[str, Any] | None,
+    latency_ms: float,
+) -> None:
+    metric_attributes = {
+        'action': action,
+        'allow': decision.allow,
+        'source': decision.source,
+        'role': actor.role_code,
+        'authenticated': actor.authenticated,
+        'resource_type': (resource or {}).get('resource_type', 'unknown'),
+    }
+    record_counter(
+        'eduassist_policy_decisions',
+        attributes=metric_attributes,
+        description='Policy decisions emitted by api-core.',
+    )
+    record_histogram(
+        'eduassist_policy_decision_latency_ms',
+        latency_ms,
+        attributes={
+            'action': action,
+            'source': decision.source,
+            'allow': decision.allow,
+        },
+        description='Latency of policy evaluation in milliseconds.',
+    )
