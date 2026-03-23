@@ -72,8 +72,44 @@ export type TelegramLinkChallenge = {
   telegram_command: string;
 };
 
+export type AuditEventFeedEntry = {
+  occurred_at: string;
+  actor_user_id: string | null;
+  actor_external_code: string | null;
+  actor_full_name: string | null;
+  event_type: string;
+  resource_type: string;
+  resource_id: string | null;
+  metadata: Record<string, unknown>;
+};
+
+export type AccessDecisionFeedEntry = {
+  occurred_at: string;
+  actor_user_id: string | null;
+  actor_external_code: string | null;
+  actor_full_name: string | null;
+  resource_type: string;
+  action: string;
+  decision: string;
+  reason: string | null;
+};
+
+export type OperationsOverview = {
+  actor: PortalActor;
+  scope: string;
+  metrics: Record<string, number>;
+  foundation_counts: Record<string, number> | null;
+  audit_events: AuditEventFeedEntry[];
+  access_decisions: AccessDecisionFeedEntry[];
+};
+
 export type SessionState = {
   session: PortalSession | null;
+  error: string | null;
+};
+
+export type OperationsOverviewState = {
+  overview: OperationsOverview | null;
   error: string | null;
 };
 
@@ -204,6 +240,17 @@ async function fetchPortalSessionWithToken(accessToken: string): Promise<Respons
   });
 }
 
+async function fetchOperationsOverviewWithToken(accessToken: string): Promise<Response> {
+  const config = getPortalConfig();
+  return fetch(`${config.apiCoreUrl}/v1/operations/overview`, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
 async function getAccessTokenForApiRequest(): Promise<string | null> {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value ?? null;
@@ -256,6 +303,51 @@ export async function getPortalSession(): Promise<SessionState> {
   const session = (await response.json()) as PortalSession;
   return {
     session,
+    error: null,
+  };
+}
+
+export async function getOperationsOverview(): Promise<OperationsOverviewState> {
+  let accessToken = await getAccessTokenForApiRequest();
+  if (!accessToken) {
+    return {
+      overview: null,
+      error: 'session_missing',
+    };
+  }
+
+  let response = await fetchOperationsOverviewWithToken(accessToken);
+  if (response.status === 401) {
+    const cookieStore = await cookies();
+    const refreshToken = cookieStore.get(REFRESH_TOKEN_COOKIE)?.value ?? null;
+    if (!refreshToken) {
+      await clearPortalSession();
+      return {
+        overview: null,
+        error: 'session_expired',
+      };
+    }
+
+    accessToken = await refreshAccessToken(refreshToken);
+    if (!accessToken) {
+      await clearPortalSession();
+      return {
+        overview: null,
+        error: 'session_expired',
+      };
+    }
+    response = await fetchOperationsOverviewWithToken(accessToken);
+  }
+
+  if (!response.ok) {
+    return {
+      overview: null,
+      error: `api_core_${response.status}`,
+    };
+  }
+
+  return {
+    overview: (await response.json()) as OperationsOverview,
     error: null,
   };
 }

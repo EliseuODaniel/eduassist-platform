@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -199,3 +200,34 @@ class CalendarEventEntry(BaseModel):
 
 class CalendarEventsResponse(BaseModel):
     events: list[CalendarEventEntry]
+
+
+class AuditEventFeedEntry(BaseModel):
+    occurred_at: datetime
+    actor_user_id: uuid.UUID | None = None
+    actor_external_code: str | None = None
+    actor_full_name: str | None = None
+    event_type: str
+    resource_type: str
+    resource_id: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class AccessDecisionFeedEntry(BaseModel):
+    occurred_at: datetime
+    actor_user_id: uuid.UUID | None = None
+    actor_external_code: str | None = None
+    actor_full_name: str | None = None
+    resource_type: str
+    action: str
+    decision: str
+    reason: str | None = None
+
+
+class OperationsOverviewResponse(BaseModel):
+    actor: ActorContext
+    scope: str
+    metrics: dict[str, int] = Field(default_factory=dict)
+    foundation_counts: dict[str, int] | None = None
+    audit_events: list[AuditEventFeedEntry] = Field(default_factory=list)
+    access_decisions: list[AccessDecisionFeedEntry] = Field(default_factory=list)

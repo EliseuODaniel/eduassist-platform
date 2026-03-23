@@ -143,7 +143,8 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o `telegram-gateway` já encaminha mensagens públicas ao `ai-orchestrator` e devolve respostas úteis no formato do Telegram;
 - o `telegram-gateway`, o `ai-orchestrator` e o `api-core` agora trocam chamadas internas protegidas por `X-Internal-Api-Token`;
 - o `telegram-gateway` já responde consultas protegidas reais para contas vinculadas: resumo acadêmico com filtros por disciplina e bimestre, resumo financeiro com filtros por status e panorama multi-aluno para responsáveis, além de grade docente com consultas por turmas, disciplinas e horário para professores;
-- o `admin-web` já expõe login real via `Keycloak` com OIDC + PKCE, leitura de sessão autenticada no `api-core` e emissão de challenge de vínculo para o Telegram;
+- o `admin-web` já expõe login real via `Keycloak` com OIDC + PKCE, leitura de sessão autenticada no `api-core`, emissão de challenge de vínculo para o Telegram e overview operacional autenticado com visão pessoal ou global conforme o papel;
+- o `api-core` já expõe `GET /v1/operations/overview` com métricas, feed de auditoria, feed de decisões de acesso e contagens estruturais para papéis internos;
 - seed foundation idempotente já disponível em `tools/mockgen`;
 - sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;
@@ -155,8 +156,8 @@ Expansões já aprovadas para a próxima etapa:
 
 ## Próximos passos imediatos
 
-1. Expandir o `admin-web` para revisão de conversas, auditoria operacional e curadoria documental.
-2. Expandir a seed para cenários mais amplos de acadêmico, financeiro, calendário e handoff.
+1. Expandir o `admin-web` para revisão de conversas, curadoria documental e operações de handoff humano.
+2. Expandir a seed para cenários mais amplos de acadêmico, financeiro, calendário, conversas e tickets.
 3. Adicionar observabilidade ponta a ponta para tracing de retrieval, tool calls e decisões de policy.
 4. Iniciar a próxima vertical funcional de operação humana, tickets e handoff supervisionado.
 5. Preparar benchmark comparativo para `GraphRAG` seletivo sobre o corpus institucional.

@@ -46,6 +46,12 @@ reason := "teacher_own_schedule" if teacher_own_schedule
 allow if admin_schedule_access
 reason := "admin_schedule_access" if admin_schedule_access
 
+allow if self_operations_overview
+reason := "self_operations_overview" if self_operations_overview
+
+allow if global_operations_overview
+reason := "global_operations_overview" if global_operations_overview
+
 health_check if {
     input.action == "health.read"
 }
@@ -123,4 +129,17 @@ admin_schedule_access if {
     input.action == "teacher.schedule.read"
     input.subject.authenticated
     input.subject.role in {"coordinator", "admin"}
+}
+
+self_operations_overview if {
+    input.action == "operations.overview.read"
+    input.subject.authenticated
+    input.resource.scope == "self"
+}
+
+global_operations_overview if {
+    input.action == "operations.overview.read"
+    input.subject.authenticated
+    input.resource.scope == "global"
+    input.subject.role in {"staff", "finance", "coordinator", "admin"}
 }

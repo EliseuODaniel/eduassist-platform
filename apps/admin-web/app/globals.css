@@ -183,6 +183,10 @@ body {
   padding: 28px;
 }
 
+.section-stack {
+  margin-top: 22px;
+}
+
 .section-head {
   display: flex;
   align-items: flex-start;
@@ -200,6 +204,89 @@ body {
 
 .section-block {
   margin-top: 24px;
+}
+
+.feed-list {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+}
+
+.feed-item,
+.count-item {
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(18, 32, 51, 0.08);
+  border-radius: 18px;
+}
+
+.feed-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.feed-copy,
+.feed-foot {
+  margin: 10px 0 0;
+}
+
+.feed-copy {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.feed-foot {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.event-tag,
+.timestamp-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.08);
+  color: var(--accent-strong);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.summary-grid-compact {
+  margin-top: 18px;
+}
+
+.count-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.count-item {
+  display: grid;
+  gap: 8px;
+}
+
+.count-item span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.count-item strong {
+  font-size: 1.15rem;
 }
 
 .label {
@@ -339,7 +426,8 @@ body {
   .workspace-grid,
   .summary-grid,
   .detail-grid,
-  .challenge-grid {
+  .challenge-grid,
+  .count-grid {
     grid-template-columns: 1fr;
   }
 
@@ -348,7 +436,8 @@ body {
   }
 
   .account-list li,
-  .access-list li {
+  .access-list li,
+  .feed-head {
     align-items: flex-start;
     flex-direction: column;
   }

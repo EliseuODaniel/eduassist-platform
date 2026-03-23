@@ -7,7 +7,6 @@ from datetime import date
 
 from fastapi import FastAPI, Header, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import text
 
 from api_core.config import get_settings
 from api_core.contracts import (
@@ -15,6 +14,7 @@ from api_core.contracts import (
     AuthPrincipal,
     AuthSessionResponse,
     CalendarEventsResponse,
+    OperationsOverviewResponse,
     PolicyCheckRequest,
     PolicyCheckResponse,
     TelegramLinkChallengeResponse,
@@ -22,7 +22,14 @@ from api_core.contracts import (
     TelegramLinkConsumeResponse,
 )
 from api_core.db.session import session_scope
-from api_core.services.audit import record_access_decision
+from api_core.services.audit import (
+    build_operations_metrics,
+    get_foundation_counts,
+    list_recent_access_decisions,
+    list_recent_audit_events,
+    record_access_decision,
+    resolve_operations_scope,
+)
 from api_core.services.auth import decode_access_token, extract_bearer_token
 from api_core.services.domain import (
     get_student_academic_summary,
@@ -270,28 +277,10 @@ async def status() -> dict[str, object]:
 @app.get('/v1/foundation/summary')
 async def foundation_summary() -> dict[str, object]:
     counts: dict[str, int] = {}
-    queries = {
-        'users': 'select count(*) from identity.users',
-        'telegram_accounts': 'select count(*) from identity.telegram_accounts',
-        'federated_identities': 'select count(*) from identity.federated_identities',
-        'students': 'select count(*) from school.students',
-        'guardians': 'select count(*) from school.guardians',
-        'teachers': 'select count(*) from school.teachers',
-        'classes': 'select count(*) from school.classes',
-        'enrollments': 'select count(*) from school.enrollments',
-        'grade_items': 'select count(*) from academic.grade_items',
-        'grades': 'select count(*) from academic.grades',
-        'contracts': 'select count(*) from finance.contracts',
-        'invoices': 'select count(*) from finance.invoices',
-        'calendar_events': 'select count(*) from calendar.calendar_events',
-        'documents': 'select count(*) from documents.documents',
-        'document_chunks': 'select count(*) from documents.document_chunks',
-    }
 
     try:
         with session_scope() as session:
-            for key, sql in queries.items():
-                counts[key] = int(session.execute(text(sql)).scalar_one())
+            counts = get_foundation_counts(session)
         database = 'reachable'
     except Exception as exc:  # pragma: no cover - bootstrap resilience path
         database = f'unavailable: {exc.__class__.__name__}'
@@ -301,6 +290,59 @@ async def foundation_summary() -> dict[str, object]:
         'database': database,
         'counts': counts,
     }
+
+
+@app.get('/v1/operations/overview', response_model=OperationsOverviewResponse)
+async def operations_overview(
+    authorization: str | None = Header(default=None, alias='Authorization'),
+) -> OperationsOverviewResponse:
+    if extract_bearer_token(authorization) is None:
+        raise HTTPException(status_code=401, detail='bearer_token_required')
+
+    actor, principal, auth_mode = _resolve_request_context(
+        authorization=authorization,
+        telegram_chat_id=None,
+        user_external_code=None,
+    )
+    if principal is None:
+        raise HTTPException(status_code=401, detail='bearer_token_required')
+
+    scope = resolve_operations_scope(actor)
+    decision = await decide_policy(
+        action='operations.overview.read',
+        actor=actor,
+        resource={
+            'resource_type': 'operations_overview',
+            'scope': scope,
+        },
+    )
+
+    overview: OperationsOverviewResponse | None = None
+    with session_scope() as session:
+        record_access_decision(
+            session,
+            actor_user_id=actor.user_id,
+            resource_type='operations_overview',
+            action='operations.overview.read',
+            decision='allow' if decision.allow else 'deny',
+            reason=decision.reason,
+        )
+        if decision.allow:
+            actor_user_id = None if scope == 'global' else actor.user_id
+            overview = OperationsOverviewResponse(
+                actor=_sanitize_actor_for_external_response(actor, auth_mode=auth_mode),
+                scope=scope,
+                metrics=build_operations_metrics(session, actor=actor, scope=scope),
+                foundation_counts=get_foundation_counts(session) if scope == 'global' else None,
+                audit_events=list_recent_audit_events(session, actor_user_id=actor_user_id),
+                access_decisions=list_recent_access_decisions(session, actor_user_id=actor_user_id),
+            )
+
+    if not decision.allow:
+        raise HTTPException(status_code=403, detail=decision.reason)
+    if overview is None:
+        raise HTTPException(status_code=500, detail='operations_overview_unavailable')
+    return overview
 
 
 @app.get('/v1/auth/session', response_model=AuthSessionResponse)

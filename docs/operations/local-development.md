@@ -78,6 +78,8 @@ Status atual:
 - o `telegram-gateway` já encaminha mensagens públicas ao `ai-orchestrator` e responde `/help`, FAQ e calendário pelo webhook;
 - o fluxo protegido do Telegram já responde resumo acadêmico com filtros por disciplina e bimestre, resumo financeiro com filtros por status e panorama consolidado para responsáveis, além de grade docente por turmas, disciplinas e horário para contas vinculadas;
 - o `admin-web` já expõe login real via `Keycloak` com OIDC + PKCE, leitura de sessão autenticada do `api-core` e emissão de challenge de vínculo em `/api/telegram-link/challenge`;
+- o `api-core` já expõe `GET /v1/operations/overview` com visão pessoal para responsáveis, alunos e professores, e visão global para secretaria, financeiro, coordenação e administração;
+- a home autenticada do `admin-web` já mostra métricas operacionais, feed de auditoria e feed de decisões de acesso adequados ao papel autenticado;
 - `telegram_chat_id` em rotas protegidas do `api-core` e `POST /v1/messages/respond` no `ai-orchestrator` agora exigem `X-Internal-Api-Token`;
 - observabilidade dedicada ainda ficará para a próxima etapa do roadmap.
 
@@ -193,6 +195,7 @@ Status atual do bootstrap:
 - `GET /v1/identity/context?user_external_code=USR-TEACH-001`
 - `GET /v1/internal/identity/context?telegram_chat_id=<chat_id>` com `X-Internal-Api-Token`
 - `GET /v1/auth/session` com `Authorization: Bearer <token>`
+- `GET /v1/operations/overview` com `Authorization: Bearer <token>`
 - `POST /v1/auth/telegram-link/challenges` com `Authorization: Bearer <token>`
 - `GET /v1/calendar/public?date_from=2026-03-01&date_to=2026-04-30`
 - `POST /webhooks/telegram` no `telegram-gateway` com `/start link_<codigo>`
@@ -206,6 +209,7 @@ Status atual do bootstrap:
 - `POST /webhooks/telegram` no `telegram-gateway` com `qual meu horario e minhas turmas?`
 - `POST /webhooks/telegram` no `telegram-gateway` com `quais sao minhas disciplinas?`
 - `GET /auth/login` no `admin-web` para iniciar o fluxo OIDC com `Keycloak`
+- `GET /` no `admin-web` com cookie `eduassist_access_token=<token>` para validar a visao operacional autenticada
 - `POST /api/telegram-link/challenge` no `admin-web` com cookie de sessão autenticada
 - `GET /v1/students/{student_id}/academic-summary?...`
 - `GET /v1/students/{student_id}/financial-summary?...`

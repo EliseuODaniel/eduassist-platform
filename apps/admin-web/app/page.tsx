@@ -1,5 +1,12 @@
 import { LinkChallengePanel } from './link-challenge-panel';
-import { getPortalSession, type PortalActor } from '../lib/auth';
+import {
+  getOperationsOverview,
+  getPortalSession,
+  type AccessDecisionFeedEntry,
+  type AuditEventFeedEntry,
+  type OperationsOverview,
+  type PortalActor,
+} from '../lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +63,126 @@ function buildAccessHighlights(actor: PortalActor): string[] {
   return [];
 }
 
+function formatMetricLabel(metricKey: string): string {
+  const labels: Record<string, string> = {
+    recent_audit_events: 'Eventos recentes',
+    recent_access_decisions: 'Decisões recentes',
+    recent_denials: 'Negativas recentes',
+    telegram_linked: 'Telegram vinculado',
+    linked_students: 'Alunos vinculados',
+    accessible_classes: 'Turmas acessíveis',
+    active_users: 'Usuários ativos',
+    linked_telegram_accounts: 'Contas Telegram vinculadas',
+    pending_telegram_links: 'Vínculos pendentes',
+  };
+  return labels[metricKey] ?? formatTokenLabel(metricKey);
+}
+
+function formatScope(scope: string): string {
+  return scope === 'global' ? 'Visão operacional global' : 'Visão operacional pessoal';
+}
+
+function formatTimestamp(value: string): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
+function formatTokenLabel(value: string): string {
+  return value
+    .replace(/[._]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function renderAuditMetadata(metadata: Record<string, unknown>) {
+  const entries = Object.entries(metadata).slice(0, 3);
+  if (entries.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="tag-row">
+      {entries.map(([key, rawValue]) => (
+        <span className="event-tag" key={key}>
+          {formatTokenLabel(key)}: {String(rawValue)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function renderAuditFeed(events: AuditEventFeedEntry[], overview: OperationsOverview) {
+  if (events.length === 0) {
+    return <p className="muted-copy">Ainda não há eventos auditáveis no escopo desta conta.</p>;
+  }
+
+  return (
+    <ul className="feed-list">
+      {events.map((event) => {
+        const actorLabel =
+          overview.scope === 'global'
+            ? event.actor_full_name ?? event.actor_external_code ?? 'ator do sistema'
+            : 'sua conta';
+
+        return (
+          <li className="feed-item" key={`${event.occurred_at}-${event.event_type}-${event.resource_type}`}>
+            <div className="feed-head">
+              <div>
+                <strong>{formatTokenLabel(event.event_type)}</strong>
+                <p className="muted-copy">
+                  {actorLabel} · {formatTokenLabel(event.resource_type)}
+                </p>
+              </div>
+              <span className="timestamp-chip">{formatTimestamp(event.occurred_at)}</span>
+            </div>
+            {renderAuditMetadata(event.metadata)}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function renderAccessDecisions(decisions: AccessDecisionFeedEntry[], overview: OperationsOverview) {
+  if (decisions.length === 0) {
+    return <p className="muted-copy">Nenhuma decisão de acesso recente foi registrada neste escopo.</p>;
+  }
+
+  return (
+    <ul className="feed-list">
+      {decisions.map((item) => {
+        const actorLabel =
+          overview.scope === 'global'
+            ? item.actor_full_name ?? item.actor_external_code ?? 'ator do sistema'
+            : 'sua conta';
+
+        return (
+          <li className="feed-item" key={`${item.occurred_at}-${item.action}-${item.resource_type}`}>
+            <div className="feed-head">
+              <div>
+                <strong>{formatTokenLabel(item.action)}</strong>
+                <p className="muted-copy">
+                  {actorLabel} · {formatTokenLabel(item.resource_type)}
+                </p>
+              </div>
+              <span
+                className={`status-chip ${item.decision === 'allow' ? 'is-linked' : 'is-pending'}`}
+              >
+                {item.decision === 'allow' ? 'Permitido' : 'Negado'}
+              </span>
+            </div>
+            <p className="feed-copy">{item.reason ? formatTokenLabel(item.reason) : 'Sem justificativa informada.'}</p>
+            <p className="feed-foot">{formatTimestamp(item.occurred_at)}</p>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 type HomePageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
@@ -69,7 +196,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       : null;
 
   const { session, error } = await getPortalSession();
+  const { overview, error: overviewError } = session
+    ? await getOperationsOverview()
+    : { overview: null, error: null };
   const accessHighlights = session ? buildAccessHighlights(session.actor) : [];
+  const metricEntries = overview ? Object.entries(overview.metrics) : [];
+  const foundationEntries = overview?.foundation_counts
+    ? Object.entries(overview.foundation_counts).sort(([left], [right]) => left.localeCompare(right))
+    : [];
 
   if (!session) {
     return (
@@ -198,6 +332,72 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
         <LinkChallengePanel initiallyLinked={session.actor.telegram_linked} />
       </section>
+
+      {overviewError ? (
+        <p className="feedback warning-text">
+          O painel autenticou corretamente, mas não conseguiu carregar o overview operacional do
+          `api-core`.
+        </p>
+      ) : null}
+
+      {overview ? (
+        <>
+          <section className="panel panel-strong section-stack">
+            <div className="section-head">
+              <div>
+                <p className="eyebrow">Operação</p>
+                <h2>{formatScope(overview.scope)}</h2>
+              </div>
+              <span className="status-chip is-linked">{formatRole(overview.actor.role_code)}</span>
+            </div>
+
+            <div className="summary-grid summary-grid-compact">
+              {metricEntries.map(([metricKey, value]) => (
+                <article className="metric-card" key={metricKey}>
+                  <p className="label">{formatMetricLabel(metricKey)}</p>
+                  <strong>{value}</strong>
+                </article>
+              ))}
+            </div>
+
+            {foundationEntries.length > 0 ? (
+              <div className="section-block">
+                <p className="label">Contagem estrutural do ambiente</p>
+                <div className="count-grid">
+                  {foundationEntries.map(([key, value]) => (
+                    <div className="count-item" key={key}>
+                      <span>{formatMetricLabel(key)}</span>
+                      <strong>{value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="workspace-grid">
+            <article className="panel">
+              <div className="section-head">
+                <div>
+                  <p className="eyebrow">Auditoria</p>
+                  <h2>Eventos recentes</h2>
+                </div>
+              </div>
+              {renderAuditFeed(overview.audit_events, overview)}
+            </article>
+
+            <article className="panel">
+              <div className="section-head">
+                <div>
+                  <p className="eyebrow">Autorização</p>
+                  <h2>Decisões recentes</h2>
+                </div>
+              </div>
+              {renderAccessDecisions(overview.access_decisions, overview)}
+            </article>
+          </section>
+        </>
+      ) : null}
     </main>
   );
 }
