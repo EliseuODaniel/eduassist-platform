@@ -6,6 +6,7 @@ import secrets
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from eduassist_observability import configure_observability
 
 from .graph import build_orchestration_graph, get_graph_blueprint, to_preview
 from .models import (
@@ -66,6 +67,14 @@ app = FastAPI(
     title='EduAssist AI Orchestrator',
     version='0.2.0',
     summary='Agentic orchestration runtime bootstrap for EduAssist Platform.',
+)
+
+configure_observability(
+    service_name='ai-orchestrator',
+    service_version=app.version,
+    environment=get_settings().app_env,
+    app=app,
+    excluded_urls='/healthz,/meta',
 )
 
 

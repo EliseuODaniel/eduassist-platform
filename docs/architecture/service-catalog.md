@@ -205,6 +205,25 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 
 - decisão de autorização contextual.
 
-### `otel-collector`, `grafana`, `loki`, `tempo`
+### `otel-collector`
 
-- observabilidade ponta a ponta.
+- recebe spans OTLP dos serviços instrumentados;
+- faz batch e exporta traces para o `tempo`;
+- permite observabilidade distribuida sem acoplar os apps ao backend final.
+
+### `tempo`
+
+- armazena traces distribuidos;
+- permite busca por `trace_id` e consulta operacional do fluxo entre serviços;
+- sustenta a investigacao do caminho `telegram-gateway -> ai-orchestrator -> api-core`.
+
+### `grafana`
+
+- expõe a visualização dos traces armazenados no `tempo`;
+- hospeda dashboards e drill-down operacional do ambiente local;
+- já sobe com datasource do `tempo` provisionado.
+
+### `loki`
+
+- permanece aprovado como próxima expansão para agregação central de logs;
+- ainda não está conectado ao `compose` atual.

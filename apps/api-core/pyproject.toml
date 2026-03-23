@@ -5,6 +5,7 @@ description = "Core domain API for EduAssist Platform."
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.16.0",
+  "eduassist-observability",
   "faker>=37.0.0",
   "fastapi>=0.115.0",
   "httpx>=0.28.0",
@@ -18,6 +19,9 @@ dependencies = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.uv.sources]
+eduassist-observability = { path = "../../packages/observability/python" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/api_core"]

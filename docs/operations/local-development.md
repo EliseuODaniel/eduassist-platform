@@ -85,20 +85,30 @@ Status atual:
 - o `ai-orchestrator` já cria handoffs reais quando a classificação cai em `support` e a política do fluxo permite encaminhamento humano;
 - o `admin-web` já exibe a fila de handoffs com filtros por status, fila, atribuição, SLA e texto livre, abre o detalhe completo da conversa e permite registrar nota operacional, assumir atribuição, iniciar ou resolver tickets via sessão autenticada;
 - `telegram_chat_id` em rotas protegidas do `api-core` e `POST /v1/messages/respond` no `ai-orchestrator` agora exigem `X-Internal-Api-Token`;
-- observabilidade dedicada ainda ficará para a próxima etapa do roadmap.
+- observabilidade distribuida base já esta ativa no Compose, com tracing entre `telegram-gateway`, `ai-orchestrator` e `api-core`.
 
 ### `compose:observability`
 
 Serviços:
 
-- otel-collector
-- grafana
-- loki
-- tempo
+- `otel-collector`
+- `tempo`
+- `grafana`
 
 Uso:
 
-- tracing, logs e debugging operacional.
+- tracing distribuido;
+- consulta de traces por `trace_id`;
+- debugging operacional do fluxo `telegram-gateway -> ai-orchestrator -> api-core`.
+
+Status atual:
+
+- `otel-collector`, `tempo` e `grafana` já sobem no mesmo `compose.yaml`;
+- os serviços Python instrumentados já exportam spans OTLP via `HTTP` para o collector;
+- o `Tempo` já persiste traces e responde `GET /api/traces/{trace_id}` em `http://localhost:3200`;
+- o `Grafana` já sobe com datasource do `Tempo` provisionado em `http://localhost:3004`;
+- `X-Trace-Id` e `X-Span-Id` já são devolvidos nas respostas dos serviços Python instrumentados;
+- a agregação central de logs via `Loki` continua aprovada para a próxima etapa, mas ainda não foi ligada ao Compose.
 
 ### `compose:full`
 
@@ -179,6 +189,13 @@ Status atual do bootstrap:
 - `DOCUMENT_PIPELINE_BACKEND`
 - `DATABASE_URL_LOCAL`
 - `FOUNDATION_SEED`
+- `OTEL_ENABLED`
+- `OTEL_SERVICE_NAMESPACE`
+- `OTEL_EXPORTER_OTLP_ENDPOINT`
+- `OTEL_GRPC_PORT`
+- `OTEL_HTTP_PORT`
+- `TEMPO_PORT`
+- `GRAFANA_PORT`
 
 ## 10. Critérios de pronto para desenvolvimento
 
@@ -187,7 +204,8 @@ Status atual do bootstrap:
 - banco recebe seed;
 - keycloak sobe realm inicial;
 - webhook local consegue ser exposto;
-- logs e traces mínimos aparecem corretamente.
+- logs e traces mínimos aparecem corretamente;
+- respostas instrumentadas devolvem `X-Trace-Id` para drill-down.
 
 ## 11. Comandos úteis desta fase
 
@@ -195,6 +213,9 @@ Status atual do bootstrap:
 - `make db-seed-foundation`
 - `make db-seed-auth-bindings`
 - `make documents-sync`
+- `make observability-up`
+- `make observability-down`
+- `make observability-logs`
 - `GET /v1/foundation/summary` no `api-core`
 - `GET /v1/identity/context?user_external_code=USR-TEACH-001`
 - `GET /v1/internal/identity/context?telegram_chat_id=<chat_id>` com `X-Internal-Api-Token`
@@ -229,6 +250,8 @@ Status atual do bootstrap:
 - `GET /v1/retrieval/status` no `ai-orchestrator`
 - `POST /v1/retrieval/search` no `ai-orchestrator`
 - `POST /v1/messages/respond` no `ai-orchestrator` com `X-Internal-Api-Token`
+- `GET /api/traces/{trace_id}` no `Tempo` em `http://localhost:3200`
+- `GET /` no `Grafana` em `http://localhost:3004`
 
 Observacao sobre o pipeline documental local:
 

@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Telegram gateway for EduAssist Platform."
 requires-python = ">=3.12"
 dependencies = [
+  "eduassist-observability",
   "fastapi>=0.115.0",
   "httpx>=0.28.0",
   "pydantic-settings>=2.8.0",
@@ -14,6 +15,8 @@ dependencies = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv.sources]
+eduassist-observability = { path = "../../packages/observability/python" }
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/telegram_gateway"]
-

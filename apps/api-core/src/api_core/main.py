@@ -7,6 +7,7 @@ from datetime import date
 
 from fastapi import FastAPI, Header, HTTPException, Query
 from pydantic import BaseModel
+from eduassist_observability import configure_observability
 
 from api_core.config import get_settings
 from api_core.contracts import (
@@ -28,7 +29,7 @@ from api_core.contracts import (
     TelegramLinkConsumeRequest,
     TelegramLinkConsumeResponse,
 )
-from api_core.db.session import session_scope
+from api_core.db.session import get_engine, session_scope
 from api_core.services.audit import (
     build_handoff_operations_overview,
     build_operations_metrics,
@@ -69,6 +70,15 @@ app = FastAPI(
     title='EduAssist API Core',
     version='0.3.0',
     summary='Core domain API for identity, policy, audit and school data services.',
+)
+
+configure_observability(
+    service_name='api-core',
+    service_version=app.version,
+    environment=get_settings().app_env,
+    app=app,
+    sqlalchemy_engine=get_engine(),
+    excluded_urls='/healthz,/meta',
 )
 
 

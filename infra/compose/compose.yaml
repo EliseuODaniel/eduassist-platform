@@ -108,6 +108,48 @@ services:
       - ./opa:/policies:ro
     restart: unless-stopped
 
+  otel-collector:
+    image: ${OTEL_COLLECTOR_IMAGE:-otel/opentelemetry-collector-contrib:0.122.1}
+    container_name: eduassist-otel-collector
+    command: ['--config=/etc/otelcol-contrib/config.yaml']
+    ports:
+      - '${OTEL_GRPC_PORT:-4317}:4317'
+      - '${OTEL_HTTP_PORT:-4318}:4318'
+    volumes:
+      - ./otel/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    depends_on:
+      tempo:
+        condition: service_started
+    restart: unless-stopped
+
+  tempo:
+    image: ${TEMPO_IMAGE:-grafana/tempo:2.7.2}
+    user: '0:0'
+    command: ['-config.file=/etc/tempo.yaml']
+    ports:
+      - '${TEMPO_PORT:-3200}:3200'
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/tmp/tempo
+    restart: unless-stopped
+
+  grafana:
+    image: ${GRAFANA_IMAGE:-grafana/grafana:11.6.0}
+    container_name: eduassist-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin123}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    ports:
+      - '${GRAFANA_PORT:-3004}:3000'
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      tempo:
+        condition: service_started
+    restart: unless-stopped
+
   api-core:
     build:
       context: ../..
@@ -130,6 +172,9 @@ services:
       ALLOW_TEST_IDENTITY_OVERRIDES: ${ALLOW_TEST_IDENTITY_OVERRIDES:-true}
       TELEGRAM_LINK_TTL_MINUTES: ${TELEGRAM_LINK_TTL_MINUTES:-15}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAMESPACE: ${OTEL_SERVICE_NAMESPACE:-eduassist-platform}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
     ports:
       - '${API_CORE_PORT:-8001}:8000'
     depends_on:
@@ -138,6 +183,8 @@ services:
       redis:
         condition: service_healthy
       opa:
+        condition: service_started
+      otel-collector:
         condition: service_started
     healthcheck:
       test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
@@ -170,6 +217,9 @@ services:
       QDRANT_DOCUMENTS_COLLECTION: ${QDRANT_DOCUMENTS_COLLECTION:-school_documents}
       DOCUMENT_EMBEDDING_MODEL: ${DOCUMENT_EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
       GRAPH_RAG_ENABLED: ${GRAPH_RAG_ENABLED:-false}
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAMESPACE: ${OTEL_SERVICE_NAMESPACE:-eduassist-platform}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
     ports:
       - '${AI_ORCHESTRATOR_PORT:-8002}:8000'
     depends_on:
@@ -178,6 +228,8 @@ services:
       redis:
         condition: service_healthy
       qdrant:
+        condition: service_started
+      otel-collector:
         condition: service_started
     healthcheck:
       test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
@@ -203,6 +255,9 @@ services:
       API_CORE_URL: http://api-core:8000
       AI_ORCHESTRATOR_URL: http://ai-orchestrator:8000
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAMESPACE: ${OTEL_SERVICE_NAMESPACE:-eduassist-platform}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
     ports:
       - '${TELEGRAM_GATEWAY_PORT:-8003}:8000'
     depends_on:
@@ -210,6 +265,8 @@ services:
         condition: service_healthy
       ai-orchestrator:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     healthcheck:
       test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
       interval: 10s
@@ -297,3 +354,5 @@ volumes:
   qdrant-data:
   redis-data:
   minio-data:
+  tempo-data:
+  grafana-data:

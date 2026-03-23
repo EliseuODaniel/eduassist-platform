@@ -6,6 +6,7 @@ import httpx
 from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from eduassist_observability import configure_observability
 
 
 class Settings(BaseSettings):
@@ -39,6 +40,14 @@ app = FastAPI(
     title='EduAssist Telegram Gateway',
     version='0.2.0',
     summary='Telegram ingress bootstrap for EduAssist Platform.',
+)
+
+configure_observability(
+    service_name='telegram-gateway',
+    service_version=app.version,
+    environment=get_settings().app_env,
+    app=app,
+    excluded_urls='/healthz,/meta',
 )
 
 

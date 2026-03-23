@@ -8,12 +8,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /workspace/apps/ai-orchestrator
 
+COPY packages/observability/python /workspace/packages/observability/python
 COPY apps/ai-orchestrator/pyproject.toml ./
+COPY apps/ai-orchestrator/uv.lock ./
 COPY apps/ai-orchestrator/src ./src
 
-RUN uv sync --no-dev
+RUN uv sync --locked --no-dev
 
 EXPOSE 8000
 
 CMD ["uv", "run", "uvicorn", "ai_orchestrator.main:app", "--host", "0.0.0.0", "--port", "8000"]
-
