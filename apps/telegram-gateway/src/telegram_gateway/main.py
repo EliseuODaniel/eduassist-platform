@@ -76,16 +76,49 @@ def _extract_link_code(text: str) -> str | None:
     return None
 
 
-async def _send_telegram_message(chat_id: int, text: str) -> None:
+def _build_reply_markup(suggested_replies: list[dict[str, object]] | None) -> dict[str, object] | None:
+    if not isinstance(suggested_replies, list):
+        return None
+    labels: list[str] = []
+    for item in suggested_replies:
+        if not isinstance(item, dict):
+            continue
+        text = str(item.get('text', '')).strip()
+        if not text or text in labels:
+            continue
+        labels.append(text[:80])
+        if len(labels) >= 4:
+            break
+    if not labels:
+        return None
+    keyboard = [labels[index:index + 2] for index in range(0, len(labels), 2)]
+    return {
+        'keyboard': keyboard,
+        'resize_keyboard': True,
+        'one_time_keyboard': True,
+        'input_field_placeholder': 'Escolha um proximo passo ou digite sua mensagem',
+    }
+
+
+async def _send_telegram_message(
+    chat_id: int,
+    text: str,
+    *,
+    reply_markup: dict[str, object] | None = None,
+) -> None:
     settings = get_settings()
     if not settings.telegram_bot_token:
         return
+
+    payload: dict[str, object] = {'chat_id': chat_id, 'text': text}
+    if reply_markup:
+        payload['reply_markup'] = reply_markup
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             await client.post(
                 f'{settings.telegram_api_base_url}/bot{settings.telegram_bot_token}/sendMessage',
-                json={'chat_id': chat_id, 'text': text},
+                json=payload,
             )
     except Exception:
         return
@@ -322,7 +355,8 @@ async def telegram_webhook(
                 update_id=update_id if isinstance(update_id, int) else None,
             )
             reply_text = str(orchestration.get('message_text', _default_help_message()))
-            await _send_telegram_message(chat_id, reply_text)
+            reply_markup = _build_reply_markup(orchestration.get('suggested_replies'))
+            await _send_telegram_message(chat_id, reply_text, reply_markup=reply_markup)
             visual_assets = orchestration.get('visual_assets', [])
             if isinstance(visual_assets, list):
                 for asset in visual_assets:
@@ -347,6 +381,7 @@ async def telegram_webhook(
                 'service': 'telegram-gateway',
                 'processed': 'orchestrated_message',
                 'reply': reply_text,
+                'reply_markup': reply_markup,
                 'orchestration': orchestration,
             }
         except httpx.HTTPError as exc:

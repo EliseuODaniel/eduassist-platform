@@ -21,6 +21,7 @@ from .models import (
     MessageResponse,
     MessageResponseCitation,
     MessageResponseRequest,
+    MessageResponseSuggestedReply,
     MessageResponseVisualAsset,
     OrchestrationMode,
     OrchestrationRequest,
@@ -359,6 +360,17 @@ ASSISTANT_CAPABILITY_TERMS = {
     'que opcoes eu tenho',
     'que opções eu tenho',
 }
+AUTH_GUIDANCE_TERMS = {
+    'como vinculo minha conta',
+    'como vincular minha conta',
+    'como faco o vinculo',
+    'como faço o vinculo',
+    'como fazer o vinculo',
+    'como eu vinculo minha conta',
+    'como acesso minhas notas aqui',
+    'como vejo minhas notas aqui',
+    'como consulto meus dados aqui',
+}
 SERVICE_ROUTING_TERMS = {
     'com quem eu falo sobre',
     'pra quem eu falo sobre',
@@ -570,6 +582,18 @@ def _is_assistant_identity_query(message: str) -> bool:
 def _is_capability_query(message: str) -> bool:
     normalized = _normalize_text(message)
     return any(_message_matches_term(normalized, term) for term in ASSISTANT_CAPABILITY_TERMS)
+
+
+def _is_auth_guidance_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(_message_matches_term(normalized, term) for term in AUTH_GUIDANCE_TERMS)
+
+
+def _is_public_pricing_navigation_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if not any(_message_matches_term(normalized, term) for term in PUBLIC_PRICING_TERMS):
+        return False
+    return not any(_message_matches_term(normalized, term) for term in {'meu', 'minha', 'meus', 'minhas', 'do meu filho', 'da minha filha'})
 
 
 def _is_service_routing_query(message: str) -> bool:
@@ -1209,6 +1233,13 @@ def _compose_public_profile_answer(
 
     if _is_greeting_only(message):
         return _compose_concierge_greeting(profile, message, conversation_context)
+
+    if _is_auth_guidance_query(message):
+        return (
+            'Para consultas protegidas, como notas, faltas e financeiro, voce precisa vincular sua conta do Telegram ao portal da escola. '
+            'No portal autenticado, gere o codigo de vinculacao e depois envie aqui o comando `/start link_<codigo>`. '
+            'Depois disso, eu passo a consultar seus dados autorizados por este canal.'
+        )
 
     if _is_service_routing_query(message):
         return _compose_service_routing_answer(
@@ -2492,6 +2523,198 @@ def _compose_workflow_status_answer(
     else:
         lines.append('Se quiser, eu tambem posso te orientar sobre o proximo setor ou resumir o que ja foi registrado.')
     return '\n'.join(lines)
+
+
+def _dedupe_suggested_replies(texts: list[str], *, limit: int = 4) -> list[MessageResponseSuggestedReply]:
+    seen: set[str] = set()
+    items: list[MessageResponseSuggestedReply] = []
+    for text in texts:
+        label = str(text or '').strip()
+        if not label:
+            continue
+        normalized = _normalize_text(label)
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        items.append(MessageResponseSuggestedReply(text=label[:80]))
+        if len(items) >= limit:
+            break
+    return items
+
+
+def _default_public_suggested_replies() -> list[str]:
+    return [
+        'Mensalidade do ensino medio',
+        'Horario do 9o ano',
+        'Agendar visita',
+        'Como vinculo minha conta?',
+    ]
+
+
+def _institution_suggested_replies(
+    *,
+    request: MessageResponseRequest,
+    preview: Any,
+    school_profile: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None,
+) -> list[str]:
+    normalized = _normalize_text(request.message)
+    profile = school_profile or {}
+    if _is_greeting_only(request.message) or _is_capability_query(request.message) or _is_auth_guidance_query(request.message):
+        return _default_public_suggested_replies()
+    if _is_assistant_identity_query(request.message):
+        return [
+            'Quais opcoes de assuntos eu tenho aqui?',
+            'Falar com a secretaria',
+            'Agendar visita',
+            'Como vinculo minha conta?',
+        ]
+    if _is_service_routing_query(request.message):
+        message_for_matching = _routing_follow_up_context_message(request.message, conversation_context)
+        matches = _service_matches_from_message(profile, message_for_matching)
+        if matches:
+            service_key = str(matches[0].get('service_key', '')).strip().lower()
+            if service_key == 'financeiro_escolar':
+                return [
+                    'Como vinculo minha conta?',
+                    'Mensalidade do ensino medio',
+                    'Quero falar sobre contrato',
+                    'Agendar visita',
+                ]
+            if service_key == 'secretaria_escolar':
+                return [
+                    'Quais documentos preciso para matricula?',
+                    'Preciso de historico escolar',
+                    'Quero falar com a secretaria',
+                    'Agendar visita',
+                ]
+            if service_key == 'visita_institucional':
+                return [
+                    'Quero agendar uma visita',
+                    'Qual o horario do 9o ano?',
+                    'Mensalidade do ensino medio',
+                    'Como vinculo minha conta?',
+                ]
+            if service_key == 'solicitacao_direcao':
+                return [
+                    'Quero protocolar uma solicitacao',
+                    'Qual o nome da diretora?',
+                    'Qual o status do meu protocolo?',
+                    'Agendar visita',
+                ]
+        return [
+            'Falar com a secretaria',
+            'Falar com o financeiro',
+            'Agendar visita',
+            'Como vinculo minha conta?',
+        ]
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_LEADERSHIP_TERMS):
+        return [
+            'Qual o email da direcao?',
+            'Quero protocolar uma solicitacao',
+            'Quais opcoes de assuntos eu tenho aqui?',
+            'Agendar visita',
+        ]
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_CONTACT_TERMS):
+        return [
+            'Falar com a secretaria',
+            'Agendar visita',
+            'Mensalidade do ensino medio',
+            'Como vinculo minha conta?',
+        ]
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_KPI_TERMS):
+        return [
+            'Mostre um grafico da media de aprovacao',
+            'Fale uma curiosidade da escola',
+            'Qual o nome da diretora?',
+            'Agendar visita',
+        ]
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_HIGHLIGHT_TERMS):
+        return [
+            'Qual a media de aprovacao?',
+            'A escola e laica ou confessional?',
+            'Qual o horario do 9o ano?',
+            'Agendar visita',
+        ]
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_VISIT_TERMS):
+        return [
+            'Quero agendar uma visita',
+            'Qual o status da visita?',
+            'Qual o prazo?',
+            'Quem vai me responder?',
+        ]
+    if _is_public_pricing_navigation_query(request.message):
+        return [
+            'Como vinculo minha conta?',
+            'Quais bolsas a escola oferece?',
+            'Agendar visita',
+            'Qual o horario do 9o ano?',
+        ]
+    if preview.mode is OrchestrationMode.hybrid_retrieval:
+        if 'matricula' in normalized:
+            return [
+                'Qual a mensalidade do ensino medio?',
+                'Quero agendar uma visita',
+                'Qual o horario do 9o ano?',
+                'Como vinculo minha conta?',
+            ]
+        return _default_public_suggested_replies()
+    return _default_public_suggested_replies()
+
+
+def _support_suggested_replies(*, preview: Any) -> list[str]:
+    if 'get_workflow_status' in preview.selected_tools:
+        return ['Qual o prazo?', 'Quem vai me responder?', 'E agora?', 'Preciso do protocolo']
+    if 'schedule_school_visit' in preview.selected_tools:
+        return ['Qual o status da visita?', 'Qual o prazo?', 'Quem vai me responder?', 'Mudar horario da visita']
+    return ['Qual o status do meu protocolo?', 'Qual o prazo?', 'Quem vai me responder?', 'E agora?']
+
+
+def _protected_suggested_replies(*, preview: Any, actor: dict[str, Any] | None) -> list[str]:
+    role_code = str((actor or {}).get('role_code', 'anonymous'))
+    if preview.classification.domain is QueryDomain.finance:
+        return ['Quais boletos estao em aberto?', 'Tem alguma fatura vencida?', 'Preciso da segunda via', 'Qual a mensalidade?']
+    if role_code == 'teacher':
+        return ['Quais turmas eu tenho?', 'Mostre minha agenda', 'Qual o horario de hoje?', 'Tem aula substituta?']
+    return ['Mostre as notas', 'Quais sao as faltas?', 'Tem prova marcada?', 'Qual o calendario da turma?']
+
+
+def _deny_suggested_replies() -> list[str]:
+    return ['Como vinculo minha conta?', 'Mensalidade do ensino medio', 'Agendar visita', 'Quais opcoes de assuntos eu tenho aqui?']
+
+
+def _build_suggested_replies(
+    *,
+    request: MessageResponseRequest,
+    preview: Any,
+    actor: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None,
+) -> list[MessageResponseSuggestedReply]:
+    candidate_texts: list[str]
+    if preview.mode is OrchestrationMode.deny:
+        candidate_texts = _deny_suggested_replies()
+    elif preview.classification.domain is QueryDomain.support and preview.mode is OrchestrationMode.structured_tool:
+        candidate_texts = _support_suggested_replies(preview=preview)
+    elif preview.classification.domain in {QueryDomain.academic, QueryDomain.finance} and preview.mode is OrchestrationMode.structured_tool:
+        candidate_texts = _protected_suggested_replies(preview=preview, actor=actor)
+    elif preview.classification.domain is QueryDomain.institution:
+        candidate_texts = _institution_suggested_replies(
+            request=request,
+            preview=preview,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+        )
+    elif preview.classification.domain is QueryDomain.calendar:
+        candidate_texts = [
+            'Quando e a proxima reuniao de pais?',
+            'Quando comecam as aulas?',
+            'Qual o horario do 9o ano?',
+            'Agendar visita',
+        ]
+    else:
+        candidate_texts = _default_public_suggested_replies()
+    return _dedupe_suggested_replies(candidate_texts)
 
 
 def _wants_visual_response(message: str) -> bool:
@@ -3967,6 +4190,21 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
             actor=actor,
             school_profile=school_profile,
         )
+        suggested_replies = _build_suggested_replies(
+            request=request,
+            preview=preview,
+            actor=actor,
+            school_profile=school_profile,
+            conversation_context=(
+                {
+                    'conversation_external_id': conversation_context.conversation_external_id,
+                    'message_count': conversation_context.message_count,
+                    'recent_messages': conversation_context.recent_messages,
+                }
+                if conversation_context
+                else None
+            ),
+        )
 
         await _persist_conversation_turn(
             settings=settings,
@@ -3981,6 +4219,7 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
             **{
                 'eduassist.response.length': len(message_text),
                 'eduassist.response.visual_asset_count': len(visual_assets),
+                'eduassist.response.suggested_reply_count': len(suggested_replies),
             }
         )
         metric_attributes = {
@@ -4015,6 +4254,7 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
             selected_tools=preview.selected_tools,
             citations=citations,
             visual_assets=visual_assets,
+            suggested_replies=suggested_replies,
             calendar_events=calendar_events,
             needs_authentication=preview.needs_authentication,
             graph_path=preview.graph_path,

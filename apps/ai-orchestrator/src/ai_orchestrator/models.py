@@ -183,6 +183,10 @@ class MessageResponseVisualAsset(BaseModel):
     caption: str | None = None
 
 
+class MessageResponseSuggestedReply(BaseModel):
+    text: str = Field(min_length=1, max_length=80)
+
+
 class MessageResponseRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     conversation_id: str | None = None
@@ -201,6 +205,7 @@ class MessageResponse(BaseModel):
     selected_tools: list[str] = Field(default_factory=list)
     citations: list[MessageResponseCitation] = Field(default_factory=list)
     visual_assets: list[MessageResponseVisualAsset] = Field(default_factory=list)
+    suggested_replies: list[MessageResponseSuggestedReply] = Field(default_factory=list)
     calendar_events: list[CalendarEventCard] = Field(default_factory=list)
     needs_authentication: bool = False
     graph_path: list[str] = Field(default_factory=list)

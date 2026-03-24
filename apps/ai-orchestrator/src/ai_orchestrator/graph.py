@@ -152,6 +152,17 @@ ACKNOWLEDGEMENT_TERMS = {
     'ok obrigado',
     'ok obrigada',
 }
+AUTH_GUIDANCE_TERMS = {
+    'como vinculo minha conta',
+    'como vincular minha conta',
+    'como faco o vinculo',
+    'como faço o vinculo',
+    'como fazer o vinculo',
+    'como eu vinculo minha conta',
+    'como acesso minhas notas aqui',
+    'como vejo minhas notas aqui',
+    'como consulto meus dados aqui',
+}
 VISIT_ACTION_TERMS = {
     'agendar visita',
     'agendamento de visita',
@@ -577,6 +588,8 @@ def _is_public_navigation_query(message: str) -> bool:
         'você é quem',
     }
     if any(_message_matches_term(lowered, term) for term in ACKNOWLEDGEMENT_TERMS):
+        return True
+    if any(_message_matches_term(lowered, term) for term in AUTH_GUIDANCE_TERMS):
         return True
     return any(_message_matches_term(lowered, term) for term in navigation_terms)
 

@@ -104,6 +104,10 @@ def main() -> int:
     help_reply = str(help_payload.get('reply', ''))
     assert_condition('matricula' in help_reply.lower(), 'help_reply_topics_missing')
     assert_condition('financeiro' in help_reply.lower(), 'help_reply_finance_missing')
+    help_reply_markup = help_payload.get('reply_markup')
+    assert_condition(isinstance(help_reply_markup, dict), 'help_reply_markup_missing')
+    help_keyboard = help_reply_markup.get('keyboard')
+    assert_condition(isinstance(help_keyboard, list) and help_keyboard, 'help_reply_keyboard_missing')
     print('[ok] telegram help via orchestrator')
 
     greeting_status, _, greeting_payload = request(
@@ -129,6 +133,8 @@ def main() -> int:
         'public_greeting_school_missing',
     )
     assert_condition('como posso ajudar' not in greeting_message.lower(), 'public_greeting_generic_message')
+    greeting_suggestions = greeting_payload.get('suggested_replies')
+    assert_condition(isinstance(greeting_suggestions, list) and greeting_suggestions, 'public_greeting_suggestions_missing')
     print('[ok] public institutional greeting')
 
     identity_status, _, identity_payload = request(
@@ -193,6 +199,26 @@ def main() -> int:
     thanks_message = str(thanks_payload.get('message_text', ''))
     assert_condition('por nada' in thanks_message.lower() or 'perfeito' in thanks_message.lower(), 'public_acknowledgement_missing')
     print('[ok] public acknowledgement turn')
+
+    auth_help_status, _, auth_help_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'como vinculo minha conta?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        auth_help_status == 200 and isinstance(auth_help_payload, dict),
+        'public_auth_guidance_failed',
+    )
+    auth_help_message = str(auth_help_payload.get('message_text', ''))
+    assert_condition('/start link_' in auth_help_message, 'public_auth_guidance_link_missing')
+    print('[ok] public auth guidance')
 
     routing_status, _, routing_payload = request(
         'POST',
@@ -596,6 +622,8 @@ def main() -> int:
     )
     request_eta_message = str(request_eta_payload.get('message_text', ''))
     assert_condition('2 dias uteis' in request_eta_message.lower(), 'public_request_eta_missing')
+    request_eta_suggestions = request_eta_payload.get('suggested_replies')
+    assert_condition(isinstance(request_eta_suggestions, list) and request_eta_suggestions, 'public_request_eta_suggestions_missing')
     print('[ok] public institutional request eta')
 
     visual_status, _, visual_payload = request(
