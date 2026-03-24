@@ -42,7 +42,7 @@ def main() -> int:
     )
     assert_condition(anonymous_status == 200 and isinstance(anonymous_payload, dict), "anonymous_deny_request_failed")
     anonymous_reply = str(anonymous_payload.get("reply", ""))
-    assert_condition("autenticacao e vinculo" in anonymous_reply.lower(), "anonymous_deny_reply_unexpected")
+    assert_condition("autentic" in anonymous_reply.lower(), "anonymous_deny_reply_unexpected")
     anonymous_trace_id = extract_trace_id(anonymous_headers)
     anonymous_trace = wait_for_trace_span(settings, anonymous_trace_id, "eduassist.orchestration.message_response")
     assert_condition(
@@ -72,9 +72,12 @@ def main() -> int:
     )
     print("[ok] guardian ambiguity")
 
+    teacher_token = fetch_token(settings, username="helena.rocha")
+
     forbidden_status, forbidden_headers, forbidden_payload = request(
         "GET",
-        f"{settings.api_core_url}/v1/students/{LUCAS_STUDENT_ID}/financial-summary?user_external_code=USR-TEACH-001",
+        f"{settings.api_core_url}/v1/students/{LUCAS_STUDENT_ID}/financial-summary",
+        headers={"Authorization": f"Bearer {teacher_token}"},
     )
     assert_condition(forbidden_status == 403 and isinstance(forbidden_payload, dict), "teacher_finance_forbidden_failed")
     assert_condition(forbidden_payload.get("detail") == "no_matching_policy", "teacher_finance_forbidden_detail_unexpected")

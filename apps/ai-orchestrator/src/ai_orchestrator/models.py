@@ -107,8 +107,9 @@ class RuntimeCapabilities(BaseModel):
     llm_provider: str
     openai_model: str
     google_model: str
-    qdrant_url: str
+    llm_configured: bool
     graph_rag_enabled: bool
+    graph_rag_workspace_ready: bool
     available_modes: list[OrchestrationMode]
     retrieval_backends: list[RetrievalBackend]
 

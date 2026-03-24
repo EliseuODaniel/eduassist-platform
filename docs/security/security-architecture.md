@@ -118,6 +118,7 @@ Inferência a partir da documentação oficial do Telegram: a criptografia ponta
 - filtro de visibilidade antes do retrieval;
 - contracts rígidos para tools;
 - contexto mínimo para o modelo;
+- provider de LLM externo isolado por camada de integração, sem acesso direto a banco nem a segredos internos;
 - negação explícita por policy;
 - avaliação adversarial contínua;
 - revisão de curadoria documental;
@@ -131,6 +132,8 @@ Inferência a partir da documentação oficial do Telegram: a criptografia ponta
 - rotação documentada de segredos;
 - não registrar tokens em logs;
 - chaves de API de LLM isoladas por ambiente.
+- o arquivo `.env` local deve permanecer fora do Git e com permissões restritas;
+- endpoints `/meta` e diagnósticos equivalentes devem exigir `X-Internal-Api-Token` e nunca devolver URLs completas de banco, cache ou provedores internos.
 
 ## 11. LGPD orientativa
 
@@ -151,6 +154,7 @@ Mesmo com dados mockados, a arquitetura deve nascer compatível com:
 - RLS habilitado em tabelas sensíveis;
 - RLS também habilitado nas tabelas auxiliares que sustentam respostas acadêmicas, docentes e calendárias restritas;
 - runtime do `api-core`, `ai-orchestrator` e `worker` executando com usuário de aplicação não-superuser;
+- overrides de identidade de teste desabilitados por padrão;
 - webhook protegido;
 - auditoria de acessos sensíveis;
 - logs sem PII crua;

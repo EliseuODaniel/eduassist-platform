@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import secrets
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -32,8 +33,7 @@ def get_settings() -> Settings:
 class HealthResponse(BaseModel):
     status: str
     service: str
-    api_core_url: str
-    ai_orchestrator_url: str
+    ready: bool
 
 
 app = FastAPI(
@@ -49,6 +49,12 @@ configure_observability(
     app=app,
     excluded_urls='/healthz,/meta',
 )
+
+
+def _require_internal_api_token(x_internal_api_token: str | None) -> None:
+    settings = get_settings()
+    if not x_internal_api_token or not secrets.compare_digest(x_internal_api_token, settings.internal_api_token):
+        raise HTTPException(status_code=401, detail='invalid_internal_api_token')
 
 
 def _extract_message(payload: dict[str, object]) -> dict[str, object] | None:
@@ -119,24 +125,24 @@ async def _consume_link_code(message: dict[str, object], challenge_code: str) ->
 
 @app.get('/healthz', response_model=HealthResponse)
 async def healthz() -> HealthResponse:
-    settings = get_settings()
     return HealthResponse(
         status='ok',
         service='telegram-gateway',
-        api_core_url=settings.api_core_url,
-        ai_orchestrator_url=settings.ai_orchestrator_url,
+        ready=True,
     )
 
 
 @app.get('/meta')
-async def meta() -> dict[str, str | None]:
+async def meta(
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, str | None]:
+    _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
     return {
         'service': 'telegram-gateway',
         'environment': settings.app_env,
-        'apiCoreUrl': settings.api_core_url,
-        'aiOrchestratorUrl': settings.ai_orchestrator_url,
         'botUsername': settings.telegram_bot_username,
+        'telegramConfigured': 'yes' if settings.telegram_bot_token else 'no',
     }
 
 

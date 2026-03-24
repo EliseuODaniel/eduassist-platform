@@ -15,6 +15,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - aplicar rate limiting;
 - resolver contexto de ator via `api-core`;
 - encaminhar mensagens conversacionais para o `ai-orchestrator` com token interno de serviço.
+- expor metadados operacionais apenas por endpoints internos autenticados.
 
 ### Dependências
 
@@ -57,9 +58,11 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - execução de fluxo LangGraph;
 - tool calling;
 - retrieval documental;
+- composição de resposta via provider configurável de LLM, com suporte atual a `Google Gemini` e `OpenAI`;
 - consulta a calendário público estruturado no `api-core`;
 - consulta a dados protegidos do `api-core` por rotas internas autenticadas entre serviços;
 - criação de handoffs humanos reais no `api-core` quando o fluxo entrar em suporte operacional;
+- execução real do caminho `GraphRAG` quando o modo avançado estiver habilitado e o workspace estiver pronto;
 - composição da resposta final;
 - emissão de metadados de confiança e fontes.
 
@@ -77,6 +80,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - não acessa banco diretamente fora de contracts aprovados;
 - não executa SQL livre;
 - só recebe dados mínimos por tool.
+- endpoints diagnósticos sensíveis exigem `X-Internal-Api-Token`.
 
 ## 5. `worker`
 
@@ -86,7 +90,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - parsing documental por backend configurável, com baseline local em `Markdown` e interface pronta para `Docling`;
 - embeddings densos para recuperação vetorial local;
 - publicação de chunks e metadados em `Postgres`;
-- indexação vetorial em `Qdrant`;
+- indexação vetorial em `Qdrant` com publicação por alias para reduzir janela de indisponibilidade;
 - geração de artefatos de `GraphRAG`;
 - reindexação;
 - mock data generation;
@@ -183,7 +187,8 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - engine principal de retrieval vetorial e híbrido;
 - suporte a dense + sparse retrieval;
 - suporte a multivectors e estratégias de late interaction;
-- coleções de documentos institucionais e índices auxiliares de conhecimento.
+- coleções de documentos institucionais e índices auxiliares de conhecimento;
+- publicação por alias para permitir rebuild seguro do índice ativo.
 
 ### `redis`
 

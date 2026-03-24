@@ -33,7 +33,7 @@ Para esse criterio, o gate considera o benchmark mais recente com execucao real 
 
 Na pratica, ele depende de:
 
-1. `make graphrag-benchmark-bootstrap`
+1. `make graphrag-benchmark-bootstrap` ou `make graphrag-benchmark-bootstrap-local`
 2. preencher `artifacts/graphrag/eduassist-public-benchmark/.env` com provider remoto ou local compativel
 3. se for fluxo local com GPU, subir `make graphrag-local-runtime-up`
 4. `make graphrag-benchmark-index`
@@ -51,7 +51,8 @@ Significa que:
 - as politicas de `RLS` estao funcionando;
 - o `ai-orchestrator` passou na suite formal de evals;
 - os fluxos principais, autorizacao e cenarios adversariais passaram;
-- existe baseline comparativo do benchmark de `GraphRAG`.
+- existe baseline comparativo do benchmark de `GraphRAG`;
+- o runtime principal com provider externo e o caminho `GraphRAG` local podem ser exercitados sem ajuste manual de codigo.
 
 ### Pronto para comparacao completa de retrieval avancado
 
@@ -66,7 +67,9 @@ Significa, alem do baseline local:
 
 Sem provider `GraphRAG` configurado e acessivel, o gate padrao deve passar e o gate estrito deve falhar.
 
+Com provider local ou remoto configurado corretamente, o gate estrito deve passar.
+
 Esse comportamento e intencional:
 
 - o produto principal nao depende de `GraphRAG` para funcionar;
-- `GraphRAG` continua sendo uma trilha avancada, medida e opcional.
+- `GraphRAG` continua sendo uma trilha avancada, medida e seletiva, ainda que o runtime principal ja consiga executa-la quando habilitada.

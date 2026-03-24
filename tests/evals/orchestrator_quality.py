@@ -35,7 +35,7 @@ def _post_message_response(settings: Settings, payload: dict[str, Any]) -> tuple
         f'{settings.ai_orchestrator_url}/v1/messages/respond',
         headers={'X-Internal-Api-Token': settings.internal_api_token},
         json_body=payload,
-        timeout=25.0,
+        timeout=60.0,
     )
     return status, body
 

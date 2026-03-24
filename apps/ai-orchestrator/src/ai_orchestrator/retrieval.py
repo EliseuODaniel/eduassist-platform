@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import shutil
 from time import monotonic
 from typing import Any
 
@@ -22,7 +23,7 @@ class RetrievalService:
         self.collection_name = collection_name
         self.embedding_model = embedding_model
         self.qdrant = QdrantClient(url=qdrant_url)
-        self.embedder = TextEmbedding(model_name=embedding_model)
+        self.embedder = _build_embedder(embedding_model)
 
     def hybrid_search(
         self,
@@ -92,7 +93,7 @@ class RetrievalService:
                 'eduassist.retrieval.collection': self.collection_name,
             },
         ):
-            exists = self.qdrant.collection_exists(self.collection_name)
+            exists = self._collection_exists(self.collection_name)
             set_span_attributes(**{'eduassist.retrieval.collection_exists': exists})
             if not exists:
                 return {'exists': False, 'collection': self.collection_name}
@@ -205,7 +206,7 @@ class RetrievalService:
                 'eduassist.retrieval.collection': self.collection_name,
             },
         ):
-            if not self.qdrant.collection_exists(self.collection_name):
+            if not self._collection_exists(self.collection_name):
                 set_span_attributes(**{'eduassist.retrieval.collection_exists': False})
                 return []
 
@@ -246,6 +247,13 @@ class RetrievalService:
                 )
             set_span_attributes(**{'eduassist.retrieval.result_count': len(hits)})
             return hits
+
+    def _collection_exists(self, collection_name: str) -> bool:
+        try:
+            self.qdrant.get_collection(collection_name)
+            return True
+        except Exception:
+            return False
 
     def _fuse_hits(
         self,
@@ -336,3 +344,14 @@ def get_retrieval_service(
         collection_name=collection_name,
         embedding_model=embedding_model,
     )
+
+
+def _build_embedder(model_name: str) -> TextEmbedding:
+    try:
+        return TextEmbedding(model_name=model_name)
+    except Exception as exc:
+        message = str(exc)
+        if 'NO_SUCHFILE' not in message and "File doesn't exist" not in message:
+            raise
+        shutil.rmtree('/tmp/fastembed_cache', ignore_errors=True)
+        return TextEmbedding(model_name=model_name)

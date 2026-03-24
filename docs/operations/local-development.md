@@ -36,6 +36,8 @@ Observação:
 - a etapa de bootstrap já foi executada e testada;
 - `Qdrant` ja foi integrado a stack local como base da fase de retrieval;
 - a fundacao documental ja sincroniza corpus mockado para `MinIO`, `Postgres` e `Qdrant`;
+- o runtime principal agora aceita provider externo configuravel de LLM, com suporte atual a `Google Gemini` e `OpenAI`;
+- `GOOGLE_API_KEY` pode ser salvo no `.env` local para ativar o modo externo sem expor a chave no Git;
 - o backend padrao local de parsing documental esta em `markdown`, com interface preparada para um backend `Docling` opcional nas fases seguintes.
 
 ## 4. Estratégia de ambientes
@@ -74,8 +76,10 @@ Status atual:
 - o `telegram-gateway` já processa `/start link_<codigo>` e conclui o vínculo pelo endpoint interno;
 - o `api-core` já expõe `GET /v1/calendar/public` e `GET /v1/internal/identity/context`;
 - o `worker` já faz sync idempotente do corpus documental mockado e reconstrói a coleção `school_documents` no `Qdrant`;
+- o `worker` agora publica a coleção do `Qdrant` por alias, criando uma coleção nova e promovendo-a ao final do sync para reduzir a janela de indisponibilidade;
 - o `ai-orchestrator` já expõe `retrieval/status` e `retrieval/search` com fusão de `Qdrant` e `PostgreSQL FTS`;
-- o `ai-orchestrator` já expõe `POST /v1/messages/respond` para FAQ pública, calendário público e negações seguras;
+- o `ai-orchestrator` já expõe `POST /v1/messages/respond` para FAQ pública, calendário público, negações seguras e composição final via provider externo quando a chave estiver configurada;
+- o `ai-orchestrator` já executa o caminho `graph_rag` no runtime principal quando `GRAPH_RAG_ENABLED=true` e o workspace estiver pronto;
 - o `telegram-gateway` já encaminha mensagens públicas ao `ai-orchestrator` e responde `/help`, FAQ e calendário pelo webhook;
 - o fluxo protegido do Telegram já responde resumo acadêmico com filtros por disciplina e bimestre, resumo financeiro com filtros por status e panorama consolidado para responsáveis, além de grade docente por turmas, disciplinas e horário para contas vinculadas;
 - o `admin-web` já expõe login real via `Keycloak` com OIDC + PKCE, leitura de sessão autenticada do `api-core` e emissão de challenge de vínculo em `/api/telegram-link/challenge`;
@@ -89,6 +93,8 @@ Status atual:
 - o detalhe do handoff no `admin-web` também já permite explorar o transcript com filtros por remetente, busca textual, janelas locais de mensagens e atalhos operacionais separados da nota de atendimento;
 - o `api-core` agora aplica `RLS` também ao domínio `conversation`, e o detalhe em escopo pessoal não devolve notas internas de operador ao usuário final;
 - `telegram_chat_id` em rotas protegidas do `api-core` e `POST /v1/messages/respond` no `ai-orchestrator` agora exigem `X-Internal-Api-Token`;
+- endpoints `/meta` e diagnósticos sensíveis dos serviços Python agora também exigem `X-Internal-Api-Token` e não devolvem URLs internas completas;
+- `ALLOW_TEST_IDENTITY_OVERRIDES` agora fica desligado por padrão; quando ligado para depuração, `user_external_code` continua restrito a chamadas internas autenticadas;
 - observabilidade distribuida base já esta ativa no Compose, com tracing entre `telegram-gateway`, `ai-orchestrator` e `api-core`.
 
 ### `compose:observability`
@@ -118,10 +124,17 @@ Status atual:
 - o `Prometheus` já responde em `http://localhost:9090` e raspa o endpoint de metricas do collector;
 - o `Loki` já responde em `http://localhost:3100` e recebe logs dos containers via `Promtail`;
 - o `Grafana` já sobe com datasources de `Tempo`, `Loki` e `Prometheus` provisionados em `http://localhost:3004`;
+- credenciais padrao do `Grafana` no ambiente local: `admin` / `admin123`;
 - o `Grafana` agora também provisiona os dashboards `EduAssist Tracing Overview`, `EduAssist Metrics Overview` e `EduAssist Ops Control Tower`;
 - o dashboard de metricas já mostra backlog atual, handoffs com `SLA` estourado, tickets sem responsavel, distribuicao por fila e carga ativa por operador;
 - `X-Trace-Id` e `X-Span-Id` já são devolvidos nas respostas dos serviços Python instrumentados;
 - a observabilidade local agora cobre traces, logs e metricas centralizadas.
+
+Observacao:
+
+- `http://localhost:3200/` pode responder `404`; isso e esperado no `Tempo`.
+- para checagem simples use `http://localhost:3200/ready`;
+- a visualizacao dos traces deve ser feita pelo `Grafana`.
 
 ### `compose:full`
 
@@ -211,8 +224,13 @@ Uso rápido do drill operacional:
 - `TELEGRAM_WEBHOOK_SECRET`
 - `LLM_PROVIDER`
 - `OPENAI_API_KEY`
+- `GOOGLE_MODEL`
 - `GOOGLE_API_KEY`
+- `GOOGLE_API_BASE_URL`
 - `GRAPH_RAG_ENABLED`
+- `GRAPH_RAG_WORKSPACE`
+- `GRAPH_RAG_LOCAL_CHAT_API_BASE`
+- `GRAPH_RAG_LOCAL_EMBEDDING_API_BASE`
 - `DOCUMENT_PIPELINE_BACKEND`
 - `DATABASE_URL_LOCAL`
 - `FOUNDATION_SEED`
@@ -243,6 +261,8 @@ Uso rápido do drill operacional:
 - `make db-seed-foundation`
 - `make db-seed-auth-bindings`
 - `make documents-sync`
+- `make graphrag-benchmark-bootstrap-local`
+- `make graphrag-benchmark-local-check`
 - `make observability-up`
 - `make observability-down`
 - `make observability-logs`
@@ -258,6 +278,9 @@ Uso rápido do drill operacional:
 - `make graphrag-benchmark-index-dry-run`
 - `make graphrag-benchmark-baseline`
 - `make graphrag-benchmark-run`
+- `make graphrag-benchmark-run-smoke`
+- `make release-readiness`
+- `make release-readiness-strict`
 - `make release-readiness`
 - `make release-readiness-strict`
 - `GET /v1/foundation/summary` no `api-core`

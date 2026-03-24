@@ -216,7 +216,7 @@ services:
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-eduassist}
       KEYCLOAK_ALLOWED_CLIENTS: ${KEYCLOAK_ALLOWED_CLIENTS:-eduassist-web,eduassist-cli}
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
-      ALLOW_TEST_IDENTITY_OVERRIDES: ${ALLOW_TEST_IDENTITY_OVERRIDES:-true}
+      ALLOW_TEST_IDENTITY_OVERRIDES: ${ALLOW_TEST_IDENTITY_OVERRIDES:-false}
       TELEGRAM_LINK_TTL_MINUTES: ${TELEGRAM_LINK_TTL_MINUTES:-15}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       OTEL_ENABLED: ${OTEL_ENABLED:-true}
@@ -251,24 +251,35 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8000
-      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_PROVIDER: ${LLM_PROVIDER:-google}
       API_CORE_URL: http://api-core:8000
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4}
+      GOOGLE_API_BASE_URL: ${GOOGLE_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-pro}
+      GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-flash}
       DATABASE_URL: ${DATABASE_APP_URL:-postgresql://eduassist_app:eduassist_app@postgres:5432/eduassist}
       QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
       QDRANT_DOCUMENTS_COLLECTION: ${QDRANT_DOCUMENTS_COLLECTION:-school_documents}
       DOCUMENT_EMBEDDING_MODEL: ${DOCUMENT_EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
-      GRAPH_RAG_ENABLED: ${GRAPH_RAG_ENABLED:-false}
+      GRAPH_RAG_ENABLED: ${GRAPH_RAG_ENABLED:-true}
+      GRAPH_RAG_WORKSPACE: ${GRAPH_RAG_WORKSPACE:-/workspace/artifacts/graphrag/eduassist-public-benchmark}
+      GRAPH_RAG_RESPONSE_TYPE: ${GRAPH_RAG_RESPONSE_TYPE:-List of 3-5 concise bullet points in Brazilian Portuguese}
+      GRAPH_RAG_LOCAL_CHAT_API_BASE: ${GRAPH_RAG_LOCAL_CHAT_API_BASE:-http://host.docker.internal:18080/v1}
+      GRAPH_RAG_LOCAL_EMBEDDING_API_BASE: ${GRAPH_RAG_LOCAL_EMBEDDING_API_BASE:-http://host.docker.internal:11435/v1}
+      GRAPH_RAG_LOCAL_CHAT_API_KEY: ${GRAPH_RAG_LOCAL_CHAT_API_KEY:-llama.cpp}
+      GRAPH_RAG_LOCAL_EMBEDDING_API_KEY: ${GRAPH_RAG_LOCAL_EMBEDDING_API_KEY:-ollama}
       OTEL_ENABLED: ${OTEL_ENABLED:-true}
       OTEL_SERVICE_NAMESPACE: ${OTEL_SERVICE_NAMESPACE:-eduassist-platform}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
     ports:
       - '${AI_ORCHESTRATOR_PORT:-8002}:8000'
+    volumes:
+      - ../../artifacts/graphrag:/workspace/artifacts/graphrag
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     depends_on:
       postgres:
         condition: service_healthy

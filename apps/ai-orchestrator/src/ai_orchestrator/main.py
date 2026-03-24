@@ -9,6 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from eduassist_observability import configure_observability
 
 from .graph import build_orchestration_graph, get_graph_blueprint, to_preview
+from .graph_rag_runtime import graph_rag_workspace_ready
 from .models import (
     MessageResponse,
     MessageResponseRequest,
@@ -37,12 +38,19 @@ class Settings(BaseSettings):
     openai_base_url: str = 'https://api.openai.com/v1'
     openai_model: str = 'gpt-5.4'
     google_api_key: str | None = None
-    google_model: str = 'gemini-2.5-pro'
+    google_api_base_url: str = 'https://generativelanguage.googleapis.com/v1beta'
+    google_model: str = 'gemini-2.5-flash'
     database_url: str = 'postgresql://eduassist:eduassist@postgres:5432/eduassist'
     qdrant_url: str = 'http://qdrant:6333'
     qdrant_documents_collection: str = 'school_documents'
     document_embedding_model: str = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
     graph_rag_enabled: bool = False
+    graph_rag_workspace: str = '/workspace/artifacts/graphrag/eduassist-public-benchmark'
+    graph_rag_response_type: str = 'List of 3-5 concise bullet points in Brazilian Portuguese'
+    graph_rag_local_chat_api_base: str = 'http://host.docker.internal:18080/v1'
+    graph_rag_local_embedding_api_base: str = 'http://host.docker.internal:11435/v1'
+    graph_rag_local_chat_api_key: str = 'llama.cpp'
+    graph_rag_local_embedding_api_key: str = 'ollama'
 
 
 @lru_cache
@@ -59,8 +67,7 @@ def _require_internal_api_token(x_internal_api_token: str | None) -> None:
 class HealthResponse(BaseModel):
     status: str
     service: str
-    provider: str
-    retrieval: str
+    ready: bool
 
 
 app = FastAPI(
@@ -80,30 +87,27 @@ configure_observability(
 
 @app.get('/healthz', response_model=HealthResponse)
 async def healthz() -> HealthResponse:
-    settings = get_settings()
     return HealthResponse(
         status='ok',
         service='ai-orchestrator',
-        provider=settings.llm_provider,
-        retrieval='qdrant-hybrid-live',
+        ready=True,
     )
 
 
 @app.get('/meta')
-async def meta() -> dict[str, object]:
+async def meta(
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
     return {
         'service': 'ai-orchestrator',
         'environment': settings.app_env,
         'provider': settings.llm_provider,
-        'apiCoreUrl': settings.api_core_url,
-        'openaiBaseUrl': settings.openai_base_url,
         'openaiModel': settings.openai_model,
         'googleModel': settings.google_model,
-        'databaseUrl': settings.database_url,
-        'qdrantUrl': settings.qdrant_url,
-        'qdrantDocumentsCollection': settings.qdrant_documents_collection,
-        'documentEmbeddingModel': settings.document_embedding_model,
+        'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
+        'retrievalBackend': 'qdrant-hybrid',
         'graphRagEnabled': settings.graph_rag_enabled,
     }
 
@@ -114,6 +118,8 @@ async def status() -> dict[str, object]:
     return {
         'service': 'ai-orchestrator',
         'ready': True,
+        'llmProvider': settings.llm_provider,
+        'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
         'capabilities': [
             'langgraph-state-machine',
             'tool-routing',
@@ -122,6 +128,7 @@ async def status() -> dict[str, object]:
             'provider-abstraction',
         ],
         'graphRagEnabled': settings.graph_rag_enabled,
+        'graphRagWorkspaceReady': graph_rag_workspace_ready(settings.graph_rag_workspace),
     }
 
 
@@ -133,8 +140,9 @@ async def capabilities() -> RuntimeCapabilities:
         llm_provider=settings.llm_provider,
         openai_model=settings.openai_model,
         google_model=settings.google_model,
-        qdrant_url=settings.qdrant_url,
+        llm_configured=bool(settings.openai_api_key) or bool(settings.google_api_key),
         graph_rag_enabled=settings.graph_rag_enabled,
+        graph_rag_workspace_ready=graph_rag_workspace_ready(settings.graph_rag_workspace),
         available_modes=[
             OrchestrationMode.hybrid_retrieval,
             OrchestrationMode.graph_rag,

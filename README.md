@@ -49,7 +49,8 @@ Construir uma plataforma robusta e funcional de atendimento escolar com IA para 
 - `Redis` para cache, locks, idempotência e filas leves.
 - `OpenTelemetry + Grafana + Tempo + Loki` para tracing distribuido, logs centralizados e investigacao operacional.
 - quando a trilha OpenAI for adotada, `Responses API` como interface preferencial para fluxos agentic e tool-using.
-- LLM remota via API paga, com benchmark inicial em `GPT-5.4` e benchmark paralelo em `Gemini 2.5 Pro`.
+- camada de provider de LLM remoto com suporte atual a `Google Gemini` e `OpenAI`.
+- no ambiente local atual, `Google Gemini` pode operar como compositora/orquestradora via `GOOGLE_API_KEY`, com fallback deterministico quando a chave nao estiver presente.
 
 ## Índice da documentação
 
@@ -139,8 +140,10 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - `api-core` já expõe calendário público estruturado e resolução interna de ator por `telegram_chat_id` para uso seguro do gateway;
 - `Keycloak` já sobe com import automático do realm `eduassist` e usuários mockados para testes locais;
 - o `worker` já sincroniza corpus documental mockado para `MinIO`, `Postgres` e `Qdrant`;
+- o `worker` agora publica o índice vetorial do `Qdrant` por alias, reduzindo a janela de indisponibilidade durante `documents-sync`;
 - o `ai-orchestrator` já expõe busca híbrida real via `Qdrant + PostgreSQL FTS` com citações;
-- o `ai-orchestrator` já responde mensagens reais com FAQ pública, calendário público, negação segura de fluxos protegidos e fallback determinístico quando não houver chave de LLM configurada;
+- o `ai-orchestrator` já responde mensagens reais com FAQ pública, calendário público, negação segura de fluxos protegidos, composição por `Gemini` ou `OpenAI` quando configurados e fallback determinístico quando não houver chave de LLM configurada;
+- o `ai-orchestrator` já executa o caminho `GraphRAG` no runtime principal quando o modo avançado estiver habilitado;
 - o `telegram-gateway` já encaminha mensagens públicas ao `ai-orchestrator` e devolve respostas úteis no formato do Telegram;
 - o `telegram-gateway`, o `ai-orchestrator` e o `api-core` agora trocam chamadas internas protegidas por `X-Internal-Api-Token`;
 - o `telegram-gateway` já responde consultas protegidas reais para contas vinculadas: resumo acadêmico com filtros por disciplina e bimestre, resumo financeiro com filtros por status e panorama multi-aluno para responsáveis, além de grade docente com consultas por turmas, disciplinas e horário para professores;
@@ -166,12 +169,15 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o `api-core` agora aplica contexto de ator por sessão e o banco já reforça acesso sensível com `PostgreSQL RLS` ativo em tabelas acadêmicas, financeiras e tabelas auxiliares de apoio como classes, vínculos familiares, atribuições docentes, itens de nota e calendário restrito;
 - o banco agora também reforça o domínio de atendimento humano com `RLS` em conversas, mensagens, tool calls e handoffs, preservando visão global só para papéis internos;
 - o detalhe de handoff em escopo pessoal não expõe notas internas de operador para o usuário final autenticado;
+- endpoints `/meta` e diagnósticos sensíveis agora exigem `X-Internal-Api-Token` e não devolvem URLs internas completas;
+- `ALLOW_TEST_IDENTITY_OVERRIDES` agora fica desabilitado por padrão, e o uso de `user_external_code` permanece restrito a chamadas internas autenticadas;
 - o projeto agora também possui ciclo operacional local de `backup + restore drill` para `Postgres`, `Qdrant` e `MinIO`, sem restaurar por cima da base principal;
 - existe uma suite de smoke local em `tests/e2e/local_smoke.py` para validar os fluxos principais e a pilha de observabilidade;
 - existe uma suite de regressao de autorizacao em `tests/e2e/authz_regression.py` para validar negativas, ambiguidades, bearer ausente e segredos invalidos;
 - existe uma suite adversarial em `tests/e2e/adversarial_regression.py` para validar tentativas de exfiltracao, prompt disclosure e resistencia operacional a consultas maliciosas;
 - existe uma suite formal de evals do `ai-orchestrator` em `tests/evals/orchestrator_quality.py`, com dataset versionado em `tests/evals/datasets/orchestrator_cases.json`, para validar grounding publico, calendario, negacao segura, ambiguidade controlada, handoff e retrieval documental;
 - existe uma trilha experimental em `tools/graphrag-benchmark` para benchmark seletivo de `GraphRAG` sobre o corpus institucional publico, com workspace bootstrapado, dataset de comparacao, runtime local hibrido com `llama.cpp` em Docker para chat com GPU e `Ollama` para embeddings, e runner que salva baseline hibrido e consultas `basic/local/global/drift` em artefatos, aceitando tanto provider remoto quanto endpoint local compativel com OpenAI;
+- o runtime principal tambem ja consegue executar consultas `GraphRAG` reais quando `GRAPH_RAG_ENABLED=true` e o workspace local estiver pronto;
 - existe um gate operacional final em `make release-readiness`, com relatorio salvo em `artifacts/readiness`, para consolidar runtime role, `RLS`, evals, smoke completo e baseline do benchmark seletivo;
 - existe um pipeline de exportacao do artigo academico para `.docx` via `make article-docx`, com metadados versionados no repositório;
 - seed foundation idempotente já disponível em `tools/mockgen`;
@@ -186,7 +192,7 @@ Expansões já aprovadas para a próxima etapa:
 
 ## Próximos passos imediatos
 
-1. Rodar o benchmark comparativo seletivo de `GraphRAG` com provider remoto ou endpoint local compativel e decidir se algum fluxo merece incorporacao.
-2. Ampliar a suite formal de evals com comparativos de qualidade multi-provedor e cenarios adversariais ainda mais amplos.
+1. Medir custo e qualidade entre `Gemini` e `OpenAI` no runtime principal com evals comparativas.
+2. Refinar os prompts e contratos do planner/compositor agora que o provider externo ja esta integrado.
 3. Expandir o drill de backup/restore para politicas mais ricas de retenção e cenarios de recuperação.
-4. Expandir ainda mais a seed para cenários amplos de tickets, filas, operadores e resoluções, partindo da carga operacional incremental já disponível.
+4. Ampliar ainda mais as seeds e os cenarios operacionais de carga humana.

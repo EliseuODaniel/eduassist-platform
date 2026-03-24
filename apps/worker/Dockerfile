@@ -9,9 +9,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /workspace/apps/worker
 
 COPY apps/worker/pyproject.toml ./
+COPY apps/worker/uv.lock ./
 COPY apps/worker/src ./src
 COPY data/corpus /workspace/data/corpus
 
-RUN uv sync --no-dev
+RUN uv sync --locked --no-dev
 
 CMD ["uv", "run", "python", "-m", "worker_app.main"]

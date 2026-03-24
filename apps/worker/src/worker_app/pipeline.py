@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import io
+import shutil
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import date
@@ -46,7 +48,7 @@ class DocumentChunkRecord:
 class DocumentPipeline:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.embedder = TextEmbedding(model_name=settings.document_embedding_model)
+        self.embedder = _build_embedder(settings.document_embedding_model)
         self.qdrant = QdrantClient(url=settings.qdrant_url)
         self.minio = Minio(
             settings.minio_host,
@@ -59,11 +61,12 @@ class DocumentPipeline:
         documents = self._load_corpus_documents(Path(self.settings.document_corpus_dir))
         self._ensure_minio_bucket()
         indexed = self._replace_document_catalog(documents)
-        self._rebuild_qdrant_index(indexed)
+        published_collection = self._publish_qdrant_index(indexed)
         return {
             'document_count': len(documents),
             'chunk_count': sum(len(item['chunks']) for item in indexed),
             'collection': self.settings.qdrant_documents_collection,
+            'published_collection': published_collection,
         }
 
     def _load_corpus_documents(self, root: Path) -> list[CorpusDocument]:
@@ -385,11 +388,9 @@ class DocumentPipeline:
         )
         return object_path
 
-    def _rebuild_qdrant_index(self, indexed_documents: list[dict[str, object]]) -> None:
-        collection = self.settings.qdrant_documents_collection
-        if self.qdrant.collection_exists(collection):
-            self.qdrant.delete_collection(collection)
-
+    def _publish_qdrant_index(self, indexed_documents: list[dict[str, object]]) -> str:
+        alias_name = self.settings.qdrant_documents_collection
+        target_collection = f'{alias_name}__{int(time.time())}'
         payloads: list[dict[str, object]] = []
         ids: list[str] = []
         texts: list[str] = []
@@ -418,25 +419,92 @@ class DocumentPipeline:
                 )
 
         embeddings = list(self.embedder.embed(texts))
+        if self._collection_exists(target_collection):
+            self.qdrant.delete_collection(target_collection)
+
         if not embeddings:
             self.qdrant.create_collection(
-                collection_name=collection,
+                collection_name=target_collection,
                 vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE),
             )
-            return
+            self._activate_collection_alias(alias_name=alias_name, target_collection=target_collection)
+            return target_collection
 
         self.qdrant.create_collection(
-            collection_name=collection,
+            collection_name=target_collection,
             vectors_config=models.VectorParams(size=len(embeddings[0]), distance=models.Distance.COSINE),
         )
         points = [
             models.PointStruct(id=point_id, vector=vector.tolist(), payload=payload)
             for point_id, vector, payload in zip(ids, embeddings, payloads, strict=True)
         ]
-        self.qdrant.upsert(collection_name=collection, points=points)
+        self.qdrant.upsert(collection_name=target_collection, points=points)
+        self._activate_collection_alias(alias_name=alias_name, target_collection=target_collection)
+        return target_collection
+
+    def _activate_collection_alias(self, *, alias_name: str, target_collection: str) -> None:
+        current_target = self._resolve_alias_target(alias_name)
+
+        if current_target == alias_name and self._collection_exists(alias_name):
+            self.qdrant.delete_collection(alias_name)
+            current_target = None
+
+        operations: list[models.CreateAliasOperation | models.DeleteAliasOperation] = []
+        if current_target:
+            operations.append(
+                models.DeleteAliasOperation(
+                    delete_alias=models.DeleteAlias(alias_name=alias_name),
+                )
+            )
+        operations.append(
+            models.CreateAliasOperation(
+                create_alias=models.CreateAlias(
+                    collection_name=target_collection,
+                    alias_name=alias_name,
+                )
+            )
+        )
+        self.qdrant.update_collection_aliases(change_aliases_operations=operations)
+
+        if current_target and current_target != target_collection and current_target.startswith(f'{alias_name}__'):
+            self.qdrant.delete_collection(current_target)
+
+    def _resolve_alias_target(self, alias_name: str) -> str | None:
+        try:
+            aliases = self.qdrant.get_aliases()
+        except Exception:
+            aliases = None
+
+        alias_items = getattr(aliases, 'aliases', None)
+        if isinstance(alias_items, list):
+            for item in alias_items:
+                if getattr(item, 'alias_name', None) == alias_name:
+                    return str(getattr(item, 'collection_name'))
+
+        if self._collection_exists(alias_name):
+            return alias_name
+        return None
+
+    def _collection_exists(self, collection_name: str) -> bool:
+        try:
+            self.qdrant.get_collection(collection_name)
+            return True
+        except Exception:
+            return False
 
     def _slugify(self, value: str) -> str:
         normalized = ''.join(char.lower() if char.isalnum() else '-' for char in value)
         while '--' in normalized:
             normalized = normalized.replace('--', '-')
         return normalized.strip('-')
+
+
+def _build_embedder(model_name: str) -> TextEmbedding:
+    try:
+        return TextEmbedding(model_name=model_name)
+    except Exception as exc:
+        message = str(exc)
+        if 'NO_SUCHFILE' not in message and 'File doesn\'t exist' not in message:
+            raise
+        shutil.rmtree('/tmp/fastembed_cache', ignore_errors=True)
+        return TextEmbedding(model_name=model_name)

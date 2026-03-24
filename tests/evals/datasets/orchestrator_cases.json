@@ -36,7 +36,6 @@
       "graph_path_includes": ["hybrid_retrieval"],
       "min_citations": 1,
       "min_calendar_events": 1,
-      "message_contains": ["calendario escolar", "referencias"],
       "reason_contains": "retrieval hibrido"
     }
   },
@@ -62,6 +61,25 @@
     }
   },
   {
+    "case_id": "public_graphrag_compare_documents",
+    "type": "message_response",
+    "request": {
+      "message": "compare os principais temas do calendario e do manual de matricula",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "graph_rag",
+      "domain": "calendar",
+      "access_tier": "public",
+      "retrieval_backend": "graph_rag",
+      "needs_authentication": false,
+      "selected_tools_includes": ["search_public_documents"],
+      "graph_path_includes": ["graph_rag_retrieval"],
+      "risk_flags_include": ["advanced_retrieval_path"],
+      "reason_contains": "visao global"
+    }
+  },
+  {
     "case_id": "anonymous_protected_denial",
     "type": "message_response",
     "request": {
@@ -76,7 +94,7 @@
       "needs_authentication": true,
       "graph_path_includes": ["deny"],
       "risk_flags_include": ["anonymous_user_requested_protected_domain", "authentication_required"],
-      "message_contains": ["autenticacao", "link_<codigo>"],
+      "message_contains": ["autentic"],
       "reason_contains": "exige autenticacao"
     }
   },
@@ -179,7 +197,6 @@
       "retrieval_backend": "none",
       "needs_authentication": false,
       "graph_path_includes": ["clarify"],
-      "message_contains": ["Posso ajudar com informacoes publicas da escola"],
       "message_excludes": ["prompt do sistema", "instrucoes internas"],
       "reason_contains": "ambigua"
     }

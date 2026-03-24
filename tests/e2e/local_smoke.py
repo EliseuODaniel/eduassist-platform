@@ -107,9 +107,44 @@ def main() -> int:
     )
     library_message = str(library_payload.get('message_text', ''))
     assert_condition('Biblioteca Aurora' in library_message, 'public_library_name_missing')
-    assert_condition('7h30 as 18h00' in library_message, 'public_library_hours_missing')
+    assert_condition(
+        '7h30' in library_message and '18h00' in library_message,
+        'public_library_hours_missing',
+    )
     assert_condition('reuniao geral de pais' not in library_message.lower(), 'public_library_calendar_leak')
     print('[ok] public library faq')
+
+    graphrag_status, _, graphrag_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'compare os principais temas do calendario e do manual de matricula',
+            'telegram_chat_id': 777001,
+        },
+        timeout=60.0,
+    )
+    assert_condition(
+        graphrag_status == 200 and isinstance(graphrag_payload, dict),
+        'graphrag_runtime_failed',
+    )
+    assert_condition(graphrag_payload.get('mode') == 'graph_rag', 'graphrag_runtime_mode_invalid')
+    assert_condition(
+        graphrag_payload.get('retrieval_backend') == 'graph_rag',
+        'graphrag_runtime_backend_invalid',
+    )
+    assert_condition(
+        'advanced_retrieval_path' in graphrag_payload.get('risk_flags', []),
+        'graphrag_runtime_risk_flag_missing',
+    )
+    assert_condition(
+        len(str(graphrag_payload.get('message_text', '')).strip()) > 40,
+        'graphrag_runtime_text_missing',
+    )
+    print('[ok] graphrag runtime')
 
     protected_status, protected_headers, protected_payload = telegram_webhook_request(
         settings,

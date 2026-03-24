@@ -8,8 +8,9 @@ from typing import Any
 
 import httpx
 from eduassist_observability import record_counter, record_histogram, set_span_attributes, start_span
-from openai import AsyncOpenAI
 
+from .graph_rag_runtime import graph_rag_workspace_ready, run_graph_rag_query
+from .llm_provider import compose_with_provider
 from .graph import build_orchestration_graph, to_preview
 from .models import (
     CalendarEventCard,
@@ -78,6 +79,25 @@ PUBLIC_ENTITY_HINTS = {
     'laboratorio de ciencias': 'laboratorio',
     'secretaria': 'secretaria',
     'portaria': 'portaria',
+}
+PROMPT_DISCLOSURE_TERMS = {
+    'prompt',
+    'system prompt',
+    'prompt do sistema',
+    'prompt de sistema',
+    'instrucoes internas',
+    'instrucoes ocultas',
+    'ocultas do sistema',
+    'agents.md',
+    'policy.rego',
+}
+PROMPT_BYPASS_TERMS = {
+    'ignore todas as instrucoes',
+    'ignore as instrucoes',
+    'revele',
+    'divulgue',
+    'mostre o prompt',
+    'me diga o prompt',
 }
 
 
@@ -150,6 +170,13 @@ def _contains_any(message: str, terms: set[str]) -> bool:
 def _extract_public_entity_hints(message: str) -> set[str]:
     lowered = _normalize_text(message)
     return {canonical for term, canonical in PUBLIC_ENTITY_HINTS.items() if term in lowered}
+
+
+def _is_prompt_disclosure_probe(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(term in normalized for term in PROMPT_DISCLOSURE_TERMS) or any(
+        term in normalized for term in PROMPT_BYPASS_TERMS
+    )
 
 
 def _retrieval_hits_cover_query_hints(retrieval_hits: list[Any], query_hints: set[str]) -> bool:
@@ -963,54 +990,6 @@ def _compose_deterministic_answer(
     return '\n'.join(sections)
 
 
-async def _compose_with_openai(
-    *,
-    settings: Any,
-    request: MessageResponseRequest,
-    preview: Any,
-    citations: list[MessageResponseCitation],
-    calendar_events: list[CalendarEventCard],
-) -> str | None:
-    if settings.llm_provider != 'openai' or not settings.openai_api_key:
-        return None
-
-    snippets = '\n\n'.join(
-        f'Fonte {index}: {citation.document_title} ({citation.version_label})\nTrecho: {citation.excerpt}'
-        for index, citation in enumerate(citations, start=1)
-    )
-    calendar_context = '\n'.join(_format_event_line(event) for event in calendar_events[:4])
-
-    instructions = (
-        'Voce e o assistente EduAssist de uma escola de ensino medio. '
-        'Responda em portugues do Brasil, de forma objetiva e educada. '
-        'Use apenas o contexto fornecido. Nao invente regras, datas ou documentos. '
-        'Se a pergunta exigir autenticacao, diga isso com clareza. '
-        'Se houver calendario estruturado, priorize-o. Nao cite fontes inline; elas serao anexadas depois.'
-    )
-    prompt = (
-        f'Pergunta do usuario:\n{request.message}\n\n'
-        f'Roteamento:\n- modo: {preview.mode.value}\n'
-        f'- dominio: {preview.classification.domain.value}\n'
-        f'- autenticacao necessaria: {preview.needs_authentication}\n\n'
-        f'Eventos estruturados:\n{calendar_context or "nenhum"}\n\n'
-        f'Trechos citaveis:\n{snippets or "nenhum"}'
-    )
-
-    try:
-        client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
-        response = await client.responses.create(
-            model=settings.openai_model,
-            instructions=instructions,
-            input=prompt,
-        )
-        text = (response.output_text or '').strip()
-        if not text:
-            return None
-        return text
-    except Exception:
-        return None
-
-
 async def generate_message_response(*, request: MessageResponseRequest, settings: Any) -> MessageResponse:
     started_at = monotonic()
     with start_span(
@@ -1055,6 +1034,7 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
         calendar_events: list[CalendarEventCard] = []
         query_hints: set[str] = set()
         retrieval_supported = True
+        graph_rag_answer: dict[str, str] | None = None
 
         if preview.mode is OrchestrationMode.hybrid_retrieval:
             with start_span('eduassist.orchestration.public_retrieval', tracer_name='eduassist.ai_orchestrator.runtime'):
@@ -1091,6 +1071,46 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                 if preview.classification.domain is QueryDomain.calendar:
                     calendar_events = await _fetch_public_calendar(settings=settings)
                     set_span_attributes(**{'eduassist.calendar.event_count': len(calendar_events)})
+        elif preview.mode is OrchestrationMode.graph_rag:
+            with start_span('eduassist.orchestration.graph_rag', tracer_name='eduassist.ai_orchestrator.runtime'):
+                set_span_attributes(
+                    **{
+                        'eduassist.graph_rag.workspace_ready': graph_rag_workspace_ready(settings.graph_rag_workspace),
+                    }
+                )
+                graph_rag_answer = await run_graph_rag_query(
+                    settings=settings,
+                    query=request.message,
+                )
+                if graph_rag_answer is not None:
+                    set_span_attributes(
+                        **{
+                            'eduassist.graph_rag.method': graph_rag_answer.get('method'),
+                            'eduassist.graph_rag.response_length': len(graph_rag_answer.get('text', '')),
+                        }
+                    )
+                else:
+                    retrieval_service = get_retrieval_service(
+                        database_url=settings.database_url,
+                        qdrant_url=settings.qdrant_url,
+                        collection_name=settings.qdrant_documents_collection,
+                        embedding_model=settings.document_embedding_model,
+                    )
+                    search = retrieval_service.hybrid_search(
+                        query=request.message,
+                        top_k=4,
+                        visibility='public',
+                        category=None,
+                    )
+                    retrieval_hits = search.hits
+                    citations = _collect_citations(retrieval_hits)
+                    set_span_attributes(
+                        **{
+                            'eduassist.graph_rag.fallback': True,
+                            'eduassist.retrieval.hit_count': len(retrieval_hits),
+                            'eduassist.retrieval.citation_count': len(citations),
+                        }
+                    )
 
         if preview.mode is OrchestrationMode.structured_tool:
             with start_span('eduassist.orchestration.structured_tool', tracer_name='eduassist.ai_orchestrator.runtime'):
@@ -1119,20 +1139,44 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                             }
                         )
                 message_text = _compose_handoff_answer(handoff_payload)
+        elif preview.mode is OrchestrationMode.graph_rag and graph_rag_answer is not None:
+            set_span_attributes(
+                **{
+                    'eduassist.orchestration.used_llm': False,
+                    'eduassist.orchestration.graph_rag_live': True,
+                }
+            )
+            message_text = graph_rag_answer['text']
         else:
             with start_span('eduassist.orchestration.answer_composition', tracer_name='eduassist.ai_orchestrator.runtime'):
                 if preview.mode is OrchestrationMode.hybrid_retrieval and not retrieval_supported:
                     set_span_attributes(**{'eduassist.orchestration.used_llm': False})
                     message_text = _compose_public_gap_answer(query_hints)
+                elif preview.mode is OrchestrationMode.clarify and _is_prompt_disclosure_probe(request.message):
+                    set_span_attributes(
+                        **{
+                            'eduassist.orchestration.used_llm': False,
+                            'eduassist.orchestration.safe_clarify_guardrail': True,
+                        }
+                    )
+                    message_text = (
+                        f'{DEFAULT_PUBLIC_HELP} '
+                        'Nao posso ajudar com detalhes internos de configuracao do sistema.'
+                    )
                 else:
-                    llm_text = await _compose_with_openai(
+                    llm_text = await compose_with_provider(
                         settings=settings,
-                        request=request,
+                        request_message=request.message,
                         preview=preview,
                         citations=citations,
                         calendar_events=calendar_events,
                     )
-                    set_span_attributes(**{'eduassist.orchestration.used_llm': bool(llm_text)})
+                    set_span_attributes(
+                        **{
+                            'eduassist.orchestration.used_llm': bool(llm_text),
+                            'eduassist.orchestration.llm_provider': settings.llm_provider,
+                        }
+                    )
                     message_text = llm_text or _compose_deterministic_answer(
                         preview=preview,
                         retrieval_hits=retrieval_hits,

@@ -63,8 +63,7 @@ from api_core.services.telegram_link import create_telegram_link_challenge, cons
 class HealthResponse(BaseModel):
     status: str
     service: str
-    environment: str
-    database: str
+    ready: bool
 
 
 app = FastAPI(
@@ -95,6 +94,9 @@ def _resolve_request_context(
     bearer_token = extract_bearer_token(authorization)
 
     if telegram_chat_id is not None:
+        _require_internal_api_token(x_internal_api_token)
+
+    if user_external_code is not None:
         _require_internal_api_token(x_internal_api_token)
 
     with session_scope() as session:
@@ -293,27 +295,25 @@ async def _teacher_schedule_payload(
 
 @app.get('/healthz', response_model=HealthResponse)
 async def healthz() -> HealthResponse:
-    settings = get_settings()
     return HealthResponse(
         status='ok',
         service='api-core',
-        environment=settings.app_env,
-        database='configured',
+        ready=True,
     )
 
 
 @app.get('/meta')
-async def meta() -> dict[str, str | bool]:
+async def meta(
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, str | bool]:
+    _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
     return {
         'service': 'api-core',
         'environment': settings.app_env,
         'logLevel': settings.log_level,
-        'databaseUrl': settings.database_url,
-        'redisUrl': settings.redis_url,
-        'opaUrl': settings.opa_url,
-        'keycloakIssuer': settings.keycloak_issuer,
-        'keycloakJwksUrl': settings.keycloak_jwks_url,
+        'authProvider': 'keycloak',
+        'policyProvider': 'opa',
         'allowTestIdentityOverrides': settings.allow_test_identity_overrides,
     }
 
