@@ -78,6 +78,14 @@ PUBLIC_ENTITY_HINTS = {
     'cantina': 'cantina',
     'laboratorio': 'laboratorio',
     'laboratorio de ciencias': 'laboratorio',
+    'academia': 'academia',
+    'piscina': 'piscina',
+    'quadra': 'quadra',
+    'quadra de tenis': 'quadra de tenis',
+    'tenis': 'tenis',
+    'futebol': 'futebol',
+    'danca': 'aulas de danca',
+    'dança': 'aulas de danca',
     'secretaria': 'secretaria',
     'portaria': 'portaria',
 }
@@ -340,6 +348,9 @@ def _is_comparative_query(message: str) -> bool:
 
 
 def _is_follow_up_query(message: str) -> bool:
+    raw = message.strip().lower()
+    if raw.startswith('é ') or raw == 'é':
+        return False
     normalized = _normalize_text(message).strip()
     if len(normalized) > 180:
         return False
@@ -395,6 +406,38 @@ def _extract_salient_terms(message: str) -> set[str]:
     if 'biblioteca' in normalized:
         tokens.add('biblioteca')
     return tokens
+
+
+def _extract_public_gap_focus(message: str) -> str | None:
+    normalized = _normalize_text(message)
+    if _message_matches_term(normalized, 'confessional'):
+        return 'se a escola e confessional'
+
+    facility_labels: list[str] = []
+    has_tennis_court = _message_matches_term(normalized, 'quadra de tenis')
+    for term, label in [
+        ('academia', 'academia'),
+        ('piscina', 'piscina'),
+        ('quadra de tenis', 'quadra de tenis'),
+        ('quadra', 'quadra'),
+        ('tenis', 'tenis'),
+        ('futebol', 'futebol'),
+        ('danca', 'aulas de danca'),
+        ('dança', 'aulas de danca'),
+    ]:
+        if has_tennis_court and term in {'quadra', 'tenis'}:
+            continue
+        if _message_matches_term(normalized, term) and label not in facility_labels:
+            facility_labels.append(label)
+
+    if facility_labels:
+        if len(facility_labels) == 1:
+            return f'se a escola possui {facility_labels[0]}'
+        if len(facility_labels) == 2:
+            return f'se a escola possui {facility_labels[0]} e {facility_labels[1]}'
+        return f"se a escola possui {', '.join(facility_labels[:-1])} e {facility_labels[-1]}"
+
+    return None
 
 
 def _contains_high_risk_reasoning(message: str) -> bool:
@@ -483,7 +526,7 @@ def _compose_answerability_gap_answer(assessment: PublicAnswerabilityAssessment,
             'A pergunta exige uma regra, excecao ou condicao que nao esta suficientemente sustentada '
             'pela base publica atual. Posso responder apenas o que estiver explicitamente documentado.'
         )
-    return _compose_public_gap_answer(assessment.unsupported_terms)
+    return _compose_public_gap_answer(assessment.unsupported_terms, message)
 
 
 def _extract_recent_user_message(recent_messages: list[dict[str, Any]]) -> str | None:
@@ -580,7 +623,13 @@ def _filter_retrieval_hits_by_query_hints(retrieval_hits: list[Any], query_hints
     return filtered_hits or retrieval_hits
 
 
-def _compose_public_gap_answer(query_hints: set[str]) -> str:
+def _compose_public_gap_answer(query_hints: set[str], message: str | None = None) -> str:
+    focus = _extract_public_gap_focus(message or '')
+    if focus:
+        return (
+            f'A base publica atual nao informa {focus}. '
+            'Se isso for um criterio importante, a base documental precisa ser ampliada ou a escola precisa publicar essa informacao de forma oficial.'
+        )
     if query_hints:
         labels = ', '.join(sorted(query_hints))
         return (
@@ -1628,11 +1677,26 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                 }
             )
             message_text = graph_rag_answer['text']
+        elif preview.mode is OrchestrationMode.deny:
+            set_span_attributes(
+                **{
+                    'eduassist.orchestration.used_llm': False,
+                    'eduassist.orchestration.answer_guardrail': 'deterministic_deny',
+                }
+            )
+            message_text = _compose_deterministic_answer(
+                preview=preview,
+                retrieval_hits=retrieval_hits,
+                citations=[],
+                calendar_events=calendar_events,
+                query_hints=query_hints,
+            )
         else:
             with start_span('eduassist.orchestration.answer_composition', tracer_name='eduassist.ai_orchestrator.runtime'):
                 if preview.mode is OrchestrationMode.hybrid_retrieval and not retrieval_supported:
                     set_span_attributes(**{'eduassist.orchestration.used_llm': False})
-                    message_text = _compose_public_gap_answer(query_hints)
+                    citations = []
+                    message_text = _compose_public_gap_answer(query_hints, request.message)
                 elif preview.mode is OrchestrationMode.hybrid_retrieval and _is_negative_requirement_query(request.message):
                     set_span_attributes(
                         **{
@@ -1648,6 +1712,7 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                             'eduassist.orchestration.answer_guardrail': 'comparative_abstention',
                         }
                     )
+                    citations = []
                     message_text = _compose_comparative_gap_answer()
                 elif (
                     preview.mode is OrchestrationMode.hybrid_retrieval
@@ -1660,6 +1725,8 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                             'eduassist.orchestration.answer_guardrail': 'answerability_abstention',
                         }
                     )
+                    if not public_answerability.high_risk_reasoning:
+                        citations = []
                     message_text = _compose_answerability_gap_answer(public_answerability, request.message)
                 elif preview.mode is OrchestrationMode.clarify and _is_prompt_disclosure_probe(request.message):
                     set_span_attributes(

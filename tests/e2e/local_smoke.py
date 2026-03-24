@@ -251,7 +251,59 @@ def main() -> int:
         'diferenciais documentados desta escola' in comparison_message.lower(),
         'public_comparison_followup_missing',
     )
+    assert_condition(not comparison_payload.get('citations'), 'public_comparison_citations_should_be_empty')
     print('[ok] public comparison abstention')
+
+    confessional_status, _, confessional_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e uma escola confessional?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        confessional_status == 200 and isinstance(confessional_payload, dict),
+        'public_confessional_query_failed',
+    )
+    confessional_message = str(confessional_payload.get('message_text', ''))
+    assert_condition(
+        'nao informa se a escola e confessional' in confessional_message.lower(),
+        'public_confessional_gap_missing',
+    )
+    assert_condition('contexto' not in confessional_message.lower(), 'public_confessional_context_leak')
+    assert_condition(not confessional_payload.get('citations'), 'public_confessional_citations_should_be_empty')
+    print('[ok] public confessional gap')
+
+    facilities_status, _, facilities_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'tem academia, piscina, quadra de tenis, futebol, aulas de danca?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        facilities_status == 200 and isinstance(facilities_payload, dict),
+        'public_facilities_query_failed',
+    )
+    assert_condition(facilities_payload.get('mode') == 'hybrid_retrieval', 'public_facilities_mode_invalid')
+    facilities_message = str(facilities_payload.get('message_text', ''))
+    assert_condition(
+        'nao informa se a escola possui academia, piscina, quadra de tenis, futebol e aulas de danca'
+        in facilities_message.lower(),
+        'public_facilities_gap_missing',
+    )
+    assert_condition(not facilities_payload.get('citations'), 'public_facilities_citations_should_be_empty')
+    print('[ok] public facilities gap')
 
     threaded_library_one_status, _, threaded_library_one_payload = request(
         'POST',

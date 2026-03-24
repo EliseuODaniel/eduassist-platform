@@ -103,6 +103,9 @@ def _assert_message_response(case: dict[str, Any], payload: dict[str, Any]) -> N
 
     min_citations = int(expected.get('min_citations', 0))
     assert_condition(len(citations) >= min_citations, f'{case_id}:citation_count_too_low')
+    max_citations = expected.get('max_citations')
+    if max_citations is not None:
+        assert_condition(len(citations) <= int(max_citations), f'{case_id}:citation_count_too_high')
     for citation in citations[:min_citations]:
         assert_condition(isinstance(citation, dict), f'{case_id}:citation_invalid')
         for field_name in ('document_title', 'version_label', 'storage_path', 'chunk_id', 'excerpt'):

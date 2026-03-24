@@ -133,7 +133,51 @@
       "needs_authentication": false,
       "selected_tools_includes": ["search_public_documents"],
       "graph_path_includes": ["hybrid_retrieval"],
+      "max_citations": 0,
       "message_contains": ["nao sustenta uma comparacao justa", "diferenciais documentados desta escola"],
+      "message_excludes": ["Fontes:"],
+      "reason_contains": "retrieval hibrido"
+    }
+  },
+  {
+    "case_id": "public_confessional_gap",
+    "type": "message_response",
+    "request": {
+      "message": "e uma escola confessional?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "hybrid_retrieval",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "qdrant_hybrid",
+      "needs_authentication": false,
+      "selected_tools_includes": ["search_public_documents"],
+      "graph_path_includes": ["hybrid_retrieval"],
+      "max_citations": 0,
+      "message_contains": ["nao informa se a escola e confessional"],
+      "message_excludes": ["contexto", "Fontes:"],
+      "reason_contains": "retrieval hibrido"
+    }
+  },
+  {
+    "case_id": "public_infrastructure_gap",
+    "type": "message_response",
+    "request": {
+      "message": "tem academia, piscina, quadra de tenis, futebol, aulas de danca?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "hybrid_retrieval",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "qdrant_hybrid",
+      "needs_authentication": false,
+      "selected_tools_includes": ["search_public_documents"],
+      "graph_path_includes": ["hybrid_retrieval"],
+      "max_citations": 0,
+      "message_contains": ["nao informa se a escola possui academia, piscina, quadra de tenis, futebol e aulas de danca"],
+      "message_excludes": ["ambigua", "Fontes:"],
       "reason_contains": "retrieval hibrido"
     }
   },
