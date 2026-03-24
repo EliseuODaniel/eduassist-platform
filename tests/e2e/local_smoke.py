@@ -174,6 +174,26 @@ def main() -> int:
     assert_condition('financeiro' in capabilities_message.lower(), 'public_capabilities_finance_missing')
     print('[ok] public assistant capabilities')
 
+    thanks_status, _, thanks_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'obrigado',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        thanks_status == 200 and isinstance(thanks_payload, dict),
+        'public_acknowledgement_query_failed',
+    )
+    thanks_message = str(thanks_payload.get('message_text', ''))
+    assert_condition('por nada' in thanks_message.lower() or 'perfeito' in thanks_message.lower(), 'public_acknowledgement_missing')
+    print('[ok] public acknowledgement turn')
+
     routing_status, _, routing_payload = request(
         'POST',
         f'{settings.ai_orchestrator_url}/v1/messages/respond',
@@ -194,6 +214,38 @@ def main() -> int:
     assert_condition('financeiro' in routing_message.lower(), 'public_routing_finance_missing')
     assert_condition('prazo' in routing_message.lower(), 'public_routing_eta_missing')
     print('[ok] public service routing')
+
+    _, _, _ = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quero resolver um boleto',
+            'telegram_chat_id': 777002,
+        },
+    )
+    routing_follow_up_status, _, routing_follow_up_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'com quem eu falo?',
+            'telegram_chat_id': 777002,
+        },
+    )
+    assert_condition(
+        routing_follow_up_status == 200 and isinstance(routing_follow_up_payload, dict),
+        'public_routing_followup_failed',
+    )
+    routing_follow_up_message = str(routing_follow_up_payload.get('message_text', ''))
+    assert_condition('financeiro' in routing_follow_up_message.lower(), 'public_routing_followup_finance_missing')
+    print('[ok] public service routing follow-up')
 
     library_status, _, library_payload = request(
         'POST',
@@ -525,6 +577,26 @@ def main() -> int:
     assert_condition('REQ-' in request_status_message, 'public_request_status_protocol_missing')
     assert_condition('direcao' in request_status_message.lower(), 'public_request_status_target_missing')
     print('[ok] public institutional request status')
+
+    request_eta_status, _, request_eta_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o prazo?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        request_eta_status == 200 and isinstance(request_eta_payload, dict),
+        'public_institutional_request_eta_failed',
+    )
+    request_eta_message = str(request_eta_payload.get('message_text', ''))
+    assert_condition('2 dias uteis' in request_eta_message.lower(), 'public_request_eta_missing')
+    print('[ok] public institutional request eta')
 
     visual_status, _, visual_payload = request(
         'POST',

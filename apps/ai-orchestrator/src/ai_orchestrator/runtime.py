@@ -14,7 +14,7 @@ from eduassist_observability import record_counter, record_histogram, set_span_a
 from PIL import Image, ImageDraw, ImageFont
 
 from .graph_rag_runtime import graph_rag_workspace_ready, run_graph_rag_query
-from .llm_provider import compose_with_provider, revise_with_provider
+from .llm_provider import compose_with_provider, polish_structured_with_provider, revise_with_provider
 from .graph import build_orchestration_graph, to_preview
 from .models import (
     CalendarEventCard,
@@ -154,10 +154,30 @@ PUBLIC_VISIT_TERMS = {
     'conhecer a escola',
     'agendar visita',
 }
+ACKNOWLEDGEMENT_TERMS = {'obrigado', 'obrigada', 'valeu', 'perfeito', 'entendi', 'beleza', 'ok', 'ok obrigado', 'ok obrigada'}
 WORKFLOW_STATUS_TERMS = {'status', 'andamento', 'situacao', 'situação', 'fila', 'retorno', 'atualizacao', 'atualização'}
 WORKFLOW_VISIT_TERMS = {'visita', 'tour', 'conhecer a escola'}
 WORKFLOW_REQUEST_TERMS = {'solicitacao', 'solicitação', 'pedido', 'protocolo', 'requerimento', 'direcao', 'direção', 'ouvidoria'}
 WORKFLOW_HANDOFF_TERMS = {'atendimento', 'atendente', 'humano', 'chamado'}
+WORKFLOW_FOLLOW_UP_TERMS = {
+    'e agora',
+    'e depois',
+    'e dai',
+    'e daí',
+    'qual o prazo',
+    'qual o próximo passo',
+    'qual o proximo passo',
+    'proximo passo',
+    'próximo passo',
+    'quanto tempo demora',
+    'quando me respondem',
+    'quando vao me responder',
+    'quando vão me responder',
+    'quem vai me responder',
+    'quem vai retornar',
+    'quem fica com isso',
+    'o que acontece agora',
+}
 PROTOCOL_CODE_PATTERN = re.compile(r'\b(?:VIS|REQ|ATD)-[A-Z0-9-]+\b', re.IGNORECASE)
 WORKFLOW_STATUS_LABELS = {
     'queued': 'em fila',
@@ -343,12 +363,59 @@ SERVICE_ROUTING_TERMS = {
     'com quem eu falo sobre',
     'pra quem eu falo sobre',
     'para quem eu falo sobre',
+    'com quem eu falo',
+    'pra quem eu falo',
+    'para quem eu falo',
     'quem cuida',
     'quem resolve',
     'qual setor',
     'qual area',
     'qual área',
     'qual equipe',
+}
+SERVICE_FOLLOW_UP_CONTEXT_TERMS = {
+    'matricula',
+    'bolsa',
+    'desconto',
+    'visita',
+    'tour',
+    'documento',
+    'documentos',
+    'historico',
+    'declaracao',
+    'transferencia',
+    'uniforme',
+    'rotina',
+    'aprendizagem',
+    'adaptacao',
+    'professor',
+    'faltas',
+    'nota',
+    'notas',
+    'disciplina',
+    'emocional',
+    'convivencia',
+    'orientacao',
+    'socioemocional',
+    'mensalidade',
+    'boleto',
+    'boletos',
+    'financeiro',
+    'fatura',
+    'pagamento',
+    'contrato',
+    'direcao',
+    'diretora',
+    'ouvidoria',
+    'elogio',
+    'reclamacao',
+    'sugestao',
+    'portal',
+    'senha',
+    'acesso',
+    'telegram',
+    'bot',
+    'sistema',
 }
 NEGATIVE_REQUIREMENT_TERMS = {
     'nao preciso',
@@ -780,6 +847,60 @@ def _capability_summary_lines(profile: dict[str, Any]) -> list[str]:
     return lines
 
 
+def _concierge_topic_examples(profile: dict[str, Any], limit: int = 5) -> list[str]:
+    examples: list[str] = []
+    capability_model = profile.get('assistant_capabilities')
+    capability_topics = (
+        capability_model.get('public_topics', [])
+        if isinstance(capability_model, dict)
+        else []
+    )
+    for item in capability_topics:
+        if not isinstance(item, str):
+            continue
+        label = item.strip().lower()
+        if label and label not in examples:
+            examples.append(label)
+        if len(examples) >= limit:
+            return examples
+
+    for service in _public_service_catalog(profile):
+        title = str(service.get('title', '')).strip().lower()
+        if not title:
+            continue
+        if 'admis' in title:
+            label = 'matricula e visita'
+        elif 'finance' in title:
+            label = 'financeiro e boletos'
+        elif 'secretaria' in title:
+            label = 'secretaria e documentos'
+        elif 'coorden' in title:
+            label = 'coordenacao'
+        elif 'orienta' in title:
+            label = 'orientacao educacional'
+        elif 'dire' in title or 'ouvidoria' in title:
+            label = 'direcao e ouvidoria'
+        else:
+            label = title
+        if label not in examples:
+            examples.append(label)
+        if len(examples) >= limit:
+            return examples
+
+    return examples or ['matricula', 'horarios', 'financeiro', 'secretaria', 'visitas']
+
+
+def _compose_concierge_topic_examples(profile: dict[str, Any], limit: int = 5) -> str:
+    examples = _concierge_topic_examples(profile, limit=limit)
+    if not examples:
+        return 'matricula, horarios, financeiro, secretaria e visitas'
+    if len(examples) == 1:
+        return examples[0]
+    if len(examples) == 2:
+        return f'{examples[0]} e {examples[1]}'
+    return ', '.join(examples[:-1]) + f' e {examples[-1]}'
+
+
 def _service_catalog_index(profile: dict[str, Any]) -> dict[str, dict[str, Any]]:
     entries = _public_service_catalog(profile)
     result: dict[str, dict[str, Any]] = {}
@@ -844,38 +965,145 @@ def _compose_concierge_greeting(
 
     if _assistant_already_introduced(conversation_context):
         return (
-            f'{opening} Sou o EduAssist e sigo por aqui. Pode me dizer o assunto do jeito que for mais natural '
-            'que eu sigo com voce.'
+            f'{opening} Pode seguir do jeito que ficar mais facil. '
+            'Se quiser, eu continuo por aqui com o mesmo assunto ou com um tema novo.'
         )
 
+    examples = _compose_concierge_topic_examples(profile, limit=4)
     return (
         f'{opening} Voce esta falando com o EduAssist do {school_name}. '
-        'Posso te ajudar com matricula, horarios, calendario, visitas, canais da escola e, se sua conta estiver vinculada, '
-        'tambem com notas, faltas e financeiro.'
+        f'Posso te ajudar com {examples}. '
+        'Se sua conta estiver vinculada, eu tambem consigo consultar notas, faltas e financeiro.'
     )
 
 
-def _compose_capability_answer(profile: dict[str, Any]) -> str:
-    return '\n'.join(_capability_summary_lines(profile))
+def _is_acknowledgement_query(message: str) -> bool:
+    normalized = _normalize_text(message).strip()
+    return any(_message_matches_term(normalized, term) for term in ACKNOWLEDGEMENT_TERMS)
 
 
-def _compose_service_routing_answer(profile: dict[str, Any], message: str) -> str:
-    matches = _service_matches_from_message(profile, message)
+def _compose_concierge_acknowledgement(
+    *,
+    conversation_context: dict[str, Any] | None,
+) -> str:
+    recent_assistant = _extract_recent_assistant_message(
+        conversation_context.get('recent_messages', []) if isinstance(conversation_context, dict) else []
+    )
+    recent_normalized = _normalize_text(recent_assistant or '')
+    if 'protocolo' in recent_normalized or 'ticket operacional' in recent_normalized:
+        return 'Perfeito. Se quiser, eu acompanho o andamento desse atendimento por aqui.'
+    if 'autenticacao' in recent_normalized or 'vinculo' in recent_normalized or 'link_' in recent_normalized:
+        return 'Combinado. Quando quiser, eu continuo por aqui assim que sua conta estiver vinculada.'
+    if 'financeiro' in recent_normalized:
+        return 'Combinado. Se quiser, eu sigo com o proximo passo do financeiro ou te direciono para o setor certo.'
+    if 'matricula' in recent_normalized or 'visita' in recent_normalized:
+        return 'Perfeito. Se quiser, eu continuo daqui e te ajudo com o proximo passo.'
+    return 'Por nada. Se quiser, pode seguir com a proxima duvida que eu continuo com voce por aqui.'
+
+
+def _compose_capability_answer(
+    profile: dict[str, Any],
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> str:
+    school_name = str(profile.get('school_name', 'Colegio Horizonte'))
+    public_examples = _compose_concierge_topic_examples(profile, limit=5)
+    introduced = _assistant_already_introduced(conversation_context)
+    if introduced:
+        return (
+            f'Por aqui eu consigo te orientar sobre {public_examples}. '
+            'Se sua conta estiver vinculada, eu tambem consigo olhar notas, faltas e financeiro escolar. '
+            'Se precisar de uma acao, eu posso abrir visita, protocolo ou encaminhamento para o setor certo.'
+        )
+    return (
+        f'Eu cuido da navegacao institucional do {school_name}. '
+        f'No atendimento publico, consigo seguir com {public_examples}. '
+        'Quando sua conta estiver vinculada, eu tambem posso consultar notas, faltas e o financeiro escolar. '
+        'Se voce quiser, tambem posso abrir visita, solicitacao institucional ou direcionar o setor certo.'
+    )
+
+
+def _routing_follow_up_context_message(
+    message: str,
+    conversation_context: dict[str, Any] | None,
+) -> str:
+    if not isinstance(conversation_context, dict):
+        return message
+    recent_messages = conversation_context.get('recent_messages', [])
+    if not isinstance(recent_messages, list):
+        return message
+    last_user_message = _extract_recent_user_message(recent_messages)
+    last_assistant_message = _extract_recent_assistant_message(recent_messages)
+    if not last_user_message:
+        return message
+    if _normalize_text(last_user_message) == _normalize_text(message):
+        return message
+    if (
+        _is_greeting_only(last_user_message)
+        or _is_service_routing_query(last_user_message)
+        or _is_capability_query(last_user_message)
+        or _is_assistant_identity_query(last_user_message)
+    ):
+        return message
+    normalized_last_user = _normalize_text(last_user_message)
+    if not any(_message_matches_term(normalized_last_user, term) for term in SERVICE_FOLLOW_UP_CONTEXT_TERMS):
+        return message
+    normalized_last_assistant = _normalize_text(last_assistant_message or '')
+    if normalized_last_assistant and not any(
+        marker in normalized_last_assistant
+        for marker in (
+            'autenticacao',
+            'vinculo',
+            'protocolo',
+            'ticket operacional',
+            'fila',
+            'prazo',
+            'setor',
+            'canal recomendado',
+        )
+    ):
+        return message
+    return f'{message} sobre {last_user_message}'
+
+
+def _compose_service_routing_menu(profile: dict[str, Any]) -> str:
+    examples = _concierge_topic_examples(profile, limit=6)
+    if not examples:
+        return (
+            'Hoje eu consigo te encaminhar para matricula, secretaria, coordenacao, orientacao, financeiro ou direcao.'
+        )
+    if len(examples) <= 3:
+        return 'Hoje eu consigo te encaminhar para ' + ', '.join(examples) + '.'
+    return (
+        'Hoje eu consigo te encaminhar por aqui para '
+        + ', '.join(examples[:-1])
+        + f' e {examples[-1]}.'
+    )
+
+
+def _compose_service_routing_answer(
+    profile: dict[str, Any],
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> str:
+    message_for_matching = _routing_follow_up_context_message(message, conversation_context)
+    matches = _service_matches_from_message(profile, message_for_matching)
     if not matches:
         return (
-            'Eu consigo te direcionar melhor se voce me disser o assunto. '
-            'Por exemplo: matricula, financeiro, boletos, notas, secretaria, coordenacao, direcao ou visita.'
+            'Voce fala comigo, o EduAssist. Eu consigo te orientar e te encaminhar para secretaria, admissions, '
+            f'coordenacao, orientacao educacional, financeiro ou direcao. {_compose_service_routing_menu(profile)} '
+            'Se quiser, me diga o assunto em uma frase curta e eu te indico o melhor caminho sem voce precisar adivinhar o setor.'
         )
     if len(matches) == 1:
         item = matches[0]
         return (
-            f'Para esse assunto, o melhor caminho costuma ser {item.get("title", "o setor institucional")}. '
-            f'O canal recomendado e {item.get("request_channel", "canal institucional")}, '
-            f'com prazo tipico de {item.get("typical_eta", "nao informado")}. '
+            f'Para esse assunto, quem costuma assumir e {item.get("title", "o setor institucional")}. '
+            f'O canal recomendado e {item.get("request_channel", "canal institucional")} e o prazo tipico e {item.get("typical_eta", "nao informado")}. '
             f'{str(item.get("notes", "")).strip()} '
-            'Se preferir, eu tambem posso abrir a solicitacao certa por aqui.'
+            'Se preferir, eu mesmo ja posso seguir com a solicitacao certa por aqui.'
         )
-    lines = ['Para esse tema, estes caminhos costumam ser os mais adequados:']
+    lines = ['Para esse tema, estes caminhos costumam funcionar melhor:']
     for item in matches[:3]:
         lines.append(
             '- {title}: {request_channel}. Prazo tipico: {typical_eta}.'.format(
@@ -884,7 +1112,7 @@ def _compose_service_routing_answer(profile: dict[str, Any], message: str) -> st
                 typical_eta=item.get('typical_eta', 'nao informado'),
             )
         )
-    lines.append('Se quiser, eu tambem posso abrir a solicitacao certa por aqui.')
+    lines.append('Se quiser, eu tambem posso seguir por aqui e abrir a solicitacao certa.')
     return '\n'.join(lines)
 
 
@@ -976,17 +1204,27 @@ def _compose_public_profile_answer(
     tuition_reference = profile.get('tuition_reference') if isinstance(profile.get('tuition_reference'), list) else []
     feature_map = _feature_inventory_map(profile)
 
+    if _is_acknowledgement_query(message):
+        return _compose_concierge_acknowledgement(conversation_context=conversation_context)
+
     if _is_greeting_only(message):
         return _compose_concierge_greeting(profile, message, conversation_context)
 
     if _is_service_routing_query(message):
-        return _compose_service_routing_answer(profile, message)
+        return _compose_service_routing_answer(
+            profile,
+            message,
+            conversation_context=conversation_context,
+        )
 
     if _is_assistant_identity_query(message):
         return _compose_assistant_identity_answer(profile)
 
     if _is_capability_query(message):
-        return _compose_capability_answer(profile)
+        return _compose_capability_answer(
+            profile,
+            conversation_context=conversation_context,
+        )
 
     if any(_message_matches_term(normalized, term) for term in PUBLIC_CONTACT_TERMS):
         phone_lines = _contact_value(profile, 'telefone')
@@ -2171,6 +2409,7 @@ def _compose_workflow_status_answer(
     response_payload: dict[str, Any] | None,
     *,
     protocol_code_hint: str | None,
+    request_message: str,
 ) -> str:
     if not isinstance(response_payload, dict) or not response_payload.get('found'):
         if protocol_code_hint:
@@ -2190,6 +2429,7 @@ def _compose_workflow_status_answer(
     workflow_type = str(item.get('workflow_type', 'support_handoff'))
     status_label = _humanize_workflow_status(str(item.get('status', '')))
     queue_label = _humanize_workflow_queue(item.get('queue_name'))
+    normalized_request = _normalize_text(request_message)
     protocol_code = str(item.get('protocol_code', protocol_code_hint or 'indisponivel'))
     linked_ticket_code = str(item.get('linked_ticket_code', '') or '').strip()
     subject = str(item.get('subject', '') or '').strip()
@@ -2210,7 +2450,12 @@ def _compose_workflow_status_answer(
         elif preferred_date or preferred_window:
             preference = ' - '.join(part for part in [preferred_date, preferred_window] if part)
             lines.append(f'- Preferencia registrada: {preference}')
-        lines.append('Proximo passo: a equipe comercial valida a janela e retorna com a confirmacao.')
+        if any(_message_matches_term(normalized_request, term) for term in {'qual o prazo', 'quanto tempo demora', 'quando me respondem', 'quando vao me responder', 'quando vão me responder'}):
+            lines.append('Prazo esperado: admissions costuma validar a janela e retornar em ate 1 dia util.')
+        elif any(_message_matches_term(normalized_request, term) for term in {'quem vai me responder', 'quem vai retornar', 'quem fica com isso'}):
+            lines.append('Quem responde: a equipe comercial de admissions devolve a confirmacao por este fluxo.')
+        else:
+            lines.append('Proximo passo: a equipe comercial valida a janela e retorna com a confirmacao.')
         return '\n'.join(lines)
 
     if workflow_type == 'institutional_request':
@@ -2224,7 +2469,12 @@ def _compose_workflow_status_answer(
             lines.append(f'- Area responsavel: {target_area}')
         if linked_ticket_code:
             lines.append(f'- Ticket operacional: {linked_ticket_code}')
-        lines.append('Proximo passo: a equipe responsavel analisa o contexto e devolve o retorno pelo fluxo institucional.')
+        if any(_message_matches_term(normalized_request, term) for term in {'qual o prazo', 'quanto tempo demora', 'quando me respondem', 'quando vao me responder', 'quando vão me responder'}):
+            lines.append('Prazo esperado: a triagem inicial costuma acontecer em ate 2 dias uteis, conforme a fila responsavel.')
+        elif any(_message_matches_term(normalized_request, term) for term in {'quem vai me responder', 'quem vai retornar', 'quem fica com isso'}):
+            lines.append(f'Quem responde: a equipe da fila de {queue_label} devolve o retorno pelo fluxo institucional.')
+        else:
+            lines.append('Proximo passo: a equipe responsavel analisa o contexto e devolve o retorno pelo fluxo institucional.')
         return '\n'.join(lines)
 
     lines = [
@@ -2235,7 +2485,12 @@ def _compose_workflow_status_answer(
         lines.append(f'- Resumo: {subject}')
     if linked_ticket_code and linked_ticket_code != protocol_code:
         lines.append(f'- Ticket operacional: {linked_ticket_code}')
-    lines.append('Se quiser, eu tambem posso te orientar sobre o proximo setor ou resumir o que ja foi registrado.')
+    if any(_message_matches_term(normalized_request, term) for term in {'quem vai me responder', 'quem vai retornar', 'quem fica com isso'}):
+        lines.append(f'Quem responde: a equipe da fila de {queue_label} continua esse atendimento.')
+    elif any(_message_matches_term(normalized_request, term) for term in {'qual o prazo', 'quanto tempo demora'}):
+        lines.append('Prazo esperado: o retorno depende da fila atual, e eu posso te ajudar a identificar o proximo setor.')
+    else:
+        lines.append('Se quiser, eu tambem posso te orientar sobre o proximo setor ou resumir o que ja foi registrado.')
     return '\n'.join(lines)
 
 
@@ -3106,6 +3361,7 @@ async def _compose_structured_tool_answer(
             return _compose_workflow_status_answer(
                 workflow_payload,
                 protocol_code_hint=protocol_code_hint,
+                request_message=request.message,
             )
         if 'schedule_school_visit' in preview.selected_tools:
             workflow_payload = await _create_visit_booking(
@@ -3234,6 +3490,111 @@ def _should_run_response_critic(*, preview: Any, request: MessageResponseRequest
     if preview.mode in {OrchestrationMode.structured_tool, OrchestrationMode.hybrid_retrieval, OrchestrationMode.clarify}:
         return request.channel.value in {'telegram', 'web'}
     return False
+
+
+def _should_polish_structured_answer(*, preview: Any, request: MessageResponseRequest) -> bool:
+    if preview.mode is not OrchestrationMode.structured_tool:
+        return False
+    if preview.needs_authentication:
+        return False
+    if request.channel.value not in {'telegram', 'web'}:
+        return False
+    if preview.classification.domain is QueryDomain.support:
+        return True
+    if preview.classification.domain is QueryDomain.institution:
+        return any(
+            tool_name in {'list_assistant_capabilities', 'get_service_directory', 'get_org_directory'}
+            for tool_name in preview.selected_tools
+        )
+    return False
+
+
+def _preserve_capability_anchor_terms(
+    *,
+    original_text: str,
+    polished_text: str | None,
+    request_message: str,
+) -> str | None:
+    if not polished_text:
+        return polished_text
+
+    original_codes = {
+        match.group(0).upper()
+        for match in PROTOCOL_CODE_PATTERN.finditer(original_text)
+    }
+    polished_normalized = _normalize_text(polished_text)
+    if original_codes:
+        if not all(code.lower() in polished_text.lower() for code in original_codes):
+            return original_text
+        if 'ticket operacional' in _normalize_text(original_text) and 'ticket operacional' not in polished_normalized:
+            return original_text
+        if 'fila' in _normalize_text(original_text) and 'fila' not in polished_normalized:
+            return original_text
+
+    normalized_message = _normalize_text(request_message)
+    capability_like_query = any(
+        _message_matches_term(normalized_message, term)
+        for term in {'quais opcoes de assuntos', 'opcoes de assuntos', 'opções de assuntos', 'o que voce faz', 'como voce pode me ajudar'}
+    ) or any(
+        _message_matches_term(normalized_message, term)
+        for term in {
+            'oi',
+            'ola',
+            'olá',
+            'bom dia',
+            'boa tarde',
+            'boa noite',
+            'com quem eu falo',
+            'pra quem eu falo',
+            'para quem eu falo',
+            'quem e voce',
+            'quem é você',
+            'voce e quem',
+            'você é quem',
+        }
+    )
+    if capability_like_query:
+        for required_phrase in ('eduassist', 'colegio horizonte'):
+            if required_phrase in _normalize_text(original_text) and required_phrase not in polished_normalized:
+                return original_text
+        original_terms = [
+            term
+            for term in ('matricula', 'financeiro', 'secretaria', 'visita', 'notas', 'faltas')
+            if term in _normalize_text(original_text)
+        ]
+        if original_terms:
+            preserved_count = sum(term in polished_normalized for term in original_terms)
+            if preserved_count < min(3, len(original_terms)):
+                return original_text
+
+    if any(
+        _message_matches_term(normalized_message, term)
+        for term in PUBLIC_LEADERSHIP_TERMS | PUBLIC_CONTACT_TERMS | ASSISTANT_IDENTITY_TERMS
+    ):
+        email_pattern = re.compile(r'[\w.\-+]+@[\w.\-]+\.\w+')
+        original_emails = {match.group(0).lower() for match in email_pattern.finditer(original_text)}
+        if original_emails and not all(email in polished_text.lower() for email in original_emails):
+            return original_text
+
+        proper_name_pattern = re.compile(
+            r'\b[A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-Za-zÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-Za-zÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç]+)+\b'
+        )
+        ignored_names = {
+            'colegio horizonte',
+            'eduassist',
+            'canal institucional',
+            'lideranca institucional',
+            'diretora geral',
+            'diretor geral',
+        }
+        original_names = {
+            _normalize_text(match.group(0))
+            for match in proper_name_pattern.finditer(original_text)
+            if _normalize_text(match.group(0)) not in ignored_names
+        }
+        if original_names and not all(name in polished_normalized for name in original_names):
+            return original_text
+    return polished_text
 
 
 async def generate_message_response(*, request: MessageResponseRequest, settings: Any) -> MessageResponse:
@@ -3537,6 +3898,37 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                         calendar_events=calendar_events,
                         query_hints=query_hints,
                     )
+
+        if _should_polish_structured_answer(preview=preview, request=request):
+            original_structured_text = message_text
+            polished_text = await polish_structured_with_provider(
+                settings=settings,
+                request_message=request.message,
+                preview=preview,
+                draft_text=message_text,
+                conversation_context=(
+                    {
+                        'conversation_external_id': conversation_context.conversation_external_id,
+                        'message_count': conversation_context.message_count,
+                        'recent_messages': conversation_context.recent_messages,
+                    }
+                    if conversation_context
+                    else None
+                ),
+                school_profile=school_profile,
+            )
+            set_span_attributes(
+                **{
+                    'eduassist.orchestration.structured_polish_used': bool(polished_text),
+                }
+            )
+            polished_text = _preserve_capability_anchor_terms(
+                original_text=original_structured_text,
+                polished_text=polished_text,
+                request_message=request.message,
+            )
+            if polished_text:
+                message_text = polished_text
 
         if settings.llm_provider == 'openai' and _should_run_response_critic(preview=preview, request=request):
             revised_text = await revise_with_provider(

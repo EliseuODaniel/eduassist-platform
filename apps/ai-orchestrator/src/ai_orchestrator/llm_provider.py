@@ -153,6 +153,48 @@ def _build_revision_sections(
     return instructions, prompt
 
 
+def _build_structured_polish_sections(
+    *,
+    request_message: str,
+    preview: Any,
+    draft_text: str,
+    conversation_context: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
+) -> tuple[str, str]:
+    recent_messages = []
+    if isinstance(conversation_context, dict):
+        for item in conversation_context.get('recent_messages', [])[-4:]:
+            if not isinstance(item, dict):
+                continue
+            sender_type = str(item.get('sender_type', 'desconhecido'))
+            content = str(item.get('content', '')).strip()
+            if content:
+                recent_messages.append(f'- {sender_type}: {content}')
+    memory_block = '\n'.join(recent_messages) or 'nenhum'
+    school_name = str((school_profile or {}).get('school_name') or 'Colegio Horizonte')
+    instructions = (
+        'Voce e um polidor de respostas estruturadas do EduAssist. '
+        f'{PROJECT_CONTEXT} '
+        'Receba uma resposta correta e deixe-a mais humana, natural, acolhedora e objetiva, como uma atendente escolar experiente. '
+        'Nao adicione fatos novos. Nao remova protocolos, filas, codigos, horarios, valores ou avisos de autenticacao. '
+        'Nao transforme a resposta em menu, template rigido ou slogan. '
+        'Evite reapresentar o assistente se ele ja estiver contextualizado na conversa. '
+        'Prefira 2 a 4 frases curtas, com boa fluidez conversacional. '
+        'Se a pergunta for de saudacao, identidade, capacidades ou direcionamento de setor, responda como concierge institucional humano e direto. '
+        'Se a resposta ja estiver boa, devolva exatamente KEEP. '
+        'Se revisar, devolva apenas a nova resposta final em portugues do Brasil.'
+    )
+    prompt = (
+        f'Escola: {school_name}\n'
+        f'Pergunta do usuario:\n{request_message}\n\n'
+        f'Roteamento:\n- modo: {preview.mode.value}\n- dominio: {preview.classification.domain.value}\n'
+        f'- autenticacao necessaria: {preview.needs_authentication}\n\n'
+        f'Historico recente:\n{memory_block}\n\n'
+        f'Resposta estruturada atual:\n{draft_text}'
+    )
+    return instructions, prompt
+
+
 async def compose_with_openai(
     *,
     settings: Any,
@@ -203,6 +245,41 @@ async def revise_with_openai(
         return None
 
     instructions, prompt = _build_revision_sections(
+        request_message=request_message,
+        preview=preview,
+        draft_text=draft_text,
+        conversation_context=conversation_context,
+        school_profile=school_profile,
+    )
+
+    try:
+        client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
+        response = await client.responses.create(
+            model=settings.openai_model,
+            instructions=instructions,
+            input=prompt,
+        )
+        text = (response.output_text or '').strip()
+        if not text or text == 'KEEP':
+            return None
+        return text
+    except Exception:
+        return None
+
+
+async def polish_structured_with_openai(
+    *,
+    settings: Any,
+    request_message: str,
+    preview: Any,
+    draft_text: str,
+    conversation_context: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
+) -> str | None:
+    if settings.llm_provider != 'openai' or not settings.openai_api_key:
+        return None
+
+    instructions, prompt = _build_structured_polish_sections(
         request_message=request_message,
         preview=preview,
         draft_text=draft_text,
@@ -353,6 +430,68 @@ async def revise_with_google(
     return merged
 
 
+async def polish_structured_with_google(
+    *,
+    settings: Any,
+    request_message: str,
+    preview: Any,
+    draft_text: str,
+    conversation_context: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
+) -> str | None:
+    if settings.llm_provider not in {'google', 'gemini'} or not settings.google_api_key:
+        return None
+
+    instructions, prompt = _build_structured_polish_sections(
+        request_message=request_message,
+        preview=preview,
+        draft_text=draft_text,
+        conversation_context=conversation_context,
+        school_profile=school_profile,
+    )
+    payload = {
+        'system_instruction': {
+            'parts': [{'text': instructions}],
+        },
+        'contents': [
+            {
+                'role': 'user',
+                'parts': [{'text': prompt}],
+            }
+        ],
+        'generationConfig': {
+            'temperature': 0.1,
+            'maxOutputTokens': 240,
+        },
+    }
+    endpoint = f"{settings.google_api_base_url.rstrip('/')}/models/{settings.google_model}:generateContent"
+    headers = {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': settings.google_api_key,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(endpoint, headers=headers, json=payload)
+        response.raise_for_status()
+        body = response.json()
+    except Exception:
+        return None
+    candidates = body.get('candidates')
+    if not isinstance(candidates, list) or not candidates:
+        return None
+    content = candidates[0].get('content')
+    if not isinstance(content, dict):
+        return None
+    parts = content.get('parts')
+    if not isinstance(parts, list):
+        return None
+    texts = [part.get('text', '').strip() for part in parts if isinstance(part, dict)]
+    merged = '\n'.join(text for text in texts if text).strip()
+    if not merged or merged == 'KEEP':
+        return None
+    return merged
+
+
 async def compose_with_provider(
     *,
     settings: Any,
@@ -409,6 +548,36 @@ async def revise_with_provider(
         )
     if settings.llm_provider in {'google', 'gemini'}:
         return await revise_with_google(
+            settings=settings,
+            request_message=request_message,
+            preview=preview,
+            draft_text=draft_text,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
+    return None
+
+
+async def polish_structured_with_provider(
+    *,
+    settings: Any,
+    request_message: str,
+    preview: Any,
+    draft_text: str,
+    conversation_context: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
+) -> str | None:
+    if settings.llm_provider == 'openai':
+        return await polish_structured_with_openai(
+            settings=settings,
+            request_message=request_message,
+            preview=preview,
+            draft_text=draft_text,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
+    if settings.llm_provider in {'google', 'gemini'}:
+        return await polish_structured_with_google(
             settings=settings,
             request_message=request_message,
             preview=preview,

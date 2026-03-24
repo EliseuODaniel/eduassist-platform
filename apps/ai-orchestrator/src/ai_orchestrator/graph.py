@@ -141,6 +141,17 @@ SUPPORT_PHRASES = {
     'me transfira',
     'me encaminhe',
 }
+ACKNOWLEDGEMENT_TERMS = {
+    'obrigado',
+    'obrigada',
+    'valeu',
+    'perfeito',
+    'entendi',
+    'beleza',
+    'ok',
+    'ok obrigado',
+    'ok obrigada',
+}
 VISIT_ACTION_TERMS = {
     'agendar visita',
     'agendamento de visita',
@@ -196,6 +207,25 @@ WORKFLOW_STATUS_OWNERSHIP_TERMS = {
     'essa solicitação',
     'esse pedido',
     'esse protocolo',
+}
+WORKFLOW_FOLLOW_UP_TERMS = {
+    'e agora',
+    'e depois',
+    'e dai',
+    'e daí',
+    'qual o prazo',
+    'qual o próximo passo',
+    'qual o proximo passo',
+    'proximo passo',
+    'próximo passo',
+    'quanto tempo demora',
+    'quando me respondem',
+    'quando vao me responder',
+    'quando vão me responder',
+    'quem vai me responder',
+    'quem vai retornar',
+    'quem fica com isso',
+    'o que acontece agora',
 }
 PROTOCOL_CODE_PATTERN = re.compile(r'\b(?:VIS|REQ|ATD)-[A-Z0-9-]+\b', re.IGNORECASE)
 GRAPH_RAG_TERMS = {'visao geral', 'compare', 'comparar', 'tendencias', 'corpus', 'relacione'}
@@ -489,6 +519,8 @@ def _is_workflow_status_request(message: str) -> bool:
     lowered = _normalize_text(message)
     if _has_protocol_code(message) and _contains_any(lowered, WORKFLOW_STATUS_TERMS | {'protocolo'}):
         return True
+    if _contains_any(lowered, WORKFLOW_FOLLOW_UP_TERMS):
+        return True
     if _contains_any(lowered, WORKFLOW_STATUS_TERMS) and _contains_any(
         lowered,
         WORKFLOW_REFERENT_TERMS | WORKFLOW_STATUS_OWNERSHIP_TERMS,
@@ -544,6 +576,8 @@ def _is_public_navigation_query(message: str) -> bool:
         'voce e quem',
         'você é quem',
     }
+    if any(_message_matches_term(lowered, term) for term in ACKNOWLEDGEMENT_TERMS):
+        return True
     return any(_message_matches_term(lowered, term) for term in navigation_terms)
 
 
@@ -679,7 +713,9 @@ def route_request(state: OrchestrationState, runtime: GraphRuntimeConfig) -> Orc
     elif classification.domain in {QueryDomain.academic, QueryDomain.finance}:
         route = OrchestrationMode.structured_tool.value
         reason = 'dados estruturados devem passar por service deterministico'
-    elif classification.domain is QueryDomain.institution and _is_public_school_profile_request(message):
+    elif classification.domain is QueryDomain.institution and (
+        _is_public_school_profile_request(message) or _is_public_navigation_query(message)
+    ):
         route = OrchestrationMode.structured_tool.value
         reason = 'fato institucional canonico deve vir de fonte estruturada'
     elif runtime['graph_rag_enabled'] and request.allow_graph_rag and _contains_any(message, GRAPH_RAG_TERMS):
