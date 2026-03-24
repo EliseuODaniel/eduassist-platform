@@ -424,6 +424,13 @@ class ConversationContextBundle:
     message_count: int
 
 
+@dataclass(frozen=True)
+class PublicInstitutionPlan:
+    conversation_act: str
+    required_tools: tuple[str, ...]
+    fetch_profile: bool
+
+
 def _normalize_text(text: str) -> str:
     normalized = unicodedata.normalize('NFKD', text)
     without_accents = ''.join(char for char in normalized if not unicodedata.combining(char))
@@ -1634,6 +1641,104 @@ async def _fetch_public_service_directory(*, settings: Any) -> dict[str, Any] | 
     return directory if isinstance(directory, dict) else None
 
 
+def _build_public_institution_plan(message: str, selected_tools: list[str]) -> PublicInstitutionPlan:
+    normalized = _normalize_text(message)
+    required_tools: list[str] = []
+
+    def add(tool_name: str) -> None:
+        if tool_name not in required_tools:
+            required_tools.append(tool_name)
+
+    conversation_act = 'canonical_fact'
+    fetch_profile = True
+
+    if _is_greeting_only(message):
+        conversation_act = 'greeting'
+        add('list_assistant_capabilities')
+        fetch_profile = False
+    elif _is_service_routing_query(message):
+        conversation_act = 'service_routing'
+        add('get_service_directory')
+        fetch_profile = False
+    elif _is_assistant_identity_query(message):
+        conversation_act = 'assistant_identity'
+        add('get_org_directory')
+        fetch_profile = False
+    elif _is_capability_query(message):
+        conversation_act = 'capabilities'
+        add('list_assistant_capabilities')
+        fetch_profile = False
+    elif any(_message_matches_term(normalized, term) for term in PUBLIC_LEADERSHIP_TERMS):
+        conversation_act = 'leadership'
+        add('get_org_directory')
+        fetch_profile = False
+    elif any(_message_matches_term(normalized, term) for term in PUBLIC_CONTACT_TERMS):
+        conversation_act = 'contacts'
+        add('get_org_directory')
+        fetch_profile = False
+
+    for tool_name in selected_tools:
+        if tool_name == 'get_public_school_profile':
+            continue
+        add(tool_name)
+
+    if fetch_profile or not required_tools:
+        add('get_public_school_profile')
+
+    return PublicInstitutionPlan(
+        conversation_act=conversation_act,
+        required_tools=tuple(required_tools),
+        fetch_profile=fetch_profile,
+    )
+
+
+async def _execute_public_institution_plan(
+    *,
+    settings: Any,
+    plan: PublicInstitutionPlan,
+    school_profile: dict[str, Any] | None,
+) -> tuple[dict[str, Any], list[str]]:
+    profile = dict(school_profile or {}) if plan.fetch_profile else {}
+    executed_tools: list[str] = []
+
+    for tool_name in plan.required_tools:
+        if tool_name == 'get_public_school_profile':
+            if not profile:
+                fetched_profile = await _fetch_public_school_profile(settings=settings)
+                if isinstance(fetched_profile, dict):
+                    profile = dict(fetched_profile)
+            executed_tools.append(tool_name)
+            continue
+
+        if tool_name == 'list_assistant_capabilities':
+            capabilities = await _fetch_public_assistant_capabilities(settings=settings)
+            if isinstance(capabilities, dict):
+                profile['assistant_capabilities'] = capabilities
+                profile.setdefault('school_name', capabilities.get('school_name'))
+                profile.setdefault('segments', capabilities.get('segments', []))
+            executed_tools.append(tool_name)
+            continue
+
+        if tool_name == 'get_org_directory':
+            directory = await _fetch_public_org_directory(settings=settings)
+            if isinstance(directory, dict):
+                profile.setdefault('school_name', directory.get('school_name'))
+                profile['leadership_team'] = directory.get('leadership_team', [])
+                profile['contact_channels'] = directory.get('contact_channels', [])
+            executed_tools.append(tool_name)
+            continue
+
+        if tool_name == 'get_service_directory':
+            directory = await _fetch_public_service_directory(settings=settings)
+            if isinstance(directory, dict):
+                profile.setdefault('school_name', directory.get('school_name'))
+                profile['service_catalog'] = directory.get('services', [])
+            executed_tools.append(tool_name)
+            continue
+
+    return profile, executed_tools
+
+
 async def _fetch_public_calendar(*, settings: Any) -> list[CalendarEventCard]:
     today = date.today()
     payload, status_code = await _api_core_get(
@@ -2446,27 +2551,19 @@ async def _compose_structured_tool_answer(
     conversation_context: dict[str, Any] | None = None,
 ) -> str:
     if preview.classification.domain is QueryDomain.institution:
-        profile = dict(school_profile or {})
-        if 'list_assistant_capabilities' in preview.selected_tools:
-            capabilities = await _fetch_public_assistant_capabilities(settings=settings)
-            if isinstance(capabilities, dict):
-                profile['assistant_capabilities'] = capabilities
-                profile.setdefault('school_name', capabilities.get('school_name'))
-                profile.setdefault('segments', capabilities.get('segments', []))
-        if 'get_org_directory' in preview.selected_tools:
-            directory = await _fetch_public_org_directory(settings=settings)
-            if isinstance(directory, dict):
-                profile.setdefault('school_name', directory.get('school_name'))
-                profile['leadership_team'] = directory.get('leadership_team', [])
-                profile['contact_channels'] = directory.get('contact_channels', [])
-        if 'get_service_directory' in preview.selected_tools:
-            directory = await _fetch_public_service_directory(settings=settings)
-            if isinstance(directory, dict):
-                profile.setdefault('school_name', directory.get('school_name'))
-                profile['service_catalog'] = directory.get('services', [])
-        if not profile:
-            fetched_profile = await _fetch_public_school_profile(settings=settings)
-            profile = dict(fetched_profile or {})
+        plan = _build_public_institution_plan(request.message, preview.selected_tools)
+        profile, executed_tools = await _execute_public_institution_plan(
+            settings=settings,
+            plan=plan,
+            school_profile=school_profile,
+        )
+        set_span_attributes(
+            **{
+                'eduassist.public_manager.act': plan.conversation_act,
+                'eduassist.public_manager.fetch_profile': plan.fetch_profile,
+                'eduassist.public_manager.executed_tools': ','.join(executed_tools),
+            }
+        )
         if not profile:
             return _compose_public_gap_answer(set())
         return _compose_public_profile_answer(
