@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import re
 from typing import TypedDict
 import unicodedata
 
@@ -56,6 +57,7 @@ ACADEMIC_TERMS = {
 }
 FINANCE_TERMS = {
     'mensalidade',
+    'mensalidades',
     'boleto',
     'boletos',
     'financeiro',
@@ -105,7 +107,24 @@ PUBLIC_SERVICE_TERMS = {
     'funcionamento',
     'horario de atendimento',
 }
-INSTITUTION_TERMS = {'escola', 'matricula', 'regimento', 'instituicao', 'endereco'}
+INSTITUTION_TERMS = {
+    'escola',
+    'matricula',
+    'documento',
+    'documentos',
+    'comprovante',
+    'comprovantes',
+    'historico',
+    'historico escolar',
+    'cadastro',
+    'ficha cadastral',
+    'formulario cadastral',
+    'regimento',
+    'instituicao',
+    'endereco',
+    'telefone',
+    'contato',
+}
 PUBLIC_SCHOOL_PROFILE_TERMS = {
     'nome da escola',
     'nome do colegio',
@@ -126,9 +145,17 @@ def _normalize_text(text: str) -> str:
     return without_accents.lower()
 
 
+def _message_matches_term(message: str, term: str) -> bool:
+    normalized_term = _normalize_text(term).strip()
+    if not normalized_term:
+        return False
+    pattern = r'(?<!\w)' + r'\s+'.join(re.escape(part) for part in normalized_term.split()) + r'(?!\w)'
+    return re.search(pattern, message) is not None
+
+
 def _contains_any(message: str, terms: set[str]) -> bool:
     lowered = _normalize_text(message)
-    return any(term in lowered for term in terms)
+    return any(_message_matches_term(lowered, term) for term in terms)
 
 
 def _wants_human_support(message: str) -> bool:
@@ -187,7 +214,7 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
             confidence=0.84,
             reason='mensagem contem termos de calendario e eventos escolares',
         )
-    elif _contains_any(message, PUBLIC_SERVICE_TERMS) or any(term in message for term in INSTITUTION_TERMS):
+    elif _contains_any(message, PUBLIC_SERVICE_TERMS | INSTITUTION_TERMS):
         classification = IntentClassification(
             domain=QueryDomain.institution,
             access_tier=AccessTier.public,

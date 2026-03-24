@@ -199,6 +199,33 @@ def main() -> int:
     )
     print('[ok] negative requirements abstention')
 
+    exception_status, _, exception_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'existe alguma excecao para comprovante de residencia na matricula?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        exception_status == 200 and isinstance(exception_payload, dict),
+        'public_exception_query_failed',
+    )
+    exception_message = str(exception_payload.get('message_text', ''))
+    assert_condition(
+        'comprovante de residencia' in exception_message.lower(),
+        'public_exception_focus_missing',
+    )
+    assert_condition(
+        'nao descreve excecoes' in exception_message.lower(),
+        'public_exception_abstention_missing',
+    )
+    print('[ok] public exception abstention')
+
     protected_status, protected_headers, protected_payload = telegram_webhook_request(
         settings,
         update_id=9902,

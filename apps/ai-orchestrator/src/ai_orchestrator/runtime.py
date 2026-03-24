@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from dataclasses import dataclass
 from datetime import date, timedelta
 from time import monotonic
 from typing import Any
@@ -120,6 +121,67 @@ KNOWN_ADMISSIONS_REQUIREMENTS = [
     'comprovante de residencia',
     'documento de identificacao do responsavel legal',
 ]
+ADMISSIONS_REQUIREMENT_FOCUS = {
+    'comprovante de residencia': 'comprovante de residencia',
+    'historico escolar': 'historico escolar',
+    'cpf': 'CPF do aluno',
+    'documento de identificacao do responsavel': 'documento de identificacao do responsavel legal',
+    'responsavel legal': 'documento de identificacao do responsavel legal',
+    'documento de identificacao do aluno': 'documento de identificacao do aluno',
+    'ficha cadastral': 'ficha cadastral ou formulario cadastral preenchido',
+    'formulario cadastral': 'ficha cadastral ou formulario cadastral preenchido',
+}
+QUERY_STOPWORDS = {
+    'a', 'o', 'as', 'os', 'de', 'da', 'do', 'das', 'dos', 'e', 'ou', 'para', 'por', 'com',
+    'sem', 'no', 'na', 'nos', 'nas', 'um', 'uma', 'uns', 'umas', 'que', 'qual', 'quais',
+    'como', 'quando', 'onde', 'porque', 'por que', 'se', 'eu', 'voce', 'vocês', 'me', 'minha',
+    'meu', 'minhas', 'meus', 'ainda', 'mais', 'menos', 'sobre', 'preciso', 'precisa',
+    'algum', 'alguma', 'alguns', 'algumas', 'existe', 'ha', 'haver', 'escola', 'colegio', 'colégio', 'bot', 'telegram',
+}
+HIGH_RISK_REASONING_TERMS = {
+    'exceto',
+    'excecao',
+    'exceções',
+    'excecao',
+    'dispensa',
+    'dispensavel',
+    'dispensaveis',
+    'obrigatorio',
+    'obrigatoria',
+    'obrigatorias',
+    'obrigatorios',
+    'ainda',
+    'pode',
+    'posso',
+    'condicao',
+    'condicoes',
+    'caso',
+    'se',
+    'depois',
+    'antes',
+    'prazo',
+    'perder',
+    'atraso',
+}
+HIGH_RISK_REASONING_PHRASES = {
+    'ainda posso',
+    'ainda preciso',
+    'posso entregar depois',
+    'se eu',
+    'caso eu',
+    'ha excecao',
+    'tem excecao',
+}
+
+
+@dataclass(frozen=True)
+class PublicAnswerabilityAssessment:
+    enough_support: bool
+    salient_terms: set[str]
+    matched_terms: set[str]
+    unsupported_terms: set[str]
+    coverage_ratio: float
+    high_risk_reasoning: bool
 
 
 def _normalize_text(text: str) -> str:
@@ -185,12 +247,20 @@ def _format_event_line(event: CalendarEventCard) -> str:
 
 def _contains_any(message: str, terms: set[str]) -> bool:
     lowered = _normalize_text(message)
-    return any(term in lowered for term in terms)
+    return any(_message_matches_term(lowered, term) for term in terms)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    normalized_term = _normalize_text(term).strip()
+    if not normalized_term:
+        return False
+    pattern = r'(?<!\w)' + r'\s+'.join(re.escape(part) for part in normalized_term.split()) + r'(?!\w)'
+    return re.search(pattern, message) is not None
 
 
 def _extract_public_entity_hints(message: str) -> set[str]:
     lowered = _normalize_text(message)
-    return {canonical for term, canonical in PUBLIC_ENTITY_HINTS.items() if term in lowered}
+    return {canonical for term, canonical in PUBLIC_ENTITY_HINTS.items() if _message_matches_term(lowered, term)}
 
 
 def _is_prompt_disclosure_probe(message: str) -> bool:
@@ -202,8 +272,8 @@ def _is_prompt_disclosure_probe(message: str) -> bool:
 
 def _is_negative_requirement_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    has_negative = any(term in normalized for term in NEGATIVE_REQUIREMENT_TERMS)
-    has_requirement = any(term in normalized for term in REQUIREMENT_QUERY_TERMS)
+    has_negative = any(_message_matches_term(normalized, term) for term in NEGATIVE_REQUIREMENT_TERMS)
+    has_requirement = any(_message_matches_term(normalized, term) for term in REQUIREMENT_QUERY_TERMS)
     return has_negative and has_requirement
 
 
@@ -231,6 +301,109 @@ def _compose_negative_requirement_answer() -> str:
     lines.extend(f'- {item}' for item in KNOWN_ADMISSIONS_REQUIREMENTS)
     lines.append('Se quiser, eu posso resumir apenas os documentos exigidos ou explicar as etapas da matricula.')
     return '\n'.join(lines)
+
+
+def _extract_salient_terms(message: str) -> set[str]:
+    normalized = _normalize_text(message)
+    tokens = {
+        token
+        for token in re.findall(r'[a-z0-9]{3,}', normalized)
+        if token not in QUERY_STOPWORDS and not token.isdigit()
+    }
+    if 'matricula' in normalized:
+        tokens.add('matricula')
+    if 'biblioteca' in normalized:
+        tokens.add('biblioteca')
+    return tokens
+
+
+def _contains_high_risk_reasoning(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if any(_message_matches_term(normalized, phrase) for phrase in HIGH_RISK_REASONING_PHRASES):
+        return True
+    return any(_message_matches_term(normalized, term) for term in HIGH_RISK_REASONING_TERMS)
+
+
+def _extract_admissions_requirement_focus(message: str) -> str | None:
+    normalized = _normalize_text(message)
+    for term, label in ADMISSIONS_REQUIREMENT_FOCUS.items():
+        if _message_matches_term(normalized, term):
+            return label
+    return None
+
+
+def _assess_public_answerability(message: str, retrieval_hits: list[Any], query_hints: set[str]) -> PublicAnswerabilityAssessment:
+    salient_terms = _extract_salient_terms(message)
+    if query_hints:
+        salient_terms = {*(salient_terms), *query_hints}
+    if not salient_terms:
+        return PublicAnswerabilityAssessment(
+            enough_support=bool(retrieval_hits),
+            salient_terms=set(),
+            matched_terms=set(),
+            unsupported_terms=set(),
+            coverage_ratio=1.0 if retrieval_hits else 0.0,
+            high_risk_reasoning=_contains_high_risk_reasoning(message),
+        )
+
+    haystack = ' '.join(
+        _normalize_text(
+            ' '.join(
+                filter(
+                    None,
+                    [
+                        getattr(hit, 'document_title', None),
+                        getattr(hit, 'text_excerpt', None),
+                        getattr(hit, 'contextual_summary', None),
+                    ],
+                )
+            )
+        )
+        for hit in retrieval_hits
+    )
+    matched_terms = {term for term in salient_terms if term in haystack}
+    unsupported_terms = salient_terms - matched_terms
+    coverage_ratio = len(matched_terms) / len(salient_terms) if salient_terms else 0.0
+    high_risk_reasoning = _contains_high_risk_reasoning(message)
+    enough_support = bool(retrieval_hits) and coverage_ratio >= (0.75 if high_risk_reasoning else 0.45)
+    if high_risk_reasoning and unsupported_terms:
+        enough_support = False
+    return PublicAnswerabilityAssessment(
+        enough_support=enough_support,
+        salient_terms=salient_terms,
+        matched_terms=matched_terms,
+        unsupported_terms=unsupported_terms,
+        coverage_ratio=coverage_ratio,
+        high_risk_reasoning=high_risk_reasoning,
+    )
+
+
+def _compose_answerability_gap_answer(assessment: PublicAnswerabilityAssessment, message: str) -> str:
+    requirement_focus = _extract_admissions_requirement_focus(message)
+    if assessment.high_risk_reasoning:
+        if requirement_focus and _contains_any(
+            message,
+            {'excecao', 'dispensa', 'dispensavel', 'dispensaveis', 'nao preciso', 'nao precisa'},
+        ):
+            return (
+                f'A base publica atual registra {requirement_focus} como requisito da matricula, '
+                'mas nao descreve excecoes, dispensas ou condicoes especiais para esse item. '
+                'Para evitar uma orientacao incorreta, nao vou afirmar que exista uma excecao sem documento oficial especifico. '
+                'Se quiser, eu posso resumir apenas os requisitos explicitamente publicados.'
+            )
+        if assessment.unsupported_terms:
+            labels = ', '.join(sorted(assessment.unsupported_terms))
+            return (
+                'A base publica atual nao sustenta com seguranca todos os pontos dessa pergunta, '
+                f'especialmente sobre: {labels}. '
+                'Para evitar uma orientacao incorreta, prefiro nao inferir alem do que esta documentado. '
+                'Se quiser, eu posso responder apenas o que esta explicitamente registrado na base atual.'
+            )
+        return (
+            'A pergunta exige uma regra, excecao ou condicao que nao esta suficientemente sustentada '
+            'pela base publica atual. Posso responder apenas o que estiver explicitamente documentado.'
+        )
+    return _compose_public_gap_answer(assessment.unsupported_terms)
 
 
 def _retrieval_hits_cover_query_hints(retrieval_hits: list[Any], query_hints: set[str]) -> bool:
@@ -1114,6 +1287,7 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
         calendar_events: list[CalendarEventCard] = []
         query_hints: set[str] = set()
         retrieval_supported = True
+        public_answerability: PublicAnswerabilityAssessment | None = None
         graph_rag_answer: dict[str, str] | None = None
 
         if preview.mode is OrchestrationMode.hybrid_retrieval:
@@ -1147,6 +1321,19 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                 if not retrieval_supported:
                     retrieval_hits = []
                     citations = []
+                public_answerability = _assess_public_answerability(
+                    request.message,
+                    retrieval_hits,
+                    query_hints,
+                )
+                set_span_attributes(
+                    **{
+                        'eduassist.retrieval.answerability_coverage_ratio': public_answerability.coverage_ratio,
+                        'eduassist.retrieval.answerability_high_risk': public_answerability.high_risk_reasoning,
+                        'eduassist.retrieval.answerability_supported_terms': len(public_answerability.matched_terms),
+                        'eduassist.retrieval.answerability_unsupported_terms': len(public_answerability.unsupported_terms),
+                    }
+                )
 
                 if preview.classification.domain is QueryDomain.calendar:
                     calendar_events = await _fetch_public_calendar(settings=settings)
@@ -1240,6 +1427,18 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                         }
                     )
                     message_text = _compose_negative_requirement_answer()
+                elif (
+                    preview.mode is OrchestrationMode.hybrid_retrieval
+                    and public_answerability is not None
+                    and not public_answerability.enough_support
+                ):
+                    set_span_attributes(
+                        **{
+                            'eduassist.orchestration.used_llm': False,
+                            'eduassist.orchestration.answer_guardrail': 'answerability_abstention',
+                        }
+                    )
+                    message_text = _compose_answerability_gap_answer(public_answerability, request.message)
                 elif preview.mode is OrchestrationMode.clarify and _is_prompt_disclosure_probe(request.message):
                     set_span_attributes(
                         **{
