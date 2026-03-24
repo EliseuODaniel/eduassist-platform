@@ -1021,6 +1021,50 @@ def main() -> int:
     protected_trace_id = extract_trace_id(protected_headers)
     print('[ok] protected academic')
 
+    protected_followup_status, _, protected_followup_payload = telegram_webhook_request(
+        settings,
+        update_id=9904,
+        message_id=4,
+        text='e a frequencia?',
+        chat_id=555001,
+        username='maria.oliveira',
+        first_name='Maria',
+    )
+    assert_condition(
+        protected_followup_status == 200 and isinstance(protected_followup_payload, dict),
+        'protected_followup_webhook_failed',
+    )
+    protected_followup_reply = str(protected_followup_payload.get('reply', ''))
+    assert_condition(
+        'Resumo academico de Lucas Oliveira' in protected_followup_reply,
+        'protected_followup_student_memory_missing',
+    )
+    assert_condition(
+        'Frequencia' in protected_followup_reply,
+        'protected_followup_attendance_missing',
+    )
+    print('[ok] protected academic follow-up memory')
+
+    protected_finance_followup_status, _, protected_finance_followup_payload = telegram_webhook_request(
+        settings,
+        update_id=9905,
+        message_id=5,
+        text='e o financeiro?',
+        chat_id=555001,
+        username='maria.oliveira',
+        first_name='Maria',
+    )
+    assert_condition(
+        protected_finance_followup_status == 200 and isinstance(protected_finance_followup_payload, dict),
+        'protected_finance_followup_webhook_failed',
+    )
+    protected_finance_followup_reply = str(protected_finance_followup_payload.get('reply', ''))
+    assert_condition(
+        'Resumo financeiro de Lucas Oliveira' in protected_finance_followup_reply,
+        'protected_finance_followup_student_memory_missing',
+    )
+    print('[ok] protected finance follow-up memory')
+
     expanded_protected_status, _, expanded_protected_payload = telegram_webhook_request(
         settings,
         update_id=9912,

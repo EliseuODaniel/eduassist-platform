@@ -3308,6 +3308,7 @@ async def _maybe_build_visual_assets(
     preview: Any,
     actor: dict[str, Any] | None,
     school_profile: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None = None,
 ) -> list[MessageResponseVisualAsset]:
     specialists = _build_visual_specialists(preview=preview, message=request.message)
     if not specialists:
@@ -3337,7 +3338,12 @@ async def _maybe_build_visual_assets(
     if actor is None:
         return []
 
-    student, clarification = _select_linked_student(actor, request.message)
+    student, clarification = _select_linked_student(
+        actor,
+        request.message,
+        capability='finance' if preview.classification.domain is QueryDomain.finance else 'academic',
+        conversation_context=conversation_context,
+    )
     if clarification is not None or student is None:
         return []
     student_id = student.get('student_id')
@@ -3424,29 +3430,68 @@ def _eligible_students(actor: dict[str, Any] | None, *, capability: str) -> list
     return students
 
 
-def _select_linked_student(actor: dict[str, Any] | None, message: str) -> tuple[dict[str, Any] | None, str | None]:
-    students = _linked_students(actor)
+def _student_matches_text(student: dict[str, Any], text: str) -> bool:
+    normalized_text = _normalize_text(text)
+    full_name = str(student.get('full_name', ''))
+    enrollment_code = str(student.get('enrollment_code', ''))
+    normalized_name = _normalize_text(full_name)
+    if normalized_name and normalized_name in normalized_text:
+        return True
+    if enrollment_code and enrollment_code.lower() in normalized_text:
+        return True
+    return False
+
+
+def _matching_students_in_text(students: list[dict[str, Any]], text: str) -> list[dict[str, Any]]:
+    matches = {
+        str(student.get('student_id')): student
+        for student in students
+        if _student_matches_text(student, text)
+    }
+    return list(matches.values())
+
+
+def _recent_student_from_context(
+    actor: dict[str, Any] | None,
+    *,
+    capability: str,
+    conversation_context: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    students = _eligible_students(actor, capability=capability)
+    if not students or not isinstance(conversation_context, dict):
+        return None
+    for _sender_type, content in reversed(_recent_message_lines(conversation_context)):
+        matched_students = _matching_students_in_text(students, content)
+        if len(matched_students) == 1:
+            return matched_students[0]
+    return None
+
+
+def _select_linked_student(
+    actor: dict[str, Any] | None,
+    message: str,
+    *,
+    capability: str = 'academic',
+    conversation_context: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any] | None, str | None]:
+    students = _eligible_students(actor, capability=capability)
     if not students:
         return None, 'Nao encontrei um aluno vinculado a esta conta para essa consulta.'
 
     if len(students) == 1:
         return students[0], None
 
-    normalized_message = _normalize_text(message)
-    matches: list[dict[str, Any]] = []
-    for student in students:
-        full_name = str(student.get('full_name', ''))
-        enrollment_code = str(student.get('enrollment_code', ''))
-        normalized_name = _normalize_text(full_name)
-        if normalized_name and normalized_name in normalized_message:
-            matches.append(student)
-            continue
-        if enrollment_code and enrollment_code.lower() in normalized_message:
-            matches.append(student)
+    matched_students = _matching_students_in_text(students, message)
+    if len(matched_students) == 1:
+        return matched_students[0], None
 
-    unique_matches = {str(item.get('student_id')): item for item in matches}
-    if len(unique_matches) == 1:
-        return next(iter(unique_matches.values())), None
+    recent_student = _recent_student_from_context(
+        actor,
+        capability=capability,
+        conversation_context=conversation_context,
+    )
+    if recent_student is not None:
+        return recent_student, None
 
     options = ', '.join(
         f"{student.get('full_name', 'Aluno')} ({student.get('enrollment_code', 'sem codigo')})"
@@ -3755,6 +3800,7 @@ async def _execute_protected_records_specialist(
     request: MessageResponseRequest,
     preview: Any,
     actor: dict[str, Any],
+    conversation_context: dict[str, Any] | None = None,
 ) -> str:
     if request.telegram_chat_id is None:
         return _compose_structured_deny(actor)
@@ -3764,11 +3810,17 @@ async def _execute_protected_records_specialist(
 
     if preview.classification.domain is QueryDomain.finance:
         requested_status = _detect_finance_status_filter(message)
-        if len(_eligible_students(actor, capability='finance')) > 1:
-            student, clarification = _select_linked_student(actor, message)
+        finance_students = _eligible_students(actor, capability='finance')
+        if len(finance_students) > 1:
+            student, clarification = _select_linked_student(
+                actor,
+                message,
+                capability='finance',
+                conversation_context=conversation_context,
+            )
             if student is None and clarification is not None:
                 summaries: list[dict[str, Any]] = []
-                for candidate in _eligible_students(actor, capability='finance'):
+                for candidate in finance_students:
                     candidate_id = candidate.get('student_id')
                     if not isinstance(candidate_id, str):
                         continue
@@ -3784,7 +3836,7 @@ async def _execute_protected_records_specialist(
 
                 if summaries and not any(
                     _normalize_text(str(student.get('full_name', ''))) in normalized_message
-                    for student in _eligible_students(actor, capability='finance')
+                    for student in finance_students
                 ):
                     lines = ['Panorama financeiro das contas vinculadas:']
                     total_open = 0
@@ -3811,7 +3863,13 @@ async def _execute_protected_records_specialist(
                         )
                     return '\n'.join(lines)
 
-    student, clarification = _select_linked_student(actor, message)
+    requested_capability = 'finance' if preview.classification.domain is QueryDomain.finance else 'academic'
+    student, clarification = _select_linked_student(
+        actor,
+        message,
+        capability=requested_capability,
+        conversation_context=conversation_context,
+    )
     if clarification is not None:
         return clarification
     if student is None:
@@ -4104,6 +4162,7 @@ async def _compose_structured_tool_answer(
             request=request,
             preview=preview,
             actor=actor,
+            conversation_context=conversation_context,
         )
 
     return (
@@ -4648,6 +4707,15 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
             preview=preview,
             actor=actor,
             school_profile=school_profile,
+            conversation_context=(
+                {
+                    'conversation_external_id': conversation_context.conversation_external_id,
+                    'message_count': conversation_context.message_count,
+                    'recent_messages': conversation_context.recent_messages,
+                }
+                if conversation_context
+                else None
+            ),
         )
         suggested_replies = _build_suggested_replies(
             request=request,

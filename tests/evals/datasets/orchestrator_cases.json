@@ -623,7 +623,8 @@
     "type": "message_response",
     "request": {
       "message": "quero ver minhas notas",
-      "telegram_chat_id": 555001
+      "telegram_chat_id": 555001,
+      "conversation_id": "eval:guardian-ambiguity-thread"
     },
     "expected": {
       "mode": "structured_tool",
@@ -646,7 +647,8 @@
     "type": "message_response",
     "request": {
       "message": "quero ver as notas do Lucas Oliveira",
-      "telegram_chat_id": 555001
+      "telegram_chat_id": 555001,
+      "conversation_id": "eval:guardian-lucas-thread"
     },
     "expected": {
       "mode": "structured_tool",
@@ -661,6 +663,51 @@
       ],
       "graph_path_includes": ["structured_tool_call"],
       "message_contains": ["Resumo academico de Lucas Oliveira", "Biologia", "Frequencia"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_academic_followup_same_student",
+    "type": "message_response",
+    "request": {
+      "message": "e a frequencia?",
+      "telegram_chat_id": 555001,
+      "conversation_id": "eval:guardian-lucas-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": [
+        "get_student_academic_summary",
+        "get_student_attendance",
+        "get_student_grades"
+      ],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Resumo academico de Lucas Oliveira", "Frequencia"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_finance_followup_same_student",
+    "type": "message_response",
+    "request": {
+      "message": "e o financeiro?",
+      "telegram_chat_id": 555001,
+      "conversation_id": "eval:guardian-lucas-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "finance",
+      "access_tier": "sensitive",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_financial_summary"],
+      "graph_path_includes": ["structured_tool_call"],
+      "risk_flags_include": ["sensitive_data_path"],
+      "message_contains": ["Resumo financeiro de Lucas Oliveira", "Faturas em aberto"],
       "reason_contains": "service deterministico"
     }
   },
