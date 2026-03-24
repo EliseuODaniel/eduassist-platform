@@ -36,6 +36,11 @@ DEFAULT_PUBLIC_HELP = (
     'Posso ajudar com informacoes publicas da escola, como calendario, matricula, '
     'documentos exigidos e regras de atendimento digital.'
 )
+INSTITUTIONAL_GREETING = (
+    'Ola. Sou o EduAssist, assistente institucional do Colegio Horizonte. '
+    'Posso orientar sobre matriculas, turnos e horarios, calendario, mensalidades publicas de referencia, '
+    'visitas e canais oficiais de atendimento. Se precisar de dados protegidos, eu tambem explico como vincular sua conta.'
+)
 
 ATTENDANCE_TERMS = {'frequencia', 'falta', 'faltas', 'presenca', 'presencas'}
 GRADE_TERMS = {'nota', 'notas', 'boletim', 'avaliacao', 'avaliacoes', 'prova', 'provas'}
@@ -281,6 +286,17 @@ FOLLOW_UP_REFERENTS = {
     'daquilo',
     'nisso',
 }
+GREETING_ONLY_TERMS = {
+    'oi',
+    'ola',
+    'olá',
+    'bom dia',
+    'boa tarde',
+    'boa noite',
+    'opa',
+    'e ai',
+    'e aí',
+}
 NEGATIVE_REQUIREMENT_TERMS = {
     'nao preciso',
     'nao precisa',
@@ -379,6 +395,13 @@ def _normalize_text(text: str) -> str:
     normalized = unicodedata.normalize('NFKD', text)
     without_accents = ''.join(char for char in normalized if not unicodedata.combining(char))
     return without_accents.replace('º', 'o').replace('ª', 'a').lower()
+
+
+def _is_greeting_only(text: str) -> bool:
+    normalized = _normalize_text(text).strip()
+    normalized = re.sub(r'[!?.,;:]+', '', normalized)
+    normalized = ' '.join(normalized.split())
+    return normalized in GREETING_ONLY_TERMS
 
 
 def _map_request(request: MessageResponseRequest, user_context: UserContext) -> OrchestrationRequest:
@@ -2621,7 +2644,16 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
             )
         else:
             with start_span('eduassist.orchestration.answer_composition', tracer_name='eduassist.ai_orchestrator.runtime'):
-                if preview.mode is OrchestrationMode.hybrid_retrieval and not retrieval_supported:
+                if _is_greeting_only(request.message):
+                    set_span_attributes(
+                        **{
+                            'eduassist.orchestration.used_llm': False,
+                            'eduassist.orchestration.answer_guardrail': 'institutional_greeting',
+                        }
+                    )
+                    citations = []
+                    message_text = INSTITUTIONAL_GREETING
+                elif preview.mode is OrchestrationMode.hybrid_retrieval and not retrieval_supported:
                     set_span_attributes(**{'eduassist.orchestration.used_llm': False})
                     citations = []
                     message_text = _compose_public_gap_answer(query_hints, request.message)

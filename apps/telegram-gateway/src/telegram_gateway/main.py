@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 from functools import lru_cache
 import secrets
+import unicodedata
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -229,10 +230,28 @@ def _build_user_context(actor: dict[str, object] | None) -> dict[str, object]:
 
 def _default_help_message() -> str:
     return (
-        'EduAssist esta pronto para orientar sobre informacoes publicas da escola. '
-        'Voce pode perguntar sobre calendario, matricula, secretaria e atendimento digital. '
-        'Para consultas protegidas, vincule sua conta pelo portal e envie o codigo ao bot.'
+        'Ola. Sou o EduAssist, assistente institucional do Colegio Horizonte. '
+        'Posso orientar sobre matriculas, turnos e horarios, calendario, mensalidades publicas de referencia, '
+        'visitas e canais oficiais de atendimento. Para consultas protegidas, vincule sua conta pelo portal e envie o codigo ao bot.'
     )
+
+
+def _normalize_message(text: str) -> str:
+    normalized = unicodedata.normalize('NFKD', text)
+    without_accents = ''.join(char for char in normalized if not unicodedata.combining(char))
+    return ' '.join(without_accents.lower().strip('!?.,;:').split())
+
+
+def _is_greeting_only(text: str) -> bool:
+    return _normalize_message(text) in {
+        'oi',
+        'ola',
+        'bom dia',
+        'boa tarde',
+        'boa noite',
+        'opa',
+        'e ai',
+    }
 
 
 async def _orchestrate_message(
@@ -303,7 +322,7 @@ async def telegram_webhook(
                 'processed': 'missing_chat',
             }
 
-        if text.strip() in {'/start', '/help'}:
+        if text.strip() in {'/start', '/help'} or _is_greeting_only(text):
             help_text = _default_help_message()
             await _send_telegram_message(chat_id, help_text)
             return {

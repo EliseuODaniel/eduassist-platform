@@ -1,5 +1,25 @@
 [
   {
+    "case_id": "public_institutional_greeting",
+    "type": "message_response",
+    "request": {
+      "message": "ola",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "clarify",
+      "domain": "unknown",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "graph_path_includes": ["clarify"],
+      "max_citations": 0,
+      "message_contains": ["assistente institucional", "Colegio Horizonte"],
+      "message_excludes": ["Como posso ajudar?"],
+      "reason_contains": "clarificacao"
+    }
+  },
+  {
     "case_id": "public_faq_admissions",
     "type": "message_response",
     "request": {
