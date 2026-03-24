@@ -12,6 +12,7 @@ from api_core.contracts import (
     CalendarEventEntry,
     GradeEntry,
     InvoiceEntry,
+    PublicSchoolProfile,
     StudentAcademicSummary,
     StudentFinancialSummary,
     TeacherScheduleEntry,
@@ -28,6 +29,7 @@ from api_core.db.models import (
     Guardian,
     Invoice,
     Payment,
+    SchoolUnit,
     Student,
     Subject,
     Teacher,
@@ -217,6 +219,31 @@ def get_teacher_schedule(session: Session, teacher_user_id: uuid.UUID) -> Teache
             )
             for class_id, class_name, subject_code, subject_name, academic_year in assignments
         ],
+    )
+
+
+def get_public_school_profile(session: Session) -> PublicSchoolProfile | None:
+    school_unit = session.execute(
+        select(
+            SchoolUnit.code,
+            SchoolUnit.name,
+            SchoolUnit.city,
+            SchoolUnit.state,
+            SchoolUnit.timezone,
+        )
+        .order_by(SchoolUnit.code.asc())
+        .limit(1)
+    ).first()
+    if school_unit is None:
+        return None
+
+    code, name, city, state, timezone_name = school_unit
+    return PublicSchoolProfile(
+        school_unit_code=code,
+        school_name=name,
+        city=city,
+        state=state,
+        timezone=timezone_name,
     )
 
 

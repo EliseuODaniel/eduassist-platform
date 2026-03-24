@@ -61,6 +61,45 @@
     }
   },
   {
+    "case_id": "public_school_name_canonical",
+    "type": "message_response",
+    "request": {
+      "message": "qual o nome da escola",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Colegio Horizonte"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_negative_requirements_abstention",
+    "type": "message_response",
+    "request": {
+      "message": "quais documentos nao preciso para a matricula?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "hybrid_retrieval",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "qdrant_hybrid",
+      "needs_authentication": false,
+      "selected_tools_includes": ["search_public_documents"],
+      "graph_path_includes": ["hybrid_retrieval"],
+      "message_contains": ["nao e seguro afirmar", "dispensaveis", "documentos exigidos"],
+      "message_excludes": ["outros documentos nao sao necessarios"],
+      "reason_contains": "retrieval hibrido"
+    }
+  },
+  {
     "case_id": "public_graphrag_compare_documents",
     "type": "message_response",
     "request": {

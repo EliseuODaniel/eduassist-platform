@@ -19,6 +19,7 @@ from api_core.contracts import (
     OperationsOverviewResponse,
     PolicyCheckRequest,
     PolicyCheckResponse,
+    PublicSchoolProfileResponse,
     SupportHandoffCreateResponse,
     SupportHandoffDetailResponse,
     SupportHandoffFilters,
@@ -46,6 +47,7 @@ from api_core.services.domain import (
     get_student_academic_summary,
     get_student_financial_summary,
     get_teacher_schedule,
+    get_public_school_profile,
     list_public_calendar_events,
 )
 from api_core.services.identity import resolve_actor_context
@@ -351,6 +353,15 @@ async def foundation_summary() -> dict[str, object]:
         'database': database,
         'counts': counts,
     }
+
+
+@app.get('/v1/public/school-profile', response_model=PublicSchoolProfileResponse)
+async def public_school_profile() -> PublicSchoolProfileResponse:
+    with session_scope() as session:
+        profile = get_public_school_profile(session)
+    if profile is None:
+        raise HTTPException(status_code=404, detail='public_school_profile_not_found')
+    return PublicSchoolProfileResponse(profile=profile)
 
 
 @app.get('/v1/operations/overview', response_model=OperationsOverviewResponse)

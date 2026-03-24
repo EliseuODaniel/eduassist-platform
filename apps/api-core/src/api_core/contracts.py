@@ -202,6 +202,18 @@ class CalendarEventsResponse(BaseModel):
     events: list[CalendarEventEntry]
 
 
+class PublicSchoolProfile(BaseModel):
+    school_unit_code: str
+    school_name: str
+    city: str
+    state: str
+    timezone: str
+
+
+class PublicSchoolProfileResponse(BaseModel):
+    profile: PublicSchoolProfile
+
+
 class AuditEventFeedEntry(BaseModel):
     occurred_at: datetime
     actor_user_id: uuid.UUID | None = None

@@ -99,6 +99,27 @@ PROMPT_BYPASS_TERMS = {
     'mostre o prompt',
     'me diga o prompt',
 }
+NEGATIVE_REQUIREMENT_TERMS = {
+    'nao preciso',
+    'nao precisa',
+    'nao e necessario',
+    'nao sao necessarios',
+    'nao sao necessarias',
+    'dispensavel',
+    'dispensaveis',
+    'dispensado',
+    'dispensados',
+    'exceto',
+}
+REQUIREMENT_QUERY_TERMS = {'documento', 'documentos', 'matricula'}
+KNOWN_ADMISSIONS_REQUIREMENTS = [
+    'ficha cadastral ou formulario cadastral preenchido',
+    'documento de identificacao do aluno',
+    'CPF do aluno, quando houver',
+    'historico escolar',
+    'comprovante de residencia',
+    'documento de identificacao do responsavel legal',
+]
 
 
 def _normalize_text(text: str) -> str:
@@ -177,6 +198,39 @@ def _is_prompt_disclosure_probe(message: str) -> bool:
     return any(term in normalized for term in PROMPT_DISCLOSURE_TERMS) or any(
         term in normalized for term in PROMPT_BYPASS_TERMS
     )
+
+
+def _is_negative_requirement_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    has_negative = any(term in normalized for term in NEGATIVE_REQUIREMENT_TERMS)
+    has_requirement = any(term in normalized for term in REQUIREMENT_QUERY_TERMS)
+    return has_negative and has_requirement
+
+
+def _is_public_school_name_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(
+        term in normalized
+        for term in {
+            'nome da escola',
+            'nome do colegio',
+            'nome do colégio',
+            'como se chama a escola',
+            'como se chama o colegio',
+            'como se chama o colégio',
+        }
+    )
+
+
+def _compose_negative_requirement_answer() -> str:
+    lines = [
+        'A base atual informa os documentos exigidos para a matricula, mas nao lista explicitamente quais documentos sao dispensaveis.',
+        'Por isso, nao e seguro afirmar o que voce "nao precisa" levar.',
+        'O que esta explicitamente exigido hoje e:',
+    ]
+    lines.extend(f'- {item}' for item in KNOWN_ADMISSIONS_REQUIREMENTS)
+    lines.append('Se quiser, eu posso resumir apenas os documentos exigidos ou explicar as etapas da matricula.')
+    return '\n'.join(lines)
 
 
 def _retrieval_hits_cover_query_hints(retrieval_hits: list[Any], query_hints: set[str]) -> bool:
@@ -357,6 +411,17 @@ async def _fetch_actor_context(*, settings: Any, telegram_chat_id: int | None) -
         return None
     actor = payload.get('actor')
     return actor if isinstance(actor, dict) else None
+
+
+async def _fetch_public_school_profile(*, settings: Any) -> dict[str, Any] | None:
+    payload, status_code = await _api_core_get(
+        settings=settings,
+        path='/v1/public/school-profile',
+    )
+    if status_code != 200 or payload is None:
+        return None
+    profile = payload.get('profile')
+    return profile if isinstance(profile, dict) else None
 
 
 async def _fetch_public_calendar(*, settings: Any) -> list[CalendarEventCard]:
@@ -742,6 +807,21 @@ async def _compose_structured_tool_answer(
     preview: Any,
     actor: dict[str, Any] | None,
 ) -> str:
+    if preview.classification.domain is QueryDomain.institution:
+        profile = await _fetch_public_school_profile(settings=settings)
+        if profile is None:
+            return _compose_public_gap_answer(set())
+
+        school_name = str(profile.get('school_name', 'a escola'))
+        normalized_message = _normalize_text(request.message)
+        city = str(profile.get('city', ''))
+        state = str(profile.get('state', ''))
+        if 'cidade' in normalized_message or 'estado' in normalized_message:
+            location = ', '.join(part for part in [city, state] if part)
+            if location:
+                return f'O nome oficial da escola e {school_name}. Ela esta cadastrada em {location}.'
+        return f'O nome oficial da escola e {school_name}.'
+
     if request.telegram_chat_id is None:
         return _compose_structured_deny(actor)
 
@@ -1152,6 +1232,14 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                 if preview.mode is OrchestrationMode.hybrid_retrieval and not retrieval_supported:
                     set_span_attributes(**{'eduassist.orchestration.used_llm': False})
                     message_text = _compose_public_gap_answer(query_hints)
+                elif preview.mode is OrchestrationMode.hybrid_retrieval and _is_negative_requirement_query(request.message):
+                    set_span_attributes(
+                        **{
+                            'eduassist.orchestration.used_llm': False,
+                            'eduassist.orchestration.answer_guardrail': 'negative_requirement_abstention',
+                        }
+                    )
+                    message_text = _compose_negative_requirement_answer()
                 elif preview.mode is OrchestrationMode.clarify and _is_prompt_disclosure_probe(request.message):
                     set_span_attributes(
                         **{

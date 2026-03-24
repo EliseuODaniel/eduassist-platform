@@ -106,6 +106,14 @@ PUBLIC_SERVICE_TERMS = {
     'horario de atendimento',
 }
 INSTITUTION_TERMS = {'escola', 'matricula', 'regimento', 'instituicao', 'endereco'}
+PUBLIC_SCHOOL_PROFILE_TERMS = {
+    'nome da escola',
+    'nome do colegio',
+    'nome do colégio',
+    'como se chama a escola',
+    'como se chama o colegio',
+    'como se chama o colégio',
+}
 
 
 def _append_path(state: OrchestrationState, node_name: str) -> list[str]:
@@ -133,6 +141,11 @@ def _wants_human_support(message: str) -> bool:
 def _is_teacher_self_service_request(message: str, role: UserRole) -> bool:
     lowered = _normalize_text(message)
     return role is UserRole.teacher and any(term in lowered for term in TEACHER_SELF_SERVICE_TERMS)
+
+
+def _is_public_school_profile_request(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return any(term in lowered for term in PUBLIC_SCHOOL_PROFILE_TERMS)
 
 
 def classify_request(state: OrchestrationState) -> OrchestrationState:
@@ -236,6 +249,9 @@ def route_request(state: OrchestrationState, runtime: GraphRuntimeConfig) -> Orc
     elif classification.domain in {QueryDomain.academic, QueryDomain.finance}:
         route = OrchestrationMode.structured_tool.value
         reason = 'dados estruturados devem passar por service deterministico'
+    elif classification.domain is QueryDomain.institution and _is_public_school_profile_request(message):
+        route = OrchestrationMode.structured_tool.value
+        reason = 'fato institucional canonico deve vir de fonte estruturada'
     elif runtime['graph_rag_enabled'] and request.allow_graph_rag and _contains_any(message, GRAPH_RAG_TERMS):
         route = OrchestrationMode.graph_rag.value
         reason = 'a pergunta pede visao global ou conexoes multi-documento'
@@ -281,7 +297,10 @@ def structured_tool_call(state: OrchestrationState) -> OrchestrationState:
     classification = state['classification']
     request = state['request']
 
-    if classification.domain is QueryDomain.academic:
+    if classification.domain is QueryDomain.institution:
+        selected_tools = ['get_public_school_profile']
+        output_contract = 'fato institucional publico canonico e verificavel'
+    elif classification.domain is QueryDomain.academic:
         if request.user.role is UserRole.teacher:
             selected_tools = ['get_teacher_schedule']
             output_contract = 'grade docente e informacoes operacionais permitidas ao professor'

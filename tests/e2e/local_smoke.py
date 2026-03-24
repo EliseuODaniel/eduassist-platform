@@ -146,6 +146,59 @@ def main() -> int:
     )
     print('[ok] graphrag runtime')
 
+    school_name_status, _, school_name_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o nome da escola',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        school_name_status == 200 and isinstance(school_name_payload, dict),
+        'public_school_name_query_failed',
+    )
+    assert_condition(
+        school_name_payload.get('mode') == 'structured_tool',
+        'public_school_name_mode_invalid',
+    )
+    assert_condition(
+        'Colegio Horizonte' in str(school_name_payload.get('message_text', '')),
+        'public_school_name_missing',
+    )
+    print('[ok] public school name')
+
+    negative_docs_status, _, negative_docs_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quais documentos nao preciso para a matricula?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        negative_docs_status == 200 and isinstance(negative_docs_payload, dict),
+        'negative_docs_query_failed',
+    )
+    negative_docs_message = str(negative_docs_payload.get('message_text', ''))
+    assert_condition(
+        'nao e seguro afirmar' in negative_docs_message.lower(),
+        'negative_docs_guardrail_missing',
+    )
+    assert_condition(
+        'dispensaveis' in negative_docs_message.lower(),
+        'negative_docs_abstention_missing',
+    )
+    print('[ok] negative requirements abstention')
+
     protected_status, protected_headers, protected_payload = telegram_webhook_request(
         settings,
         update_id=9902,
