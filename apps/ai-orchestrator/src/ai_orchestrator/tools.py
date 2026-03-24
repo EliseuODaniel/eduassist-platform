@@ -196,6 +196,68 @@ TOOL_CONTRACTS: tuple[ToolContract, ...] = (
         triggers=['atendente', 'humano', 'secretaria', 'nao resolveu'],
         notes=['deve receber resumo seguro da conversa, sem excesso de PII'],
     ),
+    ToolContract(
+        name='schedule_school_visit',
+        description='Registra pedido de visita institucional com protocolo e fila comercial.',
+        kind=ToolKind.operation,
+        access_tier=AccessTier.public,
+        source_of_truth='workflow_service',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'segment': {'type': 'string'},
+                'preferred_date': {'type': 'string'},
+                'preferred_window': {'type': 'string'},
+                'attendee_count': {'type': 'integer', 'minimum': 1},
+                'notes': {'type': 'string'},
+            },
+            'required': ['notes'],
+        },
+        output_contract='protocolo de visita criado ou atualizado, com fila e contexto operacional',
+        triggers=['visita', 'tour', 'conhecer a escola', 'agendar visita'],
+        notes=['deve preservar a preferencia do usuario e registrar fila de admissions'],
+    ),
+    ToolContract(
+        name='create_institutional_request',
+        description='Registra solicitacao formal para direcao, ouvidoria ou setor institucional com protocolo.',
+        kind=ToolKind.operation,
+        access_tier=AccessTier.public,
+        source_of_truth='workflow_service',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'target_area': {'type': 'string'},
+                'category': {'type': 'string'},
+                'subject': {'type': 'string'},
+                'details': {'type': 'string'},
+            },
+            'required': ['target_area', 'category', 'subject', 'details'],
+        },
+        output_contract='protocolo institucional com fila, assunto e trilha auditavel',
+        triggers=['direcao', 'diretora', 'ouvidoria', 'protocolo', 'requerimento'],
+        notes=['pedidos formais nao devem ser reduzidos a handoff generico quando houver workflow estruturado'],
+    ),
+    ToolContract(
+        name='generate_visual_chart',
+        description='Gera ativo visual simples para apoiar resposta de notas, frequencia, financeiro ou indicadores.',
+        kind=ToolKind.operation,
+        access_tier=AccessTier.public,
+        source_of_truth='orchestrator_runtime',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'chart_type': {'type': 'string'},
+                'title': {'type': 'string'},
+            },
+            'required': ['chart_type'],
+        },
+        output_contract='imagem PNG pronta para envio no canal quando houver suporte',
+        triggers=['grafico', 'gráfico', 'visual', 'barra', 'comparativo'],
+        notes=['ativada apenas quando a pergunta explicitamente pede representacao visual'],
+    ),
 )
 
 

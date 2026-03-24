@@ -69,6 +69,7 @@ def _assert_message_response(case: dict[str, Any], payload: dict[str, Any]) -> N
     expected = case['expected']
     classification = payload.get('classification', {})
     citations = payload.get('citations', [])
+    visual_assets = payload.get('visual_assets', [])
     calendar_events = payload.get('calendar_events', [])
     selected_tools = payload.get('selected_tools', [])
     graph_path = payload.get('graph_path', [])
@@ -116,6 +117,30 @@ def _assert_message_response(case: dict[str, Any], payload: dict[str, Any]) -> N
         len(calendar_events) >= min_calendar_events,
         f'{case_id}:calendar_event_count_too_low',
     )
+
+    min_visual_assets = int(expected.get('min_visual_assets', 0))
+    assert_condition(
+        len(visual_assets) >= min_visual_assets,
+        f'{case_id}:visual_asset_count_too_low',
+    )
+    for asset in visual_assets[:min_visual_assets]:
+        assert_condition(isinstance(asset, dict), f'{case_id}:visual_asset_invalid')
+        for field_name in ('title', 'mime_type', 'base64_data'):
+            assert_condition(asset.get(field_name), f'{case_id}:visual_asset_missing_{field_name}')
+    for mime_type in expected.get('visual_mime_types_include', []):
+        assert_condition(
+            any(str(asset.get('mime_type')) == str(mime_type) for asset in visual_assets if isinstance(asset, dict)),
+            f'{case_id}:missing_visual_mime_type:{mime_type}',
+        )
+    for title_snippet in expected.get('visual_titles_include', []):
+        assert_condition(
+            any(
+                _normalize_text(str(title_snippet)) in _normalize_text(str(asset.get('title', '')))
+                for asset in visual_assets
+                if isinstance(asset, dict)
+            ),
+            f'{case_id}:missing_visual_title:{title_snippet}',
+        )
 
     reason_contains = expected.get('reason_contains')
     if reason_contains:

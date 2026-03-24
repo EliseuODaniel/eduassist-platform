@@ -141,6 +141,27 @@ SUPPORT_PHRASES = {
     'me transfira',
     'me encaminhe',
 }
+VISIT_ACTION_TERMS = {
+    'agendar visita',
+    'agendamento de visita',
+    'marcar visita',
+    'quero visitar',
+    'quero conhecer a escola',
+    'visita guiada',
+    'tour',
+}
+INSTITUTIONAL_REQUEST_TERMS = {
+    'solicitacao a direcao',
+    'solicitação à direção',
+    'solicitacao para a direcao',
+    'solicitação para a direção',
+    'pedido para a diretora',
+    'pedido para a direcao',
+    'requerimento',
+    'protocolar',
+    'protocolo formal',
+    'ouvidoria',
+}
 GRAPH_RAG_TERMS = {'visao geral', 'compare', 'comparar', 'tendencias', 'corpus', 'relacione'}
 TEACHER_SELF_SERVICE_TERMS = {'horario', 'agenda', 'turma', 'turmas', 'disciplina', 'disciplinas', 'materia', 'materias'}
 PUBLIC_SERVICE_TERMS = {
@@ -219,6 +240,27 @@ INSTITUTION_TERMS = {
     'confessional',
     'laica',
     'religiosa',
+    'diretora',
+    'diretor',
+    'direcao',
+    'direção',
+    'coordenacao',
+    'coordenação',
+    'lideranca',
+    'liderança',
+    'media de aprovacao',
+    'média de aprovação',
+    'aprovacao',
+    'aprovação',
+    'indicador',
+    'indicadores',
+    'curiosidade',
+    'curiosidades',
+    'diferencial',
+    'diferenciais',
+    'visita',
+    'visitas',
+    'tour',
 }
 PUBLIC_SCHOOL_PROFILE_TERMS = {
     'nome da escola',
@@ -249,6 +291,13 @@ PUBLIC_SCHOOL_PROFILE_TERMS = {
     'fundamental ii',
     'ensino medio',
     'ensino médio',
+    '6o ano',
+    '7o ano',
+    '8o ano',
+    '9o ano',
+    '1o ano',
+    '2o ano',
+    '3o ano',
     'periodo integral',
     'período integral',
     'mensalidade',
@@ -258,6 +307,32 @@ PUBLIC_SCHOOL_PROFILE_TERMS = {
     'confessional',
     'laica',
     'religiosa',
+    'diretora',
+    'diretor',
+    'direcao',
+    'direção',
+    'coordenacao',
+    'coordenação',
+    'lideranca',
+    'liderança',
+    'aprovacao',
+    'aprovação',
+    'media de aprovacao',
+    'média de aprovação',
+    'indicador',
+    'indicadores',
+    'curiosidade',
+    'curiosidades',
+    'diferencial',
+    'diferenciais',
+    'visita',
+    'visitas',
+    'visita guiada',
+    'tour',
+    'conhecer a escola',
+    'agendar visita',
+    'solicitacao a direcao',
+    'solicitação à direção',
     'biblioteca',
     'cantina',
     'laboratorio',
@@ -280,7 +355,7 @@ def _append_path(state: OrchestrationState, node_name: str) -> list[str]:
 def _normalize_text(text: str) -> str:
     normalized = unicodedata.normalize('NFKD', text)
     without_accents = ''.join(char for char in normalized if not unicodedata.combining(char))
-    return without_accents.lower()
+    return without_accents.replace('º', 'o').replace('ª', 'a').lower()
 
 
 def _message_matches_term(message: str, term: str) -> bool:
@@ -301,6 +376,28 @@ def _wants_human_support(message: str) -> bool:
     return any(term in lowered for term in SUPPORT_TERMS) or any(
         phrase in lowered for phrase in SUPPORT_PHRASES
     )
+
+
+def _is_visit_booking_request(message: str) -> bool:
+    lowered = _normalize_text(message)
+    if any(_message_matches_term(lowered, term) for term in VISIT_ACTION_TERMS):
+        return True
+    scheduling_verbs = {'agendar', 'agendamento', 'marcar', 'reservar'}
+    visit_targets = {'visita', 'visita guiada', 'tour', 'conhecer a escola', 'conhecer o colegio', 'conhecer o colégio'}
+    return _contains_any(lowered, scheduling_verbs) and _contains_any(lowered, visit_targets)
+
+
+def _is_institutional_request(message: str) -> bool:
+    lowered = _normalize_text(message)
+    if any(_message_matches_term(lowered, term) for term in INSTITUTIONAL_REQUEST_TERMS):
+        return True
+    request_verbs = {'solicitar', 'solicitacao', 'solicitação', 'protocolar', 'encaminhar', 'formalizar'}
+    leadership_targets = {'direcao', 'direção', 'diretora', 'diretor', 'ouvidoria'}
+    return _contains_any(lowered, request_verbs) and _contains_any(lowered, leadership_targets)
+
+
+def _is_structured_support_workflow_request(message: str) -> bool:
+    return _is_visit_booking_request(message) or _is_institutional_request(message)
 
 
 def _is_teacher_self_service_request(message: str, role: UserRole) -> bool:
@@ -328,7 +425,14 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
     request = state['request']
     message = _normalize_text(request.message)
 
-    if _wants_human_support(message):
+    if _is_structured_support_workflow_request(message):
+        classification = IntentClassification(
+            domain=QueryDomain.support,
+            access_tier=AccessTier.public,
+            confidence=0.89,
+            reason='mensagem pede uma acao institucional estruturada, como visita ou solicitacao formal',
+        )
+    elif _wants_human_support(message):
         classification = IntentClassification(
             domain=QueryDomain.support,
             access_tier=AccessTier.public,
@@ -426,6 +530,9 @@ def route_request(state: OrchestrationState, runtime: GraphRuntimeConfig) -> Orc
     elif state.get('needs_authentication'):
         route = OrchestrationMode.deny.value
         reason = 'a consulta exige autenticacao ou vinculo antes de qualquer acesso'
+    elif classification.domain is QueryDomain.support and _is_structured_support_workflow_request(message):
+        route = OrchestrationMode.structured_tool.value
+        reason = 'a solicitacao pode ser executada por workflow estruturado com protocolo'
     elif classification.domain is QueryDomain.support and request.allow_handoff:
         route = OrchestrationMode.handoff.value
         reason = 'o usuario demonstrou necessidade de atendimento humano ou operacional'
@@ -483,6 +590,13 @@ def structured_tool_call(state: OrchestrationState) -> OrchestrationState:
     if classification.domain is QueryDomain.institution:
         selected_tools = ['get_public_school_profile']
         output_contract = 'fato institucional publico canonico e verificavel'
+    elif classification.domain is QueryDomain.support:
+        if _is_visit_booking_request(request.message):
+            selected_tools = ['schedule_school_visit', 'create_support_ticket']
+            output_contract = 'agendamento ou pre-agendamento de visita institucional com protocolo e fila comercial'
+        else:
+            selected_tools = ['create_institutional_request', 'create_support_ticket']
+            output_contract = 'solicitacao institucional formal com protocolo, fila e contexto auditavel'
     elif classification.domain is QueryDomain.academic:
         if request.user.role is UserRole.teacher:
             selected_tools = ['get_teacher_schedule']

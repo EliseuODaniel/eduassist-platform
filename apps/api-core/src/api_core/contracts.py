@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -233,6 +233,51 @@ class PublicFeatureAvailability(BaseModel):
     notes: str | None = None
 
 
+class PublicLeadershipMember(BaseModel):
+    member_key: str
+    name: str
+    title: str
+    focus: str
+    contact_channel: str | None = None
+    notes: str | None = None
+
+
+class PublicKpiEntry(BaseModel):
+    metric_key: str
+    label: str
+    value: float
+    unit: str
+    reference_period: str
+    notes: str | None = None
+
+
+class PublicHighlightEntry(BaseModel):
+    highlight_key: str
+    title: str
+    description: str
+    evidence_line: str | None = None
+
+
+class PublicVisitOffer(BaseModel):
+    offer_key: str
+    title: str
+    audience: str
+    day_label: str
+    start_time: str
+    end_time: str
+    location: str
+    notes: str | None = None
+
+
+class PublicServiceCatalogEntry(BaseModel):
+    service_key: str
+    title: str
+    audience: str
+    request_channel: str
+    typical_eta: str
+    notes: str | None = None
+
+
 class PublicSchoolProfile(BaseModel):
     school_unit_code: str
     school_name: str
@@ -249,6 +294,11 @@ class PublicSchoolProfile(BaseModel):
     tuition_reference: list[PublicTuitionReference] = Field(default_factory=list)
     contact_channels: list[PublicContactChannel] = Field(default_factory=list)
     feature_inventory: list[PublicFeatureAvailability] = Field(default_factory=list)
+    leadership_team: list[PublicLeadershipMember] = Field(default_factory=list)
+    public_kpis: list[PublicKpiEntry] = Field(default_factory=list)
+    highlights: list[PublicHighlightEntry] = Field(default_factory=list)
+    visit_offers: list[PublicVisitOffer] = Field(default_factory=list)
+    service_catalog: list[PublicServiceCatalogEntry] = Field(default_factory=list)
     documented_services: list[str] = Field(default_factory=list)
     admissions_highlights: list[str] = Field(default_factory=list)
 
@@ -472,6 +522,66 @@ class SupportConversationMessageEntry(BaseModel):
     sender_type: str
     content: str
     created_at: datetime
+
+
+class InternalVisitBookingCreateRequest(BaseModel):
+    conversation_external_id: str
+    channel: str = 'telegram'
+    telegram_chat_id: int | None = None
+    audience_name: str | None = None
+    audience_contact: str | None = None
+    interested_segment: str | None = None
+    preferred_date: date | None = None
+    preferred_window: str | None = None
+    attendee_count: int = 1
+    notes: str
+
+
+class VisitBookingEntry(BaseModel):
+    booking_id: uuid.UUID
+    protocol_code: str
+    status: str
+    queue_name: str
+    linked_ticket_code: str | None = None
+    audience_name: str | None = None
+    interested_segment: str | None = None
+    preferred_date: date | None = None
+    preferred_window: str | None = None
+    slot_label: str | None = None
+    created_at: datetime
+
+
+class VisitBookingCreateResponse(BaseModel):
+    created: bool
+    item: VisitBookingEntry
+
+
+class InternalInstitutionalRequestCreateRequest(BaseModel):
+    conversation_external_id: str
+    channel: str = 'telegram'
+    telegram_chat_id: int | None = None
+    target_area: str
+    category: str
+    subject: str
+    details: str
+    requester_contact: str | None = None
+
+
+class InstitutionalRequestEntry(BaseModel):
+    request_id: uuid.UUID
+    protocol_code: str
+    target_area: str
+    category: str
+    subject: str
+    status: str
+    queue_name: str
+    linked_ticket_code: str | None = None
+    created_at: datetime
+
+
+class InstitutionalRequestCreateResponse(BaseModel):
+    created: bool
+    item: InstitutionalRequestEntry
 
 
 class SupportHandoffCreateResponse(BaseModel):

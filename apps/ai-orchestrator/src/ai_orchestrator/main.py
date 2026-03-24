@@ -3,7 +3,6 @@ from __future__ import annotations
 from functools import lru_cache
 import logging
 import secrets
-import threading
 
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
@@ -90,7 +89,7 @@ configure_observability(
 logger = logging.getLogger(__name__)
 
 
-def _warm_retrieval_service_in_background(settings: Settings) -> None:
+def _warm_retrieval_service(settings: Settings) -> None:
     try:
         get_retrieval_service(
             database_url=settings.database_url,
@@ -108,12 +107,7 @@ async def warm_runtime_dependencies() -> None:
     settings = get_settings()
     if not settings.warm_retrieval_on_startup:
         return
-    threading.Thread(
-        target=_warm_retrieval_service_in_background,
-        args=(settings,),
-        daemon=True,
-        name='retrieval-warmup',
-    ).start()
+    _warm_retrieval_service(settings)
 
 
 @app.get('/healthz', response_model=HealthResponse)

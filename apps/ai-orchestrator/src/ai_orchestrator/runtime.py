@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import base64
+import io
 import re
 import unicodedata
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from time import monotonic
 from typing import Any
 
 import httpx
 from eduassist_observability import record_counter, record_histogram, set_span_attributes, start_span
+from PIL import Image, ImageDraw, ImageFont
 
 from .graph_rag_runtime import graph_rag_workspace_ready, run_graph_rag_query
 from .llm_provider import compose_with_provider
@@ -18,6 +21,7 @@ from .models import (
     MessageResponse,
     MessageResponseCitation,
     MessageResponseRequest,
+    MessageResponseVisualAsset,
     OrchestrationMode,
     OrchestrationRequest,
     QueryDomain,
@@ -111,6 +115,45 @@ PUBLIC_CONTACT_TERMS = {
 }
 PUBLIC_LOCATION_TERMS = {'endereco', 'endereço', 'cidade', 'estado', 'onde fica', 'localizacao', 'localização'}
 PUBLIC_CONFESSIONAL_TERMS = {'confessional', 'laica', 'religiosa'}
+PUBLIC_LEADERSHIP_TERMS = {
+    'diretora',
+    'diretor',
+    'direcao',
+    'direção',
+    'coordenacao',
+    'coordenação',
+    'lideranca',
+    'liderança',
+}
+PUBLIC_KPI_TERMS = {
+    'aprovacao',
+    'aprovação',
+    'media de aprovacao',
+    'média de aprovação',
+    'indicador',
+    'indicadores',
+    'frequencia media',
+    'frequência média',
+    'familias satisfeitas',
+}
+PUBLIC_HIGHLIGHT_TERMS = {
+    'curiosidade',
+    'curiosidades',
+    'diferencial',
+    'diferenciais',
+    'ponto forte',
+    'pontos fortes',
+    'unica',
+    'única',
+}
+PUBLIC_VISIT_TERMS = {
+    'visita',
+    'visitas',
+    'visita guiada',
+    'tour',
+    'conhecer a escola',
+    'agendar visita',
+}
 PUBLIC_SEGMENT_TERMS = {
     'fundamental',
     'fundamental ii',
@@ -141,6 +184,18 @@ SUPPORT_FINANCE_TERMS = {'financeiro', 'boleto', 'mensalidade', 'pagamento', 'fa
 SUPPORT_COORDINATION_TERMS = {'coordenacao', 'pedagogico', 'ocorrencia', 'professor', 'disciplina'}
 SUPPORT_SECRETARIAT_TERMS = {'secretaria', 'matricula', 'documento', 'declaracao', 'historico', 'transferencia'}
 PUBLIC_ENTITY_HINTS = {
+    'diretora': 'diretoria',
+    'diretor': 'diretoria',
+    'direcao': 'diretoria',
+    'direção': 'diretoria',
+    'coordenacao': 'coordenacao',
+    'coordenação': 'coordenacao',
+    'aprovacao': 'indicadores institucionais',
+    'aprovação': 'indicadores institucionais',
+    'curiosidade': 'diferenciais institucionais',
+    'curiosidades': 'diferenciais institucionais',
+    'visita': 'visita institucional',
+    'tour': 'visita institucional',
     'biblioteca': 'biblioteca',
     'cantina': 'cantina',
     'laboratorio': 'laboratorio',
@@ -300,6 +355,7 @@ HIGH_RISK_REASONING_PHRASES = {
     'ha excecao',
     'tem excecao',
 }
+VISUAL_TERMS = {'grafico', 'gráfico', 'visual', 'grafica', 'gráfico', 'barra', 'comparativo', 'evolucao', 'evolução'}
 
 
 @dataclass(frozen=True)
@@ -322,7 +378,7 @@ class ConversationContextBundle:
 def _normalize_text(text: str) -> str:
     normalized = unicodedata.normalize('NFKD', text)
     without_accents = ''.join(char for char in normalized if not unicodedata.combining(char))
-    return without_accents.lower()
+    return without_accents.replace('º', 'o').replace('ª', 'a').lower()
 
 
 def _map_request(request: MessageResponseRequest, user_context: UserContext) -> OrchestrationRequest:
@@ -526,6 +582,101 @@ def _contact_value(profile: dict[str, Any], channel: str) -> list[str]:
     return values
 
 
+def _leadership_inventory(profile: dict[str, Any]) -> list[dict[str, Any]]:
+    leadership = profile.get('leadership_team')
+    return [item for item in leadership if isinstance(item, dict)] if isinstance(leadership, list) else []
+
+
+def _public_kpis(profile: dict[str, Any]) -> list[dict[str, Any]]:
+    entries = profile.get('public_kpis')
+    return [item for item in entries if isinstance(item, dict)] if isinstance(entries, list) else []
+
+
+def _public_highlights(profile: dict[str, Any]) -> list[dict[str, Any]]:
+    entries = profile.get('highlights')
+    return [item for item in entries if isinstance(item, dict)] if isinstance(entries, list) else []
+
+
+def _public_visit_offers(profile: dict[str, Any]) -> list[dict[str, Any]]:
+    entries = profile.get('visit_offers')
+    return [item for item in entries if isinstance(item, dict)] if isinstance(entries, list) else []
+
+
+def _public_service_catalog(profile: dict[str, Any]) -> list[dict[str, Any]]:
+    entries = profile.get('service_catalog')
+    return [item for item in entries if isinstance(item, dict)] if isinstance(entries, list) else []
+
+
+def _select_leadership_member(profile: dict[str, Any], message: str) -> dict[str, Any] | None:
+    normalized = _normalize_text(message)
+    members = _leadership_inventory(profile)
+    if not members:
+        return None
+    for member in members:
+        title = _normalize_text(str(member.get('title', '')))
+        focus = _normalize_text(str(member.get('focus', '')))
+        name = _normalize_text(str(member.get('name', '')))
+        if any(
+            phrase in normalized
+            for phrase in (
+                title,
+                name,
+                'diretora',
+                'diretor',
+                'coordenador',
+                'coordenadora',
+                'direcao',
+                'direção',
+            )
+        ):
+            return member
+    return members[0]
+
+
+def _select_public_kpis(profile: dict[str, Any], message: str) -> list[dict[str, Any]]:
+    normalized = _normalize_text(message)
+    entries = _public_kpis(profile)
+    if not entries:
+        return []
+    selected = [
+        item
+        for item in entries
+        if any(
+            marker in normalized
+            for marker in (
+                _normalize_text(str(item.get('label', ''))),
+                _normalize_text(str(item.get('metric_key', ''))),
+            )
+        )
+    ]
+    return selected or entries[:3]
+
+
+def _select_public_highlight(profile: dict[str, Any], message: str) -> dict[str, Any] | None:
+    normalized = _normalize_text(message)
+    entries = _public_highlights(profile)
+    if not entries:
+        return None
+    for item in entries:
+        haystack = ' '.join(
+            [
+                _normalize_text(str(item.get('title', ''))),
+                _normalize_text(str(item.get('description', ''))),
+                _normalize_text(str(item.get('highlight_key', ''))),
+            ]
+        )
+        if any(token in haystack for token in _extract_salient_terms(message)):
+            return item
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {'curiosidade', 'curiosidades', 'unica', 'única', 'diferencial', 'diferenciais'}
+    ):
+        for item in entries:
+            if str(item.get('highlight_key')) == 'maker_integrado':
+                return item
+    return entries[0]
+
+
 def _compose_public_profile_answer(profile: dict[str, Any], message: str) -> str:
     normalized = _normalize_text(message)
     school_name = str(profile.get('school_name', 'Colegio Horizonte'))
@@ -558,6 +709,87 @@ def _compose_public_profile_answer(profile: dict[str, Any], message: str) -> str
                 'A proposta institucional e plural e nao confessional.'
             )
         return f'O perfil publico atual classifica a escola como {confessional_status}.'
+
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_LEADERSHIP_TERMS):
+        member = _select_leadership_member(profile, message)
+        if member is None:
+            return f'A base publica atual nao traz a lideranca institucional detalhada do {school_name}.'
+        contact_channel = str(member.get('contact_channel', '')).strip()
+        notes = str(member.get('notes', '')).strip()
+        lines = [
+            f"{member.get('title', 'Lideranca institucional')}: {member.get('name', school_name)}.",
+            str(member.get('focus', '')).strip(),
+        ]
+        if contact_channel:
+            lines.append(f'Canal institucional: {contact_channel}.')
+        if notes:
+            lines.append(notes)
+        return ' '.join(line for line in lines if line)
+
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_KPI_TERMS):
+        entries = _select_public_kpis(profile, message)
+        if not entries:
+            return f'A base publica atual nao traz indicadores institucionais publicados do {school_name}.'
+        if len(entries) == 1:
+            item = entries[0]
+            notes = str(item.get('notes', '')).strip()
+            return (
+                f"{item.get('label', 'Indicador institucional')}: {item.get('value', '--')}{item.get('unit', '')} "
+                f"({item.get('reference_period', 'periodo nao informado')}). {notes}".strip()
+            )
+        lines = ['Indicadores institucionais publicos mais recentes:']
+        for item in entries:
+            lines.append(
+                f"- {item.get('label', 'Indicador')}: {item.get('value', '--')}{item.get('unit', '')} "
+                f"({item.get('reference_period', 'periodo nao informado')})"
+            )
+        return '\n'.join(lines)
+
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_HIGHLIGHT_TERMS):
+        item = _select_public_highlight(profile, message)
+        if item is None:
+            return f'A base publica atual nao traz diferenciais institucionais consolidados do {school_name}.'
+        evidence_line = str(item.get('evidence_line', '')).strip()
+        intro = 'Diferencial institucional'
+        if any(
+            _message_matches_term(normalized, term)
+            for term in {'curiosidade', 'curiosidades', 'unica', 'única'}
+        ):
+            intro = 'Uma curiosidade documentada desta escola'
+        lines = [f"{intro}: {item.get('title', 'Diferencial institucional')}. {item.get('description', '')}"]
+        if evidence_line:
+            lines.append(f'Evidencia institucional: {evidence_line}')
+        return ' '.join(line for line in lines if line)
+
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_VISIT_TERMS):
+        offers = _public_visit_offers(profile)
+        services = _public_service_catalog(profile)
+        if not offers:
+            return f'A base publica atual nao traz janelas de visita institucional do {school_name}.'
+        lines = [f'Janelas publicas de visita do {school_name}:']
+        for item in offers:
+            lines.append(
+                '- {title}: {day_label}, das {start_time} as {end_time}, em {location}. {notes}'.format(
+                    title=item.get('title', 'Visita institucional'),
+                    day_label=item.get('day_label', 'dia util'),
+                    start_time=item.get('start_time', '--:--'),
+                    end_time=item.get('end_time', '--:--'),
+                    location=item.get('location', 'local a confirmar'),
+                    notes=str(item.get('notes', '')).strip(),
+                ).rstrip()
+            )
+        visit_service = next(
+            (item for item in services if str(item.get('service_key')) == 'visita_institucional'),
+            None,
+        )
+        if visit_service is not None:
+            lines.append(
+                'Agendamento: {request_channel}. Prazo de confirmacao: {typical_eta}.'.format(
+                    request_channel=visit_service.get('request_channel', 'canal institucional'),
+                    typical_eta=visit_service.get('typical_eta', 'ate 1 dia util'),
+                )
+            )
+        return '\n'.join(lines)
 
     if any(_message_matches_term(normalized, term) for term in PUBLIC_PRICING_TERMS):
         relevant_rows = [
@@ -1175,6 +1407,431 @@ async def _create_support_handoff(
     return response_payload
 
 
+def _extract_requested_date(message: str) -> date | None:
+    normalized = _normalize_text(message)
+    explicit_match = re.search(r'\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b', normalized)
+    if explicit_match:
+        day = int(explicit_match.group(1))
+        month = int(explicit_match.group(2))
+        year = explicit_match.group(3)
+        if year is None:
+            year_value = date.today().year
+        else:
+            year_value = int(year)
+            if year_value < 100:
+                year_value += 2000
+        try:
+            return date(year_value, month, day)
+        except ValueError:
+            return None
+
+    weekday_map = {
+        'segunda': 0,
+        'terca': 1,
+        'terça': 1,
+        'quarta': 2,
+        'quinta': 3,
+        'sexta': 4,
+        'sabado': 5,
+        'sábado': 5,
+    }
+    today = date.today()
+    for label, weekday in weekday_map.items():
+        if _message_matches_term(normalized, label):
+            offset = (weekday - today.weekday()) % 7
+            if offset == 0:
+                offset = 7
+            return today + timedelta(days=offset)
+    return None
+
+
+def _extract_requested_window(message: str) -> str | None:
+    normalized = _normalize_text(message)
+    time_match = re.search(r'\b(\d{1,2})(?:[:h](\d{2}))\b', normalized)
+    if time_match:
+        hour = int(time_match.group(1))
+        minute = int(time_match.group(2) or 0)
+        if 0 <= hour <= 23 and 0 <= minute <= 59:
+            return f'{hour:02d}:{minute:02d}'
+    if 'manha' in normalized:
+        return 'manha'
+    if 'tarde' in normalized:
+        return 'tarde'
+    if 'noite' in normalized:
+        return 'noite'
+    return None
+
+
+def _detect_institutional_request_target_area(message: str) -> str:
+    normalized = _normalize_text(message)
+    for term, area in (
+        ('direcao', 'direcao'),
+        ('direção', 'direcao'),
+        ('diretora', 'direcao'),
+        ('diretor', 'direcao'),
+        ('ouvidoria', 'ouvidoria'),
+        ('coordenacao', 'coordenacao'),
+        ('coordenação', 'coordenacao'),
+        ('financeiro', 'financeiro'),
+        ('secretaria', 'secretaria'),
+    ):
+        if _message_matches_term(normalized, term):
+            return area
+    return 'direcao'
+
+
+def _detect_institutional_request_category(message: str) -> str:
+    normalized = _normalize_text(message)
+    for term, category in (
+        ('bolsa', 'bolsas'),
+        ('desconto', 'descontos'),
+        ('reclamacao', 'manifestacao'),
+        ('reclamação', 'manifestacao'),
+        ('sugestao', 'sugestao'),
+        ('sugestão', 'sugestao'),
+        ('elogio', 'elogio'),
+        ('ocorrencia', 'ocorrencia'),
+        ('ocorrência', 'ocorrencia'),
+    ):
+        if _message_matches_term(normalized, term):
+            return category
+    return 'solicitacao_geral'
+
+
+def _build_institutional_request_subject(message: str) -> str:
+    compact = ' '.join(message.split())
+    if len(compact) <= 140:
+        return compact
+    return f'{compact[:137].rstrip()}...'
+
+
+async def _create_visit_booking(
+    *,
+    settings: Any,
+    request: MessageResponseRequest,
+    actor: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    conversation_external_id = request.conversation_id or _effective_conversation_id(request)
+    if not conversation_external_id:
+        return None
+    preferred_date = _extract_requested_date(request.message)
+    preferred_window = _extract_requested_window(request.message)
+    payload = {
+        'conversation_external_id': conversation_external_id,
+        'channel': request.channel.value,
+        'telegram_chat_id': request.telegram_chat_id,
+        'audience_name': str(actor.get('full_name')) if isinstance(actor, dict) and actor.get('full_name') else None,
+        'audience_contact': None,
+        'interested_segment': _select_public_segment(request.message),
+        'preferred_date': preferred_date.isoformat() if preferred_date else None,
+        'preferred_window': preferred_window,
+        'attendee_count': 1,
+        'notes': request.message,
+    }
+    response_payload, status_code = await _api_core_post(
+        settings=settings,
+        path='/v1/internal/workflows/visit-bookings',
+        payload=payload,
+    )
+    if status_code != 200 or response_payload is None:
+        return None
+    return response_payload
+
+
+async def _create_institutional_request(
+    *,
+    settings: Any,
+    request: MessageResponseRequest,
+    actor: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    conversation_external_id = request.conversation_id or _effective_conversation_id(request)
+    if not conversation_external_id:
+        return None
+    payload = {
+        'conversation_external_id': conversation_external_id,
+        'channel': request.channel.value,
+        'telegram_chat_id': request.telegram_chat_id,
+        'target_area': _detect_institutional_request_target_area(request.message),
+        'category': _detect_institutional_request_category(request.message),
+        'subject': _build_institutional_request_subject(request.message),
+        'details': request.message,
+        'requester_contact': None,
+    }
+    response_payload, status_code = await _api_core_post(
+        settings=settings,
+        path='/v1/internal/workflows/institutional-requests',
+        payload=payload,
+    )
+    if status_code != 200 or response_payload is None:
+        return None
+    return response_payload
+
+
+def _compose_visit_booking_answer(response_payload: dict[str, Any] | None, school_profile: dict[str, Any] | None) -> str:
+    school_name = str((school_profile or {}).get('school_name', 'Colegio Horizonte'))
+    if not response_payload:
+        return (
+            f'Posso orientar sobre visitas ao {school_name}, mas nao consegui registrar o pedido agora. '
+            'Tente novamente em instantes ou use o canal de admissions.'
+        )
+    item = response_payload.get('item')
+    if not isinstance(item, dict):
+        return (
+            f'Registrei a intencao de visita ao {school_name}, mas nao consegui recuperar o protocolo agora. '
+            'Use admissions para confirmar o agendamento.'
+        )
+    preferred_date = item.get('preferred_date')
+    preferred_window = item.get('preferred_window')
+    slot_parts = []
+    if preferred_date:
+        slot_parts.append(str(preferred_date))
+    if preferred_window:
+        slot_parts.append(str(preferred_window))
+    slot = ' - '.join(slot_parts) if slot_parts else 'janela a confirmar'
+    return (
+        f"Pedido de visita registrado para o {school_name}. Protocolo: {item.get('protocol_code', 'indisponivel')}. "
+        f"Preferencia informada: {slot}. "
+        f"Fila responsavel: {item.get('queue_name', 'admissoes')}. "
+        f"Ticket operacional: {item.get('linked_ticket_code', 'a confirmar')}. "
+        'A equipe comercial valida a janela e retorna com a confirmacao.'
+    )
+
+
+def _compose_institutional_request_answer(response_payload: dict[str, Any] | None) -> str:
+    if not response_payload:
+        return (
+            'Posso orientar sobre protocolos institucionais, mas nao consegui registrar a solicitacao agora. '
+            'Tente novamente em instantes ou use a secretaria.'
+        )
+    item = response_payload.get('item')
+    if not isinstance(item, dict):
+        return (
+            'Registrei a manifestacao institucional, mas nao consegui recuperar o protocolo neste momento. '
+            'Use a secretaria ou a ouvidoria para confirmar.'
+        )
+    return (
+        f"Solicitacao institucional registrada para {item.get('target_area', 'o setor responsavel')}. "
+        f"Protocolo: {item.get('protocol_code', 'indisponivel')}. "
+        f"Assunto: {item.get('subject', 'solicitacao institucional')}. "
+        f"Fila responsavel: {item.get('queue_name', 'atendimento')}. "
+        f"Ticket operacional: {item.get('linked_ticket_code', 'a confirmar')}. "
+        'A equipe faz a triagem inicial e segue o retorno pelo fluxo institucional.'
+    )
+
+
+def _wants_visual_response(message: str) -> bool:
+    return _contains_any(message, VISUAL_TERMS)
+
+
+def _load_font(size: int):
+    try:
+        return ImageFont.truetype('DejaVuSans.ttf', size=size)
+    except Exception:  # pragma: no cover - font availability depends on runtime image
+        return ImageFont.load_default()
+
+
+def _build_visual_asset(*, title: str, subtitle: str, labels: list[str], values: list[float], unit: str) -> MessageResponseVisualAsset | None:
+    if not labels or not values or len(labels) != len(values):
+        return None
+
+    width, height = 1280, 820
+    padding_left, padding_right = 110, 80
+    padding_top, padding_bottom = 110, 120
+    plot_width = width - padding_left - padding_right
+    plot_height = height - padding_top - padding_bottom
+    bar_gap = 28
+    bar_width = max(48, int((plot_width - bar_gap * (len(values) - 1)) / max(len(values), 1)))
+    max_value = max(max(values), 1.0)
+
+    image = Image.new('RGB', (width, height), '#f6f3ee')
+    draw = ImageDraw.Draw(image)
+    title_font = _load_font(38)
+    subtitle_font = _load_font(22)
+    axis_font = _load_font(20)
+    label_font = _load_font(18)
+
+    draw.text((padding_left, 28), title, font=title_font, fill='#16213a')
+    if subtitle:
+        draw.text((padding_left, 72), subtitle, font=subtitle_font, fill='#556070')
+
+    axis_x0 = padding_left
+    axis_y0 = padding_top
+    axis_x1 = padding_left
+    axis_y1 = padding_top + plot_height
+    axis_x2 = padding_left + plot_width
+    axis_y2 = axis_y1
+    draw.line((axis_x0, axis_y0, axis_x1, axis_y1), fill='#5c6470', width=3)
+    draw.line((axis_x1, axis_y1, axis_x2, axis_y2), fill='#5c6470', width=3)
+
+    palette = ['#0f766e', '#1d4ed8', '#c2410c', '#7c3aed', '#b45309', '#0f172a']
+    for index, value in enumerate(values):
+        x0 = padding_left + index * (bar_width + bar_gap)
+        x1 = x0 + bar_width
+        ratio = value / max_value if max_value else 0
+        bar_height = int(ratio * (plot_height - 30))
+        y0 = padding_top + plot_height - bar_height
+        y1 = padding_top + plot_height
+        color = palette[index % len(palette)]
+        draw.rounded_rectangle((x0, y0, x1, y1), radius=12, fill=color)
+        value_label = f'{value:.1f}{unit}'.rstrip('0').rstrip('.') if unit != '%' else f'{value:.1f}%'
+        draw.text((x0, y0 - 28), value_label, font=axis_font, fill='#16213a')
+        draw.text((x0, y1 + 16), labels[index], font=label_font, fill='#16213a')
+
+    buffer = io.BytesIO()
+    image.save(buffer, format='PNG')
+    encoded = base64.b64encode(buffer.getvalue()).decode('ascii')
+    return MessageResponseVisualAsset(
+        title=title,
+        mime_type='image/png',
+        base64_data=encoded,
+        caption=subtitle or title,
+    )
+
+
+def _build_public_kpi_visual(profile: dict[str, Any], message: str) -> list[MessageResponseVisualAsset]:
+    entries = _select_public_kpis(profile, message)
+    if not entries:
+        return []
+    labels = [str(item.get('label', 'Indicador'))[:18] for item in entries]
+    values = [float(item.get('value', 0.0) or 0.0) for item in entries]
+    asset = _build_visual_asset(
+        title='Indicadores institucionais',
+        subtitle='Painel publico mais recente',
+        labels=labels,
+        values=values,
+        unit='%',
+    )
+    return [asset] if asset is not None else []
+
+
+def _build_academic_visual(summary: dict[str, Any], message: str, student_name: str) -> list[MessageResponseVisualAsset]:
+    normalized = _normalize_text(message)
+    if _contains_any(normalized, ATTENDANCE_TERMS) and not _contains_any(normalized, GRADE_TERMS):
+        attendance_rows = summary.get('attendance')
+        if not isinstance(attendance_rows, list) or not attendance_rows:
+            return []
+        labels = [str(item.get('subject_name', 'Disciplina'))[:18] for item in attendance_rows[:6] if isinstance(item, dict)]
+        values = []
+        for item in attendance_rows[:6]:
+            if not isinstance(item, dict):
+                continue
+            present = float(item.get('present_count', 0) or 0)
+            late = float(item.get('late_count', 0) or 0)
+            absent = float(item.get('absent_count', 0) or 0)
+            total = present + late + absent
+            values.append(round(((present + late) / total) * 100, 1) if total else 0.0)
+        asset = _build_visual_asset(
+            title=f'Frequencia de {student_name}',
+            subtitle='Percentual de presenca por disciplina',
+            labels=labels,
+            values=values,
+            unit='%',
+        )
+        return [asset] if asset is not None else []
+
+    grades = summary.get('grades')
+    if not isinstance(grades, list) or not grades:
+        return []
+    per_subject: dict[str, list[float]] = {}
+    for item in grades:
+        if not isinstance(item, dict):
+            continue
+        subject_name = str(item.get('subject_name', 'Disciplina'))
+        score = float(item.get('score', 0) or 0)
+        max_score = float(item.get('max_score', 0) or 0)
+        if max_score <= 0:
+            continue
+        per_subject.setdefault(subject_name, []).append(round((score / max_score) * 100, 1))
+    labels = list(per_subject.keys())[:6]
+    values = [round(sum(per_subject[label]) / len(per_subject[label]), 1) for label in labels]
+    asset = _build_visual_asset(
+        title=f'Notas de {student_name}',
+        subtitle='Media percentual por disciplina',
+        labels=[label[:18] for label in labels],
+        values=values,
+        unit='%',
+    )
+    return [asset] if asset is not None else []
+
+
+def _build_finance_visual(summary: dict[str, Any], student_name: str) -> list[MessageResponseVisualAsset]:
+    open_count = float(summary.get('open_invoice_count', 0) or 0)
+    overdue_count = float(summary.get('overdue_invoice_count', 0) or 0)
+    invoices = summary.get('invoices')
+    paid_count = 0.0
+    if isinstance(invoices, list):
+        paid_count = float(sum(1 for item in invoices if isinstance(item, dict) and item.get('status') == 'paid'))
+    asset = _build_visual_asset(
+        title=f'Panorama financeiro de {student_name}',
+        subtitle='Distribuicao de faturas na base atual',
+        labels=['Em aberto', 'Vencidas', 'Pagas'],
+        values=[open_count, overdue_count, paid_count],
+        unit='',
+    )
+    return [asset] if asset is not None else []
+
+
+async def _maybe_build_visual_assets(
+    *,
+    settings: Any,
+    request: MessageResponseRequest,
+    preview: Any,
+    actor: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
+) -> list[MessageResponseVisualAsset]:
+    if not _wants_visual_response(request.message):
+        return []
+
+    if preview.classification.domain is QueryDomain.institution:
+        profile = school_profile or await _fetch_public_school_profile(settings=settings)
+        if profile is None:
+            return []
+        return _build_public_kpi_visual(profile, request.message)
+
+    if request.telegram_chat_id is None:
+        return []
+
+    actor = actor or await _fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
+    if actor is None:
+        return []
+
+    student, clarification = _select_linked_student(actor, request.message)
+    if clarification is not None or student is None:
+        return []
+    student_id = student.get('student_id')
+    student_name = str(student.get('full_name', 'Aluno'))
+    if not isinstance(student_id, str):
+        return []
+
+    if preview.classification.domain is QueryDomain.academic:
+        payload, status_code = await _api_core_get(
+            settings=settings,
+            path=f'/v1/students/{student_id}/academic-summary',
+            params={'telegram_chat_id': request.telegram_chat_id},
+        )
+        if status_code != 200 or not isinstance(payload, dict):
+            return []
+        summary = payload.get('summary')
+        if not isinstance(summary, dict):
+            return []
+        return _build_academic_visual(summary, request.message, student_name)
+
+    if preview.classification.domain is QueryDomain.finance:
+        payload, status_code = await _api_core_get(
+            settings=settings,
+            path=f'/v1/students/{student_id}/financial-summary',
+            params={'telegram_chat_id': request.telegram_chat_id},
+        )
+        if status_code != 200 or not isinstance(payload, dict):
+            return []
+        summary = payload.get('summary')
+        if not isinstance(summary, dict):
+            return []
+        return _build_finance_visual(summary, student_name)
+
+    return []
+
+
 def _compose_handoff_answer(handoff_payload: dict[str, Any] | None) -> str:
     if not handoff_payload:
         return (
@@ -1496,6 +2153,21 @@ async def _compose_structured_tool_answer(
             return _compose_public_gap_answer(set())
         return _compose_public_profile_answer(profile, analysis_message)
 
+    if preview.classification.domain is QueryDomain.support:
+        if 'schedule_school_visit' in preview.selected_tools:
+            workflow_payload = await _create_visit_booking(
+                settings=settings,
+                request=request,
+                actor=actor,
+            )
+            return _compose_visit_booking_answer(workflow_payload, school_profile)
+        workflow_payload = await _create_institutional_request(
+            settings=settings,
+            request=request,
+            actor=actor,
+        )
+        return _compose_institutional_request_answer(workflow_payload)
+
     if request.telegram_chat_id is None:
         return _compose_structured_deny(actor)
 
@@ -1797,6 +2469,7 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
 
         retrieval_hits: list[Any] = []
         citations: list[MessageResponseCitation] = []
+        visual_assets: list[MessageResponseVisualAsset] = []
         calendar_events: list[CalendarEventCard] = []
         query_hints: set[str] = set()
         retrieval_supported = True
@@ -2032,6 +2705,14 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
             if sources and sources not in message_text:
                 message_text = f'{message_text}\n\n{sources}'
 
+        visual_assets = await _maybe_build_visual_assets(
+            settings=settings,
+            request=request,
+            preview=preview,
+            actor=actor,
+            school_profile=school_profile,
+        )
+
         await _persist_conversation_turn(
             settings=settings,
             conversation_external_id=effective_conversation_id,
@@ -2041,7 +2722,12 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
             assistant_message=message_text,
         )
 
-        set_span_attributes(**{'eduassist.response.length': len(message_text)})
+        set_span_attributes(
+            **{
+                'eduassist.response.length': len(message_text),
+                'eduassist.response.visual_asset_count': len(visual_assets),
+            }
+        )
         metric_attributes = {
             'mode': preview.mode.value,
             'domain': preview.classification.domain.value,
@@ -2073,6 +2759,7 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
             retrieval_backend=preview.retrieval_backend,
             selected_tools=preview.selected_tools,
             citations=citations,
+            visual_assets=visual_assets,
             calendar_events=calendar_events,
             needs_authentication=preview.needs_authentication,
             graph_path=preview.graph_path,

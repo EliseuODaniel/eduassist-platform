@@ -52,6 +52,8 @@ def _truncate_excerpt(text: str | None, *, limit: int = 180) -> str | None:
 def _priority_for_queue(queue_name: str) -> str:
     normalized = queue_name.strip().lower()
     priorities = {
+        'direcao': 'high',
+        'admissoes': 'standard',
         'coordenacao': 'high',
         'financeiro': 'high',
         'secretaria': 'standard',

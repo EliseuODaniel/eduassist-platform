@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from functools import lru_cache
 import secrets
 
@@ -85,6 +86,26 @@ async def _send_telegram_message(chat_id: int, text: str) -> None:
             await client.post(
                 f'{settings.telegram_api_base_url}/bot{settings.telegram_bot_token}/sendMessage',
                 json={'chat_id': chat_id, 'text': text},
+            )
+    except Exception:
+        return
+
+
+async def _send_telegram_photo(chat_id: int, image_bytes: bytes, *, caption: str | None = None) -> None:
+    settings = get_settings()
+    if not settings.telegram_bot_token:
+        return
+
+    data = {'chat_id': str(chat_id)}
+    if caption:
+        data['caption'] = caption[:1024]
+
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            await client.post(
+                f'{settings.telegram_api_base_url}/bot{settings.telegram_bot_token}/sendPhoto',
+                data=data,
+                files={'photo': ('eduassist-visual.png', image_bytes, 'image/png')},
             )
     except Exception:
         return
@@ -300,6 +321,25 @@ async def telegram_webhook(
             )
             reply_text = str(orchestration.get('message_text', _default_help_message()))
             await _send_telegram_message(chat_id, reply_text)
+            visual_assets = orchestration.get('visual_assets', [])
+            if isinstance(visual_assets, list):
+                for asset in visual_assets:
+                    if not isinstance(asset, dict):
+                        continue
+                    if str(asset.get('mime_type', '')).lower() != 'image/png':
+                        continue
+                    encoded = asset.get('base64_data')
+                    if not isinstance(encoded, str) or not encoded:
+                        continue
+                    try:
+                        image_bytes = base64.b64decode(encoded)
+                    except Exception:
+                        continue
+                    await _send_telegram_photo(
+                        chat_id,
+                        image_bytes,
+                        caption=str(asset.get('caption') or asset.get('title') or 'Visual institucional'),
+                    )
             return {
                 'accepted': True,
                 'service': 'telegram-gateway',

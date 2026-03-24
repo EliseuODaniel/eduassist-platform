@@ -117,6 +117,82 @@
     }
   },
   {
+    "case_id": "public_ninth_grade_schedule",
+    "type": "message_response",
+    "request": {
+      "message": "que horario tem aula pro 9o ano?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Ensino Fundamental II", "07:15", "12:30"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_director_name",
+    "type": "message_response",
+    "request": {
+      "message": "qual o nome da diretora?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Diretora geral", "Helena Martins"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_approval_kpi",
+    "type": "message_response",
+    "request": {
+      "message": "qual a media de aprovacao?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Aprovacao global", "96.4%"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_curiosity_highlight",
+    "type": "message_response",
+    "request": {
+      "message": "fale uma curiosidade unica dessa escola",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["curiosidade documentada", "Espaco Maker integrado ao curriculo"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
     "case_id": "public_negative_requirements_abstention",
     "type": "message_response",
     "request": {
@@ -230,6 +306,66 @@
       "selected_tools_includes": ["get_public_school_profile"],
       "graph_path_includes": ["structured_tool_call"],
       "message_contains": ["3333-4200", "97500-2040", "secretaria@colegiohorizonte.edu.br"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "support_visit_booking_workflow",
+    "type": "message_response",
+    "request": {
+      "message": "quero agendar uma visita para conhecer a escola na quinta a tarde",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["schedule_school_visit", "create_support_ticket"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Pedido de visita registrado", "VIS-", "Ticket operacional"],
+      "reason_contains": "workflow estruturado"
+    }
+  },
+  {
+    "case_id": "support_institutional_request_workflow",
+    "type": "message_response",
+    "request": {
+      "message": "quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["create_institutional_request", "create_support_ticket"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Solicitacao institucional registrada", "REQ-", "direcao"],
+      "reason_contains": "workflow estruturado"
+    }
+  },
+  {
+    "case_id": "public_kpi_visual_response",
+    "type": "message_response",
+    "request": {
+      "message": "mostre um grafico da media de aprovacao da escola",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Aprovacao global", "96.4%"],
+      "min_visual_assets": 1,
+      "visual_mime_types_include": ["image/png"],
+      "visual_titles_include": ["Indicadores institucionais"],
       "reason_contains": "fato institucional canonico"
     }
   },

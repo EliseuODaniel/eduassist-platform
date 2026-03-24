@@ -15,10 +15,13 @@ from api_core.contracts import (
     AuthPrincipal,
     AuthSessionResponse,
     CalendarEventsResponse,
+    InstitutionalRequestCreateResponse,
     InternalConversationAppendRequest,
     InternalConversationAppendResponse,
     InternalConversationContextResponse,
+    InternalInstitutionalRequestCreateRequest,
     InternalSupportHandoffCreateRequest,
+    InternalVisitBookingCreateRequest,
     OperationsOverviewResponse,
     PolicyCheckRequest,
     PolicyCheckResponse,
@@ -32,6 +35,7 @@ from api_core.contracts import (
     TelegramLinkChallengeResponse,
     TelegramLinkConsumeRequest,
     TelegramLinkConsumeResponse,
+    VisitBookingCreateResponse,
 )
 from api_core.db.session import apply_rls_actor_context, apply_rls_service_context, get_engine, session_scope
 from api_core.services.audit import (
@@ -55,6 +59,7 @@ from api_core.services.domain import (
     list_public_calendar_events,
 )
 from api_core.services.identity import resolve_actor_context
+from api_core.services.institutional_workflows import create_institutional_request, create_visit_booking
 from api_core.services.policy import decide_policy
 from api_core.services.support import (
     create_support_handoff,
@@ -717,6 +722,93 @@ async def internal_support_handoff_create(
             },
         )
 
+        return response_payload
+
+
+@app.post('/v1/internal/workflows/visit-bookings', response_model=VisitBookingCreateResponse)
+async def internal_visit_booking_create(
+    payload: InternalVisitBookingCreateRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> VisitBookingCreateResponse:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='internal-workflows-api')
+        actor = None
+        if payload.telegram_chat_id is not None:
+            actor = resolve_actor_context(session, telegram_chat_id=payload.telegram_chat_id)
+            apply_rls_service_context(session, service_name='internal-workflows-api')
+
+        response_payload = create_visit_booking(
+            session,
+            actor_user_id=actor.user_id if actor else None,
+            channel=payload.channel,
+            conversation_external_id=payload.conversation_external_id,
+            audience_name=payload.audience_name,
+            audience_contact=payload.audience_contact,
+            interested_segment=payload.interested_segment,
+            preferred_date=payload.preferred_date,
+            preferred_window=payload.preferred_window,
+            attendee_count=payload.attendee_count,
+            notes=payload.notes.strip(),
+        )
+        record_audit_event(
+            session,
+            actor_user_id=actor.user_id if actor else None,
+            event_type='visit_booking.created' if response_payload.created else 'visit_booking.updated',
+            resource_type='visit_booking',
+            resource_id=str(response_payload.item.booking_id),
+            metadata={
+                'queue_name': response_payload.item.queue_name,
+                'preferred_date': response_payload.item.preferred_date.isoformat()
+                if response_payload.item.preferred_date
+                else None,
+                'preferred_window': response_payload.item.preferred_window,
+                'interested_segment': response_payload.item.interested_segment,
+                'linked_ticket_code': response_payload.item.linked_ticket_code,
+            },
+        )
+        return response_payload
+
+
+@app.post('/v1/internal/workflows/institutional-requests', response_model=InstitutionalRequestCreateResponse)
+async def internal_institutional_request_create(
+    payload: InternalInstitutionalRequestCreateRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> InstitutionalRequestCreateResponse:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='internal-workflows-api')
+        actor = None
+        if payload.telegram_chat_id is not None:
+            actor = resolve_actor_context(session, telegram_chat_id=payload.telegram_chat_id)
+            apply_rls_service_context(session, service_name='internal-workflows-api')
+
+        response_payload = create_institutional_request(
+            session,
+            actor_user_id=actor.user_id if actor else None,
+            channel=payload.channel,
+            conversation_external_id=payload.conversation_external_id,
+            target_area=payload.target_area.strip(),
+            category=payload.category.strip(),
+            subject=payload.subject.strip(),
+            details=payload.details.strip(),
+            requester_contact=payload.requester_contact.strip() if payload.requester_contact else None,
+        )
+        record_audit_event(
+            session,
+            actor_user_id=actor.user_id if actor else None,
+            event_type='institutional_request.created' if response_payload.created else 'institutional_request.updated',
+            resource_type='institutional_request',
+            resource_id=str(response_payload.item.request_id),
+            metadata={
+                'target_area': response_payload.item.target_area,
+                'category': response_payload.item.category,
+                'queue_name': response_payload.item.queue_name,
+                'linked_ticket_code': response_payload.item.linked_ticket_code,
+            },
+        )
         return response_payload
 
 

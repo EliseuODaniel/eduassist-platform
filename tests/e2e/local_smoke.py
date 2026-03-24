@@ -242,6 +242,167 @@ def main() -> int:
     )
     print('[ok] public schedule canonical')
 
+    ninth_grade_status, _, ninth_grade_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'que horario tem aula pro 9o ano?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        ninth_grade_status == 200 and isinstance(ninth_grade_payload, dict),
+        'public_ninth_grade_query_failed',
+    )
+    ninth_grade_message = str(ninth_grade_payload.get('message_text', ''))
+    assert_condition(
+        'ensino fundamental ii' in ninth_grade_message.lower(),
+        'public_ninth_grade_segment_missing',
+    )
+    assert_condition(
+        '07:15' in ninth_grade_message and '12:30' in ninth_grade_message,
+        'public_ninth_grade_hours_missing',
+    )
+    print('[ok] public ninth grade schedule')
+
+    director_status, _, director_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o nome da diretora?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        director_status == 200 and isinstance(director_payload, dict),
+        'public_director_query_failed',
+    )
+    director_message = str(director_payload.get('message_text', ''))
+    assert_condition('Helena Martins' in director_message, 'public_director_name_missing')
+    assert_condition('Diretora geral' in director_message, 'public_director_title_missing')
+    print('[ok] public leadership profile')
+
+    approval_status, _, approval_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual a media de aprovacao?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        approval_status == 200 and isinstance(approval_payload, dict),
+        'public_approval_query_failed',
+    )
+    approval_message = str(approval_payload.get('message_text', ''))
+    assert_condition('96.4%' in approval_message, 'public_approval_value_missing')
+    print('[ok] public institutional kpi')
+
+    curiosity_status, _, curiosity_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'fale uma curiosidade unica dessa escola',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        curiosity_status == 200 and isinstance(curiosity_payload, dict),
+        'public_curiosity_query_failed',
+    )
+    curiosity_message = str(curiosity_payload.get('message_text', ''))
+    assert_condition(
+        'curiosidade documentada' in curiosity_message.lower(),
+        'public_curiosity_intro_missing',
+    )
+    assert_condition(
+        'espaco maker integrado ao curriculo' in curiosity_message.lower(),
+        'public_curiosity_highlight_missing',
+    )
+    print('[ok] public curiosity highlight')
+
+    visit_status, _, visit_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quero agendar uma visita para conhecer a escola na quinta a tarde',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        visit_status == 200 and isinstance(visit_payload, dict),
+        'public_visit_workflow_failed',
+    )
+    visit_message = str(visit_payload.get('message_text', ''))
+    assert_condition('VIS-' in visit_message, 'public_visit_protocol_missing')
+    assert_condition('Ticket operacional' in visit_message, 'public_visit_ticket_missing')
+    print('[ok] public visit workflow')
+
+    request_status, _, request_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        request_status == 200 and isinstance(request_payload, dict),
+        'public_institutional_request_failed',
+    )
+    institutional_request_message = str(request_payload.get('message_text', ''))
+    assert_condition('REQ-' in institutional_request_message, 'public_institutional_request_protocol_missing')
+    assert_condition('direcao' in institutional_request_message.lower(), 'public_institutional_request_target_missing')
+    print('[ok] public institutional request workflow')
+
+    visual_status, _, visual_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'mostre um grafico da media de aprovacao da escola',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        visual_status == 200 and isinstance(visual_payload, dict),
+        'public_visual_query_failed',
+    )
+    visual_assets = visual_payload.get('visual_assets')
+    assert_condition(isinstance(visual_assets, list) and visual_assets, 'public_visual_assets_missing')
+    first_visual = visual_assets[0]
+    assert_condition(isinstance(first_visual, dict), 'public_visual_asset_invalid')
+    assert_condition(first_visual.get('mime_type') == 'image/png', 'public_visual_asset_mime_invalid')
+    assert_condition(first_visual.get('base64_data'), 'public_visual_asset_data_missing')
+    print('[ok] public visual chart')
+
     negative_docs_status, _, negative_docs_payload = request(
         'POST',
         f'{settings.ai_orchestrator_url}/v1/messages/respond',

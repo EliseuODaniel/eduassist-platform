@@ -1,7 +1,7 @@
 from .academic import AttendanceRecord, Grade, GradeItem, TeacherAssignment
 from .audit import AccessDecision, AuditEvent
 from .calendar import CalendarEvent
-from .conversation import Conversation, Handoff, Message, ToolCall
+from .conversation import Conversation, Handoff, InstitutionalRequest, Message, ToolCall, VisitBooking
 from .documents import Document, DocumentChunk, DocumentSet, DocumentVersion, RetrievalLabel
 from .finance import Contract, Invoice, Payment
 from .identity import FederatedIdentity, Role, TelegramAccount, TelegramLinkChallenge, User, UserTelegramLink
@@ -35,6 +35,7 @@ __all__ = [
     'Guardian',
     'GuardianStudentLink',
     'Handoff',
+    'InstitutionalRequest',
     'Invoice',
     'Message',
     'Payment',
@@ -50,4 +51,5 @@ __all__ = [
     'ToolCall',
     'User',
     'UserTelegramLink',
+    'VisitBooking',
 ]

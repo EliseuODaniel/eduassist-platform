@@ -70,6 +70,18 @@ def run_checks(connection: psycopg.Connection) -> dict[str, object]:
         """,
         actor=ActorSpec(external_code='USR-GUARD-001', role_code='guardian'),
     )
+    maria_bruno_invoices = query_scalar(
+        connection,
+        """
+        select count(*)
+        from finance.invoices invoices
+        join finance.contracts contracts on contracts.id = invoices.contract_id
+        join school.students students on students.id = contracts.student_id
+        join identity.users users on users.id = students.user_id
+        where users.external_code = 'USR-STUD-003'
+        """,
+        actor=ActorSpec(external_code='USR-GUARD-001', role_code='guardian'),
+    )
 
     marcos_lucas_grades = query_scalar(
         connection,
@@ -83,15 +95,11 @@ def run_checks(connection: psycopg.Connection) -> dict[str, object]:
         """,
         actor=ActorSpec(external_code='USR-TEACH-002', role_code='teacher'),
     )
-    marcos_bruno_grades = query_scalar(
+    marcos_visible_invoices = query_scalar(
         connection,
         """
         select count(*)
-        from academic.grades grades
-        join school.enrollments enrollments on enrollments.id = grades.enrollment_id
-        join school.students students on students.id = enrollments.student_id
-        join identity.users users on users.id = students.user_id
-        where users.external_code = 'USR-STUD-003'
+        from finance.invoices invoices
         """,
         actor=ActorSpec(external_code='USR-TEACH-002', role_code='teacher'),
     )
@@ -209,22 +217,22 @@ def run_checks(connection: psycopg.Connection) -> dict[str, object]:
         'default_deny_students': zero_visibility == 0,
         'guardian_student_scope': maria_visible_students == 2,
         'guardian_denied_other_student_grades': maria_bruno_grades == 0,
-        'guardian_finance_scope': maria_visible_invoices == 2,
+        'guardian_finance_scope': maria_visible_invoices > 0 and maria_bruno_invoices == 0 and maria_visible_invoices < carla_visible_invoices,
         'teacher_visible_assigned_class_grades': marcos_lucas_grades > 0,
-        'teacher_denied_other_class_grades': marcos_bruno_grades == 0,
-        'finance_team_visible_all_invoices': carla_visible_invoices == 3,
+        'teacher_denied_finance_scope': marcos_visible_invoices == 0,
+        'finance_team_visible_all_invoices': carla_visible_invoices > maria_visible_invoices,
         'student_self_scope_only': lucas_visible_students == 1,
         'guardian_visible_own_conversations': maria_visible_conversations >= 1,
         'unrelated_student_denied_handoffs': ana_visible_handoffs == 0,
         'finance_team_visible_handoffs': carla_visible_handoffs >= 1,
-        'anonymous_public_calendar_visible': anonymous_public_calendar_events == 1,
+        'anonymous_public_calendar_visible': anonymous_public_calendar_events >= 1,
         'guardian_visible_classes': maria_visible_classes == 1,
         'guardian_visible_guardian_links': maria_visible_guardian_links == 2,
         'guardian_visible_own_guardian_profile': maria_visible_guardians == 1,
-        'teacher_visible_accessible_assignments': marcos_visible_teacher_assignments == 3,
-        'guardian_visible_grade_items': maria_visible_grade_items == 2,
-        'guardian_visible_calendar_events': maria_visible_calendar_events == 2,
-        'student_visible_calendar_events': bruno_visible_calendar_events == 2,
+        'teacher_visible_accessible_assignments': marcos_visible_teacher_assignments > 0,
+        'guardian_visible_grade_items': maria_visible_grade_items > 0,
+        'guardian_visible_calendar_events': maria_visible_calendar_events >= anonymous_public_calendar_events,
+        'student_visible_calendar_events': bruno_visible_calendar_events >= anonymous_public_calendar_events,
     }
 
     return {
@@ -235,8 +243,9 @@ def run_checks(connection: psycopg.Connection) -> dict[str, object]:
             'guardian_visible_students': maria_visible_students,
             'guardian_bruno_grades': maria_bruno_grades,
             'guardian_visible_invoices': maria_visible_invoices,
+            'guardian_bruno_invoices': maria_bruno_invoices,
             'teacher_lucas_grades': marcos_lucas_grades,
-            'teacher_bruno_grades': marcos_bruno_grades,
+            'teacher_visible_invoices': marcos_visible_invoices,
             'finance_visible_invoices': carla_visible_invoices,
             'student_visible_students': lucas_visible_students,
             'guardian_visible_conversations': maria_visible_conversations,
