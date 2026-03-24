@@ -646,6 +646,28 @@ def main() -> int:
     assert_condition('direcao' in institutional_request_message.lower(), 'public_institutional_request_target_missing')
     print('[ok] public institutional request workflow')
 
+    request_update_status, _, request_update_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quero complementar meu pedido dizendo que preciso de resposta ainda esta semana',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        request_update_status == 200 and isinstance(request_update_payload, dict),
+        'public_institutional_request_update_failed',
+    )
+    request_update_message = str(request_update_payload.get('message_text', ''))
+    assert_condition('Complemento registrado' in request_update_message, 'public_request_update_intro_missing')
+    assert_condition('REQ-' in request_update_message, 'public_request_update_protocol_missing')
+    assert_condition('resposta ainda esta semana' in request_update_message.lower(), 'public_request_update_details_missing')
+    print('[ok] public institutional request update')
+
     request_status_status, _, request_status_payload = request(
         'POST',
         f'{settings.ai_orchestrator_url}/v1/messages/respond',
@@ -707,6 +729,7 @@ def main() -> int:
     request_summary_message = str(request_summary_payload.get('message_text', ''))
     assert_condition('Resumo da sua solicitacao institucional' in request_summary_message, 'public_request_summary_intro_missing')
     assert_condition('direcao' in request_summary_message.lower(), 'public_request_summary_target_missing')
+    assert_condition('resposta ainda esta semana' in request_summary_message.lower(), 'public_request_summary_update_missing')
     print('[ok] public institutional request summary follow-up')
 
     contextual_greeting_status, _, contextual_greeting_payload = request(

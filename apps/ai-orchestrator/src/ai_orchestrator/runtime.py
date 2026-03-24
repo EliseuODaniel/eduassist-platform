@@ -172,6 +172,17 @@ VISIT_CANCEL_TERMS = {
     'desmarcar a visita',
     'cancelar minha visita',
 }
+INSTITUTIONAL_REQUEST_UPDATE_TERMS = {
+    'complementar pedido',
+    'complementar meu pedido',
+    'complementar protocolo',
+    'complementar minha solicitacao',
+    'complementar minha solicitação',
+    'acrescentar ao protocolo',
+    'adicionar ao protocolo',
+    'incluir no protocolo',
+    'complemente meu pedido',
+}
 ACKNOWLEDGEMENT_TERMS = {'obrigado', 'obrigada', 'valeu', 'perfeito', 'entendi', 'beleza', 'ok', 'ok obrigado', 'ok obrigada'}
 WORKFLOW_STATUS_TERMS = {'status', 'andamento', 'situacao', 'situação', 'fila', 'retorno', 'atualizacao', 'atualização'}
 WORKFLOW_VISIT_TERMS = {'visita', 'tour', 'conhecer a escola'}
@@ -2393,6 +2404,30 @@ def _detect_visit_booking_action(message: str) -> str | None:
     return None
 
 
+def _detect_institutional_request_action(message: str) -> str | None:
+    normalized = _normalize_text(message)
+    if any(_message_matches_term(normalized, term) for term in INSTITUTIONAL_REQUEST_UPDATE_TERMS):
+        return 'append_note'
+    if _contains_any(normalized, {'complementar', 'completar', 'acrescentar', 'adicionar', 'incluir'}) and _contains_any(
+        normalized,
+        {'pedido', 'solicitacao', 'solicitação', 'protocolo', 'requerimento'},
+    ):
+        return 'append_note'
+    return None
+
+
+def _extract_institutional_request_update_details(message: str) -> str:
+    compact = ' '.join(message.split()).strip()
+    patterns = (
+        r'^(?:quero\s+)?(?:complementar|completar|acrescentar|adicionar|incluir)\s+(?:ao?\s+)?(?:meu\s+)?(?:pedido|protocolo|requerimento|solicitacao|solicitação)\s*(?:dizendo\s+que|informando\s+que|com|sobre)?\s*',
+        r'^(?:complemente|acrescente|adicione)\s+(?:ao?\s+)?(?:meu\s+)?(?:pedido|protocolo|requerimento|solicitacao|solicitação)\s*(?:com|sobre)?\s*',
+    )
+    details = compact
+    for pattern in patterns:
+        details = re.sub(pattern, '', details, flags=re.IGNORECASE).strip(' .:-')
+    return details or compact
+
+
 def _detect_institutional_request_target_area(message: str) -> str:
     normalized = _normalize_text(message)
     for term, area in (
@@ -2532,6 +2567,36 @@ async def _create_institutional_request(
     return response_payload
 
 
+async def _update_institutional_request(
+    *,
+    settings: Any,
+    request: MessageResponseRequest,
+    conversation_context: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    conversation_external_id = request.conversation_id or _effective_conversation_id(request)
+    if not conversation_external_id:
+        return None
+    action = _detect_institutional_request_action(request.message)
+    if action is None:
+        return None
+    payload = {
+        'conversation_external_id': conversation_external_id,
+        'channel': request.channel.value,
+        'telegram_chat_id': request.telegram_chat_id,
+        'protocol_code': _extract_protocol_code_hint(request.message, conversation_context),
+        'action': action,
+        'details': _extract_institutional_request_update_details(request.message),
+    }
+    response_payload, status_code = await _api_core_post(
+        settings=settings,
+        path='/v1/internal/workflows/institutional-requests/actions',
+        payload=payload,
+    )
+    if status_code != 200 or response_payload is None:
+        return None
+    return response_payload
+
+
 def _compose_visit_booking_answer(response_payload: dict[str, Any] | None, school_profile: dict[str, Any] | None) -> str:
     school_name = str((school_profile or {}).get('school_name', 'Colegio Horizonte'))
     if not response_payload:
@@ -2632,6 +2697,42 @@ def _compose_institutional_request_answer(response_payload: dict[str, Any] | Non
     )
 
 
+def _compose_institutional_request_action_answer(
+    response_payload: dict[str, Any] | None,
+    *,
+    request_message: str,
+) -> str:
+    detail_text = _extract_institutional_request_update_details(request_message)
+    if not detail_text:
+        return (
+            'Consigo complementar essa solicitacao por aqui. '
+            'Me diga o que precisa ser acrescentado ao protocolo e eu atualizo o pedido.'
+        )
+
+    if not response_payload or not isinstance(response_payload, dict):
+        return (
+            'Nao consegui complementar a solicitacao agora. '
+            'Se quiser, me passe novamente o protocolo ou reescreva o complemento em uma frase curta.'
+        )
+
+    item = response_payload.get('item')
+    if not isinstance(item, dict):
+        return 'Localizei a solicitacao, mas nao consegui registrar o complemento agora.'
+
+    protocol_code = str(item.get('protocol_code', 'indisponivel'))
+    queue_name = _humanize_workflow_queue(item.get('queue_name'))
+    linked_ticket_code = str(item.get('linked_ticket_code', '') or '').strip()
+    lines = [
+        f'Complemento registrado na fila de {queue_name}.',
+        f'- Protocolo: {protocol_code}',
+    ]
+    if linked_ticket_code:
+        lines.append(f'- Ticket operacional: {linked_ticket_code}')
+    lines.append(f'- Novo complemento: {detail_text}')
+    lines.append('Proximo passo: a equipe responsavel recebe essa atualizacao no mesmo fluxo do pedido.')
+    return '\n'.join(lines)
+
+
 def _humanize_workflow_status(status: str) -> str:
     normalized = str(status or '').strip().lower()
     return WORKFLOW_STATUS_LABELS.get(normalized, normalized or 'em analise')
@@ -2670,6 +2771,7 @@ def _compose_workflow_status_answer(
     protocol_code = str(item.get('protocol_code', protocol_code_hint or 'indisponivel'))
     linked_ticket_code = str(item.get('linked_ticket_code', '') or '').strip()
     subject = str(item.get('subject', '') or '').strip()
+    summary_text = str(item.get('summary', '') or '').strip()
     target_area = str(item.get('target_area', '') or '').strip()
     preferred_date = str(item.get('preferred_date', '') or '').strip()
     preferred_window = str(item.get('preferred_window', '') or '').strip()
@@ -2752,6 +2854,8 @@ def _compose_workflow_status_answer(
                 lines.append(f'- Assunto: {subject}')
             if target_area:
                 lines.append(f'- Area responsavel: {target_area}')
+            if summary_text:
+                lines.append(f'- Detalhes registrados: {summary_text}')
             lines.append(f'- Protocolo: {protocol_code}')
             if linked_ticket_code:
                 lines.append(f'- Ticket operacional: {linked_ticket_code}')
@@ -2988,9 +3092,11 @@ def _institution_suggested_replies(
 
 def _support_suggested_replies(*, preview: Any) -> list[str]:
     if 'get_workflow_status' in preview.selected_tools:
-        return ['Qual o prazo?', 'Quem vai me responder?', 'Qual o protocolo?', 'Resume meu pedido']
+        return ['Qual o prazo?', 'Quem vai me responder?', 'Qual o protocolo?', 'Complementar meu pedido']
     if 'update_visit_booking' in preview.selected_tools:
         return ['Qual o status da visita?', 'Qual o protocolo da visita?', 'Quero cancelar a visita', 'Quero remarcar a visita']
+    if 'update_institutional_request' in preview.selected_tools:
+        return ['Qual o status do meu protocolo?', 'Qual o prazo?', 'Quem vai me responder?', 'Resume meu pedido']
     if 'schedule_school_visit' in preview.selected_tools:
         return ['Qual o status da visita?', 'Qual o prazo?', 'Quem vai me responder?', 'Mudar horario da visita']
     return ['Qual o status do meu protocolo?', 'Qual o prazo?', 'Quem vai me responder?', 'E agora?']
@@ -3884,6 +3990,8 @@ async def _compose_structured_tool_answer(
             workflow_specialist = 'workflow_status'
         elif 'update_visit_booking' in preview.selected_tools:
             workflow_specialist = 'workflow_visit_update'
+        elif 'update_institutional_request' in preview.selected_tools:
+            workflow_specialist = 'workflow_request_update'
         else:
             workflow_specialist = 'workflow'
         set_span_attributes(
@@ -3924,6 +4032,16 @@ async def _compose_structured_tool_answer(
                 conversation_context=conversation_context,
             )
             return _compose_visit_booking_action_answer(
+                workflow_payload,
+                request_message=request.message,
+            )
+        if 'update_institutional_request' in preview.selected_tools:
+            workflow_payload = await _update_institutional_request(
+                settings=settings,
+                request=request,
+                conversation_context=conversation_context,
+            )
+            return _compose_institutional_request_action_answer(
                 workflow_payload,
                 request_message=request.message,
             )

@@ -483,6 +483,25 @@
     }
   },
   {
+    "case_id": "support_institutional_request_update",
+    "type": "message_response",
+    "request": {
+      "message": "quero complementar meu pedido dizendo que preciso de resposta ainda esta semana",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["update_institutional_request"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Complemento registrado", "REQ-", "resposta ainda esta semana"],
+      "reason_contains": "workflow estruturado"
+    }
+  },
+  {
     "case_id": "support_workflow_status_followup",
     "type": "message_response",
     "request": {
@@ -535,7 +554,7 @@
       "needs_authentication": false,
       "selected_tools_includes": ["get_workflow_status"],
       "graph_path_includes": ["structured_tool_call"],
-      "message_contains": ["Resumo da sua solicitacao institucional", "direcao", "REQ-"],
+      "message_contains": ["Resumo da sua solicitacao institucional", "direcao", "REQ-", "resposta ainda esta semana"],
       "reason_contains": "workflow estruturado"
     }
   },

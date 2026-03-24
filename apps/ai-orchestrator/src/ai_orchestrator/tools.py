@@ -262,6 +262,26 @@ TOOL_CONTRACTS: tuple[ToolContract, ...] = (
         notes=['pedidos formais nao devem ser reduzidos a handoff generico quando houver workflow estruturado'],
     ),
     ToolContract(
+        name='update_institutional_request',
+        description='Complementa uma solicitacao institucional existente com novos detalhes, preservando o mesmo protocolo.',
+        kind=ToolKind.operation,
+        access_tier=AccessTier.public,
+        source_of_truth='workflow_service',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'protocol_code': {'type': 'string'},
+                'action': {'type': 'string'},
+                'details': {'type': 'string'},
+            },
+            'required': ['action', 'details'],
+        },
+        output_contract='solicitacao institucional atualizada com complemento, protocolo e fila atual',
+        triggers=['complementar pedido', 'complementar protocolo', 'acrescentar ao protocolo', 'adicionar ao pedido'],
+        notes=['usa a conversa atual ou o protocolo informado para localizar a solicitacao correta'],
+    ),
+    ToolContract(
         name='get_workflow_status',
         description='Consulta o andamento do ultimo protocolo, visita ou solicitacao institucional vinculada a conversa.',
         kind=ToolKind.data_service,

@@ -16,10 +16,12 @@ from api_core.contracts import (
     AuthSessionResponse,
     CalendarEventsResponse,
     InternalWorkflowStatusResponse,
+    InstitutionalRequestActionResponse,
     InstitutionalRequestCreateResponse,
     InternalConversationAppendRequest,
     InternalConversationAppendResponse,
     InternalConversationContextResponse,
+    InternalInstitutionalRequestActionRequest,
     InternalInstitutionalRequestCreateRequest,
     InternalSupportHandoffCreateRequest,
     InternalVisitBookingActionRequest,
@@ -72,6 +74,7 @@ from api_core.services.institutional_workflows import (
     create_institutional_request,
     create_visit_booking,
     get_workflow_status,
+    update_institutional_request,
     update_visit_booking,
 )
 from api_core.services.policy import decide_policy
@@ -891,6 +894,44 @@ async def internal_institutional_request_create(
                 'category': response_payload.item.category,
                 'queue_name': response_payload.item.queue_name,
                 'linked_ticket_code': response_payload.item.linked_ticket_code,
+            },
+        )
+        return response_payload
+
+
+@app.post('/v1/internal/workflows/institutional-requests/actions', response_model=InstitutionalRequestActionResponse)
+async def internal_institutional_request_action(
+    payload: InternalInstitutionalRequestActionRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> InstitutionalRequestActionResponse:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='internal-workflows-api')
+        actor = None
+        if payload.telegram_chat_id is not None:
+            actor = resolve_actor_context(session, telegram_chat_id=payload.telegram_chat_id)
+            apply_rls_service_context(session, service_name='internal-workflows-api')
+
+        response_payload = update_institutional_request(
+            session,
+            channel=payload.channel,
+            conversation_external_id=payload.conversation_external_id,
+            protocol_code=payload.protocol_code.strip() if payload.protocol_code else None,
+            action=payload.action,
+            details=payload.details.strip() if payload.details else None,
+        )
+        record_audit_event(
+            session,
+            actor_user_id=actor.user_id if actor else None,
+            event_type=f'institutional_request.{response_payload.action}',
+            resource_type='institutional_request',
+            resource_id=str(response_payload.item.request_id),
+            metadata={
+                'target_area': response_payload.item.target_area,
+                'queue_name': response_payload.item.queue_name,
+                'linked_ticket_code': response_payload.item.linked_ticket_code,
+                'protocol_code': response_payload.item.protocol_code,
             },
         )
         return response_payload

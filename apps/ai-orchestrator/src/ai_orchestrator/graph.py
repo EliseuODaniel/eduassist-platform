@@ -198,6 +198,17 @@ INSTITUTIONAL_REQUEST_TERMS = {
     'protocolo formal',
     'ouvidoria',
 }
+INSTITUTIONAL_REQUEST_UPDATE_TERMS = {
+    'complementar pedido',
+    'complementar meu pedido',
+    'complementar protocolo',
+    'complementar minha solicitacao',
+    'complementar minha solicitacao',
+    'acrescentar ao protocolo',
+    'adicionar ao protocolo',
+    'incluir no protocolo',
+    'complemente meu pedido',
+}
 WORKFLOW_STATUS_TERMS = {
     'status',
     'andamento',
@@ -556,6 +567,15 @@ def _is_institutional_request(message: str) -> bool:
     return _contains_any(lowered, request_verbs) and _contains_any(lowered, leadership_targets)
 
 
+def _is_institutional_request_update(message: str) -> bool:
+    lowered = _normalize_text(message)
+    if any(_message_matches_term(lowered, term) for term in INSTITUTIONAL_REQUEST_UPDATE_TERMS):
+        return True
+    update_verbs = {'complementar', 'completar', 'acrescentar', 'adicionar', 'incluir'}
+    referents = {'pedido', 'solicitacao', 'solicitação', 'protocolo', 'requerimento'}
+    return _contains_any(lowered, update_verbs) and _contains_any(lowered, referents)
+
+
 def _has_protocol_code(message: str) -> bool:
     return PROTOCOL_CODE_PATTERN.search(message) is not None
 
@@ -578,6 +598,7 @@ def _is_structured_support_workflow_request(message: str) -> bool:
     return (
         _is_visit_booking_request(message)
         or _is_visit_booking_update_request(message)
+        or _is_institutional_request_update(message)
         or _is_institutional_request(message)
         or _is_workflow_status_request(message)
     )
@@ -878,6 +899,9 @@ def structured_tool_call(state: OrchestrationState) -> OrchestrationState:
         elif _is_visit_booking_update_request(request.message):
             selected_tools = ['update_visit_booking']
             output_contract = 'atualizacao de visita institucional existente, com remarcacao ou cancelamento'
+        elif _is_institutional_request_update(request.message):
+            selected_tools = ['update_institutional_request']
+            output_contract = 'atualizacao de solicitacao institucional existente, com complemento auditavel e mesmo protocolo'
         elif _is_visit_booking_request(request.message):
             selected_tools = ['schedule_school_visit', 'create_support_ticket']
             output_contract = 'agendamento ou pre-agendamento de visita institucional com protocolo e fila comercial'

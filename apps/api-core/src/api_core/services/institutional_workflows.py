@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from api_core.contracts import (
     InternalWorkflowStatusResponse,
+    InstitutionalRequestActionResponse,
     InstitutionalRequestCreateResponse,
     InstitutionalRequestEntry,
     VisitBookingActionResponse,
@@ -413,6 +414,101 @@ def create_institutional_request(
             status=institutional_request.status,
             queue_name=queue_name,
             linked_ticket_code=handoff_response.item.ticket_code,
+            created_at=institutional_request.created_at,
+        ),
+    )
+
+
+def _resolve_institutional_request(
+    session: Session,
+    *,
+    channel: str,
+    conversation_external_id: str,
+    protocol_code: str | None,
+) -> InstitutionalRequest | None:
+    normalized_protocol = protocol_code.strip().upper() if protocol_code else None
+    if normalized_protocol:
+        return session.execute(
+            select(InstitutionalRequest)
+            .where(InstitutionalRequest.protocol_code == normalized_protocol)
+            .order_by(InstitutionalRequest.created_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+
+    conversation = session.execute(
+        select(Conversation)
+        .where(Conversation.channel == channel)
+        .where(Conversation.external_thread_id == conversation_external_id)
+        .order_by(Conversation.created_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if conversation is None:
+        return None
+    return session.execute(
+        select(InstitutionalRequest)
+        .where(InstitutionalRequest.conversation_id == conversation.id)
+        .order_by(InstitutionalRequest.created_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+
+
+def update_institutional_request(
+    session: Session,
+    *,
+    channel: str,
+    conversation_external_id: str,
+    protocol_code: str | None,
+    action: str,
+    details: str | None,
+) -> InstitutionalRequestActionResponse:
+    institutional_request = _resolve_institutional_request(
+        session,
+        channel=channel,
+        conversation_external_id=conversation_external_id,
+        protocol_code=protocol_code,
+    )
+    if institutional_request is None:
+        raise HTTPException(status_code=404, detail='institutional_request_not_found')
+
+    normalized_action = action.strip().lower()
+    if normalized_action != 'append_note':
+        raise HTTPException(status_code=422, detail='unsupported_institutional_request_action')
+
+    detail_text = (details or '').strip()
+    if not detail_text:
+        raise HTTPException(status_code=422, detail='institutional_request_append_requires_details')
+
+    complement_prefix = 'Complemento registrado'
+    if complement_prefix.lower() not in institutional_request.details.lower():
+        institutional_request.details = f'{institutional_request.details}\n\n{complement_prefix}: {detail_text}'.strip()
+    else:
+        institutional_request.details = f'{institutional_request.details}\n{complement_prefix}: {detail_text}'.strip()
+    institutional_request.status = 'queued'
+
+    handoff = (
+        session.get(Handoff, institutional_request.linked_handoff_id)
+        if institutional_request.linked_handoff_id
+        else None
+    )
+    if handoff is not None:
+        handoff.status = 'queued'
+        handoff.summary = (
+            f'Solicitacao institucional para {institutional_request.target_area}: {institutional_request.subject}. '
+            f'Complemento: {detail_text}'
+        )
+
+    session.flush()
+    return InstitutionalRequestActionResponse(
+        action='append_note',
+        item=InstitutionalRequestEntry(
+            request_id=institutional_request.id,
+            protocol_code=institutional_request.protocol_code,
+            target_area=institutional_request.target_area,
+            category=institutional_request.category,
+            subject=institutional_request.subject,
+            status=_effective_status(own_status=institutional_request.status, handoff=handoff),
+            queue_name=handoff.queue_name if handoff is not None else institutional_request.target_area.lower(),
+            linked_ticket_code=_ticket_code_or_none(handoff),
             created_at=institutional_request.created_at,
         ),
     )

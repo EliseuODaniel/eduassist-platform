@@ -631,6 +631,20 @@ class InstitutionalRequestCreateResponse(BaseModel):
     item: InstitutionalRequestEntry
 
 
+class InternalInstitutionalRequestActionRequest(BaseModel):
+    conversation_external_id: str
+    channel: str = 'telegram'
+    telegram_chat_id: int | None = None
+    protocol_code: str | None = None
+    action: str
+    details: str | None = None
+
+
+class InstitutionalRequestActionResponse(BaseModel):
+    action: str
+    item: InstitutionalRequestEntry
+
+
 class WorkflowStatusEntry(BaseModel):
     workflow_type: str
     protocol_code: str
