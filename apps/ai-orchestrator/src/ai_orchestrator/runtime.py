@@ -596,6 +596,62 @@ def _assistant_already_introduced(conversation_context: dict[str, Any] | None) -
     return False
 
 
+def _recent_conversation_focus(conversation_context: dict[str, Any] | None) -> dict[str, str] | None:
+    last_user_message: str | None = None
+    for sender_type, content in reversed(_recent_message_lines(conversation_context)):
+        normalized = _normalize_text(content)
+        protocol_code = _extract_protocol_code_from_text(content)
+        if sender_type == 'assistant':
+            if 'pedido de visita registrado' in normalized or 'pedido de visita segue' in normalized or 'visita cancelada' in normalized:
+                return {'kind': 'visit', 'protocol_code': protocol_code or ''}
+            if 'solicitacao institucional registrada' in normalized or 'sua solicitacao institucional' in normalized:
+                return {'kind': 'request', 'protocol_code': protocol_code or ''}
+            if 'financeiro' in normalized and any(token in normalized for token in {'boleto', 'fatura', 'contrato'}):
+                return {'kind': 'finance', 'protocol_code': protocol_code or ''}
+            if 'secretaria' in normalized:
+                return {'kind': 'secretaria', 'protocol_code': protocol_code or ''}
+            if 'matricula' in normalized:
+                return {'kind': 'admissions', 'protocol_code': protocol_code or ''}
+        elif sender_type == 'user' and last_user_message is None:
+            last_user_message = content
+
+    if not last_user_message:
+        return None
+
+    normalized_user = _normalize_text(last_user_message)
+    if any(_message_matches_term(normalized_user, term) for term in {'visita', 'tour', 'conhecer a escola'}):
+        return {'kind': 'visit', 'protocol_code': ''}
+    if any(_message_matches_term(normalized_user, term) for term in {'direcao', 'direção', 'protocolo', 'solicitacao'}):
+        return {'kind': 'request', 'protocol_code': ''}
+    if any(_message_matches_term(normalized_user, term) for term in {'boleto', 'fatura', 'mensalidade', 'financeiro'}):
+        return {'kind': 'finance', 'protocol_code': ''}
+    if any(_message_matches_term(normalized_user, term) for term in {'documento', 'historico', 'secretaria'}):
+        return {'kind': 'secretaria', 'protocol_code': ''}
+    if any(_message_matches_term(normalized_user, term) for term in {'matricula', 'bolsa', 'desconto'}):
+        return {'kind': 'admissions', 'protocol_code': ''}
+    return None
+
+
+def _recent_focus_follow_up_line(conversation_context: dict[str, Any] | None) -> str | None:
+    focus = _recent_conversation_focus(conversation_context)
+    if not focus:
+        return None
+    protocol_code = focus.get('protocol_code', '').strip()
+    suffix = f' com protocolo {protocol_code}' if protocol_code else ''
+    kind = focus.get('kind')
+    if kind == 'visit':
+        return f'Se quiser, eu retomo sua visita{suffix} e sigo daqui.'
+    if kind == 'request':
+        return f'Se quiser, eu retomo sua solicitacao institucional{suffix} e te digo status, prazo ou proximo passo.'
+    if kind == 'finance':
+        return 'Se quiser, eu retomo o assunto do financeiro e te digo o melhor caminho por aqui.'
+    if kind == 'secretaria':
+        return 'Se quiser, eu retomo o assunto com a secretaria e sigo pelo proximo passo.'
+    if kind == 'admissions':
+        return 'Se quiser, eu retomo matricula, bolsa ou visita sem voce precisar recomecar.'
+    return None
+
+
 def _is_assistant_identity_query(message: str) -> bool:
     normalized = _normalize_text(message)
     if any(_message_matches_term(normalized, term) for term in SERVICE_ROUTING_TERMS):
@@ -987,13 +1043,21 @@ def _service_matches_from_message(profile: dict[str, Any], message: str) -> list
     return [catalog[key] for key in unique_keys]
 
 
-def _compose_assistant_identity_answer(profile: dict[str, Any]) -> str:
+def _compose_assistant_identity_answer(
+    profile: dict[str, Any],
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> str:
     school_name = str(profile.get('school_name', 'Colegio Horizonte'))
-    return (
+    base = (
         f'Voce esta falando com o EduAssist, o assistente institucional do {school_name}. '
         'Eu consigo orientar, consultar informacoes da escola e abrir solicitacoes com protocolo. '
         'Quando fizer sentido, eu tambem direciono voce para secretaria, admissions, coordenacao, orientacao educacional, financeiro ou direcao.'
     )
+    follow_up = _recent_focus_follow_up_line(conversation_context)
+    if follow_up:
+        return f'{base} {follow_up}'
+    return base
 
 
 def _compose_concierge_greeting(
@@ -1010,6 +1074,15 @@ def _compose_concierge_greeting(
         opening = 'Boa tarde.'
     elif 'boa noite' in normalized:
         opening = 'Boa noite.'
+
+    active_follow_up = _recent_focus_follow_up_line(conversation_context)
+    if active_follow_up:
+        if _assistant_already_introduced(conversation_context):
+            return f'{opening} {active_follow_up}'
+        return (
+            f'{opening} Voce esta falando com o EduAssist do {school_name}. '
+            f'{active_follow_up}'
+        )
 
     if _assistant_already_introduced(conversation_context):
         return (
@@ -1057,18 +1130,25 @@ def _compose_capability_answer(
     school_name = str(profile.get('school_name', 'Colegio Horizonte'))
     public_examples = _compose_concierge_topic_examples(profile, limit=5)
     introduced = _assistant_already_introduced(conversation_context)
+    follow_up = _recent_focus_follow_up_line(conversation_context)
     if introduced:
-        return (
+        answer = (
             f'Por aqui eu consigo te orientar sobre {public_examples}. '
             'Se sua conta estiver vinculada, eu tambem consigo olhar notas, faltas e financeiro escolar. '
             'Se precisar de uma acao, eu posso abrir visita, protocolo ou encaminhamento para o setor certo.'
         )
-    return (
+        if follow_up:
+            return f'{answer} {follow_up}'
+        return answer
+    answer = (
         f'Eu cuido da navegacao institucional do {school_name}. '
         f'No atendimento publico, consigo seguir com {public_examples}. '
         'Quando sua conta estiver vinculada, eu tambem posso consultar notas, faltas e o financeiro escolar. '
         'Se voce quiser, tambem posso abrir visita, solicitacao institucional ou direcionar o setor certo.'
     )
+    if follow_up:
+        return f'{answer} {follow_up}'
+    return answer
 
 
 def _routing_follow_up_context_message(
@@ -1273,7 +1353,10 @@ def _compose_public_profile_answer(
         )
 
     if _is_assistant_identity_query(message):
-        return _compose_assistant_identity_answer(profile)
+        return _compose_assistant_identity_answer(
+            profile,
+            conversation_context=conversation_context,
+        )
 
     if _is_capability_query(message):
         return _compose_capability_answer(
@@ -2763,9 +2846,47 @@ def _institution_suggested_replies(
 ) -> list[str]:
     normalized = _normalize_text(request.message)
     profile = school_profile or {}
+    recent_focus = _recent_conversation_focus(conversation_context)
     if _is_greeting_only(request.message) or _is_capability_query(request.message) or _is_auth_guidance_query(request.message):
+        if recent_focus:
+            kind = recent_focus.get('kind')
+            if kind == 'visit':
+                return [
+                    'Qual o status da visita?',
+                    'Quero remarcar a visita',
+                    'Quero cancelar a visita',
+                    'Qual o protocolo da visita?',
+                ]
+            if kind == 'request':
+                return [
+                    'Qual o status do meu protocolo?',
+                    'Qual o prazo?',
+                    'Quem vai me responder?',
+                    'Resume meu pedido',
+                ]
+            if kind == 'finance':
+                return [
+                    'Como vinculo minha conta?',
+                    'Mensalidade do ensino medio',
+                    'Quero falar sobre contrato',
+                    'Falar com o financeiro',
+                ]
         return _default_public_suggested_replies()
     if _is_assistant_identity_query(request.message):
+        if recent_focus and recent_focus.get('kind') == 'visit':
+            return [
+                'Qual o status da visita?',
+                'Quero remarcar a visita',
+                'Quero cancelar a visita',
+                'Qual o protocolo da visita?',
+            ]
+        if recent_focus and recent_focus.get('kind') == 'request':
+            return [
+                'Qual o status do meu protocolo?',
+                'Qual o prazo?',
+                'Quem vai me responder?',
+                'Resume meu pedido',
+            ]
         return [
             'Quais opcoes de assuntos eu tenho aqui?',
             'Falar com a secretaria',

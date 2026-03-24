@@ -709,6 +709,27 @@ def main() -> int:
     assert_condition('direcao' in request_summary_message.lower(), 'public_request_summary_target_missing')
     print('[ok] public institutional request summary follow-up')
 
+    contextual_greeting_status, _, contextual_greeting_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'oi',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        contextual_greeting_status == 200 and isinstance(contextual_greeting_payload, dict),
+        'public_contextual_greeting_failed',
+    )
+    contextual_greeting_message = str(contextual_greeting_payload.get('message_text', ''))
+    assert_condition('retomo sua solicitacao institucional' in contextual_greeting_message.lower(), 'public_contextual_greeting_resume_missing')
+    assert_condition('REQ-' in contextual_greeting_message, 'public_contextual_greeting_protocol_missing')
+    print('[ok] public contextual greeting after workflow')
+
     request_eta_status, _, request_eta_payload = request(
         'POST',
         f'{settings.ai_orchestrator_url}/v1/messages/respond',
