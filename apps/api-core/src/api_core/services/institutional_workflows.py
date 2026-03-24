@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import date
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,6 +11,7 @@ from api_core.contracts import (
     InternalWorkflowStatusResponse,
     InstitutionalRequestCreateResponse,
     InstitutionalRequestEntry,
+    VisitBookingActionResponse,
     VisitBookingCreateResponse,
     VisitBookingEntry,
     WorkflowStatusEntry,
@@ -199,6 +201,134 @@ def create_visit_booking(
             status=booking.status,
             queue_name='admissoes',
             linked_ticket_code=handoff_response.item.ticket_code,
+            audience_name=booking.audience_name,
+            interested_segment=booking.interested_segment,
+            preferred_date=booking.preferred_date,
+            preferred_window=booking.preferred_window,
+            slot_label=booking.slot_label,
+            created_at=booking.created_at,
+        ),
+    )
+
+
+def _resolve_visit_booking(
+    session: Session,
+    *,
+    channel: str,
+    conversation_external_id: str,
+    protocol_code: str | None,
+) -> VisitBooking | None:
+    normalized_protocol = protocol_code.strip().upper() if protocol_code else None
+    if normalized_protocol:
+        return session.execute(
+            select(VisitBooking)
+            .where(VisitBooking.protocol_code == normalized_protocol)
+            .order_by(VisitBooking.created_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+
+    conversation = session.execute(
+        select(Conversation)
+        .where(Conversation.channel == channel)
+        .where(Conversation.external_thread_id == conversation_external_id)
+        .order_by(Conversation.created_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if conversation is None:
+        return None
+    return session.execute(
+        select(VisitBooking)
+        .where(VisitBooking.conversation_id == conversation.id)
+        .order_by(VisitBooking.created_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+
+
+def update_visit_booking(
+    session: Session,
+    *,
+    channel: str,
+    conversation_external_id: str,
+    protocol_code: str | None,
+    action: str,
+    preferred_date: date | None,
+    preferred_window: str | None,
+    notes: str | None,
+) -> VisitBookingActionResponse:
+    booking = _resolve_visit_booking(
+        session,
+        channel=channel,
+        conversation_external_id=conversation_external_id,
+        protocol_code=protocol_code,
+    )
+    if booking is None:
+        raise HTTPException(status_code=404, detail='visit_booking_not_found')
+
+    normalized_action = action.strip().lower()
+    if normalized_action not in {'reschedule', 'cancel'}:
+        raise HTTPException(status_code=422, detail='unsupported_visit_booking_action')
+
+    handoff = session.get(Handoff, booking.linked_handoff_id) if booking.linked_handoff_id else None
+
+    if normalized_action == 'cancel':
+        booking.status = 'cancelled'
+        if notes:
+            booking.notes = notes.strip()
+        if handoff is not None and handoff.status not in {'resolved', 'cancelled'}:
+            handoff.status = 'cancelled'
+        session.flush()
+        return VisitBookingActionResponse(
+            action='cancel',
+            item=VisitBookingEntry(
+                booking_id=booking.id,
+                protocol_code=booking.protocol_code,
+                status=booking.status,
+                queue_name=handoff.queue_name if handoff is not None else 'admissoes',
+                linked_ticket_code=_ticket_code_or_none(handoff),
+                audience_name=booking.audience_name,
+                interested_segment=booking.interested_segment,
+                preferred_date=booking.preferred_date,
+                preferred_window=booking.preferred_window,
+                slot_label=booking.slot_label,
+                created_at=booking.created_at,
+            ),
+        )
+
+    if preferred_date is None and not preferred_window:
+        raise HTTPException(status_code=422, detail='visit_booking_reschedule_requires_slot')
+
+    booking.status = 'requested'
+    if preferred_date is not None:
+        booking.preferred_date = preferred_date
+    if preferred_window:
+        booking.preferred_window = preferred_window
+    slot_label_parts: list[str] = []
+    if booking.preferred_date is not None:
+        slot_label_parts.append(booking.preferred_date.strftime('%d/%m/%Y'))
+    if booking.preferred_window:
+        slot_label_parts.append(booking.preferred_window)
+    booking.slot_label = ' - '.join(slot_label_parts) if slot_label_parts else None
+    if notes:
+        booking.notes = notes.strip()
+
+    if handoff is not None:
+        handoff.status = 'queued'
+        handoff.summary = _build_visit_summary(
+            audience_name=booking.audience_name,
+            interested_segment=booking.interested_segment,
+            preferred_date=booking.preferred_date,
+            preferred_window=booking.preferred_window,
+            attendee_count=booking.attendee_count,
+        )
+    session.flush()
+    return VisitBookingActionResponse(
+        action='reschedule',
+        item=VisitBookingEntry(
+            booking_id=booking.id,
+            protocol_code=booking.protocol_code,
+            status=booking.status,
+            queue_name=handoff.queue_name if handoff is not None else 'admissoes',
+            linked_ticket_code=_ticket_code_or_none(handoff),
             audience_name=booking.audience_name,
             interested_segment=booking.interested_segment,
             preferred_date=booking.preferred_date,

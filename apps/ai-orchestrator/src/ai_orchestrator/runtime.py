@@ -155,6 +155,23 @@ PUBLIC_VISIT_TERMS = {
     'conhecer a escola',
     'agendar visita',
 }
+VISIT_RESCHEDULE_TERMS = {
+    'remarcar visita',
+    'remarcar a visita',
+    'reagendar visita',
+    'reagendar a visita',
+    'mudar a visita',
+    'mudar horario da visita',
+    'mudar horario da minha visita',
+    'trocar horario da visita',
+}
+VISIT_CANCEL_TERMS = {
+    'cancelar visita',
+    'cancelar a visita',
+    'desmarcar visita',
+    'desmarcar a visita',
+    'cancelar minha visita',
+}
 ACKNOWLEDGEMENT_TERMS = {'obrigado', 'obrigada', 'valeu', 'perfeito', 'entendi', 'beleza', 'ok', 'ok obrigado', 'ok obrigada'}
 WORKFLOW_STATUS_TERMS = {'status', 'andamento', 'situacao', 'situação', 'fila', 'retorno', 'atualizacao', 'atualização'}
 WORKFLOW_VISIT_TERMS = {'visita', 'tour', 'conhecer a escola'}
@@ -178,6 +195,13 @@ WORKFLOW_FOLLOW_UP_TERMS = {
     'quem vai retornar',
     'quem fica com isso',
     'o que acontece agora',
+    'qual o protocolo',
+    'me passa o protocolo',
+    'meu protocolo',
+    'resume meu pedido',
+    'resuma meu pedido',
+    'o que eu pedi',
+    'qual foi meu pedido',
 }
 PROTOCOL_CODE_PATTERN = re.compile(r'\b(?:VIS|REQ|ATD)-[A-Z0-9-]+\b', re.IGNORECASE)
 WORKFLOW_STATUS_LABELS = {
@@ -2269,6 +2293,23 @@ def _extract_requested_window(message: str) -> str | None:
     return None
 
 
+def _detect_visit_booking_action(message: str) -> str | None:
+    normalized = _normalize_text(message)
+    if any(_message_matches_term(normalized, term) for term in VISIT_CANCEL_TERMS):
+        return 'cancel'
+    if any(_message_matches_term(normalized, term) for term in VISIT_RESCHEDULE_TERMS):
+        return 'reschedule'
+    visit_targets = {'visita', 'visita guiada', 'tour'}
+    if _contains_any(normalized, {'cancelar', 'desmarcar'}) and _contains_any(normalized, visit_targets):
+        return 'cancel'
+    if _contains_any(normalized, {'remarcar', 'reagendar', 'mudar', 'trocar'}) and _contains_any(
+        normalized,
+        visit_targets,
+    ):
+        return 'reschedule'
+    return None
+
+
 def _detect_institutional_request_target_area(message: str) -> str:
     normalized = _normalize_text(message)
     for term, area in (
@@ -2345,6 +2386,40 @@ async def _create_visit_booking(
     return response_payload
 
 
+async def _update_visit_booking(
+    *,
+    settings: Any,
+    request: MessageResponseRequest,
+    conversation_context: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    conversation_external_id = request.conversation_id or _effective_conversation_id(request)
+    if not conversation_external_id:
+        return None
+    action = _detect_visit_booking_action(request.message)
+    if action is None:
+        return None
+    preferred_date = _extract_requested_date(request.message)
+    preferred_window = _extract_requested_window(request.message)
+    payload = {
+        'conversation_external_id': conversation_external_id,
+        'channel': request.channel.value,
+        'telegram_chat_id': request.telegram_chat_id,
+        'protocol_code': _extract_protocol_code_hint(request.message, conversation_context),
+        'action': action,
+        'preferred_date': preferred_date.isoformat() if preferred_date else None,
+        'preferred_window': preferred_window,
+        'notes': request.message,
+    }
+    response_payload, status_code = await _api_core_post(
+        settings=settings,
+        path='/v1/internal/workflows/visit-bookings/actions',
+        payload=payload,
+    )
+    if status_code != 200 or response_payload is None:
+        return None
+    return response_payload
+
+
 async def _create_institutional_request(
     *,
     settings: Any,
@@ -2402,6 +2477,54 @@ def _compose_visit_booking_answer(response_payload: dict[str, Any] | None, schoo
         f"Ticket operacional: {item.get('linked_ticket_code', 'a confirmar')}. "
         'A equipe comercial valida a janela e retorna com a confirmacao.'
     )
+
+
+def _compose_visit_booking_action_answer(response_payload: dict[str, Any] | None, *, request_message: str) -> str:
+    action = _detect_visit_booking_action(request_message)
+    preferred_date = _extract_requested_date(request_message)
+    preferred_window = _extract_requested_window(request_message)
+
+    if action == 'reschedule' and preferred_date is None and not preferred_window:
+        return (
+            'Consigo remarcar a visita por aqui. Me diga pelo menos o novo dia ou a janela desejada, '
+            'por exemplo: "remarque para sexta de manha" ou "troque para 28/03 as 10h".'
+        )
+
+    if not response_payload or not isinstance(response_payload, dict):
+        return (
+            'Nao consegui atualizar a visita agora. '
+            'Se quiser, me passe novamente o protocolo da visita ou o novo horario desejado.'
+        )
+
+    item = response_payload.get('item')
+    if not isinstance(item, dict):
+        return 'Localizei a visita, mas nao consegui montar a atualizacao agora.'
+
+    protocol_code = str(item.get('protocol_code', 'indisponivel'))
+    queue_name = _humanize_workflow_queue(item.get('queue_name'))
+    linked_ticket_code = str(item.get('linked_ticket_code', '') or '').strip()
+    slot_label = str(item.get('slot_label', '') or '').strip()
+
+    if action == 'cancel':
+        lines = [
+            f'Visita cancelada no fluxo de {queue_name}.',
+            f'- Protocolo: {protocol_code}',
+        ]
+        if linked_ticket_code:
+            lines.append(f'- Ticket operacional: {linked_ticket_code}')
+        lines.append('Se quiser, eu tambem posso registrar um novo pedido de visita quando voce preferir.')
+        return '\n'.join(lines)
+
+    lines = [
+        f'Pedido de visita atualizado com a fila de {queue_name}.',
+        f'- Protocolo: {protocol_code}',
+    ]
+    if linked_ticket_code:
+        lines.append(f'- Ticket operacional: {linked_ticket_code}')
+    if slot_label:
+        lines.append(f'- Nova preferencia: {slot_label}')
+    lines.append('Proximo passo: admissions valida a nova janela e retorna com a confirmacao.')
+    return '\n'.join(lines)
 
 
 def _compose_institutional_request_answer(response_payload: dict[str, Any] | None) -> str:
@@ -2468,8 +2591,50 @@ def _compose_workflow_status_answer(
     preferred_date = str(item.get('preferred_date', '') or '').strip()
     preferred_window = str(item.get('preferred_window', '') or '').strip()
     slot_label = str(item.get('slot_label', '') or '').strip()
+    asks_status_explicitly = any(
+        _message_matches_term(normalized_request, term)
+        for term in {
+            'qual o status',
+            'status',
+            'andamento',
+            'situacao',
+            'fila',
+            'qual o prazo',
+            'quando me respondem',
+            'quem vai me responder',
+        }
+    )
+    asks_protocol_only = not asks_status_explicitly and any(
+        _message_matches_term(normalized_request, term)
+        for term in {'qual o protocolo', 'me passa o protocolo', 'meu protocolo', 'numero do protocolo'}
+    )
+    asks_summary = any(
+        _message_matches_term(normalized_request, term)
+        for term in {'resume meu pedido', 'resuma meu pedido', 'o que eu pedi', 'qual foi meu pedido'}
+    )
 
     if workflow_type == 'visit_booking':
+        if asks_protocol_only:
+            lines = [f'O protocolo da sua visita e {protocol_code}.']
+            if linked_ticket_code:
+                lines.append(f'- Ticket operacional: {linked_ticket_code}')
+            if slot_label:
+                lines.append(f'- Preferencia registrada: {slot_label}')
+            lines.append('Se quiser, eu tambem posso te dizer o status, remarcar ou cancelar a visita.')
+            return '\n'.join(lines)
+        if asks_summary:
+            lines = ['Resumo do seu pedido de visita:']
+            if slot_label:
+                lines.append(f'- Preferencia registrada: {slot_label}')
+            elif preferred_date or preferred_window:
+                preference = ' - '.join(part for part in [preferred_date, preferred_window] if part)
+                lines.append(f'- Preferencia registrada: {preference}')
+            lines.append(f'- Protocolo: {protocol_code}')
+            if linked_ticket_code:
+                lines.append(f'- Ticket operacional: {linked_ticket_code}')
+            lines.append(f'- Status atual: {status_label}')
+            lines.append('Se quiser, eu posso remarcar, cancelar ou acompanhar esse pedido com voce.')
+            return '\n'.join(lines)
         lines = [
             f'Seu pedido de visita segue {status_label} com a fila de {queue_label}.',
             f'- Protocolo: {protocol_code}',
@@ -2490,6 +2655,26 @@ def _compose_workflow_status_answer(
         return '\n'.join(lines)
 
     if workflow_type == 'institutional_request':
+        if asks_protocol_only:
+            lines = [f'O protocolo da sua solicitacao e {protocol_code}.']
+            if linked_ticket_code:
+                lines.append(f'- Ticket operacional: {linked_ticket_code}')
+            if target_area:
+                lines.append(f'- Area responsavel: {target_area}')
+            lines.append('Se quiser, eu tambem posso resumir o pedido ou verificar o status atual.')
+            return '\n'.join(lines)
+        if asks_summary:
+            lines = ['Resumo da sua solicitacao institucional:']
+            if subject:
+                lines.append(f'- Assunto: {subject}')
+            if target_area:
+                lines.append(f'- Area responsavel: {target_area}')
+            lines.append(f'- Protocolo: {protocol_code}')
+            if linked_ticket_code:
+                lines.append(f'- Ticket operacional: {linked_ticket_code}')
+            lines.append(f'- Status atual: {status_label}')
+            lines.append('Se quiser, eu tambem posso te dizer o prazo estimado ou quem responde por essa fila.')
+            return '\n'.join(lines)
         lines = [
             f'Sua solicitacao institucional segue {status_label} na fila de {queue_label}.',
             f'- Protocolo: {protocol_code}',
@@ -2506,6 +2691,24 @@ def _compose_workflow_status_answer(
             lines.append(f'Quem responde: a equipe da fila de {queue_label} devolve o retorno pelo fluxo institucional.')
         else:
             lines.append('Proximo passo: a equipe responsavel analisa o contexto e devolve o retorno pelo fluxo institucional.')
+        return '\n'.join(lines)
+
+    if asks_protocol_only:
+        lines = [f'O protocolo atual do seu atendimento e {protocol_code}.']
+        if linked_ticket_code and linked_ticket_code != protocol_code:
+            lines.append(f'- Ticket operacional: {linked_ticket_code}')
+        lines.append('Se quiser, eu posso te dizer o status atual ou resumir o que ja foi registrado.')
+        return '\n'.join(lines)
+
+    if asks_summary:
+        lines = ['Resumo do seu atendimento institucional:']
+        if subject:
+            lines.append(f'- Assunto: {subject}')
+        lines.append(f'- Protocolo: {protocol_code}')
+        if linked_ticket_code and linked_ticket_code != protocol_code:
+            lines.append(f'- Ticket operacional: {linked_ticket_code}')
+        lines.append(f'- Status atual: {status_label}')
+        lines.append('Se quiser, eu tambem posso te orientar sobre o proximo passo.')
         return '\n'.join(lines)
 
     lines = [
@@ -2664,7 +2867,9 @@ def _institution_suggested_replies(
 
 def _support_suggested_replies(*, preview: Any) -> list[str]:
     if 'get_workflow_status' in preview.selected_tools:
-        return ['Qual o prazo?', 'Quem vai me responder?', 'E agora?', 'Preciso do protocolo']
+        return ['Qual o prazo?', 'Quem vai me responder?', 'Qual o protocolo?', 'Resume meu pedido']
+    if 'update_visit_booking' in preview.selected_tools:
+        return ['Qual o status da visita?', 'Qual o protocolo da visita?', 'Quero cancelar a visita', 'Quero remarcar a visita']
     if 'schedule_school_visit' in preview.selected_tools:
         return ['Qual o status da visita?', 'Qual o prazo?', 'Quem vai me responder?', 'Mudar horario da visita']
     return ['Qual o status do meu protocolo?', 'Qual o prazo?', 'Quem vai me responder?', 'E agora?']
@@ -3554,7 +3759,12 @@ async def _compose_structured_tool_answer(
         )
 
     if preview.classification.domain is QueryDomain.support:
-        workflow_specialist = 'workflow_status' if 'get_workflow_status' in preview.selected_tools else 'workflow'
+        if 'get_workflow_status' in preview.selected_tools:
+            workflow_specialist = 'workflow_status'
+        elif 'update_visit_booking' in preview.selected_tools:
+            workflow_specialist = 'workflow_visit_update'
+        else:
+            workflow_specialist = 'workflow'
         set_span_attributes(
             **{
                 'eduassist.workflow_manager.executed_specialists': workflow_specialist,
@@ -3584,6 +3794,16 @@ async def _compose_structured_tool_answer(
             return _compose_workflow_status_answer(
                 workflow_payload,
                 protocol_code_hint=protocol_code_hint,
+                request_message=request.message,
+            )
+        if 'update_visit_booking' in preview.selected_tools:
+            workflow_payload = await _update_visit_booking(
+                settings=settings,
+                request=request,
+                conversation_context=conversation_context,
+            )
+            return _compose_visit_booking_action_answer(
+                workflow_payload,
                 request_message=request.message,
             )
         if 'schedule_school_visit' in preview.selected_tools:

@@ -587,6 +587,22 @@ class VisitBookingCreateResponse(BaseModel):
     item: VisitBookingEntry
 
 
+class InternalVisitBookingActionRequest(BaseModel):
+    conversation_external_id: str
+    channel: str = 'telegram'
+    telegram_chat_id: int | None = None
+    protocol_code: str | None = None
+    action: str
+    preferred_date: date | None = None
+    preferred_window: str | None = None
+    notes: str | None = None
+
+
+class VisitBookingActionResponse(BaseModel):
+    action: str
+    item: VisitBookingEntry
+
+
 class InternalInstitutionalRequestCreateRequest(BaseModel):
     conversation_external_id: str
     channel: str = 'telegram'

@@ -562,6 +562,69 @@ def main() -> int:
     assert_condition('fila' in visit_status_message.lower(), 'public_visit_status_queue_missing')
     print('[ok] public visit workflow status')
 
+    visit_protocol_status, _, visit_protocol_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o protocolo da visita?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        visit_protocol_status == 200 and isinstance(visit_protocol_payload, dict),
+        'public_visit_protocol_followup_failed',
+    )
+    visit_protocol_message = str(visit_protocol_payload.get('message_text', ''))
+    assert_condition('VIS-' in visit_protocol_message, 'public_visit_protocol_followup_missing')
+    assert_condition('protocolo da sua visita' in visit_protocol_message.lower(), 'public_visit_protocol_followup_intro_missing')
+    print('[ok] public visit workflow protocol follow-up')
+
+    visit_reschedule_status, _, visit_reschedule_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quero remarcar a visita para sexta de manha',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        visit_reschedule_status == 200 and isinstance(visit_reschedule_payload, dict),
+        'public_visit_reschedule_failed',
+    )
+    visit_reschedule_message = str(visit_reschedule_payload.get('message_text', ''))
+    assert_condition('Pedido de visita atualizado' in visit_reschedule_message, 'public_visit_reschedule_intro_missing')
+    assert_condition('Nova preferencia' in visit_reschedule_message, 'public_visit_reschedule_preference_missing')
+    print('[ok] public visit workflow reschedule')
+
+    visit_cancel_status, _, visit_cancel_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quero cancelar a visita',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        visit_cancel_status == 200 and isinstance(visit_cancel_payload, dict),
+        'public_visit_cancel_failed',
+    )
+    visit_cancel_message = str(visit_cancel_payload.get('message_text', ''))
+    assert_condition('Visita cancelada' in visit_cancel_message, 'public_visit_cancel_intro_missing')
+    assert_condition('VIS-' in visit_cancel_message, 'public_visit_cancel_protocol_missing')
+    print('[ok] public visit workflow cancel')
+
     request_status, _, request_payload = request(
         'POST',
         f'{settings.ai_orchestrator_url}/v1/messages/respond',
@@ -603,6 +666,48 @@ def main() -> int:
     assert_condition('REQ-' in request_status_message, 'public_request_status_protocol_missing')
     assert_condition('direcao' in request_status_message.lower(), 'public_request_status_target_missing')
     print('[ok] public institutional request status')
+
+    request_protocol_status, _, request_protocol_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o protocolo?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        request_protocol_status == 200 and isinstance(request_protocol_payload, dict),
+        'public_request_protocol_followup_failed',
+    )
+    request_protocol_message = str(request_protocol_payload.get('message_text', ''))
+    assert_condition('REQ-' in request_protocol_message, 'public_request_protocol_followup_missing')
+    assert_condition('protocolo da sua solicitacao' in request_protocol_message.lower(), 'public_request_protocol_followup_intro_missing')
+    print('[ok] public institutional request protocol follow-up')
+
+    request_summary_status, _, request_summary_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'resume meu pedido',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        request_summary_status == 200 and isinstance(request_summary_payload, dict),
+        'public_request_summary_followup_failed',
+    )
+    request_summary_message = str(request_summary_payload.get('message_text', ''))
+    assert_condition('Resumo da sua solicitacao institucional' in request_summary_message, 'public_request_summary_intro_missing')
+    assert_condition('direcao' in request_summary_message.lower(), 'public_request_summary_target_missing')
+    print('[ok] public institutional request summary follow-up')
 
     request_eta_status, _, request_eta_payload = request(
         'POST',

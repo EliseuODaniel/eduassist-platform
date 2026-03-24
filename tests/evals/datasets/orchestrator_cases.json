@@ -407,6 +407,63 @@
     }
   },
   {
+    "case_id": "support_visit_booking_protocol_followup",
+    "type": "message_response",
+    "request": {
+      "message": "qual o protocolo da visita?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_workflow_status"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["O protocolo da sua visita", "VIS-"],
+      "reason_contains": "workflow estruturado"
+    }
+  },
+  {
+    "case_id": "support_visit_booking_reschedule",
+    "type": "message_response",
+    "request": {
+      "message": "quero remarcar a visita para sexta de manha",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["update_visit_booking"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Pedido de visita atualizado", "VIS-", "Nova preferencia"],
+      "reason_contains": "workflow estruturado"
+    }
+  },
+  {
+    "case_id": "support_visit_booking_cancel",
+    "type": "message_response",
+    "request": {
+      "message": "quero cancelar a visita",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["update_visit_booking"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Visita cancelada", "VIS-"],
+      "reason_contains": "workflow estruturado"
+    }
+  },
+  {
     "case_id": "support_institutional_request_workflow",
     "type": "message_response",
     "request": {
@@ -441,6 +498,44 @@
       "selected_tools_includes": ["get_workflow_status"],
       "graph_path_includes": ["structured_tool_call"],
       "message_contains": ["REQ-", "fila", "direcao"],
+      "reason_contains": "workflow estruturado"
+    }
+  },
+  {
+    "case_id": "support_workflow_protocol_followup",
+    "type": "message_response",
+    "request": {
+      "message": "qual o protocolo?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_workflow_status"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["O protocolo da sua solicitacao", "REQ-"],
+      "reason_contains": "workflow estruturado"
+    }
+  },
+  {
+    "case_id": "support_workflow_summary_followup",
+    "type": "message_response",
+    "request": {
+      "message": "resume meu pedido",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_workflow_status"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Resumo da sua solicitacao institucional", "direcao", "REQ-"],
       "reason_contains": "workflow estruturado"
     }
   },

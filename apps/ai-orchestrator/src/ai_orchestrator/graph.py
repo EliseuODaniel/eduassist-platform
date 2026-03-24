@@ -172,6 +172,20 @@ VISIT_ACTION_TERMS = {
     'visita guiada',
     'tour',
 }
+VISIT_UPDATE_TERMS = {
+    'remarcar visita',
+    'remarcar a visita',
+    'reagendar visita',
+    'reagendar a visita',
+    'mudar a visita',
+    'mudar horario da visita',
+    'mudar horario da minha visita',
+    'trocar horario da visita',
+    'cancelar visita',
+    'cancelar a visita',
+    'desmarcar visita',
+    'desmarcar a visita',
+}
 INSTITUTIONAL_REQUEST_TERMS = {
     'solicitacao a direcao',
     'solicitação à direção',
@@ -237,6 +251,13 @@ WORKFLOW_FOLLOW_UP_TERMS = {
     'quem vai retornar',
     'quem fica com isso',
     'o que acontece agora',
+    'qual o protocolo',
+    'me passa o protocolo',
+    'meu protocolo',
+    'resume meu pedido',
+    'resuma meu pedido',
+    'o que eu pedi',
+    'qual foi meu pedido',
 }
 PROTOCOL_CODE_PATTERN = re.compile(r'\b(?:VIS|REQ|ATD)-[A-Z0-9-]+\b', re.IGNORECASE)
 GRAPH_RAG_TERMS = {'visao geral', 'compare', 'comparar', 'tendencias', 'corpus', 'relacione'}
@@ -513,6 +534,19 @@ def _is_visit_booking_request(message: str) -> bool:
     return _contains_any(lowered, scheduling_verbs) and _contains_any(lowered, visit_targets)
 
 
+def _is_visit_booking_update_request(message: str) -> bool:
+    lowered = _normalize_text(message)
+    if any(_message_matches_term(lowered, term) for term in VISIT_UPDATE_TERMS):
+        return True
+    reschedule_verbs = {'remarcar', 'reagendar', 'mudar', 'trocar'}
+    cancel_verbs = {'cancelar', 'desmarcar'}
+    visit_targets = {'visita', 'visita guiada', 'tour'}
+    return (_contains_any(lowered, reschedule_verbs) or _contains_any(lowered, cancel_verbs)) and _contains_any(
+        lowered,
+        visit_targets,
+    )
+
+
 def _is_institutional_request(message: str) -> bool:
     lowered = _normalize_text(message)
     if any(_message_matches_term(lowered, term) for term in INSTITUTIONAL_REQUEST_TERMS):
@@ -541,7 +575,12 @@ def _is_workflow_status_request(message: str) -> bool:
 
 
 def _is_structured_support_workflow_request(message: str) -> bool:
-    return _is_visit_booking_request(message) or _is_institutional_request(message) or _is_workflow_status_request(message)
+    return (
+        _is_visit_booking_request(message)
+        or _is_visit_booking_update_request(message)
+        or _is_institutional_request(message)
+        or _is_workflow_status_request(message)
+    )
 
 
 def _is_teacher_self_service_request(message: str, role: UserRole) -> bool:
@@ -836,6 +875,9 @@ def structured_tool_call(state: OrchestrationState) -> OrchestrationState:
         if _is_workflow_status_request(request.message):
             selected_tools = ['get_workflow_status']
             output_contract = 'consulta de status de protocolo, visita ou solicitacao institucional ja registrada'
+        elif _is_visit_booking_update_request(request.message):
+            selected_tools = ['update_visit_booking']
+            output_contract = 'atualizacao de visita institucional existente, com remarcacao ou cancelamento'
         elif _is_visit_booking_request(request.message):
             selected_tools = ['schedule_school_visit', 'create_support_ticket']
             output_contract = 'agendamento ou pre-agendamento de visita institucional com protocolo e fila comercial'

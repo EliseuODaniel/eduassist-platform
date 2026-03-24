@@ -22,6 +22,7 @@ from api_core.contracts import (
     InternalConversationContextResponse,
     InternalInstitutionalRequestCreateRequest,
     InternalSupportHandoffCreateRequest,
+    InternalVisitBookingActionRequest,
     InternalVisitBookingCreateRequest,
     OperationsOverviewResponse,
     PolicyCheckRequest,
@@ -39,6 +40,7 @@ from api_core.contracts import (
     TelegramLinkChallengeResponse,
     TelegramLinkConsumeRequest,
     TelegramLinkConsumeResponse,
+    VisitBookingActionResponse,
     VisitBookingCreateResponse,
 )
 from api_core.db.session import apply_rls_actor_context, apply_rls_service_context, get_engine, session_scope
@@ -70,6 +72,7 @@ from api_core.services.institutional_workflows import (
     create_institutional_request,
     create_visit_booking,
     get_workflow_status,
+    update_visit_booking,
 )
 from api_core.services.policy import decide_policy
 from api_core.services.support import (
@@ -803,6 +806,49 @@ async def internal_visit_booking_create(
                 else None,
                 'preferred_window': response_payload.item.preferred_window,
                 'interested_segment': response_payload.item.interested_segment,
+                'linked_ticket_code': response_payload.item.linked_ticket_code,
+            },
+        )
+        return response_payload
+
+
+@app.post('/v1/internal/workflows/visit-bookings/actions', response_model=VisitBookingActionResponse)
+async def internal_visit_booking_action(
+    payload: InternalVisitBookingActionRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> VisitBookingActionResponse:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='internal-workflows-api')
+        actor = None
+        if payload.telegram_chat_id is not None:
+            actor = resolve_actor_context(session, telegram_chat_id=payload.telegram_chat_id)
+            apply_rls_service_context(session, service_name='internal-workflows-api')
+
+        response_payload = update_visit_booking(
+            session,
+            channel=payload.channel,
+            conversation_external_id=payload.conversation_external_id,
+            protocol_code=payload.protocol_code.strip() if payload.protocol_code else None,
+            action=payload.action,
+            preferred_date=payload.preferred_date,
+            preferred_window=payload.preferred_window.strip() if payload.preferred_window else None,
+            notes=payload.notes.strip() if payload.notes else None,
+        )
+        record_audit_event(
+            session,
+            actor_user_id=actor.user_id if actor else None,
+            event_type=f'visit_booking.{response_payload.action}',
+            resource_type='visit_booking',
+            resource_id=str(response_payload.item.booking_id),
+            metadata={
+                'protocol_code': response_payload.item.protocol_code,
+                'queue_name': response_payload.item.queue_name,
+                'preferred_date': response_payload.item.preferred_date.isoformat()
+                if response_payload.item.preferred_date
+                else None,
+                'preferred_window': response_payload.item.preferred_window,
                 'linked_ticket_code': response_payload.item.linked_ticket_code,
             },
         )

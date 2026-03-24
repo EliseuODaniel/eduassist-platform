@@ -219,6 +219,28 @@ TOOL_CONTRACTS: tuple[ToolContract, ...] = (
         notes=['deve preservar a preferencia do usuario e registrar fila de admissions'],
     ),
     ToolContract(
+        name='update_visit_booking',
+        description='Atualiza uma visita institucional existente, permitindo remarcar ou cancelar o pedido com protocolo.',
+        kind=ToolKind.operation,
+        access_tier=AccessTier.public,
+        source_of_truth='workflow_service',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'protocol_code': {'type': 'string'},
+                'action': {'type': 'string'},
+                'preferred_date': {'type': 'string'},
+                'preferred_window': {'type': 'string'},
+                'notes': {'type': 'string'},
+            },
+            'required': ['action'],
+        },
+        output_contract='visita institucional atualizada com protocolo, fila e novo contexto operacional',
+        triggers=['remarcar visita', 'reagendar visita', 'cancelar visita', 'desmarcar visita'],
+        notes=['usa a conversa atual ou protocolo informado para localizar a visita correta'],
+    ),
+    ToolContract(
         name='create_institutional_request',
         description='Registra solicitacao formal para direcao, ouvidoria ou setor institucional com protocolo.',
         kind=ToolKind.operation,
