@@ -12,12 +12,15 @@ from api_core.contracts import (
     CalendarEventEntry,
     GradeEntry,
     InvoiceEntry,
+    PublicAssistantCapabilities,
     PublicContactChannel,
     PublicFeatureAvailability,
     PublicHighlightEntry,
     PublicKpiEntry,
     PublicLeadershipMember,
+    PublicOrgDirectory,
     PublicSchoolProfile,
+    PublicServiceDirectory,
     PublicServiceCatalogEntry,
     PublicShiftOffer,
     PublicTuitionReference,
@@ -597,6 +600,51 @@ def get_public_school_profile(session: Session) -> PublicSchoolProfile | None:
             'Descontos comerciais para irmaos e campanha de matricula antecipada conforme edital vigente.',
             'Matricula condicionada a analise documental, entrevista de acolhimento e assinatura contratual.',
         ],
+    )
+
+
+def get_public_assistant_capabilities(session: Session) -> PublicAssistantCapabilities | None:
+    profile = get_public_school_profile(session)
+    if profile is None:
+        return None
+    return PublicAssistantCapabilities(
+        school_name=profile.school_name,
+        segments=list(profile.segments),
+        public_topics=[
+            'matricula, bolsas, descontos e visitas',
+            'turnos, horarios, calendario e rotina escolar',
+            'biblioteca, uniforme, transporte e estrutura da escola',
+            'canais oficiais, secretaria e orientacao por setor',
+        ],
+        protected_topics=[
+            'notas, faltas e resumo academico',
+            'boletos, contratos e vida financeira',
+        ],
+        workflow_topics=[
+            'agendar visita',
+            'abrir solicitacao para secretaria, coordenacao, orientacao, financeiro ou direcao',
+        ],
+    )
+
+
+def get_public_org_directory(session: Session) -> PublicOrgDirectory | None:
+    profile = get_public_school_profile(session)
+    if profile is None:
+        return None
+    return PublicOrgDirectory(
+        school_name=profile.school_name,
+        leadership_team=list(profile.leadership_team),
+        contact_channels=list(profile.contact_channels),
+    )
+
+
+def get_public_service_directory(session: Session) -> PublicServiceDirectory | None:
+    profile = get_public_school_profile(session)
+    if profile is None:
+        return None
+    return PublicServiceDirectory(
+        school_name=profile.school_name,
+        services=list(profile.service_catalog),
     )
 
 

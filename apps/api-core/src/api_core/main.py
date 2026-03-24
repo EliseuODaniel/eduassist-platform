@@ -25,7 +25,10 @@ from api_core.contracts import (
     OperationsOverviewResponse,
     PolicyCheckRequest,
     PolicyCheckResponse,
+    PublicAssistantCapabilitiesResponse,
+    PublicOrgDirectoryResponse,
     PublicSchoolProfileResponse,
+    PublicServiceDirectoryResponse,
     SupportHandoffCreateResponse,
     SupportHandoffDetailResponse,
     SupportHandoffFilters,
@@ -52,10 +55,13 @@ from api_core.services.audit import (
 from api_core.services.auth import decode_access_token, extract_bearer_token
 from api_core.services.conversation_memory import append_conversation_messages, get_conversation_context
 from api_core.services.domain import (
+    get_public_assistant_capabilities,
+    get_public_org_directory,
     get_student_academic_summary,
     get_student_financial_summary,
     get_teacher_schedule,
     get_public_school_profile,
+    get_public_service_directory,
     list_public_calendar_events,
 )
 from api_core.services.identity import resolve_actor_context
@@ -371,6 +377,33 @@ async def public_school_profile() -> PublicSchoolProfileResponse:
     if profile is None:
         raise HTTPException(status_code=404, detail='public_school_profile_not_found')
     return PublicSchoolProfileResponse(profile=profile)
+
+
+@app.get('/v1/public/assistant-capabilities', response_model=PublicAssistantCapabilitiesResponse)
+async def public_assistant_capabilities() -> PublicAssistantCapabilitiesResponse:
+    with session_scope() as session:
+        capabilities = get_public_assistant_capabilities(session)
+    if capabilities is None:
+        raise HTTPException(status_code=404, detail='public_assistant_capabilities_not_found')
+    return PublicAssistantCapabilitiesResponse(capabilities=capabilities)
+
+
+@app.get('/v1/public/org-directory', response_model=PublicOrgDirectoryResponse)
+async def public_org_directory() -> PublicOrgDirectoryResponse:
+    with session_scope() as session:
+        directory = get_public_org_directory(session)
+    if directory is None:
+        raise HTTPException(status_code=404, detail='public_org_directory_not_found')
+    return PublicOrgDirectoryResponse(directory=directory)
+
+
+@app.get('/v1/public/service-directory', response_model=PublicServiceDirectoryResponse)
+async def public_service_directory() -> PublicServiceDirectoryResponse:
+    with session_scope() as session:
+        directory = get_public_service_directory(session)
+    if directory is None:
+        raise HTTPException(status_code=404, detail='public_service_directory_not_found')
+    return PublicServiceDirectoryResponse(directory=directory)
 
 
 @app.get('/v1/operations/overview', response_model=OperationsOverviewResponse)

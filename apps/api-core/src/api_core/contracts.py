@@ -307,6 +307,37 @@ class PublicSchoolProfileResponse(BaseModel):
     profile: PublicSchoolProfile
 
 
+class PublicAssistantCapabilities(BaseModel):
+    school_name: str
+    segments: list[str] = Field(default_factory=list)
+    public_topics: list[str] = Field(default_factory=list)
+    protected_topics: list[str] = Field(default_factory=list)
+    workflow_topics: list[str] = Field(default_factory=list)
+
+
+class PublicAssistantCapabilitiesResponse(BaseModel):
+    capabilities: PublicAssistantCapabilities
+
+
+class PublicOrgDirectory(BaseModel):
+    school_name: str
+    leadership_team: list[PublicLeadershipMember] = Field(default_factory=list)
+    contact_channels: list[PublicContactChannel] = Field(default_factory=list)
+
+
+class PublicOrgDirectoryResponse(BaseModel):
+    directory: PublicOrgDirectory
+
+
+class PublicServiceDirectory(BaseModel):
+    school_name: str
+    services: list[PublicServiceCatalogEntry] = Field(default_factory=list)
+
+
+class PublicServiceDirectoryResponse(BaseModel):
+    directory: PublicServiceDirectory
+
+
 class InternalConversationMessageEntry(BaseModel):
     sender_type: str
     content: str

@@ -703,22 +703,44 @@ def _public_service_catalog(profile: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _capability_summary_lines(profile: dict[str, Any]) -> list[str]:
-    school_name = str(profile.get('school_name', 'Colegio Horizonte'))
-    segments = [str(item) for item in profile.get('segments', []) if isinstance(item, str)]
+    capability_model = profile.get('assistant_capabilities')
+    school_name = str(
+        (capability_model.get('school_name') if isinstance(capability_model, dict) else None)
+        or profile.get('school_name', 'Colegio Horizonte')
+    )
+    segments_source = (
+        capability_model.get('segments')
+        if isinstance(capability_model, dict)
+        else profile.get('segments', [])
+    )
+    segments = [str(item) for item in segments_source if isinstance(item, str)]
     segment_summary = ', '.join(segments[:2]).lower() if segments else 'os segmentos atendidos'
+    public_topics = [
+        str(item) for item in (
+            capability_model.get('public_topics', []) if isinstance(capability_model, dict) else []
+        ) if isinstance(item, str)
+    ]
+    protected_topics = [
+        str(item) for item in (
+            capability_model.get('protected_topics', []) if isinstance(capability_model, dict) else []
+        ) if isinstance(item, str)
+    ]
+    workflow_topics = [
+        str(item) for item in (
+            capability_model.get('workflow_topics', []) if isinstance(capability_model, dict) else []
+        ) if isinstance(item, str)
+    ]
     lines = [
-        (
-            f'Posso te ajudar com a rotina institucional do {school_name} em {segment_summary}, '
-            'como matricula, bolsas, visitas, horarios, calendario, biblioteca, uniforme, transporte e vida escolar.'
-        ),
-        (
-            'Se sua conta estiver vinculada, eu tambem consigo acompanhar notas, faltas, boletos e vida financeira '
-            'sem precisar te empurrar direto para o portal.'
-        ),
-        (
-            'E, se o assunto pedir acao, eu posso abrir solicitacoes para secretaria, coordenacao, '
-            'orientacao educacional, financeiro ou direcao.'
-        ),
+        f'Posso te ajudar com a rotina institucional do {school_name} em {segment_summary}.',
+        'No lado publico, eu cubro: ' + '; '.join(public_topics or [
+            'matricula, bolsas, visitas, horarios, calendario, biblioteca, uniforme, transporte e vida escolar'
+        ]) + '.',
+        'Se sua conta estiver vinculada, eu tambem consigo cuidar de: ' + '; '.join(protected_topics or [
+            'notas, faltas, boletos e vida financeira'
+        ]) + '.',
+        'Quando o assunto pedir acao, eu posso seguir com: ' + '; '.join(workflow_topics or [
+            'solicitacoes para secretaria, coordenacao, orientacao educacional, financeiro ou direcao'
+        ]) + '.',
         'Se quiser, me diga o tema do jeito que for mais natural e eu sigo com voce.',
     ]
     return lines
@@ -1579,6 +1601,39 @@ async def _fetch_public_school_profile(*, settings: Any) -> dict[str, Any] | Non
     return profile if isinstance(profile, dict) else None
 
 
+async def _fetch_public_assistant_capabilities(*, settings: Any) -> dict[str, Any] | None:
+    payload, status_code = await _api_core_get(
+        settings=settings,
+        path='/v1/public/assistant-capabilities',
+    )
+    if status_code != 200 or payload is None:
+        return None
+    capabilities = payload.get('capabilities')
+    return capabilities if isinstance(capabilities, dict) else None
+
+
+async def _fetch_public_org_directory(*, settings: Any) -> dict[str, Any] | None:
+    payload, status_code = await _api_core_get(
+        settings=settings,
+        path='/v1/public/org-directory',
+    )
+    if status_code != 200 or payload is None:
+        return None
+    directory = payload.get('directory')
+    return directory if isinstance(directory, dict) else None
+
+
+async def _fetch_public_service_directory(*, settings: Any) -> dict[str, Any] | None:
+    payload, status_code = await _api_core_get(
+        settings=settings,
+        path='/v1/public/service-directory',
+    )
+    if status_code != 200 or payload is None:
+        return None
+    directory = payload.get('directory')
+    return directory if isinstance(directory, dict) else None
+
+
 async def _fetch_public_calendar(*, settings: Any) -> list[CalendarEventCard]:
     today = date.today()
     payload, status_code = await _api_core_get(
@@ -2391,8 +2446,28 @@ async def _compose_structured_tool_answer(
     conversation_context: dict[str, Any] | None = None,
 ) -> str:
     if preview.classification.domain is QueryDomain.institution:
-        profile = school_profile or await _fetch_public_school_profile(settings=settings)
-        if profile is None:
+        profile = dict(school_profile or {})
+        if 'list_assistant_capabilities' in preview.selected_tools:
+            capabilities = await _fetch_public_assistant_capabilities(settings=settings)
+            if isinstance(capabilities, dict):
+                profile['assistant_capabilities'] = capabilities
+                profile.setdefault('school_name', capabilities.get('school_name'))
+                profile.setdefault('segments', capabilities.get('segments', []))
+        if 'get_org_directory' in preview.selected_tools:
+            directory = await _fetch_public_org_directory(settings=settings)
+            if isinstance(directory, dict):
+                profile.setdefault('school_name', directory.get('school_name'))
+                profile['leadership_team'] = directory.get('leadership_team', [])
+                profile['contact_channels'] = directory.get('contact_channels', [])
+        if 'get_service_directory' in preview.selected_tools:
+            directory = await _fetch_public_service_directory(settings=settings)
+            if isinstance(directory, dict):
+                profile.setdefault('school_name', directory.get('school_name'))
+                profile['service_catalog'] = directory.get('services', [])
+        if not profile:
+            fetched_profile = await _fetch_public_school_profile(settings=settings)
+            profile = dict(fetched_profile or {})
+        if not profile:
             return _compose_public_gap_answer(set())
         return _compose_public_profile_answer(
             profile,
