@@ -258,6 +258,55 @@ TOOL_CONTRACTS: tuple[ToolContract, ...] = (
         triggers=['grafico', 'gráfico', 'visual', 'barra', 'comparativo'],
         notes=['ativada apenas quando a pergunta explicitamente pede representacao visual'],
     ),
+    ToolContract(
+        name='list_assistant_capabilities',
+        description='Resume os principais assuntos e demandas que o assistente institucional consegue tratar.',
+        kind=ToolKind.data_service,
+        access_tier=AccessTier.public,
+        source_of_truth='public_school_profile',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'channel': {'type': 'string'},
+            },
+        },
+        output_contract='lista estruturada de capacidades publicas, protegidas e proximos passos sugeridos',
+        triggers=['o que voce faz', 'no que pode ajudar', 'quais assuntos', 'opcoes de assuntos'],
+    ),
+    ToolContract(
+        name='get_service_directory',
+        description='Orienta qual setor, canal e prazo atendem um assunto institucional especifico.',
+        kind=ToolKind.data_service,
+        access_tier=AccessTier.public,
+        source_of_truth='public_school_profile',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'topic': {'type': 'string'},
+            },
+            'required': ['topic'],
+        },
+        output_contract='encaminhamento institucional com setor recomendado, canal, prazo e observacoes',
+        triggers=['com quem eu falo', 'quem cuida', 'qual setor', 'quem resolve'],
+    ),
+    ToolContract(
+        name='get_org_directory',
+        description='Apresenta a identidade do assistente e o diretorio institucional de lideranca e atendimento.',
+        kind=ToolKind.data_service,
+        access_tier=AccessTier.public,
+        source_of_truth='public_school_profile',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'focus': {'type': 'string'},
+            },
+        },
+        output_contract='identidade institucional do assistente e diretorio dos setores e liderancas publicas',
+        triggers=['quem e voce', 'com quem eu falo', 'diretora', 'coordenacao', 'setores'],
+    ),
 )
 
 

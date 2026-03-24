@@ -7,16 +7,74 @@
       "telegram_chat_id": 777001
     },
     "expected": {
-      "mode": "clarify",
-      "domain": "unknown",
+      "mode": "structured_tool",
+      "domain": "institution",
       "access_tier": "public",
       "retrieval_backend": "none",
       "needs_authentication": false,
-      "graph_path_includes": ["clarify"],
+      "selected_tools_includes": ["get_public_school_profile", "list_assistant_capabilities"],
+      "graph_path_includes": ["structured_tool_call"],
       "max_citations": 0,
-      "message_contains": ["assistente institucional", "Colegio Horizonte"],
+      "message_contains": ["EduAssist", "Colegio Horizonte"],
       "message_excludes": ["Como posso ajudar?"],
-      "reason_contains": "clarificacao"
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_assistant_identity",
+    "type": "message_response",
+    "request": {
+      "message": "com quem eu falo?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile", "get_service_directory"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["EduAssist", "secretaria", "direcao"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_assistant_capabilities",
+    "type": "message_response",
+    "request": {
+      "message": "quais opcoes de assuntos eu tenho aqui?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile", "list_assistant_capabilities"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["matricula", "secretaria", "financeiro"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_service_routing",
+    "type": "message_response",
+    "request": {
+      "message": "com quem eu falo sobre boletos?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile", "get_service_directory"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["financeiro", "prazo tipico"],
+      "reason_contains": "fato institucional canonico"
     }
   },
   {

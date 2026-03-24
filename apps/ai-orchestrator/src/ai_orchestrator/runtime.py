@@ -36,11 +36,6 @@ DEFAULT_PUBLIC_HELP = (
     'Posso ajudar com informacoes publicas da escola, como calendario, matricula, '
     'documentos exigidos e regras de atendimento digital.'
 )
-INSTITUTIONAL_GREETING = (
-    'Ola. Sou o EduAssist, assistente institucional do Colegio Horizonte. '
-    'Posso orientar sobre matriculas, turnos e horarios, calendario, mensalidades publicas de referencia, '
-    'visitas e canais oficiais de atendimento. Se precisar de dados protegidos, eu tambem explico como vincular sua conta.'
-)
 
 ATTENDANCE_TERMS = {'frequencia', 'falta', 'faltas', 'presenca', 'presencas'}
 GRADE_TERMS = {'nota', 'notas', 'boletim', 'avaliacao', 'avaliacoes', 'prova', 'provas'}
@@ -297,6 +292,44 @@ GREETING_ONLY_TERMS = {
     'e ai',
     'e aí',
 }
+ASSISTANT_IDENTITY_TERMS = {
+    'com quem eu falo',
+    'pra quem eu falo',
+    'para quem eu falo',
+    'quem e voce',
+    'quem é você',
+    'voce e quem',
+    'você é quem',
+    'quem esta ai',
+    'quem está aí',
+}
+ASSISTANT_CAPABILITY_TERMS = {
+    'o que voce faz',
+    'o que você faz',
+    'como voce pode me ajudar',
+    'como você pode me ajudar',
+    'no que voce pode ajudar',
+    'no que você pode ajudar',
+    'quais assuntos',
+    'que assuntos',
+    'opcoes de assuntos',
+    'opções de assuntos',
+    'o que posso resolver aqui',
+    'o que eu posso pedir aqui',
+    'que opcoes eu tenho',
+    'que opções eu tenho',
+}
+SERVICE_ROUTING_TERMS = {
+    'com quem eu falo sobre',
+    'pra quem eu falo sobre',
+    'para quem eu falo sobre',
+    'quem cuida',
+    'quem resolve',
+    'qual setor',
+    'qual area',
+    'qual área',
+    'qual equipe',
+}
 NEGATIVE_REQUIREMENT_TERMS = {
     'nao preciso',
     'nao precisa',
@@ -402,6 +435,45 @@ def _is_greeting_only(text: str) -> bool:
     normalized = re.sub(r'[!?.,;:]+', '', normalized)
     normalized = ' '.join(normalized.split())
     return normalized in GREETING_ONLY_TERMS
+
+
+def _recent_message_lines(conversation_context: dict[str, Any] | None) -> list[tuple[str, str]]:
+    lines: list[tuple[str, str]] = []
+    if not isinstance(conversation_context, dict):
+        return lines
+    for item in conversation_context.get('recent_messages', [])[-8:]:
+        if not isinstance(item, dict):
+            continue
+        sender_type = str(item.get('sender_type', '')).strip().lower()
+        content = str(item.get('content', '')).strip()
+        if sender_type and content:
+            lines.append((sender_type, content))
+    return lines
+
+
+def _assistant_already_introduced(conversation_context: dict[str, Any] | None) -> bool:
+    for sender_type, content in _recent_message_lines(conversation_context):
+        normalized = _normalize_text(content)
+        if sender_type == 'assistant' and 'eduassist' in normalized and 'colegio horizonte' in normalized:
+            return True
+    return False
+
+
+def _is_assistant_identity_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if any(_message_matches_term(normalized, term) for term in SERVICE_ROUTING_TERMS):
+        return False
+    return any(_message_matches_term(normalized, term) for term in ASSISTANT_IDENTITY_TERMS)
+
+
+def _is_capability_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(_message_matches_term(normalized, term) for term in ASSISTANT_CAPABILITY_TERMS)
+
+
+def _is_service_routing_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(_message_matches_term(normalized, term) for term in SERVICE_ROUTING_TERMS)
 
 
 def _map_request(request: MessageResponseRequest, user_context: UserContext) -> OrchestrationRequest:
@@ -630,6 +702,136 @@ def _public_service_catalog(profile: dict[str, Any]) -> list[dict[str, Any]]:
     return [item for item in entries if isinstance(item, dict)] if isinstance(entries, list) else []
 
 
+def _capability_summary_lines(profile: dict[str, Any]) -> list[str]:
+    school_name = str(profile.get('school_name', 'Colegio Horizonte'))
+    segments = [str(item) for item in profile.get('segments', []) if isinstance(item, str)]
+    segment_summary = ', '.join(segments[:2]).lower() if segments else 'os segmentos atendidos'
+    lines = [
+        (
+            f'Posso te ajudar com a rotina institucional do {school_name} em {segment_summary}, '
+            'como matricula, bolsas, visitas, horarios, calendario, biblioteca, uniforme, transporte e vida escolar.'
+        ),
+        (
+            'Se sua conta estiver vinculada, eu tambem consigo acompanhar notas, faltas, boletos e vida financeira '
+            'sem precisar te empurrar direto para o portal.'
+        ),
+        (
+            'E, se o assunto pedir acao, eu posso abrir solicitacoes para secretaria, coordenacao, '
+            'orientacao educacional, financeiro ou direcao.'
+        ),
+        'Se quiser, me diga o tema do jeito que for mais natural e eu sigo com voce.',
+    ]
+    return lines
+
+
+def _service_catalog_index(profile: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    entries = _public_service_catalog(profile)
+    result: dict[str, dict[str, Any]] = {}
+    for item in entries:
+        key = str(item.get('service_key', '')).strip()
+        if key:
+            result[key] = item
+    return result
+
+
+def _service_matches_from_message(profile: dict[str, Any], message: str) -> list[dict[str, Any]]:
+    normalized = _normalize_text(message)
+    catalog = _service_catalog_index(profile)
+    service_keys: list[str] = []
+    if any(_message_matches_term(normalized, term) for term in {'matricula', 'bolsa', 'desconto', 'admissao', 'admissoes', 'visita', 'tour'}):
+        service_keys.extend(['atendimento_admissoes', 'visita_institucional'])
+    if any(_message_matches_term(normalized, term) for term in {'documento', 'documentos', 'historico', 'declaração', 'declaracao', 'transferencia', 'uniforme'}):
+        service_keys.append('secretaria_escolar')
+    if any(_message_matches_term(normalized, term) for term in {'rotina', 'aprendizagem', 'adaptacao', 'adaptação', 'professor', 'faltas', 'nota', 'notas', 'disciplina'}):
+        service_keys.append('reuniao_coordenacao')
+    if any(_message_matches_term(normalized, term) for term in {'emocional', 'convivencia', 'convivência', 'bullying', 'orientacao', 'orientação', 'socioemocional'}):
+        service_keys.append('orientacao_educacional')
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {'mensalidade', 'boleto', 'boletos', 'financeiro', 'fatura', 'faturas', 'pagamento', 'contrato'}
+    ):
+        service_keys.append('financeiro_escolar')
+    if any(_message_matches_term(normalized, term) for term in {'direcao', 'direção', 'diretora', 'ouvidoria', 'elogio', 'reclamacao', 'reclamação', 'sugestao', 'sugestão'}):
+        service_keys.append('solicitacao_direcao')
+    if any(_message_matches_term(normalized, term) for term in {'portal', 'senha', 'acesso', 'telegram', 'bot', 'sistema'}):
+        service_keys.append('suporte_digital')
+    unique_keys: list[str] = []
+    for key in service_keys:
+        if key in catalog and key not in unique_keys:
+            unique_keys.append(key)
+    return [catalog[key] for key in unique_keys]
+
+
+def _compose_assistant_identity_answer(profile: dict[str, Any]) -> str:
+    school_name = str(profile.get('school_name', 'Colegio Horizonte'))
+    return (
+        f'Voce esta falando com o EduAssist, o assistente institucional do {school_name}. '
+        'Eu consigo orientar, consultar informacoes da escola e abrir solicitacoes com protocolo. '
+        'Quando fizer sentido, eu tambem direciono voce para secretaria, admissions, coordenacao, orientacao educacional, financeiro ou direcao.'
+    )
+
+
+def _compose_concierge_greeting(
+    profile: dict[str, Any],
+    message: str,
+    conversation_context: dict[str, Any] | None,
+) -> str:
+    school_name = str(profile.get('school_name', 'Colegio Horizonte'))
+    opening = 'Oi.'
+    normalized = _normalize_text(message)
+    if 'bom dia' in normalized:
+        opening = 'Bom dia.'
+    elif 'boa tarde' in normalized:
+        opening = 'Boa tarde.'
+    elif 'boa noite' in normalized:
+        opening = 'Boa noite.'
+
+    if _assistant_already_introduced(conversation_context):
+        return (
+            f'{opening} Sou o EduAssist e sigo por aqui. Pode me dizer o assunto do jeito que for mais natural '
+            'que eu sigo com voce.'
+        )
+
+    return (
+        f'{opening} Voce esta falando com o EduAssist do {school_name}. '
+        'Posso te ajudar com matricula, horarios, calendario, visitas, canais da escola e, se sua conta estiver vinculada, '
+        'tambem com notas, faltas e financeiro.'
+    )
+
+
+def _compose_capability_answer(profile: dict[str, Any]) -> str:
+    return '\n'.join(_capability_summary_lines(profile))
+
+
+def _compose_service_routing_answer(profile: dict[str, Any], message: str) -> str:
+    matches = _service_matches_from_message(profile, message)
+    if not matches:
+        return (
+            'Eu consigo te direcionar melhor se voce me disser o assunto. '
+            'Por exemplo: matricula, financeiro, boletos, notas, secretaria, coordenacao, direcao ou visita.'
+        )
+    if len(matches) == 1:
+        item = matches[0]
+        return (
+            f'Para esse assunto, o melhor caminho costuma ser {item.get("title", "o setor institucional")}. '
+            f'O canal recomendado e {item.get("request_channel", "canal institucional")}, '
+            f'com prazo tipico de {item.get("typical_eta", "nao informado")}. '
+            f'{str(item.get("notes", "")).strip()} '
+            'Se preferir, eu tambem posso abrir a solicitacao certa por aqui.'
+        )
+    lines = ['Para esse tema, estes caminhos costumam ser os mais adequados:']
+    for item in matches[:3]:
+        lines.append(
+            '- {title}: {request_channel}. Prazo tipico: {typical_eta}.'.format(
+                title=item.get('title', 'Setor institucional'),
+                request_channel=item.get('request_channel', 'canal institucional'),
+                typical_eta=item.get('typical_eta', 'nao informado'),
+            )
+        )
+    lines.append('Se quiser, eu tambem posso abrir a solicitacao certa por aqui.')
+    return '\n'.join(lines)
+
+
 def _select_leadership_member(profile: dict[str, Any], message: str) -> dict[str, Any] | None:
     normalized = _normalize_text(message)
     members = _leadership_inventory(profile)
@@ -700,7 +902,12 @@ def _select_public_highlight(profile: dict[str, Any], message: str) -> dict[str,
     return entries[0]
 
 
-def _compose_public_profile_answer(profile: dict[str, Any], message: str) -> str:
+def _compose_public_profile_answer(
+    profile: dict[str, Any],
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> str:
     normalized = _normalize_text(message)
     school_name = str(profile.get('school_name', 'Colegio Horizonte'))
     city = str(profile.get('city', ''))
@@ -712,6 +919,18 @@ def _compose_public_profile_answer(profile: dict[str, Any], message: str) -> str
     shift_offers = profile.get('shift_offers') if isinstance(profile.get('shift_offers'), list) else []
     tuition_reference = profile.get('tuition_reference') if isinstance(profile.get('tuition_reference'), list) else []
     feature_map = _feature_inventory_map(profile)
+
+    if _is_greeting_only(message):
+        return _compose_concierge_greeting(profile, message, conversation_context)
+
+    if _is_service_routing_query(message):
+        return _compose_service_routing_answer(profile, message)
+
+    if _is_assistant_identity_query(message):
+        return _compose_assistant_identity_answer(profile)
+
+    if _is_capability_query(message):
+        return _compose_capability_answer(profile)
 
     if any(_message_matches_term(normalized, term) for term in PUBLIC_CONTACT_TERMS):
         phone_lines = _contact_value(profile, 'telefone')
@@ -2169,12 +2388,17 @@ async def _compose_structured_tool_answer(
     preview: Any,
     actor: dict[str, Any] | None,
     school_profile: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None = None,
 ) -> str:
     if preview.classification.domain is QueryDomain.institution:
         profile = school_profile or await _fetch_public_school_profile(settings=settings)
         if profile is None:
             return _compose_public_gap_answer(set())
-        return _compose_public_profile_answer(profile, analysis_message)
+        return _compose_public_profile_answer(
+            profile,
+            analysis_message,
+            conversation_context=conversation_context,
+        )
 
     if preview.classification.domain is QueryDomain.support:
         if 'schedule_school_visit' in preview.selected_tools:
@@ -2600,6 +2824,15 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                     preview=preview,
                     actor=actor,
                     school_profile=school_profile,
+                    conversation_context=(
+                        {
+                            'conversation_external_id': conversation_context.conversation_external_id,
+                            'message_count': conversation_context.message_count,
+                            'recent_messages': conversation_context.recent_messages,
+                        }
+                        if conversation_context
+                        else None
+                    ),
                 )
         elif preview.mode is OrchestrationMode.handoff:
             with start_span('eduassist.orchestration.handoff', tracer_name='eduassist.ai_orchestrator.runtime'):

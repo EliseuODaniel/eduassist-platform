@@ -29,6 +29,33 @@ def _build_context_sections(
     conversation_context: dict[str, Any] | None,
     school_profile: dict[str, Any] | None,
 ) -> tuple[str, str]:
+    def school_profile_summary(profile: dict[str, Any]) -> str:
+        name = profile.get('school_name')
+        city = profile.get('city')
+        state = profile.get('state')
+        unit = profile.get('school_unit_code')
+        segments = ', '.join(str(item) for item in profile.get('segments', [])[:4] if isinstance(item, str)) or 'nao informado'
+        leadership = '; '.join(
+            f"{item.get('title', 'lideranca')}: {item.get('name', 'nao informado')}"
+            for item in profile.get('leadership_team', [])[:4]
+            if isinstance(item, dict)
+        ) or 'nao informado'
+        services = '; '.join(
+            f"{item.get('title', 'servico')} ({item.get('request_channel', 'canal institucional')})"
+            for item in profile.get('service_catalog', [])[:6]
+            if isinstance(item, dict)
+        ) or 'nao informado'
+        highlights = '; '.join(
+            str(item.get('title', 'diferencial'))
+            for item in profile.get('highlights', [])[:4]
+            if isinstance(item, dict)
+        ) or 'nao informado'
+        return (
+            f'nome={name or "nao informado"}, cidade={city or "nao informado"}, '
+            f'estado={state or "nao informado"}, unidade={unit or "nao informado"}, '
+            f'segmentos={segments}, lideranca={leadership}, servicos={services}, destaques={highlights}'
+        )
+
     snippets = '\n\n'.join(
         f'Fonte {index}: {citation.document_title} ({citation.version_label})\nTrecho: {citation.excerpt}'
         for index, citation in enumerate(citations, start=1)
@@ -50,17 +77,10 @@ def _build_context_sections(
     memory_block = '\n'.join(recent_messages) or 'nenhum'
     school_profile_block = 'nenhum'
     if isinstance(school_profile, dict):
-        name = school_profile.get('school_name')
-        city = school_profile.get('city')
-        state = school_profile.get('state')
-        unit = school_profile.get('school_unit_code')
-        school_profile_block = (
-            f'nome={name or "nao informado"}, cidade={city or "nao informado"}, '
-            f'estado={state or "nao informado"}, unidade={unit or "nao informado"}'
-        )
+        school_profile_block = school_profile_summary(school_profile)
     instructions = (
         'Voce e o assistente EduAssist de uma escola de ensino medio. '
-        'Responda em portugues do Brasil, de forma objetiva e educada. '
+        'Responda em portugues do Brasil, com tom humano, profissional e natural, como uma recepcao escolar experiente. '
         f'{PROJECT_CONTEXT} '
         'Use apenas o contexto fornecido. Nao invente regras, datas, documentos ou horarios. '
         'Nao transforme listas de requisitos em afirmacoes sobre itens dispensaveis ou desnecessarios. '
@@ -69,6 +89,10 @@ def _build_context_sections(
         'Quando a pergunta for comparativa, reconheca o limite da base e ofereca resumir os diferenciais documentados desta escola. '
         'Quando a pergunta parecer continuidade de uma conversa, use o historico recente apenas para resolver referencias como "isso", "ela", "esse horario", '
         'sem mudar o que realmente esta sustentado pelas fontes. '
+        'Quando o usuario fizer uma pergunta de navegacao, como "com quem eu falo", "o que voce faz" ou "quais assuntos posso tratar aqui", '
+        'aja como concierge institucional: explique o que o bot resolve, qual setor cuida do assunto e qual proximo passo o usuario pode seguir. '
+        'Evite reapresentar o assistente por completo se o historico recente mostrar que ele ja se apresentou. '
+        'Evite respostas roboticas, redundantes ou que so repitam menu; priorize uma resposta curta, util e orientada para acao. '
         'Se a pergunta exigir autenticacao, diga isso com clareza. '
         'Se houver calendario estruturado, priorize-o. '
         'Se o contexto nao responder a pergunta, diga explicitamente que a base atual nao tem evidencia suficiente. '

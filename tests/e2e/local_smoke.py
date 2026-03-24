@@ -107,10 +107,77 @@ def main() -> int:
         'public_greeting_query_failed',
     )
     greeting_message = str(greeting_payload.get('message_text', ''))
-    assert_condition('assistente institucional' in greeting_message.lower(), 'public_greeting_role_missing')
-    assert_condition('colegio horizonte' in greeting_message.lower(), 'public_greeting_school_missing')
+    assert_condition('eduassist' in greeting_message.lower(), 'public_greeting_role_missing')
+    assert_condition(
+        'colegio horizonte' in greeting_message.lower() or 'estou por aqui' in greeting_message.lower(),
+        'public_greeting_school_missing',
+    )
     assert_condition('como posso ajudar' not in greeting_message.lower(), 'public_greeting_generic_message')
     print('[ok] public institutional greeting')
+
+    identity_status, _, identity_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'com quem eu falo?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        identity_status == 200 and isinstance(identity_payload, dict),
+        'public_identity_query_failed',
+    )
+    identity_message = str(identity_payload.get('message_text', ''))
+    assert_condition('eduassist' in identity_message.lower(), 'public_identity_name_missing')
+    assert_condition('secretaria' in identity_message.lower(), 'public_identity_sector_missing')
+    print('[ok] public assistant identity')
+
+    capabilities_status, _, capabilities_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quais opcoes de assuntos eu tenho aqui?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        capabilities_status == 200 and isinstance(capabilities_payload, dict),
+        'public_capabilities_query_failed',
+    )
+    capabilities_message = str(capabilities_payload.get('message_text', ''))
+    assert_condition('matricula' in capabilities_message.lower(), 'public_capabilities_admissions_missing')
+    assert_condition('secretaria' in capabilities_message.lower(), 'public_capabilities_secretaria_missing')
+    assert_condition('financeiro' in capabilities_message.lower(), 'public_capabilities_finance_missing')
+    print('[ok] public assistant capabilities')
+
+    routing_status, _, routing_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'com quem eu falo sobre boletos?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        routing_status == 200 and isinstance(routing_payload, dict),
+        'public_routing_query_failed',
+    )
+    routing_message = str(routing_payload.get('message_text', ''))
+    assert_condition('financeiro' in routing_message.lower(), 'public_routing_finance_missing')
+    assert_condition('prazo' in routing_message.lower(), 'public_routing_eta_missing')
+    print('[ok] public service routing')
 
     library_status, _, library_payload = request(
         'POST',

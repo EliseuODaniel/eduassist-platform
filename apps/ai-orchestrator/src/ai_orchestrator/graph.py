@@ -202,6 +202,32 @@ PUBLIC_SERVICE_TERMS = {
     'atendimento',
     'funcionamento',
     'horario de atendimento',
+    'o que voce faz',
+    'o que você faz',
+    'como voce pode me ajudar',
+    'como você pode me ajudar',
+    'no que voce pode ajudar',
+    'no que você pode ajudar',
+    'assunto',
+    'assuntos',
+    'opcoes de assuntos',
+    'opções de assuntos',
+    'com quem eu falo',
+    'pra quem eu falo',
+    'para quem eu falo',
+    'quem cuida',
+    'quem resolve',
+    'qual setor',
+    'quem e voce',
+    'quem é você',
+    'voce e quem',
+    'você é quem',
+    'oi',
+    'ola',
+    'olá',
+    'bom dia',
+    'boa tarde',
+    'boa noite',
 }
 INSTITUTION_TERMS = {
     'escola',
@@ -333,6 +359,29 @@ PUBLIC_SCHOOL_PROFILE_TERMS = {
     'agendar visita',
     'solicitacao a direcao',
     'solicitação à direção',
+    'o que voce faz',
+    'o que você faz',
+    'como voce pode me ajudar',
+    'como você pode me ajudar',
+    'quais assuntos',
+    'opcoes de assuntos',
+    'opções de assuntos',
+    'com quem eu falo',
+    'pra quem eu falo',
+    'para quem eu falo',
+    'quem cuida',
+    'quem resolve',
+    'qual setor',
+    'quem e voce',
+    'quem é você',
+    'voce e quem',
+    'você é quem',
+    'oi',
+    'ola',
+    'olá',
+    'bom dia',
+    'boa tarde',
+    'boa noite',
     'biblioteca',
     'cantina',
     'laboratorio',
@@ -414,6 +463,38 @@ def _is_public_pricing_query(message: str) -> bool:
     return True
 
 
+def _is_public_navigation_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    navigation_terms = {
+        'oi',
+        'ola',
+        'olá',
+        'bom dia',
+        'boa tarde',
+        'boa noite',
+        'o que voce faz',
+        'o que você faz',
+        'como voce pode me ajudar',
+        'como você pode me ajudar',
+        'quais assuntos',
+        'opcoes de assuntos',
+        'opções de assuntos',
+        'com quem eu falo',
+        'pra quem eu falo',
+        'para quem eu falo',
+        'quem cuida',
+        'quem resolve',
+        'qual setor',
+        'qual area',
+        'qual área',
+        'quem e voce',
+        'quem é você',
+        'voce e quem',
+        'você é quem',
+    }
+    return any(_message_matches_term(lowered, term) for term in navigation_terms)
+
+
 def _is_public_school_profile_request(message: str) -> bool:
     lowered = _normalize_text(message)
     return _is_public_pricing_query(lowered) or any(
@@ -452,6 +533,13 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
             access_tier=AccessTier.public,
             confidence=0.86,
             reason='mensagem pede informacao comercial publica da escola, nao financeiro pessoal',
+        )
+    elif _is_public_navigation_query(message):
+        classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.88,
+            reason='mensagem pede navegacao institucional, apresentacao do assistente ou direcionamento por setor',
         )
     elif _contains_any(message, FINANCE_TERMS):
         classification = IntentClassification(
@@ -586,10 +674,63 @@ def graph_rag_retrieval(state: OrchestrationState) -> OrchestrationState:
 def structured_tool_call(state: OrchestrationState) -> OrchestrationState:
     classification = state['classification']
     request = state['request']
+    normalized_message = _normalize_text(request.message)
 
     if classification.domain is QueryDomain.institution:
         selected_tools = ['get_public_school_profile']
-        output_contract = 'fato institucional publico canonico e verificavel'
+        if any(
+            _message_matches_term(normalized_message, term)
+            for term in {
+                'o que voce faz',
+                'o que você faz',
+                'como voce pode me ajudar',
+                'como você pode me ajudar',
+                'no que voce pode ajudar',
+                'no que você pode ajudar',
+                'quais assuntos',
+                'assuntos',
+                'opcoes de assuntos',
+                'opções de assuntos',
+                'oi',
+                'ola',
+                'olá',
+                'bom dia',
+                'boa tarde',
+                'boa noite',
+            }
+        ):
+            selected_tools.append('list_assistant_capabilities')
+        if any(
+            _message_matches_term(normalized_message, term)
+            for term in {
+                'com quem eu falo',
+                'pra quem eu falo',
+                'para quem eu falo',
+                'quem cuida',
+                'quem resolve',
+                'qual setor',
+            }
+        ):
+            selected_tools.append('get_service_directory')
+        if any(
+            _message_matches_term(normalized_message, term)
+            for term in {
+                'quem e voce',
+                'quem é você',
+                'voce e quem',
+                'você é quem',
+                'diretora',
+                'diretor',
+                'direcao',
+                'direção',
+                'coordenacao',
+                'coordenação',
+                'lideranca',
+                'liderança',
+            }
+        ):
+            selected_tools.append('get_org_directory')
+        output_contract = 'fato institucional publico, navegacao de atendimento e orientacao de concierge'
     elif classification.domain is QueryDomain.support:
         if _is_visit_booking_request(request.message):
             selected_tools = ['schedule_school_visit', 'create_support_ticket']

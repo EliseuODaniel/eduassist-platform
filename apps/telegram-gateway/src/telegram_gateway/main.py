@@ -3,7 +3,6 @@ from __future__ import annotations
 import base64
 from functools import lru_cache
 import secrets
-import unicodedata
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -236,24 +235,6 @@ def _default_help_message() -> str:
     )
 
 
-def _normalize_message(text: str) -> str:
-    normalized = unicodedata.normalize('NFKD', text)
-    without_accents = ''.join(char for char in normalized if not unicodedata.combining(char))
-    return ' '.join(without_accents.lower().strip('!?.,;:').split())
-
-
-def _is_greeting_only(text: str) -> bool:
-    return _normalize_message(text) in {
-        'oi',
-        'ola',
-        'bom dia',
-        'boa tarde',
-        'boa noite',
-        'opa',
-        'e ai',
-    }
-
-
 async def _orchestrate_message(
     *,
     chat_id: int,
@@ -322,7 +303,7 @@ async def telegram_webhook(
                 'processed': 'missing_chat',
             }
 
-        if text.strip() in {'/start', '/help'} or _is_greeting_only(text):
+        if text.strip() in {'/start', '/help'}:
             help_text = _default_help_message()
             await _send_telegram_message(chat_id, help_text)
             return {
