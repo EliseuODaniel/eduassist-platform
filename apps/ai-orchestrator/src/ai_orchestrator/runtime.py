@@ -2225,8 +2225,20 @@ async def _maybe_build_visual_assets(
     actor: dict[str, Any] | None,
     school_profile: dict[str, Any] | None,
 ) -> list[MessageResponseVisualAsset]:
-    if not _wants_visual_response(request.message):
+    specialists = _build_visual_specialists(preview=preview, message=request.message)
+    if not specialists:
         return []
+
+    set_span_attributes(
+        **{
+            'eduassist.visual_manager.executed_specialists': ','.join(
+                specialist.name for specialist in specialists
+            ),
+            'eduassist.visual_manager.executed_tools': ','.join(
+                tool_name for specialist in specialists for tool_name in specialist.tool_names
+            ),
+        }
+    )
 
     if preview.classification.domain is QueryDomain.institution:
         profile = school_profile or await _fetch_public_school_profile(settings=settings)
@@ -2574,6 +2586,278 @@ def _format_unique_subjects(summary: dict[str, Any]) -> list[str]:
     return lines or ['- Nenhuma disciplina encontrada.']
 
 
+def _build_protected_record_specialists(*, preview: Any, role_code: str) -> tuple[InternalSpecialistPlan, ...]:
+    if preview.classification.domain is QueryDomain.academic and role_code == 'teacher':
+        return (
+            InternalSpecialistPlan(
+                name='protected_records',
+                purpose='consultas protegidas de agenda, turmas e disciplinas docentes',
+                tool_names=('get_teacher_schedule',),
+            ),
+        )
+
+    if preview.classification.domain is QueryDomain.academic:
+        return (
+            InternalSpecialistPlan(
+                name='protected_records',
+                purpose='consultas protegidas de notas, frequencia e vida academica por aluno vinculado',
+                tool_names=('get_student_academic_summary',),
+            ),
+        )
+
+    if preview.classification.domain is QueryDomain.finance:
+        return (
+            InternalSpecialistPlan(
+                name='protected_records',
+                purpose='consultas protegidas de faturas, contrato e situacao financeira por aluno vinculado',
+                tool_names=('get_student_financial_summary',),
+            ),
+        )
+
+    return ()
+
+
+async def _execute_teacher_protected_specialist(
+    *,
+    settings: Any,
+    request: MessageResponseRequest,
+    actor: dict[str, Any],
+) -> str:
+    if request.telegram_chat_id is None:
+        return _compose_structured_deny(actor)
+
+    message = request.message
+    normalized_message = _normalize_text(message)
+    if not _contains_any(message, TEACHER_SCHEDULE_TERMS):
+        return (
+            'No Telegram, o fluxo protegido do professor nesta etapa cobre horario e turmas. '
+            'Pergunte por exemplo: "qual meu horario?" ou "quais sao minhas turmas?".'
+        )
+
+    payload, status_code = await _api_core_get(
+        settings=settings,
+        path='/v1/teachers/me/schedule',
+        params={'telegram_chat_id': request.telegram_chat_id},
+    )
+    if status_code != 200 or payload is None:
+        return 'Nao consegui consultar sua grade docente agora. Tente novamente em instantes.'
+
+    summary = payload.get('summary', {})
+    teacher_name = summary.get('teacher_name', actor.get('full_name', 'Professor'))
+    if not isinstance(summary, dict):
+        return 'Nao consegui interpretar o retorno da grade docente.'
+
+    if _contains_any(message, TEACHER_CLASS_TERMS) and not _contains_any(message, TEACHER_SUBJECT_TERMS):
+        lines = [f'Turmas de {teacher_name}:', *_format_unique_classes(summary)]
+        return '\n'.join(lines)
+
+    if _contains_any(message, TEACHER_SUBJECT_TERMS) and not _contains_any(message, TEACHER_CLASS_TERMS):
+        lines = [f'Disciplinas de {teacher_name}:', *_format_unique_subjects(summary)]
+        return '\n'.join(lines)
+
+    assignments = _format_assignments(summary)
+    lines = [f'Grade docente de {teacher_name}:', *assignments]
+    if 'horario' in normalized_message or 'agenda' in normalized_message:
+        lines.append(
+            'Nesta base mockada atual, o detalhamento por bloco de horario ainda nao foi modelado; '
+            'por enquanto eu mostro suas alocacoes de turmas e disciplinas.'
+        )
+    return '\n'.join(lines)
+
+
+async def _execute_protected_records_specialist(
+    *,
+    settings: Any,
+    request: MessageResponseRequest,
+    preview: Any,
+    actor: dict[str, Any],
+) -> str:
+    if request.telegram_chat_id is None:
+        return _compose_structured_deny(actor)
+
+    message = request.message
+    normalized_message = _normalize_text(message)
+
+    if preview.classification.domain is QueryDomain.finance:
+        requested_status = _detect_finance_status_filter(message)
+        if len(_eligible_students(actor, capability='finance')) > 1:
+            student, clarification = _select_linked_student(actor, message)
+            if student is None and clarification is not None:
+                summaries: list[dict[str, Any]] = []
+                for candidate in _eligible_students(actor, capability='finance'):
+                    candidate_id = candidate.get('student_id')
+                    if not isinstance(candidate_id, str):
+                        continue
+                    payload, status_code = await _api_core_get(
+                        settings=settings,
+                        path=f'/v1/students/{candidate_id}/financial-summary',
+                        params={'telegram_chat_id': request.telegram_chat_id},
+                    )
+                    if status_code == 200 and isinstance(payload, dict):
+                        summary = payload.get('summary')
+                        if isinstance(summary, dict):
+                            summaries.append(summary)
+
+                if summaries and not any(
+                    _normalize_text(str(student.get('full_name', ''))) in normalized_message
+                    for student in _eligible_students(actor, capability='finance')
+                ):
+                    lines = ['Panorama financeiro das contas vinculadas:']
+                    total_open = 0
+                    total_overdue = 0
+                    for summary in summaries:
+                        open_count = int(summary.get('open_invoice_count', 0) or 0)
+                        overdue_count = int(summary.get('overdue_invoice_count', 0) or 0)
+                        total_open += open_count
+                        total_overdue += overdue_count
+                        filtered_invoices = _filter_invoice_rows(summary, status_filter=requested_status)
+                        status_line = (
+                            f"- {summary.get('student_name', 'Aluno')}: "
+                            f"{open_count} em aberto, {overdue_count} vencidas"
+                        )
+                        lines.append(status_line)
+                        for invoice_line in _format_invoice_lines(filtered_invoices)[:2]:
+                            lines.append(f'  {invoice_line[2:]}' if invoice_line.startswith('- ') else invoice_line)
+                    lines.insert(1, f'- Total de faturas em aberto: {total_open}')
+                    lines.insert(2, f'- Total de faturas vencidas: {total_overdue}')
+                    if any(term in normalized_message for term in FINANCE_SECOND_COPY_TERMS):
+                        lines.append(
+                            'A emissao automatica de segunda via ainda entra na proxima etapa; '
+                            'por enquanto eu consigo informar a situacao das faturas.'
+                        )
+                    return '\n'.join(lines)
+
+    student, clarification = _select_linked_student(actor, message)
+    if clarification is not None:
+        return clarification
+    if student is None:
+        return 'Nao encontrei um aluno elegivel para essa consulta no Telegram.'
+
+    student_id = student.get('student_id')
+    student_name = student.get('full_name', 'Aluno')
+    if not isinstance(student_id, str):
+        return 'Nao consegui identificar o aluno desta consulta. Tente novamente pelo portal.'
+
+    if preview.classification.domain is QueryDomain.academic:
+        payload, status_code = await _api_core_get(
+            settings=settings,
+            path=f'/v1/students/{student_id}/academic-summary',
+            params={'telegram_chat_id': request.telegram_chat_id},
+        )
+        if status_code == 403:
+            return 'Seu perfil nao tem permissao para consultar esses dados academicos.'
+        if status_code != 200 or payload is None:
+            return 'Nao consegui consultar os dados academicos agora. Tente novamente em instantes.'
+
+        summary = payload.get('summary', {})
+        if not isinstance(summary, dict):
+            return 'Nao consegui interpretar o retorno academico desta consulta.'
+
+        term_filter = _extract_term_filter(message)
+        subject_filter = _detect_subject_filter(message, summary)
+        filtered_grades = _filter_grade_rows(summary, subject_filter=subject_filter, term_filter=term_filter)
+        filtered_attendance = _filter_attendance_rows(summary, subject_filter=subject_filter)
+        filtered_summary = dict(summary)
+        filtered_summary['grades'] = filtered_grades
+        filtered_summary['attendance'] = filtered_attendance
+
+        focus_attendance = _contains_any(message, ATTENDANCE_TERMS) and not _contains_any(message, GRADE_TERMS)
+        lines = [
+            f'Resumo academico de {student_name}:',
+            f"- Turma: {summary.get('class_name', 'nao informada')}",
+            f"- Serie atual: {summary.get('grade_level', 'nao informada')}",
+        ]
+        if subject_filter:
+            lines.append(f"- Disciplina filtrada: {subject_filter.title()}")
+        if term_filter:
+            lines.append(f'- Bimestre filtrado: {term_filter[-1]}')
+        if focus_attendance:
+            lines.append('Frequencia:')
+            lines.extend(_format_attendance(filtered_summary))
+            lines.append('Notas mais recentes:')
+            lines.extend(_format_grades(filtered_summary))
+        else:
+            lines.append('Notas mais recentes:')
+            lines.extend(_format_grades(filtered_summary))
+            lines.append('Frequencia:')
+            lines.extend(_format_attendance(filtered_summary))
+        return '\n'.join(lines)
+
+    payload, status_code = await _api_core_get(
+        settings=settings,
+        path=f'/v1/students/{student_id}/financial-summary',
+        params={'telegram_chat_id': request.telegram_chat_id},
+    )
+    if status_code == 403:
+        return 'Seu perfil nao tem permissao para consultar esses dados financeiros.'
+    if status_code != 200 or payload is None:
+        return 'Nao consegui consultar o resumo financeiro agora. Tente novamente em instantes.'
+
+    summary = payload.get('summary', {})
+    if not isinstance(summary, dict):
+        return 'Nao consegui interpretar o retorno financeiro desta consulta.'
+
+    requested_status = _detect_finance_status_filter(message)
+    filtered_invoices = _filter_invoice_rows(summary, status_filter=requested_status)
+    lines = [
+        f"Resumo financeiro de {summary.get('student_name', student_name)}:",
+        f"- Contrato: {summary.get('contract_code', 'nao informado')}",
+        f"- Responsavel financeiro: {summary.get('guardian_name', 'nao informado')}",
+        f"- Mensalidade base: {summary.get('monthly_amount', '0.00')}",
+        f"- Faturas em aberto: {summary.get('open_invoice_count', 0)}",
+        f"- Faturas vencidas: {summary.get('overdue_invoice_count', 0)}",
+    ]
+    if requested_status == {'paid'}:
+        lines.append('Faturas pagas:')
+    elif requested_status == {'overdue'}:
+        lines.append('Faturas vencidas:')
+    elif requested_status == {'open', 'overdue'}:
+        lines.append('Faturas em aberto ou vencidas:')
+    else:
+        lines.append('Ultimas faturas:')
+    lines.extend(_format_invoice_lines(filtered_invoices))
+    if any(term in normalized_message for term in FINANCE_SECOND_COPY_TERMS):
+        lines.append(
+            'A emissao automatica de segunda via ainda entra na proxima etapa; '
+            'por enquanto eu consigo informar a situacao e os vencimentos.'
+        )
+    return '\n'.join(lines)
+
+
+def _build_visual_specialists(*, preview: Any, message: str) -> tuple[InternalSpecialistPlan, ...]:
+    if not _wants_visual_response(message):
+        return ()
+
+    if preview.classification.domain is QueryDomain.institution:
+        return (
+            InternalSpecialistPlan(
+                name='visual',
+                purpose='graficos publicos institucionais e indicadores visuais',
+                tool_names=('build_public_kpi_visual',),
+            ),
+        )
+
+    if preview.classification.domain is QueryDomain.academic:
+        return (
+            InternalSpecialistPlan(
+                name='visual',
+                purpose='graficos academicos sintetizados a partir do resumo do aluno',
+                tool_names=('build_academic_visual',),
+            ),
+        )
+
+    if preview.classification.domain is QueryDomain.finance:
+        return (
+            InternalSpecialistPlan(
+                name='visual',
+                purpose='graficos financeiros sintetizados a partir do resumo do aluno',
+                tool_names=('build_finance_visual',),
+            ),
+        )
+
+    return ()
+
+
 def _compose_structured_deny(actor: dict[str, Any] | None) -> str:
     if actor is None:
         return (
@@ -2647,188 +2931,43 @@ async def _compose_structured_tool_answer(
 
     role_code = str(actor.get('role_code', 'anonymous'))
     message = request.message
-    normalized_message = _normalize_text(message)
 
     if preview.classification.domain is QueryDomain.academic and role_code == 'teacher':
-        if not _contains_any(message, TEACHER_SCHEDULE_TERMS):
-            return (
-                'No Telegram, o fluxo protegido do professor nesta etapa cobre horario e turmas. '
-                'Pergunte por exemplo: "qual meu horario?" ou "quais sao minhas turmas?".'
-            )
-        payload, status_code = await _api_core_get(
-            settings=settings,
-            path='/v1/teachers/me/schedule',
-            params={'telegram_chat_id': request.telegram_chat_id},
+        specialists = _build_protected_record_specialists(preview=preview, role_code=role_code)
+        set_span_attributes(
+            **{
+                'eduassist.protected_manager.executed_specialists': ','.join(
+                    specialist.name for specialist in specialists
+                ),
+                'eduassist.protected_manager.executed_tools': ','.join(
+                    tool_name for specialist in specialists for tool_name in specialist.tool_names
+                ),
+            }
         )
-        if status_code != 200 or payload is None:
-            return 'Nao consegui consultar sua grade docente agora. Tente novamente em instantes.'
-        summary = payload.get('summary', {})
-        teacher_name = summary.get('teacher_name', actor.get('full_name', 'Professor'))
-        if not isinstance(summary, dict):
-            return 'Nao consegui interpretar o retorno da grade docente.'
-
-        if _contains_any(message, TEACHER_CLASS_TERMS) and not _contains_any(message, TEACHER_SUBJECT_TERMS):
-            lines = [f'Turmas de {teacher_name}:', *_format_unique_classes(summary)]
-            return '\n'.join(lines)
-
-        if _contains_any(message, TEACHER_SUBJECT_TERMS) and not _contains_any(message, TEACHER_CLASS_TERMS):
-            lines = [f'Disciplinas de {teacher_name}:', *_format_unique_subjects(summary)]
-            return '\n'.join(lines)
-
-        assignments = _format_assignments(summary)
-        lines = [f'Grade docente de {teacher_name}:', *assignments]
-        if 'horario' in normalized_message or 'agenda' in normalized_message:
-            lines.append(
-                'Nesta base mockada atual, o detalhamento por bloco de horario ainda nao foi modelado; '
-                'por enquanto eu mostro suas alocacoes de turmas e disciplinas.'
-            )
-        return '\n'.join(lines)
+        return await _execute_teacher_protected_specialist(
+            settings=settings,
+            request=request,
+            actor=actor,
+        )
 
     if preview.classification.domain in {QueryDomain.academic, QueryDomain.finance}:
-        if preview.classification.domain is QueryDomain.finance:
-            requested_status = _detect_finance_status_filter(message)
-            if len(_eligible_students(actor, capability='finance')) > 1:
-                student, clarification = _select_linked_student(actor, message)
-                if student is None and clarification is not None:
-                    summaries: list[dict[str, Any]] = []
-                    for candidate in _eligible_students(actor, capability='finance'):
-                        candidate_id = candidate.get('student_id')
-                        if not isinstance(candidate_id, str):
-                            continue
-                        payload, status_code = await _api_core_get(
-                            settings=settings,
-                            path=f'/v1/students/{candidate_id}/financial-summary',
-                            params={'telegram_chat_id': request.telegram_chat_id},
-                        )
-                        if status_code == 200 and isinstance(payload, dict):
-                            summary = payload.get('summary')
-                            if isinstance(summary, dict):
-                                summaries.append(summary)
-
-                    if summaries and not any(
-                        _normalize_text(str(student.get('full_name', ''))) in normalized_message
-                        for student in _eligible_students(actor, capability='finance')
-                    ):
-                        lines = ['Panorama financeiro das contas vinculadas:']
-                        total_open = 0
-                        total_overdue = 0
-                        for summary in summaries:
-                            open_count = int(summary.get('open_invoice_count', 0) or 0)
-                            overdue_count = int(summary.get('overdue_invoice_count', 0) or 0)
-                            total_open += open_count
-                            total_overdue += overdue_count
-                            filtered_invoices = _filter_invoice_rows(summary, status_filter=requested_status)
-                            status_line = (
-                                f"- {summary.get('student_name', 'Aluno')}: "
-                                f"{open_count} em aberto, {overdue_count} vencidas"
-                            )
-                            lines.append(status_line)
-                            for invoice_line in _format_invoice_lines(filtered_invoices)[:2]:
-                                lines.append(f'  {invoice_line[2:]}' if invoice_line.startswith('- ') else invoice_line)
-                        lines.insert(1, f'- Total de faturas em aberto: {total_open}')
-                        lines.insert(2, f'- Total de faturas vencidas: {total_overdue}')
-                        if any(term in normalized_message for term in FINANCE_SECOND_COPY_TERMS):
-                            lines.append(
-                                'A emissao automatica de segunda via ainda entra na proxima etapa; '
-                                'por enquanto eu consigo informar a situacao das faturas.'
-                            )
-                        return '\n'.join(lines)
-
-        student, clarification = _select_linked_student(actor, message)
-        if clarification is not None:
-            return clarification
-        if student is None:
-            return 'Nao encontrei um aluno elegivel para essa consulta no Telegram.'
-
-        student_id = student.get('student_id')
-        student_name = student.get('full_name', 'Aluno')
-        if not isinstance(student_id, str):
-            return 'Nao consegui identificar o aluno desta consulta. Tente novamente pelo portal.'
-
-        if preview.classification.domain is QueryDomain.academic:
-            payload, status_code = await _api_core_get(
-                settings=settings,
-                path=f'/v1/students/{student_id}/academic-summary',
-                params={'telegram_chat_id': request.telegram_chat_id},
-            )
-            if status_code == 403:
-                return 'Seu perfil nao tem permissao para consultar esses dados academicos.'
-            if status_code != 200 or payload is None:
-                return 'Nao consegui consultar os dados academicos agora. Tente novamente em instantes.'
-
-            summary = payload.get('summary', {})
-            if not isinstance(summary, dict):
-                return 'Nao consegui interpretar o retorno academico desta consulta.'
-
-            term_filter = _extract_term_filter(message)
-            subject_filter = _detect_subject_filter(message, summary)
-            filtered_grades = _filter_grade_rows(summary, subject_filter=subject_filter, term_filter=term_filter)
-            filtered_attendance = _filter_attendance_rows(summary, subject_filter=subject_filter)
-            filtered_summary = dict(summary)
-            filtered_summary['grades'] = filtered_grades
-            filtered_summary['attendance'] = filtered_attendance
-
-            focus_attendance = _contains_any(message, ATTENDANCE_TERMS) and not _contains_any(message, GRADE_TERMS)
-            lines = [
-                f'Resumo academico de {student_name}:',
-                f"- Turma: {summary.get('class_name', 'nao informada')}",
-                f"- Serie atual: {summary.get('grade_level', 'nao informada')}",
-            ]
-            if subject_filter:
-                lines.append(f"- Disciplina filtrada: {subject_filter.title()}")
-            if term_filter:
-                lines.append(f'- Bimestre filtrado: {term_filter[-1]}')
-            if focus_attendance:
-                lines.append('Frequencia:')
-                lines.extend(_format_attendance(filtered_summary))
-                lines.append('Notas mais recentes:')
-                lines.extend(_format_grades(filtered_summary))
-            else:
-                lines.append('Notas mais recentes:')
-                lines.extend(_format_grades(filtered_summary))
-                lines.append('Frequencia:')
-                lines.extend(_format_attendance(filtered_summary))
-            return '\n'.join(lines)
-
-        payload, status_code = await _api_core_get(
-            settings=settings,
-            path=f'/v1/students/{student_id}/financial-summary',
-            params={'telegram_chat_id': request.telegram_chat_id},
+        specialists = _build_protected_record_specialists(preview=preview, role_code=role_code)
+        set_span_attributes(
+            **{
+                'eduassist.protected_manager.executed_specialists': ','.join(
+                    specialist.name for specialist in specialists
+                ),
+                'eduassist.protected_manager.executed_tools': ','.join(
+                    tool_name for specialist in specialists for tool_name in specialist.tool_names
+                ),
+            }
         )
-        if status_code == 403:
-            return 'Seu perfil nao tem permissao para consultar esses dados financeiros.'
-        if status_code != 200 or payload is None:
-            return 'Nao consegui consultar o resumo financeiro agora. Tente novamente em instantes.'
-
-        summary = payload.get('summary', {})
-        if not isinstance(summary, dict):
-            return 'Nao consegui interpretar o retorno financeiro desta consulta.'
-
-        requested_status = _detect_finance_status_filter(message)
-        filtered_invoices = _filter_invoice_rows(summary, status_filter=requested_status)
-        lines = [
-            f"Resumo financeiro de {summary.get('student_name', student_name)}:",
-            f"- Contrato: {summary.get('contract_code', 'nao informado')}",
-            f"- Responsavel financeiro: {summary.get('guardian_name', 'nao informado')}",
-            f"- Mensalidade base: {summary.get('monthly_amount', '0.00')}",
-            f"- Faturas em aberto: {summary.get('open_invoice_count', 0)}",
-            f"- Faturas vencidas: {summary.get('overdue_invoice_count', 0)}",
-        ]
-        if requested_status == {'paid'}:
-            lines.append('Faturas pagas:')
-        elif requested_status == {'overdue'}:
-            lines.append('Faturas vencidas:')
-        elif requested_status == {'open', 'overdue'}:
-            lines.append('Faturas em aberto ou vencidas:')
-        else:
-            lines.append('Ultimas faturas:')
-        lines.extend(_format_invoice_lines(filtered_invoices))
-        if any(term in normalized_message for term in FINANCE_SECOND_COPY_TERMS):
-            lines.append(
-                'A emissao automatica de segunda via ainda entra na proxima etapa; '
-                'por enquanto eu consigo informar a situacao e os vencimentos.'
-            )
-        return '\n'.join(lines)
+        return await _execute_protected_records_specialist(
+            settings=settings,
+            request=request,
+            preview=preview,
+            actor=actor,
+        )
 
     return (
         'Esse fluxo protegido ainda nao foi concluido para este perfil no Telegram. '
