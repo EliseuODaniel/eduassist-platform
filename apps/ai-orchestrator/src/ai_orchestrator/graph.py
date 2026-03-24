@@ -249,6 +249,10 @@ WORKFLOW_FOLLOW_UP_TERMS = {
     'e depois',
     'e dai',
     'e daí',
+    'tem alguma atualizacao',
+    'tem alguma atualização',
+    'alguma atualizacao',
+    'alguma atualização',
     'qual o prazo',
     'qual o próximo passo',
     'qual o proximo passo',
@@ -270,7 +274,10 @@ WORKFLOW_FOLLOW_UP_TERMS = {
     'o que eu pedi',
     'qual foi meu pedido',
 }
-PROTOCOL_CODE_PATTERN = re.compile(r'\b(?:VIS|REQ|ATD)-[A-Z0-9-]+\b', re.IGNORECASE)
+PROTOCOL_CODE_PATTERN = re.compile(
+    r'\b(?:VIS|REQ)-\d{8}-[A-Z0-9]{6}\b|\bATD-\d{8}-[A-Z0-9]{8}\b',
+    re.IGNORECASE,
+)
 GRAPH_RAG_TERMS = {'visao geral', 'compare', 'comparar', 'tendencias', 'corpus', 'relacione'}
 TEACHER_SELF_SERVICE_TERMS = {'horario', 'agenda', 'turma', 'turmas', 'disciplina', 'disciplinas', 'materia', 'materias'}
 PUBLIC_SERVICE_TERMS = {

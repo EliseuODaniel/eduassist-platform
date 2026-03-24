@@ -193,6 +193,10 @@ WORKFLOW_FOLLOW_UP_TERMS = {
     'e depois',
     'e dai',
     'e daí',
+    'tem alguma atualizacao',
+    'tem alguma atualização',
+    'alguma atualizacao',
+    'alguma atualização',
     'qual o prazo',
     'qual o próximo passo',
     'qual o proximo passo',
@@ -214,7 +218,10 @@ WORKFLOW_FOLLOW_UP_TERMS = {
     'o que eu pedi',
     'qual foi meu pedido',
 }
-PROTOCOL_CODE_PATTERN = re.compile(r'\b(?:VIS|REQ|ATD)-[A-Z0-9-]+\b', re.IGNORECASE)
+PROTOCOL_CODE_PATTERN = re.compile(
+    r'\b(?:VIS|REQ)-\d{8}-[A-Z0-9]{6}\b|\bATD-\d{8}-[A-Z0-9]{8}\b',
+    re.IGNORECASE,
+)
 WORKFLOW_STATUS_LABELS = {
     'queued': 'em fila',
     'requested': 'registrado',
@@ -2743,6 +2750,28 @@ def _humanize_workflow_queue(queue_name: str | None) -> str:
     return WORKFLOW_QUEUE_LABELS.get(normalized, normalized or 'atendimento')
 
 
+def _format_workflow_timestamp(value: Any) -> str | None:
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return None
+        try:
+            value = datetime.fromisoformat(raw.replace('Z', '+00:00'))
+        except ValueError:
+            return None
+    if not isinstance(value, datetime):
+        return None
+    reference = datetime.now(tz=value.tzinfo) if value.tzinfo else datetime.now()
+    current_date = reference.date()
+    target_date = value.date()
+    time_label = value.strftime('%H:%M')
+    if target_date == current_date:
+        return f'hoje as {time_label}'
+    if target_date == current_date - timedelta(days=1):
+        return f'ontem as {time_label}'
+    return value.strftime('%d/%m/%Y as %H:%M')
+
+
 def _compose_workflow_status_answer(
     response_payload: dict[str, Any] | None,
     *,
@@ -2776,6 +2805,7 @@ def _compose_workflow_status_answer(
     preferred_date = str(item.get('preferred_date', '') or '').strip()
     preferred_window = str(item.get('preferred_window', '') or '').strip()
     slot_label = str(item.get('slot_label', '') or '').strip()
+    updated_at_label = _format_workflow_timestamp(item.get('updated_at'))
     asks_status_explicitly = any(
         _message_matches_term(normalized_request, term)
         for term in {
@@ -2787,6 +2817,30 @@ def _compose_workflow_status_answer(
             'qual o prazo',
             'quando me respondem',
             'quem vai me responder',
+        }
+    )
+    asks_update_explicitly = any(
+        _message_matches_term(normalized_request, term)
+        for term in {
+            'tem alguma atualizacao',
+            'tem alguma atualização',
+            'alguma atualizacao',
+            'alguma atualização',
+            'ultima atualizacao',
+            'ultima atualização',
+            'teve atualizacao',
+            'teve atualização',
+        }
+    )
+    asks_next_step = any(
+        _message_matches_term(normalized_request, term)
+        for term in {
+            'qual o proximo passo',
+            'qual o próximo passo',
+            'proximo passo',
+            'próximo passo',
+            'e agora',
+            'o que acontece agora',
         }
     )
     asks_protocol_only = not asks_status_explicitly and any(
@@ -2820,12 +2874,32 @@ def _compose_workflow_status_answer(
             lines.append(f'- Status atual: {status_label}')
             lines.append('Se quiser, eu posso remarcar, cancelar ou acompanhar esse pedido com voce.')
             return '\n'.join(lines)
+        if asks_update_explicitly:
+            lines = [f'A ultima atualizacao da sua visita mostra que ela segue {status_label}.', f'- Protocolo: {protocol_code}']
+            if updated_at_label:
+                lines.append(f'- Ultima movimentacao registrada: {updated_at_label}')
+            if linked_ticket_code:
+                lines.append(f'- Ticket operacional: {linked_ticket_code}')
+            if slot_label:
+                lines.append(f'- Preferencia registrada: {slot_label}')
+            lines.append('No momento, a equipe comercial ainda precisa validar a janela antes da confirmacao.')
+            return '\n'.join(lines)
+        if asks_next_step:
+            lines = [f'Proximo passo da sua visita: admissions valida a janela antes de confirmar o horario.', f'- Protocolo: {protocol_code}']
+            if updated_at_label:
+                lines.append(f'- Ultima movimentacao registrada: {updated_at_label}')
+            if slot_label:
+                lines.append(f'- Preferencia registrada: {slot_label}')
+            lines.append('Se quiser, eu posso remarcar ou cancelar esse pedido por aqui.')
+            return '\n'.join(lines)
         lines = [
             f'Seu pedido de visita segue {status_label} com a fila de {queue_label}.',
             f'- Protocolo: {protocol_code}',
         ]
         if linked_ticket_code:
             lines.append(f'- Ticket operacional: {linked_ticket_code}')
+        if updated_at_label:
+            lines.append(f'- Ultima movimentacao registrada: {updated_at_label}')
         if slot_label:
             lines.append(f'- Preferencia registrada: {slot_label}')
         elif preferred_date or preferred_window:
@@ -2862,6 +2936,30 @@ def _compose_workflow_status_answer(
             lines.append(f'- Status atual: {status_label}')
             lines.append('Se quiser, eu tambem posso te dizer o prazo estimado ou quem responde por essa fila.')
             return '\n'.join(lines)
+        if asks_update_explicitly:
+            lines = [
+                f'A ultima atualizacao do seu protocolo mostra que ele segue {status_label}.',
+                f'- Protocolo: {protocol_code}',
+            ]
+            if updated_at_label:
+                lines.append(f'- Ultima movimentacao registrada: {updated_at_label}')
+            if target_area:
+                lines.append(f'- Area responsavel: {target_area}')
+            if linked_ticket_code:
+                lines.append(f'- Ticket operacional: {linked_ticket_code}')
+            lines.append(f'No momento, a fila de {queue_label} ainda precisa analisar o contexto antes do retorno.')
+            return '\n'.join(lines)
+        if asks_next_step:
+            lines = [
+                f'Proximo passo do seu protocolo: a fila de {queue_label} analisa o contexto e prepara o retorno.',
+                f'- Protocolo: {protocol_code}',
+            ]
+            if updated_at_label:
+                lines.append(f'- Ultima movimentacao registrada: {updated_at_label}')
+            if target_area:
+                lines.append(f'- Area responsavel: {target_area}')
+            lines.append('Se quiser, eu tambem posso resumir o pedido ou registrar um complemento.')
+            return '\n'.join(lines)
         lines = [
             f'Sua solicitacao institucional segue {status_label} na fila de {queue_label}.',
             f'- Protocolo: {protocol_code}',
@@ -2872,6 +2970,8 @@ def _compose_workflow_status_answer(
             lines.append(f'- Area responsavel: {target_area}')
         if linked_ticket_code:
             lines.append(f'- Ticket operacional: {linked_ticket_code}')
+        if updated_at_label:
+            lines.append(f'- Ultima movimentacao registrada: {updated_at_label}')
         if any(_message_matches_term(normalized_request, term) for term in {'qual o prazo', 'quanto tempo demora', 'quando me respondem', 'quando vao me responder', 'quando vão me responder'}):
             lines.append('Prazo esperado: a triagem inicial costuma acontecer em ate 2 dias uteis, conforme a fila responsavel.')
         elif any(_message_matches_term(normalized_request, term) for term in {'quem vai me responder', 'quem vai retornar', 'quem fica com isso'}):
@@ -3099,13 +3199,13 @@ def _workflow_contextual_suggested_replies(
     kind = recent_focus.get('kind')
     if 'get_workflow_status' in preview.selected_tools:
         if kind == 'visit':
-            return ['Quero remarcar a visita', 'Quero cancelar a visita', 'Qual o protocolo da visita?', 'Qual o prazo?']
+            return ['Tem alguma atualizacao da visita?', 'Qual o proximo passo da visita?', 'Quero remarcar a visita', 'Quero cancelar a visita']
         if kind == 'request':
-            return ['Complementar meu pedido', 'Resume meu pedido', 'Quem vai me responder?', 'Qual o prazo?']
+            return ['Tem alguma atualizacao?', 'Qual o proximo passo?', 'Complementar meu pedido', 'Resume meu pedido']
     if 'update_visit_booking' in preview.selected_tools or kind == 'visit':
-        return ['Qual o status da visita?', 'Qual o protocolo da visita?', 'Quero cancelar a visita', 'Quero remarcar a visita']
+        return ['Tem alguma atualizacao da visita?', 'Qual o proximo passo da visita?', 'Quero cancelar a visita', 'Quero remarcar a visita']
     if 'update_institutional_request' in preview.selected_tools or kind == 'request':
-        return ['Qual o status do meu protocolo?', 'Complementar meu pedido', 'Quem vai me responder?', 'Resume meu pedido']
+        return ['Tem alguma atualizacao?', 'Qual o proximo passo?', 'Complementar meu pedido', 'Resume meu pedido']
     return None
 
 

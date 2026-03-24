@@ -565,6 +565,28 @@ def main() -> int:
     assert_condition('fila' in visit_status_message.lower(), 'public_visit_status_queue_missing')
     print('[ok] public visit workflow status')
 
+    visit_update_status, _, visit_update_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'tem alguma atualizacao da visita?',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:visit-thread',
+        },
+    )
+    assert_condition(
+        visit_update_status == 200 and isinstance(visit_update_payload, dict),
+        'public_visit_update_failed',
+    )
+    visit_update_message = str(visit_update_payload.get('message_text', ''))
+    assert_condition('ultima atualizacao da sua visita' in visit_update_message.lower(), 'public_visit_update_intro_missing')
+    assert_condition('ultima movimentacao registrada' in visit_update_message.lower(), 'public_visit_update_timestamp_missing')
+    print('[ok] public visit workflow update')
+
     visit_protocol_status, _, visit_protocol_payload = request(
         'POST',
         f'{settings.ai_orchestrator_url}/v1/messages/respond',
@@ -697,6 +719,37 @@ def main() -> int:
     assert_condition('REQ-' in request_status_message, 'public_request_status_protocol_missing')
     assert_condition('direcao' in request_status_message.lower(), 'public_request_status_target_missing')
     print('[ok] public institutional request status')
+
+    request_update_info_status, _, request_update_info_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'tem alguma atualizacao?',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:request-thread',
+        },
+    )
+    assert_condition(
+        request_update_info_status == 200 and isinstance(request_update_info_payload, dict),
+        'public_request_update_info_failed',
+    )
+    request_update_info_message = str(request_update_info_payload.get('message_text', ''))
+    assert_condition('ultima atualizacao do seu protocolo' in request_update_info_message.lower(), 'public_request_update_info_intro_missing')
+    assert_condition('ultima movimentacao registrada' in request_update_info_message.lower(), 'public_request_update_info_timestamp_missing')
+    request_update_info_suggestions = request_update_info_payload.get('suggested_replies')
+    assert_condition(
+        isinstance(request_update_info_suggestions, list) and any(
+            'proximo passo' in str(item.get('text', '')).lower()
+            for item in request_update_info_suggestions
+            if isinstance(item, dict)
+        ),
+        'public_request_update_info_suggestions_missing',
+    )
+    print('[ok] public institutional request update info')
 
     request_protocol_status, _, request_protocol_payload = request(
         'POST',

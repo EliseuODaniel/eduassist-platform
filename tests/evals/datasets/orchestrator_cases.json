@@ -529,6 +529,26 @@
     }
   },
   {
+    "case_id": "support_workflow_update_followup",
+    "type": "message_response",
+    "request": {
+      "message": "tem alguma atualizacao?",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:request-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_workflow_status"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["ultima atualizacao do seu protocolo", "REQ-", "ultima movimentacao registrada"],
+      "reason_contains": "workflow estruturado"
+    }
+  },
+  {
     "case_id": "support_workflow_protocol_followup",
     "type": "message_response",
     "request": {
