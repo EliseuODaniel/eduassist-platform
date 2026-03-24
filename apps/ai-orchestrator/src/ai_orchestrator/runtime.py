@@ -431,6 +431,13 @@ class PublicInstitutionPlan:
     fetch_profile: bool
 
 
+@dataclass(frozen=True)
+class InternalSpecialistPlan:
+    name: str
+    purpose: str
+    tool_names: tuple[str, ...]
+
+
 def _normalize_text(text: str) -> str:
     normalized = unicodedata.normalize('NFKD', text)
     without_accents = ''.join(char for char in normalized if not unicodedata.combining(char))
@@ -1692,51 +1699,88 @@ def _build_public_institution_plan(message: str, selected_tools: list[str]) -> P
     )
 
 
+def _build_public_institution_specialists(plan: PublicInstitutionPlan) -> tuple[InternalSpecialistPlan, ...]:
+    specialists: list[InternalSpecialistPlan] = []
+
+    concierge_tools = tuple(
+        tool_name
+        for tool_name in plan.required_tools
+        if tool_name in {'list_assistant_capabilities', 'get_service_directory'}
+    )
+    if plan.conversation_act in {'greeting', 'capabilities', 'assistant_identity', 'service_routing'} or concierge_tools:
+        specialists.append(
+            InternalSpecialistPlan(
+                name='concierge',
+                purpose='navegacao institucional, descoberta de capacidades e orientacao por setor',
+                tool_names=concierge_tools,
+            )
+        )
+
+    knowledge_tools = tuple(
+        tool_name
+        for tool_name in plan.required_tools
+        if tool_name in {'get_public_school_profile', 'get_org_directory'}
+    )
+    if knowledge_tools or not specialists:
+        specialists.append(
+            InternalSpecialistPlan(
+                name='public_knowledge',
+                purpose='fatos canonicos, lideranca, contatos e perfil publico da instituicao',
+                tool_names=knowledge_tools,
+            )
+        )
+
+    return tuple(specialists)
+
+
 async def _execute_public_institution_plan(
     *,
     settings: Any,
     plan: PublicInstitutionPlan,
     school_profile: dict[str, Any] | None,
-) -> tuple[dict[str, Any], list[str]]:
+) -> tuple[dict[str, Any], list[str], list[str]]:
     profile = dict(school_profile or {}) if plan.fetch_profile else {}
     executed_tools: list[str] = []
+    executed_specialists: list[str] = []
 
-    for tool_name in plan.required_tools:
-        if tool_name == 'get_public_school_profile':
-            if not profile:
-                fetched_profile = await _fetch_public_school_profile(settings=settings)
-                if isinstance(fetched_profile, dict):
-                    profile = dict(fetched_profile)
-            executed_tools.append(tool_name)
-            continue
+    for specialist in _build_public_institution_specialists(plan):
+        executed_specialists.append(specialist.name)
+        for tool_name in specialist.tool_names:
+            if tool_name == 'get_public_school_profile':
+                if not profile:
+                    fetched_profile = await _fetch_public_school_profile(settings=settings)
+                    if isinstance(fetched_profile, dict):
+                        profile = dict(fetched_profile)
+                executed_tools.append(tool_name)
+                continue
 
-        if tool_name == 'list_assistant_capabilities':
-            capabilities = await _fetch_public_assistant_capabilities(settings=settings)
-            if isinstance(capabilities, dict):
-                profile['assistant_capabilities'] = capabilities
-                profile.setdefault('school_name', capabilities.get('school_name'))
-                profile.setdefault('segments', capabilities.get('segments', []))
-            executed_tools.append(tool_name)
-            continue
+            if tool_name == 'list_assistant_capabilities':
+                capabilities = await _fetch_public_assistant_capabilities(settings=settings)
+                if isinstance(capabilities, dict):
+                    profile['assistant_capabilities'] = capabilities
+                    profile.setdefault('school_name', capabilities.get('school_name'))
+                    profile.setdefault('segments', capabilities.get('segments', []))
+                executed_tools.append(tool_name)
+                continue
 
-        if tool_name == 'get_org_directory':
-            directory = await _fetch_public_org_directory(settings=settings)
-            if isinstance(directory, dict):
-                profile.setdefault('school_name', directory.get('school_name'))
-                profile['leadership_team'] = directory.get('leadership_team', [])
-                profile['contact_channels'] = directory.get('contact_channels', [])
-            executed_tools.append(tool_name)
-            continue
+            if tool_name == 'get_org_directory':
+                directory = await _fetch_public_org_directory(settings=settings)
+                if isinstance(directory, dict):
+                    profile.setdefault('school_name', directory.get('school_name'))
+                    profile['leadership_team'] = directory.get('leadership_team', [])
+                    profile['contact_channels'] = directory.get('contact_channels', [])
+                executed_tools.append(tool_name)
+                continue
 
-        if tool_name == 'get_service_directory':
-            directory = await _fetch_public_service_directory(settings=settings)
-            if isinstance(directory, dict):
-                profile.setdefault('school_name', directory.get('school_name'))
-                profile['service_catalog'] = directory.get('services', [])
-            executed_tools.append(tool_name)
-            continue
+            if tool_name == 'get_service_directory':
+                directory = await _fetch_public_service_directory(settings=settings)
+                if isinstance(directory, dict):
+                    profile.setdefault('school_name', directory.get('school_name'))
+                    profile['service_catalog'] = directory.get('services', [])
+                executed_tools.append(tool_name)
+                continue
 
-    return profile, executed_tools
+    return profile, executed_tools, executed_specialists
 
 
 async def _fetch_public_calendar(*, settings: Any) -> list[CalendarEventCard]:
@@ -2552,7 +2596,7 @@ async def _compose_structured_tool_answer(
 ) -> str:
     if preview.classification.domain is QueryDomain.institution:
         plan = _build_public_institution_plan(request.message, preview.selected_tools)
-        profile, executed_tools = await _execute_public_institution_plan(
+        profile, executed_tools, executed_specialists = await _execute_public_institution_plan(
             settings=settings,
             plan=plan,
             school_profile=school_profile,
@@ -2562,6 +2606,7 @@ async def _compose_structured_tool_answer(
                 'eduassist.public_manager.act': plan.conversation_act,
                 'eduassist.public_manager.fetch_profile': plan.fetch_profile,
                 'eduassist.public_manager.executed_tools': ','.join(executed_tools),
+                'eduassist.public_manager.executed_specialists': ','.join(executed_specialists),
             }
         )
         if not profile:
@@ -2573,6 +2618,12 @@ async def _compose_structured_tool_answer(
         )
 
     if preview.classification.domain is QueryDomain.support:
+        workflow_specialist = 'workflow'
+        set_span_attributes(
+            **{
+                'eduassist.workflow_manager.executed_specialists': workflow_specialist,
+            }
+        )
         if 'schedule_school_visit' in preview.selected_tools:
             workflow_payload = await _create_visit_booking(
                 settings=settings,
