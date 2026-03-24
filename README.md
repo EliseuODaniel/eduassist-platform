@@ -143,6 +143,9 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - o `worker` agora publica o índice vetorial do `Qdrant` por alias, reduzindo a janela de indisponibilidade durante `documents-sync`;
 - o `ai-orchestrator` já expõe busca híbrida real via `Qdrant + PostgreSQL FTS` com citações;
 - o `ai-orchestrator` já responde mensagens reais com FAQ pública, calendário público, negação segura de fluxos protegidos, composição por `Gemini` ou `OpenAI` quando configurados e fallback determinístico quando não houver chave de LLM configurada;
+- o `ai-orchestrator` agora também mantém memória curta de conversa por `conversation_id` e por `telegram_chat_id`, contextualizando follow-ups curtos sem abrir acesso adicional a dados sensíveis;
+- o `ai-orchestrator` agora combina fatos canônicos públicos vindos do `api-core` com retrieval documental, reduzindo respostas frouxas para perguntas simples como nome da escola e horário de serviços institucionais;
+- o runtime público agora aplica abstenção específica para perguntas negativas, condicionais e comparativas quando a base não sustenta a afirmação, em vez de completar a resposta por inferência;
 - o `ai-orchestrator` já executa o caminho `GraphRAG` no runtime principal quando o modo avançado estiver habilitado;
 - o `telegram-gateway` já encaminha mensagens públicas ao `ai-orchestrator` e devolve respostas úteis no formato do Telegram;
 - o `telegram-gateway`, o `ai-orchestrator` e o `api-core` agora trocam chamadas internas protegidas por `X-Internal-Api-Token`;
@@ -193,6 +196,6 @@ Expansões já aprovadas para a próxima etapa:
 ## Próximos passos imediatos
 
 1. Medir custo e qualidade entre `Gemini` e `OpenAI` no runtime principal com evals comparativas.
-2. Refinar os prompts e contratos do planner/compositor agora que o provider externo ja esta integrado.
+2. Expandir o catálogo de fatos canônicos públicos e os playbooks conversacionais para perguntas competitivas, ambíguas e de exceção.
 3. Expandir o drill de backup/restore para politicas mais ricas de retenção e cenarios de recuperação.
 4. Ampliar ainda mais as seeds e os cenarios operacionais de carga humana.

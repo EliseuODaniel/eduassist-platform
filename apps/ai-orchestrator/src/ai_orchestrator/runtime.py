@@ -100,6 +100,46 @@ PROMPT_BYPASS_TERMS = {
     'mostre o prompt',
     'me diga o prompt',
 }
+COMPARATIVE_TERMS = {
+    'melhor',
+    'pior',
+    'concorrente',
+    'concorrencia',
+    'concorrência',
+    'comparar',
+    'compare',
+    'comparacao',
+    'comparação',
+    'versus',
+    'vs',
+    'publica',
+    'pública',
+    'privada',
+}
+FOLLOW_UP_OPENERS = {
+    'e ',
+    'e se',
+    'e qual',
+    'e quais',
+    'e quanto',
+    'e quando',
+    'e como',
+    'e onde',
+    'e por que',
+    'e pq',
+}
+FOLLOW_UP_REFERENTS = {
+    'isso',
+    'essa',
+    'esse',
+    'essas',
+    'esses',
+    'dela',
+    'dele',
+    'disso',
+    'daquilo',
+    'nisso',
+}
 NEGATIVE_REQUIREMENT_TERMS = {
     'nao preciso',
     'nao precisa',
@@ -137,6 +177,8 @@ QUERY_STOPWORDS = {
     'como', 'quando', 'onde', 'porque', 'por que', 'se', 'eu', 'voce', 'vocês', 'me', 'minha',
     'meu', 'minhas', 'meus', 'ainda', 'mais', 'menos', 'sobre', 'preciso', 'precisa',
     'algum', 'alguma', 'alguns', 'algumas', 'existe', 'ha', 'haver', 'escola', 'colegio', 'colégio', 'bot', 'telegram',
+    'isso', 'essa', 'esse', 'essas', 'esses', 'dela', 'dele', 'disso', 'daquilo', 'nisso',
+    'pergunta', 'anterior', 'usuario', 'assistente', 'resposta', 'ultima', 'última', 'fonte', 'fontes',
 }
 HIGH_RISK_REASONING_TERMS = {
     'exceto',
@@ -184,6 +226,13 @@ class PublicAnswerabilityAssessment:
     high_risk_reasoning: bool
 
 
+@dataclass(frozen=True)
+class ConversationContextBundle:
+    conversation_external_id: str | None
+    recent_messages: list[dict[str, Any]]
+    message_count: int
+
+
 def _normalize_text(text: str) -> str:
     normalized = unicodedata.normalize('NFKD', text)
     without_accents = ''.join(char for char in normalized if not unicodedata.combining(char))
@@ -198,6 +247,14 @@ def _map_request(request: MessageResponseRequest, user_context: UserContext) -> 
         allow_graph_rag=request.allow_graph_rag,
         allow_handoff=request.allow_handoff,
     )
+
+
+def _effective_conversation_id(request: MessageResponseRequest) -> str | None:
+    if request.conversation_id:
+        return request.conversation_id
+    if request.channel.value == 'telegram' and request.telegram_chat_id is not None:
+        return f'telegram:{request.telegram_chat_id}'
+    return None
 
 
 def _category_for_domain(domain: QueryDomain) -> str | None:
@@ -277,6 +334,20 @@ def _is_negative_requirement_query(message: str) -> bool:
     return has_negative and has_requirement
 
 
+def _is_comparative_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(_message_matches_term(normalized, term) for term in COMPARATIVE_TERMS)
+
+
+def _is_follow_up_query(message: str) -> bool:
+    normalized = _normalize_text(message).strip()
+    if len(normalized) > 180:
+        return False
+    if any(normalized.startswith(opener) for opener in FOLLOW_UP_OPENERS):
+        return True
+    return any(_message_matches_term(normalized, term) for term in FOLLOW_UP_REFERENTS)
+
+
 def _is_public_school_name_query(message: str) -> bool:
     normalized = _normalize_text(message)
     return any(
@@ -301,6 +372,15 @@ def _compose_negative_requirement_answer() -> str:
     lines.extend(f'- {item}' for item in KNOWN_ADMISSIONS_REQUIREMENTS)
     lines.append('Se quiser, eu posso resumir apenas os documentos exigidos ou explicar as etapas da matricula.')
     return '\n'.join(lines)
+
+
+def _compose_comparative_gap_answer() -> str:
+    return (
+        'Posso explicar os diferenciais documentados desta escola, mas a base publica atual nao sustenta uma '
+        'comparacao justa com uma concorrente especifica sem fontes comparativas confiaveis. '
+        'Se quiser, eu posso resumir os pontos fortes documentados desta escola ou fazer uma comparacao limitada '
+        'se voce informar qual instituicao deseja considerar.'
+    )
 
 
 def _extract_salient_terms(message: str) -> set[str]:
@@ -404,6 +484,53 @@ def _compose_answerability_gap_answer(assessment: PublicAnswerabilityAssessment,
             'pela base publica atual. Posso responder apenas o que estiver explicitamente documentado.'
         )
     return _compose_public_gap_answer(assessment.unsupported_terms)
+
+
+def _extract_recent_user_message(recent_messages: list[dict[str, Any]]) -> str | None:
+    for item in reversed(recent_messages):
+        if not isinstance(item, dict):
+            continue
+        if item.get('sender_type') != 'user':
+            continue
+        content = str(item.get('content', '')).strip()
+        if content:
+            return content
+    return None
+
+
+def _extract_recent_assistant_message(recent_messages: list[dict[str, Any]]) -> str | None:
+    for item in reversed(recent_messages):
+        if not isinstance(item, dict):
+            continue
+        if item.get('sender_type') != 'assistant':
+            continue
+        content = str(item.get('content', '')).strip()
+        if content:
+            return content
+    return None
+
+
+def _build_analysis_message(message: str, conversation_context: ConversationContextBundle | None) -> str:
+    if conversation_context is None or not conversation_context.recent_messages:
+        return message
+    if not _is_follow_up_query(message):
+        return message
+
+    last_user_message = _extract_recent_user_message(conversation_context.recent_messages)
+    last_assistant_message = _extract_recent_assistant_message(conversation_context.recent_messages)
+    if not last_user_message and not last_assistant_message:
+        return message
+
+    entity_hints = {
+        *_extract_public_entity_hints(last_user_message or ''),
+        *_extract_public_entity_hints(last_assistant_message or ''),
+    }
+    if entity_hints:
+        referents = ', '.join(sorted(entity_hints))
+        return f'{message} sobre {referents}'
+    if last_user_message:
+        return f'{message} contexto anterior {last_user_message}'
+    return message
 
 
 def _retrieval_hits_cover_query_hints(retrieval_hits: list[Any], query_hints: set[str]) -> bool:
@@ -570,6 +697,78 @@ async def _api_core_post(
             return None, exc.response.status_code
         except Exception:
             return None, None
+
+
+async def _fetch_public_school_profile(settings: Any) -> dict[str, Any] | None:
+    payload, status_code = await _api_core_get(
+        settings=settings,
+        path='/v1/public/school-profile',
+    )
+    if status_code != 200 or not isinstance(payload, dict):
+        return None
+    profile = payload.get('profile')
+    return profile if isinstance(profile, dict) else None
+
+
+async def _fetch_conversation_context(
+    *,
+    settings: Any,
+    conversation_external_id: str | None,
+    channel: str,
+) -> ConversationContextBundle | None:
+    if not conversation_external_id:
+        return None
+
+    payload, status_code = await _api_core_get(
+        settings=settings,
+        path='/v1/internal/conversations/context',
+        params={
+            'conversation_external_id': conversation_external_id,
+            'channel': channel,
+            'limit': 6,
+        },
+    )
+    if status_code != 200 or not isinstance(payload, dict):
+        return None
+
+    recent_messages = payload.get('recent_messages')
+    if not isinstance(recent_messages, list):
+        recent_messages = []
+
+    return ConversationContextBundle(
+        conversation_external_id=conversation_external_id,
+        recent_messages=[item for item in recent_messages if isinstance(item, dict)],
+        message_count=int(payload.get('message_count', 0) or 0),
+    )
+
+
+async def _persist_conversation_turn(
+    *,
+    settings: Any,
+    conversation_external_id: str | None,
+    channel: str,
+    actor: dict[str, Any] | None,
+    user_message: str,
+    assistant_message: str,
+) -> None:
+    if not conversation_external_id:
+        return
+
+    actor_user_id = actor.get('user_id') if isinstance(actor, dict) else None
+    payload = {
+        'channel': channel,
+        'conversation_external_id': conversation_external_id,
+        'actor_user_id': actor_user_id,
+        'messages': [
+            {'sender_type': 'user', 'content': user_message},
+            {'sender_type': 'assistant', 'content': assistant_message},
+        ],
+    }
+    await _api_core_post(
+        settings=settings,
+        path='/v1/internal/conversations/messages',
+        payload=payload,
+    )
 
 
 async def _fetch_actor_context(*, settings: Any, telegram_chat_id: int | None) -> dict[str, Any] | None:
@@ -1258,17 +1457,29 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
     ):
         actor = await _fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
         effective_user = _user_context_from_actor(actor) if actor else request.user
+        effective_conversation_id = _effective_conversation_id(request)
+        conversation_context = await _fetch_conversation_context(
+            settings=settings,
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+        )
+        analysis_message = _build_analysis_message(request.message, conversation_context)
+        school_profile = await _fetch_public_school_profile(settings=settings)
         set_span_attributes(
             **{
                 'eduassist.actor.role': effective_user.role.value,
                 'eduassist.actor.authenticated': effective_user.authenticated,
                 'eduassist.actor.linked_student_count': len(effective_user.linked_student_ids),
+                'eduassist.conversation.has_memory': conversation_context is not None and conversation_context.message_count > 0,
+                'eduassist.conversation.message_count': conversation_context.message_count if conversation_context else 0,
+                'eduassist.orchestration.analysis_message_expanded': analysis_message != request.message,
             }
         )
 
         graph = build_orchestration_graph(settings.graph_rag_enabled)
         with start_span('eduassist.orchestration.graph_preview', tracer_name='eduassist.ai_orchestrator.runtime'):
-            state = graph.invoke({'request': _map_request(request, effective_user)})
+            preview_request = request.model_copy(update={'message': analysis_message})
+            state = graph.invoke({'request': _map_request(preview_request, effective_user)})
             preview = to_preview(state)
         set_span_attributes(
             **{
@@ -1299,13 +1510,16 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                     embedding_model=settings.document_embedding_model,
                 )
                 search = retrieval_service.hybrid_search(
-                    query=request.message,
+                    query=analysis_message,
                     top_k=4,
                     visibility='public',
                     category=_category_for_domain(preview.classification.domain),
                 )
                 retrieval_hits = search.hits
-                query_hints = _extract_public_entity_hints(request.message)
+                query_hints = {
+                    *_extract_public_entity_hints(request.message),
+                    *_extract_public_entity_hints(analysis_message),
+                }
                 retrieval_supported = _retrieval_hits_cover_query_hints(retrieval_hits, query_hints)
                 if retrieval_supported:
                     retrieval_hits = _filter_retrieval_hits_by_query_hints(retrieval_hits, query_hints)
@@ -1322,7 +1536,7 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                     retrieval_hits = []
                     citations = []
                 public_answerability = _assess_public_answerability(
-                    request.message,
+                    analysis_message,
                     retrieval_hits,
                     query_hints,
                 )
@@ -1347,7 +1561,7 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                 )
                 graph_rag_answer = await run_graph_rag_query(
                     settings=settings,
-                    query=request.message,
+                    query=analysis_message,
                 )
                 if graph_rag_answer is not None:
                     set_span_attributes(
@@ -1364,7 +1578,7 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                         embedding_model=settings.document_embedding_model,
                     )
                     search = retrieval_service.hybrid_search(
-                        query=request.message,
+                        query=analysis_message,
                         top_k=4,
                         visibility='public',
                         category=None,
@@ -1427,6 +1641,14 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                         }
                     )
                     message_text = _compose_negative_requirement_answer()
+                elif preview.mode is OrchestrationMode.hybrid_retrieval and _is_comparative_query(request.message):
+                    set_span_attributes(
+                        **{
+                            'eduassist.orchestration.used_llm': False,
+                            'eduassist.orchestration.answer_guardrail': 'comparative_abstention',
+                        }
+                    )
+                    message_text = _compose_comparative_gap_answer()
                 elif (
                     preview.mode is OrchestrationMode.hybrid_retrieval
                     and public_answerability is not None
@@ -1454,9 +1676,20 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                     llm_text = await compose_with_provider(
                         settings=settings,
                         request_message=request.message,
+                        analysis_message=analysis_message,
                         preview=preview,
                         citations=citations,
                         calendar_events=calendar_events,
+                        conversation_context=(
+                            {
+                                'conversation_external_id': conversation_context.conversation_external_id,
+                                'message_count': conversation_context.message_count,
+                                'recent_messages': conversation_context.recent_messages,
+                            }
+                            if conversation_context
+                            else None
+                        ),
+                        school_profile=school_profile,
                     )
                     set_span_attributes(
                         **{
@@ -1476,6 +1709,15 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
             sources = _render_source_lines(citations)
             if sources and sources not in message_text:
                 message_text = f'{message_text}\n\n{sources}'
+
+        await _persist_conversation_turn(
+            settings=settings,
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            actor=actor,
+            user_message=request.message,
+            assistant_message=message_text,
+        )
 
         set_span_attributes(**{'eduassist.response.length': len(message_text)})
         metric_attributes = {

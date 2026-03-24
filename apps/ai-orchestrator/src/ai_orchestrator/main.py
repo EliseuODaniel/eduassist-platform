@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import logging
 import secrets
 
 from fastapi import FastAPI, Header, HTTPException
@@ -44,6 +45,7 @@ class Settings(BaseSettings):
     qdrant_url: str = 'http://qdrant:6333'
     qdrant_documents_collection: str = 'school_documents'
     document_embedding_model: str = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
+    warm_retrieval_on_startup: bool = True
     graph_rag_enabled: bool = False
     graph_rag_workspace: str = '/workspace/artifacts/graphrag/eduassist-public-benchmark'
     graph_rag_response_type: str = 'List of 3-5 concise bullet points in Brazilian Portuguese'
@@ -83,6 +85,25 @@ configure_observability(
     app=app,
     excluded_urls='/healthz,/meta',
 )
+
+logger = logging.getLogger(__name__)
+
+
+@app.on_event('startup')
+async def warm_runtime_dependencies() -> None:
+    settings = get_settings()
+    if not settings.warm_retrieval_on_startup:
+        return
+    try:
+        get_retrieval_service(
+            database_url=settings.database_url,
+            qdrant_url=settings.qdrant_url,
+            collection_name=settings.qdrant_documents_collection,
+            embedding_model=settings.document_embedding_model,
+        )
+        logger.info('retrieval_service_warmed')
+    except Exception:
+        logger.exception('retrieval_service_warmup_failed')
 
 
 @app.get('/healthz', response_model=HealthResponse)
@@ -124,6 +145,7 @@ async def status() -> dict[str, object]:
             'langgraph-state-machine',
             'tool-routing',
             'qdrant-hybrid-retrieval',
+            'conversation-memory',
             'graph-rag-routing',
             'provider-abstraction',
         ],

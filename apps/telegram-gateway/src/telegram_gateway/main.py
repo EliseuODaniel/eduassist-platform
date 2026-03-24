@@ -226,7 +226,7 @@ async def _orchestrate_message(
 
     payload = {
         'message': text,
-        'conversation_id': f'telegram:{chat_id}:{update_id or 0}',
+        'conversation_id': f'telegram:{chat_id}',
         'telegram_chat_id': chat_id,
         'channel': 'telegram',
         'user': user_context,

@@ -8,12 +8,26 @@ from openai import AsyncOpenAI
 from .models import CalendarEventCard, MessageResponseCitation
 
 
+PROJECT_CONTEXT = (
+    'Contexto do projeto EduAssist: voce atua como assistente institucional de uma escola de ensino medio. '
+    'O sistema tem foco em atendimento escolar seguro, auditavel e baseado em fontes. '
+    'Dados academicos e financeiros so podem ser respondidos quando o fluxo autenticado e autorizado liberar. '
+    'Perguntas publicas devem priorizar fatos canonicos, documentos institucionais e calendario oficial. '
+    'Perguntas comparativas, competitivas ou de recomendacao exigem cuidado extra: '
+    'nao afirme superioridade sobre concorrentes sem base explicita; em vez disso, resuma os diferenciais documentados desta escola '
+    'e ofereca uma comparacao limitada apenas se houver base ou se o usuario informar a instituicao especifica.'
+)
+
+
 def _build_context_sections(
     *,
     request_message: str,
+    analysis_message: str,
     preview: Any,
     citations: list[MessageResponseCitation],
     calendar_events: list[CalendarEventCard],
+    conversation_context: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
 ) -> tuple[str, str]:
     snippets = '\n\n'.join(
         f'Fonte {index}: {citation.document_title} ({citation.version_label})\nTrecho: {citation.excerpt}'
@@ -24,13 +38,37 @@ def _build_context_sections(
         f'({event.starts_at.isoformat()} -> {event.ends_at.isoformat()})'
         for event in calendar_events[:4]
     )
+    recent_messages = []
+    if isinstance(conversation_context, dict):
+        for item in conversation_context.get('recent_messages', [])[-6:]:
+            if not isinstance(item, dict):
+                continue
+            sender_type = str(item.get('sender_type', 'desconhecido'))
+            content = str(item.get('content', '')).strip()
+            if content:
+                recent_messages.append(f'- {sender_type}: {content}')
+    memory_block = '\n'.join(recent_messages) or 'nenhum'
+    school_profile_block = 'nenhum'
+    if isinstance(school_profile, dict):
+        name = school_profile.get('school_name')
+        city = school_profile.get('city')
+        state = school_profile.get('state')
+        unit = school_profile.get('school_unit_code')
+        school_profile_block = (
+            f'nome={name or "nao informado"}, cidade={city or "nao informado"}, '
+            f'estado={state or "nao informado"}, unidade={unit or "nao informado"}'
+        )
     instructions = (
         'Voce e o assistente EduAssist de uma escola de ensino medio. '
         'Responda em portugues do Brasil, de forma objetiva e educada. '
+        f'{PROJECT_CONTEXT} '
         'Use apenas o contexto fornecido. Nao invente regras, datas, documentos ou horarios. '
         'Nao transforme listas de requisitos em afirmacoes sobre itens dispensaveis ou desnecessarios. '
         'Quando a pergunta for negativa, de exclusao, excecao ou complemento, so responda esse ponto '
         'se o contexto disser isso explicitamente. '
+        'Quando a pergunta for comparativa, reconheca o limite da base e ofereca resumir os diferenciais documentados desta escola. '
+        'Quando a pergunta parecer continuidade de uma conversa, use o historico recente apenas para resolver referencias como "isso", "ela", "esse horario", '
+        'sem mudar o que realmente esta sustentado pelas fontes. '
         'Se a pergunta exigir autenticacao, diga isso com clareza. '
         'Se houver calendario estruturado, priorize-o. '
         'Se o contexto nao responder a pergunta, diga explicitamente que a base atual nao tem evidencia suficiente. '
@@ -38,9 +76,12 @@ def _build_context_sections(
     )
     prompt = (
         f'Pergunta do usuario:\n{request_message}\n\n'
+        f'Mensagem expandida para analise:\n{analysis_message}\n\n'
         f'Roteamento:\n- modo: {preview.mode.value}\n'
         f'- dominio: {preview.classification.domain.value}\n'
         f'- autenticacao necessaria: {preview.needs_authentication}\n\n'
+        f'Perfil canonico da escola:\n{school_profile_block}\n\n'
+        f'Historico recente da conversa:\n{memory_block}\n\n'
         f'Eventos estruturados:\n{calendar_context or "nenhum"}\n\n'
         f'Trechos citaveis:\n{snippets or "nenhum"}'
     )
@@ -51,18 +92,24 @@ async def compose_with_openai(
     *,
     settings: Any,
     request_message: str,
+    analysis_message: str,
     preview: Any,
     citations: list[MessageResponseCitation],
     calendar_events: list[CalendarEventCard],
+    conversation_context: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
 ) -> str | None:
     if settings.llm_provider != 'openai' or not settings.openai_api_key:
         return None
 
     instructions, prompt = _build_context_sections(
         request_message=request_message,
+        analysis_message=analysis_message,
         preview=preview,
         citations=citations,
         calendar_events=calendar_events,
+        conversation_context=conversation_context,
+        school_profile=school_profile,
     )
 
     try:
@@ -82,18 +129,24 @@ async def compose_with_google(
     *,
     settings: Any,
     request_message: str,
+    analysis_message: str,
     preview: Any,
     citations: list[MessageResponseCitation],
     calendar_events: list[CalendarEventCard],
+    conversation_context: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
 ) -> str | None:
     if settings.llm_provider not in {'google', 'gemini'} or not settings.google_api_key:
         return None
 
     instructions, prompt = _build_context_sections(
         request_message=request_message,
+        analysis_message=analysis_message,
         preview=preview,
         citations=citations,
         calendar_events=calendar_events,
+        conversation_context=conversation_context,
+        school_profile=school_profile,
     )
     payload = {
         'system_instruction': {
@@ -142,24 +195,33 @@ async def compose_with_provider(
     *,
     settings: Any,
     request_message: str,
+    analysis_message: str,
     preview: Any,
     citations: list[MessageResponseCitation],
     calendar_events: list[CalendarEventCard],
+    conversation_context: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
 ) -> str | None:
     if settings.llm_provider == 'openai':
         return await compose_with_openai(
             settings=settings,
             request_message=request_message,
+            analysis_message=analysis_message,
             preview=preview,
             citations=citations,
             calendar_events=calendar_events,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
         )
     if settings.llm_provider in {'google', 'gemini'}:
         return await compose_with_google(
             settings=settings,
             request_message=request_message,
+            analysis_message=analysis_message,
             preview=preview,
             citations=citations,
             calendar_events=calendar_events,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
         )
     return None

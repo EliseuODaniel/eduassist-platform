@@ -214,6 +214,40 @@ class PublicSchoolProfileResponse(BaseModel):
     profile: PublicSchoolProfile
 
 
+class InternalConversationMessageEntry(BaseModel):
+    sender_type: str
+    content: str
+    created_at: datetime
+
+
+class InternalConversationContextResponse(BaseModel):
+    channel: str
+    conversation_external_id: str
+    conversation_status: str | None = None
+    message_count: int = 0
+    recent_messages: list[InternalConversationMessageEntry] = Field(default_factory=list)
+
+
+class InternalConversationMessageCreate(BaseModel):
+    sender_type: str
+    content: str
+
+
+class InternalConversationAppendRequest(BaseModel):
+    channel: str = 'telegram'
+    conversation_external_id: str
+    actor_user_id: uuid.UUID | None = None
+    messages: list[InternalConversationMessageCreate] = Field(default_factory=list)
+
+
+class InternalConversationAppendResponse(BaseModel):
+    channel: str
+    conversation_external_id: str
+    stored_messages: int = 0
+    deduplicated_messages: int = 0
+    message_count: int = 0
+
+
 class AuditEventFeedEntry(BaseModel):
     occurred_at: datetime
     actor_user_id: uuid.UUID | None = None

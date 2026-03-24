@@ -226,6 +226,74 @@ def main() -> int:
     )
     print('[ok] public exception abstention')
 
+    comparison_status, _, comparison_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'por que estudar nessa escola e nao na concorrente publica?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        comparison_status == 200 and isinstance(comparison_payload, dict),
+        'public_comparison_query_failed',
+    )
+    comparison_message = str(comparison_payload.get('message_text', ''))
+    assert_condition(
+        'nao sustenta uma comparacao justa' in comparison_message.lower(),
+        'public_comparison_guardrail_missing',
+    )
+    assert_condition(
+        'diferenciais documentados desta escola' in comparison_message.lower(),
+        'public_comparison_followup_missing',
+    )
+    print('[ok] public comparison abstention')
+
+    threaded_library_one_status, _, threaded_library_one_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o nome da biblioteca?',
+            'conversation_id': 'smoke:library-thread',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        threaded_library_one_status == 200 and isinstance(threaded_library_one_payload, dict),
+        'threaded_library_first_turn_failed',
+    )
+    threaded_library_two_status, _, threaded_library_two_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e qual o horario dela?',
+            'conversation_id': 'smoke:library-thread',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        threaded_library_two_status == 200 and isinstance(threaded_library_two_payload, dict),
+        'threaded_library_second_turn_failed',
+    )
+    threaded_library_message = str(threaded_library_two_payload.get('message_text', ''))
+    assert_condition(
+        '7h30' in threaded_library_message and '18h00' in threaded_library_message,
+        'threaded_library_memory_missing',
+    )
+    print('[ok] conversational memory follow-up')
+
     protected_status, protected_headers, protected_payload = telegram_webhook_request(
         settings,
         update_id=9902,

@@ -15,6 +15,9 @@ from api_core.contracts import (
     AuthPrincipal,
     AuthSessionResponse,
     CalendarEventsResponse,
+    InternalConversationAppendRequest,
+    InternalConversationAppendResponse,
+    InternalConversationContextResponse,
     InternalSupportHandoffCreateRequest,
     OperationsOverviewResponse,
     PolicyCheckRequest,
@@ -43,6 +46,7 @@ from api_core.services.audit import (
     resolve_operations_scope,
 )
 from api_core.services.auth import decode_access_token, extract_bearer_token
+from api_core.services.conversation_memory import append_conversation_messages, get_conversation_context
 from api_core.services.domain import (
     get_student_academic_summary,
     get_student_financial_summary,
@@ -713,7 +717,46 @@ async def internal_support_handoff_create(
             },
         )
 
-    return response_payload
+        return response_payload
+
+
+@app.get('/v1/internal/conversations/context', response_model=InternalConversationContextResponse)
+async def internal_conversation_context(
+    conversation_external_id: str = Query(min_length=3, max_length=120),
+    channel: str = Query(default='telegram', min_length=2, max_length=30),
+    limit: int = Query(default=6, ge=1, le=20),
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> InternalConversationContextResponse:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='internal-support-api')
+        return get_conversation_context(
+            session,
+            channel=channel,
+            conversation_external_id=conversation_external_id,
+            limit=limit,
+        )
+
+
+@app.post('/v1/internal/conversations/messages', response_model=InternalConversationAppendResponse)
+async def internal_conversation_append_messages(
+    payload: InternalConversationAppendRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> InternalConversationAppendResponse:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='internal-support-api')
+        response_payload = append_conversation_messages(
+            session,
+            channel=payload.channel,
+            conversation_external_id=payload.conversation_external_id,
+            actor_user_id=payload.actor_user_id,
+            messages=payload.messages,
+        )
+        session.commit()
+        return response_payload
 
 
 @app.get('/v1/auth/session', response_model=AuthSessionResponse)

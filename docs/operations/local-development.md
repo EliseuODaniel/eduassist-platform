@@ -79,8 +79,11 @@ Status atual:
 - o `worker` agora publica a coleção do `Qdrant` por alias, criando uma coleção nova e promovendo-a ao final do sync para reduzir a janela de indisponibilidade;
 - o `ai-orchestrator` já expõe `retrieval/status` e `retrieval/search` com fusão de `Qdrant` e `PostgreSQL FTS`;
 - o `ai-orchestrator` já expõe `POST /v1/messages/respond` para FAQ pública, calendário público, negações seguras e composição final via provider externo quando a chave estiver configurada;
+- o `ai-orchestrator` agora também usa memória curta de conversa via `conversation_id` estável, incluindo threads vindas do `telegram-gateway` por `telegram:{chat_id}`;
+- o fluxo público agora combina fatos canônicos do `api-core`, retrieval híbrido e guardrails de abstenção para perguntas negativas, condicionais, comparativas e follow-ups curtos;
 - o `ai-orchestrator` já executa o caminho `graph_rag` no runtime principal quando `GRAPH_RAG_ENABLED=true` e o workspace estiver pronto;
 - o `telegram-gateway` já encaminha mensagens públicas ao `ai-orchestrator` e responde `/help`, FAQ e calendário pelo webhook;
+- o `telegram-gateway` agora usa `conversation_id` estável por chat, permitindo continuidade conversacional local entre perguntas sequenciais do mesmo usuário;
 - o fluxo protegido do Telegram já responde resumo acadêmico com filtros por disciplina e bimestre, resumo financeiro com filtros por status e panorama consolidado para responsáveis, além de grade docente por turmas, disciplinas e horário para contas vinculadas;
 - o `admin-web` já expõe login real via `Keycloak` com OIDC + PKCE, leitura de sessão autenticada do `api-core` e emissão de challenge de vínculo em `/api/telegram-link/challenge`;
 - o `api-core` já expõe `GET /v1/operations/overview` com visão pessoal para responsáveis, alunos e professores, e visão global para secretaria, financeiro, coordenação e administração, incluindo agregados operacionais de handoff no escopo global;
@@ -204,6 +207,7 @@ Status atual do bootstrap:
 - `RLS` ativo e validado diretamente no banco para tabelas sensíveis acadêmicas, financeiras, de apoio escolar e de atendimento humano, com contexto de ator por sessão no `api-core`
 - backup e restore de verificação já implementados para `Postgres`, `Qdrant` e `MinIO`, sempre restaurando em banco, coleção e bucket temporários
 - corpus documental mockado validado com 4 documentos e 21 chunks indexados
+- memória curta conversacional validada com follow-up público de biblioteca no smoke local
 
 Uso rápido do drill operacional:
 

@@ -59,6 +59,8 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - tool calling;
 - retrieval documental;
 - composição de resposta via provider configurável de LLM, com suporte atual a `Google Gemini` e `OpenAI`;
+- recuperação e persistência de memória curta de conversa para follow-ups controlados;
+- combinação de fatos públicos canônicos do `api-core` com retrieval documental para perguntas institucionais simples;
 - consulta a calendário público estruturado no `api-core`;
 - consulta a dados protegidos do `api-core` por rotas internas autenticadas entre serviços;
 - criação de handoffs humanos reais no `api-core` quando o fluxo entrar em suporte operacional;
@@ -80,6 +82,7 @@ Definir responsabilidades, fronteiras e dependências dos principais serviços p
 - não acessa banco diretamente fora de contracts aprovados;
 - não executa SQL livre;
 - só recebe dados mínimos por tool.
+- quando a base não sustenta comparação, exceção ou dispensa, deve abster e oferecer reformulação útil.
 - endpoints diagnósticos sensíveis exigem `X-Internal-Api-Token`.
 
 ## 5. `worker`
