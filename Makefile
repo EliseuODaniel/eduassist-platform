@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE_FILE := infra/compose/compose.yaml
 ENV_FILE := .env
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all eval-orchestrator eval-all graphrag-benchmark-bootstrap graphrag-benchmark-bootstrap-local graphrag-benchmark-local-check graphrag-benchmark-index graphrag-benchmark-index-dry-run graphrag-benchmark-baseline graphrag-benchmark-run graphrag-benchmark-run-smoke graphrag-local-runtime-up graphrag-local-runtime-down graphrag-local-runtime-logs release-readiness release-readiness-strict article-docx db-upgrade db-downgrade db-seed-foundation db-seed-school-expansion db-seed-operational-load db-seed-auth-bindings keycloak-sync-runtime-users db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install
+.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all eval-orchestrator eval-all graphrag-benchmark-bootstrap graphrag-benchmark-bootstrap-local graphrag-benchmark-local-check graphrag-benchmark-index graphrag-benchmark-index-dry-run graphrag-benchmark-baseline graphrag-benchmark-run graphrag-benchmark-run-smoke graphrag-local-runtime-up graphrag-local-runtime-down graphrag-local-runtime-logs release-readiness release-readiness-strict article-docx db-upgrade db-downgrade db-seed-foundation db-seed-school-expansion db-seed-operational-load db-seed-auth-bindings keycloak-sync-runtime-users db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install telegram-public-up telegram-webhook-info
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -26,6 +26,14 @@ compose-down: env
 
 compose-logs: env
 	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs -f --tail=200
+
+telegram-public-up: env
+	docker rm -f eduassist-cloudflared >/dev/null 2>&1 || true
+	docker compose --profile telegram-public --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d telegram-gateway cloudflared
+	python3 tools/ops/telegram_webhook.py register
+
+telegram-webhook-info: env
+	python3 tools/ops/telegram_webhook.py info
 
 observability-up: env
 	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d otel-collector tempo loki promtail prometheus grafana

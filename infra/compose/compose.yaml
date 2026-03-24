@@ -332,6 +332,17 @@ services:
       retries: 10
     restart: unless-stopped
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: eduassist-cloudflared
+    profiles: ['telegram-public']
+    command:
+      ['tunnel', '--no-autoupdate', '--url', 'http://telegram-gateway:8000']
+    depends_on:
+      telegram-gateway:
+        condition: service_healthy
+    restart: unless-stopped
+
   worker:
     build:
       context: ../..
