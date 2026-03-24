@@ -230,6 +230,7 @@ def main() -> int:
         json_body={
             'message': 'com quem eu falo sobre boletos?',
             'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:service-routing-thread',
         },
     )
     assert_condition(
@@ -530,6 +531,7 @@ def main() -> int:
         json_body={
             'message': 'quero agendar uma visita para conhecer a escola na quinta a tarde',
             'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:visit-thread',
         },
     )
     assert_condition(
@@ -551,6 +553,7 @@ def main() -> int:
         json_body={
             'message': 'e o status da visita?',
             'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:visit-thread',
         },
     )
     assert_condition(
@@ -572,6 +575,7 @@ def main() -> int:
         json_body={
             'message': 'qual o protocolo da visita?',
             'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:visit-thread',
         },
     )
     assert_condition(
@@ -593,6 +597,7 @@ def main() -> int:
         json_body={
             'message': 'quero remarcar a visita para sexta de manha',
             'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:visit-thread',
         },
     )
     assert_condition(
@@ -614,6 +619,7 @@ def main() -> int:
         json_body={
             'message': 'quero cancelar a visita',
             'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:visit-thread',
         },
     )
     assert_condition(
@@ -635,6 +641,7 @@ def main() -> int:
         json_body={
             'message': 'quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca',
             'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:request-thread',
         },
     )
     assert_condition(
@@ -656,6 +663,7 @@ def main() -> int:
         json_body={
             'message': 'quero complementar meu pedido dizendo que preciso de resposta ainda esta semana',
             'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:request-thread',
         },
     )
     assert_condition(
@@ -678,6 +686,7 @@ def main() -> int:
         json_body={
             'message': 'qual o status do meu protocolo?',
             'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:request-thread',
         },
     )
     assert_condition(
@@ -699,6 +708,7 @@ def main() -> int:
         json_body={
             'message': 'qual o protocolo?',
             'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:request-thread',
         },
     )
     assert_condition(
@@ -720,6 +730,7 @@ def main() -> int:
         json_body={
             'message': 'resume meu pedido',
             'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:request-thread',
         },
     )
     assert_condition(
@@ -742,6 +753,7 @@ def main() -> int:
         json_body={
             'message': 'oi',
             'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:request-thread',
         },
     )
     assert_condition(
@@ -763,6 +775,7 @@ def main() -> int:
         json_body={
             'message': 'qual o prazo?',
             'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:request-thread',
         },
     )
     assert_condition(
@@ -773,6 +786,15 @@ def main() -> int:
     assert_condition('2 dias uteis' in request_eta_message.lower(), 'public_request_eta_missing')
     request_eta_suggestions = request_eta_payload.get('suggested_replies')
     assert_condition(isinstance(request_eta_suggestions, list) and request_eta_suggestions, 'public_request_eta_suggestions_missing')
+    assert_condition(
+        any(
+            keyword in str(item.get('text', '')).lower()
+            for keyword in {'complementar meu pedido', 'resume meu pedido'}
+            for item in request_eta_suggestions
+            if isinstance(item, dict)
+        ),
+        'public_request_eta_suggestions_not_contextual',
+    )
     print('[ok] public institutional request eta')
 
     visual_status, _, visual_payload = request(
@@ -1043,6 +1065,19 @@ def main() -> int:
         'Frequencia' in protected_followup_reply,
         'protected_followup_attendance_missing',
     )
+    protected_followup_suggestions = (
+        protected_followup_payload.get('orchestration', {}).get('suggested_replies')
+        if isinstance(protected_followup_payload.get('orchestration'), dict)
+        else None
+    )
+    assert_condition(
+        isinstance(protected_followup_suggestions, list) and any(
+            'lucas' in str(item.get('text', '')).lower()
+            for item in protected_followup_suggestions
+            if isinstance(item, dict)
+        ),
+        'protected_followup_suggestions_not_contextual',
+    )
     print('[ok] protected academic follow-up memory')
 
     protected_finance_followup_status, _, protected_finance_followup_payload = telegram_webhook_request(
@@ -1062,6 +1097,19 @@ def main() -> int:
     assert_condition(
         'Resumo financeiro de Lucas Oliveira' in protected_finance_followup_reply,
         'protected_finance_followup_student_memory_missing',
+    )
+    protected_finance_suggestions = (
+        protected_finance_followup_payload.get('orchestration', {}).get('suggested_replies')
+        if isinstance(protected_finance_followup_payload.get('orchestration'), dict)
+        else None
+    )
+    assert_condition(
+        isinstance(protected_finance_suggestions, list) and any(
+            'lucas' in str(item.get('text', '')).lower()
+            for item in protected_finance_suggestions
+            if isinstance(item, dict)
+        ),
+        'protected_finance_followup_suggestions_not_contextual',
     )
     print('[ok] protected finance follow-up memory')
 

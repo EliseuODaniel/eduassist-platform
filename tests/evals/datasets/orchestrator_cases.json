@@ -63,7 +63,8 @@
     "type": "message_response",
     "request": {
       "message": "com quem eu falo sobre boletos?",
-      "telegram_chat_id": 777001
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:service-routing-thread"
     },
     "expected": {
       "mode": "structured_tool",
@@ -392,7 +393,8 @@
     "type": "message_response",
     "request": {
       "message": "quero agendar uma visita para conhecer a escola na quinta a tarde",
-      "telegram_chat_id": 777001
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:visit-thread"
     },
     "expected": {
       "mode": "structured_tool",
@@ -411,7 +413,8 @@
     "type": "message_response",
     "request": {
       "message": "qual o protocolo da visita?",
-      "telegram_chat_id": 777001
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:visit-thread"
     },
     "expected": {
       "mode": "structured_tool",
@@ -430,7 +433,8 @@
     "type": "message_response",
     "request": {
       "message": "quero remarcar a visita para sexta de manha",
-      "telegram_chat_id": 777001
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:visit-thread"
     },
     "expected": {
       "mode": "structured_tool",
@@ -449,7 +453,8 @@
     "type": "message_response",
     "request": {
       "message": "quero cancelar a visita",
-      "telegram_chat_id": 777001
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:visit-thread"
     },
     "expected": {
       "mode": "structured_tool",
@@ -468,7 +473,8 @@
     "type": "message_response",
     "request": {
       "message": "quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca",
-      "telegram_chat_id": 777001
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:request-thread"
     },
     "expected": {
       "mode": "structured_tool",
@@ -487,7 +493,8 @@
     "type": "message_response",
     "request": {
       "message": "quero complementar meu pedido dizendo que preciso de resposta ainda esta semana",
-      "telegram_chat_id": 777001
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:request-thread"
     },
     "expected": {
       "mode": "structured_tool",
@@ -506,7 +513,8 @@
     "type": "message_response",
     "request": {
       "message": "qual o status do meu protocolo?",
-      "telegram_chat_id": 777001
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:request-thread"
     },
     "expected": {
       "mode": "structured_tool",
@@ -525,7 +533,8 @@
     "type": "message_response",
     "request": {
       "message": "qual o protocolo?",
-      "telegram_chat_id": 777001
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:request-thread"
     },
     "expected": {
       "mode": "structured_tool",
@@ -544,7 +553,8 @@
     "type": "message_response",
     "request": {
       "message": "resume meu pedido",
-      "telegram_chat_id": 777001
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:request-thread"
     },
     "expected": {
       "mode": "structured_tool",

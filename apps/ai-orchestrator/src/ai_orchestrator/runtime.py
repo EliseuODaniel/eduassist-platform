@@ -3088,9 +3088,104 @@ def _institution_suggested_replies(
             ]
         return _default_public_suggested_replies()
     return _default_public_suggested_replies()
+def _workflow_contextual_suggested_replies(
+    *,
+    preview: Any,
+    conversation_context: dict[str, Any] | None,
+) -> list[str] | None:
+    recent_focus = _recent_conversation_focus(conversation_context)
+    if not recent_focus:
+        return None
+    kind = recent_focus.get('kind')
+    if 'get_workflow_status' in preview.selected_tools:
+        if kind == 'visit':
+            return ['Quero remarcar a visita', 'Quero cancelar a visita', 'Qual o protocolo da visita?', 'Qual o prazo?']
+        if kind == 'request':
+            return ['Complementar meu pedido', 'Resume meu pedido', 'Quem vai me responder?', 'Qual o prazo?']
+    if 'update_visit_booking' in preview.selected_tools or kind == 'visit':
+        return ['Qual o status da visita?', 'Qual o protocolo da visita?', 'Quero cancelar a visita', 'Quero remarcar a visita']
+    if 'update_institutional_request' in preview.selected_tools or kind == 'request':
+        return ['Qual o status do meu protocolo?', 'Complementar meu pedido', 'Quem vai me responder?', 'Resume meu pedido']
+    return None
 
 
-def _support_suggested_replies(*, preview: Any) -> list[str]:
+def _recent_protected_student_name(
+    actor: dict[str, Any] | None,
+    *,
+    capability: str,
+    message: str | None = None,
+    conversation_context: dict[str, Any] | None,
+) -> str | None:
+    student: dict[str, Any] | None = None
+    if message:
+        student, _clarification = _select_linked_student(
+            actor,
+            message,
+            capability=capability,
+            conversation_context=conversation_context,
+        )
+    if student is None:
+        student = _recent_student_from_context(
+            actor,
+            capability=capability,
+            conversation_context=conversation_context,
+        )
+    if student is None:
+        return None
+    full_name = str(student.get('full_name', '')).strip()
+    if not full_name:
+        return None
+    return full_name.split()[0]
+
+
+def _protected_suggested_replies(
+    *,
+    request: MessageResponseRequest,
+    preview: Any,
+    actor: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None,
+) -> list[str]:
+    role_code = str((actor or {}).get('role_code', 'anonymous'))
+    if preview.classification.domain is QueryDomain.finance:
+        student_name = _recent_protected_student_name(
+            actor,
+            capability='finance',
+            message=request.message,
+            conversation_context=conversation_context,
+        )
+        if student_name:
+            return [
+                f'Quais boletos do {student_name} estao em aberto?',
+                f'Tem alguma fatura vencida do {student_name}?',
+                f'Preciso da segunda via do {student_name}',
+                f'E as notas do {student_name}?',
+            ]
+        return ['Quais boletos estao em aberto?', 'Tem alguma fatura vencida?', 'Preciso da segunda via', 'Qual a mensalidade?']
+    if role_code == 'teacher':
+        return ['Quais turmas eu tenho?', 'Mostre minha agenda', 'Qual o horario de hoje?', 'Tem aula substituta?']
+    student_name = _recent_protected_student_name(
+        actor,
+        capability='academic',
+        message=request.message,
+        conversation_context=conversation_context,
+    )
+    if student_name:
+        return [
+            f'E a frequencia do {student_name}?',
+            f'E o financeiro do {student_name}?',
+            f'Mostre um grafico das notas do {student_name}',
+            f'Qual o calendario da turma do {student_name}?',
+        ]
+    return ['Mostre as notas', 'Quais sao as faltas?', 'Tem prova marcada?', 'Qual o calendario da turma?']
+
+
+def _support_suggested_replies(*, preview: Any, conversation_context: dict[str, Any] | None) -> list[str]:
+    contextual = _workflow_contextual_suggested_replies(
+        preview=preview,
+        conversation_context=conversation_context,
+    )
+    if contextual:
+        return contextual
     if 'get_workflow_status' in preview.selected_tools:
         return ['Qual o prazo?', 'Quem vai me responder?', 'Qual o protocolo?', 'Complementar meu pedido']
     if 'update_visit_booking' in preview.selected_tools:
@@ -3100,15 +3195,6 @@ def _support_suggested_replies(*, preview: Any) -> list[str]:
     if 'schedule_school_visit' in preview.selected_tools:
         return ['Qual o status da visita?', 'Qual o prazo?', 'Quem vai me responder?', 'Mudar horario da visita']
     return ['Qual o status do meu protocolo?', 'Qual o prazo?', 'Quem vai me responder?', 'E agora?']
-
-
-def _protected_suggested_replies(*, preview: Any, actor: dict[str, Any] | None) -> list[str]:
-    role_code = str((actor or {}).get('role_code', 'anonymous'))
-    if preview.classification.domain is QueryDomain.finance:
-        return ['Quais boletos estao em aberto?', 'Tem alguma fatura vencida?', 'Preciso da segunda via', 'Qual a mensalidade?']
-    if role_code == 'teacher':
-        return ['Quais turmas eu tenho?', 'Mostre minha agenda', 'Qual o horario de hoje?', 'Tem aula substituta?']
-    return ['Mostre as notas', 'Quais sao as faltas?', 'Tem prova marcada?', 'Qual o calendario da turma?']
 
 
 def _deny_suggested_replies() -> list[str]:
@@ -3127,9 +3213,14 @@ def _build_suggested_replies(
     if preview.mode is OrchestrationMode.deny:
         candidate_texts = _deny_suggested_replies()
     elif preview.classification.domain is QueryDomain.support and preview.mode is OrchestrationMode.structured_tool:
-        candidate_texts = _support_suggested_replies(preview=preview)
+        candidate_texts = _support_suggested_replies(preview=preview, conversation_context=conversation_context)
     elif preview.classification.domain in {QueryDomain.academic, QueryDomain.finance} and preview.mode is OrchestrationMode.structured_tool:
-        candidate_texts = _protected_suggested_replies(preview=preview, actor=actor)
+        candidate_texts = _protected_suggested_replies(
+            request=request,
+            preview=preview,
+            actor=actor,
+            conversation_context=conversation_context,
+        )
     elif preview.classification.domain is QueryDomain.institution:
         candidate_texts = _institution_suggested_replies(
             request=request,
