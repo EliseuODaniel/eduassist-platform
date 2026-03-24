@@ -70,6 +70,73 @@ SUBJECT_HINTS = {
     'portugues': {'portugues', 'redacao'},
     'biologia': {'biologia', 'bio'},
 }
+PUBLIC_PRICING_TERMS = {
+    'mensalidade',
+    'mensalidades',
+    'valor',
+    'valores',
+    'preco',
+    'preços',
+    'preco',
+    'precos',
+    'bolsa',
+    'bolsas',
+    'desconto',
+    'descontos',
+    'taxa de matricula',
+    'taxa de matrícula',
+}
+PUBLIC_SCHEDULE_TERMS = {
+    'horario',
+    'horários',
+    'horario de aula',
+    'horário de aula',
+    'turno',
+    'turnos',
+    'integral',
+    'periodo integral',
+    'período integral',
+}
+PUBLIC_CONTACT_TERMS = {
+    'telefone',
+    'whatsapp',
+    'email',
+    'contato',
+    'fale com',
+    'canal oficial',
+    'canais oficiais de contato',
+    'canais de contato',
+    'como entrar em contato',
+    'fale conosco',
+}
+PUBLIC_LOCATION_TERMS = {'endereco', 'endereço', 'cidade', 'estado', 'onde fica', 'localizacao', 'localização'}
+PUBLIC_CONFESSIONAL_TERMS = {'confessional', 'laica', 'religiosa'}
+PUBLIC_SEGMENT_TERMS = {
+    'fundamental',
+    'fundamental ii',
+    'ensino medio',
+    'ensino médio',
+    '6o ano',
+    '7o ano',
+    '8o ano',
+    '9o ano',
+    '1o ano',
+    '2o ano',
+    '3o ano',
+}
+PUBLIC_ACTIVITY_TERMS = {
+    'futebol',
+    'futsal',
+    'danca',
+    'dança',
+    'teatro',
+    'volei',
+    'vôlei',
+    'robotica',
+    'robótica',
+    'atividade extracurricular',
+    'atividades extracurriculares',
+}
 SUPPORT_FINANCE_TERMS = {'financeiro', 'boleto', 'mensalidade', 'pagamento', 'fatura', 'faturas'}
 SUPPORT_COORDINATION_TERMS = {'coordenacao', 'pedagogico', 'ocorrencia', 'professor', 'disciplina'}
 SUPPORT_SECRETARIAT_TERMS = {'secretaria', 'matricula', 'documento', 'declaracao', 'historico', 'transferencia'}
@@ -84,10 +151,21 @@ PUBLIC_ENTITY_HINTS = {
     'quadra de tenis': 'quadra de tenis',
     'tenis': 'tenis',
     'futebol': 'futebol',
+    'futsal': 'futebol',
+    'volei': 'volei',
+    'vôlei': 'volei',
     'danca': 'aulas de danca',
     'dança': 'aulas de danca',
+    'teatro': 'teatro',
+    'robotica': 'maker',
+    'robótica': 'maker',
+    'maker': 'maker',
+    'espaco maker': 'maker',
     'secretaria': 'secretaria',
     'portaria': 'portaria',
+    'cantina': 'cantina',
+    'orientacao educacional': 'orientacao educacional',
+    'orientação educacional': 'orientacao educacional',
 }
 PROMPT_DISCLOSURE_TERMS = {
     'prompt',
@@ -372,6 +450,188 @@ def _is_public_school_name_query(message: str) -> bool:
             'como se chama o colégio',
         }
     )
+
+
+def _select_public_segment(message: str) -> str | None:
+    normalized = _normalize_text(message)
+    if any(_message_matches_term(normalized, term) for term in {'fundamental', 'fundamental ii', '6o ano', '7o ano', '8o ano', '9o ano'}):
+        return 'Ensino Fundamental II'
+    if any(_message_matches_term(normalized, term) for term in {'ensino medio', 'ensino médio', 'medio', 'médio', '1o ano', '2o ano', '3o ano'}):
+        return 'Ensino Medio'
+    return None
+
+
+def _feature_inventory_map(profile: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    inventory = profile.get('feature_inventory')
+    if not isinstance(inventory, list):
+        return {}
+    result: dict[str, dict[str, Any]] = {}
+    for item in inventory:
+        if not isinstance(item, dict):
+            continue
+        key = str(item.get('feature_key', '')).strip().lower()
+        if not key:
+            continue
+        result[key] = item
+    return result
+
+
+def _requested_public_features(message: str) -> list[str]:
+    normalized = _normalize_text(message)
+    feature_order = [
+        ('biblioteca', 'biblioteca'),
+        ('cantina', 'cantina'),
+        ('laboratorio', 'laboratorio'),
+        ('laboratorio de ciencias', 'laboratorio'),
+        ('maker', 'maker'),
+        ('espaco maker', 'maker'),
+        ('academia', 'academia'),
+        ('piscina', 'piscina'),
+        ('quadra de tenis', 'quadra de tenis'),
+        ('quadra', 'quadra'),
+        ('futebol', 'futebol'),
+        ('futsal', 'futebol'),
+        ('volei', 'volei'),
+        ('vôlei', 'volei'),
+        ('danca', 'danca'),
+        ('dança', 'danca'),
+        ('teatro', 'teatro'),
+        ('robotica', 'maker'),
+        ('robótica', 'maker'),
+        ('orientacao educacional', 'orientacao educacional'),
+        ('orientação educacional', 'orientacao educacional'),
+    ]
+    found: list[str] = []
+    for term, canonical in feature_order:
+        if _message_matches_term(normalized, term) and canonical not in found:
+            found.append(canonical)
+    return found
+
+
+def _contact_value(profile: dict[str, Any], channel: str) -> list[str]:
+    contacts = profile.get('contact_channels')
+    if not isinstance(contacts, list):
+        return []
+    values: list[str] = []
+    for item in contacts:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get('channel', '')).lower() != channel:
+            continue
+        label = str(item.get('label', '')).strip()
+        value = str(item.get('value', '')).strip()
+        if not value:
+            continue
+        values.append(f'{label}: {value}' if label else value)
+    return values
+
+
+def _compose_public_profile_answer(profile: dict[str, Any], message: str) -> str:
+    normalized = _normalize_text(message)
+    school_name = str(profile.get('school_name', 'Colegio Horizonte'))
+    city = str(profile.get('city', ''))
+    state = str(profile.get('state', ''))
+    district = str(profile.get('district', ''))
+    address_line = str(profile.get('address_line', ''))
+    confessional_status = str(profile.get('confessional_status', '')).strip().lower()
+    segment = _select_public_segment(message)
+    shift_offers = profile.get('shift_offers') if isinstance(profile.get('shift_offers'), list) else []
+    tuition_reference = profile.get('tuition_reference') if isinstance(profile.get('tuition_reference'), list) else []
+    feature_map = _feature_inventory_map(profile)
+
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_CONTACT_TERMS):
+        phone_lines = _contact_value(profile, 'telefone')
+        whatsapp_lines = _contact_value(profile, 'whatsapp')
+        email_lines = _contact_value(profile, 'email')
+        lines = [f'Voce pode falar com o {school_name} por estes canais oficiais:']
+        lines.extend(f'- {item}' for item in [*phone_lines, *whatsapp_lines, *email_lines])
+        return '\n'.join(lines)
+
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_LOCATION_TERMS):
+        location = ', '.join(part for part in [address_line, district, city, state] if part)
+        return f'O {school_name} fica em {location}.'
+
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_CONFESSIONAL_TERMS):
+        if confessional_status == 'laica':
+            return (
+                f'O {school_name} e uma escola laica. '
+                'A proposta institucional e plural e nao confessional.'
+            )
+        return f'O perfil publico atual classifica a escola como {confessional_status}.'
+
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_PRICING_TERMS):
+        relevant_rows = [
+            row for row in tuition_reference
+            if isinstance(row, dict) and (segment is None or str(row.get('segment')) == segment)
+        ]
+        if not relevant_rows:
+            relevant_rows = [row for row in tuition_reference if isinstance(row, dict)]
+        lines = ['Valores publicos de referencia para 2026:']
+        for row in relevant_rows:
+            lines.append(
+                '- {segment} ({shift_label}): mensalidade {monthly_amount} e taxa de matricula {enrollment_fee}. {notes}'.format(
+                    segment=row.get('segment', 'Segmento'),
+                    shift_label=row.get('shift_label', 'turno'),
+                    monthly_amount=row.get('monthly_amount', '0.00'),
+                    enrollment_fee=row.get('enrollment_fee', '0.00'),
+                    notes=row.get('notes', '').strip(),
+                ).rstrip()
+            )
+        lines.append('Se quiser, eu tambem posso resumir bolsas, descontos comerciais e canais de matricula.')
+        return '\n'.join(lines)
+
+    requested_features = _requested_public_features(message)
+    if requested_features:
+        lines = [f'No perfil publico atual do {school_name}:']
+        for feature_key in requested_features:
+            item = feature_map.get(feature_key)
+            if item is None:
+                lines.append(f'- Ainda nao encontrei uma informacao oficial sobre {feature_key}.')
+                continue
+            label = str(item.get('label', feature_key))
+            available = bool(item.get('available'))
+            notes = str(item.get('notes', '')).strip()
+            if available:
+                lines.append(f'- Sim: {label}. {notes}'.rstrip())
+            else:
+                lines.append(f'- Nao: {label}. {notes}'.rstrip())
+        return '\n'.join(lines)
+
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_SCHEDULE_TERMS):
+        relevant_rows = [
+            row for row in shift_offers
+            if isinstance(row, dict) and (segment is None or str(row.get('segment')) == segment)
+        ]
+        if not relevant_rows:
+            relevant_rows = [row for row in shift_offers if isinstance(row, dict)]
+        lines = ['Turnos e horarios documentados:']
+        for row in relevant_rows:
+            lines.append(
+                '- {segment} ({shift_label}): {starts_at} as {ends_at}. {notes}'.format(
+                    segment=row.get('segment', 'Segmento'),
+                    shift_label=row.get('shift_label', 'turno'),
+                    starts_at=row.get('starts_at', '--:--'),
+                    ends_at=row.get('ends_at', '--:--'),
+                    notes=row.get('notes', '').strip(),
+                ).rstrip()
+            )
+        return '\n'.join(lines)
+
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_SEGMENT_TERMS):
+        segments = profile.get('segments')
+        if not isinstance(segments, list) or not segments:
+            return f'O perfil publico atual do {school_name} nao traz os segmentos atendidos.'
+        lines = [f'O {school_name} atende hoje estes segmentos:']
+        lines.extend(f'- {item}' for item in segments if isinstance(item, str))
+        return '\n'.join(lines)
+
+    if _is_public_school_name_query(message):
+        return f'O nome oficial da escola e {school_name}.'
+
+    headline = str(profile.get('short_headline', '')).strip()
+    if headline:
+        return f'{school_name}: {headline}'
+    return f'O nome oficial da escola e {school_name}.'
 
 
 def _compose_negative_requirement_answer() -> str:
@@ -1225,23 +1485,16 @@ async def _compose_structured_tool_answer(
     *,
     settings: Any,
     request: MessageResponseRequest,
+    analysis_message: str,
     preview: Any,
     actor: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
 ) -> str:
     if preview.classification.domain is QueryDomain.institution:
-        profile = await _fetch_public_school_profile(settings=settings)
+        profile = school_profile or await _fetch_public_school_profile(settings=settings)
         if profile is None:
             return _compose_public_gap_answer(set())
-
-        school_name = str(profile.get('school_name', 'a escola'))
-        normalized_message = _normalize_text(request.message)
-        city = str(profile.get('city', ''))
-        state = str(profile.get('state', ''))
-        if 'cidade' in normalized_message or 'estado' in normalized_message:
-            location = ', '.join(part for part in [city, state] if part)
-            if location:
-                return f'O nome oficial da escola e {school_name}. Ela esta cadastrada em {location}.'
-        return f'O nome oficial da escola e {school_name}.'
+        return _compose_public_profile_answer(profile, analysis_message)
 
     if request.telegram_chat_id is None:
         return _compose_structured_deny(actor)
@@ -1647,8 +1900,10 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                 message_text = await _compose_structured_tool_answer(
                     settings=settings,
                     request=request,
+                    analysis_message=analysis_message,
                     preview=preview,
                     actor=actor,
+                    school_profile=school_profile,
                 )
         elif preview.mode is OrchestrationMode.handoff:
             with start_span('eduassist.orchestration.handoff', tracer_name='eduassist.ai_orchestrator.runtime'):

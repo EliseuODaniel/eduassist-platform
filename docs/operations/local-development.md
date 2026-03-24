@@ -201,6 +201,7 @@ Status atual do bootstrap:
 - drill de restore de verificação disponível em `make backup-verify BACKUP_DIR=...`
 - fundação inicial de retrieval e orquestração agentica já implementada
 - foundation transacional validada com migração e seed mockada
+- expansão incremental da escola fictícia com fundamental II, ensino médio, notas, frequencia e financeiro disponível em `make db-seed-school-expansion`
 - carga operacional incremental de handoffs disponível em `make db-seed-operational-load`
 - identity and policy base validadas com smoke tests de responsável, aluno, professor e financeiro
 - auth federada e vínculo Telegram validados com token real do `Keycloak` local
@@ -214,6 +215,7 @@ Uso rápido do drill operacional:
 - `BACKUP_LABEL=drill-local make backup-local`
 - `BACKUP_DIR=/abs/path/para/artifacts/backups/drill-local make backup-verify`
 - `make db-seed-operational-load`
+- `make db-seed-school-expansion`
 
 ## 9. Variáveis de ambiente previstas
 

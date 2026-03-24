@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import signal
+import threading
 import time
 from pathlib import Path
 
@@ -11,6 +13,7 @@ from .pipeline import DocumentPipeline
 
 READY_FILE = Path('/tmp/worker-ready')
 RUNNING = True
+logger = logging.getLogger(__name__)
 
 
 def _stop(*_: object) -> None:
@@ -26,6 +29,13 @@ def _sync_documents(settings: Settings) -> None:
         f"chunks={summary['chunk_count']}",
         f"collection={summary['collection']}",
     )
+
+
+def _sync_documents_background(settings: Settings) -> None:
+    try:
+        _sync_documents(settings)
+    except Exception:
+        logger.exception('worker_bootstrap_sync_failed')
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -47,13 +57,18 @@ def main() -> None:
         _sync_documents(settings)
         return
 
-    if settings.worker_bootstrap_documents:
-        _sync_documents(settings)
-
     READY_FILE.write_text(
         f'worker running in {settings.app_env} with database {settings.database_url}\n',
         encoding='utf-8',
     )
+
+    if settings.worker_bootstrap_documents:
+        threading.Thread(
+            target=_sync_documents_background,
+            args=(settings,),
+            daemon=True,
+            name='worker-bootstrap-sync',
+        ).start()
 
     print('[worker] bootstrap background loop started')
     while RUNNING:

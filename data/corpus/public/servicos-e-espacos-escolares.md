@@ -5,8 +5,8 @@ title: Servicos e Espacos Escolares
 category: faq
 audience: publico
 visibility: public
-version_label: v2026.1
-effective_from: 2026-01-12
+version_label: v2026.2
+effective_from: 2026-03-24
 labels:
   topic:
     - biblioteca
@@ -34,6 +34,18 @@ A Biblioteca Aurora oferece consulta local, emprestimo domiciliar para alunos re
 
 O laboratorio de ciencias funciona prioritariamente por agendamento docente e apoio a aulas praticas. Visitantes e responsaveis nao utilizam o espaco sem acompanhamento institucional.
 
+## Laboratorio de informatica e sala maker
+
+O laboratorio de informatica apoia aulas de tecnologia, pesquisa e producao de trabalhos. A sala maker recebe projetos de robotica, prototipagem e oficinas criativas com supervisao docente.
+
+## Quadra e espacos de movimento
+
+A quadra poliesportiva coberta recebe aulas de educacao fisica, treinos de esportes coletivos e eventos escolares. Ha tambem patio coberto para atividades de convivencia e formaturas internas.
+
 ## Secretaria e protocolo
 
 A secretaria escolar atende de segunda a sexta-feira, das 7h00 as 17h30. Protocolos administrativos, declaracoes e solicitacoes documentais podem ser iniciados no portal ou presencialmente.
+
+## Orientacao e apoio
+
+A sala de orientacao educacional atende estudantes e responsaveis em demandas de rotina, adaptacao escolar, acompanhamento socioemocional e organizacao de estudo.

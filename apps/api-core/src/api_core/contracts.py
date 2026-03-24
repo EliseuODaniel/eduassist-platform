@@ -202,12 +202,55 @@ class CalendarEventsResponse(BaseModel):
     events: list[CalendarEventEntry]
 
 
+class PublicShiftOffer(BaseModel):
+    segment: str
+    shift_code: str
+    shift_label: str
+    starts_at: str
+    ends_at: str
+    notes: str | None = None
+
+
+class PublicTuitionReference(BaseModel):
+    segment: str
+    shift_label: str
+    monthly_amount: Decimal
+    enrollment_fee: Decimal
+    notes: str | None = None
+
+
+class PublicContactChannel(BaseModel):
+    channel: str
+    label: str
+    value: str
+
+
+class PublicFeatureAvailability(BaseModel):
+    feature_key: str
+    label: str
+    category: str
+    available: bool
+    notes: str | None = None
+
+
 class PublicSchoolProfile(BaseModel):
     school_unit_code: str
     school_name: str
     city: str
     state: str
     timezone: str
+    address_line: str
+    district: str
+    short_headline: str
+    education_model: str
+    confessional_status: str
+    segments: list[str] = Field(default_factory=list)
+    shift_offers: list[PublicShiftOffer] = Field(default_factory=list)
+    tuition_reference: list[PublicTuitionReference] = Field(default_factory=list)
+    contact_channels: list[PublicContactChannel] = Field(default_factory=list)
+    feature_inventory: list[PublicFeatureAvailability] = Field(default_factory=list)
+    documented_services: list[str] = Field(default_factory=list)
+    admissions_highlights: list[str] = Field(default_factory=list)
 
 
 class PublicSchoolProfileResponse(BaseModel):

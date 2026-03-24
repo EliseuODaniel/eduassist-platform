@@ -172,6 +172,76 @@ def main() -> int:
     )
     print('[ok] public school name')
 
+    tuition_status, _, tuition_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual a mensalidade do ensino medio?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        tuition_status == 200 and isinstance(tuition_payload, dict),
+        'public_tuition_query_failed',
+    )
+    assert_condition(tuition_payload.get('mode') == 'structured_tool', 'public_tuition_mode_invalid')
+    tuition_message = str(tuition_payload.get('message_text', ''))
+    assert_condition('1450.00' in tuition_message, 'public_tuition_amount_missing')
+    assert_condition('350.00' in tuition_message, 'public_tuition_enrollment_fee_missing')
+    print('[ok] public tuition reference')
+
+    schedule_status, _, schedule_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o horario do ensino medio?',
+            'conversation_id': 'smoke:school-schedule-thread',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        schedule_status == 200 and isinstance(schedule_payload, dict),
+        'public_schedule_query_failed',
+    )
+    assert_condition(schedule_payload.get('mode') == 'structured_tool', 'public_schedule_mode_invalid')
+    schedule_message = str(schedule_payload.get('message_text', ''))
+    assert_condition('07:15' in schedule_message and '12:50' in schedule_message, 'public_schedule_hours_missing')
+    followup_schedule_status, _, followup_schedule_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e o fundamental?',
+            'conversation_id': 'smoke:school-schedule-thread',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        followup_schedule_status == 200 and isinstance(followup_schedule_payload, dict),
+        'public_schedule_followup_failed',
+    )
+    followup_schedule_message = str(followup_schedule_payload.get('message_text', ''))
+    assert_condition(
+        'fundamental ii' in followup_schedule_message.lower(),
+        'public_schedule_followup_segment_missing',
+    )
+    assert_condition(
+        '07:15' in followup_schedule_message and '12:30' in followup_schedule_message,
+        'public_schedule_followup_hours_missing',
+    )
+    print('[ok] public schedule canonical')
+
     negative_docs_status, _, negative_docs_payload = request(
         'POST',
         f'{settings.ai_orchestrator_url}/v1/messages/respond',
@@ -270,14 +340,20 @@ def main() -> int:
         confessional_status == 200 and isinstance(confessional_payload, dict),
         'public_confessional_query_failed',
     )
+    assert_condition(
+        confessional_payload.get('mode') == 'structured_tool',
+        'public_confessional_mode_invalid',
+    )
     confessional_message = str(confessional_payload.get('message_text', ''))
     assert_condition(
-        'nao informa se a escola e confessional' in confessional_message.lower(),
-        'public_confessional_gap_missing',
+        'escola laica' in confessional_message.lower(),
+        'public_confessional_value_missing',
     )
-    assert_condition('contexto' not in confessional_message.lower(), 'public_confessional_context_leak')
-    assert_condition(not confessional_payload.get('citations'), 'public_confessional_citations_should_be_empty')
-    print('[ok] public confessional gap')
+    assert_condition(
+        'nao confessional' in confessional_message.lower(),
+        'public_confessional_qualifier_missing',
+    )
+    print('[ok] public confessional profile')
 
     facilities_status, _, facilities_payload = request(
         'POST',
@@ -295,15 +371,38 @@ def main() -> int:
         facilities_status == 200 and isinstance(facilities_payload, dict),
         'public_facilities_query_failed',
     )
-    assert_condition(facilities_payload.get('mode') == 'hybrid_retrieval', 'public_facilities_mode_invalid')
+    assert_condition(facilities_payload.get('mode') == 'structured_tool', 'public_facilities_mode_invalid')
     facilities_message = str(facilities_payload.get('message_text', ''))
     assert_condition(
-        'nao informa se a escola possui academia, piscina, quadra de tenis, futebol e aulas de danca'
-        in facilities_message.lower(),
-        'public_facilities_gap_missing',
+        'nao: piscina' in facilities_message.lower(),
+        'public_facilities_pool_missing',
     )
-    assert_condition(not facilities_payload.get('citations'), 'public_facilities_citations_should_be_empty')
-    print('[ok] public facilities gap')
+    assert_condition('sim: futsal' in facilities_message.lower(), 'public_facilities_futsal_missing')
+    assert_condition('sim: oficina de danca' in facilities_message.lower(), 'public_facilities_dance_missing')
+    print('[ok] public facilities profile')
+
+    contacts_status, _, contacts_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quais canais oficiais de contato?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        contacts_status == 200 and isinstance(contacts_payload, dict),
+        'public_contacts_query_failed',
+    )
+    assert_condition(contacts_payload.get('mode') == 'structured_tool', 'public_contacts_mode_invalid')
+    contacts_message = str(contacts_payload.get('message_text', ''))
+    assert_condition('3333-4200' in contacts_message, 'public_contacts_phone_missing')
+    assert_condition('97500-2040' in contacts_message, 'public_contacts_whatsapp_missing')
+    assert_condition('secretaria@colegiohorizonte.edu.br' in contacts_message, 'public_contacts_email_missing')
+    print('[ok] public contacts profile')
 
     threaded_library_one_status, _, threaded_library_one_payload = request(
         'POST',
@@ -364,6 +463,25 @@ def main() -> int:
     )
     protected_trace_id = extract_trace_id(protected_headers)
     print('[ok] protected academic')
+
+    expanded_protected_status, _, expanded_protected_payload = telegram_webhook_request(
+        settings,
+        update_id=9912,
+        message_id=12,
+        text='quero ver as notas da Sofia Souza',
+        chat_id=555003,
+        username='fernanda.souza',
+        first_name='Fernanda',
+    )
+    assert_condition(
+        expanded_protected_status == 200 and isinstance(expanded_protected_payload, dict),
+        'expanded_guardian_webhook_failed',
+    )
+    assert_condition(
+        'Resumo academico de Sofia Souza' in str(expanded_protected_payload.get('reply', '')),
+        'expanded_guardian_reply_unexpected',
+    )
+    print('[ok] expanded guardian academic')
 
     handoff_status, handoff_headers, handoff_payload = telegram_webhook_request(
         settings,

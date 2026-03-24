@@ -5,14 +5,37 @@ import os
 import time
 from base64 import b64encode
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 
+_DOTENV_CACHE: dict[str, str] | None = None
+
+
+def _load_dotenv() -> dict[str, str]:
+    global _DOTENV_CACHE
+    if _DOTENV_CACHE is not None:
+        return _DOTENV_CACHE
+
+    repo_root = Path(__file__).resolve().parents[2]
+    env_path = repo_root / ".env"
+    values: dict[str, str] = {}
+    if env_path.exists():
+        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            values[key.strip()] = value.strip()
+    _DOTENV_CACHE = values
+    return values
+
+
 def _env(name: str, default: str) -> str:
-    return os.getenv(name, default)
+    return os.getenv(name) or _load_dotenv().get(name, default)
 
 
 @dataclass(frozen=True)
@@ -30,7 +53,7 @@ class Settings:
     password: str = _env("SMOKE_PASSWORD", "Eduassist123!")
     client_id: str = _env("SMOKE_CLIENT_ID", "eduassist-cli")
     internal_api_token: str = _env("SMOKE_INTERNAL_API_TOKEN", "dev-internal-token")
-    telegram_secret: str = _env("SMOKE_TELEGRAM_SECRET", "change-me")
+    telegram_secret: str = _env("SMOKE_TELEGRAM_SECRET", _env("TELEGRAM_WEBHOOK_SECRET", "change-me"))
     grafana_user: str = _env("SMOKE_GRAFANA_USER", "admin")
     grafana_password: str = _env("SMOKE_GRAFANA_PASSWORD", "admin123")
 

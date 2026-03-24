@@ -10,6 +10,7 @@ Diretório reservado para ferramentas de suporte, incluindo:
 Estado atual:
 
 - `tools/mockgen/seed_foundation.py` gera a base transacional inicial mockada;
+- `tools/mockgen/seed_school_expansion.py` enriquece a escola fictícia com fundamental II, ensino médio, turmas, notas, frequência, contratos, faturas e calendario adicional;
 - `tools/mockgen/seed_operational_load.py` adiciona carga operacional incremental para filas humanas, prioridades e SLAs mais realistas;
 - `tools/mockgen/sync_auth_bindings.py` sincroniza as identidades federadas locais com os usuarios do realm `eduassist`;
 - `tools/graphrag-benchmark` prepara um workspace opt-in para benchmark seletivo de `GraphRAG` sobre o corpus institucional publico, com bootstrap, dataset de perguntas, preflight local, runtime hibrido com `llama.cpp` em Docker para chat e `Ollama` para embeddings, e runner comparativo contra o baseline hibrido;

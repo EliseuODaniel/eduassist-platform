@@ -86,6 +86,53 @@ FINANCE_TERMS = {
     'pendencia',
     'pendencias',
 }
+PUBLIC_PRICING_TERMS = {
+    'mensalidade',
+    'mensalidades',
+    'valor',
+    'valores',
+    'preco',
+    'precos',
+    'preço',
+    'preços',
+    'bolsa',
+    'bolsas',
+    'desconto',
+    'descontos',
+    'taxa de matricula',
+    'taxa de matrícula',
+}
+PERSONAL_FINANCE_TERMS = {
+    'meu filho',
+    'minha filha',
+    'minha conta',
+    'meu boleto',
+    'meus boletos',
+    'minha mensalidade',
+    'meu financeiro',
+    'minhas faturas',
+    'minhas contas',
+    'segunda via',
+    'fatura',
+    'faturas',
+    'boleto',
+    'boletos',
+    'inadimplencia',
+    'inadimplência',
+    'vencido',
+    'vencida',
+    'pagamento',
+    'pagamentos',
+    'quitado',
+    'quitada',
+    'todos os alunos',
+    'todas as mensalidades',
+    'de todos os alunos',
+    'de todos os estudantes',
+    'todos os contratos',
+    'lista de mensalidades',
+    'planilha de mensalidades',
+}
 SUPPORT_TERMS = {'humano', 'atendente', 'suporte', 'protocolo', 'chamado'}
 SUPPORT_PHRASES = {
     'falar com',
@@ -101,12 +148,16 @@ PUBLIC_SERVICE_TERMS = {
     'cantina',
     'laboratorio',
     'laboratorio de ciencias',
+    'espaco maker',
+    'maker',
     'academia',
     'piscina',
     'quadra',
     'quadra de tenis',
     'tenis',
     'futebol',
+    'futsal',
+    'volei',
     'esporte',
     'esportes',
     'aula de danca',
@@ -115,6 +166,16 @@ PUBLIC_SERVICE_TERMS = {
     'danca',
     'atividade extracurricular',
     'atividades extracurriculares',
+    'teatro',
+    'robotica',
+    'robótica',
+    'uniforme',
+    'almoco',
+    'almoço',
+    'transporte',
+    'van escolar',
+    'orientacao educacional',
+    'orientação educacional',
     'portaria',
     'secretaria',
     'atendimento',
@@ -138,6 +199,23 @@ INSTITUTION_TERMS = {
     'endereco',
     'telefone',
     'contato',
+    'turno',
+    'turnos',
+    'horario',
+    'horários',
+    'horario de aula',
+    'horário de aula',
+    'fundamental',
+    'fundamental ii',
+    'ensino medio',
+    'ensino médio',
+    '6o ano',
+    '7o ano',
+    '8o ano',
+    '9o ano',
+    '1o ano',
+    '2o ano',
+    '3o ano',
     'confessional',
     'laica',
     'religiosa',
@@ -149,6 +227,49 @@ PUBLIC_SCHOOL_PROFILE_TERMS = {
     'como se chama a escola',
     'como se chama o colegio',
     'como se chama o colégio',
+    'telefone da escola',
+    'telefone da secretaria',
+    'whatsapp da escola',
+    'whatsapp da secretaria',
+    'email da escola',
+    'email da secretaria',
+    'canais oficiais de contato',
+    'canais de contato',
+    'como entrar em contato',
+    'fale conosco',
+    'endereco da escola',
+    'endereço da escola',
+    'turno',
+    'turnos',
+    'horario do ensino medio',
+    'horário do ensino médio',
+    'horario do fundamental',
+    'horário do fundamental',
+    'fundamental',
+    'fundamental ii',
+    'ensino medio',
+    'ensino médio',
+    'periodo integral',
+    'período integral',
+    'mensalidade',
+    'mensalidades',
+    'bolsa',
+    'desconto',
+    'confessional',
+    'laica',
+    'religiosa',
+    'biblioteca',
+    'cantina',
+    'laboratorio',
+    'academia',
+    'piscina',
+    'quadra',
+    'futebol',
+    'danca',
+    'dança',
+    'teatro',
+    'robotica',
+    'robótica',
 }
 
 
@@ -187,9 +308,20 @@ def _is_teacher_self_service_request(message: str, role: UserRole) -> bool:
     return role is UserRole.teacher and any(term in lowered for term in TEACHER_SELF_SERVICE_TERMS)
 
 
+def _is_public_pricing_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    if not any(_message_matches_term(lowered, term) for term in PUBLIC_PRICING_TERMS):
+        return False
+    if any(_message_matches_term(lowered, term) for term in PERSONAL_FINANCE_TERMS):
+        return False
+    return True
+
+
 def _is_public_school_profile_request(message: str) -> bool:
     lowered = _normalize_text(message)
-    return any(term in lowered for term in PUBLIC_SCHOOL_PROFILE_TERMS)
+    return _is_public_pricing_query(lowered) or any(
+        _message_matches_term(lowered, term) for term in PUBLIC_SCHOOL_PROFILE_TERMS
+    )
 
 
 def classify_request(state: OrchestrationState) -> OrchestrationState:
@@ -209,6 +341,13 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
             access_tier=AccessTier.authenticated,
             confidence=0.94,
             reason='mensagem indica autoatendimento docente sobre turmas, disciplinas ou horario',
+        )
+    elif _is_public_pricing_query(message):
+        classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.86,
+            reason='mensagem pede informacao comercial publica da escola, nao financeiro pessoal',
         )
     elif _contains_any(message, FINANCE_TERMS):
         classification = IntentClassification(

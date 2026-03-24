@@ -184,6 +184,7 @@ Este repositório já contém o bootstrap técnico inicial do projeto:
 - existe um gate operacional final em `make release-readiness`, com relatorio salvo em `artifacts/readiness`, para consolidar runtime role, `RLS`, evals, smoke completo e baseline do benchmark seletivo;
 - existe um pipeline de exportacao do artigo academico para `.docx` via `make article-docx`, com metadados versionados no repositório;
 - seed foundation idempotente já disponível em `tools/mockgen`;
+- seed incremental de expansão da escola com fundamental II e ensino médio disponível em `tools/mockgen/seed_school_expansion.py`;
 - seed operacional incremental para carga mais realista de handoffs disponível em `tools/mockgen/seed_operational_load.py`;
 - sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
 - `Makefile`, `.env.example`, Dockerfiles e healthchecks;

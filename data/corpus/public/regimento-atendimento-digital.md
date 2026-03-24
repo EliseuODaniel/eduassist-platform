@@ -5,8 +5,8 @@ title: Regimento de Atendimento Digital
 category: policy
 audience: publico
 visibility: public
-version_label: v2026.1
-effective_from: 2026-02-01
+version_label: v2026.2
+effective_from: 2026-03-24
 labels:
   topic:
     - seguranca
@@ -19,6 +19,10 @@ labels:
 ## Uso dos canais digitais
 
 Os canais digitais da escola existem para atendimento institucional, orientacao academica, informacoes administrativas e comunicacao com a comunidade escolar. O uso deve respeitar as politicas de seguranca da informacao e privacidade da instituicao.
+
+## Escopo publico
+
+O bot pode responder perguntas publicas sobre calendario, horarios, segmentos atendidos, mensalidades de referencia, infraestrutura, transporte, alimentacao, uniforme e proposta pedagogica.
 
 ## Identificacao e autenticacao
 

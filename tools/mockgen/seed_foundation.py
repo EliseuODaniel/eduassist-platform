@@ -87,7 +87,7 @@ def main() -> None:
     with session_scope() as session:
         existing_unit = session.scalar(select(SchoolUnit).where(SchoolUnit.code == 'HZ-CAMPUS'))
         if existing_unit is not None:
-            print('foundation seed already present; skipping')
+            print('foundation seed already present; use db-seed-school-expansion to enrich it')
             return
 
         seed_roles(session)

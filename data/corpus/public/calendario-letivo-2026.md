@@ -5,8 +5,8 @@ title: Calendario Letivo 2026
 category: calendar
 audience: publico
 visibility: public
-version_label: v2026.1
-effective_from: 2026-01-05
+version_label: v2026.2
+effective_from: 2026-03-24
 labels:
   topic:
     - calendario
@@ -18,7 +18,7 @@ labels:
 
 ## Inicio das aulas
 
-As aulas do ensino medio comecam em 2 de fevereiro de 2026. A semana de acolhimento dos alunos da primeira serie ocorre entre 2 e 6 de fevereiro, com orientacoes sobre rotina academica, uso do portal e normas de convivencia.
+As aulas do ensino fundamental II e do ensino medio comecam em 2 de fevereiro de 2026. A semana de acolhimento dos alunos do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro, com orientacoes sobre rotina academica, uso do portal e normas de convivencia.
 
 ## Avaliacoes bimestrais
 
@@ -36,8 +36,12 @@ O recesso escolar de meio de ano acontece entre 13 e 24 de julho de 2026. O ence
 
 ## Feira de ciencias
 
-A feira de ciencias esta prevista para 21 de agosto de 2026 e envolve turmas das tres series do ensino medio. Os projetos sao organizados por area de conhecimento com acompanhamento dos professores orientadores.
+A feira de ciencias esta prevista para 21 de agosto de 2026 e envolve turmas do 8o ano ao 3o ano do ensino medio. Os projetos sao organizados por area de conhecimento com acompanhamento dos professores orientadores.
 
 ## Simulado geral
 
 O simulado institucional para as turmas da terceira serie ocorre em 3 de outubro de 2026, com foco em preparacao para vestibulares e exames nacionais.
+
+## Semana da familia
+
+A semana da familia e da convivencia ocorre de 9 a 13 de novembro de 2026, com rodas de conversa, oficinas e apresentacoes de projetos.
