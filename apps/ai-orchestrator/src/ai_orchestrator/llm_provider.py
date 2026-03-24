@@ -9,7 +9,7 @@ from .models import CalendarEventCard, MessageResponseCitation
 
 
 PROJECT_CONTEXT = (
-    'Contexto do projeto EduAssist: voce atua como assistente institucional de uma escola de ensino medio. '
+    'Contexto do projeto EduAssist: voce atua como assistente institucional de uma escola de ensino fundamental II e ensino medio. '
     'O sistema tem foco em atendimento escolar seguro, auditavel e baseado em fontes. '
     'Dados academicos e financeiros so podem ser respondidos quando o fluxo autenticado e autorizado liberar. '
     'Perguntas publicas devem priorizar fatos canonicos, documentos institucionais e calendario oficial. '
@@ -112,6 +112,47 @@ def _build_context_sections(
     return instructions, prompt
 
 
+def _build_revision_sections(
+    *,
+    request_message: str,
+    preview: Any,
+    draft_text: str,
+    conversation_context: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
+) -> tuple[str, str]:
+    recent_messages = []
+    if isinstance(conversation_context, dict):
+        for item in conversation_context.get('recent_messages', [])[-4:]:
+            if not isinstance(item, dict):
+                continue
+            sender_type = str(item.get('sender_type', 'desconhecido'))
+            content = str(item.get('content', '')).strip()
+            if content:
+                recent_messages.append(f'- {sender_type}: {content}')
+    memory_block = '\n'.join(recent_messages) or 'nenhum'
+    school_name = str((school_profile or {}).get('school_name') or 'Colegio Horizonte')
+    instructions = (
+        'Voce e o revisor final de respostas do EduAssist. '
+        f'{PROJECT_CONTEXT} '
+        'Sua tarefa e revisar uma resposta ja redigida e melhorar apenas o tom, a naturalidade, a clareza e o proximo passo util. '
+        'Nao adicione fatos novos. Nao altere regras de acesso. Nao remova alertas de autenticacao. '
+        'Nao transforme a resposta em menu robotico. '
+        'Se a resposta ja estiver boa, devolva exatamente KEEP. '
+        'Se revisar, devolva somente a nova resposta final em portugues do Brasil, com tom humano, profissional e institucional. '
+        'Se houver historico recente, evite reapresentar o assistente de forma repetitiva. '
+        'Prefira respostas curtas a moderadas, orientadas para resolver o problema do usuario.'
+    )
+    prompt = (
+        f'Escola: {school_name}\n'
+        f'Pergunta do usuario:\n{request_message}\n\n'
+        f'Roteamento:\n- modo: {preview.mode.value}\n- dominio: {preview.classification.domain.value}\n'
+        f'- autenticacao necessaria: {preview.needs_authentication}\n\n'
+        f'Historico recente:\n{memory_block}\n\n'
+        f'Rascunho atual:\n{draft_text}'
+    )
+    return instructions, prompt
+
+
 async def compose_with_openai(
     *,
     settings: Any,
@@ -145,6 +186,41 @@ async def compose_with_openai(
         )
         text = (response.output_text or '').strip()
         return text or None
+    except Exception:
+        return None
+
+
+async def revise_with_openai(
+    *,
+    settings: Any,
+    request_message: str,
+    preview: Any,
+    draft_text: str,
+    conversation_context: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
+) -> str | None:
+    if settings.llm_provider != 'openai' or not settings.openai_api_key:
+        return None
+
+    instructions, prompt = _build_revision_sections(
+        request_message=request_message,
+        preview=preview,
+        draft_text=draft_text,
+        conversation_context=conversation_context,
+        school_profile=school_profile,
+    )
+
+    try:
+        client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
+        response = await client.responses.create(
+            model=settings.openai_model,
+            instructions=instructions,
+            input=prompt,
+        )
+        text = (response.output_text or '').strip()
+        if not text or text == 'KEEP':
+            return None
+        return text
     except Exception:
         return None
 
@@ -215,6 +291,68 @@ async def compose_with_google(
     return merged or None
 
 
+async def revise_with_google(
+    *,
+    settings: Any,
+    request_message: str,
+    preview: Any,
+    draft_text: str,
+    conversation_context: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
+) -> str | None:
+    if settings.llm_provider not in {'google', 'gemini'} or not settings.google_api_key:
+        return None
+
+    instructions, prompt = _build_revision_sections(
+        request_message=request_message,
+        preview=preview,
+        draft_text=draft_text,
+        conversation_context=conversation_context,
+        school_profile=school_profile,
+    )
+    payload = {
+        'system_instruction': {
+            'parts': [{'text': instructions}],
+        },
+        'contents': [
+            {
+                'role': 'user',
+                'parts': [{'text': prompt}],
+            }
+        ],
+        'generationConfig': {
+            'temperature': 0.15,
+            'maxOutputTokens': 320,
+        },
+    }
+    endpoint = f"{settings.google_api_base_url.rstrip('/')}/models/{settings.google_model}:generateContent"
+    headers = {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': settings.google_api_key,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.post(endpoint, headers=headers, json=payload)
+        response.raise_for_status()
+        body = response.json()
+    except Exception:
+        return None
+    candidates = body.get('candidates')
+    if not isinstance(candidates, list) or not candidates:
+        return None
+    content = candidates[0].get('content')
+    if not isinstance(content, dict):
+        return None
+    parts = content.get('parts')
+    if not isinstance(parts, list):
+        return None
+    texts = [part.get('text', '').strip() for part in parts if isinstance(part, dict)]
+    merged = '\n'.join(text for text in texts if text).strip()
+    if not merged or merged == 'KEEP':
+        return None
+    return merged
+
+
 async def compose_with_provider(
     *,
     settings: Any,
@@ -245,6 +383,36 @@ async def compose_with_provider(
             preview=preview,
             citations=citations,
             calendar_events=calendar_events,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
+    return None
+
+
+async def revise_with_provider(
+    *,
+    settings: Any,
+    request_message: str,
+    preview: Any,
+    draft_text: str,
+    conversation_context: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
+) -> str | None:
+    if settings.llm_provider == 'openai':
+        return await revise_with_openai(
+            settings=settings,
+            request_message=request_message,
+            preview=preview,
+            draft_text=draft_text,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
+    if settings.llm_provider in {'google', 'gemini'}:
+        return await revise_with_google(
+            settings=settings,
+            request_message=request_message,
+            preview=preview,
+            draft_text=draft_text,
             conversation_context=conversation_context,
             school_profile=school_profile,
         )

@@ -14,7 +14,7 @@ from eduassist_observability import record_counter, record_histogram, set_span_a
 from PIL import Image, ImageDraw, ImageFont
 
 from .graph_rag_runtime import graph_rag_workspace_ready, run_graph_rag_query
-from .llm_provider import compose_with_provider
+from .llm_provider import compose_with_provider, revise_with_provider
 from .graph import build_orchestration_graph, to_preview
 from .models import (
     CalendarEventCard,
@@ -2738,6 +2738,18 @@ def _compose_deterministic_answer(
     return '\n'.join(sections)
 
 
+def _should_run_response_critic(*, preview: Any, request: MessageResponseRequest) -> bool:
+    if preview.needs_authentication:
+        return False
+    if preview.mode is OrchestrationMode.deny:
+        return False
+    if preview.classification.domain in {QueryDomain.academic, QueryDomain.finance}:
+        return False
+    if preview.mode in {OrchestrationMode.structured_tool, OrchestrationMode.hybrid_retrieval, OrchestrationMode.clarify}:
+        return request.channel.value in {'telegram', 'web'}
+    return False
+
+
 async def generate_message_response(*, request: MessageResponseRequest, settings: Any) -> MessageResponse:
     started_at = monotonic()
     with start_span(
@@ -3039,6 +3051,31 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
                         calendar_events=calendar_events,
                         query_hints=query_hints,
                     )
+
+        if settings.llm_provider == 'openai' and _should_run_response_critic(preview=preview, request=request):
+            revised_text = await revise_with_provider(
+                settings=settings,
+                request_message=request.message,
+                preview=preview,
+                draft_text=message_text,
+                conversation_context=(
+                    {
+                        'conversation_external_id': conversation_context.conversation_external_id,
+                        'message_count': conversation_context.message_count,
+                        'recent_messages': conversation_context.recent_messages,
+                    }
+                    if conversation_context
+                    else None
+                ),
+                school_profile=school_profile,
+            )
+            set_span_attributes(
+                **{
+                    'eduassist.orchestration.response_critic_used': bool(revised_text),
+                }
+            )
+            if revised_text:
+                message_text = revised_text
 
         if citations:
             sources = _render_source_lines(citations)
