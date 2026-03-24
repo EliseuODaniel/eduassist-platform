@@ -15,6 +15,7 @@ from api_core.contracts import (
     AuthPrincipal,
     AuthSessionResponse,
     CalendarEventsResponse,
+    InternalWorkflowStatusResponse,
     InstitutionalRequestCreateResponse,
     InternalConversationAppendRequest,
     InternalConversationAppendResponse,
@@ -65,7 +66,11 @@ from api_core.services.domain import (
     list_public_calendar_events,
 )
 from api_core.services.identity import resolve_actor_context
-from api_core.services.institutional_workflows import create_institutional_request, create_visit_booking
+from api_core.services.institutional_workflows import (
+    create_institutional_request,
+    create_visit_booking,
+    get_workflow_status,
+)
 from api_core.services.policy import decide_policy
 from api_core.services.support import (
     create_support_handoff,
@@ -843,6 +848,27 @@ async def internal_institutional_request_create(
             },
         )
         return response_payload
+
+
+@app.get('/v1/internal/workflows/status', response_model=InternalWorkflowStatusResponse)
+async def internal_workflow_status(
+    conversation_external_id: str = Query(min_length=3, max_length=120),
+    channel: str = Query(default='telegram', min_length=2, max_length=30),
+    protocol_code: str | None = Query(default=None, min_length=3, max_length=40),
+    workflow_kind: str | None = Query(default=None, min_length=3, max_length=40),
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> InternalWorkflowStatusResponse:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='internal-workflows-api')
+        return get_workflow_status(
+            session,
+            channel=channel,
+            conversation_external_id=conversation_external_id,
+            protocol_code=protocol_code,
+            workflow_kind=workflow_kind,
+        )
 
 
 @app.get('/v1/internal/conversations/context', response_model=InternalConversationContextResponse)

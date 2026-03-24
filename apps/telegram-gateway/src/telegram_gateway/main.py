@@ -229,9 +229,8 @@ def _build_user_context(actor: dict[str, object] | None) -> dict[str, object]:
 
 def _default_help_message() -> str:
     return (
-        'Ola. Sou o EduAssist, assistente institucional do Colegio Horizonte. '
-        'Posso orientar sobre matriculas, turnos e horarios, calendario, mensalidades publicas de referencia, '
-        'visitas e canais oficiais de atendimento. Para consultas protegidas, vincule sua conta pelo portal e envie o codigo ao bot.'
+        'Oi. Sou o EduAssist do Colegio Horizonte. '
+        'Pode me dizer o assunto do jeito que for mais natural, como matricula, visita, financeiro, notas, secretaria ou direcao.'
     )
 
 
@@ -261,6 +260,15 @@ async def _orchestrate_message(
         )
     response.raise_for_status()
     return response.json()
+
+
+def _command_to_orchestrator_text(text: str) -> str | None:
+    normalized = text.strip().lower()
+    if normalized == '/start':
+        return 'ola'
+    if normalized == '/help':
+        return 'quais opcoes de assuntos eu tenho aqui?'
+    return None
 
 
 @app.post('/webhooks/telegram')
@@ -303,15 +311,9 @@ async def telegram_webhook(
                 'processed': 'missing_chat',
             }
 
-        if text.strip() in {'/start', '/help'}:
-            help_text = _default_help_message()
-            await _send_telegram_message(chat_id, help_text)
-            return {
-                'accepted': True,
-                'service': 'telegram-gateway',
-                'processed': 'help_message',
-                'reply': help_text,
-            }
+        command_text = _command_to_orchestrator_text(text)
+        if command_text is not None:
+            text = command_text
 
         try:
             orchestration = await _orchestrate_message(

@@ -154,6 +154,26 @@ PUBLIC_VISIT_TERMS = {
     'conhecer a escola',
     'agendar visita',
 }
+WORKFLOW_STATUS_TERMS = {'status', 'andamento', 'situacao', 'situação', 'fila', 'retorno', 'atualizacao', 'atualização'}
+WORKFLOW_VISIT_TERMS = {'visita', 'tour', 'conhecer a escola'}
+WORKFLOW_REQUEST_TERMS = {'solicitacao', 'solicitação', 'pedido', 'protocolo', 'requerimento', 'direcao', 'direção', 'ouvidoria'}
+WORKFLOW_HANDOFF_TERMS = {'atendimento', 'atendente', 'humano', 'chamado'}
+PROTOCOL_CODE_PATTERN = re.compile(r'\b(?:VIS|REQ|ATD)-[A-Z0-9-]+\b', re.IGNORECASE)
+WORKFLOW_STATUS_LABELS = {
+    'queued': 'em fila',
+    'requested': 'registrado',
+    'in_progress': 'em atendimento',
+    'resolved': 'concluido',
+    'cancelled': 'cancelado',
+}
+WORKFLOW_QUEUE_LABELS = {
+    'admissoes': 'admissions',
+    'direcao': 'direcao',
+    'coordenacao': 'coordenacao',
+    'financeiro': 'financeiro',
+    'secretaria': 'secretaria',
+    'atendimento': 'atendimento',
+}
 PUBLIC_SEGMENT_TERMS = {
     'fundamental',
     'fundamental ii',
@@ -1323,6 +1343,52 @@ def _extract_recent_assistant_message(recent_messages: list[dict[str, Any]]) -> 
     return None
 
 
+def _extract_protocol_code_from_text(text: str | None) -> str | None:
+    if not text:
+        return None
+    match = PROTOCOL_CODE_PATTERN.search(text)
+    if match is None:
+        return None
+    return match.group(0).upper()
+
+
+def _extract_protocol_code_hint(
+    message: str,
+    conversation_context: dict[str, Any] | None,
+) -> str | None:
+    direct_match = _extract_protocol_code_from_text(message)
+    if direct_match:
+        return direct_match
+    for _sender_type, content in reversed(_recent_message_lines(conversation_context)):
+        code = _extract_protocol_code_from_text(content)
+        if code:
+            return code
+    return None
+
+
+def _detect_workflow_kind_hint(
+    message: str,
+    conversation_context: dict[str, Any] | None,
+) -> str | None:
+    normalized = _normalize_text(message)
+    if any(_message_matches_term(normalized, term) for term in WORKFLOW_VISIT_TERMS):
+        return 'visit_booking'
+    if any(_message_matches_term(normalized, term) for term in WORKFLOW_REQUEST_TERMS):
+        return 'institutional_request'
+    if any(_message_matches_term(normalized, term) for term in WORKFLOW_HANDOFF_TERMS):
+        return 'support_handoff'
+
+    for _sender_type, content in reversed(_recent_message_lines(conversation_context)):
+        content_normalized = _normalize_text(content)
+        if 'pedido de visita registrado' in content_normalized or 'vis-' in content_normalized:
+            return 'visit_booking'
+        if 'solicitacao institucional registrada' in content_normalized or 'req-' in content_normalized:
+            return 'institutional_request'
+        if 'encaminhei sua solicitacao para a fila' in content_normalized or 'atd-' in content_normalized:
+            return 'support_handoff'
+    return None
+
+
 def _build_analysis_message(message: str, conversation_context: ConversationContextBundle | None) -> str:
     if conversation_context is None or not conversation_context.recent_messages:
         return message
@@ -1646,6 +1712,32 @@ async def _fetch_public_service_directory(*, settings: Any) -> dict[str, Any] | 
         return None
     directory = payload.get('directory')
     return directory if isinstance(directory, dict) else None
+
+
+async def _fetch_internal_workflow_status(
+    *,
+    settings: Any,
+    conversation_external_id: str,
+    protocol_code: str | None = None,
+    workflow_kind: str | None = None,
+) -> dict[str, Any] | None:
+    params: dict[str, object] = {
+        'conversation_external_id': conversation_external_id,
+        'channel': 'telegram',
+    }
+    if protocol_code:
+        params['protocol_code'] = protocol_code
+    if workflow_kind:
+        params['workflow_kind'] = workflow_kind
+
+    payload, status_code = await _api_core_get(
+        settings=settings,
+        path='/v1/internal/workflows/status',
+        params=params,
+    )
+    if status_code != 200 or payload is None:
+        return None
+    return payload if isinstance(payload, dict) else None
 
 
 def _build_public_institution_plan(message: str, selected_tools: list[str]) -> PublicInstitutionPlan:
@@ -2063,6 +2155,88 @@ def _compose_institutional_request_answer(response_payload: dict[str, Any] | Non
         f"Ticket operacional: {item.get('linked_ticket_code', 'a confirmar')}. "
         'A equipe faz a triagem inicial e segue o retorno pelo fluxo institucional.'
     )
+
+
+def _humanize_workflow_status(status: str) -> str:
+    normalized = str(status or '').strip().lower()
+    return WORKFLOW_STATUS_LABELS.get(normalized, normalized or 'em analise')
+
+
+def _humanize_workflow_queue(queue_name: str | None) -> str:
+    normalized = str(queue_name or '').strip().lower()
+    return WORKFLOW_QUEUE_LABELS.get(normalized, normalized or 'atendimento')
+
+
+def _compose_workflow_status_answer(
+    response_payload: dict[str, Any] | None,
+    *,
+    protocol_code_hint: str | None,
+) -> str:
+    if not isinstance(response_payload, dict) or not response_payload.get('found'):
+        if protocol_code_hint:
+            return (
+                f'Ainda nao localizei um protocolo ativo com o codigo {protocol_code_hint}. '
+                'Se quiser, me encaminhe novamente o codigo completo ou me diga se o assunto era visita, direcao, financeiro ou secretaria.'
+            )
+        return (
+            'Ainda nao encontrei um protocolo recente nesta conversa. '
+            'Se quiser, me diga o codigo que comeca com VIS, REQ ou ATD, ou me lembre se o assunto era visita, direcao, financeiro ou secretaria.'
+        )
+
+    item = response_payload.get('item')
+    if not isinstance(item, dict):
+        return 'Localizei um protocolo desta conversa, mas nao consegui interpretar o status agora.'
+
+    workflow_type = str(item.get('workflow_type', 'support_handoff'))
+    status_label = _humanize_workflow_status(str(item.get('status', '')))
+    queue_label = _humanize_workflow_queue(item.get('queue_name'))
+    protocol_code = str(item.get('protocol_code', protocol_code_hint or 'indisponivel'))
+    linked_ticket_code = str(item.get('linked_ticket_code', '') or '').strip()
+    subject = str(item.get('subject', '') or '').strip()
+    target_area = str(item.get('target_area', '') or '').strip()
+    preferred_date = str(item.get('preferred_date', '') or '').strip()
+    preferred_window = str(item.get('preferred_window', '') or '').strip()
+    slot_label = str(item.get('slot_label', '') or '').strip()
+
+    if workflow_type == 'visit_booking':
+        lines = [
+            f'Seu pedido de visita segue {status_label} com a fila de {queue_label}.',
+            f'- Protocolo: {protocol_code}',
+        ]
+        if linked_ticket_code:
+            lines.append(f'- Ticket operacional: {linked_ticket_code}')
+        if slot_label:
+            lines.append(f'- Preferencia registrada: {slot_label}')
+        elif preferred_date or preferred_window:
+            preference = ' - '.join(part for part in [preferred_date, preferred_window] if part)
+            lines.append(f'- Preferencia registrada: {preference}')
+        lines.append('Proximo passo: a equipe comercial valida a janela e retorna com a confirmacao.')
+        return '\n'.join(lines)
+
+    if workflow_type == 'institutional_request':
+        lines = [
+            f'Sua solicitacao institucional segue {status_label} na fila de {queue_label}.',
+            f'- Protocolo: {protocol_code}',
+        ]
+        if subject:
+            lines.append(f'- Assunto: {subject}')
+        if target_area:
+            lines.append(f'- Area responsavel: {target_area}')
+        if linked_ticket_code:
+            lines.append(f'- Ticket operacional: {linked_ticket_code}')
+        lines.append('Proximo passo: a equipe responsavel analisa o contexto e devolve o retorno pelo fluxo institucional.')
+        return '\n'.join(lines)
+
+    lines = [
+        f'Seu atendimento segue {status_label} na fila de {queue_label}.',
+        f'- Protocolo: {protocol_code}',
+    ]
+    if subject:
+        lines.append(f'- Resumo: {subject}')
+    if linked_ticket_code and linked_ticket_code != protocol_code:
+        lines.append(f'- Ticket operacional: {linked_ticket_code}')
+    lines.append('Se quiser, eu tambem posso te orientar sobre o proximo setor ou resumir o que ja foi registrado.')
+    return '\n'.join(lines)
 
 
 def _wants_visual_response(message: str) -> bool:
@@ -2902,12 +3076,37 @@ async def _compose_structured_tool_answer(
         )
 
     if preview.classification.domain is QueryDomain.support:
-        workflow_specialist = 'workflow'
+        workflow_specialist = 'workflow_status' if 'get_workflow_status' in preview.selected_tools else 'workflow'
         set_span_attributes(
             **{
                 'eduassist.workflow_manager.executed_specialists': workflow_specialist,
             }
         )
+        if 'get_workflow_status' in preview.selected_tools:
+            conversation_external_id = request.conversation_id or _effective_conversation_id(request)
+            if not conversation_external_id:
+                return (
+                    'Consigo acompanhar protocolos por aqui, mas preciso que a conversa esteja vinculada '
+                    'ao atendimento atual. Se quiser, me envie o codigo que comeca com VIS, REQ ou ATD.'
+                )
+            protocol_code_hint = _extract_protocol_code_hint(request.message, conversation_context)
+            workflow_kind_hint = _detect_workflow_kind_hint(request.message, conversation_context)
+            set_span_attributes(
+                **{
+                    'eduassist.workflow_manager.protocol_hint_present': bool(protocol_code_hint),
+                    'eduassist.workflow_manager.workflow_kind_hint': workflow_kind_hint,
+                }
+            )
+            workflow_payload = await _fetch_internal_workflow_status(
+                settings=settings,
+                conversation_external_id=conversation_external_id,
+                protocol_code=protocol_code_hint,
+                workflow_kind=workflow_kind_hint,
+            )
+            return _compose_workflow_status_answer(
+                workflow_payload,
+                protocol_code_hint=protocol_code_hint,
+            )
         if 'schedule_school_visit' in preview.selected_tools:
             workflow_payload = await _create_visit_booking(
                 settings=settings,

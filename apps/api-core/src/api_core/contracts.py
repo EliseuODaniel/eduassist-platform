@@ -615,6 +615,27 @@ class InstitutionalRequestCreateResponse(BaseModel):
     item: InstitutionalRequestEntry
 
 
+class WorkflowStatusEntry(BaseModel):
+    workflow_type: str
+    protocol_code: str
+    status: str
+    queue_name: str | None = None
+    linked_ticket_code: str | None = None
+    subject: str | None = None
+    summary: str | None = None
+    target_area: str | None = None
+    preferred_date: date | None = None
+    preferred_window: str | None = None
+    slot_label: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class InternalWorkflowStatusResponse(BaseModel):
+    found: bool
+    item: WorkflowStatusEntry | None = None
+
+
 class SupportHandoffCreateResponse(BaseModel):
     created: bool
     deduplicated: bool = False

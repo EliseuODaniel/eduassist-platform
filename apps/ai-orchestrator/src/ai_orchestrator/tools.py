@@ -240,6 +240,26 @@ TOOL_CONTRACTS: tuple[ToolContract, ...] = (
         notes=['pedidos formais nao devem ser reduzidos a handoff generico quando houver workflow estruturado'],
     ),
     ToolContract(
+        name='get_workflow_status',
+        description='Consulta o andamento do ultimo protocolo, visita ou solicitacao institucional vinculada a conversa.',
+        kind=ToolKind.data_service,
+        access_tier=AccessTier.public,
+        source_of_truth='workflow_service',
+        deterministic=True,
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'conversation_id': {'type': 'string'},
+                'protocol_code': {'type': 'string'},
+                'workflow_kind': {'type': 'string'},
+            },
+            'required': ['conversation_id'],
+        },
+        output_contract='status atual, fila, protocolo relacionado e proximo passo recomendado',
+        triggers=['status do protocolo', 'andamento da solicitacao', 'status da visita', 'meu pedido'],
+        notes=['usa contexto conversacional quando o usuario nao repete o codigo do protocolo'],
+    ),
+    ToolContract(
         name='generate_visual_chart',
         description='Gera ativo visual simples para apoiar resposta de notas, frequencia, financeiro ou indicadores.',
         kind=ToolKind.operation,

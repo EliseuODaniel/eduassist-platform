@@ -90,6 +90,22 @@ def main() -> int:
     public_trace_id = extract_trace_id(public_headers)
     print('[ok] public faq')
 
+    help_status, _, help_payload = telegram_webhook_request(
+        settings,
+        update_id=9902,
+        message_id=2,
+        text='/help',
+        chat_id=777001,
+        username='visitante.publico',
+        first_name='Visitante',
+    )
+    assert_condition(help_status == 200 and isinstance(help_payload, dict), 'help_webhook_failed')
+    assert_condition(help_payload.get('processed') == 'orchestrated_message', 'help_still_static')
+    help_reply = str(help_payload.get('reply', ''))
+    assert_condition('matricula' in help_reply.lower(), 'help_reply_topics_missing')
+    assert_condition('financeiro' in help_reply.lower(), 'help_reply_finance_missing')
+    print('[ok] telegram help via orchestrator')
+
     greeting_status, _, greeting_payload = request(
         'POST',
         f'{settings.ai_orchestrator_url}/v1/messages/respond',
@@ -447,6 +463,27 @@ def main() -> int:
     assert_condition('Ticket operacional' in visit_message, 'public_visit_ticket_missing')
     print('[ok] public visit workflow')
 
+    visit_status_status, _, visit_status_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e o status da visita?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        visit_status_status == 200 and isinstance(visit_status_payload, dict),
+        'public_visit_status_failed',
+    )
+    visit_status_message = str(visit_status_payload.get('message_text', ''))
+    assert_condition('VIS-' in visit_status_message, 'public_visit_status_protocol_missing')
+    assert_condition('fila' in visit_status_message.lower(), 'public_visit_status_queue_missing')
+    print('[ok] public visit workflow status')
+
     request_status, _, request_payload = request(
         'POST',
         f'{settings.ai_orchestrator_url}/v1/messages/respond',
@@ -467,6 +504,27 @@ def main() -> int:
     assert_condition('REQ-' in institutional_request_message, 'public_institutional_request_protocol_missing')
     assert_condition('direcao' in institutional_request_message.lower(), 'public_institutional_request_target_missing')
     print('[ok] public institutional request workflow')
+
+    request_status_status, _, request_status_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o status do meu protocolo?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        request_status_status == 200 and isinstance(request_status_payload, dict),
+        'public_institutional_request_status_failed',
+    )
+    request_status_message = str(request_status_payload.get('message_text', ''))
+    assert_condition('REQ-' in request_status_message, 'public_request_status_protocol_missing')
+    assert_condition('direcao' in request_status_message.lower(), 'public_request_status_target_missing')
+    print('[ok] public institutional request status')
 
     visual_status, _, visual_payload = request(
         'POST',

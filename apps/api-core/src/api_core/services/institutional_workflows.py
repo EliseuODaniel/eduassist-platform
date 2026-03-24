@@ -7,12 +7,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api_core.contracts import (
+    InternalWorkflowStatusResponse,
     InstitutionalRequestCreateResponse,
     InstitutionalRequestEntry,
     VisitBookingCreateResponse,
     VisitBookingEntry,
+    WorkflowStatusEntry,
 )
-from api_core.db.models import Conversation, InstitutionalRequest, Message, VisitBooking
+from api_core.db.models import Conversation, Handoff, InstitutionalRequest, Message, VisitBooking
 from api_core.services.support import build_ticket_code, create_support_handoff
 
 
@@ -284,3 +286,200 @@ def create_institutional_request(
             created_at=institutional_request.created_at,
         ),
     )
+
+
+def _ticket_code_or_none(handoff: Handoff | None) -> str | None:
+    if handoff is None:
+        return None
+    return build_ticket_code(handoff_id=handoff.id, created_at=handoff.created_at)
+
+
+def _effective_status(*, own_status: str, handoff: Handoff | None) -> str:
+    if handoff is not None and handoff.status:
+        return handoff.status
+    return own_status
+
+
+def _workflow_entry_from_visit(booking: VisitBooking, handoff: Handoff | None) -> WorkflowStatusEntry:
+    return WorkflowStatusEntry(
+        workflow_type='visit_booking',
+        protocol_code=booking.protocol_code,
+        status=_effective_status(own_status=booking.status, handoff=handoff),
+        queue_name=handoff.queue_name if handoff is not None else 'admissoes',
+        linked_ticket_code=_ticket_code_or_none(handoff),
+        subject='Visita institucional',
+        summary=booking.notes,
+        preferred_date=booking.preferred_date,
+        preferred_window=booking.preferred_window,
+        slot_label=booking.slot_label,
+        created_at=booking.created_at,
+        updated_at=booking.updated_at,
+    )
+
+
+def _workflow_entry_from_request(
+    institutional_request: InstitutionalRequest,
+    handoff: Handoff | None,
+) -> WorkflowStatusEntry:
+    return WorkflowStatusEntry(
+        workflow_type='institutional_request',
+        protocol_code=institutional_request.protocol_code,
+        status=_effective_status(own_status=institutional_request.status, handoff=handoff),
+        queue_name=handoff.queue_name if handoff is not None else institutional_request.target_area.lower(),
+        linked_ticket_code=_ticket_code_or_none(handoff),
+        subject=institutional_request.subject,
+        summary=institutional_request.details,
+        target_area=institutional_request.target_area,
+        created_at=institutional_request.created_at,
+        updated_at=institutional_request.updated_at,
+    )
+
+
+def _workflow_entry_from_handoff(handoff: Handoff) -> WorkflowStatusEntry:
+    return WorkflowStatusEntry(
+        workflow_type='support_handoff',
+        protocol_code=build_ticket_code(handoff_id=handoff.id, created_at=handoff.created_at),
+        status=handoff.status,
+        queue_name=handoff.queue_name,
+        linked_ticket_code=build_ticket_code(handoff_id=handoff.id, created_at=handoff.created_at),
+        subject='Atendimento institucional',
+        summary=handoff.summary,
+        created_at=handoff.created_at,
+        updated_at=handoff.updated_at,
+    )
+
+
+def _match_handoff_by_ticket_code(session: Session, *, ticket_code: str) -> Handoff | None:
+    rows = session.execute(select(Handoff).order_by(Handoff.created_at.desc())).scalars()
+    for handoff in rows:
+        if build_ticket_code(handoff_id=handoff.id, created_at=handoff.created_at) == ticket_code:
+            return handoff
+    return None
+
+
+def _latest_workflow_candidates(
+    session: Session,
+    *,
+    conversation_id,
+    workflow_kind: str | None,
+) -> list[tuple[object, Handoff | None, int]]:
+    candidates: list[tuple[object, Handoff | None, int]] = []
+
+    if workflow_kind in {None, 'visit_booking'}:
+        booking = session.execute(
+            select(VisitBooking)
+            .where(VisitBooking.conversation_id == conversation_id)
+            .order_by(VisitBooking.created_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if booking is not None:
+            handoff = session.get(Handoff, booking.linked_handoff_id) if booking.linked_handoff_id else None
+            candidates.append((booking, handoff, 3))
+
+    if workflow_kind in {None, 'institutional_request'}:
+        institutional_request = session.execute(
+            select(InstitutionalRequest)
+            .where(InstitutionalRequest.conversation_id == conversation_id)
+            .order_by(InstitutionalRequest.created_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if institutional_request is not None:
+            handoff = (
+                session.get(Handoff, institutional_request.linked_handoff_id)
+                if institutional_request.linked_handoff_id
+                else None
+            )
+            candidates.append((institutional_request, handoff, 2))
+
+    if workflow_kind in {None, 'support_handoff'}:
+        handoff = session.execute(
+            select(Handoff)
+            .where(Handoff.conversation_id == conversation_id)
+            .order_by(Handoff.created_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if handoff is not None:
+            candidates.append((handoff, None, 1))
+
+    return candidates
+
+
+def get_workflow_status(
+    session: Session,
+    *,
+    channel: str,
+    conversation_external_id: str,
+    protocol_code: str | None = None,
+    workflow_kind: str | None = None,
+) -> InternalWorkflowStatusResponse:
+    normalized_protocol = protocol_code.strip().upper() if protocol_code else None
+    normalized_kind = workflow_kind.strip().lower() if workflow_kind else None
+
+    if normalized_protocol:
+        if normalized_protocol.startswith('VIS-'):
+            booking = session.execute(
+                select(VisitBooking)
+                .where(VisitBooking.protocol_code == normalized_protocol)
+                .order_by(VisitBooking.created_at.desc())
+                .limit(1)
+            ).scalar_one_or_none()
+            if booking is None:
+                return InternalWorkflowStatusResponse(found=False)
+            handoff = session.get(Handoff, booking.linked_handoff_id) if booking.linked_handoff_id else None
+            return InternalWorkflowStatusResponse(found=True, item=_workflow_entry_from_visit(booking, handoff))
+
+        if normalized_protocol.startswith('REQ-'):
+            institutional_request = session.execute(
+                select(InstitutionalRequest)
+                .where(InstitutionalRequest.protocol_code == normalized_protocol)
+                .order_by(InstitutionalRequest.created_at.desc())
+                .limit(1)
+            ).scalar_one_or_none()
+            if institutional_request is None:
+                return InternalWorkflowStatusResponse(found=False)
+            handoff = (
+                session.get(Handoff, institutional_request.linked_handoff_id)
+                if institutional_request.linked_handoff_id
+                else None
+            )
+            return InternalWorkflowStatusResponse(
+                found=True,
+                item=_workflow_entry_from_request(institutional_request, handoff),
+            )
+
+        if normalized_protocol.startswith('ATD-'):
+            handoff = _match_handoff_by_ticket_code(session, ticket_code=normalized_protocol)
+            if handoff is None:
+                return InternalWorkflowStatusResponse(found=False)
+            return InternalWorkflowStatusResponse(found=True, item=_workflow_entry_from_handoff(handoff))
+
+    conversation = session.execute(
+        select(Conversation)
+        .where(Conversation.channel == channel)
+        .where(Conversation.external_thread_id == conversation_external_id)
+        .order_by(Conversation.created_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if conversation is None:
+        return InternalWorkflowStatusResponse(found=False)
+
+    candidates = _latest_workflow_candidates(
+        session,
+        conversation_id=conversation.id,
+        workflow_kind=normalized_kind,
+    )
+    if not candidates:
+        return InternalWorkflowStatusResponse(found=False)
+
+    latest_item, latest_handoff, _ = max(
+        candidates,
+        key=lambda item: (item[0].created_at, item[2]),
+    )
+    if isinstance(latest_item, VisitBooking):
+        return InternalWorkflowStatusResponse(found=True, item=_workflow_entry_from_visit(latest_item, latest_handoff))
+    if isinstance(latest_item, InstitutionalRequest):
+        return InternalWorkflowStatusResponse(
+            found=True,
+            item=_workflow_entry_from_request(latest_item, latest_handoff),
+        )
+    return InternalWorkflowStatusResponse(found=True, item=_workflow_entry_from_handoff(latest_item))

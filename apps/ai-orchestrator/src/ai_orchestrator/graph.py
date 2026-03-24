@@ -162,6 +162,42 @@ INSTITUTIONAL_REQUEST_TERMS = {
     'protocolo formal',
     'ouvidoria',
 }
+WORKFLOW_STATUS_TERMS = {
+    'status',
+    'andamento',
+    'situacao',
+    'situação',
+    'fila',
+    'retorno',
+    'atualizacao',
+    'atualização',
+}
+WORKFLOW_REFERENT_TERMS = {
+    'protocolo',
+    'pedido',
+    'solicitacao',
+    'solicitação',
+    'requerimento',
+    'visita',
+    'tour',
+    'chamado',
+    'atendimento',
+    'direcao',
+    'direção',
+    'ouvidoria',
+}
+WORKFLOW_STATUS_OWNERSHIP_TERMS = {
+    'meu pedido',
+    'minha solicitacao',
+    'minha solicitação',
+    'meu protocolo',
+    'minha visita',
+    'essa solicitacao',
+    'essa solicitação',
+    'esse pedido',
+    'esse protocolo',
+}
+PROTOCOL_CODE_PATTERN = re.compile(r'\b(?:VIS|REQ|ATD)-[A-Z0-9-]+\b', re.IGNORECASE)
 GRAPH_RAG_TERMS = {'visao geral', 'compare', 'comparar', 'tendencias', 'corpus', 'relacione'}
 TEACHER_SELF_SERVICE_TERMS = {'horario', 'agenda', 'turma', 'turmas', 'disciplina', 'disciplinas', 'materia', 'materias'}
 PUBLIC_SERVICE_TERMS = {
@@ -445,8 +481,24 @@ def _is_institutional_request(message: str) -> bool:
     return _contains_any(lowered, request_verbs) and _contains_any(lowered, leadership_targets)
 
 
+def _has_protocol_code(message: str) -> bool:
+    return PROTOCOL_CODE_PATTERN.search(message) is not None
+
+
+def _is_workflow_status_request(message: str) -> bool:
+    lowered = _normalize_text(message)
+    if _has_protocol_code(message) and _contains_any(lowered, WORKFLOW_STATUS_TERMS | {'protocolo'}):
+        return True
+    if _contains_any(lowered, WORKFLOW_STATUS_TERMS) and _contains_any(
+        lowered,
+        WORKFLOW_REFERENT_TERMS | WORKFLOW_STATUS_OWNERSHIP_TERMS,
+    ):
+        return True
+    return False
+
+
 def _is_structured_support_workflow_request(message: str) -> bool:
-    return _is_visit_booking_request(message) or _is_institutional_request(message)
+    return _is_visit_booking_request(message) or _is_institutional_request(message) or _is_workflow_status_request(message)
 
 
 def _is_teacher_self_service_request(message: str, role: UserRole) -> bool:
@@ -732,7 +784,10 @@ def structured_tool_call(state: OrchestrationState) -> OrchestrationState:
             selected_tools.append('get_org_directory')
         output_contract = 'fato institucional publico, navegacao de atendimento e orientacao de concierge'
     elif classification.domain is QueryDomain.support:
-        if _is_visit_booking_request(request.message):
+        if _is_workflow_status_request(request.message):
+            selected_tools = ['get_workflow_status']
+            output_contract = 'consulta de status de protocolo, visita ou solicitacao institucional ja registrada'
+        elif _is_visit_booking_request(request.message):
             selected_tools = ['schedule_school_visit', 'create_support_ticket']
             output_contract = 'agendamento ou pre-agendamento de visita institucional com protocolo e fila comercial'
         else:

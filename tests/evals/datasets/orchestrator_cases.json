@@ -426,6 +426,25 @@
     }
   },
   {
+    "case_id": "support_workflow_status_followup",
+    "type": "message_response",
+    "request": {
+      "message": "qual o status do meu protocolo?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_workflow_status"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["REQ-", "fila", "direcao"],
+      "reason_contains": "workflow estruturado"
+    }
+  },
+  {
     "case_id": "public_kpi_visual_response",
     "type": "message_response",
     "request": {
