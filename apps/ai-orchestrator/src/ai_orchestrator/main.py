@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     graph_rag_local_chat_api_key: str = 'llama.cpp'
     graph_rag_local_embedding_api_key: str = 'ollama'
     orchestrator_engine: str = 'langgraph'
+    crewai_pilot_url: str | None = None
 
 
 @lru_cache
@@ -132,6 +133,7 @@ async def meta(
         'service': 'ai-orchestrator',
         'environment': settings.app_env,
         'orchestratorEngine': settings.orchestrator_engine,
+        'crewaiPilotConfigured': bool(settings.crewai_pilot_url),
         'provider': settings.llm_provider,
         'openaiModel': settings.openai_model,
         'googleModel': settings.google_model,
@@ -148,6 +150,7 @@ async def status() -> dict[str, object]:
         'service': 'ai-orchestrator',
         'ready': True,
         'orchestratorEngine': settings.orchestrator_engine,
+        'crewaiPilotConfigured': bool(settings.crewai_pilot_url),
         'llmProvider': settings.llm_provider,
         'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
         'capabilities': [
