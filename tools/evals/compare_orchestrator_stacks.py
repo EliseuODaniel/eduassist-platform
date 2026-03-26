@@ -25,6 +25,15 @@ DEFAULT_PROMPTS = [
 ]
 
 DEFAULT_PROMPT_FILE = 'tests/evals/datasets/two_stack_shadow_cases.json'
+ERROR_WEIGHTS = {
+    'request_failed': 60,
+    'forbidden_entity_or_value': 45,
+    'followup_context_drop': 25,
+    'missing_expected_keyword': 20,
+    'unnecessary_clarification': 12,
+    'repetitive_reply': 10,
+    'canned_tone': 8,
+}
 
 
 def _post_json(url: str, headers: dict[str, str], payload: dict[str, Any]) -> tuple[int, dict[str, Any] | str, float]:
@@ -200,6 +209,13 @@ def _detect_error_types(
     return sorted(set(errors))
 
 
+def _quality_score(*, status: int, error_types: list[str]) -> int:
+    if status != 200:
+        return 0
+    penalty = sum(ERROR_WEIGHTS.get(error_type, 5) for error_type in error_types)
+    return max(0, 100 - penalty)
+
+
 def _summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
     summary: dict[str, Any] = {
         'total_prompts': len(results),
@@ -220,6 +236,8 @@ def _summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
                 'crewai_ok': 0,
                 'baseline_keyword_pass': 0,
                 'crewai_keyword_pass': 0,
+                'baseline_quality_avg': 0.0,
+                'crewai_quality_avg': 0.0,
             },
         )
         bucket['count'] += 1
@@ -229,6 +247,8 @@ def _summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
         bucket['crewai_ok'] += 1 if int(result['crewai']['status']) == 200 else 0
         bucket['baseline_keyword_pass'] += 1 if bool(result['baseline']['keyword_pass']) else 0
         bucket['crewai_keyword_pass'] += 1 if bool(result['crewai']['keyword_pass']) else 0
+        bucket['baseline_quality_avg'] += float(result['baseline']['quality_score'])
+        bucket['crewai_quality_avg'] += float(result['crewai']['quality_score'])
         category = result['category']
         category_bucket = summary['by_category'].setdefault(
             category,
@@ -238,6 +258,8 @@ def _summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
                 'crewai_ok': 0,
                 'baseline_keyword_pass': 0,
                 'crewai_keyword_pass': 0,
+                'baseline_quality_avg': 0.0,
+                'crewai_quality_avg': 0.0,
             },
         )
         category_bucket['count'] += 1
@@ -245,6 +267,8 @@ def _summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
         category_bucket['crewai_ok'] += 1 if int(result['crewai']['status']) == 200 else 0
         category_bucket['baseline_keyword_pass'] += 1 if bool(result['baseline']['keyword_pass']) else 0
         category_bucket['crewai_keyword_pass'] += 1 if bool(result['crewai']['keyword_pass']) else 0
+        category_bucket['baseline_quality_avg'] += float(result['baseline']['quality_score'])
+        category_bucket['crewai_quality_avg'] += float(result['crewai']['quality_score'])
         thread_id = str(result.get('thread_id') or '')
         if thread_id:
             thread_bucket = summary['by_thread'].setdefault(
@@ -255,11 +279,15 @@ def _summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
                     'category': result['category'],
                     'baseline_keyword_pass': 0,
                     'crewai_keyword_pass': 0,
+                    'baseline_quality_avg': 0.0,
+                    'crewai_quality_avg': 0.0,
                 },
             )
             thread_bucket['count'] += 1
             thread_bucket['baseline_keyword_pass'] += 1 if bool(result['baseline']['keyword_pass']) else 0
             thread_bucket['crewai_keyword_pass'] += 1 if bool(result['crewai']['keyword_pass']) else 0
+            thread_bucket['baseline_quality_avg'] += float(result['baseline']['quality_score'])
+            thread_bucket['crewai_quality_avg'] += float(result['crewai']['quality_score'])
         for error in result['baseline'].get('error_types', []):
             summary['error_types']['baseline'][error] = summary['error_types']['baseline'].get(error, 0) + 1
         for error in result['crewai'].get('error_types', []):
@@ -268,6 +296,16 @@ def _summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
         count = max(1, int(bucket['count']))
         bucket['baseline_avg_latency_ms'] = round(bucket['baseline_avg_latency_ms'] / count, 1)
         bucket['crewai_avg_latency_ms'] = round(bucket['crewai_avg_latency_ms'] / count, 1)
+        bucket['baseline_quality_avg'] = round(bucket['baseline_quality_avg'] / count, 1)
+        bucket['crewai_quality_avg'] = round(bucket['crewai_quality_avg'] / count, 1)
+    for bucket in summary['by_category'].values():
+        count = max(1, int(bucket['count']))
+        bucket['baseline_quality_avg'] = round(bucket['baseline_quality_avg'] / count, 1)
+        bucket['crewai_quality_avg'] = round(bucket['crewai_quality_avg'] / count, 1)
+    for bucket in summary['by_thread'].values():
+        count = max(1, int(bucket['count']))
+        bucket['baseline_quality_avg'] = round(bucket['baseline_quality_avg'] / count, 1)
+        bucket['crewai_quality_avg'] = round(bucket['crewai_quality_avg'] / count, 1)
     return summary
 
 
@@ -283,6 +321,7 @@ def _render_markdown_report(payload: dict[str, Any]) -> str:
             f"CrewAI ok {bucket.get('crewai_ok')}/{bucket.get('count')}, "
             f"baseline keyword pass {bucket.get('baseline_keyword_pass')}/{bucket.get('count')}, "
             f"CrewAI keyword pass {bucket.get('crewai_keyword_pass')}/{bucket.get('count')}, "
+            f"quality {bucket.get('baseline_quality_avg')} vs {bucket.get('crewai_quality_avg')}, "
             f"latency {bucket.get('baseline_avg_latency_ms')}ms vs {bucket.get('crewai_avg_latency_ms')}ms"
         )
     lines.append('')
@@ -293,7 +332,8 @@ def _render_markdown_report(payload: dict[str, Any]) -> str:
             f"- `{category}`: baseline ok {bucket.get('baseline_ok')}/{bucket.get('count')}, "
             f"CrewAI ok {bucket.get('crewai_ok')}/{bucket.get('count')}, "
             f"baseline keyword pass {bucket.get('baseline_keyword_pass')}/{bucket.get('count')}, "
-            f"CrewAI keyword pass {bucket.get('crewai_keyword_pass')}/{bucket.get('count')}"
+            f"CrewAI keyword pass {bucket.get('crewai_keyword_pass')}/{bucket.get('count')}, "
+            f"quality {bucket.get('baseline_quality_avg')} vs {bucket.get('crewai_quality_avg')}"
         )
     lines.append('')
     lines.append('## Error Types')
@@ -308,7 +348,8 @@ def _render_markdown_report(payload: dict[str, Any]) -> str:
         lines.append(
             f"- `{thread_id}` ({bucket.get('slice')}/{bucket.get('category')}): "
             f"baseline keyword pass {bucket.get('baseline_keyword_pass')}/{bucket.get('count')}, "
-            f"CrewAI keyword pass {bucket.get('crewai_keyword_pass')}/{bucket.get('count')}"
+            f"CrewAI keyword pass {bucket.get('crewai_keyword_pass')}/{bucket.get('count')}, "
+            f"quality {bucket.get('baseline_quality_avg')} vs {bucket.get('crewai_quality_avg')}"
         )
     lines.append('')
     lines.append('## Prompt Results')
@@ -322,8 +363,8 @@ def _render_markdown_report(payload: dict[str, Any]) -> str:
             lines.append(f"- Thread: `{result['thread_id']}` turn `{result['turn_index']}`")
         if result.get('note'):
             lines.append(f"- Note: {result['note']}")
-        lines.append(f"- Baseline: status {result['baseline']['status']}, latency {result['baseline']['latency_ms']}ms, keyword pass `{result['baseline']['keyword_pass']}`")
-        lines.append(f"- CrewAI: status {result['crewai']['status']}, latency {result['crewai']['latency_ms']}ms, keyword pass `{result['crewai']['keyword_pass']}`")
+        lines.append(f"- Baseline: status {result['baseline']['status']}, latency {result['baseline']['latency_ms']}ms, keyword pass `{result['baseline']['keyword_pass']}`, quality `{result['baseline']['quality_score']}`")
+        lines.append(f"- CrewAI: status {result['crewai']['status']}, latency {result['crewai']['latency_ms']}ms, keyword pass `{result['crewai']['keyword_pass']}`, quality `{result['crewai']['quality_score']}`")
         if result['baseline'].get('error_types'):
             lines.append(f"- Baseline errors: {', '.join(result['baseline']['error_types'])}")
         if result['crewai'].get('error_types'):
@@ -429,6 +470,7 @@ def main() -> int:
                 'answer_text': baseline_answer,
                 'keyword_pass': _contains_expected_keywords(baseline_answer, expected_keywords),
                 'error_types': baseline_error_types,
+                'quality_score': _quality_score(status=baseline_status, error_types=baseline_error_types),
                 'body': baseline_body,
             },
             'crewai': {
@@ -437,6 +479,7 @@ def main() -> int:
                 'answer_text': crewai_answer,
                 'keyword_pass': _contains_expected_keywords(crewai_answer, expected_keywords),
                 'error_types': crewai_error_types,
+                'quality_score': _quality_score(status=pilot_status, error_types=crewai_error_types),
                 'body': pilot_body,
             },
         }

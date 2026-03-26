@@ -1,0 +1,2286 @@
+{
+  "thread_id": "telegram:1649845499",
+  "message_count": 380,
+  "messages": [
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "ola",
+      "created_at": "2026-03-24 07:07:48"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Como posso ajudar?",
+      "created_at": "2026-03-24 07:07:48"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quanto é a mensalidade da escola no ensino médio?",
+      "created_at": "2026-03-24 07:08:04"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+      "created_at": "2026-03-24 07:08:04"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual o horário do ensino médio?",
+      "created_at": "2026-03-24 07:08:23"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "A base de informações atual não contém o horário específico do ensino médio.",
+      "created_at": "2026-03-24 07:08:23"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "e o fundamental",
+      "created_at": "2026-03-24 07:10:35"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "A base de informações atual não contém o horário específico do ensino fundamental.",
+      "created_at": "2026-03-24 07:10:35"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual a nota do meu filho",
+      "created_at": "2026-03-24 07:11:16"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+      "created_at": "2026-03-24 07:11:16"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "que horário tem aula pro 9o ano?",
+      "created_at": "2026-03-24 07:56:45"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "A base de informações atual não contém o horário específico das aulas para o 9º ano. Fontes: - FAQ Comercial e de Ingresso (v2026.2) - Rotina e Vida Escolar (v2026.2) - Segmentos, Turnos e Horarios (v2026.2)",
+      "created_at": "2026-03-24 07:56:45"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual o nome da diretora",
+      "created_at": "2026-03-24 07:57:06"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "A base de informações atual não contém o nome da diretora.",
+      "created_at": "2026-03-24 07:57:06"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual a média de aprovação?",
+      "created_at": "2026-03-24 07:57:21"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "A base de informações atual não contém a média de aprovação.",
+      "created_at": "2026-03-24 07:57:21"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "fale uma curiosidade única dessa escola",
+      "created_at": "2026-03-24 07:57:37"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Ainda nao encontrei uma resposta suficientemente suportada na base publica sobre curiosidade, dessa, fale, unica. Se esse servico existir, preciso que a base documental seja atualizada ou que voce reformule a pergunta com o nome oficial do setor.",
+      "created_at": "2026-03-24 07:57:37"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Como posso ajudar?",
+      "created_at": "2026-03-24 19:29:45"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "ola",
+      "created_at": "2026-03-24 19:29:45"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "com quem eu falo?",
+      "created_at": "2026-03-24 19:46:41"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Para que eu possa direcionar você à pessoa ou setor correto, por favor, me informe sobre qual assunto você gostaria de falar.",
+      "created_at": "2026-03-24 19:46:41"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais opções de assuntos eu tenho?",
+      "created_at": "2026-03-24 19:47:30"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "A base de conhecimento atual não possui informações suficientes para listar as opções de assuntos disponíveis.",
+      "created_at": "2026-03-24 19:47:30"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "oi",
+      "created_at": "2026-03-25 02:57:20"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Oi. Voce esta falando com o EduAssist do Colegio Horizonte. Posso te ajudar com matricula, bolsas, descontos e visitas, turnos, horarios, calendario e rotina escolar, biblioteca, uniforme, transporte e estrutura da escola e canais oficiais, secretaria e orientacao por setor. Se sua conta estiver vinculada, eu tambem consigo consultar notas, faltas e financeiro.",
+      "created_at": "2026-03-25 02:57:20"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "essa escola tem biblioteca?",
+      "created_at": "2026-03-25 02:57:45"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "No perfil publico atual do Colegio Horizonte: - Sim: Biblioteca Aurora. Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.",
+      "created_at": "2026-03-25 02:57:45"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "por que não tem aula de dança?",
+      "created_at": "2026-03-25 02:57:56"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "No perfil publico atual do Colegio Horizonte: - Sim: Oficina de danca e expressao corporal. Oferta semestral no contraturno, vinculada ao programa cultural.",
+      "created_at": "2026-03-25 02:57:56"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "e aula de computação e robótica?",
+      "created_at": "2026-03-25 02:58:13"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "No perfil publico atual do Colegio Horizonte: - Sim: Oficina de danca e expressao corporal. Oferta semestral no contraturno, vinculada ao programa cultural. - Sim: Espaco Maker. Ambiente de robotica, prototipagem leve e projetos interdisciplinares.",
+      "created_at": "2026-03-25 02:58:13"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "e aula de física quântica avançada?",
+      "created_at": "2026-03-25 02:58:28"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "No perfil publico atual do Colegio Horizonte: - Sim: Espaco Maker. Ambiente de robotica, prototipagem leve e projetos interdisciplinares. - Sim: Oficina de danca e expressao corporal. Oferta semestral no contraturno, vinculada ao programa cultural.",
+      "created_at": "2026-03-25 02:58:28"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "bom dia",
+      "created_at": "2026-03-25 03:14:21"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Bom dia. Voce esta falando com o EduAssist do Colegio Horizonte. Posso te ajudar com matricula, bolsas, descontos e visitas, turnos, horarios, calendario e rotina escolar, biblioteca, uniforme, transporte e estrutura da escola e canais oficiais, secretaria e orientacao por setor. Se sua conta estiver vinculada, eu tambem consigo consultar notas, faltas e financeiro.",
+      "created_at": "2026-03-25 03:14:21"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "não quero vincular a conta",
+      "created_at": "2026-03-25 03:14:31"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+      "created_at": "2026-03-25 03:14:31"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como falo com a direção?",
+      "created_at": "2026-03-25 03:14:45"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Diretora geral: Helena Martins. Governanca escolar, cultura institucional e relacionamento com familias. Canal institucional: direcao@colegiohorizonte.edu.br. Atende por agenda institucional e participa dos encontros de familias a cada bimestre.",
+      "created_at": "2026-03-25 03:14:45"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Para reportar um caso de bullying, o canal adequado é a nossa equipe de Orientação Educacional e Acompanhamento Socioemocional",
+      "created_at": "2026-03-25 03:14:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como reporto um bullying?",
+      "created_at": "2026-03-25 03:14:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Ainda nao encontrei uma resposta suficientemente suportada na base publica sobre contato, devo, falar. Se esse servico existir, preciso que a base documental seja atualizada ou que voce reformule a pergunta com o nome oficial do setor.",
+      "created_at": "2026-03-25 03:15:08"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "mas com qual contato eu devo falar",
+      "created_at": "2026-03-25 03:15:08"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Diretora geral: Helena Martins. Governanca escolar, cultura institucional e relacionamento com familias. Canal institucional: direcao@colegiohorizonte.edu.br. Atende por agenda institucional e participa dos encontros de familias a cada bimestre.",
+      "created_at": "2026-03-25 03:15:27"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual o whats do diretor?",
+      "created_at": "2026-03-25 03:15:27"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Entendo sua curiosidade sobre o corpo docente. No momento, nossa base de informações não contém os nomes dos professores de disciplinas específicas, como o de Educação Física. Se precisar de informações sobre os coordenadores ou a diretora, posso ajudar!",
+      "created_at": "2026-03-25 03:16:02"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual o nome do prof de educação física?",
+      "created_at": "2026-03-25 03:16:02"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Diretora geral: Helena Martins. Governanca escolar, cultura institucional e relacionamento com familias. Canal institucional: direcao@colegiohorizonte.edu.br. Atende por agenda institucional e participa dos encontros de familias a cada bimestre.",
+      "created_at": "2026-03-25 03:16:23"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual idade do diretor?",
+      "created_at": "2026-03-25 03:16:23"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Boa noite. Voce esta falando com o EduAssist do Colegio Horizonte. Posso te ajudar com matricula, bolsas, descontos e visitas, turnos, horarios, calendario e rotina escolar, biblioteca, uniforme, transporte e estrutura da escola e canais oficiais, secretaria e orientacao por setor. Se sua conta estiver vinculada, eu tambem consigo consultar notas, faltas e financeiro.",
+      "created_at": "2026-03-25 05:45:08"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "boa noite",
+      "created_at": "2026-03-25 05:45:08"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero saber minhas notas de física quantica",
+      "created_at": "2026-03-25 05:45:27"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+      "created_at": "2026-03-25 05:45:27"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "Como vinculo minha conta?",
+      "created_at": "2026-03-25 05:45:41"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Para consultas protegidas, como notas, faltas e financeiro, voce precisa vincular sua conta do Telegram ao portal da escola. No portal autenticado, gere o codigo de vinculacao e depois envie aqui o comando `/start link_<codigo>`. Depois disso, eu passo a consultar seus dados autorizados por este canal.",
+      "created_at": "2026-03-25 05:45:41"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais as minhas notas de física",
+      "created_at": "2026-03-25 06:18:41"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sua conta tem mais de um aluno vinculado. Diga qual aluno deseja consultar: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002).",
+      "created_at": "2026-03-25 06:18:41"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais as notas do lucas oliveira",
+      "created_at": "2026-03-25 06:18:51"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo academico de Lucas Oliveira: - Turma: 1o Ano A - Serie atual: 1 Notas mais recentes: - Biologia - Avaliacao B1: 8.40/10.00 - Biologia - Avaliacao 2026-B1 - BIO: 7.00/10.00 - Biologia - Trabalho B1: 8.10/10.00 - Biologia - Avaliacao B2: 8.60/10.00 Frequencia: - Biologia: 2 presencas, 0 atrasos, 1 faltas (50 min) - Educacao Fisica: 1 presencas, 0 atrasos, 1 faltas (50 min) - Filosofia: 1 presencas, 1 atrasos, 0 faltas (10 min) - Fisica: 1 presencas, 1 atrasos, 0 faltas (10 min)",
+      "created_at": "2026-03-25 06:18:51"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais as próximas provas do lucas",
+      "created_at": "2026-03-25 06:19:08"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Entendo que você gostaria de saber sobre as próximas provas do Lucas. No momento, não tenho acesso direto ao calendário de",
+      "created_at": "2026-03-25 06:19:08"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual data foram as faltas do lucas",
+      "created_at": "2026-03-25 06:19:29"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo academico de Lucas Oliveira: - Turma: 1o Ano A - Serie atual: 1 Frequencia: - Biologia: 2 presencas, 0 atrasos, 1 faltas (50 min) - Educacao Fisica: 1 presencas, 0 atrasos, 1 faltas (50 min) - Filosofia: 1 presencas, 1 atrasos, 0 faltas (10 min) - Fisica: 1 presencas, 1 atrasos, 0 faltas (10 min) Notas mais recentes: - Biologia - Avaliacao B1: 8.40/10.00 - Biologia - Avaliacao 2026-B1 - BIO: 7.00/10.00 - Biologia - Trabalho B1: 8.10/10.00 - Biologia - Avaliacao B2: 8.60/10.00",
+      "created_at": "2026-03-25 06:19:29"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Voce pode falar com Reuniao com coordenacao pedagogica por bot, secretaria ou portal. O prazo tipico e retorno em ate 2 dias uteis. Usado para transicao de serie, adaptacao, rotina e acompanhamento escolar. Se quiser, eu sigo por aqui com a solicitacao certa.",
+      "created_at": "2026-03-25 06:19:51"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como falo com a secretária?",
+      "created_at": "2026-03-25 06:19:51"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "siga por favor",
+      "created_at": "2026-03-25 06:20:15"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Com certeza! Para falar com a Secretaria Escolar, você tem algumas opções: *   **Aqui pelo EduAssist (bot):**",
+      "created_at": "2026-03-25 06:20:15"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero falar por aqui",
+      "created_at": "2026-03-25 06:20:30"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Ótimo! Para que eu possa te ajudar com a Secretaria Escolar por aqui, por favor, me diga qual assunto você precisa resolver ou qual documento você busca. Assim, consigo direcionar melhor sua solicitação.",
+      "created_at": "2026-03-25 06:20:30"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero saber se estou com a documentação atualizada e completa? e se meus boletos estão pagos ou atrasados",
+      "created_at": "2026-03-25 06:20:53"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Panorama financeiro das contas vinculadas: - Total de faturas em aberto: 1 - Total de faturas vencidas: 0 - Lucas Oliveira: 0 em aberto, 0 vencidas   Nenhuma fatura compativel com esse filtro foi encontrada. - Ana Oliveira: 1 em aberto, 0 vencidas   Nenhuma fatura compativel com esse filtro foi encontrada. A emissao automatica de segunda via ainda entra na proxima etapa; por enquanto eu consigo informar a situacao das faturas.",
+      "created_at": "2026-03-25 06:20:53"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "e a documentação, não respondeu",
+      "created_at": "2026-03-25 06:21:10"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Panorama financeiro das contas vinculadas: - Total de faturas em aberto: 1 - Total de faturas vencidas: 0 - Lucas Oliveira: 0 em aberto, 0 vencidas   2026-03: vencimento 2026-03-10, status paid, valor 1450.00 - Ana Oliveira: 1 em aberto, 0 vencidas   2026-03: vencimento 2026-03-10, status open, valor 1450.00",
+      "created_at": "2026-03-25 06:21:10"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais os documentos pra matrícula?",
+      "created_at": "2026-03-25 06:21:29"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Para a matrícula no Colégio Horizonte, seja para o Ensino Fundamental II ou Ensino Médio, os documentos necessários são: *   Ficha cadastral *   Documento de identificação do aluno *   Documento do responsável legal *   Histórico escolar *   Comprovante de residência A confirmação da vaga depende da análise desses documentos e da assinatura do contrato. Fontes: - FAQ Institucional do Colegio Horizonte (v2026.2) - Manual de Matricula do Ensino Medio (v2026.2)",
+      "created_at": "2026-03-25 06:21:29"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "aceita documentos online?",
+      "created_at": "2026-03-25 06:21:59"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Ainda nao encontrei uma resposta publica suficientemente clara sobre aceita, online. Se esse servico existir, a base documental precisa ser atualizada ou a pergunta precisa vir com o nome oficial do setor.",
+      "created_at": "2026-03-25 06:21:59"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "por onde envio meus documentos?",
+      "created_at": "2026-03-25 06:22:17"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Para o envio de documentos, incluindo os de matrícula, você pode utilizar os seguintes canais: *   **Secretaria presencial:** Nosso atendimento na secretaria está disponível para receber seus documentos. *   ** Fontes: - Tecnologia e Canais Digitais (v2026.2) - Rotina e Vida Escolar (v2026.2) - Manual de Matricula do Ensino Medio (v2026.2)",
+      "created_at": "2026-03-25 06:22:17"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como altero o endereço de email no meu cadastro?",
+      "created_at": "2026-03-25 06:22:34"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Ainda nao encontrei uma resposta publica suficientemente clara sobre altero, cadastro, email, endereco. Se esse servico existir, a base documental precisa ser atualizada ou a pergunta precisa vir com o nome oficial do setor.",
+      "created_at": "2026-03-25 06:22:34"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero ver o financeiro da Ana Oliveira",
+      "created_at": "2026-03-25 07:07:53"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo financeiro de Ana Oliveira: - Contrato: CTR-2026-002 - Responsavel financeiro: Maria Oliveira - Mensalidade base: 1450.00 - Faturas em aberto: 1 - Faturas vencidas: 0 Ultimas faturas: - 2026-03: vencimento 2026-03-10, status open, valor 1450.00",
+      "created_at": "2026-03-25 07:07:53"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais as proximas provas do Lucas Oliveira?",
+      "created_at": "2026-03-25 07:07:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Proximas avaliacoes de Lucas Oliveira: - Turma: 1o Ano A - Biologia - Avaliacao B1: 2026-04-10 - Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10 - Historia - Avaliacao B1: 2026-04-10 - Ingles - Avaliacao B1: 2026-04-10 - Matematica - Avaliacao 2026-B1 - MAT: 2026-04-10 - Matematica - Avaliacao B1: 2026-04-10",
+      "created_at": "2026-03-25 07:07:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual data foram as faltas do Lucas Oliveira?",
+      "created_at": "2026-03-25 07:07:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Registros de frequencia de Lucas Oliveira: - Turma: 1o Ano A - 2026-04-12 - Tecnologia e Cultura Digital: atraso (10 min) - 2026-04-11 - Educacao Fisica: presenca - 2026-04-10 - Redacao: falta (50 min) - 2026-04-09 - Sociologia: presenca - 2026-04-08 - Filosofia: atraso (10 min) - 2026-04-07 - Historia: presenca - 2026-04-06 - Geografia: falta (50 min) - 2026-04-05 - Fisica: presenca",
+      "created_at": "2026-03-25 07:07:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como altero o endereco de email no meu cadastro?",
+      "created_at": "2026-03-25 07:07:55"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje o email cadastral registrado e maria.oliveira@mock.eduassist.local. O telefone cadastral atual e +55 11 98888-1001. Para alterar email ou telefone, o caminho mais seguro e secretaria escolar, porque essa atualizacao ainda exige confirmacao do titular. Se quiser, eu tambem posso te dizer qual canal da secretaria faz essa tratativa mais rapido.",
+      "created_at": "2026-03-25 07:07:55"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero falar com um humano sobre o financeiro",
+      "created_at": "2026-03-25 07:07:55"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260325-8C0D6C19. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
+      "created_at": "2026-03-25 07:07:55"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "oi",
+      "created_at": "2026-03-25 08:40:42"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Oi. Voce esta falando com o EduAssist do Colegio Horizonte. Se quiser, eu retomo o assunto com a secretaria e sigo pelo proximo passo.",
+      "created_at": "2026-03-25 08:40:42"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "não, quero saber que horas amanha cedo a escola abre?",
+      "created_at": "2026-03-25 08:40:59"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Ainda nao encontrei uma resposta publica suficientemente clara sobre abre, amanha, cedo, horas, nao, quero, saber. Se esse servico existir, a base documental precisa ser atualizada ou a pergunta precisa vir com o nome oficial do setor.",
+      "created_at": "2026-03-25 08:40:59"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como ligo pra escola?",
+      "created_at": "2026-03-25 08:41:23"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Ainda nao encontrei uma resposta publica suficientemente clara sobre ligo, pra. Se esse servico existir, a base documental precisa ser atualizada ou a pergunta precisa vir com o nome oficial do setor.",
+      "created_at": "2026-03-25 08:41:23"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual o telefone e o fax?",
+      "created_at": "2026-03-25 08:41:39"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "O telefone principal da escola hoje e (11) 3333-4200, na secretaria.",
+      "created_at": "2026-03-25 08:41:39"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "e qual o email",
+      "created_at": "2026-03-25 08:41:51"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "O email mais direto de Colegio Horizonte hoje e secretaria@colegiohorizonte.edu.br, pela secretaria.",
+      "created_at": "2026-03-25 08:41:51"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual o endereço",
+      "created_at": "2026-03-25 08:42:01"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Compreendo sua pergunta sobre o endereço. No momento, a base de informações que tenho não contém o endereço completo do Colégio Horizonte. Fontes: - Contatos e Canais Oficiais (v2026.2) - Tecnologia e Canais Digitais (v2026.2)",
+      "created_at": "2026-03-25 08:42:01"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual horário de funcionamento?",
+      "created_at": "2026-03-25 08:42:09"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! O atendimento presencial no Colégio Horizonte funciona de segunda a sexta-feira, das 7h00 às 17h30. Para o atendimento digital, seguimos o mesmo calendário útil, com respostas automáticas e, se necessário, escalonamento para atendimento humano. Fontes: - Segmentos, Turnos e Horarios (v2026.2) - Contatos e Canais Oficiais (v2026.2)",
+      "created_at": "2026-03-25 08:42:09"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "então que horas abre amanha cedo?",
+      "created_at": "2026-03-25 08:42:23"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! O Colégio Horizonte abre às 7h00 da manhã, como de costume nos dias úteis.",
+      "created_at": "2026-03-25 08:42:23"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como agendo para falar com a direção?",
+      "created_at": "2026-03-25 08:42:36"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Encaminhei sua solicitacao para a fila de atendimento. Protocolo: ATD-20260325-BA3D79BE. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
+      "created_at": "2026-03-25 08:42:36"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero que você agende para mim um horário com o diretor",
+      "created_at": "2026-03-25 08:43:12"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Diretora geral: Helena Martins. Governanca escolar, cultura institucional e relacionamento com familias. Canal institucional: direcao@colegiohorizonte.edu.br. Atende por agenda institucional e participa dos encontros de familias a cada bimestre.",
+      "created_at": "2026-03-25 08:43:12"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "que dia é hoje?",
+      "created_at": "2026-03-25 08:43:37"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Como sou um assistente virtual, não tenho acesso à data e hora atual em tempo real. Para saber o dia de hoje, você pode verificar no seu dispositivo ou calendário.",
+      "created_at": "2026-03-25 08:43:37"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual modelo é você?",
+      "created_at": "2026-03-25 08:43:50"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Eu sou o EduAssist, o assistente institucional aqui do Colégio Horizonte. Minha função é ajudar você com informações sobre a escola, nossos serviços, calendário e direcionar para os setores responsáveis, caso precise de um atendimento mais específico. Pode me perguntar o que precisar!",
+      "created_at": "2026-03-25 08:43:50"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "sou professor de ufologia, como envio currículo?",
+      "created_at": "2026-03-25 08:44:58"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Como o EduAssist, meu foco é fornecer informações sobre os serviços e o funcionamento do Colégio Horizonte para nossos estudantes e famílias. No momento, não tenho informações específicas em minha base de conhecimento sobre o processo de envio de currículos ou vagas para professores de ufologia. Para questões relacionadas a oportunidades de trabalho ou envio de currículos, sugiro que você verifique o site oficial do Colégio Horizonte ou entre em contato diretamente com a secretaria da escola, que poderá orientá-lo sobre os canais adequados para esse tipo de consulta.",
+      "created_at": "2026-03-25 08:44:58"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual site do colégio?",
+      "created_at": "2026-03-25 08:45:15"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Agradeço a sua pergunta. No momento, minha base de conhecimento não contém o endereço do site oficial do Colégio Horizonte. Para obter essa informação, sugiro que você entre em contato diretamente com a secretaria da escola. Eles poderão fornecer o link correto.",
+      "created_at": "2026-03-25 08:45:15"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "esse colégio tem aula de robótica?",
+      "created_at": "2026-03-25 08:45:27"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sim. O Colegio Horizonte oferece Espaco Maker. Ambiente de robotica, prototipagem leve e projetos interdisciplinares.",
+      "created_at": "2026-03-25 08:45:27"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Nao vi uma referencia oficial sobre esse colegio tem aula de ufologia no perfil publico do Colegio Horizonte. Se voce quiser, eu posso te dizer quais atividades e espacos aparecem oficialmente.",
+      "created_at": "2026-03-25 08:45:39"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "esse colégio tem aula de ufologia?",
+      "created_at": "2026-03-25 08:45:39"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "o que é educação física?",
+      "created_at": "2026-03-25 08:45:52"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Agradeço a sua pergunta. No momento, minha base de conhecimento não contém uma definição específica sobre o que é Educação Física. Minhas informações são focadas nos serviços e diferenciais do Colégio Horizonte. Se você tiver alguma dúvida sobre como a Educação Física é abordada em nosso currículo ou quais atividades são oferecidas, posso verificar se há informações disponíveis sobre isso.",
+      "created_at": "2026-03-25 08:45:52"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual a base curricular do ensino médio que vocês seguem?",
+      "created_at": "2026-03-25 08:46:06"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje Colegio Horizonte atende estes segmentos: - Ensino Fundamental II (6o ao 9o ano) - Ensino Medio (1a a 3a serie)",
+      "created_at": "2026-03-25 08:46:06"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais matérias tem no ensino médio/",
+      "created_at": "2026-03-25 08:46:10"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sua conta tem mais de um aluno vinculado. Diga qual aluno deseja consultar: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002).",
+      "created_at": "2026-03-25 08:46:10"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais matérias são ensinadas no ensino médio?",
+      "created_at": "2026-03-25 08:46:22"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero ver o financeiro da Ana Oliveira",
+      "created_at": "2026-03-25 09:26:19"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo financeiro de Ana Oliveira: - Contrato: CTR-2026-002 - Responsavel financeiro: Maria Oliveira - Mensalidade base: 1450.00 - Faturas em aberto: 1 - Faturas vencidas: 0 Ultimas faturas: - 2026-03: vencimento 2026-03-10, status em aberto, valor 1450.00",
+      "created_at": "2026-03-25 09:26:19"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Proximas avaliacoes de Lucas Oliveira: - Turma: 1o Ano A - Biologia - Avaliacao B1: 2026-04-10 - Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10 - Historia - Avaliacao B1: 2026-04-10 - Ingles - Avaliacao B1: 2026-04-10 - Matematica - Avaliacao 2026-B1 - MAT: 2026-04-10 - Matematica - Avaliacao B1: 2026-04-10",
+      "created_at": "2026-03-25 09:26:20"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais as proximas provas do Lucas Oliveira?",
+      "created_at": "2026-03-25 09:26:20"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual data foram as faltas do Lucas Oliveira?",
+      "created_at": "2026-03-25 09:26:20"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Registros de frequencia de Lucas Oliveira: - Turma: 1o Ano A - 2026-04-12 - Tecnologia e Cultura Digital: atraso (10 min) - 2026-04-11 - Educacao Fisica: presenca - 2026-04-10 - Redacao: falta (50 min) - 2026-04-09 - Sociologia: presenca - 2026-04-08 - Filosofia: atraso (10 min) - 2026-04-07 - Historia: presenca - 2026-04-06 - Geografia: falta (50 min) - 2026-04-05 - Fisica: presenca",
+      "created_at": "2026-03-25 09:26:20"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como altero o endereco de email no meu cadastro?",
+      "created_at": "2026-03-25 09:26:21"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje o email cadastral registrado e maria.oliveira@mock.eduassist.local. O telefone cadastral atual e +55 11 98888-1001. Para alterar email ou telefone, o caminho mais seguro e secretaria escolar, porque essa atualizacao ainda exige confirmacao do titular. Se quiser, eu tambem posso te dizer qual canal da secretaria faz essa tratativa mais rapido.",
+      "created_at": "2026-03-25 09:26:21"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero falar com um humano sobre o financeiro",
+      "created_at": "2026-03-25 09:26:21"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sua solicitacao ja estava registrada na fila de financeiro. Protocolo: ATD-20260325-8C0D6C19. Status atual: queued.",
+      "created_at": "2026-03-25 09:26:21"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero ver o financeiro da Ana Oliveira",
+      "created_at": "2026-03-25 09:27:02"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo financeiro de Ana Oliveira: - Contrato: CTR-2026-002 - Responsavel financeiro: Maria Oliveira - Mensalidade base: 1450.00 - Faturas em aberto: 1 - Faturas vencidas: 0 Ultimas faturas: - 2026-03: vencimento 2026-03-10, status em aberto, valor 1450.00",
+      "created_at": "2026-03-25 09:27:02"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais as proximas provas do Lucas Oliveira?",
+      "created_at": "2026-03-25 09:27:03"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Proximas avaliacoes de Lucas Oliveira: - Turma: 1o Ano A - Biologia - Avaliacao B1: 2026-04-10 - Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10 - Historia - Avaliacao B1: 2026-04-10 - Ingles - Avaliacao B1: 2026-04-10 - Matematica - Avaliacao 2026-B1 - MAT: 2026-04-10 - Matematica - Avaliacao B1: 2026-04-10",
+      "created_at": "2026-03-25 09:27:03"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual data foram as faltas do Lucas Oliveira?",
+      "created_at": "2026-03-25 09:27:03"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Registros de frequencia de Lucas Oliveira: - Turma: 1o Ano A - 2026-04-12 - Tecnologia e Cultura Digital: atraso (10 min) - 2026-04-11 - Educacao Fisica: presenca - 2026-04-10 - Redacao: falta (50 min) - 2026-04-09 - Sociologia: presenca - 2026-04-08 - Filosofia: atraso (10 min) - 2026-04-07 - Historia: presenca - 2026-04-06 - Geografia: falta (50 min) - 2026-04-05 - Fisica: presenca",
+      "created_at": "2026-03-25 09:27:03"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje o email cadastral registrado e maria.oliveira@mock.eduassist.local. O telefone cadastral atual e +55 11 98888-1001. Para alterar email ou telefone, o caminho mais seguro e secretaria escolar, porque essa atualizacao ainda exige confirmacao do titular. Se quiser, eu tambem posso te dizer qual canal da secretaria faz essa tratativa mais rapido.",
+      "created_at": "2026-03-25 09:27:04"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como altero o endereco de email no meu cadastro?",
+      "created_at": "2026-03-25 09:27:04"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sua solicitacao ja estava registrada na fila de financeiro. Protocolo: ATD-20260325-8C0D6C19. Status atual: queued.",
+      "created_at": "2026-03-25 09:27:04"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero falar com um humano sobre o financeiro",
+      "created_at": "2026-03-25 09:27:04"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero ver o financeiro da Ana Oliveira",
+      "created_at": "2026-03-25 09:41:23"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo financeiro de Ana Oliveira: - Contrato: CTR-2026-002 - Responsavel financeiro: Maria Oliveira - Mensalidade base: 1450.00 - Faturas em aberto: 1 - Faturas vencidas: 0 Ultimas faturas: - 2026-03: vencimento 2026-03-10, status em aberto, valor 1450.00",
+      "created_at": "2026-03-25 09:41:23"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais as proximas provas do Lucas Oliveira?",
+      "created_at": "2026-03-25 09:41:24"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Proximas avaliacoes de Lucas Oliveira: - Turma: 1o Ano A - Biologia - Avaliacao B1: 2026-04-10 - Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10 - Historia - Avaliacao B1: 2026-04-10 - Ingles - Avaliacao B1: 2026-04-10 - Matematica - Avaliacao 2026-B1 - MAT: 2026-04-10 - Matematica - Avaliacao B1: 2026-04-10",
+      "created_at": "2026-03-25 09:41:24"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual data foram as faltas do Lucas Oliveira?",
+      "created_at": "2026-03-25 09:41:24"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Registros de frequencia de Lucas Oliveira: - Turma: 1o Ano A - 2026-04-12 - Tecnologia e Cultura Digital: atraso (10 min) - 2026-04-11 - Educacao Fisica: presenca - 2026-04-10 - Redacao: falta (50 min) - 2026-04-09 - Sociologia: presenca - 2026-04-08 - Filosofia: atraso (10 min) - 2026-04-07 - Historia: presenca - 2026-04-06 - Geografia: falta (50 min) - 2026-04-05 - Fisica: presenca",
+      "created_at": "2026-03-25 09:41:24"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como altero o endereco de email no meu cadastro?",
+      "created_at": "2026-03-25 09:41:25"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje o email cadastral registrado e maria.oliveira@mock.eduassist.local. O telefone cadastral atual e +55 11 98888-1001. Para alterar email ou telefone, o caminho mais seguro e secretaria escolar, porque essa atualizacao ainda exige confirmacao do titular. Se quiser, eu tambem posso te dizer qual canal da secretaria faz essa tratativa mais rapido.",
+      "created_at": "2026-03-25 09:41:25"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero falar com um humano sobre o financeiro",
+      "created_at": "2026-03-25 09:41:25"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sua solicitacao ja estava registrada na fila de financeiro. Protocolo: ATD-20260325-8C0D6C19. Status atual: queued.",
+      "created_at": "2026-03-25 09:41:25"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero ver o financeiro da Ana Oliveira",
+      "created_at": "2026-03-25 10:12:20"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo financeiro de Ana Oliveira: - Contrato: CTR-2026-002 - Responsavel financeiro: Maria Oliveira - Mensalidade base: 1450.00 - Faturas em aberto: 1 - Faturas vencidas: 0 Ultimas faturas: - 2026-03: vencimento 2026-03-10, status em aberto, valor 1450.00",
+      "created_at": "2026-03-25 10:12:20"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais as proximas provas do Lucas Oliveira?",
+      "created_at": "2026-03-25 10:12:21"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Proximas avaliacoes de Lucas Oliveira: - Turma: 1o Ano A - Biologia - Avaliacao B1: 2026-04-10 - Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10 - Historia - Avaliacao B1: 2026-04-10 - Ingles - Avaliacao B1: 2026-04-10 - Matematica - Avaliacao 2026-B1 - MAT: 2026-04-10 - Matematica - Avaliacao B1: 2026-04-10",
+      "created_at": "2026-03-25 10:12:21"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Registros de frequencia de Lucas Oliveira: - Turma: 1o Ano A - 2026-04-12 - Tecnologia e Cultura Digital: atraso (10 min) - 2026-04-11 - Educacao Fisica: presenca - 2026-04-10 - Redacao: falta (50 min) - 2026-04-09 - Sociologia: presenca - 2026-04-08 - Filosofia: atraso (10 min) - 2026-04-07 - Historia: presenca - 2026-04-06 - Geografia: falta (50 min) - 2026-04-05 - Fisica: presenca",
+      "created_at": "2026-03-25 10:12:22"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual data foram as faltas do Lucas Oliveira?",
+      "created_at": "2026-03-25 10:12:22"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje o email cadastral registrado e maria.oliveira@mock.eduassist.local. O telefone cadastral atual e +55 11 98888-1001. Para alterar email ou telefone, o caminho mais seguro e secretaria escolar, porque essa atualizacao ainda exige confirmacao do titular. Se quiser, eu tambem posso te dizer qual canal da secretaria faz essa tratativa mais rapido.",
+      "created_at": "2026-03-25 10:12:30"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como altero o endereco de email no meu cadastro?",
+      "created_at": "2026-03-25 10:12:30"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero falar com um humano sobre o financeiro",
+      "created_at": "2026-03-25 10:12:31"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sua solicitacao ja estava registrada na fila de financeiro. Protocolo: ATD-20260325-8C0D6C19. Status atual: queued.",
+      "created_at": "2026-03-25 10:12:31"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "Mostre as notas",
+      "created_at": "2026-03-25 10:44:15"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo academico de Lucas Oliveira: - Turma: 1o Ano A - Serie atual: 1 Notas mais recentes: - Biologia - Avaliacao B1: 8.40/10.00 - Biologia - Avaliacao 2026-B1 - BIO: 7.00/10.00 - Biologia - Trabalho B1: 8.10/10.00 - Biologia - Avaliacao B2: 8.60/10.00 Frequencia: - Biologia: 2 presencas, 0 atrasos, 1 faltas (50 min) - Educacao Fisica: 1 presencas, 0 atrasos, 1 faltas (50 min) - Filosofia: 1 presencas, 1 atrasos, 0 faltas (10 min) - Fisica: 1 presencas, 1 atrasos, 0 faltas (10 min)",
+      "created_at": "2026-03-25 10:44:15"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo financeiro de Lucas Oliveira: - Contrato: CTR-2026-001 - Responsavel financeiro: Maria Oliveira - Mensalidade base: 1450.00 - Faturas em aberto: 0 - Faturas vencidas: 0 Ultimas faturas: - 2026-03: vencimento 2026-03-10, status paga, valor 1450.00",
+      "created_at": "2026-03-25 10:44:20"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "E o financeiro do Lucas?",
+      "created_at": "2026-03-25 10:44:20"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "E as notas do Lucas?",
+      "created_at": "2026-03-25 10:44:23"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Para que eu possa te ajudar com a segunda via do Lucas, preciso de uma pequena confirmação: você se refere a um documento",
+      "created_at": "2026-03-25 10:44:32"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "Preciso da segunda via do Lucas",
+      "created_at": "2026-03-25 10:44:32"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo financeiro de Lucas Oliveira: - Contrato: CTR-2026-001 - Responsavel financeiro: Maria Oliveira - Mensalidade base: 1450.00 - Faturas em aberto: 0 - Faturas vencidas: 0 Faturas em aberto ou vencidas: - Hoje nao ha faturas em aberto ou vencidas neste recorte.",
+      "created_at": "2026-03-25 10:44:40"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "boleto",
+      "created_at": "2026-03-25 10:44:40"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo financeiro de Lucas Oliveira: - Contrato: CTR-2026-001 - Responsavel financeiro: Maria Oliveira - Mensalidade base: 1450.00 - Faturas em aberto: 0 - Faturas vencidas: 0 Faturas em aberto ou vencidas: - Hoje nao ha faturas em aberto ou vencidas neste recorte.",
+      "created_at": "2026-03-25 10:44:52"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual o numero do boleto?",
+      "created_at": "2026-03-25 10:44:52"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual o numero de aluno do lucas?",
+      "created_at": "2026-03-25 10:45:09"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Para acessar o número de aluno do Lucas, que é uma informação acadêmica específica, precisamos que o responsável ou o próprio aluno (se maior de idade) se autentique em nosso sistema. Você pode fazer isso pelo portal do aluno/responsável ou, se preferir, podemos te orientar sobre como proceder para autenticação.",
+      "created_at": "2026-03-25 10:45:09"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "Agendar visita",
+      "created_at": "2026-03-25 10:46:11"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "Agendar visita",
+      "created_at": "2026-03-25 10:46:11"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260325-B574B9. Preferencia informada: janela a confirmar. Fila responsavel: admissoes. Ticket operacional: ATD-20260325-BA3D79BE. A equipe comercial valida a janela e retorna com a confirmacao.",
+      "created_at": "2026-03-25 10:46:13"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Entendido! Registramos sua preferência para a visita na terça-feira de manhã. Vamos encaminhar essa informação para a nossa equipe comercial, que entrará em contato para confirmar a disponibilidade e os detalhes do agendamento.",
+      "created_at": "2026-03-25 10:46:29"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero terça de manhã",
+      "created_at": "2026-03-25 10:46:29"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero em 01/01/2024",
+      "created_at": "2026-03-25 10:46:53"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Entendido! Você gostaria de agendar para 01/01/2024. Gostaria de informar",
+      "created_at": "2026-03-25 10:46:53"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Ah, sim! Eu ia informar que o dia 01/01/2024 é feriado de Ano Novo",
+      "created_at": "2026-03-25 10:47:08"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "informar o que?",
+      "created_at": "2026-03-25 10:47:08"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "então pode ser nesse dia",
+      "created_at": "2026-03-25 10:47:25"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Compreendo que você está perguntando se a visita pode ser no dia 01/01/2024.",
+      "created_at": "2026-03-25 10:47:25"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "isso, pode?",
+      "created_at": "2026-03-25 10:47:34"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Colegio Horizonte: Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno.",
+      "created_at": "2026-03-25 10:47:34"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Colegio Horizonte e uma escola laica. A proposta institucional e plural e nao confessional.",
+      "created_at": "2026-03-25 10:47:51"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "pode se transformar numa escola confessional?",
+      "created_at": "2026-03-25 10:47:51"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Nao vi uma referencia oficial sobre aula de religiao no perfil publico do Colegio Horizonte. Se voce quiser, eu posso te dizer quais atividades e espacos aparecem oficialmente.",
+      "created_at": "2026-03-25 10:48:06"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "tem aula de religião?",
+      "created_at": "2026-03-25 10:48:06"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Não, o Colégio Horizonte é uma escola laica e sua proposta institucional é plural e não confessional. Isso significa que não há intenção de converter os estudantes a nenhuma crença específica. Nosso foco é em um ambiente de aprendizado inclusivo e respeitoso para todos.",
+      "created_at": "2026-03-25 10:48:11"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "tentam me converter?",
+      "created_at": "2026-03-25 10:48:11"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Ainda nao encontrei evidencia publica suficiente para responder isso com seguranca do jeito que a pergunta foi feita. Se quiser, eu posso tentar por outro caminho, como o setor responsavel, o canal oficial ou a politica institucional relacionada.",
+      "created_at": "2026-03-25 10:48:21"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual horário fecha amanhã?",
+      "created_at": "2026-03-25 10:48:21"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "A base publica atual nao sustenta com seguranca todos os pontos dessa pergunta, especialmente sobre: posso. Para evitar uma orientacao incorreta, prefiro nao inferir alem do que esta documentado. Se quiser, eu posso responder apenas o que esta explicitamente registrado na base atual. Fontes: - Segmentos, Turnos e Horarios (v2026.2) - Transporte, Alimentacao e Uniforme (v2026.2)",
+      "created_at": "2026-03-25 10:48:30"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "posso ir no almoço?",
+      "created_at": "2026-03-25 10:48:30"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual endereço?",
+      "created_at": "2026-03-25 10:48:36"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Colegio Horizonte fica em Rua das Acacias, 1450, Vila Mariana, Sao Paulo, SP, CEP 04567-120.",
+      "created_at": "2026-03-25 10:48:36"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Ainda nao encontrei evidencia publica suficiente para responder isso com seguranca do jeito que a pergunta foi feita. Se quiser, eu posso tentar por outro caminho, como o setor responsavel, o canal oficial ou a politica institucional relacionada.",
+      "created_at": "2026-03-25 10:48:47"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quando começa a matrícula?",
+      "created_at": "2026-03-25 10:48:47"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Para a matrícula no Colégio Horizonte, você precisará dos seguintes documentos: *   Ficha cadastral preenchida (ou formulário cadastral) *   Documento de identificação do aluno (e CPF, se houver) *   Histórico escolar *   Comprovante de residência atualizado *   Documento de identificação do responsável legal A confirmação da vaga depende da análise desses documentos e da assinatura do contrato. Fontes: - FAQ Institucional do Colegio Horizonte (v2026.2) - Manual de Matricula do Ensino Medio (v2026.2)",
+      "created_at": "2026-03-25 10:48:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais documentos preciso pra matrícula?",
+      "created_at": "2026-03-25 10:48:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje Colegio Horizonte atende estes segmentos: - Ensino Fundamental II (6o ao 9o ano) - Ensino Medio (1a a 3a serie)",
+      "created_at": "2026-03-25 10:49:00"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quando é a formatura do ensino fundamental?",
+      "created_at": "2026-03-25 10:49:00"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Bom dia. Voce esta falando com o EduAssist do Colegio Horizonte. Posso te ajudar com matricula, bolsas, descontos e visitas, turnos, horarios, calendario e rotina escolar, biblioteca, uniforme, transporte e estrutura da escola e canais oficiais, secretaria e orientacao por setor. Se sua conta estiver vinculada, eu tambem consigo consultar notas, faltas e financeiro.",
+      "created_at": "2026-03-25 16:13:56"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "bom dia",
+      "created_at": "2026-03-25 16:13:56"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Segundo a base institucional atual: - O Colegio Horizonte e uma instituicao laica, sem vinculo confessional. A convivencia escolar valoriza respeito, responsabilidade, desenvolvimento integral e uso etico da tecnologia. - A diretora geral do Colegio Horizonte e Helena Martins. Sua atribuicao principal e coordenar governanca escolar, cultura institucional, relacionamento com familias e alinhamento estrategico entre secretaria, coordenacao e orientacao educacional. O coordenador do Ensino Fundame... Fontes: - Apresentacao Institucional do Colegio Horizonte (v2026.2) - Governanca e Lideranca Institucional (v2026.2) - Infraestrutura e Servicos (v2026.2)",
+      "created_at": "2026-03-25 16:14:10"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual a estrutura da escola?",
+      "created_at": "2026-03-25 16:14:10"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "tem piscina e quadra de beisbol?",
+      "created_at": "2026-03-25 16:14:25"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sobre estrutura e atividades do Colegio Horizonte: - Nao: Piscina. A escola nao possui piscina no campus atual. - Sim: Quadra Poliesportiva Coberta. Usada para educacao fisica, futsal, volei e eventos internos.",
+      "created_at": "2026-03-25 16:14:25"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sobre estrutura e atividades do Colegio Horizonte: - Nao: Piscina. A escola nao possui piscina no campus atual. - Sim: Quadra Poliesportiva Coberta. Usada para educacao fisica, futsal, volei e eventos internos. - Sim: Futsal e treinos esportivos. Treinos no contraturno para Fundamental II e Ensino Medio. - Sim: Volei escolar. Turmas mistas por faixa etaria no contraturno.",
+      "created_at": "2026-03-25 16:14:34"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "e beisebol?",
+      "created_at": "2026-03-25 16:14:34"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "tem aula de filosofia?",
+      "created_at": "2026-03-25 17:46:13"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Nao vi uma referencia oficial sobre aula de filosofia no perfil publico do Colegio Horizonte. Se voce quiser, eu posso te dizer quais atividades e espacos aparecem oficialmente.",
+      "created_at": "2026-03-25 17:46:13"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+      "created_at": "2026-03-25 17:46:35"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "sou professor de filosofia, como faço para dar aula nesse colégio",
+      "created_at": "2026-03-25 17:46:35"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Uma curiosidade documentada desta escola e Espaco Maker integrado ao curriculo. O espaco maker nao funciona como atividade isolada; ele entra em projetos interdisciplinares de ciencias, tecnologia e cultura digital. Isso aparece de forma bem clara na proposta institucional: Projetos do Fundamental II e do Ensino Medio usam o maker como ambiente de prototipagem leve e experimentacao orientada.",
+      "created_at": "2026-03-25 17:47:10"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "fale uma curiosidade sobre a escola?",
+      "created_at": "2026-03-25 17:47:10"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sim. O Colegio Horizonte oferece Espaco Maker. Ambiente de robotica, prototipagem leve e projetos interdisciplinares.",
+      "created_at": "2026-03-25 17:47:19"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "por que esse colégio é melhor que a concorrencia",
+      "created_at": "2026-03-25 17:47:19"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "por que esse colégio é melhor que a concorrencia",
+      "created_at": "2026-03-25 17:47:41"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+      "created_at": "2026-03-25 17:47:59"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual instagram do colégio?",
+      "created_at": "2026-03-25 17:47:59"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "O 9o ano fica em Ensino Fundamental II. As atividades do turno manha vao de 07:15 a 12:30. Oficinas, plantoes, esportes e estudo orientado no contraturno em dias alternados.",
+      "created_at": "2026-03-25 19:44:27"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "Horario do 9o ano",
+      "created_at": "2026-03-25 19:44:27"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "Mensalidade do ensino medio",
+      "created_at": "2026-03-25 19:49:31"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Para Ensino Medio no turno Manha, a mensalidade publica de referencia em 2026 e 1450.00 e a taxa de matricula e 350.00. Valor comercial publico de referencia para 2026. Ha politica comercial para irmaos e pagamento pontual. Se quiser, eu tambem posso resumir bolsas, descontos comerciais e canais de matricula.",
+      "created_at": "2026-03-25 19:49:31"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Valores publicos de referencia para 2026: - Ensino Fundamental II (Manha): mensalidade 1280.00 e taxa de matricula 350.00. Valor comercial publico de referencia para 2026. Material didatico e uniforme sao cobrados a parte. - Ensino Medio (Manha): mensalidade 1450.00 e taxa de matricula 350.00. Valor comercial publico de referencia para 2026. Ha politica comercial para irmaos e pagamento pontual. - Periodo integral opcional (Complemento contraturno): mensalidade 480.00 e taxa de matricula 0.00. Adicional mensal aplicado ao estudante matriculado no turno regular que aderir ao periodo integral. Se quiser, eu tambem posso resumir bolsas, descontos comerciais e canais de matricula.",
+      "created_at": "2026-03-25 19:49:37"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "Quais bolsas a escola oferece?",
+      "created_at": "2026-03-25 19:49:37"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais aulas complementares essa escola oferece?",
+      "created_at": "2026-03-25 19:49:56"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Colegio Horizonte: Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno.",
+      "created_at": "2026-03-25 19:49:56"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quantas mensalidades atrasadas tenho no lucas",
+      "created_at": "2026-03-25 19:51:03"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Valores publicos de referencia para 2026: - Ensino Fundamental II (Manha): mensalidade 1280.00 e taxa de matricula 350.00. Valor comercial publico de referencia para 2026. Material didatico e uniforme sao cobrados a parte. - Ensino Medio (Manha): mensalidade 1450.00 e taxa de matricula 350.00. Valor comercial publico de referencia para 2026. Ha politica comercial para irmaos e pagamento pontual. - Periodo integral opcional (Complemento contraturno): mensalidade 480.00 e taxa de matricula 0.00. Adicional mensal aplicado ao estudante matriculado no turno regular que aderir ao periodo integral. Se quiser, eu tambem posso resumir bolsas, descontos comerciais e canais de matricula.",
+      "created_at": "2026-03-25 19:51:03"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo financeiro das contas vinculadas: - Total de faturas em aberto: 1 - Total de faturas vencidas: 0 - Lucas Oliveira: 0 em aberto, 0 vencidas   2026-03: vencimento 2026-03-10, status paga, valor 1450.00 - Ana Oliveira: 1 em aberto, 0 vencidas",
+      "created_at": "2026-03-25 19:51:20"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual próximo pagamento?",
+      "created_at": "2026-03-25 19:51:20"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "notas to lucas",
+      "created_at": "2026-03-25 19:51:25"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sua conta tem mais de um aluno vinculado. Diga qual aluno deseja consultar: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002).",
+      "created_at": "2026-03-25 19:51:25"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+      "created_at": "2026-03-25 19:52:25"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "lucas eu falei",
+      "created_at": "2026-03-25 19:52:25"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Colegio Horizonte: Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno.",
+      "created_at": "2026-03-25 21:58:39"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "boa tarde é do colégio boa vista?",
+      "created_at": "2026-03-25 21:58:39"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+      "created_at": "2026-03-25 21:58:52"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "não é do boa visa?",
+      "created_at": "2026-03-25 21:58:52"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero falar com o boa vista",
+      "created_at": "2026-03-25 21:59:03"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sua solicitacao ja estava registrada na fila de atendimento. Protocolo: ATD-20260325-BA3D79BE. Status atual: queued.",
+      "created_at": "2026-03-25 21:59:04"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Diretora geral: Helena Martins. Governanca escolar, cultura institucional e relacionamento com familias. Canal institucional: direcao@colegiohorizonte.edu.br. Atende por agenda institucional e participa dos encontros de familias a cada bimestre.",
+      "created_at": "2026-03-25 21:59:09"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "me passa pro diretor",
+      "created_at": "2026-03-25 21:59:09"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quem é helena Martins?",
+      "created_at": "2026-03-25 21:59:20"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+      "created_at": "2026-03-25 21:59:20"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais matérias tem no primeiro ano do fundamental",
+      "created_at": "2026-03-25 22:05:31"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje Colegio Horizonte atende estes segmentos: - Ensino Fundamental II (6o ao 9o ano) - Ensino Medio (1a a 3a serie)",
+      "created_at": "2026-03-25 22:05:31"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Que bom ter você por aqui. Sou o EduAssist do Colégio Horizonte e estou à disposição para ajudar com informações sobre matrícula, bolsas, calendário escolar e muito mais. Se precisar de algo relacionado a notas ou financeiro, posso consultar se sua conta estiver vinculada.",
+      "created_at": "2026-03-25 22:43:01"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "oi",
+      "created_at": "2026-03-25 22:43:01"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como falo com um atendente humano?",
+      "created_at": "2026-03-25 22:43:15"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sua solicitacao ja estava registrada na fila de atendimento. Protocolo: ATD-20260325-BA3D79BE. Status atual: queued.",
+      "created_at": "2026-03-25 22:43:15"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "mas eu cheguei agora",
+      "created_at": "2026-03-25 22:43:35"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Entendi! Parece que você chegou agora e talvez não tenha visto as mensagens anteriores. Para falar com um atendente humano, sua solicitação já está registrada na fila de atendimento com o protocolo **ATD-20260325-BA3D79BE**. O status atual é \"queued\" (na fila). Assim que um atendente estiver disponível, ele entrará em contato.",
+      "created_at": "2026-03-25 22:43:35"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual a historia desse colégio?",
+      "created_at": "2026-03-25 22:43:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "A base de conhecimento atual não contém informações detalhadas sobre a história do Colégio Horizonte.",
+      "created_at": "2026-03-25 22:43:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "por que eu deveria matricular meu filho aí?",
+      "created_at": "2026-03-25 22:44:15"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Entendo que você queira saber mais sobre o Colégio Horizonte para tomar uma decisão importante como a matrícula do seu filho. No Colégio Horizonte, oferecemos alguns diferenciais que podem ser interessantes para sua família: *   **Tutoria acadêmica e projeto de vida:** Nossos alunos contam com acompanhamento individualizado para seu desenvolvimento acadêmico e para a construção de seus projetos futuros. *   **Espaço Maker integrado ao currículo:** Estimulamos a criatividade e o aprendizado prático com atividades que integram tecnologia e inovação. *   **Acolhimento estruturado para famílias e estudantes:** Nos preocupamos em oferecer um ambiente acolhedor e de suporte para todos. Se quiser conhecer mais de perto, podemos agendar uma visita à escola. Você pode fazer isso pelo bot, pelo nosso WhatsApp comercial ou diretamente com o setor de admissions.",
+      "created_at": "2026-03-25 22:44:15"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como agendo uma visita",
+      "created_at": "2026-03-25 22:44:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje o Colegio Horizonte publica estas janelas de visita: - Visita guiada ao campus: terca-feira, das 09:00 as 10:15, em Recepcao principal e circuito pedagogico. Inclui apresentacao institucional, visita aos espacos e conversa curta com admissions. - Visita guiada com foco pedagogico: quinta-feira, das 14:30 as 15:45, em Recepcao principal e salas de projeto. Janela pensada para familias que desejam conhecer infraestrutura, rotina e proposta pedagogica. Agendamento: bot, whatsapp comercial ou admissions. Prazo de confirmacao: confirmacao em ate 1 dia util.",
+      "created_at": "2026-03-25 22:44:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "estou gostando de voce",
+      "created_at": "2026-03-25 22:45:13"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Agradeço o seu carinho! Fico feliz em poder ajudar com as informações sobre o Colégio Horizonte. Se tiver mais alguma dúvida ou precisar de algo, é só me dizer.",
+      "created_at": "2026-03-25 22:45:13"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Para obter informações sobre seus filhos, você pode acessar o portal autenticado da escola. Lá, você encontrará dados acadêmicos e financeiros. Se precisar de algo mais específico ou tiver alguma dúvida, a Secretaria Escolar pode te ajudar presencialmente, por e-mail institucional ou pelo portal. Para questões pedagógicas, você pode agendar uma reunião com a coordenação pedagógica, também pelo bot, secretaria ou portal.",
+      "created_at": "2026-03-25 22:49:34"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais informações consigo obter dos meus filhos?",
+      "created_at": "2026-03-25 22:49:34"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "que informações você pode fornecer sobre meus filhos? quais filhos tenho matriculados?",
+      "created_at": "2026-03-25 22:49:56"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Para obter informações sobre seus filhos, como quais estão matriculados, é necessário acessar o portal autenticado da escola. Lá, você encontrará dados acadêmicos e financeiros. Se precisar de algo mais específico ou tiver alguma dúvida, a Secretaria Escolar pode te ajudar presencialmente, por e-mail institucional ou pelo portal. Para questões pedagógicas, você pode agendar uma reunião com a coordenação pedagógica, também pelo bot, secretaria ou portal.",
+      "created_at": "2026-03-25 22:49:56"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Para que eu possa te ajudar a falar sobre o Lucas, preciso de um pouco mais de contexto. Você gostaria de falar com ele, sobre ele, ou sobre algum assunto específico relacionado a ele? Se for sobre um aluno, para acessar informações específicas sobre ele, como dados acadêmicos ou financeiros, é necessário que você acesse o portal autenticado da escola. Se a sua intenção é falar com o Lucas, ou sobre um assunto pedagógico, por exemplo, a Secretaria Escolar ou a Coordenação Pedagógica podem te auxiliar. Me diga qual o seu objetivo para que eu possa te direcionar melhor!",
+      "created_at": "2026-03-25 22:50:07"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero falar do lucas",
+      "created_at": "2026-03-25 22:50:07"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais as notas do meu filho lucas",
+      "created_at": "2026-03-25 22:50:22"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo academico de Lucas Oliveira: - Turma: 1o Ano A - Serie atual: 1 Notas mais recentes: - Biologia - Avaliacao B1: 8.40/10.00 - Biologia - Avaliacao 2026-B1 - BIO: 7.00/10.00 - Biologia - Trabalho B1: 8.10/10.00 - Biologia - Avaliacao B2: 8.60/10.00 Frequencia: - Biologia: 2 presencas, 0 atrasos, 1 faltas (50 min) - Educacao Fisica: 1 presencas, 0 atrasos, 1 faltas (50 min) - Filosofia: 1 presencas, 1 atrasos, 0 faltas (10 min) - Fisica: 1 presencas, 1 atrasos, 0 faltas (10 min)",
+      "created_at": "2026-03-25 22:50:22"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje nao encontrei um proximo pagamento pendente de Lucas Oliveira.",
+      "created_at": "2026-03-25 22:50:40"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual a próxima mensalidade do lucas (luquinha)",
+      "created_at": "2026-03-25 22:50:40"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Entendo que você gostaria de alterar o nome do Lucas para Lucas Pereira no sistema. No entanto, como assistente virtual, não tenho acesso direto para realizar alterações cadastrais. Para solicitar a alteração do nome de um aluno, você precisa entrar em contato com a Secretaria Escolar. Eles são os responsáveis por esse tipo de atualização. Você pode fazer isso presencialmente, por e-mail institucional ou através do portal autenticado da escola, na seção de secretaria.",
+      "created_at": "2026-03-25 22:50:57"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "altere no sistema o nome do lucas para lucas pereira",
+      "created_at": "2026-03-25 22:50:57"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "mas você não é o sabichão?",
+      "created_at": "2026-03-25 22:51:31"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sou o EduAssist, o assistente virtual do Colégio Horizonte. Meu objetivo é ajudar com informações sobre a escola, como matrículas, documentos, calendário e outras dúvidas. Não sou o \"sabichão\", mas estou aqui para te auxiliar da melhor forma possível com as informações que tenho acesso.",
+      "created_at": "2026-03-25 22:51:31"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "Mensalidade do ensino medio",
+      "created_at": "2026-03-25 22:53:49"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje eu nao tenho um detalhamento publico de mensalidades publicas para ensino medio em a escola. Pelo que a escola publica aqui, o recorte institucional coberto hoje e Ensino Fundamental II (6o ao 9o ano), Ensino Medio (1a a 3a serie).",
+      "created_at": "2026-03-25 22:53:49"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "aí prepara pro enem?",
+      "created_at": "2026-03-25 22:54:08"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sim, o Colégio Horizonte prepara os alunos para o ENEM. Nosso Ensino Médio (1ª a 3ª série) tem foco na formação completa e no preparo para os desafios dos exames vestibulares, incluindo o ENEM.",
+      "created_at": "2026-03-25 22:54:08"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "por que pagar se posso estudar na pública?",
+      "created_at": "2026-03-25 22:54:28"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Entendo sua pergunta. O Colégio Horizonte oferece alguns diferenciais que podem ser interessantes para as famílias que buscam uma alternativa ao ensino público. Nossos destaques incluem: *   **Tutoria acadêmica e projeto de vida:** Oferecemos um acompanhamento individualizado para o desenvolvimento acadêmico e pessoal dos estudantes. *   **Espaço Maker integrado ao currículo:** Nossos alunos têm acesso a um ambiente inovador que estimula a criatividade e o aprendizado prático. *   **Acolhimento estruturado para famílias e estudantes:** Temos um programa de acolhimento que visa integrar e apoiar tanto os alunos quanto suas famílias. Se quiser saber mais sobre como esses pontos se aplicam ao nosso Ensino Médio, posso detalhar.",
+      "created_at": "2026-03-25 22:54:28"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "que informações você pode fornecer sobre meus filhos? quais filhos tenho matriculados?",
+      "created_at": "2026-03-25 23:14:32"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje esta conta tem estes alunos vinculados: Lucas Oliveira e Ana Oliveira. Por aqui eu consigo te ajudar com notas, faltas, proximas provas, matricula, financeiro, boletos, dentro do que sua vinculacao permitir. Se quiser, pode me dizer direto algo como \"notas do Lucas\" ou \"financeiro da Ana\".",
+      "created_at": "2026-03-25 23:14:32"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero falar do lucas",
+      "created_at": "2026-03-25 23:14:32"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Perfeito, seguimos com Lucas Oliveira. Posso te ajudar com notas, faltas, proximas provas, matricula, financeiro, boletos. Se quiser, ja me diga o que voce quer ver primeiro.",
+      "created_at": "2026-03-25 23:14:32"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "ola",
+      "created_at": "2026-03-26 00:48:26"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Sou o EduAssist do Colégio Horizonte e estou aqui para te ajudar. Posso te dar informações sobre matrícula, bolsas, descontos, visitas, turnos, horários, calendário escolar, biblioteca, uniforme, transporte e a estrutura da escola. Se sua conta estiver vinculada, também consigo consultar notas, faltas e o financeiro.",
+      "created_at": "2026-03-26 00:48:26"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Para falar com a direção geral, você pode enviar um e-mail para direcao@colegiohorizonte.edu.br. A diretora Helena Martins atende por agenda e também participa dos nossos encontros de famílias a cada bimestre.",
+      "created_at": "2026-03-26 00:48:51"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como falo com a direção?",
+      "created_at": "2026-03-26 00:48:51"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "oi",
+      "created_at": "2026-03-26 03:40:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Oi. Sou o EduAssist. Pode seguir do jeito que ficar mais facil. Se quiser, eu continuo por aqui com o mesmo assunto ou com um tema novo.",
+      "created_at": "2026-03-26 03:40:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "o que está fazendo?",
+      "created_at": "2026-03-26 03:41:09"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Sou o EduAssist do Colégio Horizonte e estou aqui para te ajudar com informações sobre a escola. Posso responder suas dúvidas sobre matrícula, bolsas, visitas, horários, calendário escolar, entre outros assuntos. Se precisar de algo mais específico, é só me dizer!",
+      "created_at": "2026-03-26 03:41:09"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "onde fica essa escola",
+      "created_at": "2026-03-26 03:41:26"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "O Colégio Horizonte está localizado na Rua das Acácias, 1450, na Vila Mariana, em São Paulo, SP. O CEP é 04567-120.",
+      "created_at": "2026-03-26 03:41:26"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "é na grande são Paulo?",
+      "created_at": "2026-03-26 03:43:25"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sim, o Colégio Horizonte fica em São Paulo, na Vila Mariana.",
+      "created_at": "2026-03-26 03:43:25"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quando começam as matrículas",
+      "created_at": "2026-03-26 03:43:31"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "As matrículas para o Colégio Horizonte ainda não têm uma data de início definida em nosso calendário oficial. Para ter as informações mais atualizadas, sugiro que você entre em contato com nosso setor de admissões. Eles poderão te informar sobre o cronograma assim que for estabelecido.",
+      "created_at": "2026-03-26 03:43:31"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual meu acesso? a que dados",
+      "created_at": "2026-03-26 03:45:36"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Para que eu possa te ajudar com informações sobre seu acesso e dados específicos, preciso que você se autentique. Por favor, acesse o portal do aluno ou responsável com seu login e senha. Lá você terá acesso a todas as suas informações acadêmicas e financeiras. Se precisar de ajuda para acessar o portal, posso te orientar sobre como entrar em contato com a secretaria escolar.",
+      "created_at": "2026-03-26 03:45:36"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Entendi! Peço desculpas se a mensagem anterior não foi clara. Quando mencionei a autenticação, era para acessar dados **específicos seus**, como notas, frequência ou informações financeiras no portal do aluno ou responsável. Para perguntas gerais sobre a escola, como o calendário de matrículas ou a localização, não é preciso se autenticar. Você gostaria de saber sobre o início das matrículas ou tem outra pergunta?",
+      "created_at": "2026-03-26 03:45:55"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "mas já me autentiquei",
+      "created_at": "2026-03-26 03:45:55"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero saber sobre o Fernando, meu filho",
+      "created_at": "2026-03-26 03:46:17"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Compreendo que você queira saber sobre o Fernando. No entanto, para acessar informações específicas sobre um estudante, como notas, frequência ou outros dados acadêmicos e financeiros, é necessário que você se autentique no portal do aluno ou responsável. Se você já se autenticou, por favor, acesse o portal diretamente. Lá você terá acesso a todas as informações do Fernando. Se precisar de ajuda para acessar o portal ou tiver alguma dúvida sobre como encontrar as informações, posso te orientar sobre como entrar em contato com a secretaria escolar.",
+      "created_at": "2026-03-26 03:46:17"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Entendi que você quer saber sobre o Fernando, seu filho. Para que eu possa te ajudar com informações específicas sobre ele, como notas, frequência ou dados financeiros, é preciso que você acesse o portal do aluno ou responsável com seu login e senha. Se você já se autenticou, por favor, acesse o portal diretamente. Lá você terá acesso a todas as informações do Fernando. Se precisar de ajuda para acessar o portal ou tiver alguma dúvida sobre como encontrar as informações, posso te orientar sobre como entrar em contato com a secretaria escolar.",
+      "created_at": "2026-03-26 03:46:28"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "mas é meu filho",
+      "created_at": "2026-03-26 03:46:28"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Compreendo que você quer saber sobre o Fernando, seu filho. Para que eu possa te ajudar com informações específicas sobre ele, como notas, frequência ou dados financeiros, é preciso que você acesse o portal do aluno ou responsável com seu login e senha. Se você já se autenticou, por favor, acesse o portal diretamente. Lá você terá acesso a todas as informações do Fernando. Se precisar de ajuda para acessar o portal ou tiver alguma dúvida sobre como encontrar as informações, posso te orientar sobre como entrar em contato com a secretaria escolar.",
+      "created_at": "2026-03-26 03:46:48"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "está matriculado como meu filho",
+      "created_at": "2026-03-26 03:46:48"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "e o lucas?",
+      "created_at": "2026-03-26 03:47:13"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Para informações sobre o Lucas, como matrícula ou dados específicos, preciso que você acesse o portal do aluno ou responsável com seu login e senha. Se precisar de ajuda para acessar o portal ou tiver alguma dúvida, posso te orientar sobre como entrar em contato com a secretaria escolar.",
+      "created_at": "2026-03-26 03:47:13"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo academico de Lucas Oliveira: - Turma: 1o Ano A - Serie atual: 1 Notas mais recentes: - Biologia - Avaliacao B1: 8.40/10.00 - Biologia - Avaliacao 2026-B1 - BIO: 7.00/10.00 - Biologia - Trabalho B1: 8.10/10.00 - Biologia - Avaliacao B2: 8.60/10.00 Frequencia: - Biologia: 2 presencas, 0 atrasos, 1 faltas (50 min) - Educacao Fisica: 1 presencas, 0 atrasos, 1 faltas (50 min) - Filosofia: 1 presencas, 1 atrasos, 0 faltas (10 min) - Fisica: 1 presencas, 1 atrasos, 0 faltas (10 min)",
+      "created_at": "2026-03-26 03:47:27"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais as notas do lucas",
+      "created_at": "2026-03-26 03:47:27"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais as notas do fernando",
+      "created_at": "2026-03-26 03:47:36"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo academico de Lucas Oliveira: - Turma: 1o Ano A - Serie atual: 1 Notas mais recentes: - Biologia - Avaliacao B1: 8.40/10.00 - Biologia - Avaliacao 2026-B1 - BIO: 7.00/10.00 - Biologia - Trabalho B1: 8.10/10.00 - Biologia - Avaliacao B2: 8.60/10.00 Frequencia: - Biologia: 2 presencas, 0 atrasos, 1 faltas (50 min) - Educacao Fisica: 1 presencas, 0 atrasos, 1 faltas (50 min) - Filosofia: 1 presencas, 1 atrasos, 0 faltas (10 min) - Fisica: 1 presencas, 1 atrasos, 0 faltas (10 min)",
+      "created_at": "2026-03-26 03:47:36"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "bom dia",
+      "created_at": "2026-03-26 04:18:26"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Bom dia. Voce esta falando com o EduAssist do Colegio Horizonte. Posso te ajudar com matricula, bolsas, descontos e visitas, turnos, horarios, calendario e rotina escolar, biblioteca, uniforme, transporte e estrutura da escola e canais oficiais, secretaria e orientacao por setor. Se sua conta estiver vinculada, eu tambem consigo consultar notas, faltas e financeiro.",
+      "created_at": "2026-03-26 04:18:26"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Aqui e o Colegio Horizonte. Se voce esta procurando o Setor Financeiro, eu nao tenho acesso ao atendimento dessa outra instituicao. Se quiser, sigo te ajudando com o Colegio Horizonte por aqui.",
+      "created_at": "2026-03-26 04:18:41"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero falar com o setor financeiro",
+      "created_at": "2026-03-26 04:18:41"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo financeiro das contas vinculadas: - Total de faturas em aberto: 1 - Total de faturas vencidas: 0 - Lucas Oliveira: 0 em aberto, 0 vencidas   2026-03: vencimento 2026-03-10, status paga, valor 1450.00 - Ana Oliveira: 1 em aberto, 0 vencidas   2026-03: vencimento 2026-03-10, status em aberto, valor 1450.00",
+      "created_at": "2026-03-26 04:18:49"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "como estão minhas conta?",
+      "created_at": "2026-03-26 04:18:49"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual a próxima data de pagamento",
+      "created_at": "2026-03-26 04:18:59"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo financeiro das contas vinculadas: - Total de faturas em aberto: 1 - Total de faturas vencidas: 0 - Lucas Oliveira: 0 em aberto, 0 vencidas   2026-03: vencimento 2026-03-10, status paga, valor 1450.00 - Ana Oliveira: 1 em aberto, 0 vencidas",
+      "created_at": "2026-03-26 04:18:59"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Para te ajudar com o valor que está devendo, preciso que você me diga de qual conta estamos falando. No histórico, vejo que a Ana Oliveira tem uma fatura em aberto no valor de R$ 1450,00, com vencimento em 10/03/2026. Se essa for a informação que você procura, é só me confirmar. Se for outra conta, por favor, me diga qual.",
+      "created_at": "2026-03-26 04:19:15"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual valor estou devendo",
+      "created_at": "2026-03-26 04:19:15"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Com base no histórico da nossa conversa, você está logado como **Ana Oliveira**.",
+      "created_at": "2026-03-26 04:19:31"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "com qual nome estou logado?",
+      "created_at": "2026-03-26 04:19:31"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje eu nao encontrei Quais Filhos entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+      "created_at": "2026-03-26 04:19:42"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais meus filhos?",
+      "created_at": "2026-03-26 04:19:42"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Situacao administrativa do seu cadastro hoje: com pendencias. Situacao documental do seu cadastro hoje: - Email cadastral: regular. maria.oliveira@mock.eduassist.local - Telefone cadastral: regular. +55 11 98888-1001 - Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental. Proximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.",
+      "created_at": "2026-03-26 04:20:04"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais documentos faltam pra ana",
+      "created_at": "2026-03-26 04:20:04"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "posso enviar por fax?",
+      "created_at": "2026-03-26 04:20:30"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sim. O envio inicial de documentos pode ser feito por canal digital. Hoje os canais mais diretos publicados para isso sao: - portal institucional - email da secretaria - secretaria presencial para conferencia final No processo de matricula, o envio inicial pode ser digital. A validacao final continua com a secretaria. O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+      "created_at": "2026-03-26 04:20:30"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual o número do fax?",
+      "created_at": "2026-03-26 04:20:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! O Colégio Horizonte não utiliza fax atualmente. Se precisar entrar em contato por telefone, o número da secretaria é (11) 3333-4200.",
+      "created_at": "2026-03-26 04:20:54"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Peço desculpas pela confusão! Você está certo(a), eu me equivoquei na resposta anterior. O Colégio Horizonte não utiliza fax. Se precisar de contato telefônico, o número da secretaria é (11) 3333-4200.",
+      "created_at": "2026-03-26 04:22:45"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "mas antes você respondeu que eu podia enviar por fax",
+      "created_at": "2026-03-26 04:22:45"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "e se eu mandar por telegrama, serve?",
+      "created_at": "2026-03-26 04:23:03"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Sim. O envio inicial de documentos pode ser feito por canal digital. Hoje os canais mais diretos publicados para isso sao: - portal institucional - email da secretaria - secretaria presencial para conferencia final No processo de matricula, o envio inicial pode ser digital. A validacao final continua com a secretaria. O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+      "created_at": "2026-03-26 04:23:03"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! O Colégio Horizonte não utiliza caixa postal. Para o envio de documentos, você pode usar o portal institucional, o e-mail da secretaria ou, para a conferência final, a secretaria presencial.",
+      "created_at": "2026-03-26 04:23:17"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual sua caixa postal?",
+      "created_at": "2026-03-26 04:23:17"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Que bom ter você por aqui. Sou o EduAssist do Colégio Horizonte e estou à disposição para ajudar com informações sobre matrículas, bolsas, calendário escolar, estrutura da escola e muito mais. Se sua conta estiver vinculada, também posso consultar notas e dados financeiros.",
+      "created_at": "2026-03-26 05:35:33"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "ola",
+      "created_at": "2026-03-26 05:35:33"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "estou logado como",
+      "created_at": "2026-03-26 05:36:45"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Para que eu possa te ajudar com informações personalizadas, como notas ou dados financeiros, preciso que você me diga com qual perfil está logado. Assim, consigo verificar se sua conta está vinculada e acessar as informações necessárias.",
+      "created_at": "2026-03-26 05:36:45"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "estou logado como?",
+      "created_at": "2026-03-26 05:36:56"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Olá! Para que eu possa te ajudar com informações personalizadas, como notas ou dados financeiros, preciso que você me diga com qual perfil está logado. Assim, consigo verificar se sua conta está vinculada e acessar as informações necessárias.",
+      "created_at": "2026-03-26 05:36:56"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais notas do meu filho lucas",
+      "created_at": "2026-03-26 05:37:03"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Resumo academico de Lucas Oliveira: - Turma: 1o Ano A - Serie atual: 1 Notas mais recentes: - Biologia - Avaliacao B1: 8.40/10.00 - Biologia - Avaliacao 2026-B1 - BIO: 7.00/10.00 - Biologia - Trabalho B1: 8.10/10.00 - Biologia - Avaliacao B2: 8.60/10.00 Frequencia: - Biologia: 2 presencas, 0 atrasos, 1 faltas (50 min) - Educacao Fisica: 1 presencas, 0 atrasos, 1 faltas (50 min) - Filosofia: 1 presencas, 1 atrasos, 0 faltas (10 min) - Fisica: 1 presencas, 1 atrasos, 0 faltas (10 min)",
+      "created_at": "2026-03-26 05:37:03"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais notas do meu filho joão",
+      "created_at": "2026-03-26 05:37:11"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje eu nao encontrei Joao entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+      "created_at": "2026-03-26 05:37:11"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Entendi! Como sou um assistente de texto, não há um \"login\" ou \"logout\" direto comigo. As informações que te passei foram baseadas no que você me forneceu. Se você estiver se referindo a deslogar de algum portal ou sistema da escola, por favor, me diga qual é para que eu possa te orientar.",
+      "created_at": "2026-03-26 05:39:40"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quero deslogar",
+      "created_at": "2026-03-26 05:39:40"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual situação de documentação do lucas?",
+      "created_at": "2026-03-26 05:40:01"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Para te ajudar com a documentação do Lucas, preciso que você me diga qual Lucas você se refere. No momento, não tenho acesso a informações individuais de alunos por aqui.",
+      "created_at": "2026-03-26 05:40:01"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "lucas oliveira, o luquinha",
+      "created_at": "2026-03-26 05:40:11"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Perfeito, seguimos com Lucas Oliveira. Posso te ajudar com notas, faltas, proximas provas, matricula, financeiro, boletos. Se quiser, ja me diga o que voce quer ver primeiro.",
+      "created_at": "2026-03-26 05:40:11"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Proximas avaliacoes de Lucas Oliveira: - Turma: 1o Ano A - Biologia - Avaliacao B1: 2026-04-10 - Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10 - Historia - Avaliacao B1: 2026-04-10 - Ingles - Avaliacao B1: 2026-04-10 - Matematica - Avaliacao 2026-B1 - MAT: 2026-04-10 - Matematica - Avaliacao B1: 2026-04-10",
+      "created_at": "2026-03-26 05:40:34"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "quais próximas provas do lucas",
+      "created_at": "2026-03-26 05:40:34"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "qual a matricula do lucas",
+      "created_at": "2026-03-26 05:40:37"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "A matricula de Lucas Oliveira e MAT-2026-001. Turma atual: 1o Ano A.",
+      "created_at": "2026-03-26 05:40:37"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "e como estão as faltas do lucas",
+      "created_at": "2026-03-26 05:43:18"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "A matricula de Lucas Oliveira e MAT-2026-001. Turma atual: 1o Ano A.",
+      "created_at": "2026-03-26 05:43:18"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "user",
+      "content": "E a frequencia do Lucas?",
+      "created_at": "2026-03-26 06:58:32"
+    },
+    {
+      "thread_id": "telegram:1649845499",
+      "sender_type": "assistant",
+      "content": "Hoje eu nao encontrei Frequencia entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+      "created_at": "2026-03-26 06:58:32"
+    }
+  ]
+}
