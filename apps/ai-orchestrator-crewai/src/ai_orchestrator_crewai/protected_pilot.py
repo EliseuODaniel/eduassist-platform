@@ -157,6 +157,22 @@ def _student_by_name(actor: dict[str, Any], student_name: str | None) -> dict[st
     return None
 
 
+def _is_student_focus_repair(message: str, student_name: str | None) -> bool:
+    if not student_name:
+        return False
+    normalized = _normalize_text(message)
+    first_name = _normalize_text(student_name).split()[0]
+    if not first_name or first_name not in normalized:
+        return False
+    repair_markers = {
+        'eu falei',
+        'desse aluno',
+        'desse filho',
+        'desse estudante',
+    }
+    return any(marker in normalized for marker in repair_markers)
+
+
 def _resolve_student(actor: dict[str, Any], message: str, *, recent_student_name: str | None = None) -> dict[str, Any] | None:
     linked_students = actor.get('linked_students') or []
     if not isinstance(linked_students, list):
@@ -496,6 +512,20 @@ def _student_backstop(message: str, student: dict[str, Any] | None, evidence: di
     return None
 
 
+def _student_focus_backstop(message: str, student: dict[str, Any] | None) -> str | None:
+    if not isinstance(student, dict):
+        return None
+    name = str(student.get('full_name', '')).strip()
+    if not name:
+        return None
+    if _is_student_focus_repair(message, name):
+        return (
+            f'Perfeito, seguimos com {name}. '
+            'Posso te ajudar com notas, faltas, proximas provas, documentacao, matricula e financeiro.'
+        )
+    return None
+
+
 async def run_protected_crewai_pilot(
     *,
     message: str,
@@ -539,6 +569,23 @@ async def run_protected_crewai_pilot(
         }
 
     student = _resolve_student(actor, message, recent_student_name=recent_student_name)
+    student_focus_answer = _student_focus_backstop(message, student)
+    if student_focus_answer:
+        _store_recent_student_name(state_key, student.get('full_name') if isinstance(student, dict) else None)
+        return {
+            'engine_name': 'crewai',
+            'executed': True,
+            'reason': 'crewai_protected_student_focus_backstop',
+            'metadata': {
+                'slice_name': 'protected',
+                'conversation_id': conversation_id or f'telegram:{telegram_chat_id}',
+                'normalized_message': normalized_message,
+                'answer': {'answer_text': student_focus_answer},
+                'judge': {'valid': True, 'reason': 'student_focus_repair_handled_deterministically', 'revision_needed': False},
+                'resolved_student_name': student.get('full_name') if isinstance(student, dict) else None,
+                'deterministic_backstop_used': True,
+            },
+        }
     if _requires_student(message) and student is None and len(actor.get('linked_students', []) or []) > 1:
         names = ', '.join(str(item.get('full_name', '')) for item in actor.get('linked_students', []) if isinstance(item, dict))
         return {

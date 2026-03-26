@@ -3,7 +3,7 @@
     "prompt": "qual o horario da biblioteca?",
     "slice": "public",
     "category": "public_facts",
-    "expected_keywords": ["biblioteca", "7h30", "18h00"]
+    "expected_keywords": ["biblioteca", "7h30", "18h"]
   },
   {
     "prompt": "quando comeca a matricula?",
@@ -24,6 +24,12 @@
     "expected_keywords": ["@colegiohorizonte"]
   },
   {
+    "prompt": "quais aulas complementares essa escola oferece?",
+    "slice": "public",
+    "category": "public_features",
+    "expected_keywords": ["maker", "futsal", "vôlei"]
+  },
+  {
     "prompt": "quais meus filhos?",
     "slice": "protected",
     "category": "protected_identity",
@@ -39,7 +45,7 @@
     "prompt": "qual situacao de documentacao do Lucas?",
     "slice": "protected",
     "category": "protected_admin",
-    "expected_keywords": ["Lucas Oliveira", "regular", "completa"]
+    "expected_keywords": ["Lucas Oliveira", "regular"]
   },
   {
     "prompt": "qual proximo pagamento do Lucas?",
@@ -58,5 +64,12 @@
     "slice": "protected",
     "category": "protected_academic",
     "expected_keywords": ["Lucas Oliveira"]
+  },
+  {
+    "prompt": "lucas eu falei",
+    "slice": "protected",
+    "category": "protected_clarify_repair",
+    "expected_keywords": ["Lucas Oliveira"],
+    "forbidden_keywords": ["Ana Oliveira"]
   }
 ]

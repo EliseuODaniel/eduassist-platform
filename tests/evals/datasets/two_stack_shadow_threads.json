@@ -10,7 +10,7 @@
       },
       {
         "prompt": "e qual o horario?",
-        "expected_keywords": ["biblioteca", "7h30", "18h00"],
+        "expected_keywords": ["biblioteca", "7h30", "18h"],
         "note": "follow-up eliptico sobre a biblioteca"
       }
     ]
@@ -32,6 +32,22 @@
     ]
   },
   {
+    "thread_id": "public_feature_followup",
+    "slice": "public",
+    "category": "threaded_public_context",
+    "turns": [
+      {
+        "prompt": "quais aulas complementares essa escola oferece?",
+        "expected_keywords": ["maker", "futsal", "vôlei"]
+      },
+      {
+        "prompt": "e a biblioteca?",
+        "expected_keywords": ["Biblioteca Aurora"],
+        "note": "follow-up curto sobre estrutura apos atividades"
+      }
+    ]
+  },
+  {
     "thread_id": "protected_lucas_followup",
     "slice": "protected",
     "category": "threaded_protected_context",
@@ -49,6 +65,27 @@
         "expected_keywords": ["Lucas Oliveira"],
         "forbidden_keywords": ["Ana Oliveira"],
         "note": "follow-up por pronome"
+      }
+    ]
+  },
+  {
+    "thread_id": "protected_student_repair",
+    "slice": "protected",
+    "category": "threaded_protected_context",
+    "turns": [
+      {
+        "prompt": "quais meus filhos?",
+        "expected_keywords": ["Lucas Oliveira", "Ana Oliveira"]
+      },
+      {
+        "prompt": "notas do Lucas",
+        "expected_keywords": ["Lucas Oliveira"]
+      },
+      {
+        "prompt": "lucas eu falei",
+        "expected_keywords": ["Lucas Oliveira"],
+        "forbidden_keywords": ["Ana Oliveira"],
+        "note": "retomada curta do aluno em foco"
       }
     ]
   },

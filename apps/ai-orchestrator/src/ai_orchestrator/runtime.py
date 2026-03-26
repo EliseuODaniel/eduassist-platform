@@ -4550,8 +4550,15 @@ def _handle_public_operating_hours(context: PublicProfileContext) -> str:
         feature_key = str(feature_entry.get('feature_key', '')).strip().lower()
         feature_reference = 'A biblioteca' if feature_key == 'biblioteca' else f'O espaco {label}'
         if notes:
+            normalized_notes = _normalize_text(notes)
+            hours_match = re.search(r'das\s+[0-9h:]+\s+as\s+[0-9h:]+', normalized_notes)
+            hours_text = hours_match.group(0) if hours_match else None
             if 'name' in requested_attributes:
+                if feature_key == 'biblioteca' and hours_text:
+                    return f'A biblioteca se chama {label} e funciona {hours_text}.'
                 return f'{feature_reference} se chama {label}. Pelo perfil publico, {notes}'
+            if feature_key == 'biblioteca' and hours_text:
+                return f'A {label} funciona {hours_text}.'
             return f'Pelo perfil publico, {label} funciona assim hoje: {notes}'
     if requested_attribute == 'open_time':
         return (
@@ -8469,9 +8476,9 @@ def _compose_linked_students_overview_answer(actor: dict[str, Any] | None) -> st
     capability_topics = _student_capability_topics(students[0])
     capability_text = ', '.join(capability_topics[:6]) if capability_topics else 'informacoes escolares autorizadas'
     return (
-        f'Sua conta esta vinculada a {preview_names}. '
-        f'Por aqui eu consigo te ajudar com {capability_text}, dentro do que sua vinculacao permitir. '
-        'Se quiser, pode me dizer direto algo como "notas do Lucas" ou "financeiro da Ana".'
+        f'Os alunos vinculados a esta conta hoje sao {preview_names}. '
+        f'Eu posso consultar {capability_text}, dentro do que sua vinculacao permitir. '
+        'Se quiser, me diga direto algo como "notas do Lucas" ou "financeiro da Ana".'
     )
 
 

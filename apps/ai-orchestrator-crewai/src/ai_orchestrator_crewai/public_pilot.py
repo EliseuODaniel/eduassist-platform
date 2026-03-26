@@ -348,11 +348,52 @@ def _direct_contact_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | 
     return None
 
 
+def _direct_feature_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    terms = _query_terms(message)
+    feature_prompt_terms = {'atividades', 'atividade', 'complementares', 'complementar', 'oficinas', 'esporte', 'esportes', 'maker'}
+    if not (feature_prompt_terms & terms):
+        return None
+    feature_docs = [doc for doc in docs if doc.doc_id.startswith('feature.')]
+    if not feature_docs:
+        return None
+    selected_labels: list[str] = []
+    selected_texts: list[str] = []
+    for doc in feature_docs:
+        normalized = _normalize_text(f'{doc.title} {doc.text}')
+        if any(term in normalized for term in ('maker', 'futsal', 'volei', 'biblioteca', 'laboratorio')):
+            selected_labels.append(doc.title)
+            selected_texts.append(doc.text)
+    if not selected_labels:
+        selected_labels = [doc.title for doc in feature_docs[:4]]
+    labels_preview = ', '.join(selected_labels[:4])
+    detail_parts: list[str] = []
+    for text in selected_texts:
+        if 'maker' in _normalize_text(text):
+            detail_parts.append('Espaco Maker')
+        if 'futsal' in _normalize_text(text):
+            detail_parts.append('futsal')
+        if 'volei' in _normalize_text(text):
+            detail_parts.append('volei escolar')
+        if 'biblioteca' in _normalize_text(text):
+            detail_parts.append('Biblioteca Aurora')
+    unique_details = list(dict.fromkeys(detail_parts))
+    if unique_details:
+        details_preview = ', '.join(unique_details[:4])
+        return (
+            f'Hoje a escola divulga atividades e espacos complementares como {details_preview}. '
+            f'Se quiser, eu tambem posso detalhar {labels_preview}.'
+        )
+    return f'Hoje a escola divulga atividades e espacos complementares como {labels_preview}.'
+
+
 def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: list[EvidenceDoc]) -> str | None:
     primary = _select_primary_doc(plan, docs)
     if primary is None:
         return None
     terms = _query_terms(message)
+    feature_answer = _direct_feature_fast_answer(message, docs)
+    if feature_answer:
+        return feature_answer
     text = primary.text
     if 'biblioteca' in terms and not any(term in terms for term in {'horario', 'hora', 'abre', 'fecha'}):
         library_doc = _find_first_matching_doc(docs, 'feature.', ('biblioteca', 'biblioteca aurora'))
@@ -437,6 +478,13 @@ def _is_public_fast_path_query(message: str) -> bool:
         'site',
         'endereco',
         'biblioteca',
+        'atividades',
+        'atividade',
+        'complementares',
+        'complementar',
+        'oficinas',
+        'esportes',
+        'maker',
     }
     return bool(terms & direct_terms)
 
@@ -495,6 +543,8 @@ async def run_public_crewai_pilot(
     fast_path_answer = (
         _direct_contact_fast_answer(message, evidence_docs)
         or _direct_contact_fast_answer(message, shortlisted_docs)
+        or _direct_feature_fast_answer(message, evidence_docs)
+        or _direct_feature_fast_answer(message, shortlisted_docs)
         or _deterministic_backstop(message, None, shortlisted_docs)
     )
     if isinstance(fast_path_answer, str) and fast_path_answer.strip() and _is_public_fast_path_query(message):

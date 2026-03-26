@@ -6,7 +6,9 @@ import difflib
 import json
 from pathlib import Path
 from time import perf_counter
+from datetime import datetime, UTC
 from typing import Any
+import unicodedata
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -141,18 +143,24 @@ def _extract_answer_text(body: dict[str, Any] | str) -> str:
     return ''
 
 
+def _normalize_match_text(value: str) -> str:
+    text = unicodedata.normalize('NFKD', str(value or ''))
+    text = ''.join(ch for ch in text if not unicodedata.combining(ch))
+    return text.casefold()
+
+
 def _contains_expected_keywords(answer_text: str, expected_keywords: list[str]) -> bool:
     if not expected_keywords:
         return True
-    normalized_answer = answer_text.casefold()
-    return all(keyword.casefold() in normalized_answer for keyword in expected_keywords)
+    normalized_answer = _normalize_match_text(answer_text)
+    return all(_normalize_match_text(keyword) in normalized_answer for keyword in expected_keywords)
 
 
 def _contains_forbidden_keywords(answer_text: str, forbidden_keywords: list[str]) -> bool:
     if not forbidden_keywords:
         return False
-    normalized_answer = answer_text.casefold()
-    return any(keyword.casefold() in normalized_answer for keyword in forbidden_keywords)
+    normalized_answer = _normalize_match_text(answer_text)
+    return any(_normalize_match_text(keyword) in normalized_answer for keyword in forbidden_keywords)
 
 
 def _detect_error_types(
@@ -331,13 +339,14 @@ def main() -> int:
     parser.add_argument('--prompt-file', help='JSON file with a list of prompt strings.')
     parser.add_argument('--output', help='Optional JSON output path.')
     parser.add_argument('--markdown-output', help='Optional Markdown report path.')
-    parser.add_argument('--conversation-prefix', default='debug:stack-compare')
+    parser.add_argument('--conversation-prefix')
     parser.add_argument('--telegram-chat-id', type=int, default=1649845499)
     parser.add_argument('--ai-url', default='http://localhost:8002/v1/messages/respond')
     parser.add_argument('--crewai-public-url', default='http://localhost:8004/v1/shadow/public')
     parser.add_argument('--crewai-protected-url', default='http://localhost:8004/v1/shadow/protected')
     parser.add_argument('--internal-token', default='dev-internal-token')
     args = parser.parse_args()
+    conversation_prefix = args.conversation_prefix or f"debug:stack-compare:{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
 
     prompts = _load_prompts(args.prompt_file)
     baseline_headers = {
@@ -360,7 +369,7 @@ def main() -> int:
         thread_id = str(entry.get('thread_id') or '')
         turn_index = int(entry.get('turn_index') or 1)
         note = str(entry.get('note') or '')
-        conversation_id = f'{args.conversation_prefix}:thread:{thread_id}' if thread_id else f'{args.conversation_prefix}:{index}'
+        conversation_id = f'{conversation_prefix}:thread:{thread_id}' if thread_id else f'{conversation_prefix}:{index}'
         baseline_status, baseline_body, baseline_latency = _post_json(
             args.ai_url,
             baseline_headers,
@@ -413,6 +422,7 @@ def main() -> int:
             'thread_id': thread_id,
             'turn_index': turn_index,
             'note': note,
+            'run_prefix': conversation_prefix,
             'baseline': {
                 'status': baseline_status,
                 'latency_ms': round(baseline_latency, 1),

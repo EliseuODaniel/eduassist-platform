@@ -807,6 +807,25 @@ def _is_public_contact_phrase_query(message: str) -> bool:
     )
 
 
+def _is_public_contact_channel_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return any(
+        _message_matches_term(lowered, term)
+        for term in {
+            'telefone da escola',
+            'telefone do colegio',
+            'telefone do colégio',
+            'numero do telefone',
+            'número do telefone',
+            'qual o telefone',
+            'qual telefone',
+            'fax',
+            'whatsapp da escola',
+            'email da escola',
+        }
+    )
+
+
 def _is_public_utility_query(message: str) -> bool:
     lowered = _normalize_text(message)
     return any(_message_matches_term(lowered, term) for term in PUBLIC_UTILITY_TERMS)
@@ -1094,6 +1113,7 @@ def _is_public_school_profile_request(message: str) -> bool:
         or _is_public_operating_hours_query(lowered)
         or _is_public_location_query(lowered)
         or _is_public_contact_phrase_query(lowered)
+        or _is_public_contact_channel_query(lowered)
         or any(_message_matches_term(lowered, term) for term in PUBLIC_SCHOOL_PROFILE_TERMS)
     )
 
@@ -1205,6 +1225,8 @@ def _is_authenticated_admin_query(message: str, *, authenticated: bool) -> bool:
     if not authenticated:
         return False
     lowered = _normalize_text(message)
+    if _is_public_contact_phrase_query(lowered) or _is_public_contact_channel_query(lowered):
+        return False
     if any(_message_matches_term(lowered, term) for term in FINANCE_TERMS):
         return False
     if _message_matches_term(lowered, 'matricula') or _message_matches_term(lowered, 'matrícula'):
