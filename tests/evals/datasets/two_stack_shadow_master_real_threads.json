@@ -1,0 +1,446 @@
+[
+  {
+    "thread_id": "real_guardian_identity_and_student_scope",
+    "telegram_chat_id": 1649845499,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "protected",
+        "prompt": "estou logado como?",
+        "expected_keywords": [
+          "Maria Oliveira"
+        ]
+      },
+      {
+        "slice": "protected",
+        "prompt": "quais notas do meu filho lucas",
+        "expected_keywords": [
+          "Lucas Oliveira"
+        ]
+      },
+      {
+        "slice": "protected",
+        "prompt": "quais notas do meu filho joão",
+        "expected_keywords": [
+          "Joao",
+          "Lucas Oliveira",
+          "Ana Oliveira"
+        ],
+        "forbidden_keywords": [
+          "Fernando"
+        ]
+      },
+      {
+        "slice": "protected",
+        "prompt": "qual situação de documentação do lucas?",
+        "expected_keywords": [
+          "Lucas Oliveira",
+          "regular"
+        ],
+        "forbidden_keywords": [
+          "Ana Oliveira"
+        ]
+      },
+      {
+        "slice": "protected",
+        "prompt": "lucas oliveira, o luquinha",
+        "expected_keywords": [
+          "Lucas Oliveira"
+        ],
+        "forbidden_keywords": [
+          "Ana Oliveira"
+        ],
+        "note": "real transcript disambiguation turn"
+      },
+      {
+        "slice": "protected",
+        "prompt": "quais próximas provas do lucas",
+        "expected_keywords": [
+          "Lucas Oliveira",
+          "2026-04-10"
+        ]
+      },
+      {
+        "slice": "protected",
+        "prompt": "qual a matricula do lucas",
+        "expected_keywords": [
+          "Lucas Oliveira",
+          "MAT-2026-001"
+        ]
+      },
+      {
+        "slice": "protected",
+        "prompt": "e como estão as faltas do lucas",
+        "expected_keywords": [
+          "Lucas Oliveira"
+        ],
+        "forbidden_keywords": [
+          "MAT-2026-001"
+        ],
+        "note": "real transcript regression: previously echoed enrollment instead of attendance"
+      },
+      {
+        "slice": "protected",
+        "prompt": "E a frequencia do Lucas?",
+        "expected_keywords": [
+          "Lucas Oliveira"
+        ],
+        "forbidden_keywords": [
+          "Ana Oliveira"
+        ],
+        "note": "real transcript regression: previously treated frequencia as student name"
+      }
+    ]
+  },
+  {
+    "thread_id": "real_document_channels_conflict",
+    "telegram_chat_id": 1649845499,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "protected",
+        "prompt": "quais documentos faltam pra ana",
+        "expected_keywords": [
+          "Ana"
+        ],
+        "forbidden_keywords": [
+          "maria.oliveira@mock.eduassist.local"
+        ],
+        "note": "real transcript regression: previously answered the guardian admin profile instead of Ana"
+      },
+      {
+        "slice": "public",
+        "prompt": "posso enviar por fax?",
+        "expected_keywords": [
+          "fax"
+        ],
+        "forbidden_keywords": [
+          "sim"
+        ],
+        "note": "real transcript regression: previously implied fax was accepted"
+      },
+      {
+        "slice": "public",
+        "prompt": "qual o número do fax?",
+        "expected_keywords": [
+          "fax"
+        ],
+        "forbidden_keywords": [
+          "98888-1001"
+        ]
+      },
+      {
+        "slice": "public",
+        "prompt": "mas antes você respondeu que eu podia enviar por fax",
+        "expected_keywords": [
+          "fax"
+        ],
+        "forbidden_keywords": [
+          "sim"
+        ],
+        "note": "repair turn from real transcript"
+      },
+      {
+        "slice": "public",
+        "prompt": "e se eu mandar por telegrama, serve?",
+        "expected_keywords": [
+          "portal",
+          "email",
+          "secretaria"
+        ],
+        "forbidden_keywords": [
+          "sim"
+        ],
+        "note": "real transcript regression: previously repeated generic digital-channel copy"
+      },
+      {
+        "slice": "public",
+        "prompt": "qual sua caixa postal?",
+        "expected_keywords": [
+          "caixa postal"
+        ],
+        "forbidden_keywords": [
+          "sim"
+        ]
+      }
+    ]
+  },
+  {
+    "thread_id": "real_guardian_grades_and_finance_555001",
+    "telegram_chat_id": 555001,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "protected",
+        "prompt": "quero ver minhas notas",
+        "expected_keywords": [
+          "autenticacao",
+          "vinculo"
+        ],
+        "note": "real transcript prompt under current state drift: this chat is no longer linked in the current environment"
+      },
+      {
+        "slice": "protected",
+        "prompt": "quero ver as notas do Lucas Oliveira",
+        "expected_keywords": [
+          "autenticacao",
+          "vinculo"
+        ],
+        "note": "real transcript prompt under current state drift: this chat is no longer linked in the current environment"
+      },
+      {
+        "slice": "protected",
+        "prompt": "quero ver o financeiro da Ana Oliveira",
+        "expected_keywords": [
+          "autenticacao",
+          "vinculo"
+        ],
+        "note": "real transcript prompt under current state drift: this chat is no longer linked in the current environment"
+      }
+    ]
+  },
+  {
+    "thread_id": "real_public_catalog_777001",
+    "telegram_chat_id": 777001,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "public",
+        "prompt": "quais documentos sao exigidos para matricula?",
+        "expected_keywords": [
+          "historico",
+          "comprovante",
+          "responsavel"
+        ]
+      },
+      {
+        "slice": "public",
+        "prompt": "qual o horario da biblioteca? qual o nome da biblioteca?",
+        "expected_keywords": [
+          "Biblioteca Aurora",
+          "7h30"
+        ]
+      },
+      {
+        "slice": "public",
+        "prompt": "qual o telefone e o fax?",
+        "expected_keywords": [
+          "fax",
+          "3333"
+        ]
+      },
+      {
+        "slice": "public",
+        "prompt": "qual a mensalidade do ensino medio?",
+        "expected_keywords": [
+          "1450",
+          "350"
+        ]
+      }
+    ]
+  },
+  {
+    "thread_id": "real_public_after_protocol_777053",
+    "telegram_chat_id": 777053,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "public",
+        "prompt": "oi",
+        "expected_keywords": [],
+        "forbidden_keywords": [
+          "REQ-"
+        ],
+        "note": "workflow contamination check after older protocol thread"
+      },
+      {
+        "slice": "public",
+        "prompt": "qual instagram do colégio?",
+        "expected_keywords": [
+          "@colegiohorizonte"
+        ],
+        "forbidden_keywords": [
+          "REQ-"
+        ],
+        "note": "workflow contamination check after older protocol thread"
+      }
+    ]
+  },
+  {
+    "thread_id": "real_public_after_protocol_777054",
+    "telegram_chat_id": 777054,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "public",
+        "prompt": "oi",
+        "expected_keywords": [],
+        "forbidden_keywords": [
+          "REQ-"
+        ],
+        "note": "workflow contamination check after older protocol thread"
+      },
+      {
+        "slice": "public",
+        "prompt": "por que esse colégio é melhor que a concorrencia",
+        "expected_keywords": [
+          "diferenciais"
+        ],
+        "forbidden_keywords": [
+          "REQ-"
+        ],
+        "note": "public comparative turn after earlier workflow thread"
+      }
+    ]
+  },
+  {
+    "thread_id": "real_visit_lifecycle_777052",
+    "telegram_chat_id": 777052,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "workflow",
+        "prompt": "quero agendar uma visita para conhecer a escola na quinta a tarde",
+        "expected_keywords": [
+          "VIS-",
+          "admissoes"
+        ]
+      },
+      {
+        "slice": "workflow",
+        "prompt": "qual o protocolo da visita?",
+        "expected_keywords": [
+          "VIS-"
+        ]
+      },
+      {
+        "slice": "workflow",
+        "prompt": "quero remarcar a visita para sexta de manha",
+        "expected_keywords": [
+          "VIS-",
+          "manha"
+        ]
+      },
+      {
+        "slice": "workflow",
+        "prompt": "quero cancelar a visita",
+        "expected_keywords": [
+          "cancelada",
+          "VIS-"
+        ]
+      }
+    ]
+  },
+  {
+    "thread_id": "real_request_lifecycle_777051",
+    "telegram_chat_id": 777051,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "workflow",
+        "prompt": "quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca",
+        "expected_keywords": [
+          "REQ-",
+          "direcao",
+          "biblioteca"
+        ]
+      },
+      {
+        "slice": "workflow",
+        "prompt": "qual o protocolo?",
+        "expected_keywords": [
+          "REQ-"
+        ]
+      },
+      {
+        "slice": "workflow",
+        "prompt": "resume meu pedido",
+        "expected_keywords": [
+          "biblioteca",
+          "REQ-",
+          "direcao"
+        ]
+      }
+    ]
+  },
+  {
+    "thread_id": "real_support_finance_handoff_1649845499",
+    "telegram_chat_id": 1649845499,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "support",
+        "prompt": "quero falar com um humano sobre o financeiro",
+        "expected_keywords": [
+          "ATD-",
+          "financeiro",
+          "queued"
+        ]
+      },
+      {
+        "slice": "support",
+        "prompt": "qual o protocolo?",
+        "expected_keywords": [
+          "ATD-"
+        ]
+      },
+      {
+        "slice": "support",
+        "prompt": "qual o status?",
+        "expected_keywords": [
+          "ATD-",
+          "queued",
+          "financeiro"
+        ]
+      }
+    ]
+  },
+  {
+    "thread_id": "real_support_handoff_repair_1649845499",
+    "telegram_chat_id": 1649845499,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "support",
+        "prompt": "como falo com um atendente humano?",
+        "expected_keywords": [
+          "ATD-",
+          "queued"
+        ]
+      },
+      {
+        "slice": "support",
+        "prompt": "mas eu cheguei agora",
+        "expected_keywords": [
+          "comecar do zero",
+          "financeiro",
+          "secretaria"
+        ],
+        "note": "repair turn after existing support handoff"
+      }
+    ]
+  },
+  {
+    "thread_id": "real_support_secretaria_handoff_555001",
+    "telegram_chat_id": 555001,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "support",
+        "prompt": "quero falar com um humano sobre a secretaria",
+        "expected_keywords": [
+          "ATD-",
+          "secretaria",
+          "queued"
+        ]
+      },
+      {
+        "slice": "support",
+        "prompt": "qual o protocolo?",
+        "expected_keywords": [
+          "ATD-"
+        ]
+      }
+    ]
+  }
+]
