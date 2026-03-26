@@ -1,0 +1,77 @@
+[
+  {
+    "thread_id": "public_biblioteca_followup",
+    "slice": "public",
+    "category": "threaded_public_context",
+    "turns": [
+      {
+        "prompt": "essa escola tem biblioteca?",
+        "expected_keywords": ["biblioteca"]
+      },
+      {
+        "prompt": "e qual o horario?",
+        "expected_keywords": ["biblioteca", "7h30", "18h00"],
+        "note": "follow-up eliptico sobre a biblioteca"
+      }
+    ]
+  },
+  {
+    "thread_id": "public_contact_followup",
+    "slice": "public",
+    "category": "threaded_public_context",
+    "turns": [
+      {
+        "prompt": "como ligo pra escola?",
+        "expected_keywords": ["3333-4200"]
+      },
+      {
+        "prompt": "e o fax?",
+        "expected_keywords": ["fax"],
+        "note": "follow-up curto sobre o canal anterior"
+      }
+    ]
+  },
+  {
+    "thread_id": "protected_lucas_followup",
+    "slice": "protected",
+    "category": "threaded_protected_context",
+    "turns": [
+      {
+        "prompt": "quais meus filhos?",
+        "expected_keywords": ["Lucas Oliveira", "Ana Oliveira"]
+      },
+      {
+        "prompt": "notas do Lucas",
+        "expected_keywords": ["Lucas Oliveira"]
+      },
+      {
+        "prompt": "e como estao as faltas dele?",
+        "expected_keywords": ["Lucas Oliveira"],
+        "forbidden_keywords": ["Ana Oliveira"],
+        "note": "follow-up por pronome"
+      }
+    ]
+  },
+  {
+    "thread_id": "protected_admin_followup",
+    "slice": "protected",
+    "category": "threaded_protected_context",
+    "turns": [
+      {
+        "prompt": "estou logado como?",
+        "expected_keywords": ["Maria Oliveira"]
+      },
+      {
+        "prompt": "e a documentacao do Lucas?",
+        "expected_keywords": ["Lucas Oliveira", "regular"],
+        "forbidden_keywords": ["Ana Oliveira"]
+      },
+      {
+        "prompt": "e o proximo pagamento?",
+        "expected_keywords": ["Lucas Oliveira"],
+        "forbidden_keywords": ["Ana Oliveira"],
+        "note": "follow-up financeiro no mesmo aluno"
+      }
+    ]
+  }
+]
