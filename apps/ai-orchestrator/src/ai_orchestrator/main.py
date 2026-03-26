@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from eduassist_observability import configure_observability
 
+from .engine_selector import build_engine_bundle, maybe_run_shadow
 from .graph import build_orchestration_graph, get_graph_blueprint, to_preview
 from .graph_rag_runtime import graph_rag_workspace_ready
 from .models import (
@@ -53,6 +54,7 @@ class Settings(BaseSettings):
     graph_rag_local_embedding_api_base: str = 'http://host.docker.internal:11435/v1'
     graph_rag_local_chat_api_key: str = 'llama.cpp'
     graph_rag_local_embedding_api_key: str = 'ollama'
+    orchestrator_engine: str = 'langgraph'
 
 
 @lru_cache
@@ -128,6 +130,7 @@ async def meta(
     return {
         'service': 'ai-orchestrator',
         'environment': settings.app_env,
+        'orchestratorEngine': settings.orchestrator_engine,
         'provider': settings.llm_provider,
         'openaiModel': settings.openai_model,
         'googleModel': settings.google_model,
@@ -143,16 +146,19 @@ async def status() -> dict[str, object]:
     return {
         'service': 'ai-orchestrator',
         'ready': True,
+        'orchestratorEngine': settings.orchestrator_engine,
         'llmProvider': settings.llm_provider,
         'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
         'capabilities': [
             'langgraph-state-machine',
+            'engine-selector',
             'tool-routing',
             'qdrant-hybrid-retrieval',
             'conversation-memory',
             'graph-rag-routing',
             'provider-abstraction',
         ],
+        'supportedEngines': ['langgraph', 'shadow', 'crewai'],
         'graphRagEnabled': settings.graph_rag_enabled,
         'graphRagWorkspaceReady': graph_rag_workspace_ready(settings.graph_rag_workspace),
     }
@@ -225,7 +231,10 @@ async def message_response(
 ) -> MessageResponse:
     _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
-    return await generate_message_response(request=request, settings=settings)
+    bundle = build_engine_bundle(settings)
+    response = await bundle.primary.respond(request=request, settings=settings)
+    await maybe_run_shadow(bundle=bundle, request=request, settings=settings)
+    return response
 
 
 @app.get('/v1/tools')
