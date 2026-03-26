@@ -11,6 +11,40 @@ from .base import ResponseEngine, ShadowRunResult
 logger = logging.getLogger(__name__)
 
 
+def _protected_shadow_slice(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '').lower()
+    protected_terms = (
+        'nota',
+        'notas',
+        'falta',
+        'faltas',
+        'frequencia',
+        'prova',
+        'provas',
+        'avaliacao',
+        'avaliacoes',
+        'financeiro',
+        'boleto',
+        'pagamento',
+        'mensalidade',
+        'documentacao',
+        'documentos',
+        'meus filhos',
+        'meu filho',
+        'minha filha',
+        'estou logado',
+        'meu acesso',
+        'lucas',
+        'ana',
+    )
+    if any(term in message for term in protected_terms):
+        return True
+    user = getattr(request, 'user', None)
+    if user is not None and bool(getattr(user, 'authenticated', False)):
+        return True
+    return False
+
+
 class CrewAIEngine(ResponseEngine):
     name = 'crewai'
     ready = False
@@ -32,10 +66,11 @@ class CrewAIEngine(ResponseEngine):
     async def shadow_compare(self, *, request: Any, settings: Any) -> ShadowRunResult:
         pilot_url = str(getattr(settings, 'crewai_pilot_url', '') or '').strip()
         if pilot_url:
+            slice_name = 'protected' if _protected_shadow_slice(request) else 'public'
             try:
                 async with httpx.AsyncClient(timeout=20.0) as client:
                     response = await client.post(
-                        f'{pilot_url.rstrip("/")}/v1/shadow/public',
+                        f'{pilot_url.rstrip("/")}/v1/shadow/{slice_name}',
                         headers={
                             'X-Internal-Api-Token': settings.internal_api_token,
                             'Content-Type': 'application/json',
@@ -50,11 +85,13 @@ class CrewAIEngine(ResponseEngine):
                 response.raise_for_status()
                 payload = response.json()
                 if isinstance(payload, dict):
+                    metadata = payload.get('metadata') if isinstance(payload.get('metadata'), dict) else {}
+                    metadata = {'shadow_slice': slice_name, **metadata}
                     return ShadowRunResult(
                         engine_name=str(payload.get('engine_name', self.name) or self.name),
                         executed=bool(payload.get('executed')),
                         reason=str(payload.get('reason', '') or ''),
-                        metadata=payload.get('metadata') if isinstance(payload.get('metadata'), dict) else {},
+                        metadata=metadata,
                     )
             except Exception as exc:
                 logger.exception('crewai_shadow_http_failed')

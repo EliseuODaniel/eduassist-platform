@@ -317,6 +317,16 @@ def _select_primary_doc(plan: PublicPilotPlan | None, docs: list[EvidenceDoc]) -
     return docs[0] if docs else None
 
 
+def _find_first_matching_doc(docs: list[EvidenceDoc], prefix: str, terms: tuple[str, ...]) -> EvidenceDoc | None:
+    for doc in docs:
+        if not doc.doc_id.startswith(prefix):
+            continue
+        haystack = _normalize_text(f'{doc.title} {doc.text}')
+        if any(term in haystack for term in terms):
+            return doc
+    return None
+
+
 def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: list[EvidenceDoc]) -> str | None:
     primary = _select_primary_doc(plan, docs)
     if primary is None:
@@ -335,6 +345,21 @@ def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: li
         handle = re.search(r'@\w+', primary.text)
         if handle:
             return f'O Instagram institucional e {handle.group(0)}.'
+    if 'telefone' in terms or 'fax' in terms:
+        phone_doc = _find_first_matching_doc(docs, 'contact.', ('telefone', 'phone', 'secretaria'))
+        fax_doc = _find_first_matching_doc(docs, 'profile.', ('fax',))
+        phone_answer = None
+        fax_answer = None
+        if phone_doc is not None:
+            phone_answer = f"{phone_doc.title}: {phone_doc.text.replace('|', ' ').strip()}"
+        if fax_doc is not None and 'nao utiliza fax' in _normalize_text(fax_doc.text):
+            fax_answer = 'Hoje a escola nao utiliza fax institucional.'
+        if 'telefone' in terms and 'fax' in terms and phone_answer and fax_answer:
+            return f'{phone_answer} {fax_answer}'
+        if 'telefone' in terms and phone_answer:
+            return phone_answer
+        if 'fax' in terms and fax_answer:
+            return fax_answer
     if 'fax' in terms:
         if 'nao utiliza fax' in _normalize_text(primary.text):
             return 'Hoje a escola nao utiliza fax institucional.'
@@ -522,7 +547,14 @@ async def run_public_crewai_pilot(
     backstop_used = False
 
     if isinstance(answer, PublicPilotAnswer) and backstop_answer:
-        if _answer_conflicts_with_backstop(answer.answer_text, backstop_answer, message):
+        should_apply_backstop = _answer_conflicts_with_backstop(answer.answer_text, backstop_answer, message)
+        if isinstance(plan, PublicPilotPlan) and plan.needs_clarification and any(
+            term in _query_terms(message) for term in {'telefone', 'fax', 'instagram', 'email', 'site', 'endereco'}
+        ):
+            should_apply_backstop = True
+        if isinstance(verdict, PublicPilotJudge) and not verdict.valid:
+            should_apply_backstop = True
+        if should_apply_backstop:
             answer = PublicPilotAnswer(answer_text=backstop_answer, citations=[_select_primary_doc(plan if isinstance(plan, PublicPilotPlan) else None, shortlisted_docs).doc_id] if _select_primary_doc(plan if isinstance(plan, PublicPilotPlan) else None, shortlisted_docs) else [])
             verdict = PublicPilotJudge(valid=True, reason='deterministic_backstop_applied', revision_needed=False)
             backstop_used = True

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .public_pilot import run_public_crewai_pilot
+from .protected_pilot import run_protected_crewai_pilot
 
 try:
     import crewai  # type: ignore
@@ -81,11 +82,11 @@ async def status(
         'ready': True,
         'crewaiInstalled': crewai is not None,
         'crewaiVersion': getattr(crewai, '__version__', None),
-        'slice': 'public',
+        'slice': 'public+protected',
         'mode': 'pilot',
         'googleModel': settings.google_model,
         'llmConfigured': bool(settings.google_api_key),
-        'capabilities': ['public-shadow-slice', 'isolated-dependencies', 'planner-composer-judge'],
+        'capabilities': ['public-shadow-slice', 'protected-shadow-slice', 'isolated-dependencies', 'planner-composer-judge'],
     }
 
 
@@ -97,6 +98,23 @@ async def shadow_public(
     _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
     result = await run_public_crewai_pilot(
+        message=request.message,
+        conversation_id=request.conversation_id,
+        telegram_chat_id=request.telegram_chat_id,
+        channel=request.channel,
+        settings=settings,
+    )
+    return ShadowPilotResponse(**result)
+
+
+@app.post('/v1/shadow/protected', response_model=ShadowPilotResponse)
+async def shadow_protected(
+    request: ShadowPilotRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> ShadowPilotResponse:
+    _require_internal_api_token(x_internal_api_token)
+    settings = get_settings()
+    result = await run_protected_crewai_pilot(
         message=request.message,
         conversation_id=request.conversation_id,
         telegram_chat_id=request.telegram_chat_id,
