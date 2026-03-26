@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     graph_rag_local_embedding_api_key: str = 'ollama'
     orchestrator_engine: str = 'langgraph'
     crewai_pilot_url: str | None = None
+    orchestrator_experiment_enabled: bool = False
+    orchestrator_experiment_primary_engine: str = 'crewai'
+    orchestrator_experiment_slices: str = ''
+    orchestrator_experiment_rollout_percent: int = 0
+    orchestrator_experiment_telegram_chat_allowlist: str = ''
+    orchestrator_experiment_conversation_allowlist: str = ''
 
 
 @lru_cache
@@ -134,6 +140,10 @@ async def meta(
         'environment': settings.app_env,
         'orchestratorEngine': settings.orchestrator_engine,
         'crewaiPilotConfigured': bool(settings.crewai_pilot_url),
+        'experimentEnabled': settings.orchestrator_experiment_enabled,
+        'experimentPrimaryEngine': settings.orchestrator_experiment_primary_engine,
+        'experimentSlices': settings.orchestrator_experiment_slices,
+        'experimentRolloutPercent': settings.orchestrator_experiment_rollout_percent,
         'provider': settings.llm_provider,
         'openaiModel': settings.openai_model,
         'googleModel': settings.google_model,
@@ -151,6 +161,10 @@ async def status() -> dict[str, object]:
         'ready': True,
         'orchestratorEngine': settings.orchestrator_engine,
         'crewaiPilotConfigured': bool(settings.crewai_pilot_url),
+        'experimentEnabled': settings.orchestrator_experiment_enabled,
+        'experimentPrimaryEngine': settings.orchestrator_experiment_primary_engine,
+        'experimentSlices': settings.orchestrator_experiment_slices,
+        'experimentRolloutPercent': settings.orchestrator_experiment_rollout_percent,
         'llmProvider': settings.llm_provider,
         'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
         'capabilities': [
@@ -235,8 +249,8 @@ async def message_response(
 ) -> MessageResponse:
     _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
-    bundle = build_engine_bundle(settings)
-    response = await bundle.primary.respond(request=request, settings=settings)
+    bundle = build_engine_bundle(settings, request=request)
+    response = await bundle.primary.respond(request=request, settings=settings, engine_mode=bundle.mode)
     shadow_result = await maybe_run_shadow(bundle=bundle, request=request, settings=settings)
     if shadow_result is not None:
         await persist_shadow_trace(

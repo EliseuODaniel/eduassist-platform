@@ -17,7 +17,7 @@ class ResponseEngine:
     name = 'unknown'
     ready = True
 
-    async def respond(self, *, request: Any, settings: Any) -> Any:
+    async def respond(self, *, request: Any, settings: Any, engine_mode: str | None = None) -> Any:
         raise NotImplementedError
 
     async def shadow_compare(self, *, request: Any, settings: Any) -> ShadowRunResult:
