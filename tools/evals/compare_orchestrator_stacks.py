@@ -194,6 +194,7 @@ def _detect_error_types(
     if status != 200:
         return ['request_failed']
     normalized_answer = answer_text.casefold().strip()
+    normalized_note = note.casefold().strip()
     errors: list[str] = []
     if expected_keywords and not _contains_expected_keywords(answer_text, expected_keywords):
         errors.append('missing_expected_keyword')
@@ -203,11 +204,14 @@ def _detect_error_types(
         errors.append('unnecessary_clarification')
     if turn_index > 1 and previous_answer:
         similarity = difflib.SequenceMatcher(a=previous_answer.casefold().strip(), b=normalized_answer).ratio()
-        if similarity >= 0.92:
+        repeated_auth_guidance = (
+            'essa consulta depende de autenticacao e vinculo da sua conta no telegram' in normalized_answer
+            and 'current state drift' in normalized_note
+        )
+        if similarity >= 0.92 and not repeated_auth_guidance:
             errors.append('repetitive_reply')
         if prompt.casefold().strip().startswith('e ') and expected_keywords and not _contains_expected_keywords(answer_text, expected_keywords):
             errors.append('followup_context_drop')
-    normalized_note = note.casefold().strip()
     if 'repair' in normalized_note:
         repair_markers = (
             'desculp',

@@ -346,6 +346,18 @@ def _direct_contact_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | 
     if fax_doc is not None and 'nao utiliza fax' in _normalize_text(fax_doc.text):
         fax_answer = 'Hoje a escola nao utiliza fax institucional.'
     fallback_channels = 'portal institucional, email da secretaria ou secretaria presencial'
+    normalized_message = _normalize_text(message)
+    if 'fax' in terms and any(term in normalized_message for term in ('antes voce respondeu', 'antes você respondeu', 'corrigindo', 'mas antes')):
+        return (
+            'Voce esta certo em cobrar essa correcao. '
+            'Corrigindo: hoje a escola nao utiliza fax institucional. '
+            f'Para documentos, use {fallback_channels}.'
+        )
+    if 'fax' in terms and any(term in normalized_message for term in ('enviar', 'envio', 'documento', 'documentos')):
+        return (
+            'Hoje a escola nao utiliza fax para envio de documentos. '
+            f'Para isso, use {fallback_channels}.'
+        )
     if 'telegrama' in terms:
         return f'Hoje a escola nao publica telegrama como canal valido. Para documentos, use {fallback_channels}.'
     if {'caixa', 'postal'} & terms:
@@ -355,7 +367,7 @@ def _direct_contact_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | 
     if ({'telefone', 'ligo', 'ligar', 'contato'} & terms) and phone_answer:
         return phone_answer
     if 'fax' in terms and fax_answer:
-        return fax_answer
+        return 'Hoje nao existe numero de fax publicado, porque a escola nao utiliza fax institucional.'
     return None
 
 

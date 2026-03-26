@@ -9366,6 +9366,29 @@ def _format_attendance(summary: dict[str, Any]) -> list[str]:
     return lines or ['- Ainda nao ha registros consolidados de frequencia.']
 
 
+def _format_attendance_overview(summary: dict[str, Any]) -> list[str]:
+    attendance = summary.get('attendance')
+    if not isinstance(attendance, list) or not attendance:
+        return ['- Ainda nao ha registros consolidados de frequencia neste recorte.']
+    present = 0
+    late = 0
+    absent = 0
+    minutes = 0
+    for row in attendance:
+        if not isinstance(row, dict):
+            continue
+        present += int(row.get('present_count', 0) or 0)
+        late += int(row.get('late_count', 0) or 0)
+        absent += int(row.get('absent_count', 0) or 0)
+        minutes += int(row.get('absent_minutes', 0) or 0)
+    return [
+        f'- Presencas registradas: {present}',
+        f'- Faltas registradas: {absent}',
+        f'- Atrasos registrados: {late}',
+        f'- Minutos somados de ausencia: {minutes}',
+    ]
+
+
 def _format_invoices(summary: dict[str, Any]) -> list[str]:
     invoices = summary.get('invoices')
     if not isinstance(invoices, list) or not invoices:
@@ -9714,6 +9737,7 @@ def _compose_academic_attribute_answer(
     *,
     attribute_request: ProtectedAttributeRequest,
     student_name: str,
+    message: str | None = None,
 ) -> str:
     if attribute_request.attribute == 'enrollment_code':
         enrollment_code = str(summary.get('enrollment_code', '') or '').strip()
@@ -9728,9 +9752,25 @@ def _compose_academic_attribute_answer(
             'neste recorte autorizado.'
         )
     if attribute_request.attribute == 'attendance':
-        lines = [f'Frequencia de {student_name}:']
-        lines.extend(_format_attendance(summary))
-        return '\n'.join(lines)
+        normalized_message = _normalize_text(message or '')
+        if _message_matches_term(normalized_message, 'frequencia') and not _contains_any(normalized_message, {'falta', 'faltas'}):
+            lines = [f'Panorama de frequencia de {student_name}:']
+            lines.append('Resumo geral:')
+            lines.extend(_format_attendance_overview(summary))
+            return '\n'.join(lines)
+        attendance = summary.get('attendance')
+        absent = 0
+        late = 0
+        if isinstance(attendance, list):
+            for row in attendance:
+                if not isinstance(row, dict):
+                    continue
+                absent += int(row.get('absent_count', 0) or 0)
+                late += int(row.get('late_count', 0) or 0)
+        return (
+            f'No recorte de faltas de {student_name}, eu encontrei {absent} falta(s) '
+            f'e {late} atraso(s).'
+        )
     if attribute_request.attribute == 'grades':
         lines = [f'Notas de {student_name}:']
         lines.extend(_format_grades(summary))
@@ -10195,6 +10235,7 @@ async def _execute_protected_records_specialist(
                 summary,
                 attribute_request=academic_attribute_request,
                 student_name=student_name,
+                message=message,
             )
 
         focus_kind = _detect_academic_focus_kind(message)
@@ -10277,8 +10318,13 @@ async def _execute_protected_records_specialist(
         if term_filter:
             lines.append(f'- Bimestre filtrado: {term_filter[-1]}')
         if focus_attendance:
-            lines.append('Frequencia:')
-            lines.extend(_format_attendance(filtered_summary))
+            if _message_matches_term(_normalize_text(message), 'frequencia') and not _contains_any(message, {'falta', 'faltas'}):
+                lines[0] = f'Panorama de frequencia de {student_name}:'
+                lines.append('Resumo geral:')
+                lines.extend(_format_attendance_overview(filtered_summary))
+            else:
+                lines.append('Frequencia:')
+                lines.extend(_format_attendance(filtered_summary))
             lines.append('Notas mais recentes:')
             lines.extend(_format_grades(filtered_summary))
         else:
