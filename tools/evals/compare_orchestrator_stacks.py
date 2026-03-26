@@ -37,6 +37,12 @@ ERROR_WEIGHTS = {
     'canned_tone': 8,
 }
 
+QUALITY_SIGNAL_NAMES = (
+    'repair_ack',
+    'followup_adaptation',
+    'personalization',
+)
+
 
 def _post_json(url: str, headers: dict[str, str], payload: dict[str, Any]) -> tuple[int, dict[str, Any] | str, float]:
     encoded = json.dumps(payload).encode('utf-8')
@@ -234,6 +240,59 @@ def _detect_error_types(
     return sorted(set(errors))
 
 
+def _needs_personalization(prompt: str, expected_keywords: list[str]) -> bool:
+    normalized_prompt = _normalize_match_text(prompt)
+    if any(term in normalized_prompt.split() for term in ('meu', 'minha', 'meus', 'minhas', 'dele', 'dela')):
+        return True
+    if any(term in normalized_prompt for term in ('lucas', 'ana', 'joao', 'joão', 'maria', 'sofia')):
+        return True
+    return any(' ' in str(keyword).strip() for keyword in expected_keywords)
+
+
+def _detect_quality_signals(
+    *,
+    answer_text: str,
+    expected_keywords: list[str],
+    prompt: str,
+    previous_answer: str,
+    turn_index: int,
+    note: str,
+) -> dict[str, bool | None]:
+    normalized_answer = answer_text.casefold().strip()
+    normalized_note = note.casefold().strip()
+    followup_prompt = prompt.casefold().strip().startswith(('e ', 'mas '))
+    repair_eligible = 'repair' in normalized_note
+    personalization_eligible = _needs_personalization(prompt, expected_keywords)
+    repair_markers = (
+        'desculp',
+        'corrig',
+        'voce esta certo',
+        'você está certo',
+        'houve um erro',
+        'confus',
+    )
+    return {
+        'repair_ack': (
+            any(marker in normalized_answer for marker in repair_markers)
+            if repair_eligible
+            else None
+        ),
+        'followup_adaptation': (
+            (
+                not previous_answer
+                or difflib.SequenceMatcher(a=previous_answer.casefold().strip(), b=normalized_answer).ratio() < 0.92
+            )
+            if turn_index > 1 and followup_prompt
+            else None
+        ),
+        'personalization': (
+            (not expected_keywords or _contains_expected_keywords(answer_text, expected_keywords))
+            if personalization_eligible
+            else None
+        ),
+    }
+
+
 def _quality_score(*, status: int, error_types: list[str]) -> int:
     if status != 200:
         return 0
@@ -248,6 +307,10 @@ def _summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
         'by_category': {},
         'by_thread': {},
         'error_types': {'baseline': {}, 'crewai': {}},
+        'quality_signals': {
+            'baseline': {name: {'hits': 0, 'eligible': 0} for name in QUALITY_SIGNAL_NAMES},
+            'crewai': {name: {'hits': 0, 'eligible': 0} for name in QUALITY_SIGNAL_NAMES},
+        },
     }
     for result in results:
         slice_name = result['slice']
@@ -317,6 +380,15 @@ def _summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
             summary['error_types']['baseline'][error] = summary['error_types']['baseline'].get(error, 0) + 1
         for error in result['crewai'].get('error_types', []):
             summary['error_types']['crewai'][error] = summary['error_types']['crewai'].get(error, 0) + 1
+        for engine_name in ('baseline', 'crewai'):
+            for signal_name, signal_value in (result[engine_name].get('quality_signals') or {}).items():
+                if signal_name not in QUALITY_SIGNAL_NAMES:
+                    continue
+                if signal_value is None:
+                    continue
+                signal_bucket = summary['quality_signals'][engine_name][signal_name]
+                signal_bucket['eligible'] += 1
+                signal_bucket['hits'] += 1 if signal_value else 0
     for bucket in summary['by_slice'].values():
         count = max(1, int(bucket['count']))
         bucket['baseline_avg_latency_ms'] = round(bucket['baseline_avg_latency_ms'] / count, 1)
@@ -367,6 +439,14 @@ def _render_markdown_report(payload: dict[str, Any]) -> str:
         items = ', '.join(f'{name}={count}' for name, count in sorted(bucket.items()))
         lines.append(f"- `{engine_name}`: {items or 'nenhum'}")
     lines.append('')
+    lines.append('## Quality Signals')
+    lines.append('')
+    for engine_name, bucket in (summary.get('quality_signals') or {}).items():
+        parts = []
+        for signal_name, signal_values in bucket.items():
+            parts.append(f"{signal_name} {signal_values.get('hits')}/{signal_values.get('eligible')}")
+        lines.append(f"- `{engine_name}`: {', '.join(parts)}")
+    lines.append('')
     lines.append('## By Thread')
     lines.append('')
     for thread_id, bucket in (summary.get('by_thread') or {}).items():
@@ -394,6 +474,12 @@ def _render_markdown_report(payload: dict[str, Any]) -> str:
             lines.append(f"- Baseline errors: {', '.join(result['baseline']['error_types'])}")
         if result['crewai'].get('error_types'):
             lines.append(f"- CrewAI errors: {', '.join(result['crewai']['error_types'])}")
+        baseline_signals = ', '.join(f'{k}={v}' for k, v in (result['baseline'].get('quality_signals') or {}).items())
+        crewai_signals = ', '.join(f'{k}={v}' for k, v in (result['crewai'].get('quality_signals') or {}).items())
+        if baseline_signals:
+            lines.append(f"- Baseline quality signals: {baseline_signals}")
+        if crewai_signals:
+            lines.append(f"- CrewAI quality signals: {crewai_signals}")
         lines.append(f"- Baseline answer: {result['baseline']['answer_text']}")
         lines.append(f"- CrewAI answer: {result['crewai']['answer_text']}")
         lines.append('')
@@ -499,6 +585,14 @@ def main() -> int:
                 'answer_text': baseline_answer,
                 'keyword_pass': _contains_expected_keywords(baseline_answer, expected_keywords),
                 'error_types': baseline_error_types,
+                'quality_signals': _detect_quality_signals(
+                    answer_text=baseline_answer,
+                    expected_keywords=expected_keywords,
+                    prompt=prompt,
+                    previous_answer=state['baseline'],
+                    turn_index=turn_index,
+                    note=note,
+                ),
                 'quality_score': _quality_score(status=baseline_status, error_types=baseline_error_types),
                 'body': baseline_body,
             },
@@ -508,6 +602,14 @@ def main() -> int:
                 'answer_text': crewai_answer,
                 'keyword_pass': _contains_expected_keywords(crewai_answer, expected_keywords),
                 'error_types': crewai_error_types,
+                'quality_signals': _detect_quality_signals(
+                    answer_text=crewai_answer,
+                    expected_keywords=expected_keywords,
+                    prompt=prompt,
+                    previous_answer=state['crewai'],
+                    turn_index=turn_index,
+                    note=note,
+                ),
                 'quality_score': _quality_score(status=pilot_status, error_types=crewai_error_types),
                 'body': pilot_body,
             },

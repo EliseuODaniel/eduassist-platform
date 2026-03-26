@@ -371,6 +371,34 @@ def _direct_contact_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | 
     return None
 
 
+def _direct_greeting_fast_answer(message: str) -> str | None:
+    normalized = ' '.join(_normalize_text(message).split())
+    if normalized in {'oi', 'ola', 'olá', 'bom dia', 'boa tarde', 'boa noite'}:
+        return (
+            'Oi. Eu posso te ajudar por aqui com informacoes da escola, canais oficiais, '
+            'matricula, visitas, biblioteca, atividades e rotina escolar.'
+        )
+    return None
+
+
+def _direct_comparative_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    terms = _query_terms(message)
+    if not ({'melhor', 'concorrencia', 'concorrente', 'publica', 'pagar', 'estudar'} & terms):
+        return None
+    comparative_docs = [doc for doc in docs if doc.doc_id.startswith('highlight.')]
+    if not comparative_docs:
+        comparative_docs = [doc for doc in docs if doc.doc_id.startswith('feature.')]
+    if not comparative_docs:
+        return None
+    labels = [doc.title for doc in comparative_docs[:2] if doc.title]
+    labels_preview = ', '.join(labels) if labels else 'os diferenciais publicados da escola'
+    return (
+        f'Os diferenciais publicados desta escola hoje incluem {labels_preview}. '
+        'Eu nao consigo afirmar que ela seja melhor do que uma concorrente especifica sem fontes comparativas confiaveis, '
+        'mas posso te explicar esses diferenciais com clareza.'
+    )
+
+
 def _direct_feature_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
     terms = _query_terms(message)
     feature_prompt_terms = {'atividades', 'atividade', 'complementares', 'complementar', 'oficinas', 'esporte', 'esportes', 'maker'}
@@ -452,6 +480,12 @@ def _direct_tuition_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | 
 
 
 def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: list[EvidenceDoc]) -> str | None:
+    greeting_answer = _direct_greeting_fast_answer(message)
+    if greeting_answer:
+        return greeting_answer
+    comparative_answer = _direct_comparative_fast_answer(message, docs)
+    if comparative_answer:
+        return comparative_answer
     primary = _select_primary_doc(plan, docs)
     if primary is None:
         return None
@@ -529,6 +563,9 @@ def _answer_conflicts_with_backstop(answer_text: str, backstop: str, message: st
 
 def _is_public_fast_path_query(message: str) -> bool:
     terms = _query_terms(message)
+    normalized = ' '.join(_normalize_text(message).split())
+    if normalized in {'oi', 'ola', 'olá', 'bom dia', 'boa tarde', 'boa noite'}:
+        return True
     direct_terms = {
         'horario',
         'hora',
@@ -564,6 +601,10 @@ def _is_public_fast_path_query(message: str) -> bool:
         'oficinas',
         'esportes',
         'maker',
+        'melhor',
+        'concorrencia',
+        'concorrente',
+        'publica',
     }
     return bool(terms & direct_terms)
 
@@ -620,10 +661,13 @@ async def run_public_crewai_pilot(
     evidence_docs = _build_evidence_docs(evidence)
     shortlisted_docs = _rank_evidence_docs(message, evidence_docs)
     fast_path_answer = (
+        _direct_greeting_fast_answer(message)
+        or
         _direct_contact_fast_answer(message, evidence_docs)
         or _direct_contact_fast_answer(message, shortlisted_docs)
         or _direct_feature_fast_answer(message, evidence_docs)
         or _direct_feature_fast_answer(message, shortlisted_docs)
+        or _deterministic_backstop(message, None, evidence_docs)
         or _deterministic_backstop(message, None, shortlisted_docs)
     )
     if isinstance(fast_path_answer, str) and fast_path_answer.strip() and _is_public_fast_path_query(message):

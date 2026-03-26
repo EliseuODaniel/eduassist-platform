@@ -157,5 +157,47 @@
         "expected_keywords": ["1450", "350"]
       }
     ]
+  },
+  {
+    "thread_id": "real_public_after_protocol_777053",
+    "telegram_chat_id": 777053,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "public",
+        "prompt": "oi",
+        "expected_keywords": [],
+        "forbidden_keywords": ["REQ-"],
+        "note": "workflow contamination check after older protocol thread"
+      },
+      {
+        "slice": "public",
+        "prompt": "qual instagram do colégio?",
+        "expected_keywords": ["@colegiohorizonte"],
+        "forbidden_keywords": ["REQ-"],
+        "note": "workflow contamination check after older protocol thread"
+      }
+    ]
+  },
+  {
+    "thread_id": "real_public_after_protocol_777054",
+    "telegram_chat_id": 777054,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "public",
+        "prompt": "oi",
+        "expected_keywords": [],
+        "forbidden_keywords": ["REQ-"],
+        "note": "workflow contamination check after older protocol thread"
+      },
+      {
+        "slice": "public",
+        "prompt": "por que esse colégio é melhor que a concorrencia",
+        "expected_keywords": ["diferenciais"],
+        "forbidden_keywords": ["REQ-"],
+        "note": "public comparative turn after earlier workflow thread"
+      }
+    ]
   }
 ]
