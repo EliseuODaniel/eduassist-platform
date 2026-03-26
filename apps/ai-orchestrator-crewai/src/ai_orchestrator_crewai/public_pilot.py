@@ -151,6 +151,12 @@ def _build_evidence_docs(evidence: dict[str, Any]) -> list[EvidenceDoc]:
         json.dumps(profile.get('document_submission_policy', {}), ensure_ascii=False),
     )
     add(
+        'profile.required_documents',
+        'school_profile',
+        'Documentos exigidos para matricula',
+        '; '.join(str(item).strip() for item in (profile.get('admissions_required_documents') or []) if str(item).strip()),
+    )
+    add(
         'directory.leadership',
         'org_directory',
         'Lideranca e contatos',
@@ -391,11 +397,59 @@ def _direct_feature_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | 
     return f'Hoje a escola divulga atividades e espacos complementares como {labels_preview}.'
 
 
+def _direct_required_documents_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    terms = _query_terms(message)
+    if 'matricula' not in terms or not ({'documentos', 'documento', 'exigidos', 'exigido', 'necessarios'} & terms):
+        return None
+    doc = _find_first_matching_doc(docs, 'profile.required_documents', ('documentos exigidos',))
+    if doc is None or not doc.text.strip():
+        return None
+    items = [item.strip() for item in doc.text.split(';') if item.strip()]
+    if not items:
+        return None
+    lines = ['Hoje os documentos exigidos para a matricula publicados pela escola sao:']
+    lines.extend(f'- {item}' for item in items)
+    return '\n'.join(lines)
+
+
+def _direct_tuition_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    terms = _query_terms(message)
+    if 'mensalidade' not in terms:
+        return None
+    preferred_terms = ()
+    if {'medio', 'ensino'} & terms:
+        preferred_terms = ('ensino medio',)
+    elif 'fundamental' in terms:
+        preferred_terms = ('ensino fundamental ii',)
+    target_doc = None
+    if preferred_terms:
+        target_doc = _find_first_matching_doc(docs, 'tuition.', preferred_terms)
+    if target_doc is None:
+        target_doc = _find_first_matching_doc(docs, 'tuition.', ('ensino medio', 'ensino fundamental ii'))
+    if target_doc is None:
+        return None
+    values = re.findall(r'[0-9]+\.[0-9]{2}', target_doc.text)
+    monthly_amount = values[0] if values else None
+    enrollment_fee = values[1] if len(values) > 1 else None
+    if not monthly_amount:
+        return None
+    segment = target_doc.title
+    if enrollment_fee is not None:
+        return f'A mensalidade de referencia para {segment} e R$ {monthly_amount}, com taxa de matricula de R$ {enrollment_fee}.'
+    return f'A mensalidade de referencia para {segment} e R$ {monthly_amount}.'
+
+
 def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: list[EvidenceDoc]) -> str | None:
     primary = _select_primary_doc(plan, docs)
     if primary is None:
         return None
     terms = _query_terms(message)
+    required_documents_answer = _direct_required_documents_fast_answer(message, docs)
+    if required_documents_answer:
+        return required_documents_answer
+    tuition_answer = _direct_tuition_fast_answer(message, docs)
+    if tuition_answer:
+        return tuition_answer
     feature_answer = _direct_feature_fast_answer(message, docs)
     if feature_answer:
         return feature_answer
@@ -486,6 +540,11 @@ def _is_public_fast_path_query(message: str) -> bool:
         'telegrama',
         'caixa',
         'postal',
+        'documentos',
+        'documento',
+        'exigidos',
+        'necessarios',
+        'mensalidade',
         'atividades',
         'atividade',
         'complementares',

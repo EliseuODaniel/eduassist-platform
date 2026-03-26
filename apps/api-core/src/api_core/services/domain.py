@@ -911,6 +911,14 @@ def get_public_school_profile(session: Session) -> PublicSchoolProfile | None:
             'Descontos comerciais para irmaos e campanha de matricula antecipada conforme edital vigente.',
             'Matricula condicionada a analise documental, entrevista de acolhimento e assinatura contratual.',
         ],
+        admissions_required_documents=[
+            'Formulario cadastral preenchido',
+            'Documento de identificacao do aluno',
+            'CPF do aluno, quando houver',
+            'Historico escolar',
+            'Comprovante de residencia atualizado',
+            'Documento de identificacao do responsavel legal',
+        ],
     )
 
 

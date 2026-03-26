@@ -119,6 +119,11 @@ def _to_markdown(messages: list[dict[str, Any]]) -> str:
 
 
 def _to_benchmark_skeleton(messages: list[dict[str, Any]], *, thread_id: str) -> list[dict[str, Any]]:
+    telegram_chat_id: int | None = None
+    if thread_id.startswith('telegram:'):
+        raw = thread_id.split(':', 1)[1]
+        if raw.isdigit():
+            telegram_chat_id = int(raw)
     turns: list[dict[str, Any]] = []
     for message in messages:
         if message['sender_type'] != 'user':
@@ -130,14 +135,15 @@ def _to_benchmark_skeleton(messages: list[dict[str, Any]], *, thread_id: str) ->
                 'note': f"from_real_transcript:{message['created_at']}",
             }
         )
-    return [
-        {
-            'thread_id': thread_id.replace(':', '_'),
-            'slice': 'protected',
-            'category': 'threaded_real_transcript',
-            'turns': turns,
-        }
-    ]
+    skeleton = {
+        'thread_id': thread_id.replace(':', '_'),
+        'slice': 'protected',
+        'category': 'threaded_real_transcript',
+        'turns': turns,
+    }
+    if telegram_chat_id is not None:
+        skeleton['telegram_chat_id'] = telegram_chat_id
+    return [skeleton]
 
 
 def main() -> int:

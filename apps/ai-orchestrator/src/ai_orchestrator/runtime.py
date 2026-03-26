@@ -1890,6 +1890,18 @@ def _is_negative_requirement_query(message: str) -> bool:
     return has_negative and has_requirement
 
 
+def _is_positive_requirement_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if _is_negative_requirement_query(message):
+        return False
+    has_requirement = any(_message_matches_term(normalized, term) for term in REQUIREMENT_QUERY_TERMS)
+    has_positive = any(
+        _message_matches_term(normalized, term)
+        for term in {'exigido', 'exigidos', 'exigida', 'exigidas', 'necessario', 'necessarios', 'preciso', 'levar'}
+    )
+    return has_requirement and has_positive
+
+
 def _is_comparative_query(message: str) -> bool:
     normalized = _normalize_text(message)
     return any(_message_matches_term(normalized, term) for term in COMPARATIVE_TERMS)
@@ -3448,6 +3460,8 @@ def _try_public_channel_fast_answer(
     if not isinstance(profile, dict):
         return None
     normalized = _normalize_text(message)
+    if _is_positive_requirement_query(message):
+        return _compose_required_documents_answer(profile)
     if _is_public_document_submission_query(message):
         return _compose_public_document_submission_answer(profile, message=message)
     if _message_matches_term(normalized, 'caixa postal'):
@@ -5368,6 +5382,21 @@ def _compose_negative_requirement_answer() -> str:
     ]
     lines.extend(f'- {item}' for item in KNOWN_ADMISSIONS_REQUIREMENTS)
     lines.append('Se quiser, eu posso resumir apenas os documentos exigidos ou explicar as etapas da matricula.')
+    return '\n'.join(lines)
+
+
+def _compose_required_documents_answer(profile: dict[str, Any] | None = None) -> str:
+    requirements: list[str] = []
+    if isinstance(profile, dict):
+        requirements = [
+            str(item).strip()
+            for item in (profile.get('admissions_required_documents') or [])
+            if isinstance(item, str) and str(item).strip()
+        ]
+    requirements = requirements or list(KNOWN_ADMISSIONS_REQUIREMENTS)
+    lines = ['Hoje os documentos exigidos para a matricula publicados pela escola sao:']
+    lines.extend(f'- {item}' for item in requirements)
+    lines.append('Se quiser, eu tambem posso explicar as etapas da matricula ou como funciona o envio inicial desses documentos.')
     return '\n'.join(lines)
 
 

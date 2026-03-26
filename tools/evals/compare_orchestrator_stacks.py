@@ -29,6 +29,7 @@ DEFAULT_PROMPT_FILE = 'tests/evals/datasets/two_stack_shadow_cases.json'
 ERROR_WEIGHTS = {
     'request_failed': 60,
     'forbidden_entity_or_value': 45,
+    'repair_miss': 18,
     'followup_context_drop': 25,
     'missing_expected_keyword': 20,
     'unnecessary_clarification': 12,
@@ -109,6 +110,7 @@ def _expand_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
                         'thread_id': thread_id,
                         'turn_index': turn_index,
                         'note': str(turn.get('note') or ''),
+                        'telegram_chat_id': turn.get('telegram_chat_id', entry.get('telegram_chat_id')),
                     }
                 )
             continue
@@ -122,6 +124,7 @@ def _expand_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 'thread_id': str(entry.get('thread_id') or ''),
                 'turn_index': int(entry.get('turn_index') or 1),
                 'note': str(entry.get('note') or ''),
+                'telegram_chat_id': entry.get('telegram_chat_id'),
             }
         )
     return expanded
@@ -159,6 +162,7 @@ def _normalize_match_text(value: str) -> str:
     text = text.casefold()
     text = re.sub(r'[-_/]+', '', text)
     text = re.sub(r'[^0-9a-z]+', ' ', text)
+    text = re.sub(r'(?<=\d)\s+(?=\d)', '', text)
     return ' '.join(text.split())
 
 
@@ -185,6 +189,7 @@ def _detect_error_types(
     previous_answer: str,
     status: int,
     turn_index: int,
+    note: str,
 ) -> list[str]:
     if status != 200:
         return ['request_failed']
@@ -202,6 +207,18 @@ def _detect_error_types(
             errors.append('repetitive_reply')
         if prompt.casefold().strip().startswith('e ') and expected_keywords and not _contains_expected_keywords(answer_text, expected_keywords):
             errors.append('followup_context_drop')
+    normalized_note = note.casefold().strip()
+    if 'repair' in normalized_note:
+        repair_markers = (
+            'desculp',
+            'corrig',
+            'voce esta certo',
+            'você está certo',
+            'houve um erro',
+            'confus',
+        )
+        if not any(marker in normalized_answer for marker in repair_markers):
+            errors.append('repair_miss')
     canned_markers = (
         'por aqui eu consigo te ajudar',
         'se quiser, pode me dizer direto',
@@ -414,13 +431,14 @@ def main() -> int:
         thread_id = str(entry.get('thread_id') or '')
         turn_index = int(entry.get('turn_index') or 1)
         note = str(entry.get('note') or '')
+        telegram_chat_id = entry.get('telegram_chat_id')
         conversation_id = f'{conversation_prefix}:thread:{thread_id}' if thread_id else f'{conversation_prefix}:{index}'
         baseline_status, baseline_body, baseline_latency = _post_json(
             args.ai_url,
             baseline_headers,
             {
                 'message': prompt,
-                'telegram_chat_id': args.telegram_chat_id,
+                'telegram_chat_id': telegram_chat_id if telegram_chat_id is not None else args.telegram_chat_id,
                 'conversation_id': conversation_id,
             },
         )
@@ -429,7 +447,7 @@ def main() -> int:
             pilot_headers,
             {
                 'message': prompt,
-                'telegram_chat_id': args.telegram_chat_id,
+                'telegram_chat_id': telegram_chat_id if telegram_chat_id is not None else args.telegram_chat_id,
                 'conversation_id': conversation_id,
                 'channel': 'telegram',
             },
@@ -445,6 +463,7 @@ def main() -> int:
             previous_answer=state['baseline'],
             status=baseline_status,
             turn_index=turn_index,
+            note=note,
         )
         crewai_error_types = _detect_error_types(
             answer_text=crewai_answer,
@@ -454,6 +473,7 @@ def main() -> int:
             previous_answer=state['crewai'],
             status=pilot_status,
             turn_index=turn_index,
+            note=note,
         )
         state['baseline'] = baseline_answer
         state['crewai'] = crewai_answer
@@ -467,6 +487,7 @@ def main() -> int:
             'thread_id': thread_id,
             'turn_index': turn_index,
             'note': note,
+            'telegram_chat_id': telegram_chat_id if telegram_chat_id is not None else args.telegram_chat_id,
             'run_prefix': conversation_prefix,
             'baseline': {
                 'status': baseline_status,

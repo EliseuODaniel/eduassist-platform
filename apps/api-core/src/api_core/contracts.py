@@ -391,6 +391,7 @@ class PublicSchoolProfile(BaseModel):
     document_submission_policy: PublicDocumentSubmissionPolicy | None = None
     documented_services: list[str] = Field(default_factory=list)
     admissions_highlights: list[str] = Field(default_factory=list)
+    admissions_required_documents: list[str] = Field(default_factory=list)
 
 
 class PublicSchoolProfileResponse(BaseModel):

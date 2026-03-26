@@ -540,6 +540,13 @@ def _identity_backstop(actor: dict[str, Any], message: str) -> str | None:
     return None
 
 
+def _auth_required_backstop() -> str:
+    return (
+        'Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. '
+        'Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot.'
+    )
+
+
 def _humanize_admin_status(raw_status: Any) -> str:
     normalized = _normalize_text(str(raw_status or ''))
     mapping = {
@@ -642,7 +649,19 @@ async def run_protected_crewai_pilot(
     actor_context = await _load_actor_context(settings, telegram_chat_id)
     actor = actor_context.get('actor') or {}
     if not isinstance(actor, dict) or not actor.get('authenticated'):
-        return {'engine_name': 'crewai', 'executed': False, 'reason': 'protected_shadow_actor_not_authenticated', 'metadata': {'slice_name': 'protected'}}
+        return {
+            'engine_name': 'crewai',
+            'executed': True,
+            'reason': 'protected_shadow_actor_not_authenticated',
+            'metadata': {
+                'slice_name': 'protected',
+                'conversation_id': conversation_id or f'telegram:{telegram_chat_id}',
+                'normalized_message': normalized_message,
+                'answer': {'answer_text': _auth_required_backstop()},
+                'judge': {'valid': True, 'reason': 'auth_required_guidance', 'revision_needed': False},
+                'deterministic_backstop_used': True,
+            },
+        }
     state_key = _conversation_state_key(
         conversation_id=conversation_id,
         telegram_chat_id=telegram_chat_id,
