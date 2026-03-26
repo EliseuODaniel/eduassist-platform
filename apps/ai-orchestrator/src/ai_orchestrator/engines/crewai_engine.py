@@ -45,6 +45,26 @@ def _protected_shadow_slice(request: Any) -> bool:
     return False
 
 
+def _workflow_shadow_slice(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '').lower()
+    workflow_terms = (
+        'agendar visita',
+        'visita',
+        'tour',
+        'protocolar',
+        'protocolo',
+        'solicitacao',
+        'solicitação',
+        'remarcar',
+        'reagendar',
+        'cancelar a visita',
+        'resume meu pedido',
+        'status da visita',
+        'status do protocolo',
+    )
+    return any(term in message for term in workflow_terms)
+
+
 class CrewAIEngine(ResponseEngine):
     name = 'crewai'
     ready = False
@@ -66,7 +86,10 @@ class CrewAIEngine(ResponseEngine):
     async def shadow_compare(self, *, request: Any, settings: Any) -> ShadowRunResult:
         pilot_url = str(getattr(settings, 'crewai_pilot_url', '') or '').strip()
         if pilot_url:
-            slice_name = 'protected' if _protected_shadow_slice(request) else 'public'
+            if _workflow_shadow_slice(request):
+                slice_name = 'workflow'
+            else:
+                slice_name = 'protected' if _protected_shadow_slice(request) else 'public'
             try:
                 async with httpx.AsyncClient(timeout=20.0) as client:
                     response = await client.post(

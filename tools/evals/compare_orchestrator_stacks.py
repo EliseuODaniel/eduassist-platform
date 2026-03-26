@@ -64,6 +64,22 @@ def _post_json(url: str, headers: dict[str, str], payload: dict[str, Any]) -> tu
 
 def _infer_slice(prompt: str) -> str:
     lowered = prompt.lower()
+    workflow_terms = (
+        'visita',
+        'tour',
+        'protocolar',
+        'protocolo',
+        'solicitacao',
+        'solicitação',
+        'remarcar',
+        'reagendar',
+        'cancelar a visita',
+        'resume meu pedido',
+        'status da visita',
+        'status do protocolo',
+    )
+    if any(term in lowered for term in workflow_terms):
+        return 'workflow'
     protected_terms = (
         'nota', 'notas', 'falta', 'faltas', 'frequencia', 'prova', 'provas',
         'avaliacao', 'avaliacoes', 'financeiro', 'boleto', 'pagamento',
@@ -496,6 +512,7 @@ def main() -> int:
     parser.add_argument('--ai-url', default='http://localhost:8002/v1/messages/respond')
     parser.add_argument('--crewai-public-url', default='http://localhost:8004/v1/shadow/public')
     parser.add_argument('--crewai-protected-url', default='http://localhost:8004/v1/shadow/protected')
+    parser.add_argument('--crewai-workflow-url', default='http://localhost:8004/v1/shadow/workflow')
     parser.add_argument('--internal-token', default='dev-internal-token')
     args = parser.parse_args()
     conversation_prefix = args.conversation_prefix or f"debug:stack-compare:{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
@@ -532,8 +549,13 @@ def main() -> int:
                 'conversation_id': conversation_id,
             },
         )
+        pilot_url = args.crewai_public_url
+        if slice_name == 'protected':
+            pilot_url = args.crewai_protected_url
+        elif slice_name == 'workflow':
+            pilot_url = args.crewai_workflow_url
         pilot_status, pilot_body, pilot_latency = _post_json(
-            args.crewai_protected_url if slice_name == 'protected' else args.crewai_public_url,
+            pilot_url,
             pilot_headers,
             {
                 'message': prompt,

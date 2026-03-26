@@ -5797,6 +5797,22 @@ def _compose_public_gap_answer(query_hints: set[str], message: str | None = None
 def _extract_school_reference_candidate(message: str) -> str | None:
     normalized = _normalize_text(message)
     stop_tokens = {
+        'na',
+        'no',
+        'em',
+        'quinta',
+        'sexta',
+        'segunda',
+        'terca',
+        'terça',
+        'quarta',
+        'sabado',
+        'sábado',
+        'domingo',
+        'manha',
+        'manhã',
+        'tarde',
+        'noite',
         'diretor',
         'diretora',
         'secretaria',

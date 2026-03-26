@@ -1,0 +1,51 @@
+[
+  {
+    "thread_id": "real_visit_lifecycle_777052",
+    "telegram_chat_id": 777052,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "workflow",
+        "prompt": "quero agendar uma visita para conhecer a escola na quinta a tarde",
+        "expected_keywords": ["VIS-", "admissoes"]
+      },
+      {
+        "slice": "workflow",
+        "prompt": "qual o protocolo da visita?",
+        "expected_keywords": ["VIS-"]
+      },
+      {
+        "slice": "workflow",
+        "prompt": "quero remarcar a visita para sexta de manha",
+        "expected_keywords": ["VIS-", "manha"]
+      },
+      {
+        "slice": "workflow",
+        "prompt": "quero cancelar a visita",
+        "expected_keywords": ["cancelada", "VIS-"]
+      }
+    ]
+  },
+  {
+    "thread_id": "real_request_lifecycle_777051",
+    "telegram_chat_id": 777051,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "workflow",
+        "prompt": "quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca",
+        "expected_keywords": ["REQ-", "direcao", "biblioteca"]
+      },
+      {
+        "slice": "workflow",
+        "prompt": "qual o protocolo?",
+        "expected_keywords": ["REQ-"]
+      },
+      {
+        "slice": "workflow",
+        "prompt": "resume meu pedido",
+        "expected_keywords": ["biblioteca", "REQ-", "direcao"]
+      }
+    ]
+  }
+]
