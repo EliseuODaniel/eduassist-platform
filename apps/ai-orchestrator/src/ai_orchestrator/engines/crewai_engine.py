@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from ..crewai.flow import run_public_shadow_flow
 from .base import ResponseEngine, ShadowRunResult
 
 logger = logging.getLogger(__name__)
@@ -27,9 +28,5 @@ class CrewAIEngine(ResponseEngine):
         )
 
     async def shadow_compare(self, *, request: Any, settings: Any) -> ShadowRunResult:
-        logger.info('crewai_shadow_not_implemented')
-        return ShadowRunResult(
-            engine_name=self.name,
-            executed=False,
-            reason='crewai_not_implemented',
-        )
+        logger.info('crewai_shadow_public_slice')
+        return await run_public_shadow_flow(request=request, settings=settings)

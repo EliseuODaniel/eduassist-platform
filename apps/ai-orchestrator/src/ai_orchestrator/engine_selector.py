@@ -4,7 +4,9 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from .engines import CrewAIEngine, LangGraphEngine, ResponseEngine, ShadowRunResult
+from .engines.base import ResponseEngine, ShadowRunResult
+from .engines.crewai_engine import CrewAIEngine
+from .engines.langgraph_engine import LangGraphEngine
 
 logger = logging.getLogger(__name__)
 
