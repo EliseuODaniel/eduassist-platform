@@ -59,6 +59,42 @@ Interpretation:
 - the request stayed on the LangGraph baseline
 - the canary did not leak into the public slice
 
+## Live Baseline vs Canary Compare
+
+A direct live compare was run through the same main orchestrator endpoint.
+
+### Fresh support creation
+
+- baseline, non-allowlisted chat:
+  - request: `quero falar com a secretaria`
+  - latency: `178.3ms`
+  - result: created a new `secretaria` handoff
+- canary, allowlisted chat with fresh conversation id:
+  - request: `quero falar com a secretaria`
+  - latency: `214.4ms`
+  - result: created a new `secretaria` handoff through the CrewAI support pilot
+
+Observed interpretation:
+
+- correctness matched in both paths
+- latency was close in the live end-to-end path
+- this is expected because the main orchestrator still pays shared costs outside the slice-specific engine, such as request handling and persistence
+
+### Public control on the same endpoint
+
+- baseline, non-allowlisted chat:
+  - request: `qual o horario da biblioteca?`
+  - latency: `7254.3ms`
+- allowlisted chat:
+  - request: `qual o horario da biblioteca?`
+  - latency: `6970.9ms`
+
+Observed interpretation:
+
+- both requests stayed on the baseline public path
+- the support canary did not contaminate the public slice
+- the public latency gap remains a separate baseline optimization problem
+
 ## Fix Applied During Live Validation
 
 The first live check exposed a gap in support-slice detection:
