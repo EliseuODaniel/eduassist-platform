@@ -24,6 +24,8 @@ Rua das Acacias, 1450
 Sao Paulo - SP
 CEP 04567-120
 
+Site oficial: https://www.colegiohorizonte.edu.br
+
 ## Telefones
 
 - secretaria: (11) 3333-4200
@@ -39,4 +41,3 @@ CEP 04567-120
 ## Horario de atendimento
 
 O atendimento presencial vai de segunda a sexta-feira, das 7h00 as 17h30. O atendimento digital segue o mesmo calendario util, com respostas automaticas e escalonamento humano quando necessario.
-

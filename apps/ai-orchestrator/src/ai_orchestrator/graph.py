@@ -37,7 +37,7 @@ class GraphRuntimeConfig(TypedDict):
     graph_rag_enabled: bool
 
 
-PUBLIC_CALENDAR_TERMS = {'calendario', 'feriado', 'evento', 'prova', 'reuniao'}
+PUBLIC_CALENDAR_TERMS = {'calendario', 'feriado', 'evento', 'prova', 'reuniao', 'formatura'}
 ACADEMIC_TERMS = {
     'nota',
     'notas',
@@ -54,6 +54,25 @@ ACADEMIC_TERMS = {
     'materia',
     'materias',
     'bimestre',
+}
+ACADEMIC_IDENTITY_TERMS = {
+    'qual a matricula',
+    'qual a matrícula',
+    'minha matricula',
+    'minha matrícula',
+    'matricula do',
+    'matrícula do',
+    'codigo de matricula',
+    'código de matrícula',
+    'numero da matricula',
+    'número da matrícula',
+    'numero do aluno',
+    'número do aluno',
+    'codigo do aluno',
+    'código do aluno',
+    'registro academico',
+    'registro acadêmico',
+    'ra do aluno',
 }
 FINANCE_TERMS = {
     'mensalidade',
@@ -86,6 +105,28 @@ FINANCE_TERMS = {
     'pendencia',
     'pendencias',
 }
+PERSONAL_FINANCE_CONTEXT_TERMS = {
+    'meu',
+    'minha',
+    'meus',
+    'minhas',
+    'tenho',
+    'estou',
+    'quero ver',
+    'qual proximo pagamento',
+    'qual próximo pagamento',
+    'proximo pagamento',
+    'próximo pagamento',
+    'proxima mensalidade',
+    'próxima mensalidade',
+    'proximo vencimento',
+    'próximo vencimento',
+    'atrasada',
+    'atrasadas',
+    'vencida',
+    'vencidas',
+    'em aberto',
+}
 PUBLIC_PRICING_TERMS = {
     'mensalidade',
     'mensalidades',
@@ -101,6 +142,91 @@ PUBLIC_PRICING_TERMS = {
     'descontos',
     'taxa de matricula',
     'taxa de matrícula',
+}
+PUBLIC_WEB_TERMS = {
+    'site',
+    'site oficial',
+    'website',
+    'pagina oficial',
+    'página oficial',
+    'portal institucional',
+    'link do site',
+    'qual site',
+}
+PUBLIC_SOCIAL_TERMS = {
+    'instagram',
+    'insta',
+    'rede social',
+    'redes sociais',
+    'perfil oficial',
+    'perfil no instagram',
+}
+PUBLIC_CAREERS_TERMS = {
+    'trabalhar',
+    'trabalhe conosco',
+    'dar aula',
+    'sou professor',
+    'sou professora',
+    'quero dar aula',
+    'quero trabalhar',
+    'vaga',
+    'vagas',
+    'curriculo',
+    'currículo',
+    'enviar curriculo',
+    'enviar currículo',
+    'processo seletivo',
+}
+COMPARATIVE_TERMS = {
+    'melhor que',
+    'pior que',
+    'concorrencia',
+    'concorrência',
+    'concorrente',
+    'comparado com',
+    'comparada com',
+    'comparar com',
+    'comparacao com',
+    'comparação com',
+}
+PUBLIC_CURRICULUM_TERMS = {
+    'base curricular',
+    'curriculo',
+    'currículo',
+    'componentes curriculares',
+    'componente curricular',
+    'materias do ensino medio',
+    'matérias do ensino médio',
+    'materias sao ensinadas',
+    'matérias são ensinadas',
+    'disciplinas do ensino medio',
+    'disciplinas do ensino médio',
+}
+PUBLIC_OPERATING_HOURS_TERMS = {
+    'horario de funcionamento',
+    'horário de funcionamento',
+    'horario de atendimento',
+    'horário de atendimento',
+    'que horas abre',
+    'que horas fecha',
+    'abre amanha',
+    'abre amanhã',
+    'funciona quando',
+}
+PUBLIC_LOCATION_TERMS = {
+    'endereco',
+    'endereço',
+    'onde fica',
+    'localizacao',
+    'localização',
+    'cep',
+}
+PUBLIC_UTILITY_TERMS = {
+    'que dia e hoje',
+    'que dia é hoje',
+    'qual a data de hoje',
+    'hoje e que dia',
+    'hoje é que dia',
 }
 PERSONAL_FINANCE_TERMS = {
     'meu filho',
@@ -133,6 +259,37 @@ PERSONAL_FINANCE_TERMS = {
     'lista de mensalidades',
     'planilha de mensalidades',
 }
+PERSONAL_FINANCE_ATTRIBUTE_TERMS = {
+    'numero do boleto',
+    'número do boleto',
+    'codigo do boleto',
+    'código do boleto',
+    'identificador do boleto',
+    'numero da fatura',
+    'número da fatura',
+    'codigo do contrato',
+    'código do contrato',
+    'numero do contrato',
+    'número do contrato',
+    'contrato financeiro',
+}
+PERSONAL_ADMIN_TERMS = {
+    'documentacao atualizada',
+    'documentação atualizada',
+    'documentacao completa',
+    'documentação completa',
+    'meu cadastro',
+    'meus dados cadastrais',
+    'dados cadastrais',
+    'atualizar email',
+    'alterar email',
+    'mudar email',
+    'corrigir email',
+    'email no meu cadastro',
+    'endereco de email',
+    'endereço de email',
+    'telefone no cadastro',
+}
 SUPPORT_TERMS = {'humano', 'atendente', 'suporte', 'protocolo', 'chamado'}
 SUPPORT_PHRASES = {
     'falar com',
@@ -163,6 +320,43 @@ AUTH_GUIDANCE_TERMS = {
     'como vejo minhas notas aqui',
     'como consulto meus dados aqui',
 }
+ACCESS_SCOPE_TERMS = {
+    'qual meu acesso',
+    'a que dados',
+    'que dados eu posso ver',
+    'que dados posso ver',
+    'o que eu consigo ver',
+    'o que consigo ver',
+    'o que eu consigo acessar',
+    'o que consigo acessar',
+    'o que posso consultar aqui',
+    'que informacoes consigo obter',
+    'que informações consigo obter',
+    'qual acesso eu tenho',
+}
+LINKED_STUDENTS_TERMS = {
+    'quais meus filhos',
+    'quais sao meus filhos',
+    'quais são meus filhos',
+    'quem sao meus filhos',
+    'quem são meus filhos',
+    'quais filhos tenho',
+    'filhos matriculados',
+    'filhos vinculados',
+    'alunos vinculados',
+    'quem esta vinculado',
+    'quem está vinculado',
+}
+ACTOR_IDENTITY_TERMS = {
+    'estou logado como',
+    'com qual nome estou logado',
+    'com que nome estou logado',
+    'qual nome estou usando aqui',
+    'qual meu nome aqui',
+    'quem esta logado',
+    'quem está logado',
+    'quem sou eu aqui',
+}
 VISIT_ACTION_TERMS = {
     'agendar visita',
     'agendamento de visita',
@@ -177,6 +371,10 @@ VISIT_UPDATE_TERMS = {
     'remarcar a visita',
     'reagendar visita',
     'reagendar a visita',
+    'atualizar visita',
+    'atualizar a visita',
+    'ajustar visita',
+    'ajustar a visita',
     'mudar a visita',
     'mudar horario da visita',
     'mudar horario da minha visita',
@@ -417,12 +615,29 @@ PUBLIC_SCHOOL_PROFILE_TERMS = {
     'whatsapp da secretaria',
     'email da escola',
     'email da secretaria',
+    'fax',
+    'site',
+    'site oficial',
+    'instagram',
+    'insta',
+    'website',
+    'pagina oficial',
+    'página oficial',
+    'link do site',
     'canais oficiais de contato',
     'canais de contato',
     'como entrar em contato',
+    'como ligo',
+    'como ligar',
+    'ligar para a escola',
+    'ligo pra escola',
     'fale conosco',
     'endereco da escola',
     'endereço da escola',
+    'horario de funcionamento',
+    'horário de funcionamento',
+    'que horas abre',
+    'que horas fecha',
     'turno',
     'turnos',
     'horario do ensino medio',
@@ -463,6 +678,19 @@ PUBLIC_SCHOOL_PROFILE_TERMS = {
     'média de aprovação',
     'indicador',
     'indicadores',
+    'base curricular',
+    'curriculo',
+    'currículo',
+    'componentes curriculares',
+    'materias do ensino medio',
+    'matérias do ensino médio',
+    'disciplinas do ensino medio',
+    'disciplinas do ensino médio',
+    'segmentos',
+    'segmento',
+    'quais segmentos',
+    'segmentos atendidos',
+    'segmentos a escola atende',
     'curiosidade',
     'curiosidades',
     'diferencial',
@@ -511,6 +739,74 @@ PUBLIC_SCHOOL_PROFILE_TERMS = {
     'robotica',
     'robótica',
 }
+
+
+def _is_public_web_presence_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return any(_message_matches_term(lowered, term) for term in PUBLIC_WEB_TERMS)
+
+
+def _is_public_social_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return any(_message_matches_term(lowered, term) for term in PUBLIC_SOCIAL_TERMS)
+
+
+def _is_public_careers_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return any(_message_matches_term(lowered, term) for term in PUBLIC_CAREERS_TERMS)
+
+
+def _is_public_comparative_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return any(_message_matches_term(lowered, term) for term in COMPARATIVE_TERMS)
+
+
+def _is_public_curriculum_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    if any(_message_matches_term(lowered, term) for term in PUBLIC_CURRICULUM_TERMS):
+        return True
+    return any(_message_matches_term(lowered, term) for term in {'materia', 'materias', 'disciplina', 'disciplinas'}) and any(
+        _message_matches_term(lowered, term)
+        for term in {
+            'ensino medio',
+            'ensino médio',
+            'fundamental',
+            'fundamental i',
+            'fundamental ii',
+            'anos iniciais',
+            'base curricular',
+            'curriculo',
+            'currículo',
+        }
+    )
+
+
+def _is_public_operating_hours_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    if any(_message_matches_term(lowered, term) for term in PUBLIC_OPERATING_HOURS_TERMS):
+        return True
+    return _contains_any(lowered, {'abre', 'abertura', 'funciona', 'fecha', 'fechamento'}) and _contains_any(
+        lowered,
+        {'amanha', 'amanhã', 'cedo', 'horas', 'hora', 'horario', 'horário'},
+    )
+
+
+def _is_public_location_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return any(_message_matches_term(lowered, term) for term in PUBLIC_LOCATION_TERMS)
+
+
+def _is_public_contact_phrase_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return any(
+        _message_matches_term(lowered, term)
+        for term in {'como ligo', 'como ligar', 'ligo pra escola', 'ligar para a escola', 'numero da escola', 'número da escola'}
+    )
+
+
+def _is_public_utility_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return any(_message_matches_term(lowered, term) for term in PUBLIC_UTILITY_TERMS)
 
 
 def _append_path(state: OrchestrationState, node_name: str) -> list[str]:
@@ -622,7 +918,97 @@ def _is_public_pricing_query(message: str) -> bool:
         return False
     if any(_message_matches_term(lowered, term) for term in PERSONAL_FINANCE_TERMS):
         return False
+    if any(_message_matches_term(lowered, term) for term in PERSONAL_FINANCE_CONTEXT_TERMS):
+        return False
     return True
+
+
+def _is_authenticated_personal_finance_query(message: str, *, authenticated: bool) -> bool:
+    if not authenticated:
+        return False
+    lowered = _normalize_text(message)
+    if not any(_message_matches_term(lowered, term) for term in FINANCE_TERMS):
+        return False
+    if any(_message_matches_term(lowered, term) for term in PERSONAL_FINANCE_TERMS):
+        return True
+    return any(_message_matches_term(lowered, term) for term in PERSONAL_FINANCE_CONTEXT_TERMS)
+
+
+def _is_public_timeline_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    asks_timing = any(
+        _message_matches_term(lowered, term)
+        for term in {
+            'quando',
+            'qual data',
+            'que dia',
+            'quando comeca',
+            'quando começa',
+            'quando fecha',
+            'inicio',
+            'início',
+            'abertura',
+            'comecam as aulas',
+            'começam as aulas',
+        }
+    )
+    if not asks_timing:
+        return False
+    return any(
+        _message_matches_term(lowered, term)
+        for term in {
+            'matricula',
+            'matrícula',
+            'formatura',
+            'inicio das aulas',
+            'início das aulas',
+            'comecam as aulas',
+            'começam as aulas',
+            'ano letivo',
+        }
+    )
+
+
+def _is_public_calendar_event_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    if any(
+        _message_matches_term(lowered, term)
+        for term in {
+            'proximo evento',
+            'próximo evento',
+            'proxima reuniao',
+            'próxima reunião',
+            'reuniao de pais',
+            'reunião de pais',
+            'mostra de ciencias',
+            'mostra de ciências',
+            'plantao pedagogico',
+            'plantão pedagógico',
+            'visita guiada',
+        }
+    ):
+        return True
+    asks_timing = any(
+        _message_matches_term(lowered, term)
+        for term in {'quando', 'qual data', 'que dia', 'quando vai ser', 'quando acontece'}
+    )
+    if not asks_timing:
+        return False
+    return any(
+        _message_matches_term(lowered, term)
+        for term in {
+            'reuniao',
+            'reunião',
+            'evento',
+            'mostra',
+            'feira',
+            'plantao',
+            'plantão',
+            'visita guiada',
+            'cerimonia',
+            'cerimônia',
+        }
+    )
 
 
 def _is_public_navigation_query(message: str) -> bool:
@@ -636,12 +1022,24 @@ def _is_public_navigation_query(message: str) -> bool:
         'boa noite',
         'o que voce faz',
         'o que você faz',
+        'o que esta fazendo',
+        'o que está fazendo',
+        'o que ta fazendo',
+        'o que tá fazendo',
         'como voce pode me ajudar',
         'como você pode me ajudar',
         'quais assuntos',
         'opcoes de assuntos',
         'opções de assuntos',
         'com quem eu falo',
+        'com qual contato eu devo falar',
+        'qual contato eu devo usar',
+        'qual contato devo usar',
+        'por qual canal',
+        'como falo com',
+        'como falar com',
+        'como reporto',
+        'como denunciar',
         'pra quem eu falo',
         'para quem eu falo',
         'quem cuida',
@@ -658,21 +1056,244 @@ def _is_public_navigation_query(message: str) -> bool:
         return True
     if any(_message_matches_term(lowered, term) for term in AUTH_GUIDANCE_TERMS):
         return True
+    if any(_message_matches_term(lowered, term) for term in ACCESS_SCOPE_TERMS):
+        return True
     return any(_message_matches_term(lowered, term) for term in navigation_terms)
+
+
+def _is_public_staff_directory_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    if not any(
+        _message_matches_term(lowered, term)
+        for term in {'prof', 'professor', 'professora', 'docente'}
+    ):
+        return False
+    return any(
+        _message_matches_term(lowered, term)
+        for term in {'nome', 'contato', 'telefone', 'whatsapp', 'whats', 'email', 'fale com'}
+    )
 
 
 def _is_public_school_profile_request(message: str) -> bool:
     lowered = _normalize_text(message)
-    return _is_public_pricing_query(lowered) or any(
-        _message_matches_term(lowered, term) for term in PUBLIC_SCHOOL_PROFILE_TERMS
+    if _is_public_timeline_query(lowered):
+        return False
+    return (
+        _is_public_pricing_query(lowered)
+        or _is_public_feature_query(lowered)
+        or _is_public_social_query(lowered)
+        or _is_public_careers_query(lowered)
+        or _is_public_comparative_query(lowered)
+        or _is_public_staff_directory_query(lowered)
+        or _is_public_document_submission_query(lowered)
+        or _is_public_web_presence_query(lowered)
+        or _is_public_curriculum_query(lowered)
+        or _is_public_operating_hours_query(lowered)
+        or _is_public_location_query(lowered)
+        or _is_public_contact_phrase_query(lowered)
+        or any(_message_matches_term(lowered, term) for term in PUBLIC_SCHOOL_PROFILE_TERMS)
     )
+
+
+def _is_public_document_submission_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    explicit_terms = {
+        'documentos online',
+        'documento online',
+        'envio de documentos',
+        'enviar documentos',
+        'mandar documentos',
+        'envio digital',
+        'aceita documentos online',
+        'aceita envio online',
+        'aceita envio digital',
+        'por onde envio meus documentos',
+        'como envio meus documentos',
+        'canal de documentos',
+    }
+    if any(_message_matches_term(lowered, term) for term in explicit_terms):
+        return True
+    document_terms = {'documento', 'documentos', 'matricula', 'matrícula', 'cadastro'}
+    digital_terms = {'online', 'digital', 'portal', 'email', 'e-mail', 'enviar', 'envio'}
+    return any(_message_matches_term(lowered, term) for term in document_terms) and any(
+        _message_matches_term(lowered, term) for term in digital_terms
+    )
+
+
+def _is_public_feature_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    feature_terms = {
+        'biblioteca',
+        'cantina',
+        'laboratorio',
+        'maker',
+        'espaco maker',
+        'academia',
+        'piscina',
+        'quadra',
+        'quadra de tenis',
+        'futebol',
+        'futsal',
+        'volei',
+        'vôlei',
+        'danca',
+        'dança',
+        'teatro',
+        'robotica',
+        'robótica',
+        'orientacao educacional',
+        'orientação educacional',
+    }
+    if any(_message_matches_term(lowered, term) for term in feature_terms):
+        return True
+    return any(
+        _message_matches_term(lowered, term)
+        for term in {
+            'estrutura',
+            'infraestrutura',
+            'espaco',
+            'espaço',
+            'espacos',
+            'espaços',
+            'campus',
+            'aula de',
+            'oficina de',
+            'curso de',
+            'atividade de',
+            'clube de',
+            'atividade',
+            'atividades',
+            'contraturno',
+            'aulas complementares',
+            'atividades complementares',
+            'complementares',
+            'monitoria',
+            'monitorias',
+            'plantao',
+            'plantão',
+            'estudo orientado',
+            'trilhas',
+            'trilhas academicas',
+            'trilhas acadêmicas',
+        }
+    )
+
+
+def _is_public_attribute_followup_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    attribute_terms = {
+        'email',
+        'e-mail',
+        'telefone',
+        'fone',
+        'whatsapp',
+        'whats',
+        'zap',
+        'horario',
+        'horário',
+        'funciona quando',
+    }
+    if not any(_message_matches_term(lowered, term) for term in attribute_terms):
+        return False
+    return lowered.startswith('e ') or ' sobre ' in lowered
+
+
+def _is_authenticated_admin_query(message: str, *, authenticated: bool) -> bool:
+    if not authenticated:
+        return False
+    lowered = _normalize_text(message)
+    if any(_message_matches_term(lowered, term) for term in FINANCE_TERMS):
+        return False
+    if _message_matches_term(lowered, 'matricula') or _message_matches_term(lowered, 'matrícula'):
+        return False
+    if any(
+        _message_matches_term(lowered, term)
+        for term in {'documentacao', 'documentação', 'cadastro', 'dados cadastrais', 'email', 'telefone'}
+    ):
+        return True
+    return any(_message_matches_term(lowered, term) for term in PERSONAL_ADMIN_TERMS)
+
+
+def _is_authenticated_actor_identity_query(message: str, *, authenticated: bool) -> bool:
+    if not authenticated:
+        return False
+    lowered = _normalize_text(message)
+    return any(_message_matches_term(lowered, term) for term in ACTOR_IDENTITY_TERMS)
+
+
+def _is_authenticated_access_scope_query(message: str, *, authenticated: bool) -> bool:
+    if not authenticated:
+        return False
+    lowered = _normalize_text(message)
+    return any(_message_matches_term(lowered, term) for term in ACCESS_SCOPE_TERMS)
+
+
+def _is_authenticated_linked_students_query(message: str, *, authenticated: bool) -> bool:
+    if not authenticated:
+        return False
+    lowered = _normalize_text(message)
+    return any(_message_matches_term(lowered, term) for term in LINKED_STUDENTS_TERMS)
+
+
+def _is_authenticated_student_assessment_query(message: str, *, authenticated: bool) -> bool:
+    if not authenticated:
+        return False
+    lowered = _normalize_text(message)
+    if _message_matches_term(lowered, 'calendario'):
+        return False
+    return any(
+        _message_matches_term(lowered, term)
+        for term in {'prova', 'provas', 'avaliacao', 'avaliacoes', 'avaliação', 'avaliações'}
+    )
+
+
+def _is_authenticated_student_registry_query(message: str, *, authenticated: bool) -> bool:
+    if not authenticated:
+        return False
+    lowered = _normalize_text(message)
+    return any(_message_matches_term(lowered, term) for term in ACADEMIC_IDENTITY_TERMS)
+
+
+def _is_authenticated_finance_attribute_query(message: str, *, authenticated: bool) -> bool:
+    if not authenticated:
+        return False
+    lowered = _normalize_text(message)
+    return any(_message_matches_term(lowered, term) for term in PERSONAL_FINANCE_ATTRIBUTE_TERMS)
 
 
 def classify_request(state: OrchestrationState) -> OrchestrationState:
     request = state['request']
     message = _normalize_text(request.message)
 
-    if _is_structured_support_workflow_request(message):
+    if _is_authenticated_actor_identity_query(message, authenticated=request.user.authenticated):
+        classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.authenticated,
+            confidence=0.92,
+            reason='mensagem autenticada pede identidade da conta atual ou o nome do perfil logado',
+        )
+    elif _is_authenticated_access_scope_query(message, authenticated=request.user.authenticated):
+        classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.authenticated,
+            confidence=0.93,
+            reason='mensagem autenticada pede escopo de acesso, dados liberados e capacidade da conta vinculada',
+        )
+    elif _is_authenticated_linked_students_query(message, authenticated=request.user.authenticated):
+        classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.authenticated,
+            confidence=0.93,
+            reason='mensagem autenticada pede a lista de alunos vinculados a esta conta',
+        )
+    elif _is_authenticated_admin_query(message, authenticated=request.user.authenticated):
+        classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.authenticated,
+            confidence=0.9,
+            reason='mensagem autenticada pede status cadastral, documentacao pessoal ou atualizacao administrativa',
+        )
+    elif _is_structured_support_workflow_request(message):
         classification = IntentClassification(
             domain=QueryDomain.support,
             access_tier=AccessTier.public,
@@ -693,6 +1314,34 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
             confidence=0.94,
             reason='mensagem indica autoatendimento docente sobre turmas, disciplinas ou horario',
         )
+    elif _is_authenticated_student_assessment_query(message, authenticated=request.user.authenticated):
+        classification = IntentClassification(
+            domain=QueryDomain.academic,
+            access_tier=AccessTier.authenticated,
+            confidence=0.91,
+            reason='mensagem autenticada pede avaliacoes, provas ou agenda academica de aluno vinculado',
+        )
+    elif _is_authenticated_student_registry_query(message, authenticated=request.user.authenticated):
+        classification = IntentClassification(
+            domain=QueryDomain.academic,
+            access_tier=AccessTier.authenticated,
+            confidence=0.9,
+            reason='mensagem autenticada pede identificador academico ou matricula de aluno vinculado',
+        )
+    elif _is_authenticated_finance_attribute_query(message, authenticated=request.user.authenticated):
+        classification = IntentClassification(
+            domain=QueryDomain.finance,
+            access_tier=AccessTier.sensitive,
+            confidence=0.9,
+            reason='mensagem autenticada pede identificador financeiro sensivel, como boleto ou contrato',
+        )
+    elif _is_authenticated_personal_finance_query(message, authenticated=request.user.authenticated):
+        classification = IntentClassification(
+            domain=QueryDomain.finance,
+            access_tier=AccessTier.sensitive,
+            confidence=0.89,
+            reason='mensagem autenticada pede situacao financeira pessoal, vencimentos ou mensalidades de aluno vinculado',
+        )
     elif _is_public_pricing_query(message):
         classification = IntentClassification(
             domain=QueryDomain.institution,
@@ -707,6 +1356,41 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
             confidence=0.88,
             reason='mensagem pede navegacao institucional, apresentacao do assistente ou direcionamento por setor',
         )
+    elif _is_public_staff_directory_query(message):
+        classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.8,
+            reason='mensagem pede informacao publica sobre nomes ou contatos de profissionais da escola',
+        )
+    elif _is_public_feature_query(message):
+        classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.82,
+            reason='mensagem pergunta sobre estrutura, oferta ou atividades publicas da escola',
+        )
+    elif _contains_any(message, PUBLIC_CALENDAR_TERMS) or _is_public_timeline_query(message):
+        classification = IntentClassification(
+            domain=QueryDomain.calendar,
+            access_tier=AccessTier.public,
+            confidence=0.84,
+            reason='mensagem contem termos de calendario e eventos escolares',
+        )
+    elif _is_public_school_profile_request(message) or _is_public_utility_query(message):
+        classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.84,
+            reason='mensagem pede um fato publico canonico, um dado operacional ou uma referencia institucional estruturada',
+        )
+    elif _is_public_attribute_followup_query(message):
+        classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.79,
+            reason='mensagem curta depende de contexto recente para resolver atributo publico institucional',
+        )
     elif _contains_any(message, FINANCE_TERMS):
         classification = IntentClassification(
             domain=QueryDomain.finance,
@@ -720,13 +1404,6 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
             access_tier=AccessTier.authenticated,
             confidence=0.9,
             reason='mensagem contem termos academicos dependentes de vinculo escolar',
-        )
-    elif _contains_any(message, PUBLIC_CALENDAR_TERMS):
-        classification = IntentClassification(
-            domain=QueryDomain.calendar,
-            access_tier=AccessTier.public,
-            confidence=0.84,
-            reason='mensagem contem termos de calendario e eventos escolares',
         )
     elif _contains_any(message, PUBLIC_SERVICE_TERMS | INSTITUTION_TERMS):
         classification = IntentClassification(
@@ -793,8 +1470,41 @@ def route_request(state: OrchestrationState, runtime: GraphRuntimeConfig) -> Orc
     elif classification.domain in {QueryDomain.academic, QueryDomain.finance}:
         route = OrchestrationMode.structured_tool.value
         reason = 'dados estruturados devem passar por service deterministico'
+    elif classification.domain is QueryDomain.calendar and (
+        _is_public_timeline_query(message) or _is_public_calendar_event_query(message)
+    ):
+        route = OrchestrationMode.structured_tool.value
+        reason = 'datas institucionais publicas devem vir de leitura estruturada e auditavel'
+    elif classification.domain is QueryDomain.institution and _is_authenticated_admin_query(
+        _normalize_text(message),
+        authenticated=request.user.authenticated,
+    ):
+        route = OrchestrationMode.structured_tool.value
+        reason = 'status administrativo autenticado exige service deterministico'
+    elif classification.domain is QueryDomain.institution and _is_authenticated_actor_identity_query(
+        _normalize_text(message),
+        authenticated=request.user.authenticated,
+    ):
+        route = OrchestrationMode.structured_tool.value
+        reason = 'identidade da conta autenticada exige leitura protegida e minimizada'
     elif classification.domain is QueryDomain.institution and (
-        _is_public_school_profile_request(message) or _is_public_navigation_query(message)
+        _is_authenticated_access_scope_query(
+            _normalize_text(message),
+            authenticated=request.user.authenticated,
+        )
+        or _is_authenticated_linked_students_query(
+            _normalize_text(message),
+            authenticated=request.user.authenticated,
+        )
+    ):
+        route = OrchestrationMode.structured_tool.value
+        reason = 'capacidade da conta autenticada e alunos vinculados exigem leitura protegida e minimizada'
+    elif classification.domain is QueryDomain.institution and (
+        _is_public_school_profile_request(message)
+        or _is_public_navigation_query(message)
+        or _is_public_document_submission_query(message)
+        or _is_public_attribute_followup_query(message)
+        or _is_public_utility_query(message)
     ):
         route = OrchestrationMode.structured_tool.value
         reason = 'fato institucional canonico deve vir de fonte estruturada'
@@ -846,6 +1556,17 @@ def structured_tool_call(state: OrchestrationState) -> OrchestrationState:
 
     if classification.domain is QueryDomain.institution:
         selected_tools = ['get_public_school_profile']
+        def add_institution_tool(tool_name: str) -> None:
+            if tool_name not in selected_tools:
+                selected_tools.append(tool_name)
+
+        if _is_public_navigation_query(normalized_message):
+            add_institution_tool('get_service_directory')
+        if any(
+            _message_matches_term(normalized_message, term)
+            for term in ACCESS_SCOPE_TERMS
+        ):
+            add_institution_tool('list_assistant_capabilities')
         if any(
             _message_matches_term(normalized_message, term)
             for term in {
@@ -867,7 +1588,7 @@ def structured_tool_call(state: OrchestrationState) -> OrchestrationState:
                 'boa noite',
             }
         ):
-            selected_tools.append('list_assistant_capabilities')
+            add_institution_tool('list_assistant_capabilities')
         if any(
             _message_matches_term(normalized_message, term)
             for term in {
@@ -879,7 +1600,9 @@ def structured_tool_call(state: OrchestrationState) -> OrchestrationState:
                 'qual setor',
             }
         ):
-            selected_tools.append('get_service_directory')
+            add_institution_tool('get_service_directory')
+        if _is_public_document_submission_query(normalized_message):
+            add_institution_tool('get_service_directory')
         if any(
             _message_matches_term(normalized_message, term)
             for term in {
@@ -891,14 +1614,24 @@ def structured_tool_call(state: OrchestrationState) -> OrchestrationState:
                 'diretor',
                 'direcao',
                 'direção',
+                'diretoria',
                 'coordenacao',
                 'coordenação',
                 'lideranca',
                 'liderança',
             }
         ):
-            selected_tools.append('get_org_directory')
+            add_institution_tool('get_org_directory')
         output_contract = 'fato institucional publico, navegacao de atendimento e orientacao de concierge'
+    elif classification.domain is QueryDomain.calendar and (
+        _is_public_timeline_query(normalized_message) or _is_public_calendar_event_query(normalized_message)
+    ):
+        if _is_public_calendar_event_query(normalized_message):
+            selected_tools = ['get_public_calendar_events']
+            output_contract = 'eventos publicos estruturados do calendario escolar'
+        else:
+            selected_tools = ['get_public_timeline']
+            output_contract = 'datas institucionais publicas e marcos do calendario em fonte estruturada'
     elif classification.domain is QueryDomain.support:
         if _is_workflow_status_request(request.message):
             selected_tools = ['get_workflow_status']
@@ -920,11 +1653,35 @@ def structured_tool_call(state: OrchestrationState) -> OrchestrationState:
             selected_tools = ['get_teacher_schedule']
             output_contract = 'grade docente e informacoes operacionais permitidas ao professor'
         else:
-            selected_tools = ['get_student_academic_summary', 'get_student_attendance', 'get_student_grades']
+            selected_tools = [
+                'get_student_academic_summary',
+                'get_student_attendance',
+                'get_student_grades',
+                'get_student_upcoming_assessments',
+                'get_student_attendance_timeline',
+            ]
             output_contract = 'dados academicos autorizados, auditaveis e minimizados'
     else:
         selected_tools = ['get_financial_summary']
+        if request.user.authenticated and any(
+            _message_matches_term(normalized_message, term) for term in PERSONAL_ADMIN_TERMS
+        ):
+            selected_tools.append('get_administrative_status')
         output_contract = 'dados financeiros autorizados, auditaveis e com trilha reforcada'
+
+    if classification.domain is QueryDomain.institution and request.user.authenticated:
+        if _is_authenticated_actor_identity_query(normalized_message, authenticated=True):
+            selected_tools = ['get_actor_identity_context']
+            output_contract = 'identidade da conta autenticada, papel atual e alunos vinculados'
+        elif _is_authenticated_access_scope_query(normalized_message, authenticated=True):
+            selected_tools = ['get_actor_identity_context']
+            output_contract = 'escopo autenticado da conta, dados liberados e alunos vinculados'
+        elif _is_authenticated_linked_students_query(normalized_message, authenticated=True):
+            selected_tools = ['get_actor_identity_context']
+            output_contract = 'lista de alunos vinculados e capacidade disponivel para consulta protegida'
+        elif _is_authenticated_admin_query(normalized_message, authenticated=True):
+            selected_tools = ['get_administrative_status', 'get_student_administrative_status']
+            output_contract = 'status administrativo autenticado, com escopo do proprio usuario ou de aluno vinculado'
 
     return {
         'retrieval_backend': RetrievalBackend.none.value,

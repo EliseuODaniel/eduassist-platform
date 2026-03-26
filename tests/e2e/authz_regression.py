@@ -56,7 +56,7 @@ def main() -> int:
         update_id=9952,
         message_id=52,
         text="quero ver minhas notas",
-        chat_id=555001,
+        chat_id=1649845499,
         username="maria.oliveira",
         first_name="Maria",
     )

@@ -260,6 +260,23 @@ export type SupportConversationMessage = {
   created_at: string;
 };
 
+export type SupportConversationThread = {
+  conversation_id: string;
+  channel: string;
+  external_thread_id: string;
+  conversation_status: string;
+  requester_name: string | null;
+  requester_role: string | null;
+  message_count: number;
+  last_message_excerpt: string | null;
+  latest_message_at: string | null;
+  linked_ticket_code: string | null;
+  linked_queue_name: string | null;
+  linked_ticket_status: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type SupportHandoffList = {
   actor: PortalActor;
   scope: string;
@@ -285,6 +302,33 @@ export type SupportHandoffDetail = {
 export type SupportHandoffDetailState = {
   detail: SupportHandoffDetail | null;
   error: string | null;
+};
+
+export type SupportConversationList = {
+  actor: PortalActor;
+  scope: string;
+  items: SupportConversationThread[];
+};
+
+export type SupportConversationListState = {
+  conversations: SupportConversationList | null;
+  error: string | null;
+};
+
+export type SupportConversationDetail = {
+  actor: PortalActor;
+  scope: string;
+  item: SupportConversationThread;
+  messages: SupportConversationMessage[];
+};
+
+export type SupportConversationDetailState = {
+  detail: SupportConversationDetail | null;
+  error: string | null;
+};
+
+type AccessTokenRequestOptions = {
+  allowRefresh?: boolean;
 };
 
 function buildRealmEndpoint(pathname: string, publicFacing: boolean): URL {
@@ -425,26 +469,54 @@ async function fetchOperationsOverviewWithToken(accessToken: string): Promise<Re
   });
 }
 
-async function getAccessTokenForApiRequest(): Promise<string | null> {
+async function getAccessTokenForApiRequest(
+  options: AccessTokenRequestOptions = {},
+): Promise<{ accessToken: string | null; refreshAvailable: boolean }> {
+  const allowRefresh = options.allowRefresh ?? true;
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value ?? null;
   if (!accessToken) {
-    return getAccessTokenWithRefresh();
+    const refreshToken = cookieStore.get(REFRESH_TOKEN_COOKIE)?.value ?? null;
+    if (!refreshToken) {
+      return {
+        accessToken: null,
+        refreshAvailable: false,
+      };
+    }
+
+    if (!allowRefresh) {
+      return {
+        accessToken: null,
+        refreshAvailable: true,
+      };
+    }
+
+    return {
+      accessToken: await getAccessTokenWithRefresh(),
+      refreshAvailable: true,
+    };
   }
 
-  return accessToken;
+  return {
+    accessToken,
+    refreshAvailable: Boolean(cookieStore.get(REFRESH_TOKEN_COOKIE)?.value),
+  };
 }
 
 export async function getPortalAccessToken(): Promise<string | null> {
-  return getAccessTokenForApiRequest();
+  const { accessToken } = await getAccessTokenForApiRequest();
+  return accessToken;
 }
 
-export async function getPortalSession(): Promise<SessionState> {
-  let accessToken = await getAccessTokenForApiRequest();
+export async function getPortalSession(
+  options: AccessTokenRequestOptions = {},
+): Promise<SessionState> {
+  const allowRefresh = options.allowRefresh ?? true;
+  let { accessToken, refreshAvailable } = await getAccessTokenForApiRequest({ allowRefresh });
   if (!accessToken) {
     return {
       session: null,
-      error: null,
+      error: refreshAvailable ? 'session_refresh_required' : null,
     };
   }
 
@@ -457,6 +529,13 @@ export async function getPortalSession(): Promise<SessionState> {
       return {
         session: null,
         error: 'session_expired',
+      };
+    }
+
+    if (!allowRefresh) {
+      return {
+        session: null,
+        error: 'session_refresh_required',
       };
     }
 
@@ -485,12 +564,15 @@ export async function getPortalSession(): Promise<SessionState> {
   };
 }
 
-export async function getOperationsOverview(): Promise<OperationsOverviewState> {
-  let accessToken = await getAccessTokenForApiRequest();
+export async function getOperationsOverview(
+  options: AccessTokenRequestOptions = {},
+): Promise<OperationsOverviewState> {
+  const allowRefresh = options.allowRefresh ?? true;
+  let { accessToken, refreshAvailable } = await getAccessTokenForApiRequest({ allowRefresh });
   if (!accessToken) {
     return {
       overview: null,
-      error: 'session_missing',
+      error: refreshAvailable ? 'session_refresh_required' : 'session_missing',
     };
   }
 
@@ -503,6 +585,13 @@ export async function getOperationsOverview(): Promise<OperationsOverviewState> 
       return {
         overview: null,
         error: 'session_expired',
+      };
+    }
+
+    if (!allowRefresh) {
+      return {
+        overview: null,
+        error: 'session_refresh_required',
       };
     }
 
@@ -532,12 +621,14 @@ export async function getOperationsOverview(): Promise<OperationsOverviewState> 
 
 export async function getSupportHandoffs(
   filters?: Partial<SupportHandoffFilters>,
+  options: AccessTokenRequestOptions = {},
 ): Promise<SupportHandoffListState> {
-  let accessToken = await getAccessTokenForApiRequest();
+  const allowRefresh = options.allowRefresh ?? true;
+  let { accessToken, refreshAvailable } = await getAccessTokenForApiRequest({ allowRefresh });
   if (!accessToken) {
     return {
       handoffs: null,
-      error: 'session_missing',
+      error: refreshAvailable ? 'session_refresh_required' : 'session_missing',
     };
   }
 
@@ -588,6 +679,13 @@ export async function getSupportHandoffs(
       };
     }
 
+    if (!allowRefresh) {
+      return {
+        handoffs: null,
+        error: 'session_refresh_required',
+      };
+    }
+
     accessToken = await refreshAccessToken(refreshToken);
     if (!accessToken) {
       await clearPortalSession();
@@ -620,6 +718,7 @@ export async function getSupportHandoffs(
 
 export async function getSupportHandoffDetail(
   handoffId: string | null,
+  options: AccessTokenRequestOptions = {},
 ): Promise<SupportHandoffDetailState> {
   if (!handoffId) {
     return {
@@ -628,11 +727,12 @@ export async function getSupportHandoffDetail(
     };
   }
 
-  let accessToken = await getAccessTokenForApiRequest();
+  const allowRefresh = options.allowRefresh ?? true;
+  let { accessToken, refreshAvailable } = await getAccessTokenForApiRequest({ allowRefresh });
   if (!accessToken) {
     return {
       detail: null,
-      error: 'session_missing',
+      error: refreshAvailable ? 'session_refresh_required' : 'session_missing',
     };
   }
 
@@ -653,6 +753,13 @@ export async function getSupportHandoffDetail(
       return {
         detail: null,
         error: 'session_expired',
+      };
+    }
+
+    if (!allowRefresh) {
+      return {
+        detail: null,
+        error: 'session_refresh_required',
       };
     }
 
@@ -683,6 +790,154 @@ export async function getSupportHandoffDetail(
 
   return {
     detail: (await response.json()) as SupportHandoffDetail,
+    error: null,
+  };
+}
+
+export async function getSupportConversations(
+  options: AccessTokenRequestOptions = {},
+): Promise<SupportConversationListState> {
+  const allowRefresh = options.allowRefresh ?? true;
+  let { accessToken, refreshAvailable } = await getAccessTokenForApiRequest({ allowRefresh });
+  if (!accessToken) {
+    return {
+      conversations: null,
+      error: refreshAvailable ? 'session_refresh_required' : 'session_missing',
+    };
+  }
+
+  const config = getPortalConfig();
+  let response = await fetch(`${config.apiCoreUrl}/v1/support/conversations`, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (response.status === 401) {
+    const cookieStore = await cookies();
+    const refreshToken = cookieStore.get(REFRESH_TOKEN_COOKIE)?.value ?? null;
+    if (!refreshToken) {
+      await clearPortalSession();
+      return {
+        conversations: null,
+        error: 'session_expired',
+      };
+    }
+
+    if (!allowRefresh) {
+      return {
+        conversations: null,
+        error: 'session_refresh_required',
+      };
+    }
+
+    accessToken = await refreshAccessToken(refreshToken);
+    if (!accessToken) {
+      await clearPortalSession();
+      return {
+        conversations: null,
+        error: 'session_expired',
+      };
+    }
+
+    response = await fetch(`${config.apiCoreUrl}/v1/support/conversations`, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
+
+  if (!response.ok) {
+    return {
+      conversations: null,
+      error: `api_core_${response.status}`,
+    };
+  }
+
+  return {
+    conversations: (await response.json()) as SupportConversationList,
+    error: null,
+  };
+}
+
+export async function getSupportConversationDetail(
+  conversationId: string | null,
+  options: AccessTokenRequestOptions = {},
+): Promise<SupportConversationDetailState> {
+  if (!conversationId) {
+    return {
+      detail: null,
+      error: null,
+    };
+  }
+
+  const allowRefresh = options.allowRefresh ?? true;
+  let { accessToken, refreshAvailable } = await getAccessTokenForApiRequest({ allowRefresh });
+  if (!accessToken) {
+    return {
+      detail: null,
+      error: refreshAvailable ? 'session_refresh_required' : 'session_missing',
+    };
+  }
+
+  const config = getPortalConfig();
+  let response = await fetch(`${config.apiCoreUrl}/v1/support/conversations/${conversationId}`, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (response.status === 401) {
+    const cookieStore = await cookies();
+    const refreshToken = cookieStore.get(REFRESH_TOKEN_COOKIE)?.value ?? null;
+    if (!refreshToken) {
+      await clearPortalSession();
+      return {
+        detail: null,
+        error: 'session_expired',
+      };
+    }
+
+    if (!allowRefresh) {
+      return {
+        detail: null,
+        error: 'session_refresh_required',
+      };
+    }
+
+    accessToken = await refreshAccessToken(refreshToken);
+    if (!accessToken) {
+      await clearPortalSession();
+      return {
+        detail: null,
+        error: 'session_expired',
+      };
+    }
+
+    response = await fetch(`${config.apiCoreUrl}/v1/support/conversations/${conversationId}`, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
+
+  if (!response.ok) {
+    return {
+      detail: null,
+      error: `api_core_${response.status}`,
+    };
+  }
+
+  return {
+    detail: (await response.json()) as SupportConversationDetail,
     error: null,
   };
 }
@@ -762,7 +1017,7 @@ export async function issueTelegramLinkChallenge(): Promise<{
   error: string | null;
   status: number;
 }> {
-  const accessToken = await getAccessTokenForApiRequest();
+  const { accessToken } = await getAccessTokenForApiRequest();
   if (!accessToken) {
     return {
       challenge: null,

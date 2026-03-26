@@ -4,7 +4,8 @@
     "type": "message_response",
     "request": {
       "message": "ola",
-      "telegram_chat_id": 777001
+      "telegram_chat_id": 777010,
+      "conversation_id": "eval:public-greeting-thread"
     },
     "expected": {
       "mode": "structured_tool",
@@ -25,7 +26,8 @@
     "type": "message_response",
     "request": {
       "message": "com quem eu falo?",
-      "telegram_chat_id": 777001
+      "telegram_chat_id": 777011,
+      "conversation_id": "eval:public-identity-thread"
     },
     "expected": {
       "mode": "structured_tool",
@@ -44,7 +46,8 @@
     "type": "message_response",
     "request": {
       "message": "quais opcoes de assuntos eu tenho aqui?",
-      "telegram_chat_id": 777001
+      "telegram_chat_id": 777012,
+      "conversation_id": "eval:public-capabilities-thread"
     },
     "expected": {
       "mode": "structured_tool",
@@ -75,6 +78,66 @@
       "selected_tools_includes": ["get_public_school_profile", "get_service_directory"],
       "graph_path_includes": ["structured_tool_call"],
       "message_contains": ["financeiro", "prazo tipico"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_bullying_routing",
+    "type": "message_response",
+    "request": {
+      "message": "como reporto um bullying?",
+      "telegram_chat_id": 777003,
+      "conversation_id": "eval:bullying-routing-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile", "get_service_directory"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["orientacao educacional", "bot, orientacao educacional ou secretaria"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_bullying_routing_followup",
+    "type": "message_response",
+    "request": {
+      "message": "mas com qual contato eu devo falar",
+      "telegram_chat_id": 777003,
+      "conversation_id": "eval:bullying-routing-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile", "get_service_directory"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Voce pode falar com", "orientacao educacional", "bot, orientacao educacional ou secretaria"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_bullying_phone_followup",
+    "type": "message_response",
+    "request": {
+      "message": "e o telefone?",
+      "telegram_chat_id": 777003,
+      "conversation_id": "eval:bullying-routing-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_service_directory"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["(11) 3333-4202"],
       "reason_contains": "fato institucional canonico"
     }
   },
@@ -139,6 +202,307 @@
     }
   },
   {
+    "case_id": "public_library_schedule_followup_seed",
+    "type": "message_response",
+    "request": {
+      "message": "essa escola tem biblioteca?",
+      "telegram_chat_id": 777004,
+      "conversation_id": "eval:library-followup-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Biblioteca Aurora"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_phone_how_to_call",
+    "type": "message_response",
+    "request": {
+      "message": "como ligo pra escola?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["(11) 3333-4200"],
+      "message_excludes": ["Ainda nao encontrei"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_phone_and_fax_multi_attribute",
+    "type": "message_response",
+    "request": {
+      "message": "qual o telefone e o fax?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["(11) 3333-4200", "nao publica numero de fax"],
+      "message_excludes": ["None"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_address_short_query",
+    "type": "message_response",
+    "request": {
+      "message": "qual o endereco?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Rua das Acacias", "Vila Mariana", "CEP 04567-120"],
+      "message_excludes": ["nao contem o endereco completo"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_school_website",
+    "type": "message_response",
+    "request": {
+      "message": "qual site do colegio?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["https://www.colegiohorizonte.edu.br"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_curriculum_basis",
+    "type": "message_response",
+    "request": {
+      "message": "qual a base curricular do ensino medio que voces seguem?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["BNCC", "curriculo"],
+      "message_excludes": ["Hoje Colegio Horizonte atende estes segmentos"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_curriculum_subjects",
+    "type": "message_response",
+    "request": {
+      "message": "quais materias sao ensinadas no ensino medio?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Lingua Portuguesa", "Matematica", "Biologia"],
+      "message_excludes": ["Sua conta tem mais de um aluno vinculado"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_current_date",
+    "type": "message_response",
+    "request": {
+      "message": "que dia e hoje?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["2026"],
+      "message_excludes": ["nao tenho acesso a data e hora atual"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_opening_hours_colloquial",
+    "type": "message_response",
+    "request": {
+      "message": "que horas amanha cedo a escola abre?",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:operating-hours-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["abre as 7h00"],
+      "message_excludes": ["Ainda nao encontrei"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_closing_hours_followup",
+    "type": "message_response",
+    "request": {
+      "message": "e fecha que horas?",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:operating-hours-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["fecha as 17h30"],
+      "message_excludes": ["abre as 7h00 e segue ate as 17h30"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_admissions_timeline",
+    "type": "message_response",
+    "request": {
+      "message": "quando começa a matrícula?",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:timeline-followup-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "calendar",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_timeline"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["6 de outubro de 2025", "matricula para 2026"],
+      "reason_contains": "datas institucionais publicas"
+    }
+  },
+  {
+    "case_id": "public_fundamental_graduation_timeline",
+    "type": "message_response",
+    "request": {
+      "message": "quando é a formatura do ensino fundamental?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "calendar",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_timeline"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["12 de dezembro de 2026", "Ensino Fundamental II"],
+      "message_excludes": ["segmentos"],
+      "reason_contains": "datas institucionais publicas"
+    }
+  },
+  {
+    "case_id": "public_school_year_start_timeline_followup",
+    "type": "message_response",
+    "request": {
+      "message": "e quando começam as aulas?",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:timeline-followup-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "calendar",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_timeline"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["2 de fevereiro de 2026"],
+      "message_excludes": ["reuniao geral de pais", "segmentos atendidos"],
+      "reason_contains": "datas institucionais publicas"
+    }
+  },
+  {
+    "case_id": "public_parent_meeting_calendar_event",
+    "type": "message_response",
+    "request": {
+      "message": "quando e a reuniao de pais?",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:calendar-event-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "calendar",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_calendar_events"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Reuniao geral de pais", "28/03/2026", "Reuniao de responsaveis"],
+      "reason_contains": "datas institucionais publicas"
+    }
+  },
+  {
+    "case_id": "public_library_schedule_followup",
+    "type": "message_response",
+    "request": {
+      "message": "e qual o horario?",
+      "telegram_chat_id": 777004,
+      "conversation_id": "eval:library-followup-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Biblioteca Aurora", "7h30"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
     "case_id": "public_school_name_canonical",
     "type": "message_response",
     "request": {
@@ -173,6 +537,26 @@
       "selected_tools_includes": ["get_public_school_profile"],
       "graph_path_includes": ["structured_tool_call"],
       "message_contains": ["1450.00", "350.00", "bolsas", "descontos"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_scholarship_policy",
+    "type": "message_response",
+    "request": {
+      "message": "Quais bolsas a escola oferece?",
+      "telegram_chat_id": 777091
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["irmaos", "pagamento pontual", "atendimento comercial"],
+      "message_excludes": ["1450.00", "350.00"],
       "reason_contains": "fato institucional canonico"
     }
   },
@@ -230,6 +614,103 @@
       "selected_tools_includes": ["get_public_school_profile"],
       "graph_path_includes": ["structured_tool_call"],
       "message_contains": ["Diretora geral", "Helena Martins"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_director_email_followup_seed",
+    "type": "message_response",
+    "request": {
+      "message": "qual o nome da diretora?",
+      "telegram_chat_id": 777005,
+      "conversation_id": "eval:leadership-followup-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Helena Martins"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_director_email_followup",
+    "type": "message_response",
+    "request": {
+      "message": "e o email?",
+      "telegram_chat_id": 777005,
+      "conversation_id": "eval:leadership-followup-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_org_directory"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["direcao@colegiohorizonte.edu.br"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_director_age_gap",
+    "type": "message_response",
+    "request": {
+      "message": "qual idade do diretor?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["nao publica a idade", "Helena Martins"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_director_whatsapp_gap",
+    "type": "message_response",
+    "request": {
+      "message": "qual o whats do diretor?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["nao publica um whatsapp direto", "direcao@colegiohorizonte.edu.br"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_teacher_directory_gap",
+    "type": "message_response",
+    "request": {
+      "message": "qual o nome do prof de educacao fisica?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["nao divulga nomes nem contatos diretos de professores", "educacao fisica"],
       "reason_contains": "fato institucional canonico"
     }
   },
@@ -318,17 +799,17 @@
       "telegram_chat_id": 777001
     },
     "expected": {
-      "mode": "hybrid_retrieval",
+      "mode": "structured_tool",
       "domain": "institution",
       "access_tier": "public",
-      "retrieval_backend": "qdrant_hybrid",
+      "retrieval_backend": "none",
       "needs_authentication": false,
-      "selected_tools_includes": ["search_public_documents"],
-      "graph_path_includes": ["hybrid_retrieval"],
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
       "max_citations": 0,
       "message_contains": ["nao sustenta uma comparacao justa", "diferenciais documentados desta escola"],
       "message_excludes": ["Fontes:"],
-      "reason_contains": "retrieval hibrido"
+      "reason_contains": "fato institucional canonico"
     }
   },
   {
@@ -365,7 +846,319 @@
       "needs_authentication": false,
       "selected_tools_includes": ["get_public_school_profile"],
       "graph_path_includes": ["structured_tool_call"],
-      "message_contains": ["Nao: Piscina", "Sim: Futsal", "Sim: Oficina de danca"],
+      "message_contains": ["piscina", "futsal", "danca"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_feature_library_yes",
+    "type": "message_response",
+    "request": {
+      "message": "essa escola tem biblioteca?",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:feature-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Sim.", "Biblioteca Aurora"],
+      "message_excludes": ["No perfil publico atual"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_feature_false_negative_reframe",
+    "type": "message_response",
+    "request": {
+      "message": "por que nao tem aula de danca?",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:feature-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Na verdade", "tem sim", "danca"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_feature_robotics_followup",
+    "type": "message_response",
+    "request": {
+      "message": "e aula de computacao e robotica?",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:feature-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Espaco Maker"],
+      "message_excludes": ["danca"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_feature_unknown_gap",
+    "type": "message_response",
+    "request": {
+      "message": "e aula de fisica quantica avancada?",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:feature-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Nao vi uma referencia oficial", "fisica quantica avancada"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_feature_mixed_known_unknown",
+    "type": "message_response",
+    "request": {
+      "message": "tem piscina e quadra de beisbol?",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:feature-mix-seed-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Piscina", "Quadra Poliesportiva Coberta"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_feature_unknown_followup_after_mix",
+    "type": "message_response",
+    "request": {
+      "message": "e beisebol?",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:feature-mix-seed-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Nao vi uma referencia oficial", "beisebol"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_structure_after_greeting_seed",
+    "type": "message_response",
+    "request": {
+      "message": "bom dia",
+      "telegram_chat_id": 777056,
+      "conversation_id": "eval:public-structure-after-greeting-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile", "list_assistant_capabilities"],
+      "message_contains": ["EduAssist", "Colegio Horizonte"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_structure_after_greeting_followup",
+    "type": "message_response",
+    "request": {
+      "message": "qual a estrutura da escola?",
+      "telegram_chat_id": 777056,
+      "conversation_id": "eval:public-structure-after-greeting-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "message_contains": ["estrutura", "biblioteca", "maker"],
+      "message_excludes": ["Helena Martins"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_structure_overview",
+    "type": "message_response",
+    "request": {
+      "message": "qual a estrutura da escola?",
+      "telegram_chat_id": 777052,
+      "conversation_id": "eval:public-structure-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "message_contains": ["estrutura", "biblioteca", "maker"],
+      "message_excludes": ["Helena Martins"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_highlight_before_instagram_seed",
+    "type": "message_response",
+    "request": {
+      "message": "fale uma curiosidade sobre a escola?",
+      "telegram_chat_id": 777057,
+      "conversation_id": "eval:public-highlight-instagram-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "message_contains": ["curiosidade", "maker"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_instagram_after_highlight_followup",
+    "type": "message_response",
+    "request": {
+      "message": "qual instagram do colégio?",
+      "telegram_chat_id": 777057,
+      "conversation_id": "eval:public-highlight-instagram-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "message_contains": ["Instagram", "@colegiohorizonte"],
+      "message_excludes": ["Espaco Maker"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_instagram_presence",
+    "type": "message_response",
+    "request": {
+      "message": "qual instagram do colégio?",
+      "telegram_chat_id": 777053
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "message_contains": ["Instagram", "@colegiohorizonte"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_comparative_school_choice",
+    "type": "message_response",
+    "request": {
+      "message": "por que esse colégio é melhor que a concorrencia",
+      "telegram_chat_id": 777054
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "message_contains": ["diferenciais documentados", "comparacao justa"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_teacher_careers_guidance",
+    "type": "message_response",
+    "request": {
+      "message": "sou professor de filosofia, como faço para dar aula nesse colégio",
+      "telegram_chat_id": 777055
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile", "get_service_directory"],
+      "message_contains": ["dar aula", "talentos@colegiohorizonte.edu.br"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_feature_generic_inventory",
+    "type": "message_response",
+    "request": {
+      "message": "quais atividades tem?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["atividades e espacos", "biblioteca"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_enrichment_catalog",
+    "type": "message_response",
+    "request": {
+      "message": "quais aulas complementares essa escola oferece?",
+      "telegram_chat_id": 777092
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["atividades complementares", "monitorias", "Espaco Maker"],
       "reason_contains": "fato institucional canonico"
     }
   },
@@ -385,6 +1178,44 @@
       "selected_tools_includes": ["get_public_school_profile"],
       "graph_path_includes": ["structured_tool_call"],
       "message_contains": ["3333-4200", "97500-2040", "secretaria@colegiohorizonte.edu.br"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_secretary_routing",
+    "type": "message_response",
+    "request": {
+      "message": "como falo com a secretaria?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_service_directory"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Secretaria escolar e documentos", "email institucional ou portal"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_online_document_submission",
+    "type": "message_response",
+    "request": {
+      "message": "aceita documentos online?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["envio inicial de documentos", "portal institucional"],
       "reason_contains": "fato institucional canonico"
     }
   },
@@ -445,6 +1276,86 @@
       "selected_tools_includes": ["update_visit_booking"],
       "graph_path_includes": ["structured_tool_call"],
       "message_contains": ["Pedido de visita atualizado", "VIS-", "Nova preferencia"],
+      "reason_contains": "workflow estruturado"
+    }
+  },
+  {
+    "case_id": "support_visit_booking_stateful_seed",
+    "type": "message_response",
+    "request": {
+      "message": "Agendar visita",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:visit-stateful-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["schedule_school_visit", "create_support_ticket"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Pedido de visita registrado", "VIS-", "janela a confirmar"],
+      "reason_contains": "workflow estruturado"
+    }
+  },
+  {
+    "case_id": "support_visit_booking_stateful_weekday_followup",
+    "type": "message_response",
+    "request": {
+      "message": "quero terça de manhã",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:visit-stateful-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["update_visit_booking"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Pedido de visita atualizado", "VIS-", "Nova preferencia", "- manha"],
+      "reason_contains": "workflow estruturado"
+    }
+  },
+  {
+    "case_id": "support_visit_booking_stateful_explicit_date_followup",
+    "type": "message_response",
+    "request": {
+      "message": "quero em 01/01/2024",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:visit-stateful-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["update_visit_booking"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Pedido de visita atualizado", "VIS-", "01/01/2024 - manha"],
+      "reason_contains": "workflow estruturado"
+    }
+  },
+  {
+    "case_id": "support_visit_booking_stateful_implicit_date_followup",
+    "type": "message_response",
+    "request": {
+      "message": "então pode ser nesse dia",
+      "telegram_chat_id": 777001,
+      "conversation_id": "eval:visit-stateful-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["update_visit_booking"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Pedido de visita atualizado", "VIS-", "01/01/2024 - manha"],
       "reason_contains": "workflow estruturado"
     }
   },
@@ -653,7 +1564,7 @@
     "type": "message_response",
     "request": {
       "message": "quero ver minhas notas",
-      "telegram_chat_id": 555001,
+      "telegram_chat_id": 1649845499,
       "conversation_id": "eval:guardian-ambiguity-thread"
     },
     "expected": {
@@ -673,11 +1584,264 @@
     }
   },
   {
+    "case_id": "guardian_academic_disambiguation_followup",
+    "type": "message_response",
+    "request": {
+      "message": "lucas eu falei",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-ambiguity-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": [
+        "get_student_academic_summary",
+        "get_student_attendance",
+        "get_student_grades"
+      ],
+      "graph_path_includes": ["student_disambiguation_rescue"],
+      "message_contains": ["Perfeito, seguimos com Lucas Oliveira", "notas", "faltas"],
+      "message_excludes": ["mais de um aluno vinculado", "Resumo academico de Lucas Oliveira"],
+      "reason_contains": "fluxo protegido"
+    }
+  },
+  {
+    "case_id": "guardian_access_scope_query",
+    "type": "message_response",
+    "request": {
+      "message": "qual meu acesso? a que dados",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-access-scope-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_actor_identity_context"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Lucas Oliveira", "Ana Oliveira", "notas", "financeiro"],
+      "message_excludes": ["/start link_<codigo>"],
+      "reason_contains": "escopo de acesso"
+    }
+  },
+  {
+    "case_id": "guardian_access_scope_repair_followup",
+    "type": "message_response",
+    "request": {
+      "message": "mas ja me autentiquei",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-access-scope-thread"
+    },
+    "expected": {
+      "mode": "clarify",
+      "domain": "unknown",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "graph_path_includes": ["clarify"],
+      "message_contains": ["ja se autenticou", "Lucas Oliveira", "Ana Oliveira"],
+      "message_excludes": ["Hoje eu nao encontrei Mas", "/start link_<codigo>"],
+      "reason_contains": "ambiguo"
+    }
+  },
+  {
+    "case_id": "guardian_children_overview_short_query",
+    "type": "message_response",
+    "request": {
+      "message": "quais meus filhos?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-children-overview-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_actor_identity_context"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Lucas Oliveira", "Ana Oliveira", "notas", "financeiro"],
+      "message_excludes": ["Hoje eu nao encontrei Quais Filhos"],
+      "reason_contains": "alunos vinculados"
+    }
+  },
+  {
+    "case_id": "guardian_actor_identity_query",
+    "type": "message_response",
+    "request": {
+      "message": "estou logado como?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-actor-identity-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_actor_identity_context"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Maria Oliveira", "Lucas Oliveira", "Ana Oliveira"],
+      "reason_contains": "identidade"
+    }
+  },
+  {
+    "case_id": "guardian_student_admin_status_query",
+    "type": "message_response",
+    "request": {
+      "message": "qual situacao de documentacao do Lucas?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-student-admin-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_student_administrative_status"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Lucas Oliveira", "documentacao"],
+      "reason_contains": "status administrativo"
+    }
+  },
+  {
+    "case_id": "guardian_attendance_after_enrollment_attribute_1",
+    "type": "message_response",
+    "request": {
+      "message": "qual a matricula do lucas",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-attendance-after-enrollment-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_student_academic_summary"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["MAT-2026-001"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_attendance_after_enrollment_attribute_2",
+    "type": "message_response",
+    "request": {
+      "message": "e como estao as faltas do lucas",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-attendance-after-enrollment-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_student_academic_summary"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Frequencia de Lucas Oliveira"],
+      "message_excludes": ["A matricula de Lucas Oliveira"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_unmatched_student_reference",
+    "type": "message_response",
+    "request": {
+      "message": "quero saber sobre o Fernando, meu filho",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-unmatched-student-thread"
+    },
+    "expected": {
+      "mode": "clarify",
+      "domain": "unknown",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "graph_path_includes": ["clarify"],
+      "message_contains": ["nao encontrei Fernando", "Lucas Oliveira", "Ana Oliveira"],
+      "message_excludes": ["Resumo academico de Lucas Oliveira"],
+      "reason_contains": "ambiguo"
+    }
+  },
+  {
+    "case_id": "guardian_unmatched_student_repair_followup",
+    "type": "message_response",
+    "request": {
+      "message": "mas e meu filho",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-unmatched-student-thread"
+    },
+    "expected": {
+      "mode": "clarify",
+      "domain": "unknown",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "graph_path_includes": ["clarify"],
+      "message_contains": ["vinculacao do Telegram", "Lucas Oliveira", "Ana Oliveira"],
+      "message_excludes": ["Hoje eu nao encontrei Mas"],
+      "reason_contains": "ambiguo"
+    }
+  },
+  {
+    "case_id": "guardian_student_focus_after_unmatched",
+    "type": "message_response",
+    "request": {
+      "message": "e o lucas?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-unmatched-student-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Perfeito, seguimos com Lucas Oliveira"],
+      "message_excludes": ["Ainda nao encontrei uma resposta suficientemente suportada"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "guardian_academic_first_name_resolution",
+    "type": "message_response",
+    "request": {
+      "message": "notas do Lucas",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-first-name-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": [
+        "get_student_academic_summary",
+        "get_student_attendance",
+        "get_student_grades"
+      ],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Resumo academico de Lucas Oliveira"],
+      "message_excludes": ["mais de um aluno vinculado"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
     "case_id": "guardian_academic_student_summary",
     "type": "message_response",
     "request": {
       "message": "quero ver as notas do Lucas Oliveira",
-      "telegram_chat_id": 555001,
+      "telegram_chat_id": 1649845499,
       "conversation_id": "eval:guardian-lucas-thread"
     },
     "expected": {
@@ -701,7 +1865,7 @@
     "type": "message_response",
     "request": {
       "message": "e a frequencia?",
-      "telegram_chat_id": 555001,
+      "telegram_chat_id": 1649845499,
       "conversation_id": "eval:guardian-lucas-thread"
     },
     "expected": {
@@ -725,7 +1889,7 @@
     "type": "message_response",
     "request": {
       "message": "e o financeiro?",
-      "telegram_chat_id": 555001,
+      "telegram_chat_id": 1649845499,
       "conversation_id": "eval:guardian-lucas-thread"
     },
     "expected": {
@@ -742,11 +1906,33 @@
     }
   },
   {
+    "case_id": "guardian_finance_next_due_followup",
+    "type": "message_response",
+    "request": {
+      "message": "qual proximo pagamento?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-lucas-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "finance",
+      "access_tier": "sensitive",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_financial_summary"],
+      "graph_path_includes": ["structured_tool_call"],
+      "risk_flags_include": ["sensitive_data_path"],
+      "message_contains": ["nao encontrei um proximo pagamento pendente de Lucas Oliveira"],
+      "message_excludes": ["Faturas pagas", "1450.00 e a taxa de matricula"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
     "case_id": "guardian_finance_student_summary",
     "type": "message_response",
     "request": {
       "message": "quero ver o financeiro da Ana Oliveira",
-      "telegram_chat_id": 555001
+      "telegram_chat_id": 1649845499
     },
     "expected": {
       "mode": "structured_tool",
@@ -762,11 +1948,480 @@
     }
   },
   {
+    "case_id": "guardian_finance_overdue_empty_state",
+    "type": "message_response",
+    "request": {
+      "message": "tenho boletos atrasados?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-finance-status-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "finance",
+      "access_tier": "sensitive",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_financial_summary"],
+      "graph_path_includes": ["structured_tool_call"],
+      "risk_flags_include": ["sensitive_data_path"],
+      "message_contains": ["Resumo financeiro", "Hoje nao ha faturas vencidas"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_finance_overdue_by_student_count",
+    "type": "message_response",
+    "request": {
+      "message": "quantas mensalidades atrasadas tenho no lucas",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-finance-lucas-overdue-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "finance",
+      "access_tier": "sensitive",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_financial_summary"],
+      "graph_path_includes": ["structured_tool_call"],
+      "risk_flags_include": ["sensitive_data_path"],
+      "message_contains": ["Lucas Oliveira", "mensalidades vencidas"],
+      "message_excludes": ["1450.00", "350.00"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_finance_open_invoice_wording",
+    "type": "message_response",
+    "request": {
+      "message": "quais boletos da Ana Oliveira estao em aberto?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-finance-open-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "finance",
+      "access_tier": "sensitive",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_financial_summary"],
+      "graph_path_includes": ["structured_tool_call"],
+      "risk_flags_include": ["sensitive_data_path"],
+      "message_contains": ["Resumo financeiro de Ana Oliveira", "status em aberto"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_finance_identifier_seed",
+    "type": "message_response",
+    "request": {
+      "message": "preciso da segunda via do boleto da Ana Oliveira",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-finance-identifier-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "finance",
+      "access_tier": "sensitive",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_financial_summary"],
+      "graph_path_includes": ["structured_tool_call"],
+      "risk_flags_include": ["sensitive_data_path"],
+      "message_contains": ["Resumo financeiro de Ana Oliveira", "segunda via"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_finance_invoice_identifier_followup",
+    "type": "message_response",
+    "request": {
+      "message": "qual o numero do boleto?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-finance-identifier-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "finance",
+      "access_tier": "sensitive",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_financial_summary"],
+      "graph_path_includes": ["structured_tool_call"],
+      "risk_flags_include": ["sensitive_data_path"],
+      "message_contains": ["4a935c4e-eafd-405e-8a54-007ae82f6698", "segunda via"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_finance_contract_identifier",
+    "type": "message_response",
+    "request": {
+      "message": "qual o codigo do contrato da Ana Oliveira?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-finance-contract-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "finance",
+      "access_tier": "sensitive",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_financial_summary"],
+      "graph_path_includes": ["structured_tool_call"],
+      "risk_flags_include": ["sensitive_data_path"],
+      "message_contains": ["CTR-2026-002"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_academic_subject_slot_seed",
+    "type": "message_response",
+    "request": {
+      "message": "quais as minhas notas de fisica?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-physics-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": [
+        "get_student_academic_summary",
+        "get_student_grades"
+      ],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["mais de um aluno vinculado", "Lucas Oliveira", "Ana Oliveira"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_academic_subject_slot_followup",
+    "type": "message_response",
+    "request": {
+      "message": "quais as notas do Lucas Oliveira?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-physics-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": [
+        "get_student_academic_summary",
+        "get_student_grades"
+      ],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Lucas Oliveira", "Disciplina filtrada: Fisica", "Fisica"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_academic_registry_seed",
+    "type": "message_response",
+    "request": {
+      "message": "quero ver as notas do Lucas Oliveira",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-registry-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_student_academic_summary", "get_student_grades"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Resumo academico de Lucas Oliveira"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_academic_registry_followup",
+    "type": "message_response",
+    "request": {
+      "message": "e a matricula?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-registry-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_student_academic_summary"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Lucas Oliveira", "MAT-2026-001"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_academic_upcoming_assessments",
+    "type": "message_response",
+    "request": {
+      "message": "quais as proximas provas do Lucas Oliveira?",
+      "telegram_chat_id": 1649845499
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": [
+        "get_student_upcoming_assessments"
+      ],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Proximas avaliacoes de Lucas Oliveira", "2026-"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_academic_attendance_timeline",
+    "type": "message_response",
+    "request": {
+      "message": "qual data foram as faltas do Lucas Oliveira?",
+      "telegram_chat_id": 1649845499
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": [
+        "get_student_attendance_timeline"
+      ],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Registros de frequencia de Lucas Oliveira", "2026-"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_finance_and_documentation_combined",
+    "type": "message_response",
+    "request": {
+      "message": "quero saber se estou com a documentacao atualizada e completa e se meus boletos estao pagos ou atrasados",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-admin-finance-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "finance",
+      "access_tier": "sensitive",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_financial_summary", "get_administrative_status"],
+      "graph_path_includes": ["structured_tool_call"],
+      "risk_flags_include": ["sensitive_data_path"],
+      "message_contains": ["Resumo financeiro", "Cadastro e documentacao", "Situacao administrativa"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_documentation_followup",
+    "type": "message_response",
+    "request": {
+      "message": "e a documentacao, nao respondeu",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-admin-finance-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_administrative_status"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Situacao administrativa", "cadastro"],
+      "reason_contains": "status administrativo autenticado"
+    }
+  },
+  {
+    "case_id": "public_site_and_address_multi_intent",
+    "type": "message_response",
+    "request": {
+      "message": "qual o site e o endereco da escola?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["https://www.colegiohorizonte.edu.br", "Rua das Acacias", "CEP 04567-120"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_segments_structured_query",
+    "type": "message_response",
+    "request": {
+      "message": "quais segmentos a escola atende?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Ensino Fundamental II", "Ensino Medio"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "public_school_name_and_segments_multi_intent",
+    "type": "message_response",
+    "request": {
+      "message": "qual o nome da escola e quais segmentos ela atende?",
+      "telegram_chat_id": 777001
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["nome oficial da escola", "Ensino Fundamental II", "Ensino Medio"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
+    "case_id": "guardian_profile_update_guidance",
+    "type": "message_response",
+    "request": {
+      "message": "como altero o endereco de email no meu cadastro?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-profile-update-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_administrative_status"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["email cadastral", "secretaria escolar"],
+      "reason_contains": "status administrativo autenticado"
+    }
+  },
+  {
+    "case_id": "guardian_profile_update_phone_followup",
+    "type": "message_response",
+    "request": {
+      "message": "e o telefone?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-profile-update-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_administrative_status"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["telefone cadastral atual", "+55 11 98888-1001"],
+      "reason_contains": "status administrativo autenticado"
+    }
+  },
+  {
+    "case_id": "guardian_profile_update_documents_followup",
+    "type": "message_response",
+    "request": {
+      "message": "e os documentos?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-profile-update-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_administrative_status"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Situacao documental", "Documentacao administrativa", "com pendencias"],
+      "reason_contains": "status administrativo autenticado"
+    }
+  },
+  {
+    "case_id": "guardian_profile_update_next_step_followup",
+    "type": "message_response",
+    "request": {
+      "message": "e o proximo passo?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-profile-update-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_administrative_status"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["proximo passo do seu cadastro", "comprovante atualizado"],
+      "reason_contains": "status administrativo autenticado"
+    }
+  },
+  {
+    "case_id": "public_foreign_school_redirect",
+    "type": "message_response",
+    "request": {
+      "message": "quero falar com o boa vista",
+      "telegram_chat_id": 777093
+    },
+    "expected": {
+      "mode": "handoff",
+      "domain": "support",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "message_contains": ["Colegio Horizonte", "Boa Vista", "nao tenho acesso ao atendimento dessa outra instituicao"],
+      "message_excludes": ["Protocolo:", "fila de atendimento"]
+    }
+  },
+  {
+    "case_id": "public_fundamental_i_curriculum_gap",
+    "type": "message_response",
+    "request": {
+      "message": "quais matérias tem no primeiro ano do fundamental",
+      "telegram_chat_id": 777094
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["primeiro ano do ensino fundamental i", "ensino fundamental ii", "ensino medio"],
+      "reason_contains": "fato institucional canonico"
+    }
+  },
+  {
     "case_id": "human_handoff_finance",
     "type": "message_response",
     "request": {
       "message": "quero falar com um humano sobre o financeiro",
-      "telegram_chat_id": 555001
+      "telegram_chat_id": 1649845499
     },
     "expected": {
       "mode": "handoff",
@@ -796,6 +2451,62 @@
       "graph_path_includes": ["clarify"],
       "message_excludes": ["prompt do sistema", "instrucoes internas"],
       "reason_contains": "ambigua"
+    }
+  },
+  {
+    "case_id": "guardian_children_overview_clarify",
+    "type": "message_response",
+    "request": {
+      "message": "que informações você pode fornecer sobre meus filhos? quais filhos tenho matriculados?",
+      "telegram_chat_id": 1649845499
+    },
+    "expected": {
+      "mode": "clarify",
+      "domain": "unknown",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "graph_path_includes": ["clarify"],
+      "message_contains": ["Lucas Oliveira", "Ana Oliveira", "notas"],
+      "reason_contains": "ambigua"
+    }
+  },
+  {
+    "case_id": "guardian_student_focus_activation_clarify",
+    "type": "message_response",
+    "request": {
+      "message": "quero falar do lucas",
+      "telegram_chat_id": 1649845499
+    },
+    "expected": {
+      "mode": "clarify",
+      "domain": "unknown",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "graph_path_includes": ["clarify"],
+      "message_contains": ["seguimos com Lucas Oliveira", "notas", "financeiro"],
+      "reason_contains": "ambigua"
+    }
+  },
+  {
+    "case_id": "public_high_school_pricing_scope",
+    "type": "message_response",
+    "request": {
+      "message": "Mensalidade do ensino medio",
+      "telegram_chat_id": 777095
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "institution",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_public_school_profile"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Ensino Medio", "mensalidade publica de referencia"],
+      "message_excludes": ["nao tenho um detalhamento publico"],
+      "reason_contains": "fato institucional canonico"
     }
   },
   {

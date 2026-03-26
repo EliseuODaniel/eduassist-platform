@@ -139,6 +139,22 @@ class AttendanceEntry(BaseModel):
     absent_minutes: int
 
 
+class AttendanceRecordEntry(BaseModel):
+    subject_code: str
+    subject_name: str
+    record_date: date
+    status: str
+    minutes_absent: int
+
+
+class UpcomingAssessmentEntry(BaseModel):
+    subject_code: str
+    subject_name: str
+    item_title: str
+    term_code: str
+    due_date: date
+
+
 class StudentAcademicSummary(BaseModel):
     student_id: uuid.UUID
     class_id: uuid.UUID | None = None
@@ -148,6 +164,24 @@ class StudentAcademicSummary(BaseModel):
     grade_level: int
     grades: list[GradeEntry]
     attendance: list[AttendanceEntry]
+
+
+class StudentAttendanceTimeline(BaseModel):
+    student_id: uuid.UUID
+    class_id: uuid.UUID | None = None
+    class_name: str | None = None
+    student_name: str
+    enrollment_code: str
+    records: list[AttendanceRecordEntry]
+
+
+class StudentUpcomingAssessments(BaseModel):
+    student_id: uuid.UUID
+    class_id: uuid.UUID | None = None
+    class_name: str | None = None
+    student_name: str
+    enrollment_code: str
+    assessments: list[UpcomingAssessmentEntry]
 
 
 class InvoiceEntry(BaseModel):
@@ -168,6 +202,49 @@ class StudentFinancialSummary(BaseModel):
     invoices: list[InvoiceEntry]
     open_invoice_count: int
     overdue_invoice_count: int
+
+
+class AdministrativeChecklistItem(BaseModel):
+    item_key: str
+    label: str
+    status: str
+    notes: str | None = None
+
+
+class AdministrativeStatusSummary(BaseModel):
+    actor_name: str
+    role_code: str
+    profile_email: str | None = None
+    profile_phone: str | None = None
+    overall_status: str
+    next_step: str | None = None
+    checklist: list[AdministrativeChecklistItem] = Field(default_factory=list)
+
+
+class StudentAdministrativeStatusSummary(BaseModel):
+    student_id: uuid.UUID
+    student_name: str
+    enrollment_code: str
+    guardian_name: str | None = None
+    overall_status: str
+    next_step: str | None = None
+    checklist: list[AdministrativeChecklistItem] = Field(default_factory=list)
+
+
+class StudentAttendanceTimelineResponse(BaseModel):
+    summary: StudentAttendanceTimeline
+
+
+class StudentUpcomingAssessmentsResponse(BaseModel):
+    summary: StudentUpcomingAssessments
+
+
+class AdministrativeStatusResponse(BaseModel):
+    summary: AdministrativeStatusSummary
+
+
+class StudentAdministrativeStatusResponse(BaseModel):
+    summary: StudentAdministrativeStatusSummary
 
 
 class TeacherScheduleEntry(BaseModel):
@@ -278,6 +355,13 @@ class PublicServiceCatalogEntry(BaseModel):
     notes: str | None = None
 
 
+class PublicDocumentSubmissionPolicy(BaseModel):
+    accepts_digital_submission: bool
+    accepted_channels: list[str] = Field(default_factory=list)
+    warning: str | None = None
+    notes: str | None = None
+
+
 class PublicSchoolProfile(BaseModel):
     school_unit_code: str
     school_name: str
@@ -286,8 +370,13 @@ class PublicSchoolProfile(BaseModel):
     timezone: str
     address_line: str
     district: str
+    postal_code: str | None = None
+    website_url: str | None = None
+    fax_number: str | None = None
     short_headline: str
     education_model: str
+    curriculum_basis: str | None = None
+    curriculum_components: list[str] = Field(default_factory=list)
     confessional_status: str
     segments: list[str] = Field(default_factory=list)
     shift_offers: list[PublicShiftOffer] = Field(default_factory=list)
@@ -299,6 +388,7 @@ class PublicSchoolProfile(BaseModel):
     highlights: list[PublicHighlightEntry] = Field(default_factory=list)
     visit_offers: list[PublicVisitOffer] = Field(default_factory=list)
     service_catalog: list[PublicServiceCatalogEntry] = Field(default_factory=list)
+    document_submission_policy: PublicDocumentSubmissionPolicy | None = None
     documented_services: list[str] = Field(default_factory=list)
     admissions_highlights: list[str] = Field(default_factory=list)
 
@@ -338,9 +428,35 @@ class PublicServiceDirectoryResponse(BaseModel):
     directory: PublicServiceDirectory
 
 
+class PublicTimelineEntry(BaseModel):
+    topic_key: str
+    title: str
+    summary: str
+    event_date: date | None = None
+    audience: str | None = None
+    notes: str | None = None
+
+
+class PublicTimeline(BaseModel):
+    school_name: str
+    entries: list[PublicTimelineEntry] = Field(default_factory=list)
+
+
+class PublicTimelineResponse(BaseModel):
+    timeline: PublicTimeline
+
+
 class InternalConversationMessageEntry(BaseModel):
     sender_type: str
     content: str
+    created_at: datetime
+
+
+class InternalConversationToolCallEntry(BaseModel):
+    tool_name: str
+    status: str
+    request_payload: dict[str, Any] = Field(default_factory=dict)
+    response_payload: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
 
 
@@ -350,6 +466,7 @@ class InternalConversationContextResponse(BaseModel):
     conversation_status: str | None = None
     message_count: int = 0
     recent_messages: list[InternalConversationMessageEntry] = Field(default_factory=list)
+    recent_tool_calls: list[InternalConversationToolCallEntry] = Field(default_factory=list)
 
 
 class InternalConversationMessageCreate(BaseModel):
@@ -368,6 +485,28 @@ class InternalConversationAppendResponse(BaseModel):
     channel: str
     conversation_external_id: str
     stored_messages: int = 0
+    deduplicated_messages: int = 0
+    message_count: int = 0
+
+
+class InternalConversationToolCallCreate(BaseModel):
+    tool_name: str
+    status: str
+    request_payload: dict[str, Any] = Field(default_factory=dict)
+    response_payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class InternalConversationToolCallAppendRequest(BaseModel):
+    channel: str = 'telegram'
+    conversation_external_id: str
+    actor_user_id: uuid.UUID | None = None
+    tool_calls: list[InternalConversationToolCallCreate] = Field(default_factory=list)
+
+
+class InternalConversationToolCallAppendResponse(BaseModel):
+    channel: str
+    conversation_external_id: str
+    stored_tool_calls: int = 0
     deduplicated_messages: int = 0
     message_count: int = 0
 
@@ -555,6 +694,23 @@ class SupportConversationMessageEntry(BaseModel):
     created_at: datetime
 
 
+class SupportConversationThreadEntry(BaseModel):
+    conversation_id: uuid.UUID
+    channel: str
+    external_thread_id: str
+    conversation_status: str
+    requester_name: str | None = None
+    requester_role: str | None = None
+    message_count: int = 0
+    last_message_excerpt: str | None = None
+    latest_message_at: datetime | None = None
+    linked_ticket_code: str | None = None
+    linked_queue_name: str | None = None
+    linked_ticket_status: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
 class InternalVisitBookingCreateRequest(BaseModel):
     conversation_external_id: str
     channel: str = 'telegram'
@@ -702,4 +858,17 @@ class SupportHandoffDetailResponse(BaseModel):
     scope: str
     item: SupportHandoffEntry
     conversation_status: str
+    messages: list[SupportConversationMessageEntry] = Field(default_factory=list)
+
+
+class SupportConversationListResponse(BaseModel):
+    actor: ActorContext
+    scope: str
+    items: list[SupportConversationThreadEntry] = Field(default_factory=list)
+
+
+class SupportConversationDetailResponse(BaseModel):
+    actor: ActorContext
+    scope: str
+    item: SupportConversationThreadEntry
     messages: list[SupportConversationMessageEntry] = Field(default_factory=list)

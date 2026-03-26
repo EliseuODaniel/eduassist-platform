@@ -20,6 +20,10 @@ labels:
 
 As aulas do ensino fundamental II e do ensino medio comecam em 2 de fevereiro de 2026. A semana de acolhimento dos alunos do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro, com orientacoes sobre rotina academica, uso do portal e normas de convivencia.
 
+## Matricula e ingresso
+
+O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita guiada opcional e triagem documental inicial. A secretaria continua atendendo familias interessadas enquanto houver disponibilidade de vagas e janela administrativa para ingresso.
+
 ## Avaliacoes bimestrais
 
 As avaliacoes do primeiro bimestre estao previstas entre 6 e 17 de abril de 2026. As avaliacoes do segundo bimestre estao previstas entre 15 e 26 de junho de 2026. Cada disciplina divulga o cronograma final no portal academico com antecedencia minima de sete dias.
@@ -45,3 +49,7 @@ O simulado institucional para as turmas da terceira serie ocorre em 3 de outubro
 ## Semana da familia
 
 A semana da familia e da convivencia ocorre de 9 a 13 de novembro de 2026, com rodas de conversa, oficinas e apresentacoes de projetos.
+
+## Formatura do ensino fundamental II
+
+A cerimônia de encerramento e formatura interna das turmas do 9o ano esta prevista para 12 de dezembro de 2026, no fim da tarde, apos o fechamento do ano letivo e a devolutiva final para as familias. A escola pode publicar ajustes operacionais de horario ou local mais perto da data.

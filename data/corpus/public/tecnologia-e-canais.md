@@ -38,7 +38,10 @@ O estudante pode acompanhar a maior parte dos recursos em celular, tablet ou com
 - e-mail da secretaria
 - atendimento presencial
 
+## Documentos e cadastro
+
+Para triagem documental de matricula ou orientacoes administrativas, a escola aceita envio inicial pelo portal institucional e pelo e-mail da secretaria. O bot aberto nao deve receber documentos completos, dados sensiveis ou arquivos que dependam de validacao autenticada.
+
 ## Boas praticas
 
 Nao compartilhar senhas, documentos completos ou codigos de acesso em canais publicos. Para dados sensiveis, use o fluxo autenticado.
-

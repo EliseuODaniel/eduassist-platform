@@ -6,6 +6,7 @@ import sys
 import unicodedata
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'e2e'))
 
@@ -14,6 +15,7 @@ from _common import Settings, assert_condition, request, wait_for_health
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_DATASET_PATH = ROOT_DIR / 'tests' / 'evals' / 'datasets' / 'orchestrator_cases.json'
+EVAL_RUN_ID = os.getenv('ORCHESTRATOR_EVAL_RUN_ID', uuid4().hex[:8])
 
 
 def _normalize_text(value: str) -> str:
@@ -29,12 +31,18 @@ def _load_cases() -> list[dict[str, Any]]:
     return payload
 
 
-def _post_message_response(settings: Settings, payload: dict[str, Any]) -> tuple[int, Any]:
+def _post_message_response(settings: Settings, payload: dict[str, Any], *, case_id: str) -> tuple[int, Any]:
+    normalized_payload = dict(payload)
+    conversation_id = normalized_payload.get('conversation_id')
+    if isinstance(conversation_id, str) and conversation_id.strip():
+        normalized_payload['conversation_id'] = f'{conversation_id}:{EVAL_RUN_ID}'
+    else:
+        normalized_payload['conversation_id'] = f'eval:{case_id}:{EVAL_RUN_ID}'
     status, _, body = request(
         'POST',
         f'{settings.ai_orchestrator_url}/v1/messages/respond',
         headers={'X-Internal-Api-Token': settings.internal_api_token},
-        json_body=payload,
+        json_body=normalized_payload,
         timeout=60.0,
     )
     return status, body
@@ -203,7 +211,7 @@ def main() -> int:
         case_type = str(case['type'])
         try:
             if case_type == 'message_response':
-                status, body = _post_message_response(settings, case['request'])
+                status, body = _post_message_response(settings, case['request'], case_id=case_id)
                 assert_condition(status == 200 and isinstance(body, dict), f'{case_id}:request_failed')
                 _assert_message_response(case, body)
                 print(

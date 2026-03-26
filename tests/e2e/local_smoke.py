@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import sys
 from _common import (
     Settings,
@@ -16,6 +17,12 @@ from _common import (
     wait_for_prometheus_result,
     wait_for_trace_span,
 )
+
+
+def _extract_protocol(message: str, prefix: str) -> str:
+    match = re.search(rf'{re.escape(prefix)}-\d{{8}}-[A-Z0-9]+', message)
+    assert_condition(match is not None, f'missing_protocol:{prefix}')
+    return str(match.group(0))
 
 
 def main() -> int:
@@ -180,6 +187,298 @@ def main() -> int:
     assert_condition('financeiro' in capabilities_message.lower(), 'public_capabilities_finance_missing')
     print('[ok] public assistant capabilities')
 
+    call_status, _, call_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'como ligo pra escola?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(call_status == 200 and isinstance(call_payload, dict), 'public_call_query_failed')
+    call_message = str(call_payload.get('message_text', ''))
+    assert_condition('(11) 3333-4200' in call_message, 'public_call_phone_missing')
+    assert_condition('ainda nao encontrei' not in call_message.lower(), 'public_call_gap_message')
+    print('[ok] public phone phrasing')
+
+    phone_fax_status, _, phone_fax_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o telefone e o fax?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        phone_fax_status == 200 and isinstance(phone_fax_payload, dict),
+        'public_phone_fax_query_failed',
+    )
+    phone_fax_message = str(phone_fax_payload.get('message_text', ''))
+    assert_condition('(11) 3333-4200' in phone_fax_message, 'public_phone_fax_phone_missing')
+    assert_condition('nao publica numero de fax' in phone_fax_message.lower(), 'public_phone_fax_gap_missing')
+    assert_condition('none' not in phone_fax_message.lower(), 'public_phone_fax_none_leak')
+    print('[ok] public phone and fax query')
+
+    address_status, _, address_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o endereco?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(address_status == 200 and isinstance(address_payload, dict), 'public_address_query_failed')
+    address_message = str(address_payload.get('message_text', ''))
+    assert_condition('Rua das Acacias' in address_message, 'public_address_street_missing')
+    assert_condition('CEP 04567-120' in address_message, 'public_address_cep_missing')
+    print('[ok] public short address query')
+
+    site_address_status, _, site_address_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o site e o endereco da escola?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        site_address_status == 200 and isinstance(site_address_payload, dict),
+        'public_site_address_query_failed',
+    )
+    site_address_message = str(site_address_payload.get('message_text', ''))
+    assert_condition('https://www.colegiohorizonte.edu.br' in site_address_message, 'public_site_address_site_missing')
+    assert_condition('Rua das Acacias' in site_address_message, 'public_site_address_street_missing')
+    print('[ok] public site and address multi-intent query')
+
+    segments_status, _, segments_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quais segmentos a escola atende?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        segments_status == 200 and isinstance(segments_payload, dict),
+        'public_segments_query_failed',
+    )
+    segments_message = str(segments_payload.get('message_text', ''))
+    assert_condition('ensino fundamental ii' in segments_message.lower(), 'public_segments_fundamental_missing')
+    assert_condition('ensino medio' in segments_message.lower(), 'public_segments_medio_missing')
+    print('[ok] public segments query')
+
+    school_name_segments_status, _, school_name_segments_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o nome da escola e quais segmentos ela atende?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        school_name_segments_status == 200 and isinstance(school_name_segments_payload, dict),
+        'public_school_name_segments_query_failed',
+    )
+    school_name_segments_message = str(school_name_segments_payload.get('message_text', ''))
+    assert_condition('nome oficial da escola' in school_name_segments_message.lower(), 'public_school_name_segments_name_missing')
+    assert_condition('ensino fundamental ii' in school_name_segments_message.lower(), 'public_school_name_segments_fundamental_missing')
+    print('[ok] public school name plus segments multi-intent query')
+
+    curriculum_status, _, curriculum_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quais materias sao ensinadas no ensino medio?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(curriculum_status == 200 and isinstance(curriculum_payload, dict), 'public_curriculum_query_failed')
+    curriculum_message = str(curriculum_payload.get('message_text', ''))
+    assert_condition('matematica' in curriculum_message.lower(), 'public_curriculum_math_missing')
+    assert_condition('biologia' in curriculum_message.lower(), 'public_curriculum_biology_missing')
+    assert_condition('sua conta tem mais de um aluno vinculado' not in curriculum_message.lower(), 'public_curriculum_wrongly_protected')
+    print('[ok] public curriculum query')
+
+    opening_hours_status, _, opening_hours_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'que horas amanha cedo a escola abre?',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:operating-hours-thread',
+        },
+    )
+    assert_condition(
+        opening_hours_status == 200 and isinstance(opening_hours_payload, dict),
+        'public_opening_hours_query_failed',
+    )
+    opening_hours_message = str(opening_hours_payload.get('message_text', ''))
+    assert_condition('7h00' in opening_hours_message, 'public_opening_hours_missing')
+    assert_condition('ainda nao encontrei' not in opening_hours_message.lower(), 'public_opening_hours_gap_message')
+    print('[ok] public colloquial opening hours query')
+
+    closing_hours_status, _, closing_hours_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e fecha que horas?',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:operating-hours-thread',
+        },
+    )
+    assert_condition(
+        closing_hours_status == 200 and isinstance(closing_hours_payload, dict),
+        'public_closing_hours_followup_failed',
+    )
+    closing_hours_message = str(closing_hours_payload.get('message_text', ''))
+    assert_condition('17h30' in closing_hours_message, 'public_closing_hours_missing')
+    assert_condition('fecha as 17h30' in closing_hours_message.lower(), 'public_closing_hours_phrase_missing')
+    print('[ok] public colloquial closing hours follow-up')
+
+    admissions_timeline_status, _, admissions_timeline_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quando começa a matrícula?',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:timeline-thread',
+        },
+    )
+    assert_condition(
+        admissions_timeline_status == 200 and isinstance(admissions_timeline_payload, dict),
+        'public_admissions_timeline_failed',
+    )
+    admissions_timeline_message = str(admissions_timeline_payload.get('message_text', ''))
+    assert_condition(
+        admissions_timeline_payload.get('mode') == 'structured_tool',
+        'public_admissions_timeline_mode_invalid',
+    )
+    assert_condition(
+        admissions_timeline_payload.get('classification', {}).get('domain') == 'calendar',
+        'public_admissions_timeline_domain_invalid',
+    )
+    assert_condition(
+        'get_public_timeline' in admissions_timeline_payload.get('selected_tools', []),
+        'public_admissions_timeline_tool_missing',
+    )
+    assert_condition(
+        '6 de outubro de 2025' in admissions_timeline_message,
+        'public_admissions_timeline_date_missing',
+    )
+    print('[ok] public admissions timeline query')
+
+    graduation_timeline_status, _, graduation_timeline_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quando é a formatura do ensino fundamental?',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:timeline-thread',
+        },
+    )
+    assert_condition(
+        graduation_timeline_status == 200 and isinstance(graduation_timeline_payload, dict),
+        'public_graduation_timeline_failed',
+    )
+    graduation_timeline_message = str(graduation_timeline_payload.get('message_text', ''))
+    assert_condition(
+        graduation_timeline_payload.get('mode') == 'structured_tool',
+        'public_graduation_timeline_mode_invalid',
+    )
+    assert_condition(
+        graduation_timeline_payload.get('classification', {}).get('domain') == 'calendar',
+        'public_graduation_timeline_domain_invalid',
+    )
+    assert_condition(
+        'get_public_timeline' in graduation_timeline_payload.get('selected_tools', []),
+        'public_graduation_timeline_tool_missing',
+    )
+    assert_condition(
+        '12 de dezembro de 2026' in graduation_timeline_message,
+        'public_graduation_timeline_date_missing',
+    )
+    assert_condition(
+        'segmentos' not in graduation_timeline_message.lower(),
+        'public_graduation_timeline_segments_leak',
+    )
+    print('[ok] public graduation timeline query')
+
+    school_year_start_status, _, school_year_start_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e quando começam as aulas?',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:timeline-thread',
+        },
+    )
+    assert_condition(
+        school_year_start_status == 200 and isinstance(school_year_start_payload, dict),
+        'public_school_year_start_timeline_failed',
+    )
+    school_year_start_message = str(school_year_start_payload.get('message_text', ''))
+    assert_condition(
+        school_year_start_payload.get('mode') == 'structured_tool',
+        'public_school_year_start_timeline_mode_invalid',
+    )
+    assert_condition(
+        'get_public_timeline' in school_year_start_payload.get('selected_tools', []),
+        'public_school_year_start_timeline_tool_missing',
+    )
+    assert_condition(
+        '2 de fevereiro de 2026' in school_year_start_message,
+        'public_school_year_start_timeline_date_missing',
+    )
+    print('[ok] public school year start timeline follow-up')
+
     thanks_status, _, thanks_payload = request(
         'POST',
         f'{settings.ai_orchestrator_url}/v1/messages/respond',
@@ -274,6 +573,77 @@ def main() -> int:
     assert_condition('financeiro' in routing_follow_up_message.lower(), 'public_routing_followup_finance_missing')
     print('[ok] public service routing follow-up')
 
+    bullying_status, _, bullying_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'como reporto um bullying?',
+            'telegram_chat_id': 777003,
+            'conversation_id': 'smoke:bullying-routing-thread',
+        },
+    )
+    assert_condition(
+        bullying_status == 200 and isinstance(bullying_payload, dict),
+        'public_bullying_routing_failed',
+    )
+    bullying_message = str(bullying_payload.get('message_text', ''))
+    assert_condition('orientacao educacional' in bullying_message.lower(), 'public_bullying_sector_missing')
+    bullying_follow_up_status, _, bullying_follow_up_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'mas com qual contato eu devo falar',
+            'telegram_chat_id': 777003,
+            'conversation_id': 'smoke:bullying-routing-thread',
+        },
+    )
+    assert_condition(
+        bullying_follow_up_status == 200 and isinstance(bullying_follow_up_payload, dict),
+        'public_bullying_followup_failed',
+    )
+    bullying_follow_up_message = str(bullying_follow_up_payload.get('message_text', ''))
+    assert_condition(
+        'orientacao educacional' in bullying_follow_up_message.lower(),
+        'public_bullying_followup_sector_missing',
+    )
+    assert_condition(
+        'bot, orientacao educacional ou secretaria' in bullying_follow_up_message.lower(),
+        'public_bullying_followup_channel_missing',
+    )
+    assert_condition(
+        bullying_follow_up_message.lower().startswith('voce pode falar com'),
+        'public_bullying_followup_direct_contact_missing',
+    )
+    bullying_phone_follow_up_status, _, bullying_phone_follow_up_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e o telefone?',
+            'telegram_chat_id': 777003,
+            'conversation_id': 'smoke:bullying-routing-thread',
+        },
+    )
+    assert_condition(
+        bullying_phone_follow_up_status == 200 and isinstance(bullying_phone_follow_up_payload, dict),
+        'public_bullying_phone_followup_failed',
+    )
+    bullying_phone_follow_up_message = str(bullying_phone_follow_up_payload.get('message_text', ''))
+    assert_condition('(11) 3333-4202' in bullying_phone_follow_up_message, 'public_bullying_phone_followup_missing')
+    print('[ok] public bullying phone follow-up')
+    print('[ok] public bullying routing follow-up')
+
     library_status, _, library_payload = request(
         'POST',
         f'{settings.ai_orchestrator_url}/v1/messages/respond',
@@ -297,6 +667,41 @@ def main() -> int:
     )
     assert_condition('reuniao geral de pais' not in library_message.lower(), 'public_library_calendar_leak')
     print('[ok] public library faq')
+
+    _, _, _ = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'essa escola tem biblioteca?',
+            'telegram_chat_id': 777004,
+            'conversation_id': 'smoke:library-followup-thread',
+        },
+    )
+    library_follow_up_status, _, library_follow_up_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e qual o horario?',
+            'telegram_chat_id': 777004,
+            'conversation_id': 'smoke:library-followup-thread',
+        },
+    )
+    assert_condition(
+        library_follow_up_status == 200 and isinstance(library_follow_up_payload, dict),
+        'public_library_followup_failed',
+    )
+    library_follow_up_message = str(library_follow_up_payload.get('message_text', ''))
+    assert_condition('biblioteca aurora' in library_follow_up_message.lower(), 'public_library_followup_label_missing')
+    assert_condition('7h30' in library_follow_up_message.lower(), 'public_library_followup_schedule_missing')
+    print('[ok] public library schedule follow-up')
 
     graphrag_status, _, graphrag_payload = request(
         'POST',
@@ -474,6 +879,118 @@ def main() -> int:
     assert_condition('Diretora geral' in director_message, 'public_director_title_missing')
     print('[ok] public leadership profile')
 
+    _, _, _ = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o nome da diretora?',
+            'telegram_chat_id': 777005,
+            'conversation_id': 'smoke:leadership-followup-thread',
+        },
+    )
+    director_email_follow_up_status, _, director_email_follow_up_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e o email?',
+            'telegram_chat_id': 777005,
+            'conversation_id': 'smoke:leadership-followup-thread',
+        },
+    )
+    assert_condition(
+        director_email_follow_up_status == 200 and isinstance(director_email_follow_up_payload, dict),
+        'public_director_email_followup_failed',
+    )
+    director_email_follow_up_message = str(director_email_follow_up_payload.get('message_text', ''))
+    assert_condition(
+        'direcao@colegiohorizonte.edu.br' in director_email_follow_up_message.lower(),
+        'public_director_email_followup_missing',
+    )
+    print('[ok] public leadership email follow-up')
+
+    director_age_status, _, director_age_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual idade do diretor?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        director_age_status == 200 and isinstance(director_age_payload, dict),
+        'public_director_age_query_failed',
+    )
+    director_age_message = str(director_age_payload.get('message_text', ''))
+    assert_condition('nao publica a idade' in director_age_message.lower(), 'public_director_age_gap_missing')
+    assert_condition('helena martins' in director_age_message.lower(), 'public_director_age_identity_missing')
+    print('[ok] public leadership age gap')
+
+    director_whatsapp_status, _, director_whatsapp_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o whats do diretor?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        director_whatsapp_status == 200 and isinstance(director_whatsapp_payload, dict),
+        'public_director_whatsapp_query_failed',
+    )
+    director_whatsapp_message = str(director_whatsapp_payload.get('message_text', ''))
+    assert_condition(
+        'nao publica um whatsapp direto' in director_whatsapp_message.lower(),
+        'public_director_whatsapp_gap_missing',
+    )
+    assert_condition(
+        'direcao@colegiohorizonte.edu.br' in director_whatsapp_message.lower(),
+        'public_director_whatsapp_email_missing',
+    )
+    print('[ok] public leadership contact gap')
+
+    teacher_name_status, _, teacher_name_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o nome do prof de educacao fisica?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        teacher_name_status == 200 and isinstance(teacher_name_payload, dict),
+        'public_teacher_name_query_failed',
+    )
+    teacher_name_message = str(teacher_name_payload.get('message_text', ''))
+    assert_condition(
+        'nao divulga nomes nem contatos diretos de professores' in teacher_name_message.lower(),
+        'public_teacher_name_privacy_missing',
+    )
+    assert_condition(
+        'educacao fisica' in teacher_name_message.lower(),
+        'public_teacher_name_subject_missing',
+    )
+    print('[ok] public teacher directory gap')
+
     approval_status, _, approval_payload = request(
         'POST',
         f'{settings.ai_orchestrator_url}/v1/messages/respond',
@@ -630,6 +1147,92 @@ def main() -> int:
     assert_condition('Pedido de visita atualizado' in visit_reschedule_message, 'public_visit_reschedule_intro_missing')
     assert_condition('Nova preferencia' in visit_reschedule_message, 'public_visit_reschedule_preference_missing')
     print('[ok] public visit workflow reschedule')
+
+    visit_stateful_status, _, visit_stateful_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'Agendar visita',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:visit-stateful-thread',
+        },
+    )
+    assert_condition(
+        visit_stateful_status == 200 and isinstance(visit_stateful_payload, dict),
+        'public_visit_stateful_seed_failed',
+    )
+    visit_stateful_message = str(visit_stateful_payload.get('message_text', ''))
+    visit_stateful_protocol = _extract_protocol(visit_stateful_message, 'VIS')
+    assert_condition('janela a confirmar' in visit_stateful_message.lower(), 'public_visit_stateful_seed_window_missing')
+
+    visit_stateful_tuesday_status, _, visit_stateful_tuesday_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quero terça de manhã',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:visit-stateful-thread',
+        },
+    )
+    assert_condition(
+        visit_stateful_tuesday_status == 200 and isinstance(visit_stateful_tuesday_payload, dict),
+        'public_visit_stateful_tuesday_failed',
+    )
+    visit_stateful_tuesday_message = str(visit_stateful_tuesday_payload.get('message_text', ''))
+    assert_condition(visit_stateful_protocol in visit_stateful_tuesday_message, 'public_visit_stateful_tuesday_protocol_missing')
+    assert_condition('Nova preferencia:' in visit_stateful_tuesday_message, 'public_visit_stateful_tuesday_preference_missing')
+    assert_condition('- manha' in visit_stateful_tuesday_message, 'public_visit_stateful_tuesday_window_missing')
+
+    visit_stateful_explicit_status, _, visit_stateful_explicit_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quero em 01/01/2024',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:visit-stateful-thread',
+        },
+    )
+    assert_condition(
+        visit_stateful_explicit_status == 200 and isinstance(visit_stateful_explicit_payload, dict),
+        'public_visit_stateful_explicit_date_failed',
+    )
+    visit_stateful_explicit_message = str(visit_stateful_explicit_payload.get('message_text', ''))
+    assert_condition(visit_stateful_protocol in visit_stateful_explicit_message, 'public_visit_stateful_explicit_protocol_missing')
+    assert_condition('01/01/2024 - manha' in visit_stateful_explicit_message, 'public_visit_stateful_explicit_date_missing')
+
+    visit_stateful_implicit_status, _, visit_stateful_implicit_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'então pode ser nesse dia',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:visit-stateful-thread',
+        },
+    )
+    assert_condition(
+        visit_stateful_implicit_status == 200 and isinstance(visit_stateful_implicit_payload, dict),
+        'public_visit_stateful_implicit_date_failed',
+    )
+    visit_stateful_implicit_message = str(visit_stateful_implicit_payload.get('message_text', ''))
+    assert_condition(visit_stateful_protocol in visit_stateful_implicit_message, 'public_visit_stateful_implicit_protocol_missing')
+    assert_condition('01/01/2024 - manha' in visit_stateful_implicit_message, 'public_visit_stateful_implicit_date_missing')
+    print('[ok] public visit workflow stateful follow-up')
 
     visit_cancel_status, _, visit_cancel_payload = request(
         'POST',
@@ -1006,12 +1609,132 @@ def main() -> int:
     assert_condition(facilities_payload.get('mode') == 'structured_tool', 'public_facilities_mode_invalid')
     facilities_message = str(facilities_payload.get('message_text', ''))
     assert_condition(
-        'nao: piscina' in facilities_message.lower(),
+        'nao' in facilities_message.lower() and 'piscina' in facilities_message.lower(),
         'public_facilities_pool_missing',
     )
-    assert_condition('sim: futsal' in facilities_message.lower(), 'public_facilities_futsal_missing')
-    assert_condition('sim: oficina de danca' in facilities_message.lower(), 'public_facilities_dance_missing')
+    assert_condition('futsal' in facilities_message.lower(), 'public_facilities_futsal_missing')
+    assert_condition('danca' in facilities_message.lower(), 'public_facilities_dance_missing')
     print('[ok] public facilities profile')
+
+    feature_thread_one_status, _, feature_thread_one_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'essa escola tem biblioteca?',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:feature-thread',
+        },
+    )
+    assert_condition(
+        feature_thread_one_status == 200 and isinstance(feature_thread_one_payload, dict),
+        'public_feature_thread_one_failed',
+    )
+    feature_thread_one_message = str(feature_thread_one_payload.get('message_text', ''))
+    assert_condition(feature_thread_one_message.lower().startswith('sim.'), 'public_feature_library_tone_missing')
+    assert_condition('biblioteca aurora' in feature_thread_one_message.lower(), 'public_feature_library_missing')
+    feature_thread_one_suggestions = feature_thread_one_payload.get('suggested_replies')
+    assert_condition(
+        isinstance(feature_thread_one_suggestions, list) and any(
+            'biblioteca' in str(item.get('text', '')).lower()
+            for item in feature_thread_one_suggestions
+            if isinstance(item, dict)
+        ),
+        'public_feature_library_suggestions_missing',
+    )
+    print('[ok] public feature library answer')
+
+    feature_thread_two_status, _, feature_thread_two_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'por que nao tem aula de danca?',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:feature-thread',
+        },
+    )
+    assert_condition(
+        feature_thread_two_status == 200 and isinstance(feature_thread_two_payload, dict),
+        'public_feature_thread_two_failed',
+    )
+    feature_thread_two_message = str(feature_thread_two_payload.get('message_text', ''))
+    assert_condition('na verdade' in feature_thread_two_message.lower(), 'public_feature_dance_reframe_missing')
+    assert_condition('tem sim' in feature_thread_two_message.lower(), 'public_feature_dance_correction_missing')
+    assert_condition('danca' in feature_thread_two_message.lower(), 'public_feature_dance_missing')
+    print('[ok] public feature false-negative correction')
+
+    feature_thread_three_status, _, feature_thread_three_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e aula de computacao e robotica?',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:feature-thread',
+        },
+    )
+    assert_condition(
+        feature_thread_three_status == 200 and isinstance(feature_thread_three_payload, dict),
+        'public_feature_thread_three_failed',
+    )
+    feature_thread_three_message = str(feature_thread_three_payload.get('message_text', ''))
+    assert_condition('espaco maker' in feature_thread_three_message.lower(), 'public_feature_robotics_missing')
+    assert_condition('danca' not in feature_thread_three_message.lower(), 'public_feature_robotics_contaminated')
+    print('[ok] public feature robotics follow-up')
+
+    feature_thread_four_status, _, feature_thread_four_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e aula de fisica quantica avancada?',
+            'telegram_chat_id': 777001,
+            'conversation_id': 'smoke:feature-thread',
+        },
+    )
+    assert_condition(
+        feature_thread_four_status == 200 and isinstance(feature_thread_four_payload, dict),
+        'public_feature_thread_four_failed',
+    )
+    feature_thread_four_message = str(feature_thread_four_payload.get('message_text', ''))
+    assert_condition('nao encontrei uma referencia publica especifica' in feature_thread_four_message.lower(), 'public_feature_unknown_gap_missing')
+    assert_condition('fisica quantica avancada' in feature_thread_four_message.lower(), 'public_feature_unknown_focus_missing')
+    print('[ok] public feature unknown gap')
+
+    feature_generic_status, _, feature_generic_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quais atividades tem?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        feature_generic_status == 200 and isinstance(feature_generic_payload, dict),
+        'public_feature_generic_failed',
+    )
+    assert_condition(feature_generic_payload.get('mode') == 'structured_tool', 'public_feature_generic_mode_invalid')
+    feature_generic_message = str(feature_generic_payload.get('message_text', ''))
+    assert_condition('atividades e espacos' in feature_generic_message.lower(), 'public_feature_generic_summary_missing')
+    assert_condition('biblioteca' in feature_generic_message.lower(), 'public_feature_generic_library_missing')
+    print('[ok] public feature generic inventory')
 
     contacts_status, _, contacts_payload = request(
         'POST',
@@ -1035,6 +1758,49 @@ def main() -> int:
     assert_condition('97500-2040' in contacts_message, 'public_contacts_whatsapp_missing')
     assert_condition('secretaria@colegiohorizonte.edu.br' in contacts_message, 'public_contacts_email_missing')
     print('[ok] public contacts profile')
+
+    secretary_status, _, secretary_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'como falo com a secretaria?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        secretary_status == 200 and isinstance(secretary_payload, dict),
+        'public_secretary_routing_failed',
+    )
+    secretary_message = str(secretary_payload.get('message_text', ''))
+    assert_condition('secretaria escolar e documentos' in secretary_message.lower(), 'public_secretary_routing_sector_missing')
+    assert_condition('email institucional ou portal' in secretary_message.lower(), 'public_secretary_routing_channel_missing')
+    print('[ok] public secretary routing')
+
+    online_docs_status, _, online_docs_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'aceita documentos online?',
+            'telegram_chat_id': 777001,
+        },
+    )
+    assert_condition(
+        online_docs_status == 200 and isinstance(online_docs_payload, dict),
+        'public_online_docs_query_failed',
+    )
+    assert_condition(online_docs_payload.get('mode') == 'structured_tool', 'public_online_docs_mode_invalid')
+    online_docs_message = str(online_docs_payload.get('message_text', ''))
+    assert_condition('portal institucional' in online_docs_message.lower(), 'public_online_docs_portal_missing')
+    assert_condition('email da secretaria' in online_docs_message.lower() or 'secretaria@colegiohorizonte.edu.br' in online_docs_message.lower(), 'public_online_docs_email_missing')
+    print('[ok] public online document submission')
 
     threaded_library_one_status, _, threaded_library_one_payload = request(
         'POST',
@@ -1082,7 +1848,7 @@ def main() -> int:
         update_id=9902,
         message_id=2,
         text='quero ver as notas do Lucas Oliveira',
-        chat_id=555001,
+        chat_id=1649845499,
         username='maria.oliveira',
         first_name='Maria',
     )
@@ -1101,7 +1867,7 @@ def main() -> int:
         update_id=9904,
         message_id=4,
         text='e a frequencia?',
-        chat_id=555001,
+        chat_id=1649845499,
         username='maria.oliveira',
         first_name='Maria',
     )
@@ -1138,7 +1904,7 @@ def main() -> int:
         update_id=9905,
         message_id=5,
         text='e o financeiro?',
-        chat_id=555001,
+        chat_id=1649845499,
         username='maria.oliveira',
         first_name='Maria',
     )
@@ -1166,6 +1932,358 @@ def main() -> int:
     )
     print('[ok] protected finance follow-up memory')
 
+    academic_registry_seed_status, _, academic_registry_seed_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quero ver as notas do Lucas Oliveira',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-registry-thread',
+        },
+    )
+    assert_condition(
+        academic_registry_seed_status == 200 and isinstance(academic_registry_seed_payload, dict),
+        'protected_registry_seed_failed',
+    )
+    academic_registry_followup_status, _, academic_registry_followup_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e a matricula?',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-registry-thread',
+        },
+    )
+    assert_condition(
+        academic_registry_followup_status == 200 and isinstance(academic_registry_followup_payload, dict),
+        'protected_registry_followup_failed',
+    )
+    academic_registry_followup_message = str(academic_registry_followup_payload.get('message_text', ''))
+    assert_condition('MAT-2026-001' in academic_registry_followup_message, 'protected_registry_enrollment_missing')
+    assert_condition('Lucas Oliveira' in academic_registry_followup_message, 'protected_registry_student_missing')
+    print('[ok] protected academic registry follow-up')
+
+    finance_identifier_seed_status, _, finance_identifier_seed_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'preciso da segunda via do boleto da Ana Oliveira',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-finance-identifier-thread',
+        },
+    )
+    assert_condition(
+        finance_identifier_seed_status == 200 and isinstance(finance_identifier_seed_payload, dict),
+        'protected_finance_identifier_seed_failed',
+    )
+    finance_identifier_seed_message = str(finance_identifier_seed_payload.get('message_text', ''))
+    assert_condition('segunda via' in finance_identifier_seed_message.lower(), 'protected_finance_identifier_seed_copy_missing')
+
+    finance_identifier_followup_status, _, finance_identifier_followup_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o numero do boleto?',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-finance-identifier-thread',
+        },
+    )
+    assert_condition(
+        finance_identifier_followup_status == 200 and isinstance(finance_identifier_followup_payload, dict),
+        'protected_finance_identifier_followup_failed',
+    )
+    finance_identifier_followup_message = str(finance_identifier_followup_payload.get('message_text', ''))
+    assert_condition(
+        '4a935c4e-eafd-405e-8a54-007ae82f6698' in finance_identifier_followup_message,
+        'protected_finance_identifier_missing',
+    )
+    assert_condition('segunda via' in finance_identifier_followup_message.lower(), 'protected_finance_identifier_copy_context_missing')
+    print('[ok] protected finance identifier follow-up')
+
+    finance_contract_status, _, finance_contract_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual o codigo do contrato da Ana Oliveira?',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-finance-contract-thread',
+        },
+    )
+    assert_condition(
+        finance_contract_status == 200 and isinstance(finance_contract_payload, dict),
+        'protected_finance_contract_failed',
+    )
+    finance_contract_message = str(finance_contract_payload.get('message_text', ''))
+    assert_condition('CTR-2026-002' in finance_contract_message, 'protected_finance_contract_code_missing')
+    print('[ok] protected finance contract code')
+
+    finance_overdue_status, _, finance_overdue_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'tenho boletos atrasados?',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-finance-status-thread',
+        },
+    )
+    assert_condition(
+        finance_overdue_status == 200 and isinstance(finance_overdue_payload, dict),
+        'protected_finance_overdue_failed',
+    )
+    finance_overdue_message = str(finance_overdue_payload.get('message_text', ''))
+    assert_condition(
+        'hoje nao ha faturas vencidas' in finance_overdue_message.lower(),
+        'protected_finance_overdue_empty_state_missing',
+    )
+    print('[ok] protected finance overdue empty state')
+
+    finance_open_status, _, finance_open_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quais boletos da Ana Oliveira estao em aberto?',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-finance-open-thread',
+        },
+    )
+    assert_condition(
+        finance_open_status == 200 and isinstance(finance_open_payload, dict),
+        'protected_finance_open_failed',
+    )
+    finance_open_message = str(finance_open_payload.get('message_text', ''))
+    assert_condition(
+        'status em aberto' in finance_open_message.lower(),
+        'protected_finance_open_status_wording_missing',
+    )
+    print('[ok] protected finance open invoice wording')
+
+    subject_slot_seed_status, _, subject_slot_seed_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quais as minhas notas de fisica?',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-physics-thread',
+        },
+    )
+    assert_condition(
+        subject_slot_seed_status == 200 and isinstance(subject_slot_seed_payload, dict),
+        'protected_subject_slot_seed_failed',
+    )
+    assert_condition(
+        'mais de um aluno vinculado' in str(subject_slot_seed_payload.get('message_text', '')).lower(),
+        'protected_subject_slot_seed_clarification_missing',
+    )
+    subject_slot_followup_status, _, subject_slot_followup_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quais as notas do Lucas Oliveira?',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-physics-thread',
+        },
+    )
+    assert_condition(
+        subject_slot_followup_status == 200 and isinstance(subject_slot_followup_payload, dict),
+        'protected_subject_slot_followup_failed',
+    )
+    subject_slot_followup_message = str(subject_slot_followup_payload.get('message_text', ''))
+    assert_condition('lucas oliveira' in subject_slot_followup_message.lower(), 'protected_subject_slot_student_missing')
+    assert_condition('disciplina filtrada: fisica' in subject_slot_followup_message.lower(), 'protected_subject_slot_subject_missing')
+    print('[ok] protected academic subject slot memory')
+
+    upcoming_status, _, upcoming_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quais as proximas provas do Lucas Oliveira?',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-upcoming-thread',
+        },
+    )
+    assert_condition(
+        upcoming_status == 200 and isinstance(upcoming_payload, dict),
+        'protected_upcoming_assessments_failed',
+    )
+    upcoming_message = str(upcoming_payload.get('message_text', ''))
+    assert_condition('proximas avaliacoes de lucas oliveira' in upcoming_message.lower(), 'protected_upcoming_header_missing')
+    assert_condition('2026-' in upcoming_message, 'protected_upcoming_dates_missing')
+    print('[ok] protected upcoming assessments')
+
+    attendance_timeline_status, _, attendance_timeline_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'qual data foram as faltas do Lucas Oliveira?',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-attendance-thread',
+        },
+    )
+    assert_condition(
+        attendance_timeline_status == 200 and isinstance(attendance_timeline_payload, dict),
+        'protected_attendance_timeline_failed',
+    )
+    attendance_timeline_message = str(attendance_timeline_payload.get('message_text', ''))
+    assert_condition(
+        'registros de frequencia de lucas oliveira' in attendance_timeline_message.lower(),
+        'protected_attendance_timeline_header_missing',
+    )
+    assert_condition('2026-' in attendance_timeline_message, 'protected_attendance_timeline_dates_missing')
+    print('[ok] protected attendance timeline')
+
+    combined_status, _, combined_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'quero saber se estou com a documentacao atualizada e completa e se meus boletos estao pagos ou atrasados',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-admin-finance-thread',
+        },
+    )
+    assert_condition(
+        combined_status == 200 and isinstance(combined_payload, dict),
+        'protected_finance_admin_combined_failed',
+    )
+    combined_message = str(combined_payload.get('message_text', ''))
+    assert_condition('resumo financeiro' in combined_message.lower(), 'protected_finance_admin_finance_missing')
+    assert_condition('cadastro e documentacao' in combined_message.lower(), 'protected_finance_admin_admin_missing')
+    print('[ok] protected finance + documentation multi-intent')
+
+    documentation_followup_status, _, documentation_followup_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e a documentacao, nao respondeu',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-admin-finance-thread',
+        },
+    )
+    assert_condition(
+        documentation_followup_status == 200 and isinstance(documentation_followup_payload, dict),
+        'protected_documentation_followup_failed',
+    )
+    documentation_followup_message = str(documentation_followup_payload.get('message_text', ''))
+    assert_condition('situacao administrativa' in documentation_followup_message.lower(), 'protected_documentation_followup_status_missing')
+    print('[ok] protected documentation follow-up')
+
+    profile_update_status, _, profile_update_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'como altero o endereco de email no meu cadastro?',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-admin-thread',
+        },
+    )
+    assert_condition(
+        profile_update_status == 200 and isinstance(profile_update_payload, dict),
+        'protected_profile_update_guidance_failed',
+    )
+    profile_update_message = str(profile_update_payload.get('message_text', ''))
+    assert_condition('email cadastral' in profile_update_message.lower(), 'protected_profile_update_email_missing')
+    assert_condition('secretaria escolar' in profile_update_message.lower(), 'protected_profile_update_secretaria_missing')
+    print('[ok] protected profile update guidance')
+
+    profile_phone_status, _, profile_phone_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e o telefone?',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-admin-thread',
+        },
+    )
+    assert_condition(
+        profile_phone_status == 200 and isinstance(profile_phone_payload, dict),
+        'protected_profile_update_phone_followup_failed',
+    )
+    profile_phone_message = str(profile_phone_payload.get('message_text', ''))
+    assert_condition('+55 11 98888-1001' in profile_phone_message, 'protected_profile_update_phone_missing')
+    assert_condition('telefone cadastral atual' in profile_phone_message.lower(), 'protected_profile_update_phone_label_missing')
+    print('[ok] protected profile update phone follow-up')
+
+    profile_documents_status, _, profile_documents_payload = request(
+        'POST',
+        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Token': settings.internal_api_token,
+        },
+        json_body={
+            'message': 'e os documentos?',
+            'telegram_chat_id': 1649845499,
+            'conversation_id': 'smoke:guardian-admin-thread',
+        },
+    )
+    assert_condition(
+        profile_documents_status == 200 and isinstance(profile_documents_payload, dict),
+        'protected_profile_update_documents_followup_failed',
+    )
+    profile_documents_message = str(profile_documents_payload.get('message_text', ''))
+    assert_condition('situacao documental' in profile_documents_message.lower(), 'protected_profile_update_documents_heading_missing')
+    assert_condition('documentacao administrativa' in profile_documents_message.lower(), 'protected_profile_update_documents_detail_missing')
+    print('[ok] protected profile update documents follow-up')
+
     expanded_protected_status, _, expanded_protected_payload = telegram_webhook_request(
         settings,
         update_id=9912,
@@ -1190,7 +2308,7 @@ def main() -> int:
         update_id=9903,
         message_id=3,
         text='quero falar com um humano sobre o financeiro',
-        chat_id=555001,
+        chat_id=1649845499,
         username='maria.oliveira',
         first_name='Maria',
     )

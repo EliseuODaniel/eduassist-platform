@@ -79,7 +79,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: ['start-dev', '--health-enabled=true', '--hostname-strict=false', '--import-realm']
+    command: ['start-dev', '--health-enabled=true', '--hostname=http://localhost:8080', '--import-realm']
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_KEYCLOAK_DB:-keycloak}

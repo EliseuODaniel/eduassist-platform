@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from api_core.config import get_settings
 from api_core.contracts import ActorContext, TelegramLinkChallengeResponse, TelegramLinkConsumeResponse
-from api_core.db.models import TelegramAccount, TelegramLinkChallenge, UserTelegramLink
+from api_core.db.models import Conversation, TelegramAccount, TelegramLinkChallenge, UserTelegramLink
 from api_core.services.audit import record_audit_event
 from api_core.services.identity import resolve_actor_context
 
@@ -141,6 +141,12 @@ def consume_telegram_link_challenge(
         user_link.telegram_account_id = telegram_account.id
         user_link.verification_status = 'verified'
 
+    _adopt_telegram_conversations(
+        session,
+        user_id=challenge.user_id,
+        telegram_chat_id=telegram_chat_id,
+    )
+
     challenge.consumed_at = now
     session.flush()
 
@@ -184,3 +190,21 @@ def _lookup_user_subject(session: Session, user_id: uuid.UUID) -> str | None:
         .where(FederatedIdentity.provider == 'keycloak')
     ).scalar_one_or_none()
     return identity
+
+
+def _adopt_telegram_conversations(
+    session: Session,
+    *,
+    user_id: uuid.UUID,
+    telegram_chat_id: int,
+) -> None:
+    thread_prefix = f'telegram:{telegram_chat_id}'
+    conversations = session.execute(
+        select(Conversation)
+        .where(Conversation.channel == 'telegram')
+        .where(Conversation.user_id.is_(None))
+    ).scalars()
+
+    for conversation in conversations:
+        if conversation.external_thread_id == thread_prefix or conversation.external_thread_id.startswith(f'{thread_prefix}:'):
+            conversation.user_id = user_id
