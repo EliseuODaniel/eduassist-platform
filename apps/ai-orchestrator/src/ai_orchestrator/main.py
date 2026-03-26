@@ -24,6 +24,7 @@ from .models import (
 )
 from .retrieval import get_retrieval_service
 from .runtime import generate_message_response
+from .trace_bridge import persist_shadow_trace
 from .tools import get_tool_contracts
 
 
@@ -233,7 +234,15 @@ async def message_response(
     settings = get_settings()
     bundle = build_engine_bundle(settings)
     response = await bundle.primary.respond(request=request, settings=settings)
-    await maybe_run_shadow(bundle=bundle, request=request, settings=settings)
+    shadow_result = await maybe_run_shadow(bundle=bundle, request=request, settings=settings)
+    if shadow_result is not None:
+        await persist_shadow_trace(
+            settings=settings,
+            request=request,
+            primary_engine_name=bundle.primary.name,
+            primary_engine_mode=bundle.mode,
+            shadow_result=shadow_result,
+        )
     return response
 
 

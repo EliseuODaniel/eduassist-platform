@@ -10,6 +10,7 @@ class ShadowRunResult:
     executed: bool
     reason: str = ''
     error: str = ''
+    metadata: dict[str, Any] | None = None
 
 
 class ResponseEngine:
