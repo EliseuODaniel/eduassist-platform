@@ -1,0 +1,62 @@
+[
+  {
+    "prompt": "qual o horario da biblioteca?",
+    "slice": "public",
+    "category": "public_facts",
+    "expected_keywords": ["biblioteca", "7h30", "18h00"]
+  },
+  {
+    "prompt": "quando comeca a matricula?",
+    "slice": "public",
+    "category": "public_timeline",
+    "expected_keywords": ["matricula", "2025", "2026"]
+  },
+  {
+    "prompt": "qual o telefone e o fax?",
+    "slice": "public",
+    "category": "public_contacts",
+    "expected_keywords": ["3333-4200", "fax"]
+  },
+  {
+    "prompt": "qual instagram do colegio?",
+    "slice": "public",
+    "category": "public_contacts",
+    "expected_keywords": ["@colegiohorizonte"]
+  },
+  {
+    "prompt": "quais meus filhos?",
+    "slice": "protected",
+    "category": "protected_identity",
+    "expected_keywords": ["Lucas Oliveira", "Ana Oliveira"]
+  },
+  {
+    "prompt": "estou logado como?",
+    "slice": "protected",
+    "category": "protected_identity",
+    "expected_keywords": ["Maria Oliveira"]
+  },
+  {
+    "prompt": "qual situacao de documentacao do Lucas?",
+    "slice": "protected",
+    "category": "protected_admin",
+    "expected_keywords": ["Lucas Oliveira", "regular", "completa"]
+  },
+  {
+    "prompt": "qual proximo pagamento do Lucas?",
+    "slice": "protected",
+    "category": "protected_financial",
+    "expected_keywords": ["Lucas Oliveira"]
+  },
+  {
+    "prompt": "quais as notas do Lucas?",
+    "slice": "protected",
+    "category": "protected_academic",
+    "expected_keywords": ["Lucas Oliveira"]
+  },
+  {
+    "prompt": "e como estao as faltas do Lucas?",
+    "slice": "protected",
+    "category": "protected_academic",
+    "expected_keywords": ["Lucas Oliveira"]
+  }
+]
