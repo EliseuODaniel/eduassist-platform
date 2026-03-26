@@ -189,6 +189,24 @@ def _is_explicit_student_selection_message(message: str, student_name: str | Non
         for token in normalized.split()
         if token not in reference_markers
     ]
+    info_request_terms = {
+        'notas',
+        'nota',
+        'frequencia',
+        'faltas',
+        'provas',
+        'prova',
+        'avaliacoes',
+        'documentacao',
+        'documentos',
+        'matricula',
+        'financeiro',
+        'boleto',
+        'pagamento',
+        'mensalidade',
+    }
+    if any(token in info_request_terms for token in meaningful_tokens):
+        return False
     if not meaningful_tokens:
         return False
     if len(meaningful_tokens) > 4:
@@ -218,6 +236,33 @@ def _resolve_student(actor: dict[str, Any], message: str, *, recent_student_name
         return matches[0]
     if recent_student_name and _is_followup_style_message(message):
         return _student_by_name(actor, recent_student_name)
+    return None
+
+
+def _extract_unmatched_student_reference(actor: dict[str, Any], message: str) -> str | None:
+    linked_students = actor.get('linked_students') or []
+    if not isinstance(linked_students, list) or not linked_students:
+        return None
+    normalized_message = _normalize_text(message)
+    known_tokens: set[str] = set()
+    for item in linked_students:
+        if not isinstance(item, dict):
+            continue
+        full_name = _normalize_text(str(item.get('full_name', '')))
+        for token in full_name.split():
+            if len(token) >= 3:
+                known_tokens.add(token)
+    stopwords = {
+        'quais', 'qual', 'do', 'da', 'de', 'meu', 'minha', 'filho', 'filha', 'as', 'os',
+        'notas', 'nota', 'matricula', 'frequencia', 'faltas', 'provas', 'prova', 'documentacao',
+        'documentos', 'situacao', 'status', 'como', 'estao', 'esta', 'está', 'estao', 'e',
+    }
+    for token in re.findall(r'[a-z0-9]+', normalized_message):
+        if len(token) < 3 or token in stopwords:
+            continue
+        if token not in known_tokens:
+            if any(marker in normalized_message for marker in {'filho', 'filha'}) or token.istitle():
+                return token
     return None
 
 
@@ -467,13 +512,29 @@ def _serialize_docs(docs: list[EvidenceDoc]) -> str:
 def _identity_backstop(actor: dict[str, Any], message: str) -> str | None:
     terms = _query_terms(message)
     linked = [item for item in actor.get('linked_students', []) if isinstance(item, dict)]
+    record_terms = {
+        'notas',
+        'nota',
+        'frequencia',
+        'faltas',
+        'provas',
+        'prova',
+        'avaliacoes',
+        'documentacao',
+        'documentos',
+        'matricula',
+        'financeiro',
+        'boleto',
+        'pagamento',
+        'mensalidade',
+    }
     if any(term in terms for term in {'logado', 'acesso'}):
         names = ', '.join(str(item.get('full_name', '')) for item in linked)
         return (
             f"Voce esta autenticado aqui como {actor.get('full_name', 'responsavel')}. "
             f"Sua conta esta vinculada a {names} e pode consultar notas, frequencia, avaliacoes, documentacao e financeiro desses alunos."
         )
-    if any(term in terms for term in {'filhos', 'filho', 'filha'}):
+    if any(term in terms for term in {'filhos', 'filho', 'filha'}) and not (terms & record_terms):
         names = ', '.join(str(item.get('full_name', '')) for item in linked)
         return f"Sua conta esta vinculada a {names}."
     return None
@@ -620,6 +681,28 @@ async def run_protected_crewai_pilot(
                 'answer': {'answer_text': student_focus_answer},
                 'judge': {'valid': True, 'reason': 'student_focus_repair_handled_deterministically', 'revision_needed': False},
                 'resolved_student_name': student.get('full_name') if isinstance(student, dict) else None,
+                'deterministic_backstop_used': True,
+            },
+        }
+    unmatched_student_reference = _extract_unmatched_student_reference(actor, message)
+    if unmatched_student_reference:
+        names = ', '.join(str(item.get('full_name', '')) for item in actor.get('linked_students', []) if isinstance(item, dict))
+        return {
+            'engine_name': 'crewai',
+            'executed': True,
+            'reason': 'protected_shadow_unmatched_student_reference',
+            'metadata': {
+                'slice_name': 'protected',
+                'conversation_id': conversation_id or f'telegram:{telegram_chat_id}',
+                'normalized_message': normalized_message,
+                'answer': {
+                    'answer_text': (
+                        f'Hoje eu nao encontrei {unmatched_student_reference.title()} entre os alunos vinculados a esta conta. '
+                        f'No momento, os alunos que aparecem aqui sao: {names}. '
+                        'Se quiser, me diga qual deles voce quer consultar.'
+                    )
+                },
+                'judge': {'valid': True, 'reason': 'unmatched_student_handled_deterministically', 'revision_needed': False},
                 'deterministic_backstop_used': True,
             },
         }

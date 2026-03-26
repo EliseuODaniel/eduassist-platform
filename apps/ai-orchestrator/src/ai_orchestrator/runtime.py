@@ -3440,6 +3440,47 @@ def _compose_public_document_submission_answer(
     return '\n'.join(lines)
 
 
+def _try_public_channel_fast_answer(
+    *,
+    message: str,
+    profile: dict[str, Any] | None,
+) -> str | None:
+    if not isinstance(profile, dict):
+        return None
+    normalized = _normalize_text(message)
+    if _is_public_document_submission_query(message):
+        return _compose_public_document_submission_answer(profile, message=message)
+    if _message_matches_term(normalized, 'caixa postal'):
+        primary_phone = _select_primary_contact_entry(
+            profile,
+            'telefone',
+            'telefone principal',
+        )
+        if primary_phone:
+            return (
+                'Hoje a escola nao trabalha com caixa postal para esse tipo de envio. '
+                f"Para documentos, use portal institucional, email da secretaria, secretaria presencial. "
+                f"Se precisar falar com a escola, o telefone principal e {primary_phone.get('value')}."
+            )
+        return (
+            'Hoje a escola nao trabalha com caixa postal para esse tipo de envio. '
+            'Para documentos, use portal institucional, email da secretaria, secretaria presencial.'
+        )
+    if _requested_contact_channel(message) == 'telefone' and _message_matches_term(normalized, 'fax'):
+        primary_phone = _select_primary_contact_entry(
+            profile,
+            'telefone',
+            'telefone principal',
+        )
+        if primary_phone:
+            return (
+                'Hoje a escola nao utiliza fax. '
+                f"Para entrar em contato por telefone, o numero da secretaria e {primary_phone.get('value')}."
+            )
+        return 'Hoje a escola nao utiliza fax.'
+    return None
+
+
 def _compose_concierge_greeting(
     profile: dict[str, Any],
     message: str,
@@ -10451,6 +10492,14 @@ async def _compose_structured_tool_answer(
                 actor=actor,
                 conversation_context=conversation_context,
             )
+        fast_public_channel_answer = _try_public_channel_fast_answer(
+            message=request.message,
+            profile=school_profile,
+        )
+        if fast_public_channel_answer:
+            if public_plan_sink is not None:
+                public_plan_sink['deterministic_text'] = fast_public_channel_answer
+            return fast_public_channel_answer
         plan = resolved_public_plan or await _resolve_public_institution_plan(
             settings=settings,
             message=request.message,
