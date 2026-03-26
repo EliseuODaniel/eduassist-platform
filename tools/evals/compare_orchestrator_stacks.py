@@ -64,6 +64,21 @@ def _post_json(url: str, headers: dict[str, str], payload: dict[str, Any]) -> tu
 
 def _infer_slice(prompt: str) -> str:
     lowered = prompt.lower()
+    support_terms = (
+        'atendente humano',
+        'atendimento humano',
+        'quero falar com um humano',
+        'preciso falar com um humano',
+        'como falo com um atendente',
+        'quero falar com o setor',
+        'suporte humano',
+        'atendente',
+        'humano',
+        'ticket operacional',
+        'atd-',
+    )
+    if any(term in lowered for term in support_terms):
+        return 'support'
     workflow_terms = (
         'visita',
         'tour',
@@ -242,6 +257,9 @@ def _detect_error_types(
             'você está certo',
             'houve um erro',
             'confus',
+            'sem problema',
+            'comecar do zero',
+            'começar do zero',
         )
         if not any(marker in normalized_answer for marker in repair_markers):
             errors.append('repair_miss')
@@ -286,6 +304,9 @@ def _detect_quality_signals(
         'você está certo',
         'houve um erro',
         'confus',
+        'sem problema',
+        'comecar do zero',
+        'começar do zero',
     )
     return {
         'repair_ack': (
@@ -513,6 +534,7 @@ def main() -> int:
     parser.add_argument('--crewai-public-url', default='http://localhost:8004/v1/shadow/public')
     parser.add_argument('--crewai-protected-url', default='http://localhost:8004/v1/shadow/protected')
     parser.add_argument('--crewai-workflow-url', default='http://localhost:8004/v1/shadow/workflow')
+    parser.add_argument('--crewai-support-url', default='http://localhost:8004/v1/shadow/support')
     parser.add_argument('--internal-token', default='dev-internal-token')
     args = parser.parse_args()
     conversation_prefix = args.conversation_prefix or f"debug:stack-compare:{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
@@ -554,6 +576,8 @@ def main() -> int:
             pilot_url = args.crewai_protected_url
         elif slice_name == 'workflow':
             pilot_url = args.crewai_workflow_url
+        elif slice_name == 'support':
+            pilot_url = args.crewai_support_url
         pilot_status, pilot_body, pilot_latency = _post_json(
             pilot_url,
             pilot_headers,
@@ -567,12 +591,14 @@ def main() -> int:
         baseline_answer = _extract_answer_text(baseline_body)
         crewai_answer = _extract_answer_text(pilot_body)
         state = previous_answers.setdefault(conversation_id, {'baseline': '', 'crewai': ''})
+        previous_baseline_answer = state['baseline']
+        previous_crewai_answer = state['crewai']
         baseline_error_types = _detect_error_types(
             answer_text=baseline_answer,
             expected_keywords=expected_keywords,
             forbidden_keywords=forbidden_keywords,
             prompt=prompt,
-            previous_answer=state['baseline'],
+            previous_answer=previous_baseline_answer,
             status=baseline_status,
             turn_index=turn_index,
             note=note,
@@ -582,13 +608,11 @@ def main() -> int:
             expected_keywords=expected_keywords,
             forbidden_keywords=forbidden_keywords,
             prompt=prompt,
-            previous_answer=state['crewai'],
+            previous_answer=previous_crewai_answer,
             status=pilot_status,
             turn_index=turn_index,
             note=note,
         )
-        state['baseline'] = baseline_answer
-        state['crewai'] = crewai_answer
         result = {
             'prompt': prompt,
             'slice': slice_name,
@@ -611,7 +635,7 @@ def main() -> int:
                     answer_text=baseline_answer,
                     expected_keywords=expected_keywords,
                     prompt=prompt,
-                    previous_answer=state['baseline'],
+                    previous_answer=previous_baseline_answer,
                     turn_index=turn_index,
                     note=note,
                 ),
@@ -628,7 +652,7 @@ def main() -> int:
                     answer_text=crewai_answer,
                     expected_keywords=expected_keywords,
                     prompt=prompt,
-                    previous_answer=state['crewai'],
+                    previous_answer=previous_crewai_answer,
                     turn_index=turn_index,
                     note=note,
                 ),
@@ -637,6 +661,8 @@ def main() -> int:
             },
         }
         results.append(result)
+        state['baseline'] = baseline_answer
+        state['crewai'] = crewai_answer
 
     payload = {'summary': _summarize(results), 'results': results}
     if args.output:

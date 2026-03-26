@@ -45,8 +45,28 @@ def _protected_shadow_slice(request: Any) -> bool:
     return False
 
 
+def _support_shadow_slice(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '').lower()
+    support_terms = (
+        'atendente humano',
+        'atendimento humano',
+        'quero falar com um humano',
+        'preciso falar com um humano',
+        'como falo com um atendente',
+        'quero falar com o setor',
+        'suporte humano',
+        'atendente',
+        'humano',
+        'ticket operacional',
+        'atd-',
+    )
+    return any(term in message for term in support_terms)
+
+
 def _workflow_shadow_slice(request: Any) -> bool:
     message = str(getattr(request, 'message', '') or '').lower()
+    if _support_shadow_slice(request):
+        return False
     workflow_terms = (
         'agendar visita',
         'visita',
@@ -86,7 +106,9 @@ class CrewAIEngine(ResponseEngine):
     async def shadow_compare(self, *, request: Any, settings: Any) -> ShadowRunResult:
         pilot_url = str(getattr(settings, 'crewai_pilot_url', '') or '').strip()
         if pilot_url:
-            if _workflow_shadow_slice(request):
+            if _support_shadow_slice(request):
+                slice_name = 'support'
+            elif _workflow_shadow_slice(request):
                 slice_name = 'workflow'
             else:
                 slice_name = 'protected' if _protected_shadow_slice(request) else 'public'

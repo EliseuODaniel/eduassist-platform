@@ -1,0 +1,59 @@
+[
+  {
+    "thread_id": "real_support_finance_handoff_1649845499",
+    "telegram_chat_id": 1649845499,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "support",
+        "prompt": "quero falar com um humano sobre o financeiro",
+        "expected_keywords": ["ATD-", "financeiro", "queued"]
+      },
+      {
+        "slice": "support",
+        "prompt": "qual o protocolo?",
+        "expected_keywords": ["ATD-"]
+      },
+      {
+        "slice": "support",
+        "prompt": "qual o status?",
+        "expected_keywords": ["ATD-", "queued", "financeiro"]
+      }
+    ]
+  },
+  {
+    "thread_id": "real_support_handoff_repair_1649845499",
+    "telegram_chat_id": 1649845499,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "support",
+        "prompt": "como falo com um atendente humano?",
+        "expected_keywords": ["ATD-", "queued"]
+      },
+      {
+        "slice": "support",
+        "prompt": "mas eu cheguei agora",
+        "expected_keywords": ["comecar do zero", "financeiro", "secretaria"],
+        "note": "repair turn after existing support handoff"
+      }
+    ]
+  },
+  {
+    "thread_id": "real_support_secretaria_handoff_555001",
+    "telegram_chat_id": 555001,
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "support",
+        "prompt": "quero falar com um humano sobre a secretaria",
+        "expected_keywords": ["ATD-", "secretaria", "queued"]
+      },
+      {
+        "slice": "support",
+        "prompt": "qual o protocolo?",
+        "expected_keywords": ["ATD-"]
+      }
+    ]
+  }
+]
