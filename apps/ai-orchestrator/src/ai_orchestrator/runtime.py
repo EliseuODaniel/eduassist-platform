@@ -5974,6 +5974,8 @@ async def _persist_operational_trace(
     settings: Any,
     conversation_external_id: str | None,
     channel: str,
+    engine_name: str,
+    engine_mode: str,
     actor: dict[str, Any] | None,
     preview: Any,
     school_profile: dict[str, Any] | None,
@@ -6003,6 +6005,8 @@ async def _persist_operational_trace(
         preview=preview,
     )
     trace_request_payload: dict[str, Any] = {
+        'engine_name': engine_name,
+        'engine_mode': engine_mode,
         'mode': preview.mode.value,
         'domain': preview.classification.domain.value,
         'access_tier': preview.classification.access_tier.value,
@@ -10998,7 +11002,13 @@ async def _verify_answer_against_contract_async(
     return deterministic_result, True
 
 
-async def generate_message_response(*, request: MessageResponseRequest, settings: Any) -> MessageResponse:
+async def generate_message_response(
+    *,
+    request: MessageResponseRequest,
+    settings: Any,
+    engine_name: str = 'langgraph',
+    engine_mode: str = 'langgraph',
+) -> MessageResponse:
     started_at = monotonic()
     with start_span(
         'eduassist.orchestration.message_response',
@@ -11009,6 +11019,8 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
             'eduassist.request.has_telegram_chat': request.telegram_chat_id is not None,
             'eduassist.orchestration.allow_graph_rag': request.allow_graph_rag,
             'eduassist.orchestration.allow_handoff': request.allow_handoff,
+            'eduassist.orchestration.engine_name': engine_name,
+            'eduassist.orchestration.engine_mode': engine_mode,
         },
     ):
         actor = await _fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
@@ -11588,6 +11600,8 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
             settings=settings,
             conversation_external_id=effective_conversation_id,
             channel=request.channel.value,
+            engine_name=engine_name,
+            engine_mode=engine_mode,
             actor=actor,
             preview=preview,
             school_profile=school_profile,
@@ -11613,6 +11627,8 @@ async def generate_message_response(*, request: MessageResponseRequest, settings
             }
         )
         metric_attributes = {
+            'engine_name': engine_name,
+            'engine_mode': engine_mode,
             'mode': preview.mode.value,
             'domain': preview.classification.domain.value,
             'channel': request.channel.value,
