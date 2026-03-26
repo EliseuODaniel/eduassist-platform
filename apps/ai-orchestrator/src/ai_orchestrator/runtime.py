@@ -314,6 +314,17 @@ PUBLIC_DOCUMENT_SUBMISSION_TERMS = {
     'por onde envio meus documentos',
     'como envio meus documentos',
     'canal de documentos',
+    'enviar por fax',
+    'mandar por fax',
+    'posso enviar por fax',
+    'enviar por telegrama',
+    'mandar por telegrama',
+    'posso enviar por telegrama',
+    'posso mandar por telegrama',
+    'enviar por caixa postal',
+    'mandar por caixa postal',
+    'caixa postal',
+    'telegrama',
 }
 PUBLIC_LOCATION_TERMS = {'endereco', 'endereço', 'cidade', 'estado', 'onde fica', 'localizacao', 'localização'}
 PUBLIC_CONFESSIONAL_TERMS = {'confessional', 'laica', 'religiosa'}
@@ -3350,8 +3361,13 @@ def _is_public_document_submission_query(message: str) -> bool:
     )
 
 
-def _compose_public_document_submission_answer(profile: dict[str, Any]) -> str:
+def _compose_public_document_submission_answer(
+    profile: dict[str, Any],
+    *,
+    message: str | None = None,
+) -> str:
     policy = profile.get('document_submission_policy')
+    normalized_message = _normalize_text(message or '')
     if not isinstance(policy, dict):
         return (
             'Hoje a escola orienta tratar documentos e cadastro pela secretaria ou pelo portal institucional. '
@@ -3373,6 +3389,32 @@ def _compose_public_document_submission_answer(profile: dict[str, Any]) -> str:
         preferred_labels=['Secretaria'],
     )
     secretaria_email = str(secretaria_email_entry.get('value', '')).strip() if secretaria_email_entry else ''
+
+    accepted_channels_normalized = {_normalize_text(channel) for channel in accepted_channels}
+    fallback_channels = []
+    if any('portal' in channel for channel in accepted_channels_normalized):
+        fallback_channels.append('portal institucional')
+    if secretaria_email or any('email' in channel for channel in accepted_channels_normalized):
+        fallback_channels.append('email da secretaria')
+    if any('secretaria' in channel for channel in accepted_channels_normalized):
+        fallback_channels.append('secretaria presencial')
+    fallback_preview = ', '.join(fallback_channels) if fallback_channels else 'portal institucional, email da secretaria ou secretaria presencial'
+
+    if _message_matches_term(normalized_message, 'fax'):
+        return (
+            f'Hoje a escola nao utiliza fax para envio de documentos. '
+            f'Para isso, use {fallback_preview}.'
+        )
+    if _message_matches_term(normalized_message, 'telegrama'):
+        return (
+            f'Hoje a escola nao publica telegrama como canal valido para documentos. '
+            f'Para isso, use {fallback_preview}.'
+        )
+    if _message_matches_term(normalized_message, 'caixa postal'):
+        return (
+            f'Hoje a escola nao trabalha com caixa postal para esse tipo de envio. '
+            f'Para documentos, use {fallback_preview}.'
+        )
 
     if not accepts_digital_submission:
         lines = [
@@ -4341,7 +4383,7 @@ def _handle_public_capabilities(context: PublicProfileContext) -> str:
 
 
 def _handle_public_document_submission(context: PublicProfileContext) -> str:
-    return _compose_public_document_submission_answer(context.profile)
+    return _compose_public_document_submission_answer(context.profile, message=context.source_message)
 
 
 def _handle_public_teacher_directory(context: PublicProfileContext) -> str:
@@ -4391,6 +4433,19 @@ def _handle_public_contacts(context: PublicProfileContext) -> str:
     phone_lines = _contact_value(context.profile, 'telefone')
     whatsapp_lines = _contact_value(context.profile, 'whatsapp')
     email_lines = _contact_value(context.profile, 'email')
+    if _message_matches_term(context.normalized, 'caixa postal'):
+        primary_phone = _select_primary_contact_entry(
+            context.profile,
+            'telefone',
+            context.contact_reference_message,
+            preferred_labels=context.preferred_contact_labels,
+        )
+        if primary_phone:
+            return (
+                f'Hoje {context.school_reference} nao trabalha com caixa postal como canal institucional. '
+                f"Se precisar de contato, o telefone principal e {primary_phone.get('value')}."
+            )
+        return f'Hoje {context.school_reference} nao trabalha com caixa postal como canal institucional.'
     fax_only_query = _message_matches_term(context.normalized, 'fax') and not any(
         _message_matches_term(context.normalized, term)
         for term in {'telefone', 'fone', 'ligar', 'ligo', 'whatsapp', 'email'}
@@ -6669,7 +6724,15 @@ def _normalize_public_plan_for_message(
         if tool_name not in normalized_tools:
             normalized_tools.append(tool_name)
 
-    if _is_public_timeline_query(message):
+    if _is_public_document_submission_query(message):
+        normalized_act = 'document_submission'
+        ensure_tool('get_public_school_profile')
+        normalized_fetch_profile = True
+    elif _matches_public_contact_rule(message) or _requested_contact_channel(message) is not None:
+        normalized_act = 'contacts'
+        ensure_tool('get_public_school_profile')
+        normalized_fetch_profile = True
+    elif _is_public_timeline_query(message):
         normalized_act = 'timeline'
         normalized_secondary = [act for act in normalized_secondary if act != 'calendar_events']
         normalized_tools = [tool_name for tool_name in normalized_tools if tool_name != 'get_public_calendar_events']
@@ -8453,7 +8516,7 @@ def _derive_pending_disambiguation(
     if _is_children_overview_query(message, actor):
         return 'linked_students_overview'
     linked_students = _linked_students(actor)
-    if linked_students and _explicit_unmatched_student_reference(linked_students, message):
+    if linked_students and not _matching_students_in_text(linked_students, message) and _explicit_unmatched_student_reference(linked_students, message):
         return 'student_reference_unmatched'
     if _is_student_focus_activation_query(message, actor):
         return 'student_focus'
@@ -9019,6 +9082,10 @@ def _select_linked_student(
     if not students:
         return None, 'Nao encontrei um aluno vinculado a esta conta para essa consulta.'
 
+    matched_students = _matching_students_in_text(students, message)
+    if len(matched_students) == 1:
+        return matched_students[0], None
+
     unmatched_student_reference = _explicit_unmatched_student_reference(students, message)
     if unmatched_student_reference:
         return None, _compose_unmatched_student_reference_answer(
@@ -9028,10 +9095,6 @@ def _select_linked_student(
 
     if len(students) == 1:
         return students[0], None
-
-    matched_students = _matching_students_in_text(students, message)
-    if len(matched_students) == 1:
-        return matched_students[0], None
 
     recent_student = _recent_student_from_context(
         actor,

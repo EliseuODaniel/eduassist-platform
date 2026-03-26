@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from time import perf_counter
 from datetime import datetime, UTC
+import re
 from typing import Any
 import unicodedata
 from urllib.error import HTTPError
@@ -155,7 +156,10 @@ def _extract_answer_text(body: dict[str, Any] | str) -> str:
 def _normalize_match_text(value: str) -> str:
     text = unicodedata.normalize('NFKD', str(value or ''))
     text = ''.join(ch for ch in text if not unicodedata.combining(ch))
-    return text.casefold()
+    text = text.casefold()
+    text = re.sub(r'[-_/]+', '', text)
+    text = re.sub(r'[^0-9a-z]+', ' ', text)
+    return ' '.join(text.split())
 
 
 def _contains_expected_keywords(answer_text: str, expected_keywords: list[str]) -> bool:

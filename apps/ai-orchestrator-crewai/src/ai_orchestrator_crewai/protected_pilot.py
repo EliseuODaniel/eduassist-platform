@@ -173,6 +173,31 @@ def _is_student_focus_repair(message: str, student_name: str | None) -> bool:
     return any(marker in normalized for marker in repair_markers)
 
 
+def _is_explicit_student_selection_message(message: str, student_name: str | None) -> bool:
+    if not student_name:
+        return False
+    normalized = _normalize_text(message)
+    normalized = re.sub(r'[^a-z0-9 ]+', ' ', normalized)
+    normalized = ' '.join(normalized.split())
+    if not normalized:
+        return False
+    full_name = _normalize_text(student_name).strip()
+    first_name = full_name.split()[0] if full_name else ''
+    reference_markers = {'meu filho', 'minha filha', 'o', 'a'}
+    meaningful_tokens = [
+        token
+        for token in normalized.split()
+        if token not in reference_markers
+    ]
+    if not meaningful_tokens:
+        return False
+    if len(meaningful_tokens) > 4:
+        return False
+    if full_name and full_name in normalized:
+        return True
+    return bool(first_name and first_name in meaningful_tokens)
+
+
 def _resolve_student(actor: dict[str, Any], message: str, *, recent_student_name: str | None = None) -> dict[str, Any] | None:
     linked_students = actor.get('linked_students') or []
     if not isinstance(linked_students, list):
@@ -481,6 +506,13 @@ def _student_backstop(message: str, student: dict[str, Any] | None, evidence: di
         records = (evidence.get('attendance', {}).get('summary', {}) or {}).get('records', []) or []
         absent = sum(1 for item in records if isinstance(item, dict) and item.get('status') == 'absent')
         late = sum(1 for item in records if isinstance(item, dict) and item.get('status') == 'late')
+        if 'frequencia' in terms and 'faltas' not in terms:
+            total = len(records)
+            present = sum(1 for item in records if isinstance(item, dict) and item.get('status') == 'present')
+            return (
+                f'Na frequencia de {name}, eu encontrei {total} registro(s) neste recorte: '
+                f'{present} presenca(s), {absent} falta(s) e {late} atraso(s).'
+            )
         return f"{name} tem {absent} falta(s) e {late} registro(s) de atraso neste recorte."
     if any(term in terms for term in {'provas', 'prova', 'avaliacoes'}):
         assessments = (evidence.get('assessments', {}).get('summary', {}) or {}).get('assessments', []) or []
@@ -518,6 +550,11 @@ def _student_focus_backstop(message: str, student: dict[str, Any] | None) -> str
     name = str(student.get('full_name', '')).strip()
     if not name:
         return None
+    if _is_explicit_student_selection_message(message, name):
+        return (
+            f'Perfeito, seguimos com {name}. '
+            'Posso te ajudar com notas, frequencia, faltas, proximas provas, documentacao, matricula e financeiro.'
+        )
     if _is_student_focus_repair(message, name):
         return (
             f'Perfeito, seguimos com {name}. '

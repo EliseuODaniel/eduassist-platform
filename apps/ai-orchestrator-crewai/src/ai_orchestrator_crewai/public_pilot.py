@@ -329,7 +329,7 @@ def _find_first_matching_doc(docs: list[EvidenceDoc], prefix: str, terms: tuple[
 
 def _direct_contact_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
     terms = _query_terms(message)
-    if not ({'telefone', 'fax', 'ligo', 'ligar', 'contato'} & terms):
+    if not ({'telefone', 'fax', 'ligo', 'ligar', 'contato', 'caixa', 'postal', 'telegrama'} & terms):
         return None
     phone_doc = _find_first_matching_doc(docs, 'contact.', ('telefone', 'phone', 'secretaria'))
     fax_doc = _find_first_matching_doc(docs, 'profile.', ('fax',))
@@ -339,6 +339,11 @@ def _direct_contact_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | 
         phone_answer = f"{phone_doc.title}: {phone_doc.text.replace('|', ' ').strip()}"
     if fax_doc is not None and 'nao utiliza fax' in _normalize_text(fax_doc.text):
         fax_answer = 'Hoje a escola nao utiliza fax institucional.'
+    fallback_channels = 'portal institucional, email da secretaria ou secretaria presencial'
+    if 'telegrama' in terms:
+        return f'Hoje a escola nao publica telegrama como canal valido. Para documentos, use {fallback_channels}.'
+    if {'caixa', 'postal'} & terms:
+        return f'Hoje a escola nao trabalha com caixa postal para esse tipo de envio. Para documentos, use {fallback_channels}.'
     if ({'telefone', 'ligo', 'ligar', 'contato'} & terms) and 'fax' in terms and phone_answer and fax_answer:
         return f'{phone_answer} {fax_answer}'
     if ({'telefone', 'ligo', 'ligar', 'contato'} & terms) and phone_answer:
@@ -478,6 +483,9 @@ def _is_public_fast_path_query(message: str) -> bool:
         'site',
         'endereco',
         'biblioteca',
+        'telegrama',
+        'caixa',
+        'postal',
         'atividades',
         'atividade',
         'complementares',

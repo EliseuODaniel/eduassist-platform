@@ -820,6 +820,7 @@ def _is_public_contact_channel_query(message: str) -> bool:
             'qual o telefone',
             'qual telefone',
             'fax',
+            'caixa postal',
             'whatsapp da escola',
             'email da escola',
         }
@@ -1133,6 +1134,15 @@ def _is_public_document_submission_query(message: str) -> bool:
         'por onde envio meus documentos',
         'como envio meus documentos',
         'canal de documentos',
+        'enviar por fax',
+        'mandar por fax',
+        'enviar por telegrama',
+        'mandar por telegrama',
+        'enviar por caixa postal',
+        'mandar por caixa postal',
+        'posso enviar por fax',
+        'posso mandar por telegrama',
+        'posso enviar por telegrama',
     }
     if any(_message_matches_term(lowered, term) for term in explicit_terms):
         return True
