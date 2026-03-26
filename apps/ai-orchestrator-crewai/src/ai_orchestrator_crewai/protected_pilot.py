@@ -447,13 +447,11 @@ async def run_protected_crewai_pilot(
     settings: Any,
 ) -> dict[str, Any]:
     normalized_message = ' '.join(message.strip().lower().split())
+    overall_started_at = perf_counter()
     if Crew is None or Agent is None or Task is None or Process is None:
         return {'engine_name': 'crewai', 'executed': False, 'reason': 'crewai_dependency_unavailable', 'metadata': {'slice_name': 'protected'}}
     if telegram_chat_id is None:
         return {'engine_name': 'crewai', 'executed': False, 'reason': 'protected_shadow_requires_telegram_chat_id', 'metadata': {'slice_name': 'protected'}}
-    llm = _build_llm(settings)
-    if llm is None:
-        return {'engine_name': 'crewai', 'executed': False, 'reason': 'crewai_llm_not_configured', 'metadata': {'slice_name': 'protected'}}
 
     actor_context = await _load_actor_context(settings, telegram_chat_id)
     actor = actor_context.get('actor') or {}
@@ -501,6 +499,33 @@ async def run_protected_crewai_pilot(
     )
     docs = _build_protected_docs(evidence)
     shortlisted_docs = _rank_docs(message, docs)
+    fast_path_answer = identity_backstop or _student_backstop(message, student, evidence, shortlisted_docs)
+    if isinstance(fast_path_answer, str) and fast_path_answer.strip():
+        return {
+            'engine_name': 'crewai',
+            'executed': True,
+            'reason': 'crewai_protected_fast_path',
+            'metadata': {
+                'conversation_id': conversation_id or f'telegram:{telegram_chat_id}',
+                'slice_name': 'protected',
+                'normalized_message': normalized_message,
+                'crewai_installed': True,
+                'crewai_version': getattr(crewai_pkg, '__version__', None),
+                'agent_roles': [],
+                'task_names': [],
+                'latency_ms': round((perf_counter() - overall_started_at) * 1000, 1),
+                'plan': None,
+                'answer': {'answer_text': fast_path_answer, 'citations': [shortlisted_docs[0].doc_id] if shortlisted_docs else []},
+                'judge': {'valid': True, 'reason': 'deterministic_fast_path', 'revision_needed': False},
+                'evidence_sources': [doc.doc_id for doc in shortlisted_docs],
+                'resolved_student_name': student.get('full_name') if isinstance(student, dict) else None,
+                'deterministic_backstop_used': True,
+            },
+        }
+
+    llm = _build_llm(settings)
+    if llm is None:
+        return {'engine_name': 'crewai', 'executed': False, 'reason': 'crewai_llm_not_configured', 'metadata': {'slice_name': 'protected'}}
     evidence_bundle = _serialize_docs(shortlisted_docs)
 
     planner = Agent(
@@ -575,9 +600,8 @@ async def run_protected_crewai_pilot(
         tracing=False,
     )
 
-    started_at = perf_counter()
     await asyncio.to_thread(crew.kickoff, inputs={'message': message, 'evidence_bundle': evidence_bundle})
-    latency_ms = round((perf_counter() - started_at) * 1000, 1)
+    latency_ms = round((perf_counter() - overall_started_at) * 1000, 1)
 
     plan = getattr(planning_task.output, 'pydantic', None)
     answer = getattr(composition_task.output, 'pydantic', None)

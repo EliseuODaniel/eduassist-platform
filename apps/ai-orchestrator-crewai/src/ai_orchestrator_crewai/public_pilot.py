@@ -386,6 +386,29 @@ def _answer_conflicts_with_backstop(answer_text: str, backstop: str, message: st
     return False
 
 
+def _is_public_fast_path_query(message: str) -> bool:
+    terms = _query_terms(message)
+    direct_terms = {
+        'horario',
+        'hora',
+        'abre',
+        'fecha',
+        'matricula',
+        'aulas',
+        'formatura',
+        'reuniao',
+        'instagram',
+        'telefone',
+        'fax',
+        'whatsapp',
+        'email',
+        'site',
+        'endereco',
+        'biblioteca',
+    }
+    return bool(terms & direct_terms)
+
+
 def _build_llm(settings: Any) -> Any:
     if LLM is None:
         return None
@@ -433,6 +456,36 @@ async def run_public_crewai_pilot(
             },
         }
 
+    overall_started_at = perf_counter()
+    evidence = await _fetch_public_evidence(settings)
+    evidence_docs = _build_evidence_docs(evidence)
+    shortlisted_docs = _rank_evidence_docs(message, evidence_docs)
+    fast_path_answer = _deterministic_backstop(message, None, shortlisted_docs)
+    if isinstance(fast_path_answer, str) and fast_path_answer.strip() and _is_public_fast_path_query(message):
+        latency_ms = round((perf_counter() - overall_started_at) * 1000, 1)
+        return {
+            'engine_name': 'crewai',
+            'executed': True,
+            'reason': 'crewai_public_fast_path',
+            'metadata': {
+                'conversation_id': conversation_id or (
+                    f'telegram:{telegram_chat_id}' if channel == 'telegram' and telegram_chat_id is not None else None
+                ),
+                'slice_name': 'public',
+                'normalized_message': normalized_message,
+                'crewai_installed': True,
+                'crewai_version': getattr(crewai_pkg, '__version__', None),
+                'agent_roles': [],
+                'task_names': [],
+                'latency_ms': latency_ms,
+                'plan': None,
+                'answer': {'answer_text': fast_path_answer, 'citations': [shortlisted_docs[0].doc_id] if shortlisted_docs else []},
+                'judge': {'valid': True, 'reason': 'deterministic_fast_path', 'revision_needed': False},
+                'evidence_sources': [doc.doc_id for doc in shortlisted_docs],
+                'deterministic_backstop_used': True,
+            },
+        }
+
     llm = _build_llm(settings)
     if llm is None:
         return {
@@ -444,10 +497,6 @@ async def run_public_crewai_pilot(
                 'normalized_message': normalized_message,
             },
         }
-
-    evidence = await _fetch_public_evidence(settings)
-    evidence_docs = _build_evidence_docs(evidence)
-    shortlisted_docs = _rank_evidence_docs(message, evidence_docs)
     evidence_bundle = _serialize_evidence_pack(shortlisted_docs)
 
     planner = Agent(
@@ -530,7 +579,6 @@ async def run_public_crewai_pilot(
         tracing=False,
     )
 
-    started_at = perf_counter()
     await asyncio.to_thread(
         crew.kickoff,
         inputs={
@@ -538,7 +586,7 @@ async def run_public_crewai_pilot(
             'evidence_bundle': evidence_bundle,
         },
     )
-    latency_ms = round((perf_counter() - started_at) * 1000, 1)
+    latency_ms = round((perf_counter() - overall_started_at) * 1000, 1)
 
     plan = _extract_task_pydantic(planning_task, PublicPilotPlan)
     answer = _extract_task_pydantic(composition_task, PublicPilotAnswer)
