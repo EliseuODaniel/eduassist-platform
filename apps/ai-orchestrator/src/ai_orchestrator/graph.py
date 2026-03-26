@@ -274,6 +274,9 @@ PERSONAL_FINANCE_ATTRIBUTE_TERMS = {
     'contrato financeiro',
 }
 PERSONAL_ADMIN_TERMS = {
+    'documentacao',
+    'documentação',
+    'documentos',
     'documentacao atualizada',
     'documentação atualizada',
     'documentacao completa',
@@ -1208,7 +1211,7 @@ def _is_authenticated_admin_query(message: str, *, authenticated: bool) -> bool:
         return False
     if any(
         _message_matches_term(lowered, term)
-        for term in {'documentacao', 'documentação', 'cadastro', 'dados cadastrais', 'email', 'telefone'}
+        for term in {'documentacao', 'documentação', 'documentos', 'cadastro', 'dados cadastrais', 'email', 'telefone'}
     ):
         return True
     return any(_message_matches_term(lowered, term) for term in PERSONAL_ADMIN_TERMS)

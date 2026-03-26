@@ -292,7 +292,7 @@ def _rank_evidence_docs(message: str, docs: list[EvidenceDoc], *, limit: int = 6
         ):
             score += 4
         if any(term in haystack for term in ('fax', 'instagram', 'telefone', 'whatsapp', 'email')) and any(
-            term in terms for term in ('fax', 'instagram', 'telefone', 'whatsapp', 'email', 'contato')
+            term in terms for term in ('fax', 'instagram', 'telefone', 'whatsapp', 'email', 'contato', 'ligo', 'ligar')
         ):
             score += 4
         ranked.append((score, len(doc.text), doc))
@@ -327,12 +327,41 @@ def _find_first_matching_doc(docs: list[EvidenceDoc], prefix: str, terms: tuple[
     return None
 
 
+def _direct_contact_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    terms = _query_terms(message)
+    if not ({'telefone', 'fax', 'ligo', 'ligar', 'contato'} & terms):
+        return None
+    phone_doc = _find_first_matching_doc(docs, 'contact.', ('telefone', 'phone', 'secretaria'))
+    fax_doc = _find_first_matching_doc(docs, 'profile.', ('fax',))
+    phone_answer = None
+    fax_answer = None
+    if phone_doc is not None:
+        phone_answer = f"{phone_doc.title}: {phone_doc.text.replace('|', ' ').strip()}"
+    if fax_doc is not None and 'nao utiliza fax' in _normalize_text(fax_doc.text):
+        fax_answer = 'Hoje a escola nao utiliza fax institucional.'
+    if ({'telefone', 'ligo', 'ligar', 'contato'} & terms) and 'fax' in terms and phone_answer and fax_answer:
+        return f'{phone_answer} {fax_answer}'
+    if ({'telefone', 'ligo', 'ligar', 'contato'} & terms) and phone_answer:
+        return phone_answer
+    if 'fax' in terms and fax_answer:
+        return fax_answer
+    return None
+
+
 def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: list[EvidenceDoc]) -> str | None:
     primary = _select_primary_doc(plan, docs)
     if primary is None:
         return None
     terms = _query_terms(message)
     text = primary.text
+    if 'biblioteca' in terms and not any(term in terms for term in {'horario', 'hora', 'abre', 'fecha'}):
+        library_doc = _find_first_matching_doc(docs, 'feature.', ('biblioteca', 'biblioteca aurora'))
+        if library_doc is not None:
+            hours_match = re.search(r'das\s+[0-9h:]+\s+as\s+[0-9h:]+', _normalize_text(library_doc.text))
+            hours = hours_match.group(0) if hours_match else None
+            if hours:
+                return f'Sim, a escola tem a {library_doc.title}, com atendimento {hours}.'
+            return f'Sim, a escola tem a {library_doc.title}.'
     if any(term in terms for term in {'horario', 'hora', 'abre', 'fecha'}) and 'das ' in _normalize_text(text):
         match = re.search(r'das\s+[0-9h:]+\s+as\s+[0-9h:]+', _normalize_text(text))
         hours = match.group(0) if match else None
@@ -345,7 +374,7 @@ def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: li
         handle = re.search(r'@\w+', primary.text)
         if handle:
             return f'O Instagram institucional e {handle.group(0)}.'
-    if 'telefone' in terms or 'fax' in terms:
+    if {'telefone', 'fax', 'ligo', 'ligar', 'contato'} & terms:
         phone_doc = _find_first_matching_doc(docs, 'contact.', ('telefone', 'phone', 'secretaria'))
         fax_doc = _find_first_matching_doc(docs, 'profile.', ('fax',))
         phone_answer = None
@@ -354,9 +383,9 @@ def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: li
             phone_answer = f"{phone_doc.title}: {phone_doc.text.replace('|', ' ').strip()}"
         if fax_doc is not None and 'nao utiliza fax' in _normalize_text(fax_doc.text):
             fax_answer = 'Hoje a escola nao utiliza fax institucional.'
-        if 'telefone' in terms and 'fax' in terms and phone_answer and fax_answer:
+        if ({'telefone', 'ligo', 'ligar', 'contato'} & terms) and 'fax' in terms and phone_answer and fax_answer:
             return f'{phone_answer} {fax_answer}'
-        if 'telefone' in terms and phone_answer:
+        if ({'telefone', 'ligo', 'ligar', 'contato'} & terms) and phone_answer:
             return phone_answer
         if 'fax' in terms and fax_answer:
             return fax_answer
@@ -399,6 +428,9 @@ def _is_public_fast_path_query(message: str) -> bool:
         'reuniao',
         'instagram',
         'telefone',
+        'ligo',
+        'ligar',
+        'contato',
         'fax',
         'whatsapp',
         'email',
@@ -460,7 +492,11 @@ async def run_public_crewai_pilot(
     evidence = await _fetch_public_evidence(settings)
     evidence_docs = _build_evidence_docs(evidence)
     shortlisted_docs = _rank_evidence_docs(message, evidence_docs)
-    fast_path_answer = _deterministic_backstop(message, None, shortlisted_docs)
+    fast_path_answer = (
+        _direct_contact_fast_answer(message, evidence_docs)
+        or _direct_contact_fast_answer(message, shortlisted_docs)
+        or _deterministic_backstop(message, None, shortlisted_docs)
+    )
     if isinstance(fast_path_answer, str) and fast_path_answer.strip() and _is_public_fast_path_query(message):
         latency_ms = round((perf_counter() - overall_started_at) * 1000, 1)
         return {

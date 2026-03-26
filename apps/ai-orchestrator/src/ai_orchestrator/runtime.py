@@ -698,6 +698,7 @@ FOLLOW_UP_CONTEXT_BY_TASK = {
     'finance:next_due': 'proximo pagamento de {entity}',
     'finance:second_copy': 'segunda via do boleto de {entity}',
     'admin:administrative_status': 'dados cadastrais de {entity}',
+    'admin:student_administrative_status': 'documentacao de {entity}',
     'admin:profile_update': 'atualizacao cadastral de {entity}',
     'workflow:visit_booking': 'visita institucional',
     'workflow:institutional_request': 'solicitacao institucional',
@@ -1719,6 +1720,8 @@ def _derive_active_task(
     public_plan: PublicInstitutionPlan | None,
     focus_kind: str | None,
     academic_focus_kind: str | None,
+    academic_student_name: str | None,
+    finance_student_name: str | None,
     finance_attribute: str | None,
     finance_action: str | None,
     preview: Any | None,
@@ -1734,6 +1737,10 @@ def _derive_active_task(
             if isinstance(tool_name, str)
         }
         if domain is QueryDomain.institution and 'get_administrative_status' in selected_tool_names:
+            if 'get_student_administrative_status' in selected_tool_names and (
+                academic_student_name or finance_student_name
+            ):
+                return 'admin:student_administrative_status'
             if _wants_profile_update_guidance(current_message):
                 return 'admin:profile_update'
             return 'admin:administrative_status'
@@ -2386,6 +2393,8 @@ def _build_conversation_slot_memory(
         public_plan=public_plan,
         focus_kind=focus_kind,
         academic_focus_kind=academic_focus_kind,
+        academic_student_name=academic_student_name,
+        finance_student_name=finance_student_name,
         finance_attribute=finance_attribute,
         finance_action=finance_action,
         preview=preview,
@@ -5700,6 +5709,8 @@ def _extract_school_reference_candidate(message: str) -> str | None:
         candidate_tokens = [token for token in candidate.split() if token not in {'o', 'a', 'do', 'da', 'de'}]
         if not candidate_tokens:
             continue
+        if candidate_tokens[0] in stop_tokens:
+            continue
         if len(candidate_tokens) == 1 and candidate_tokens[0] in stop_tokens:
             continue
         return ' '.join(candidate_tokens)
@@ -8854,6 +8865,21 @@ def _extract_explicit_student_reference_candidates(message: str) -> list[str]:
         'informações',
         'matricula',
         'matrícula',
+        'documentacao',
+        'documentação',
+        'documentos',
+        'pagamento',
+        'pagamentos',
+        'proximo',
+        'próximo',
+        'vencimento',
+        'vencimentos',
+        'boleto',
+        'contrato',
+        'telefone',
+        'email',
+        'horario',
+        'horário',
         'quero',
         'saber',
         'sobre',
@@ -8871,6 +8897,8 @@ def _extract_explicit_student_reference_candidates(message: str) -> list[str]:
             raw = match.group(1).strip(' ?!.,;:')
             tokens = [token for token in raw.split() if token not in stopwords]
             if not tokens:
+                continue
+            if len(tokens) == 1 and tokens[0] in stopwords:
                 continue
             candidate = ' '.join(tokens[:3]).strip()
             if candidate and candidate not in candidates:
@@ -8951,6 +8979,21 @@ def _recent_student_from_context(
     students = _eligible_students(actor, capability=capability)
     if not students or not isinstance(conversation_context, dict):
         return None
+    recent_focus = _recent_trace_focus(conversation_context) or {}
+    recent_active_task = str(recent_focus.get('active_task', '') or '').strip()
+    candidate_names: list[str] = []
+    for key in ('finance_student_name', 'academic_student_name'):
+        candidate_name = _recent_slot_value(conversation_context, key)
+        if candidate_name and candidate_name not in candidate_names:
+            candidate_names.append(candidate_name)
+    if recent_active_task == 'admin:student_administrative_status':
+        active_entity = str(recent_focus.get('active_entity', '') or '').strip()
+        if active_entity and active_entity not in candidate_names and active_entity != 'aluno':
+            candidate_names.append(active_entity)
+    for candidate_name in candidate_names:
+        matched_students = _matching_students_in_text(students, candidate_name)
+        if len(matched_students) == 1:
+            return matched_students[0]
     for _sender_type, content in reversed(_recent_message_lines(conversation_context)):
         matched_students = _matching_students_in_text(students, content)
         if len(matched_students) == 1:
@@ -9798,12 +9841,42 @@ async def _execute_protected_records_specialist(
         message,
         conversation_context=conversation_context,
     )
+    should_force_student_admin_path = (
+        requested_admin_attribute is not None
+        and _effective_finance_attribute_request(
+            message,
+            conversation_context=conversation_context,
+        )
+        is None
+        and _should_use_student_administrative_status(
+            actor,
+            message,
+            conversation_context=conversation_context,
+        )
+    )
 
     if preview.classification.domain is QueryDomain.institution and 'get_actor_identity_context' in preview.selected_tools:
         return _compose_account_context_answer(
             actor,
             request_message=message,
             conversation_context=conversation_context,
+        )
+
+    if should_force_student_admin_path:
+        preview.classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.authenticated,
+            confidence=0.9,
+            reason='follow-up administrativo de aluno exige service deterministico e estado tipado',
+        )
+        preview.selected_tools = ['get_administrative_status', 'get_student_administrative_status']
+        return await _compose_student_administrative_status_answer(
+            settings=settings,
+            request=request,
+            actor=actor,
+            message=message,
+            conversation_context=conversation_context,
+            requested_attribute=requested_admin_attribute,
         )
 
     if preview.classification.domain is QueryDomain.institution and (
@@ -9818,37 +9891,13 @@ async def _execute_protected_records_specialist(
                 conversation_context=conversation_context,
             )
         ):
-            student, clarification = _select_linked_student(
-                actor,
-                message,
-                capability='linked',
-                conversation_context=conversation_context,
-            )
-            if clarification is not None:
-                return clarification
-            if student is None:
-                return 'Nao consegui identificar o aluno desta consulta administrativa no Telegram.'
-            student_id = student.get('student_id')
-            if not isinstance(student_id, str):
-                return 'Nao consegui identificar o aluno desta consulta administrativa no Telegram.'
-            payload, status_code = await _api_core_get(
+            return await _compose_student_administrative_status_answer(
                 settings=settings,
-                path=f'/v1/students/{student_id}/administrative-status',
-                params={'telegram_chat_id': request.telegram_chat_id},
-            )
-            if status_code == 403:
-                return 'Seu perfil nao tem permissao para consultar a documentacao desse aluno.'
-            if status_code != 200 or payload is None:
-                return 'Nao consegui consultar a documentacao desse aluno agora. Tente novamente em instantes.'
-
-            summary = payload.get('summary', {})
-            if not isinstance(summary, dict):
-                return 'Nao consegui interpretar o retorno administrativo desse aluno.'
-            return '\n'.join(
-                _format_student_administrative_status(
-                    summary,
-                    requested_attribute=requested_admin_attribute,
-                )
+                request=request,
+                actor=actor,
+                message=message,
+                conversation_context=conversation_context,
+                requested_attribute=requested_admin_attribute,
             )
 
         payload, status_code = await _api_core_get(
@@ -9877,6 +9926,10 @@ async def _execute_protected_records_specialist(
             message,
             conversation_context=conversation_context,
         )
+        finance_attribute_request = _effective_finance_attribute_request(
+            message,
+            conversation_context=conversation_context,
+        )
         wants_second_copy = _wants_finance_second_copy(
             message,
             conversation_context=conversation_context,
@@ -9893,6 +9946,8 @@ async def _execute_protected_records_specialist(
                 conversation_context=conversation_context,
             )
             if student is None and clarification is not None:
+                if finance_attribute_request is not None:
+                    return clarification
                 summaries: list[dict[str, Any]] = []
                 for candidate in finance_students:
                     candidate_id = candidate.get('student_id')
@@ -10220,6 +10275,49 @@ def _compose_structured_deny(actor: dict[str, Any] | None) -> str:
             '`/start link_<codigo>` ao bot.'
         )
     return 'Nao consegui autorizar essa consulta neste contexto. Se precisar, use o portal autenticado da escola.'
+
+
+async def _compose_student_administrative_status_answer(
+    *,
+    settings: Any,
+    request: MessageResponseRequest,
+    actor: dict[str, Any],
+    message: str,
+    conversation_context: dict[str, Any] | None,
+    requested_attribute: str | None,
+) -> str:
+    student, clarification = _select_linked_student(
+        actor,
+        message,
+        capability='linked',
+        conversation_context=conversation_context,
+    )
+    if clarification is not None:
+        return clarification
+    if student is None:
+        return 'Nao consegui identificar o aluno desta consulta administrativa no Telegram.'
+    student_id = student.get('student_id')
+    if not isinstance(student_id, str):
+        return 'Nao consegui identificar o aluno desta consulta administrativa no Telegram.'
+    payload, status_code = await _api_core_get(
+        settings=settings,
+        path=f'/v1/students/{student_id}/administrative-status',
+        params={'telegram_chat_id': request.telegram_chat_id},
+    )
+    if status_code == 403:
+        return 'Seu perfil nao tem permissao para consultar a documentacao desse aluno.'
+    if status_code != 200 or payload is None:
+        return 'Nao consegui consultar a documentacao desse aluno agora. Tente novamente em instantes.'
+
+    summary = payload.get('summary', {})
+    if not isinstance(summary, dict):
+        return 'Nao consegui interpretar o retorno administrativo desse aluno.'
+    return '\n'.join(
+        _format_student_administrative_status(
+            summary,
+            requested_attribute=requested_attribute,
+        )
+    )
 
 
 async def _compose_structured_tool_answer(
@@ -11164,6 +11262,8 @@ async def generate_message_response(
                 settings=settings,
                 conversation_external_id=effective_conversation_id,
                 channel=request.channel.value,
+                engine_name=engine_name,
+                engine_mode=engine_mode,
                 actor=actor,
                 preview=preview,
                 school_profile=school_profile,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import OrderedDict
 import json
 import re
 from time import perf_counter
@@ -45,6 +46,10 @@ class EvidenceDoc(BaseModel):
     source: str
     title: str
     text: str
+
+
+_PROTECTED_SHADOW_STATE: OrderedDict[str, dict[str, str]] = OrderedDict()
+_PROTECTED_SHADOW_STATE_LIMIT = 256
 
 
 def _normalize_text(value: str) -> str:
@@ -101,7 +106,58 @@ async def _load_actor_context(settings: Any, telegram_chat_id: int) -> dict[str,
     return await _api_get(settings, f'/v1/internal/identity/context?telegram_chat_id={telegram_chat_id}')
 
 
-def _resolve_student(actor: dict[str, Any], message: str) -> dict[str, Any] | None:
+def _conversation_state_key(
+    *,
+    conversation_id: str | None,
+    telegram_chat_id: int | None,
+    channel: str,
+) -> str:
+    if conversation_id:
+        return f'{channel}:{conversation_id}'
+    if telegram_chat_id is not None:
+        return f'{channel}:telegram:{telegram_chat_id}'
+    return f'{channel}:anonymous'
+
+
+def _load_recent_student_name(state_key: str) -> str | None:
+    state = _PROTECTED_SHADOW_STATE.get(state_key)
+    if not isinstance(state, dict):
+        return None
+    value = str(state.get('student_name', '')).strip()
+    return value or None
+
+
+def _store_recent_student_name(state_key: str, student_name: str | None) -> None:
+    if not student_name:
+        return
+    _PROTECTED_SHADOW_STATE[state_key] = {'student_name': str(student_name).strip()}
+    _PROTECTED_SHADOW_STATE.move_to_end(state_key)
+    while len(_PROTECTED_SHADOW_STATE) > _PROTECTED_SHADOW_STATE_LIMIT:
+        _PROTECTED_SHADOW_STATE.popitem(last=False)
+
+
+def _is_followup_style_message(message: str) -> bool:
+    normalized = _normalize_text(message).strip()
+    return (
+        normalized.startswith('e ')
+        or normalized.startswith('mas ')
+        or any(term in normalized for term in {' dele', ' dela', ' desse aluno', ' dessa aluna', ' desse filho', ' dessa filha'})
+    )
+
+
+def _student_by_name(actor: dict[str, Any], student_name: str | None) -> dict[str, Any] | None:
+    if not student_name:
+        return None
+    normalized_target = _normalize_text(student_name)
+    for item in actor.get('linked_students') or []:
+        if not isinstance(item, dict):
+            continue
+        if _normalize_text(str(item.get('full_name', ''))) == normalized_target:
+            return item
+    return None
+
+
+def _resolve_student(actor: dict[str, Any], message: str, *, recent_student_name: str | None = None) -> dict[str, Any] | None:
     linked_students = actor.get('linked_students') or []
     if not isinstance(linked_students, list):
         return None
@@ -119,6 +175,8 @@ def _resolve_student(actor: dict[str, Any], message: str) -> dict[str, Any] | No
             matches.append(item)
     if len(matches) == 1:
         return matches[0]
+    if recent_student_name and _is_followup_style_message(message):
+        return _student_by_name(actor, recent_student_name)
     return None
 
 
@@ -457,6 +515,12 @@ async def run_protected_crewai_pilot(
     actor = actor_context.get('actor') or {}
     if not isinstance(actor, dict) or not actor.get('authenticated'):
         return {'engine_name': 'crewai', 'executed': False, 'reason': 'protected_shadow_actor_not_authenticated', 'metadata': {'slice_name': 'protected'}}
+    state_key = _conversation_state_key(
+        conversation_id=conversation_id,
+        telegram_chat_id=telegram_chat_id,
+        channel=channel,
+    )
+    recent_student_name = _load_recent_student_name(state_key)
 
     identity_backstop = _identity_backstop(actor, message)
     if identity_backstop and _is_identity_scope_query(message):
@@ -474,7 +538,7 @@ async def run_protected_crewai_pilot(
             },
         }
 
-    student = _resolve_student(actor, message)
+    student = _resolve_student(actor, message, recent_student_name=recent_student_name)
     if _requires_student(message) and student is None and len(actor.get('linked_students', []) or []) > 1:
         names = ', '.join(str(item.get('full_name', '')) for item in actor.get('linked_students', []) if isinstance(item, dict))
         return {
@@ -501,6 +565,7 @@ async def run_protected_crewai_pilot(
     shortlisted_docs = _rank_docs(message, docs)
     fast_path_answer = identity_backstop or _student_backstop(message, student, evidence, shortlisted_docs)
     if isinstance(fast_path_answer, str) and fast_path_answer.strip():
+        _store_recent_student_name(state_key, student.get('full_name') if isinstance(student, dict) else None)
         return {
             'engine_name': 'crewai',
             'executed': True,
@@ -630,6 +695,7 @@ async def run_protected_crewai_pilot(
         'resolved_student_name': student.get('full_name') if isinstance(student, dict) else None,
         'deterministic_backstop_used': backstop_used,
     }
+    _store_recent_student_name(state_key, student.get('full_name') if isinstance(student, dict) else None)
     return {
         'engine_name': 'crewai',
         'executed': True,
