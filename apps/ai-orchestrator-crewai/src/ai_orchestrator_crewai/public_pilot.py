@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from time import perf_counter
 from typing import Any
+import unicodedata
 
 import httpx
 from pydantic import BaseModel, Field
@@ -36,6 +38,13 @@ class PublicPilotJudge(BaseModel):
     revision_needed: bool = False
 
 
+class EvidenceDoc(BaseModel):
+    doc_id: str
+    source: str
+    title: str
+    text: str
+
+
 def _crewai_google_model(configured_model: str) -> str:
     base = str(configured_model or '').strip()
     if base.startswith('models/'):
@@ -62,6 +71,294 @@ async def _fetch_public_evidence(settings: Any) -> dict[str, Any]:
         response.raise_for_status()
         payloads[name] = response.json()
     return payloads
+
+
+def _normalize_text(value: str) -> str:
+    text = unicodedata.normalize('NFKD', str(value or ''))
+    text = ''.join(ch for ch in text if not unicodedata.combining(ch))
+    return text.lower()
+
+
+def _query_terms(message: str) -> set[str]:
+    normalized = _normalize_text(message)
+    return {
+        token
+        for token in re.findall(r'[a-z0-9]{3,}', normalized)
+        if token not in {'qual', 'quais', 'essa', 'esse', 'esta', 'sobre', 'colegio', 'escola', 'porque'}
+    }
+
+
+def _stringify_items(items: list[Any], keys: tuple[str, ...]) -> list[str]:
+    lines: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        parts = [str(item.get(key, '')).strip() for key in keys if str(item.get(key, '')).strip()]
+        if parts:
+            lines.append(' | '.join(parts))
+    return lines
+
+
+def _build_evidence_docs(evidence: dict[str, Any]) -> list[EvidenceDoc]:
+    profile = evidence.get('school_profile', {}).get('profile', {})
+    directory = evidence.get('org_directory', {}).get('directory', {})
+    timeline_entries = evidence.get('timeline', {}).get('timeline', {}).get('entries', [])
+    calendar_events = evidence.get('calendar_events', {}).get('events', [])
+
+    docs: list[EvidenceDoc] = []
+
+    def add(doc_id: str, source: str, title: str, text: str) -> None:
+        cleaned = ' '.join(str(text or '').split()).strip()
+        if cleaned:
+            docs.append(EvidenceDoc(doc_id=doc_id, source=source, title=title, text=cleaned))
+
+    add(
+        'profile.overview',
+        'school_profile',
+        'Visao geral institucional',
+        (
+            f"{profile.get('school_name', 'Colegio Horizonte')} em {profile.get('city', 'Sao Paulo')}/{profile.get('state', 'SP')}. "
+            f"{profile.get('short_headline', '')} {profile.get('education_model', '')}"
+        ),
+    )
+    add(
+        'profile.location',
+        'school_profile',
+        'Endereco e presenca digital',
+        (
+            f"Endereco: {profile.get('address_line', '')}, {profile.get('district', '')}, {profile.get('city', '')}/{profile.get('state', '')}, CEP {profile.get('postal_code', '')}. "
+            f"Site: {profile.get('website_url', '')}. Fax: {profile.get('fax_number') or 'nao utiliza fax institucional'}."
+        ),
+    )
+    add(
+        'profile.segments',
+        'school_profile',
+        'Segmentos, turnos e curriculo',
+        (
+            f"Segmentos: {'; '.join(str(item) for item in profile.get('segments', []))}. "
+            f"Base curricular: {profile.get('curriculum_basis', '')}. "
+            f"Turnos: {'; '.join(_stringify_items(profile.get('shift_offers', []), ('segment', 'shift_label', 'starts_at', 'ends_at', 'notes')))}."
+        ),
+    )
+    add('profile.contacts', 'school_profile', 'Canais oficiais', '; '.join(_stringify_items(profile.get('contact_channels', []), ('channel', 'label', 'value'))))
+    add('profile.features', 'school_profile', 'Espacos, atividades e diferenciais', '; '.join(_stringify_items(profile.get('feature_inventory', []), ('name', 'category', 'summary', 'hours'))))
+    add('profile.tuition', 'school_profile', 'Valores publicos e politica comercial', '; '.join(_stringify_items(profile.get('tuition_reference', []), ('segment', 'shift_label', 'monthly_amount', 'enrollment_fee', 'notes'))))
+    add('profile.visits', 'school_profile', 'Visitas e admissoes', '; '.join(_stringify_items(profile.get('visit_offers', []), ('title', 'schedule_hint', 'notes'))))
+    add(
+        'profile.documents',
+        'school_profile',
+        'Envio de documentos',
+        json.dumps(profile.get('document_submission_policy', {}), ensure_ascii=False),
+    )
+    add(
+        'directory.leadership',
+        'org_directory',
+        'Lideranca e contatos',
+        '; '.join(_stringify_items(directory.get('leadership_team', []), ('name', 'title', 'focus', 'contact_channel', 'notes'))),
+    )
+    add(
+        'directory.channels',
+        'org_directory',
+        'Diretorio de canais',
+        '; '.join(_stringify_items(directory.get('contact_channels', []), ('channel', 'label', 'value'))),
+    )
+
+    for index, item in enumerate(profile.get('feature_inventory', []), start=1):
+        if not isinstance(item, dict):
+            continue
+        add(
+            f'feature.{index}',
+            'school_profile',
+            str(item.get('label', item.get('feature_key', f'Espaco {index}'))),
+            ' | '.join(
+                str(item.get(key, '')).strip()
+                for key in ('feature_key', 'category', 'available', 'notes')
+                if str(item.get(key, '')).strip()
+            ),
+        )
+
+    for index, item in enumerate(profile.get('contact_channels', []), start=1):
+        if not isinstance(item, dict):
+            continue
+        add(
+            f'contact.{index}',
+            'school_profile',
+            f"{item.get('label', 'Contato')} ({item.get('channel', 'canal')})",
+            ' | '.join(str(item.get(key, '')).strip() for key in ('value',) if str(item.get(key, '')).strip()),
+        )
+
+    for index, item in enumerate(profile.get('tuition_reference', []), start=1):
+        if not isinstance(item, dict):
+            continue
+        add(
+            f'tuition.{index}',
+            'school_profile',
+            str(item.get('segment', f'Faixa {index}')),
+            ' | '.join(
+                str(item.get(key, '')).strip()
+                for key in ('shift_label', 'monthly_amount', 'enrollment_fee', 'notes')
+                if str(item.get(key, '')).strip()
+            ),
+        )
+
+    for index, item in enumerate(profile.get('visit_offers', []), start=1):
+        if not isinstance(item, dict):
+            continue
+        add(
+            f'visit.{index}',
+            'school_profile',
+            str(item.get('title', f'Visita {index}')),
+            ' | '.join(
+                str(item.get(key, '')).strip()
+                for key in ('schedule_hint', 'notes')
+                if str(item.get(key, '')).strip()
+            ),
+        )
+
+    for index, item in enumerate(profile.get('admissions_highlights', []), start=1):
+        if not isinstance(item, dict):
+            continue
+        add(
+            f'admissions.{index}',
+            'school_profile',
+            str(item.get('title', f'Admissoes {index}')),
+            ' | '.join(
+                str(item.get(key, '')).strip()
+                for key in ('summary',)
+                if str(item.get(key, '')).strip()
+            ),
+        )
+
+    for index, item in enumerate(profile.get('highlights', []), start=1):
+        if not isinstance(item, dict):
+            continue
+        add(
+            f'highlight.{index}',
+            'school_profile',
+            str(item.get('title', f'Diferencial {index}')),
+            ' | '.join(
+                str(item.get(key, '')).strip()
+                for key in ('summary',)
+                if str(item.get(key, '')).strip()
+            ),
+        )
+
+    for index, entry in enumerate(timeline_entries, start=1):
+        if not isinstance(entry, dict):
+            continue
+        add(
+            f'timeline.{index}',
+            'timeline',
+            str(entry.get('title', f'Evento institucional {index}')),
+            ' | '.join(
+                str(entry.get(key, '')).strip()
+                for key in ('summary', 'event_date', 'audience', 'notes')
+                if str(entry.get(key, '')).strip()
+            ),
+        )
+
+    for index, event in enumerate(calendar_events, start=1):
+        if not isinstance(event, dict):
+            continue
+        add(
+            f'calendar.{index}',
+            'calendar_events',
+            str(event.get('title', f'Evento publico {index}')),
+            ' | '.join(
+                str(event.get(key, '')).strip()
+                for key in ('description', 'category', 'starts_at', 'ends_at')
+                if str(event.get(key, '')).strip()
+            ),
+        )
+
+    return docs
+
+
+def _rank_evidence_docs(message: str, docs: list[EvidenceDoc], *, limit: int = 6) -> list[EvidenceDoc]:
+    terms = _query_terms(message)
+    if not terms:
+        return docs[:limit]
+
+    ranked: list[tuple[int, int, EvidenceDoc]] = []
+    for doc in docs:
+        haystack = _normalize_text(f'{doc.title} {doc.text}')
+        score = sum(5 if term in _normalize_text(doc.title) else 2 for term in terms if term in haystack)
+        if any(term in haystack for term in ('biblioteca', 'biblioteca aurora')) and any(
+            term in terms for term in ('biblioteca', 'horario', 'hora')
+        ):
+            score += 4
+        if any(term in haystack for term in ('matricula', 'admissoes')) and any(
+            term in terms for term in ('matricula', 'admissao', 'inscricao')
+        ):
+            score += 4
+        if any(term in haystack for term in ('fax', 'instagram', 'telefone', 'whatsapp', 'email')) and any(
+            term in terms for term in ('fax', 'instagram', 'telefone', 'whatsapp', 'email', 'contato')
+        ):
+            score += 4
+        ranked.append((score, len(doc.text), doc))
+
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    shortlisted = [doc for score, _, doc in ranked if score > 0][:limit]
+    return shortlisted or docs[:limit]
+
+
+def _serialize_evidence_pack(docs: list[EvidenceDoc]) -> str:
+    return '\n\n'.join(
+        f"[{doc.doc_id}] {doc.title}\nFonte: {doc.source}\nConteudo: {doc.text}"
+        for doc in docs
+    )
+
+
+def _select_primary_doc(plan: PublicPilotPlan | None, docs: list[EvidenceDoc]) -> EvidenceDoc | None:
+    if isinstance(plan, PublicPilotPlan):
+        selected = [doc for doc in docs if doc.doc_id in set(plan.relevant_sources)]
+        if selected:
+            return selected[0]
+    return docs[0] if docs else None
+
+
+def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: list[EvidenceDoc]) -> str | None:
+    primary = _select_primary_doc(plan, docs)
+    if primary is None:
+        return None
+    terms = _query_terms(message)
+    text = primary.text
+    if any(term in terms for term in {'horario', 'hora', 'abre', 'fecha'}) and 'das ' in _normalize_text(text):
+        match = re.search(r'das\s+[0-9h:]+\s+as\s+[0-9h:]+', _normalize_text(text))
+        hours = match.group(0) if match else None
+        if 'biblioteca' in _normalize_text(primary.title):
+            return f'A {primary.title} atende ao publico de segunda a sexta, {hours}.' if hours else f'{primary.title}: {text}'
+        return text.split('|', 1)[0].strip()
+    if any(term in terms for term in {'matricula', 'aulas', 'formatura', 'reuniao'}) and primary.doc_id.startswith('timeline.'):
+        return text.split('|', 1)[0].strip()
+    if 'instagram' in terms:
+        handle = re.search(r'@\w+', primary.text)
+        if handle:
+            return f'O Instagram institucional e {handle.group(0)}.'
+    if 'fax' in terms:
+        if 'nao utiliza fax' in _normalize_text(primary.text):
+            return 'Hoje a escola nao utiliza fax institucional.'
+    if any(term in terms for term in {'telefone', 'whatsapp', 'email'}) and primary.doc_id.startswith('contact.'):
+        return f"{primary.title}: {primary.text.replace('|', ' ').strip()}"
+    return None
+
+
+def _answer_conflicts_with_backstop(answer_text: str, backstop: str, message: str) -> bool:
+    normalized_answer = _normalize_text(answer_text)
+    normalized_backstop = _normalize_text(backstop)
+    terms = _query_terms(message)
+    if not normalized_answer.strip():
+        return True
+    if any(term in terms for term in {'matricula', 'aulas', 'formatura', 'reuniao'}):
+        years = re.findall(r'20\d{2}', normalized_backstop)
+        return bool(years) and not any(year in normalized_answer for year in years)
+    if any(term in terms for term in {'horario', 'hora', 'abre', 'fecha'}):
+        hour_tokens = re.findall(r'[0-9]{1,2}h[0-9]{0,2}', normalized_backstop)
+        return bool(hour_tokens) and not any(token in normalized_answer for token in hour_tokens)
+    if 'instagram' in terms:
+        handles = re.findall(r'@\w+', normalized_backstop)
+        return bool(handles) and not any(handle in normalized_answer for handle in handles)
+    return False
 
 
 def _build_llm(settings: Any) -> Any:
@@ -124,12 +421,14 @@ async def run_public_crewai_pilot(
         }
 
     evidence = await _fetch_public_evidence(settings)
-    evidence_bundle = json.dumps(evidence, ensure_ascii=False, indent=2)
+    evidence_docs = _build_evidence_docs(evidence)
+    shortlisted_docs = _rank_evidence_docs(message, evidence_docs)
+    evidence_bundle = _serialize_evidence_pack(shortlisted_docs)
 
     planner = Agent(
         role='Public question planner',
-        goal='Identify the exact public-school intent, entity, and attribute the user asked about using only the provided evidence bundle.',
-        backstory='You normalize public school questions into a grounded plan before any answer is written.',
+        goal='Identify the exact public-school intent, entity, and attribute the user asked about using only the provided shortlisted evidence docs.',
+        backstory='You normalize public school questions into a grounded plan before any answer is written. You must prefer concrete source ids over generic guesses.',
         llm=llm,
         allow_delegation=False,
         verbose=False,
@@ -137,8 +436,8 @@ async def run_public_crewai_pilot(
     )
     composer = Agent(
         role='Grounded answer composer',
-        goal='Write a concise, warm, human answer in pt-BR using only the supported public evidence and the planner context.',
-        backstory='You avoid robotic wording, adjacent-domain leakage, and unsupported claims.',
+        goal='Write a concise, warm, human answer in pt-BR using only the shortlisted evidence docs and the planner context.',
+        backstory='You avoid robotic wording, adjacent-domain leakage, and unsupported claims. When the evidence is explicit, answer directly instead of hedging.',
         llm=llm,
         allow_delegation=False,
         verbose=False,
@@ -158,8 +457,11 @@ async def run_public_crewai_pilot(
         name='public_planning',
         description=(
             'Pergunta do usuario: {message}\n'
-            'Bundle de evidencias publicas:\n{evidence_bundle}\n\n'
-            'Retorne um plano estruturado com a intencao principal, entidade, atributo, se precisa de esclarecimento e as fontes mais relevantes.'
+            'Docs de evidencias publicas mais relevantes:\n{evidence_bundle}\n\n'
+            'Retorne um plano estruturado com a intencao principal, entidade, atributo, se precisa de esclarecimento e os ids das fontes mais relevantes.\n'
+            'Use apenas os ids dos docs realmente necessarios.\n'
+            'Se a pergunta pedir horario, contato, instagram, fax, matricula, inicio das aulas, biblioteca, atividades, estrutura ou endereco, escolha o atributo exato.\n'
+            'Se algum doc trouxer um dado literal claro como data, horario, telefone, email, site ou instagram, prefira esse doc especifico no plano.'
         ),
         expected_output='Structured public plan.',
         agent=planner,
@@ -169,7 +471,10 @@ async def run_public_crewai_pilot(
         name='public_composition',
         description=(
             'Com base na pergunta do usuario, no plano estruturado e nas evidencias publicas, escreva uma resposta curta, natural e calorosa em portugues do Brasil.\n'
-            'Nunca invente fatos. Se a informacao nao estiver publicada, diga isso claramente e ofereca o proximo canal adequado.'
+            'Nunca invente fatos. Se a evidencia trouxer um horario, data, nome de espaco, telefone, email, instagram, site ou valor, responda diretamente com esse dado.\n'
+            'Nao invente datas aproximadas, faixas de periodo ou canais nao citados.\n'
+            'Se houver uma data ou horario explicito nos docs selecionados, reproduza esse dado de forma literal na resposta.\n'
+            'Se a informacao nao estiver publicada nos docs, diga isso claramente e ofereca o proximo canal adequado.'
         ),
         expected_output='Structured public answer.',
         agent=composer,
@@ -179,7 +484,8 @@ async def run_public_crewai_pilot(
     judge_task = Task(
         name='public_judging',
         description=(
-            'Revise o plano e a resposta final. Marque como invalida qualquer resposta que troque entidade, atributo ou use um dado nao suportado.\n'
+            'Revise o plano e a resposta final. Marque como invalida qualquer resposta que troque entidade, atributo ou use um dado nao suportado pelos docs.\n'
+            'Se a resposta citar uma data, horario, valor, telefone, instagram, email ou site que nao aparece explicitamente nos docs, marque valid=false.\n'
             'Se estiver boa, marque valid=true.'
         ),
         expected_output='Structured judge result.',
@@ -212,6 +518,14 @@ async def run_public_crewai_pilot(
     plan = _extract_task_pydantic(planning_task, PublicPilotPlan)
     answer = _extract_task_pydantic(composition_task, PublicPilotAnswer)
     verdict = _extract_task_pydantic(judge_task, PublicPilotJudge)
+    backstop_answer = _deterministic_backstop(message, plan if isinstance(plan, PublicPilotPlan) else None, shortlisted_docs)
+    backstop_used = False
+
+    if isinstance(answer, PublicPilotAnswer) and backstop_answer:
+        if _answer_conflicts_with_backstop(answer.answer_text, backstop_answer, message):
+            answer = PublicPilotAnswer(answer_text=backstop_answer, citations=[_select_primary_doc(plan if isinstance(plan, PublicPilotPlan) else None, shortlisted_docs).doc_id] if _select_primary_doc(plan if isinstance(plan, PublicPilotPlan) else None, shortlisted_docs) else [])
+            verdict = PublicPilotJudge(valid=True, reason='deterministic_backstop_applied', revision_needed=False)
+            backstop_used = True
 
     metadata: dict[str, Any] = {
         'conversation_id': conversation_id or (
@@ -227,7 +541,8 @@ async def run_public_crewai_pilot(
         'plan': plan.model_dump(mode='json') if isinstance(plan, PublicPilotPlan) else None,
         'answer': answer.model_dump(mode='json') if isinstance(answer, PublicPilotAnswer) else None,
         'judge': verdict.model_dump(mode='json') if isinstance(verdict, PublicPilotJudge) else None,
-        'evidence_sources': list(evidence.keys()),
+        'evidence_sources': [doc.doc_id for doc in shortlisted_docs],
+        'deterministic_backstop_used': backstop_used,
     }
 
     if isinstance(verdict, PublicPilotJudge) and not verdict.valid:
