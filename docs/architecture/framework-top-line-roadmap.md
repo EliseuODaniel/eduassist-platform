@@ -18,6 +18,8 @@ Current local evidence:
 
 - [two-stack-shadow-master-real-threads-report.md](/home/edann/projects/eduassist-platform/docs/architecture/two-stack-shadow-master-real-threads-report.md)
 - [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md)
+- [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md)
+- [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md)
 - [crewai-best-practices-audit.md](/home/edann/projects/eduassist-platform/docs/architecture/crewai-best-practices-audit.md)
 - [graph.py](/home/edann/projects/eduassist-platform/apps/ai-orchestrator/src/ai_orchestrator/graph.py)
 - [public_flow.py](/home/edann/projects/eduassist-platform/apps/ai-orchestrator-crewai/src/ai_orchestrator_crewai/public_flow.py)
@@ -87,6 +89,8 @@ Validated in this round:
 - CrewAI no longer blocks on the interactive tracing prompt during service requests.
 - CrewAI pilot metadata now bridges into the main orchestrator trace surface, so `orchestration.trace` and `orchestration.shadow` can carry normalized `crewai` request/response telemetry when that engine is exercised.
 - Restart/recovery durability is now benchmarked with a versioned dataset and report, and the current run passed `3/3` cases across LangGraph protected HITL plus CrewAI public/protected Flow continuity.
+- Crash/recovery durability is now benchmarked separately with hard `kill/start`, and the current run also passed `3/3`.
+- A framework-native durability/debug scorecard now exists to compare persistence, HITL/recovery, trace richness, and operator ergonomics side by side.
 
 Concrete local evidence:
 
@@ -105,6 +109,12 @@ Concrete local evidence:
 - the latest [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md) shows:
   - LangGraph protected HITL can survive restart and resume the exact review thread
   - CrewAI `public` and `protected` Flow follow-ups survive restart with stable `flow_state_id`
+- the latest [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md) shows:
+  - LangGraph protected HITL can survive hard process kill and still resume the same review thread
+  - CrewAI `public` and `protected` Flow continuity also survives hard process kill with stable `flow_state_id`
+- the latest [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md) currently scores:
+  - `LangGraph`: `24/25`
+  - `CrewAI`: `22/25`
 
 ## Upgrade Principles
 
@@ -300,6 +310,10 @@ Measure separately from response quality:
 - task/node trace richness
 - per-slice modularity
 
+Status:
+
+- implemented in this round via [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md)
+
 ### 2. Add failure-mode benchmarks
 
 New benchmark classes:
@@ -316,6 +330,10 @@ Status:
   - LangGraph protected HITL pause -> restart -> inspect -> resume
   - CrewAI `public` Flow restart continuity
   - CrewAI `protected` Flow restart continuity
+- extended in this round to crash/recovery durability:
+  - LangGraph protected HITL pause -> kill/start -> inspect -> resume
+  - CrewAI `public` Flow crash continuity
+  - CrewAI `protected` Flow crash continuity
 
 ### 3. Run live canaries with framework-specific telemetry
 
