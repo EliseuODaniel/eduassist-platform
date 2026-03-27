@@ -1,6 +1,6 @@
 # Framework Release Snapshot Report
 
-Date: 2026-03-27T16:14:06.141592+00:00
+Date: 2026-03-27T17:33:35.302157+00:00
 
 ## Goal
 
@@ -11,8 +11,9 @@ Capture a single operational snapshot before merge or rollout promotion, using l
 - classification: `ready`
 - ready for guarded release: `True`
 - branch: `feature/two-stack-shadow-comparison`
-- commit: `0c5fc6ade421a7d869b3e7be84b7c61410a0522f`
+- commit: `8c4addb17ce9f3801603994e808efa62e9d2b617`
 - working tree clean: `True`
+- working tree release-ready: `True`
 
 ## Runtime Snapshot
 
@@ -36,14 +37,14 @@ Capture a single operational snapshot before merge or rollout promotion, using l
 - consider gradual promotion for public
 - maintain current controlled posture for support
 - maintain current controlled posture for workflow
-- keep protected blocked: protected still trails LangGraph in operator-facing control primitives and should stay behind manual review.
+- keep protected blocked: CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot.
 
 ## Latest Rollout Changelog Entries
 
 | Date | Intent | Slice | Before | After | Result | Operator | Reason |
 | --- | --- | --- | ---: | ---: | --- | --- | --- |
+| `2026-03-27T17:27:40.589600+00:00` | `promotion` | `protected` | `1%` | `100%` | `passed` | `codex` | Drill controlado do protected em 100% com allowlist sintetica |
+| `2026-03-27T17:26:17.986764+00:00` | `promotion` | `protected` | `0%` | `1%` | `passed` | `codex` | Ativar canario protegido controlado do CrewAI com HITL |
+| `2026-03-27T17:25:42.785370+00:00` | `promotion` | `protected` | `0%` | `1%` | `passed` | `codex` | Ativar canario protegido controlado do CrewAI com HITL |
 | `2026-03-27T16:12:28.601970+00:00` | `promotion` | `public` | `2%` | `5%` | `passed` | `codex` | Expandir public de 2% para 5% conforme recomendacao do gate live |
 | `2026-03-27T16:01:18.904547+00:00` | `promotion` | `public` | `1%` | `2%` | `failed` | `codex` | Expandir public de 1% para 2% conforme recomendacao do gate live |
-| `2026-03-27T15:39:44.095113+00:00` | `rollback` | `public` | `2%` | `1%` | `passed` | `codex` | Reverter public para o nivel anterior do canario |
-| `2026-03-27T15:37:33.016974+00:00` | `promotion` | `public` | `1%` | `2%` | `passed` | `codex` | Expandir public de 1% para 2% apos estabilidade do canario |
-| `2026-03-27T15:33:33.005730+00:00` | `promotion` | `public` | `1%` | `2%` | `passed` | `legacy-unknown` | Legacy changelog entry normalized after operator/reason became required audit fields. |

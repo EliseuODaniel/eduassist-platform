@@ -1,9 +1,11 @@
 {
-  "generated_at": "2026-03-27T16:14:06.141617+00:00",
+  "generated_at": "2026-03-27T17:33:35.302184+00:00",
   "git": {
     "branch": "feature/two-stack-shadow-comparison",
-    "commit": "0c5fc6ade421a7d869b3e7be84b7c61410a0522f",
+    "commit": "8c4addb17ce9f3801603994e808efa62e9d2b617",
     "working_tree_clean": true,
+    "working_tree_release_ready": true,
+    "working_tree_detail": "working tree is clean.",
     "status_short": ""
   },
   "services": {
@@ -45,15 +47,17 @@
     "experimentRolloutPercent": 0,
     "experimentSliceRollouts": "public:5,support:100,workflow:100",
     "experimentAllowlistSlices": "support,workflow",
+    "experimentTelegramChatAllowlistCount": 1,
+    "experimentConversationAllowlistCount": 0,
     "experimentRequireScorecard": false,
     "experimentScorecardPath": "/workspace/artifacts/framework-native-scorecard.json",
     "experimentMinPrimaryEngineScore": 20,
     "experimentRequireHealthyPilot": false,
     "experimentScorecardGate": {
       "loaded": true,
-      "generated_at": "2026-03-27T14:38:46.020428+00:00",
+      "generated_at": "2026-03-27T17:01:56.429893+00:00",
       "primary_engine": "langgraph",
-      "primary_score": 29,
+      "primary_score": 30,
       "primary_max_score": 30,
       "primary_stack_native_path_passed": true,
       "promotion_gate": {
@@ -88,7 +92,7 @@
       },
       "frameworks": {
         "langgraph": {
-          "total_score": 29,
+          "total_score": 30,
           "max_score": 30,
           "primary_stack_native_path_passed": true,
           "restart_recovery_passed": true,
@@ -122,7 +126,7 @@
           }
         },
         "crewai": {
-          "total_score": 27,
+          "total_score": 30,
           "max_score": 30,
           "primary_stack_native_path_passed": true,
           "restart_recovery_passed": true,
@@ -139,19 +143,262 @@
             },
             "response": {
               "latency_ms": 60.7
+            },
+            "live": {
+              "status": {
+                "service": "ai-orchestrator-crewai",
+                "ready": true,
+                "crewaiInstalled": true,
+                "crewaiVersion": "1.12.2",
+                "slice": "public+protected+workflow+support",
+                "mode": "pilot",
+                "googleModel": "gemini-2.5-flash-preview",
+                "llmConfigured": false,
+                "capabilities": [
+                  "public-shadow-flow",
+                  "protected-shadow-flow",
+                  "workflow-shadow-flow",
+                  "support-shadow-flow",
+                  "isolated-dependencies",
+                  "planner-composer-judge",
+                  "flow-state-routing",
+                  "flow-state-persistence",
+                  "task-trace-telemetry",
+                  "task-guardrails",
+                  "agentic-rendering-for-support-workflow",
+                  "crewai-hitl-internal",
+                  "crewai-hitl-user-traffic"
+                ],
+                "flowStateDir": "/workspace/artifacts/crewai-flow-state",
+                "crewaiHitlEnabled": true,
+                "crewaiHitlDefaultSlices": "protected",
+                "crewaiHitlUserTrafficEnabled": false,
+                "crewaiHitlUserTrafficSlices": "protected"
+              },
+              "public": {
+                "conversation_id": "scorecard-crewai-public-live-1",
+                "slice_name": "public",
+                "normalized_message": "qual o horario da biblioteca?",
+                "crewai_installed": true,
+                "crewai_version": "1.12.2",
+                "agent_roles": [],
+                "task_names": [],
+                "latency_ms": 34.3,
+                "plan": null,
+                "answer": {
+                  "answer_text": "A Biblioteca Aurora atende ao publico de segunda a sexta, das 7h30 as 18h00.",
+                  "citations": [
+                    "feature.1"
+                  ]
+                },
+                "judge": {
+                  "valid": true,
+                  "reason": "deterministic_fast_path",
+                  "revision_needed": false
+                },
+                "evidence_sources": [
+                  "feature.1"
+                ],
+                "deterministic_backstop_used": true,
+                "validation_stack": [
+                  "flow_router",
+                  "deterministic_fast_path"
+                ],
+                "flow_enabled": true,
+                "flow_state_id": "public:telegram:conversation:scorecard-crewai-public-live-1",
+                "event_listener": {
+                  "counts": {},
+                  "events": [],
+                  "summary": {},
+                  "task_trace": {
+                    "tasks": {},
+                    "agents": {},
+                    "crews": {},
+                    "tools": {}
+                  }
+                },
+                "event_summary": {},
+                "task_trace": {
+                  "tasks": {},
+                  "agents": {},
+                  "crews": {},
+                  "tools": {}
+                }
+              },
+              "protected": {
+                "conversation_id": "scorecard-crewai-protected-live-1",
+                "slice_name": "protected",
+                "normalized_message": "qual situacao de documentacao do lucas?",
+                "resolved_student_name": "Lucas Oliveira",
+                "flow_enabled": true,
+                "flow_state_id": "protected:telegram:conversation:scorecard-crewai-protected-live-1",
+                "event_listener": {
+                  "counts": {},
+                  "events": [],
+                  "summary": {},
+                  "task_trace": {
+                    "tasks": {},
+                    "agents": {},
+                    "crews": {},
+                    "tools": {}
+                  }
+                },
+                "event_summary": {},
+                "task_trace": {
+                  "tasks": {},
+                  "agents": {},
+                  "crews": {},
+                  "tools": {}
+                },
+                "crewai_installed": true,
+                "crewai_version": "1.12.2",
+                "agent_roles": [],
+                "task_names": [],
+                "latency_ms": 249.4,
+                "plan": {
+                  "intent": "student_admin",
+                  "student_name": "Lucas Oliveira",
+                  "student_id": "53d70582-36f3-4052-b29c-ede23dec42ff",
+                  "domain": "institution",
+                  "attribute": "documents",
+                  "needs_clarification": false,
+                  "clarification_question": null,
+                  "relevant_sources": [
+                    "admin.overview"
+                  ]
+                },
+                "answer": {
+                  "answer_text": "A situacao documental de Lucas Oliveira hoje esta regular e completa.",
+                  "citations": [
+                    "admin.overview"
+                  ]
+                },
+                "judge": {
+                  "valid": true,
+                  "reason": "deterministic_fast_path",
+                  "revision_needed": false
+                },
+                "evidence_sources": [
+                  "admin.overview",
+                  "admin.check.3",
+                  "admin.check.2",
+                  "admin.check.1",
+                  "assessments.overview",
+                  "attendance.overview",
+                  "identity.student.1",
+                  "financial.overview"
+                ],
+                "deterministic_backstop_used": true,
+                "validation_stack": [
+                  "flow_router",
+                  "deterministic_fast_path"
+                ]
+              },
+              "support": {
+                "slice_name": "support",
+                "conversation_id": "scorecard-crewai-support-live-1",
+                "normalized_message": "quero falar com a secretaria",
+                "flow_enabled": true,
+                "flow_state_id": "support:telegram:conversation:scorecard-crewai-support-live-1",
+                "flow_state_persisted": true,
+                "active_ticket_code": "ATD-20260327-3AB07787",
+                "active_queue_name": "secretaria",
+                "latency_ms": 61.4,
+                "validation_stack": [
+                  "operation_result",
+                  "deterministic_backstop"
+                ],
+                "answer": {
+                  "answer_text": "Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260327-3AB07787. Status atual: queued."
+                },
+                "crewai_installed": true,
+                "agent_roles": [],
+                "task_names": [],
+                "event_listener": {
+                  "counts": {},
+                  "events": [],
+                  "summary": {},
+                  "task_trace": {
+                    "tasks": {},
+                    "agents": {},
+                    "crews": {},
+                    "tools": {}
+                  }
+                },
+                "event_summary": {},
+                "task_trace": {
+                  "tasks": {},
+                  "agents": {},
+                  "crews": {},
+                  "tools": {}
+                },
+                "judge": {
+                  "valid": true,
+                  "reason": "llm_unavailable_backstop",
+                  "revision_needed": false
+                },
+                "deterministic_backstop_used": true,
+                "crewai_version": "1.12.2",
+                "queue_name": "secretaria",
+                "created": false
+              },
+              "workflow": {
+                "slice_name": "workflow",
+                "conversation_id": "scorecard-crewai-workflow-live-1",
+                "normalized_message": "quero agendar uma visita na quinta a tarde",
+                "workflow_type": "visit",
+                "flow_enabled": true,
+                "flow_state_id": "workflow:telegram:conversation:scorecard-crewai-workflow-live-1",
+                "flow_state_persisted": true,
+                "active_protocol_code": "VIS-20260327-D5147C",
+                "active_workflow_type": "visit_booking",
+                "latency_ms": 70.5,
+                "validation_stack": [
+                  "operation_result",
+                  "deterministic_backstop"
+                ],
+                "answer": {
+                  "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260327-D5147C. Preferencia informada: 02/04/2026 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260327-286F7834. A equipe comercial valida a janela e retorna com a confirmacao."
+                },
+                "crewai_installed": true,
+                "agent_roles": [],
+                "task_names": [],
+                "event_listener": {
+                  "counts": {},
+                  "events": [],
+                  "summary": {},
+                  "task_trace": {
+                    "tasks": {},
+                    "agents": {},
+                    "crews": {},
+                    "tools": {}
+                  }
+                },
+                "event_summary": {},
+                "task_trace": {
+                  "tasks": {},
+                  "agents": {},
+                  "crews": {},
+                  "tools": {}
+                },
+                "judge": {
+                  "valid": true,
+                  "reason": "llm_unavailable_backstop",
+                  "revision_needed": false
+                },
+                "deterministic_backstop_used": true,
+                "crewai_version": "1.12.2"
+              }
             }
           },
           "recommended_canary_slices": [
             "public",
+            "protected",
             "support",
             "workflow"
           ],
-          "blocked_canary_slices": [
-            "protected"
-          ],
-          "blocked_reasons": {
-            "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
-          }
+          "blocked_canary_slices": [],
+          "blocked_reasons": {}
         }
       }
     },
@@ -160,6 +407,41 @@
       "scorecard_loaded": true,
       "scorecard_enforced": false,
       "pilot_health_enforced": false,
+      "pilot_ready": true,
+      "pilot_status": {
+        "service": "ai-orchestrator-crewai",
+        "ready": true,
+        "crewaiInstalled": true,
+        "crewaiVersion": "1.12.2",
+        "slice": "public+protected+workflow+support",
+        "mode": "pilot",
+        "googleModel": "gemini-2.5-flash-preview",
+        "llmConfigured": true,
+        "capabilities": [
+          "public-shadow-flow",
+          "protected-shadow-flow",
+          "workflow-shadow-flow",
+          "support-shadow-flow",
+          "isolated-dependencies",
+          "planner-composer-judge",
+          "flow-state-routing",
+          "flow-state-persistence",
+          "task-trace-telemetry",
+          "task-guardrails",
+          "agentic-rendering-for-support-workflow",
+          "crewai-hitl-internal",
+          "crewai-hitl-user-traffic"
+        ],
+        "flowStateDir": "/workspace/artifacts/crewai-flow-state",
+        "crewaiHitlEnabled": true,
+        "crewaiHitlDefaultSlices": "protected",
+        "crewaiHitlUserTrafficEnabled": false,
+        "crewaiHitlUserTrafficSlices": "protected"
+      },
+      "allowlist_identifier_counts": {
+        "telegram_chat_count": 1,
+        "conversation_count": 0
+      },
       "primary_stack_native_path_passed": true,
       "gate_eligible": true,
       "configured_slices": [
@@ -173,13 +455,16 @@
         "workflow"
       ],
       "blocked_now": {
-        "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+        "protected": "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot."
       },
       "recommended_next_promotions": [],
       "per_slice": {
         "protected": {
           "eligible": false,
-          "reason": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review.",
+          "reason": "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot.",
+          "scorecard_eligible": true,
+          "pilot_live_gate_ok": false,
+          "pilot_live_gate_reason": "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot.",
           "configured": false,
           "configured_rollout_percent": 0,
           "allowlist_only": false,
@@ -188,6 +473,9 @@
         "public": {
           "eligible": true,
           "reason": "public is allowed for crewai under the current scorecard gate.",
+          "scorecard_eligible": true,
+          "pilot_live_gate_ok": true,
+          "pilot_live_gate_reason": "",
           "configured": true,
           "configured_rollout_percent": 5,
           "allowlist_only": false,
@@ -196,6 +484,9 @@
         "support": {
           "eligible": true,
           "reason": "support is allowed for crewai under the current scorecard gate.",
+          "scorecard_eligible": true,
+          "pilot_live_gate_ok": true,
+          "pilot_live_gate_reason": "",
           "configured": true,
           "configured_rollout_percent": 100,
           "allowlist_only": true,
@@ -204,6 +495,9 @@
         "workflow": {
           "eligible": true,
           "reason": "workflow is allowed for crewai under the current scorecard gate.",
+          "scorecard_eligible": true,
+          "pilot_live_gate_ok": true,
+          "pilot_live_gate_reason": "",
           "configured": true,
           "configured_rollout_percent": 100,
           "allowlist_only": true,
@@ -218,6 +512,36 @@
       "candidate_engine": "crewai",
       "pilot_configured": true,
       "pilot_ready": true,
+      "pilot_status": {
+        "service": "ai-orchestrator-crewai",
+        "ready": true,
+        "crewaiInstalled": true,
+        "crewaiVersion": "1.12.2",
+        "slice": "public+protected+workflow+support",
+        "mode": "pilot",
+        "googleModel": "gemini-2.5-flash-preview",
+        "llmConfigured": true,
+        "capabilities": [
+          "public-shadow-flow",
+          "protected-shadow-flow",
+          "workflow-shadow-flow",
+          "support-shadow-flow",
+          "isolated-dependencies",
+          "planner-composer-judge",
+          "flow-state-routing",
+          "flow-state-persistence",
+          "task-trace-telemetry",
+          "task-guardrails",
+          "agentic-rendering-for-support-workflow",
+          "crewai-hitl-internal",
+          "crewai-hitl-user-traffic"
+        ],
+        "flowStateDir": "/workspace/artifacts/crewai-flow-state",
+        "crewaiHitlEnabled": true,
+        "crewaiHitlDefaultSlices": "protected",
+        "crewaiHitlUserTrafficEnabled": false,
+        "crewaiHitlUserTrafficSlices": "protected"
+      },
       "scorecard_loaded": true,
       "primary_stack_native_path_passed": true,
       "promotable_now": [
@@ -228,7 +552,7 @@
         "workflow"
       ],
       "blocked_now": {
-        "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+        "protected": "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot."
       },
       "advisory_by_slice": {
         "protected": {
@@ -238,8 +562,10 @@
           "allowlist_only": false,
           "configured_rollout_percent": 0,
           "action": "blocked",
+          "pilot_live_gate_ok": false,
+          "pilot_live_gate_reason": "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot.",
           "blocked_reasons": [
-            "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+            "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot."
           ]
         },
         "public": {
@@ -249,6 +575,8 @@
           "allowlist_only": false,
           "configured_rollout_percent": 5,
           "action": "expand_gradually",
+          "pilot_live_gate_ok": true,
+          "pilot_live_gate_reason": "",
           "blocked_reasons": []
         },
         "support": {
@@ -258,6 +586,8 @@
           "allowlist_only": true,
           "configured_rollout_percent": 100,
           "action": "maintain_controlled",
+          "pilot_live_gate_ok": true,
+          "pilot_live_gate_reason": "",
           "blocked_reasons": []
         },
         "workflow": {
@@ -267,6 +597,8 @@
           "allowlist_only": true,
           "configured_rollout_percent": 100,
           "action": "maintain_controlled",
+          "pilot_live_gate_ok": true,
+          "pilot_live_gate_reason": "",
           "blocked_reasons": []
         }
       }
@@ -296,7 +628,9 @@
     "langgraphCheckpointerBackend": "postgres",
     "langgraphThreadIdEnabled": true,
     "langgraphHitlEnabled": false,
-    "langgraphHitlDefaultSlices": "support"
+    "langgraphHitlDefaultSlices": "support",
+    "langgraphHitlUserTrafficEnabled": false,
+    "langgraphHitlUserTrafficSlices": "support"
   },
   "posture": {
     "ready_for_guarded_release": true,
@@ -304,6 +638,78 @@
     "errors": []
   },
   "latest_rollout_entries": [
+    {
+      "timestamp": "2026-03-27T17:27:40.589600+00:00",
+      "intent": "promotion",
+      "slice": "protected",
+      "before_rollout_percent": 1,
+      "after_rollout_percent": 100,
+      "mode": "execute",
+      "apply": true,
+      "result": "passed",
+      "operator": "codex",
+      "reason": "Drill controlado do protected em 100% com allowlist sintetica",
+      "returncode": 0,
+      "env_file": "artifacts/tmp-protected-canary.env",
+      "proposed_slices": "protected,public,support,workflow",
+      "proposed_slice_rollouts": "protected:100,public:5,support:100,workflow:100",
+      "proposed_allowlist_slices": "protected,support,workflow",
+      "proposed_telegram_chat_allowlist": "",
+      "proposed_conversation_allowlist": "protected-canary-drill-1",
+      "proposed_crewai_hitl_user_traffic_enabled": true,
+      "proposed_crewai_hitl_user_traffic_slices": "protected",
+      "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md",
+      "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-execution-report.json\n",
+      "stderr": " Container eduassist-ai-orchestrator-crewai Running \n Container eduassist-ai-orchestrator Recreate \n Container eduassist-ai-orchestrator Recreated \n Container eduassist-ai-orchestrator Starting \n Container eduassist-ai-orchestrator Started \n"
+    },
+    {
+      "timestamp": "2026-03-27T17:26:17.986764+00:00",
+      "intent": "promotion",
+      "slice": "protected",
+      "before_rollout_percent": 0,
+      "after_rollout_percent": 1,
+      "mode": "execute",
+      "apply": true,
+      "result": "passed",
+      "operator": "codex",
+      "reason": "Ativar canario protegido controlado do CrewAI com HITL",
+      "returncode": 0,
+      "env_file": "artifacts/tmp-protected-canary.env",
+      "proposed_slices": "protected,public,support,workflow",
+      "proposed_slice_rollouts": "protected:1,public:5,support:100,workflow:100",
+      "proposed_allowlist_slices": "protected,support,workflow",
+      "proposed_telegram_chat_allowlist": "",
+      "proposed_conversation_allowlist": "protected-canary-drill-1",
+      "proposed_crewai_hitl_user_traffic_enabled": true,
+      "proposed_crewai_hitl_user_traffic_slices": "protected",
+      "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md",
+      "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-execution-report.json\n",
+      "stderr": " Container eduassist-ai-orchestrator Recreate \n Container eduassist-ai-orchestrator-crewai Recreate \n Container eduassist-ai-orchestrator-crewai Recreated \n Container eduassist-ai-orchestrator Recreated \n Container eduassist-ai-orchestrator Starting \n Container eduassist-ai-orchestrator-crewai Starting \n Container eduassist-ai-orchestrator-crewai Started \n Container eduassist-ai-orchestrator Started \n"
+    },
+    {
+      "timestamp": "2026-03-27T17:25:42.785370+00:00",
+      "intent": "promotion",
+      "slice": "protected",
+      "before_rollout_percent": 0,
+      "after_rollout_percent": 1,
+      "mode": "preflight",
+      "apply": false,
+      "result": "passed",
+      "operator": "codex",
+      "reason": "Ativar canario protegido controlado do CrewAI com HITL",
+      "returncode": 0,
+      "env_file": "artifacts/tmp-protected-canary.env",
+      "proposed_slices": "protected,public,support,workflow",
+      "proposed_slice_rollouts": "protected:1,public:5,support:100,workflow:100",
+      "proposed_allowlist_slices": "protected,support,workflow",
+      "proposed_telegram_chat_allowlist": "",
+      "proposed_conversation_allowlist": "protected-canary-drill-1",
+      "proposed_crewai_hitl_user_traffic_enabled": true,
+      "proposed_crewai_hitl_user_traffic_slices": "protected",
+      "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md",
+      "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-preflight-report.json\n",
+      "stderr": ""
+    },
     {
       "timestamp": "2026-03-27T16:12:28.601970+00:00",
       "intent": "promotion",
@@ -343,82 +749,12 @@
       "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md",
       "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-execution-report.json\n",
       "stderr": " Container eduassist-ai-orchestrator Recreate \n Container eduassist-ai-orchestrator Recreated \n Container eduassist-ai-orchestrator Starting \n Container eduassist-ai-orchestrator Started \n"
-    },
-    {
-      "timestamp": "2026-03-27T15:39:44.095113+00:00",
-      "intent": "rollback",
-      "slice": "public",
-      "before_rollout_percent": 2,
-      "after_rollout_percent": 1,
-      "mode": "preflight",
-      "apply": false,
-      "result": "passed",
-      "operator": "codex",
-      "reason": "Reverter public para o nivel anterior do canario",
-      "returncode": 0,
-      "env_file": "artifacts/tmp-rollback.env",
-      "proposed_slices": "public,support,workflow",
-      "proposed_slice_rollouts": "public:1,support:100,workflow:100",
-      "proposed_allowlist_slices": "support,workflow",
-      "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md",
-      "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-preflight-report.json\n",
-      "stderr": ""
-    },
-    {
-      "timestamp": "2026-03-27T15:37:33.016974+00:00",
-      "slice": "public",
-      "before_rollout_percent": 1,
-      "after_rollout_percent": 2,
-      "mode": "preflight",
-      "apply": false,
-      "result": "passed",
-      "operator": "codex",
-      "reason": "Expandir public de 1% para 2% apos estabilidade do canario",
-      "returncode": 0,
-      "env_file": "artifacts/tmp-slice.env",
-      "proposed_slices": "public,support,workflow",
-      "proposed_slice_rollouts": "public:2,support:100,workflow:100",
-      "proposed_allowlist_slices": "support,workflow",
-      "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md",
-      "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-preflight-report.json\n",
-      "stderr": "",
-      "intent": "promotion",
-      "normalized_legacy_fields": [
-        "intent"
-      ],
-      "normalized_legacy_at": "2026-03-27T15:54:55.621226+00:00"
-    },
-    {
-      "timestamp": "2026-03-27T15:33:33.005730+00:00",
-      "slice": "public",
-      "before_rollout_percent": 1,
-      "after_rollout_percent": 2,
-      "mode": "preflight",
-      "apply": false,
-      "result": "passed",
-      "returncode": 0,
-      "env_file": "artifacts/tmp-slice.env",
-      "proposed_slices": "public,support,workflow",
-      "proposed_slice_rollouts": "public:2,support:100,workflow:100",
-      "proposed_allowlist_slices": "support,workflow",
-      "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md",
-      "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-preflight-report.json\n",
-      "stderr": "",
-      "intent": "promotion",
-      "operator": "legacy-unknown",
-      "reason": "Legacy changelog entry normalized after operator/reason became required audit fields.",
-      "normalized_legacy_fields": [
-        "intent",
-        "operator",
-        "reason"
-      ],
-      "normalized_legacy_at": "2026-03-27T15:54:55.621226+00:00"
     }
   ],
   "next_actions": [
     "consider gradual promotion for public",
     "maintain current controlled posture for support",
     "maintain current controlled posture for workflow",
-    "keep protected blocked: protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+    "keep protected blocked: CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot."
   ]
 }
