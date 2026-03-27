@@ -75,4 +75,40 @@ ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES=support
 ## Current Recommendation
 
 - keep `support` controlled first, then open `public` with a tiny percentage
-- use allowlist scoping so `support` can stay controlled while `public` rolls out slowly
+- after `workflow` reaches parity in replay and latency stays stable, open `workflow` in allowlisted canary before any broader rollout
+- use allowlist scoping so `support` and `workflow` can stay controlled while `public` rolls out slowly
+
+## Recommended Next Safe Step
+
+```env
+ORCHESTRATOR_ENGINE=langgraph
+CREWAI_PILOT_URL=http://ai-orchestrator-crewai:8000
+ORCHESTRATOR_EXPERIMENT_ENABLED=true
+ORCHESTRATOR_EXPERIMENT_PRIMARY_ENGINE=crewai
+ORCHESTRATOR_EXPERIMENT_SLICES=support,public,workflow
+ORCHESTRATOR_EXPERIMENT_ROLLOUT_PERCENT=0
+ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS=support:100,public:1,workflow:100
+ORCHESTRATOR_EXPERIMENT_TELEGRAM_CHAT_ALLOWLIST=1649845499
+ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES=support,workflow
+```
+
+This keeps:
+
+- `support` fully controlled on the allowlisted chat
+- `workflow` fully controlled on the allowlisted chat
+- `public` still tiny and gradual
+
+## Promotion Gate
+
+The current master replay keeps the promotion rule simple:
+
+- `support`: allowed for controlled canary
+- `workflow`: allowed for controlled canary
+- `public`: allowed for tiny gradual rollout
+- `protected`: **not** promoted yet
+
+Reason:
+
+- `protected` still trails the baseline in the current master replay on keyword pass and quality
+- the main gap is the protected real thread `real_guardian_grades_and_finance_555001`
+- until that slice reaches parity again, canary scope should stay limited to `support`, `public`, and `workflow`
