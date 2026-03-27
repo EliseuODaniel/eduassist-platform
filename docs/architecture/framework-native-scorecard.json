@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-27T16:44:36.055700+00:00",
+  "generated_at": "2026-03-27T17:01:56.429893+00:00",
   "frameworks": {
     "langgraph": {
       "total_score": 30,
@@ -36,7 +36,7 @@
       }
     },
     "crewai": {
-      "total_score": 29,
+      "total_score": 30,
       "max_score": 30,
       "primary_stack_native_path_passed": true,
       "restart_recovery_passed": true,
@@ -75,9 +75,15 @@
               "flow-state-persistence",
               "task-trace-telemetry",
               "task-guardrails",
-              "agentic-rendering-for-support-workflow"
+              "agentic-rendering-for-support-workflow",
+              "crewai-hitl-internal",
+              "crewai-hitl-user-traffic"
             ],
-            "flowStateDir": "/workspace/artifacts/crewai-flow-state"
+            "flowStateDir": "/workspace/artifacts/crewai-flow-state",
+            "crewaiHitlEnabled": true,
+            "crewaiHitlDefaultSlices": "protected",
+            "crewaiHitlUserTrafficEnabled": false,
+            "crewaiHitlUserTrafficSlices": "protected"
           },
           "public": {
             "conversation_id": "scorecard-crewai-public-live-1",
@@ -87,7 +93,7 @@
             "crewai_version": "1.12.2",
             "agent_roles": [],
             "task_names": [],
-            "latency_ms": 52.6,
+            "latency_ms": 34.3,
             "plan": null,
             "answer": {
               "answer_text": "A Biblioteca Aurora atende ao publico de segunda a sexta, das 7h30 as 18h00.",
@@ -158,7 +164,7 @@
             "crewai_version": "1.12.2",
             "agent_roles": [],
             "task_names": [],
-            "latency_ms": 306.1,
+            "latency_ms": 249.4,
             "plan": {
               "intent": "student_admin",
               "student_name": "Lucas Oliveira",
@@ -205,15 +211,15 @@
             "flow_enabled": true,
             "flow_state_id": "support:telegram:conversation:scorecard-crewai-support-live-1",
             "flow_state_persisted": true,
-            "active_ticket_code": null,
+            "active_ticket_code": "ATD-20260327-3AB07787",
             "active_queue_name": "secretaria",
-            "latency_ms": 65.7,
+            "latency_ms": 61.4,
             "validation_stack": [
               "operation_result",
               "deterministic_backstop"
             ],
             "answer": {
-              "answer_text": "Encaminhei sua solicitacao para a fila de secretaria. Protocolo: ATD-20260327-3AB07787. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional."
+              "answer_text": "Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260327-3AB07787. Status atual: queued."
             },
             "crewai_installed": true,
             "agent_roles": [],
@@ -244,7 +250,7 @@
             "deterministic_backstop_used": true,
             "crewai_version": "1.12.2",
             "queue_name": "secretaria",
-            "created": true
+            "created": false
           },
           "workflow": {
             "slice_name": "workflow",
@@ -256,7 +262,7 @@
             "flow_state_persisted": true,
             "active_protocol_code": "VIS-20260327-D5147C",
             "active_workflow_type": "visit_booking",
-            "latency_ms": 65.7,
+            "latency_ms": 70.5,
             "validation_stack": [
               "operation_result",
               "deterministic_backstop"
@@ -297,15 +303,12 @@
       },
       "recommended_canary_slices": [
         "public",
+        "protected",
         "support",
         "workflow"
       ],
-      "blocked_canary_slices": [
-        "protected"
-      ],
-      "blocked_reasons": {
-        "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
-      }
+      "blocked_canary_slices": [],
+      "blocked_reasons": {}
     }
   },
   "promotion_gate": {
@@ -315,20 +318,19 @@
       "primary_stack_native_path_required": true,
       "recommended_canary_slices": [
         "public",
+        "protected",
         "support",
         "workflow"
       ],
-      "blocked_canary_slices": [
-        "protected"
-      ],
+      "blocked_canary_slices": [],
       "slice_eligibility": {
         "public": {
           "eligible": true,
           "reason": "public is allowed for crewai under the current scorecard gate."
         },
         "protected": {
-          "eligible": false,
-          "reason": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+          "eligible": true,
+          "reason": "protected is allowed for crewai under the current scorecard gate."
         },
         "support": {
           "eligible": true,

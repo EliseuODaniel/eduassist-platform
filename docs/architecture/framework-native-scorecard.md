@@ -1,6 +1,6 @@
 # Framework Native Scorecard
 
-Date: 2026-03-27T16:44:36.054962+00:00
+Date: 2026-03-27T17:01:56.429551+00:00
 
 ## Goal
 
@@ -12,13 +12,14 @@ Score the two orchestration stacks on framework-native durability and debug capa
 - [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md)
 - [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md)
 - [framework-langgraph-user-traffic-hitl-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-langgraph-user-traffic-hitl-report.md)
+- [framework-crewai-protected-hitl-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crewai-protected-hitl-report.md)
 - live `orchestration.trace` samples for one `LangGraph` path and one `CrewAI` path
 - live direct `CrewAI` slice responses for `public`, `protected`, `support`, and `workflow`
 
 ## Totals
 
 - `LangGraph`: `30/30`
-- `CrewAI`: `29/30`
+- `CrewAI`: `30/30`
 
 ## LangGraph
 
@@ -40,14 +41,14 @@ Score the two orchestration stacks on framework-native durability and debug capa
 | Restart continuity | `5/5` | Validated by [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md). |
 | Crash continuity | `5/5` | Validated by [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md). |
 | Task/flow trace richness | `5/5` | Canonical trace exposes normalized CrewAI metadata, the pilot advertises native `task-guardrails`, and all four live slice checks return persisted `flow_state_id` values. |
-| Operator debug ergonomics | `4/5` | Flow-state visibility is now strong across all slices, but CrewAI still has no HITL/operator-approval primitive equivalent to LangGraph `interrupt()` for sensitive protected traffic. |
+| Operator debug ergonomics | `5/5` | Protected operator review is now validated in [framework-crewai-protected-hitl-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crewai-protected-hitl-report.md), with pending-state inspection plus approve/reject resume on the same persisted flow id. |
 
 ## Readout
 
 Current inference from the evidence:
 
 - `LangGraph` leads in native persistence + HITL + checkpoint/state introspection with a score of `30/30`.
-- `CrewAI` is now strong on Flow continuity and good on canonical trace visibility, with `29/30`, but still trails in operator-facing control primitives.
+- `CrewAI` is now strong on Flow continuity, task guardrails, and protected operator review, with `30/30`.
 - The comparison is now top-line enough for durability/debug to be a real architectural differentiator, not just a qualitative impression.
 
 ## Promotion Gate By Slice
@@ -66,7 +67,7 @@ Current inference from the evidence:
 | Slice | Eligible | Reason |
 | --- | --- | --- |
 | `public` | `yes` | public is allowed for crewai under the current scorecard gate. |
-| `protected` | `no` | protected still trails LangGraph in operator-facing control primitives and should stay behind manual review. |
+| `protected` | `yes` | protected is allowed for crewai under the current scorecard gate. |
 | `support` | `yes` | support is allowed for crewai under the current scorecard gate. |
 | `workflow` | `yes` | workflow is allowed for crewai under the current scorecard gate. |
 
@@ -121,9 +122,15 @@ Current inference from the evidence:
       "flow-state-persistence",
       "task-trace-telemetry",
       "task-guardrails",
-      "agentic-rendering-for-support-workflow"
+      "agentic-rendering-for-support-workflow",
+      "crewai-hitl-internal",
+      "crewai-hitl-user-traffic"
     ],
-    "flowStateDir": "/workspace/artifacts/crewai-flow-state"
+    "flowStateDir": "/workspace/artifacts/crewai-flow-state",
+    "crewaiHitlEnabled": true,
+    "crewaiHitlDefaultSlices": "protected",
+    "crewaiHitlUserTrafficEnabled": false,
+    "crewaiHitlUserTrafficSlices": "protected"
   },
   "request": {
     "slice_name": "support",
@@ -145,7 +152,7 @@ Current inference from the evidence:
     "crewai_version": "1.12.2",
     "agent_roles": [],
     "task_names": [],
-    "latency_ms": 52.6,
+    "latency_ms": 34.3,
     "plan": null,
     "answer": {
       "answer_text": "A Biblioteca Aurora atende ao publico de segunda a sexta, das 7h30 as 18h00.",
@@ -216,7 +223,7 @@ Current inference from the evidence:
     "crewai_version": "1.12.2",
     "agent_roles": [],
     "task_names": [],
-    "latency_ms": 306.1,
+    "latency_ms": 249.4,
     "plan": {
       "intent": "student_admin",
       "student_name": "Lucas Oliveira",
@@ -263,15 +270,15 @@ Current inference from the evidence:
     "flow_enabled": true,
     "flow_state_id": "support:telegram:conversation:scorecard-crewai-support-live-1",
     "flow_state_persisted": true,
-    "active_ticket_code": null,
+    "active_ticket_code": "ATD-20260327-3AB07787",
     "active_queue_name": "secretaria",
-    "latency_ms": 65.7,
+    "latency_ms": 61.4,
     "validation_stack": [
       "operation_result",
       "deterministic_backstop"
     ],
     "answer": {
-      "answer_text": "Encaminhei sua solicitacao para a fila de secretaria. Protocolo: ATD-20260327-3AB07787. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional."
+      "answer_text": "Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260327-3AB07787. Status atual: queued."
     },
     "crewai_installed": true,
     "agent_roles": [],
@@ -302,7 +309,7 @@ Current inference from the evidence:
     "deterministic_backstop_used": true,
     "crewai_version": "1.12.2",
     "queue_name": "secretaria",
-    "created": true
+    "created": false
   },
   "live_workflow": {
     "slice_name": "workflow",
@@ -314,7 +321,7 @@ Current inference from the evidence:
     "flow_state_persisted": true,
     "active_protocol_code": "VIS-20260327-D5147C",
     "active_workflow_type": "visit_booking",
-    "latency_ms": 65.7,
+    "latency_ms": 70.5,
     "validation_stack": [
       "operation_result",
       "deterministic_backstop"

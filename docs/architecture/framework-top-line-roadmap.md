@@ -72,7 +72,7 @@ Main gap versus top-line CrewAI usage:
 - support/workflow still lean heavily on deterministic handlers for side-effect safety
 - conversation affinity and longer-lived state still live partly outside the CrewAI side
 - the current local environment is not exercising the LLM-backed agentic path live because `llmConfigured=false`
-- CrewAI still lacks a native operator-approval primitive comparable to LangGraph `interrupt()` for protected traffic
+- protected live rollout on the CrewAI side should stay behind the explicit user-traffic HITL gate until `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` is intentionally enabled in the pilot
 
 ## Progress Snapshot
 
@@ -85,6 +85,7 @@ Validated in this round:
 - LangGraph runtime no longer tries to bootstrap the checkpoint schema on startup; schema ownership stays in the database init/migration layer, which removes a recurring privilege warning from service logs.
 - CrewAI now persists `Flow` state for `public`, `protected`, `support`, and `workflow` through SQLite.
 - CrewAI now uses native task guardrails in the `public` and `protected` flows.
+- CrewAI now exposes native async human-feedback review for low-risk `protected` reads, with pending-state inspection plus approve/reject resume on the same persisted `flow_state_id`.
 - CrewAI now wraps `support` and `workflow` deterministic operations in an optional native agentic rendering/judge layer, preserving a deterministic factual backstop.
 - LangGraph now delegates through slice subgraphs for `public`, `protected`, and `support`.
 - CrewAI now emits per-task event telemetry with task, agent, crew, and timing summaries on agentic paths.
@@ -134,6 +135,7 @@ Concrete local evidence:
   - `response_payload.langgraph.timeline_kind = langgraph_node_path`
   - `response_payload.crewai.timeline_kind = crewai_stage_task_path`
 - the latest [framework-langgraph-user-traffic-hitl-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-langgraph-user-traffic-hitl-report.md) validates that both `support` and low-risk `protected` requests can enter native LangGraph user-traffic HITL, persist the pending interrupt, and resume safely.
+- the latest [framework-crewai-protected-hitl-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crewai-protected-hitl-report.md) validates that `CrewAI` can persist a protected review, inspect the pending state, and resume the same flow on both approval and rejection.
 - the latest [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md) shows:
   - LangGraph protected HITL can survive restart and resume the exact review thread
   - CrewAI `public`, `protected`, `support`, and `workflow` Flow follow-ups survive restart with stable `flow_state_id`

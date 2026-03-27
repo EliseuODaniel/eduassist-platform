@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-27T15:07:41.915789+00:00",
+  "generated_at": "2026-03-27T17:07:27.973353+00:00",
   "summary": {
     "resolved_primary_stack": "langgraph",
     "experiment_enabled": true,
@@ -7,6 +7,36 @@
     "candidate_engine": "crewai",
     "pilot_configured": true,
     "pilot_ready": true,
+    "pilot_status": {
+      "service": "ai-orchestrator-crewai",
+      "ready": true,
+      "crewaiInstalled": true,
+      "crewaiVersion": "1.12.2",
+      "slice": "public+protected+workflow+support",
+      "mode": "pilot",
+      "googleModel": "gemini-2.5-flash-preview",
+      "llmConfigured": false,
+      "capabilities": [
+        "public-shadow-flow",
+        "protected-shadow-flow",
+        "workflow-shadow-flow",
+        "support-shadow-flow",
+        "isolated-dependencies",
+        "planner-composer-judge",
+        "flow-state-routing",
+        "flow-state-persistence",
+        "task-trace-telemetry",
+        "task-guardrails",
+        "agentic-rendering-for-support-workflow",
+        "crewai-hitl-internal",
+        "crewai-hitl-user-traffic"
+      ],
+      "flowStateDir": "/workspace/artifacts/crewai-flow-state",
+      "crewaiHitlEnabled": true,
+      "crewaiHitlDefaultSlices": "protected",
+      "crewaiHitlUserTrafficEnabled": false,
+      "crewaiHitlUserTrafficSlices": "protected"
+    },
     "scorecard_loaded": true,
     "primary_stack_native_path_passed": true,
     "promotable_now": [
@@ -17,7 +47,7 @@
       "workflow"
     ],
     "blocked_now": {
-      "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+      "protected": "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot."
     },
     "advisory_by_slice": {
       "protected": {
@@ -27,8 +57,10 @@
         "allowlist_only": false,
         "configured_rollout_percent": 0,
         "action": "blocked",
+        "pilot_live_gate_ok": false,
+        "pilot_live_gate_reason": "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot.",
         "blocked_reasons": [
-          "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+          "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot."
         ]
       },
       "public": {
@@ -36,8 +68,10 @@
         "configured": true,
         "live": true,
         "allowlist_only": false,
-        "configured_rollout_percent": 1,
+        "configured_rollout_percent": 5,
         "action": "expand_gradually",
+        "pilot_live_gate_ok": true,
+        "pilot_live_gate_reason": "",
         "blocked_reasons": []
       },
       "support": {
@@ -47,6 +81,8 @@
         "allowlist_only": true,
         "configured_rollout_percent": 100,
         "action": "maintain_controlled",
+        "pilot_live_gate_ok": true,
+        "pilot_live_gate_reason": "",
         "blocked_reasons": []
       },
       "workflow": {
@@ -56,6 +92,8 @@
         "allowlist_only": true,
         "configured_rollout_percent": 100,
         "action": "maintain_controlled",
+        "pilot_live_gate_ok": true,
+        "pilot_live_gate_reason": "",
         "blocked_reasons": []
       }
     }

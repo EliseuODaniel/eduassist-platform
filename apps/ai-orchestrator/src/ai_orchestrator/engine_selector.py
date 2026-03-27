@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 _EXPERIMENT_AFFINITY: OrderedDict[str, dict[str, Any]] = OrderedDict()
 _EXPERIMENT_AFFINITY_LIMIT = 2048
 _EXPERIMENT_AFFINITY_TTL_SECONDS = 60 * 60 * 6
-_PILOT_HEALTH_CACHE: dict[str, Any] = {'timestamp': 0.0, 'ready': None}
+_PILOT_STATUS_CACHE: dict[str, Any] = {'timestamp': 0.0, 'ready': None, 'payload': None}
 
 
 @dataclass(frozen=True)
@@ -202,6 +202,8 @@ def get_experiment_rollout_readiness(*, settings: Any) -> dict[str, Any]:
     slice_eligibility = promotion_gate.get('slice_eligibility') if isinstance(promotion_gate, dict) else None
     if not isinstance(slice_eligibility, dict):
         slice_eligibility = {}
+    pilot_status = _get_pilot_status_payload(settings=settings) if candidate_engine == 'crewai' else None
+    pilot_ready = bool(isinstance(pilot_status, dict) and pilot_status.get('ready'))
 
     known_slices = {'public', 'protected', 'support', 'workflow'}
     known_slices.update(str(item).strip() for item in configured_slices if str(item).strip())
@@ -214,15 +216,26 @@ def get_experiment_rollout_readiness(*, settings: Any) -> dict[str, Any]:
 
     for slice_name in sorted(known_slices):
         eligibility = slice_eligibility.get(slice_name) if isinstance(slice_eligibility.get(slice_name), dict) else {}
-        eligible = bool(eligibility.get('eligible', False))
+        scorecard_eligible = bool(eligibility.get('eligible', False))
         reason = str(eligibility.get('reason', '') or '').strip()
+        pilot_live_gate_ok = True
+        pilot_live_gate_reason = ''
+        if candidate_engine == 'crewai':
+            pilot_live_gate_ok, pilot_live_gate_reason, _ = _pilot_live_gate_for_slice(settings=settings, slice_name=slice_name)
+        eligible = scorecard_eligible and pilot_live_gate_ok
+        effective_reason = reason
+        if scorecard_eligible and not pilot_live_gate_ok:
+            effective_reason = pilot_live_gate_reason or 'Slice is blocked by the current live pilot gate.'
         enrolled = slice_name in configured_slices
         rollout_percent = _rollout_percent_for_slice(settings=settings, slice_name=slice_name)
         allowlist_only = slice_name in allowlist_scoped_slices
         live = enrolled and rollout_percent > 0
         per_slice[slice_name] = {
             'eligible': eligible,
-            'reason': reason,
+            'reason': effective_reason,
+            'scorecard_eligible': scorecard_eligible,
+            'pilot_live_gate_ok': pilot_live_gate_ok,
+            'pilot_live_gate_reason': pilot_live_gate_reason,
             'configured': enrolled,
             'configured_rollout_percent': rollout_percent,
             'allowlist_only': allowlist_only,
@@ -231,7 +244,7 @@ def get_experiment_rollout_readiness(*, settings: Any) -> dict[str, Any]:
         if eligible:
             promotable_now.append(slice_name)
         else:
-            blocked_now[slice_name] = reason or f'{slice_name} is not eligible under the current scorecard gate.'
+            blocked_now[slice_name] = effective_reason or f'{slice_name} is not eligible under the current scorecard gate.'
         if enrolled:
             currently_enrolled.append(slice_name)
 
@@ -246,6 +259,8 @@ def get_experiment_rollout_readiness(*, settings: Any) -> dict[str, Any]:
         'scorecard_loaded': bool(gate_status.get('loaded')),
         'scorecard_enforced': bool(getattr(settings, 'orchestrator_experiment_require_scorecard', False)),
         'pilot_health_enforced': bool(getattr(settings, 'orchestrator_experiment_require_healthy_pilot', False)),
+        'pilot_ready': pilot_ready,
+        'pilot_status': pilot_status if isinstance(pilot_status, dict) else None,
         'primary_stack_native_path_passed': bool(gate_status.get('primary_stack_native_path_passed')),
         'gate_eligible': bool(isinstance(promotion_gate, dict) and promotion_gate.get('eligible', False)),
         'configured_slices': currently_enrolled,
@@ -263,10 +278,10 @@ def get_experiment_live_promotion_summary(*, settings: Any) -> dict[str, Any]:
     experiment_enabled = bool(getattr(settings, 'orchestrator_experiment_enabled', False))
     pilot_url = str(getattr(settings, 'crewai_pilot_url', '') or '').strip()
     pilot_configured = bool(pilot_url)
-
-    pilot_ready = False
-    if candidate_engine == 'crewai' and pilot_configured:
-        pilot_ready = _probe_pilot_health(settings=settings)
+    pilot_status = readiness.get('pilot_status') if isinstance(readiness, dict) else None
+    if candidate_engine == 'crewai' and pilot_configured and not isinstance(pilot_status, dict):
+        pilot_status = _get_pilot_status_payload(settings=settings)
+    pilot_ready = bool(isinstance(pilot_status, dict) and pilot_status.get('ready'))
 
     experiment_active = experiment_enabled and resolved_primary_stack == 'langgraph' and candidate_engine == 'crewai'
 
@@ -288,6 +303,8 @@ def get_experiment_live_promotion_summary(*, settings: Any) -> dict[str, Any]:
         rollout_percent = int(payload.get('configured_rollout_percent', 0) or 0)
         allowlist_only = bool(payload.get('allowlist_only', False))
         reason = str(payload.get('reason', '') or '').strip()
+        pilot_live_gate_ok = bool(payload.get('pilot_live_gate_ok', True))
+        pilot_live_gate_reason = str(payload.get('pilot_live_gate_reason', '') or '').strip()
 
         blocked_reasons: list[str] = []
         action = 'blocked'
@@ -303,6 +320,12 @@ def get_experiment_live_promotion_summary(*, settings: Any) -> dict[str, Any]:
             blocked_reasons.append('CrewAI pilot URL is not configured.')
         if candidate_engine == 'crewai' and pilot_configured and not pilot_ready:
             blocked_reasons.append('CrewAI pilot is not healthy right now.')
+        if candidate_engine == 'crewai' and pilot_ready and not pilot_live_gate_ok:
+            live_gate_reason = pilot_live_gate_reason or 'CrewAI pilot live gate is not open for this slice.'
+            if live_gate_reason not in blocked_reasons:
+                blocked_reasons.append(live_gate_reason)
+        if blocked_reasons:
+            blocked_reasons = list(dict.fromkeys(blocked_reasons))
 
         if blocked_reasons:
             action = 'blocked'
@@ -325,6 +348,8 @@ def get_experiment_live_promotion_summary(*, settings: Any) -> dict[str, Any]:
             'allowlist_only': allowlist_only,
             'configured_rollout_percent': rollout_percent,
             'action': action,
+            'pilot_live_gate_ok': pilot_live_gate_ok,
+            'pilot_live_gate_reason': pilot_live_gate_reason,
             'blocked_reasons': blocked_reasons,
         }
         advisory_by_slice[slice_name] = summary
@@ -343,6 +368,7 @@ def get_experiment_live_promotion_summary(*, settings: Any) -> dict[str, Any]:
         'candidate_engine': candidate_engine,
         'pilot_configured': pilot_configured,
         'pilot_ready': pilot_ready,
+        'pilot_status': pilot_status if isinstance(pilot_status, dict) else None,
         'scorecard_loaded': bool(readiness.get('scorecard_loaded')),
         'primary_stack_native_path_passed': bool(readiness.get('primary_stack_native_path_passed')),
         'promotable_now': promotable_now,
@@ -388,32 +414,62 @@ def _slice_allowed_by_scorecard(*, settings: Any, slice_name: str, primary_engin
 
 
 def _probe_pilot_health(*, settings: Any) -> bool:
+    payload = _get_pilot_status_payload(settings=settings)
+    return bool(isinstance(payload, dict) and payload.get('ready'))
+
+
+def _get_pilot_status_payload(*, settings: Any) -> dict[str, Any] | None:
     pilot_url = str(getattr(settings, 'crewai_pilot_url', '') or '').strip()
     if not pilot_url:
-        return False
+        return None
     ttl_seconds = max(1, int(getattr(settings, 'orchestrator_experiment_health_ttl_seconds', 15) or 15))
     now = monotonic()
-    cached_ready = _PILOT_HEALTH_CACHE.get('ready')
-    cached_timestamp = float(_PILOT_HEALTH_CACHE.get('timestamp', 0.0) or 0.0)
+    cached_ready = _PILOT_STATUS_CACHE.get('ready')
+    cached_payload = _PILOT_STATUS_CACHE.get('payload')
+    cached_timestamp = float(_PILOT_STATUS_CACHE.get('timestamp', 0.0) or 0.0)
     if cached_ready is not None and now - cached_timestamp < ttl_seconds:
-        return bool(cached_ready)
+        return dict(cached_payload) if isinstance(cached_payload, dict) else None
     request = Request(
         f'{pilot_url.rstrip("/")}/v1/status',
         headers={'X-Internal-Api-Token': str(getattr(settings, 'internal_api_token', '') or '')},
     )
+    payload: dict[str, Any] | None = None
     ready = False
     try:
         with urlopen(request, timeout=3.0) as response:
             if response.status == 200:
-                payload = json.load(response)
-                ready = bool(isinstance(payload, dict) and payload.get('ready'))
+                loaded = json.load(response)
+                if isinstance(loaded, dict):
+                    payload = loaded
+                    ready = bool(payload.get('ready'))
     except URLError:
         ready = False
     except Exception:
         logger.exception('experiment_pilot_health_probe_failed')
         ready = False
-    _PILOT_HEALTH_CACHE.update({'timestamp': now, 'ready': ready})
-    return ready
+    _PILOT_STATUS_CACHE.update({'timestamp': now, 'ready': ready, 'payload': payload})
+    return dict(payload) if isinstance(payload, dict) else None
+
+
+def _pilot_live_gate_for_slice(*, settings: Any, slice_name: str) -> tuple[bool, str, dict[str, Any] | None]:
+    payload = _get_pilot_status_payload(settings=settings)
+    if not isinstance(payload, dict):
+        return False, 'CrewAI pilot status is not available right now.', None
+    if not bool(payload.get('ready')):
+        return False, 'CrewAI pilot is not healthy right now.', payload
+    if slice_name != 'protected':
+        return True, '', payload
+
+    capabilities = {str(item).strip() for item in (payload.get('capabilities') or []) if str(item).strip()}
+    if 'crewai-hitl-user-traffic' not in capabilities:
+        return False, 'CrewAI pilot does not advertise user-traffic HITL capability for protected traffic.', payload
+    if not bool(payload.get('crewaiHitlUserTrafficEnabled')):
+        return False, 'CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot.', payload
+
+    user_traffic_slices = _parse_csv_items(str(payload.get('crewaiHitlUserTrafficSlices', '') or ''))
+    if user_traffic_slices and 'protected' not in user_traffic_slices:
+        return False, 'CrewAI protected live routing requires `protected` in `CREWAI_HITL_USER_TRAFFIC_SLICES`.', payload
+    return True, '', payload
 
 
 def _pilot_ready(*, settings: Any) -> bool:
@@ -539,6 +595,9 @@ def _should_route_to_experiment(*, request: Any, settings: Any) -> tuple[bool, d
         slice_name=slice_name,
         primary_engine=str(metadata['engine']),
     ):
+        return False, None
+    pilot_slice_ok, _, _ = _pilot_live_gate_for_slice(settings=settings, slice_name=slice_name)
+    if not pilot_slice_ok:
         return False, None
     if not _pilot_ready(settings=settings):
         return False, None

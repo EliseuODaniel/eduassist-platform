@@ -25,6 +25,13 @@ from .guardrails import (
     require_pydantic_model,
     require_sources_subset,
 )
+from .crewai_hitl import (
+    HumanFeedbackPending,
+    PendingFeedbackContext,
+    async_feedback_supported,
+    feedback_is_approved,
+    feedback_is_rejected,
+)
 from .listeners import capture_pilot_events, serialize_pilot_events
 from .protected_pilot import (
     EvidenceDoc,
@@ -69,6 +76,10 @@ class ProtectedFlowState(BaseModel):
     active_student_name: str | None = None
     active_domain: str | None = None
     active_attribute: str | None = None
+    hitl_enabled: bool = False
+    hitl_target_slices: list[str] = Field(default_factory=list)
+    pending_review_required: bool = False
+    post_review_route: str | None = None
     latency_ms: float = 0.0
 
 
@@ -93,6 +104,111 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
         self._identity_backstop_text: str | None = None
         self._llm: Any = None
         super().__init__(persistence=persistence, tracing=False)
+
+    def _protected_hitl_enabled(self) -> bool:
+        if not self.state.hitl_enabled:
+            return False
+        targets = {str(item or '').strip().lower() for item in (self.state.hitl_target_slices or ['protected']) if str(item or '').strip()}
+        return 'protected' in targets or not targets
+
+    def _queue_human_review(self, *, next_route: str, reason: str) -> str:
+        self.state.pending_review_required = True
+        self.state.post_review_route = next_route
+        self.state.routing_label = 'human_review'
+        self.state.reason = reason
+        return self.state.routing_label
+
+    def _pending_review_answer_text(self) -> str:
+        if self.state.resolved_student_name:
+            return (
+                f'A consulta protegida sobre {self.state.resolved_student_name} ficou pendente de revisao humana antes da liberacao final. '
+                'Assim que a validacao for concluida, eu continuo desta mesma conversa.'
+            )
+        return (
+            'Essa consulta protegida ficou pendente de revisao humana antes da liberacao final. '
+            'Assim que a validacao for concluida, eu continuo desta mesma conversa.'
+        )
+
+    def _pending_review_payload(self) -> dict[str, Any]:
+        return {
+            'slice_name': 'protected',
+            'conversation_id': self.state.conversation_id or f'telegram:{self.state.telegram_chat_id}',
+            'message': self.state.message,
+            'normalized_message': self.state.normalized_message,
+            'resolved_student_name': self.state.resolved_student_name,
+            'post_review_route': self.state.post_review_route,
+            'plan': self.state.plan.model_dump(mode='json') if isinstance(self.state.plan, ProtectedPilotPlan) else None,
+            'answer': self.state.answer.model_dump(mode='json') if isinstance(self.state.answer, ProtectedPilotAnswer) else None,
+            'evidence_sources': list(self.state.evidence_source_ids),
+        }
+
+    def _build_pending_review_response(self) -> dict[str, Any]:
+        pending_answer = ProtectedPilotAnswer(answer_text=self._pending_review_answer_text())
+        return {
+            'engine_name': 'crewai',
+            'executed': True,
+            'reason': 'crewai_protected_pending_review',
+            'metadata': {
+                **self._base_metadata(),
+                'answer': pending_answer.model_dump(mode='json'),
+                'judge': ProtectedPilotJudge(valid=True, reason='pending_human_review', revision_needed=False).model_dump(mode='json'),
+                'pending_review': True,
+                'review_flow_id': getattr(self.state, 'id', None),
+                'review_message': self._pending_review_answer_text(),
+                'review_required': True,
+                'deterministic_backstop_used': bool(self.state.answer),
+                'validation_stack': ['flow_state', 'human_review_pending'],
+            },
+        }
+
+    def _build_rejected_review_response(self, feedback_text: str | None = None) -> dict[str, Any]:
+        feedback_note = f' Feedback registrado: {feedback_text}.' if feedback_text else ''
+        answer = ProtectedPilotAnswer(
+            answer_text=(
+                'Essa consulta protegida nao foi liberada apos a revisao humana, entao eu nao vou expor o dado por aqui.'
+                f'{feedback_note}'
+            )
+        )
+        judge = ProtectedPilotJudge(valid=True, reason='protected_review_rejected', revision_needed=False)
+        return {
+            'engine_name': 'crewai',
+            'executed': True,
+            'reason': 'crewai_protected_review_rejected',
+            'metadata': {
+                **self._base_metadata(),
+                'answer': answer.model_dump(mode='json'),
+                'judge': judge.model_dump(mode='json'),
+                'pending_review': False,
+                'review_required': False,
+                'review_rejected': True,
+                'deterministic_backstop_used': False,
+                'validation_stack': ['flow_state', 'human_review', 'review_rejected'],
+            },
+        }
+
+    def _build_fast_path_response(self, *, reason: str) -> dict[str, Any]:
+        self.state.latency_ms = round((perf_counter() - self._overall_started_at) * 1000, 1)
+        if self.state.resolved_student_name:
+            self.state.active_student_name = self.state.resolved_student_name
+        return {
+            'engine_name': 'crewai',
+            'executed': True,
+            'reason': reason,
+            'metadata': {
+                **self._base_metadata(),
+                'crewai_installed': True,
+                'crewai_version': getattr(crewai_pkg, '__version__', None),
+                'agent_roles': [],
+                'task_names': [],
+                'latency_ms': self.state.latency_ms,
+                'plan': self.state.plan.model_dump(mode='json') if isinstance(self.state.plan, ProtectedPilotPlan) else None,
+                'answer': self.state.answer.model_dump(mode='json') if isinstance(self.state.answer, ProtectedPilotAnswer) else None,
+                'judge': self.state.judge.model_dump(mode='json') if isinstance(self.state.judge, ProtectedPilotJudge) else None,
+                'evidence_sources': list(self.state.evidence_source_ids),
+                'deterministic_backstop_used': True,
+                'validation_stack': ['flow_router', 'deterministic_fast_path'],
+            },
+        }
 
     @start()
     async def prepare_context(self) -> str:
@@ -121,6 +237,20 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
 
         self._identity_backstop_text = _identity_backstop(self._actor, self.state.message)
         if self._identity_backstop_text and _is_identity_scope_query(self.state.message):
+            self.state.plan = _infer_fast_path_plan(self.state.message, self._student)
+            self.state.answer = ProtectedPilotAnswer(
+                answer_text=self._identity_backstop_text,
+                citations=['identity.actor'],
+            )
+            self.state.judge = ProtectedPilotJudge(valid=True, reason='identity_scope_handled_deterministically', revision_needed=False)
+            if isinstance(self.state.plan, ProtectedPilotPlan):
+                self.state.active_domain = self.state.plan.domain
+                self.state.active_attribute = self.state.plan.attribute
+            if self._protected_hitl_enabled() and async_feedback_supported():
+                return self._queue_human_review(
+                    next_route='identity_backstop',
+                    reason='crewai_protected_pending_review',
+                )
             self.state.routing_label = 'identity_backstop'
             self.state.reason = 'crewai_protected_identity_backstop'
             return self.state.routing_label
@@ -167,6 +297,11 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             if isinstance(self.state.plan, ProtectedPilotPlan):
                 self.state.active_domain = self.state.plan.domain
                 self.state.active_attribute = self.state.plan.attribute
+            if self._protected_hitl_enabled() and async_feedback_supported():
+                return self._queue_human_review(
+                    next_route='fast_path',
+                    reason='crewai_protected_pending_review',
+                )
             self.state.routing_label = 'fast_path'
             self.state.reason = 'crewai_protected_fast_path'
             return self.state.routing_label
@@ -176,6 +311,12 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             self.state.routing_label = 'llm_unavailable'
             self.state.reason = 'crewai_llm_not_configured'
             return self.state.routing_label
+
+        if self._protected_hitl_enabled() and async_feedback_supported():
+            return self._queue_human_review(
+                next_route='agentic',
+                reason='crewai_protected_pending_review',
+            )
 
         self.state.routing_label = 'agentic'
         self.state.reason = 'crewai_protected_flow_agentic'
@@ -332,30 +473,47 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             },
         }
 
+    @listen('human_review')
+    def request_human_review(self) -> dict[str, Any]:
+        if HumanFeedbackPending is None or PendingFeedbackContext is None:
+            return self._build_pending_review_response()
+        context = PendingFeedbackContext(
+            flow_id=str(getattr(self.state, 'id', '') or ''),
+            flow_class=f'{self.__class__.__module__}.{self.__class__.__name__}',
+            method_name='request_human_review',
+            method_output=self._pending_review_payload(),
+            message=(
+                'Revisao humana pendente para uma consulta protegida. '
+                'Responda com "approved" para liberar ou "rejected" para bloquear.'
+            ),
+            metadata={
+                'slice_name': 'protected',
+                'conversation_id': self.state.conversation_id or f'telegram:{self.state.telegram_chat_id}',
+                'post_review_route': self.state.post_review_route,
+                'resolved_student_name': self.state.resolved_student_name,
+            },
+        )
+        raise HumanFeedbackPending(context=context)
+
+    @listen('request_human_review')
+    async def handle_human_review_decision(self, feedback_result: Any) -> dict[str, Any]:
+        feedback_text = str(getattr(feedback_result, 'feedback', '') or '').strip()
+        if feedback_is_approved(feedback_text):
+            next_route = str(self.state.post_review_route or '').strip()
+            if next_route == 'agentic':
+                return await self._run_agentic_path(reason='crewai_protected_review_approved')
+            if next_route == 'identity_backstop':
+                return self._build_fast_path_response(reason='crewai_protected_review_approved')
+            if next_route == 'fast_path':
+                return self._build_fast_path_response(reason='crewai_protected_review_approved')
+            return self._build_fast_path_response(reason='crewai_protected_review_approved')
+        if feedback_is_rejected(feedback_text):
+            return self._build_rejected_review_response(feedback_text)
+        return self._build_rejected_review_response(feedback_text or 'no_explicit_decision')
+
     @listen('fast_path')
     def handle_fast_path(self) -> dict[str, Any]:
-        self.state.latency_ms = round((perf_counter() - self._overall_started_at) * 1000, 1)
-        if self.state.resolved_student_name:
-            self.state.active_student_name = self.state.resolved_student_name
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'crewai_protected_fast_path',
-            'metadata': {
-                **self._base_metadata(),
-                'crewai_installed': True,
-                'crewai_version': getattr(crewai_pkg, '__version__', None),
-                'agent_roles': [],
-                'task_names': [],
-                'latency_ms': self.state.latency_ms,
-                'plan': self.state.plan.model_dump(mode='json') if isinstance(self.state.plan, ProtectedPilotPlan) else None,
-                'answer': self.state.answer.model_dump(mode='json') if isinstance(self.state.answer, ProtectedPilotAnswer) else None,
-                'judge': self.state.judge.model_dump(mode='json') if isinstance(self.state.judge, ProtectedPilotJudge) else None,
-                'evidence_sources': list(self.state.evidence_source_ids),
-                'deterministic_backstop_used': True,
-                'validation_stack': ['flow_router', 'deterministic_fast_path'],
-            },
-        }
+        return self._build_fast_path_response(reason='crewai_protected_fast_path')
 
     @listen('llm_unavailable')
     def handle_llm_unavailable(self) -> dict[str, Any]:
@@ -368,6 +526,9 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
 
     @listen('agentic')
     async def handle_agentic(self) -> dict[str, Any]:
+        return await self._run_agentic_path(reason='crewai_protected_flow_completed')
+
+    async def _run_agentic_path(self, *, reason: str) -> dict[str, Any]:
         evidence = await _fetch_protected_evidence(
             settings=self.settings,
             actor_context=self._actor_context,
@@ -521,7 +682,7 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
         return {
             'engine_name': 'crewai',
             'executed': True,
-            'reason': 'crewai_protected_flow_completed',
+            'reason': reason,
             'metadata': {
                 **self._base_metadata(),
                 'crewai_installed': True,

@@ -22,6 +22,7 @@ PRIMARY_STACK_REPORT = REPO_ROOT / 'docs/architecture/framework-primary-stack-fl
 RESTART_REPORT = REPO_ROOT / 'docs/architecture/framework-restart-recovery-report.md'
 CRASH_REPORT = REPO_ROOT / 'docs/architecture/framework-crash-recovery-report.md'
 USER_TRAFFIC_HITL_REPORT = REPO_ROOT / 'docs/architecture/framework-langgraph-user-traffic-hitl-report.md'
+CREWAI_PROTECTED_HITL_REPORT = REPO_ROOT / 'docs/architecture/framework-crewai-protected-hitl-report.md'
 
 
 def _read_text(path: Path) -> str:
@@ -202,6 +203,7 @@ def main() -> int:
     restart_text = _read_text(RESTART_REPORT)
     crash_text = _read_text(CRASH_REPORT)
     user_traffic_hitl_text = _read_text(USER_TRAFFIC_HITL_REPORT)
+    crewai_protected_hitl_text = _read_text(CREWAI_PROTECTED_HITL_REPORT)
     traces = _fetch_trace_summary(settings)
     crewai_live = _fetch_crewai_live_summary(settings)
 
@@ -280,6 +282,14 @@ def main() -> int:
         [
             'langgraph-user-traffic-hitl-support-1',
             'langgraph-user-traffic-hitl-protected-1',
+            '- All passed: `yes`',
+        ],
+    )
+    crewai_protected_hitl_ok = _has_all(
+        crewai_protected_hitl_text,
+        [
+            'crewai-protected-hitl-approved-1',
+            'crewai-protected-hitl-rejected-1',
             '- All passed: `yes`',
         ],
     )
@@ -401,15 +411,13 @@ def main() -> int:
     crewai_rows.append(
         _score_lines(
             'Operator debug ergonomics',
-            4 if crewai_has_live_flow_ids and crewai_native_guardrails_capable and crewai_agentic_rendering_capable else 3,
+            5 if crewai_protected_hitl_ok else (4 if crewai_has_live_flow_ids and crewai_native_guardrails_capable and crewai_agentic_rendering_capable else 3),
             5,
-            'Flow-state visibility is now strong across all slices, but CrewAI still has no HITL/operator-approval primitive equivalent to LangGraph `interrupt()` for sensitive protected traffic.',
+            'Protected operator review is now validated in [framework-crewai-protected-hitl-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crewai-protected-hitl-report.md), with pending-state inspection plus approve/reject resume on the same persisted flow id.',
         )
     )
-    crewai_score += 4 if crewai_has_live_flow_ids and crewai_native_guardrails_capable and crewai_agentic_rendering_capable else 3
-    crewai_blocked_reasons = {
-        'protected': 'protected still trails LangGraph in operator-facing control primitives and should stay behind manual review.',
-    }
+    crewai_score += 5 if crewai_protected_hitl_ok else (4 if crewai_has_live_flow_ids and crewai_native_guardrails_capable and crewai_agentic_rendering_capable else 3)
+    crewai_blocked_reasons: dict[str, str] = {}
     langgraph_gate_eligible = langgraph_score >= 24 and langgraph_primary_native_ok and langgraph_restart_ok and langgraph_crash_ok
     crewai_gate_eligible = crewai_score >= 24 and crewai_primary_native_ok and crewai_restart_ok and crewai_crash_ok
     langgraph_slice_eligibility = _slice_eligibility_map(
@@ -421,8 +429,8 @@ def main() -> int:
     crewai_slice_eligibility = _slice_eligibility_map(
         framework='crewai',
         gate_eligible=crewai_gate_eligible,
-        recommended_canary_slices=['public', 'support', 'workflow'],
-        blocked_canary_slices=['protected'],
+        recommended_canary_slices=['public', 'protected', 'support', 'workflow'],
+        blocked_canary_slices=[],
         blocked_reasons=crewai_blocked_reasons,
     )
 
@@ -441,6 +449,7 @@ def main() -> int:
         '- [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md)',
         '- [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md)',
         '- [framework-langgraph-user-traffic-hitl-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-langgraph-user-traffic-hitl-report.md)',
+        '- [framework-crewai-protected-hitl-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crewai-protected-hitl-report.md)',
         '- live `orchestration.trace` samples for one `LangGraph` path and one `CrewAI` path',
         '- live direct `CrewAI` slice responses for `public`, `protected`, `support`, and `workflow`',
         '',
@@ -466,7 +475,7 @@ def main() -> int:
         'Current inference from the evidence:',
         '',
         f'- `LangGraph` leads in native persistence + HITL + checkpoint/state introspection with a score of `{langgraph_score}/{langgraph_max}`.',
-        f'- `CrewAI` is now strong on Flow continuity and good on canonical trace visibility, with `{crewai_score}/{crewai_max}`, but still trails in operator-facing control primitives.',
+        f'- `CrewAI` is now strong on Flow continuity, task guardrails, and protected operator review, with `{crewai_score}/{crewai_max}`.',
         '- The comparison is now top-line enough for durability/debug to be a real architectural differentiator, not just a qualitative impression.',
         '',
         '## Promotion Gate By Slice',
@@ -546,8 +555,8 @@ def main() -> int:
                         'workflow': crewai_workflow_meta,
                     },
                 },
-                'recommended_canary_slices': ['public', 'support', 'workflow'],
-                'blocked_canary_slices': ['protected'],
+                'recommended_canary_slices': ['public', 'protected', 'support', 'workflow'],
+                'blocked_canary_slices': [],
                 'blocked_reasons': crewai_blocked_reasons,
             },
         },
@@ -556,8 +565,8 @@ def main() -> int:
                 'eligible': crewai_gate_eligible,
                 'minimum_score_for_canary': 20,
                 'primary_stack_native_path_required': True,
-                'recommended_canary_slices': ['public', 'support', 'workflow'],
-                'blocked_canary_slices': ['protected'],
+                'recommended_canary_slices': ['public', 'protected', 'support', 'workflow'],
+                'blocked_canary_slices': [],
                 'slice_eligibility': crewai_slice_eligibility,
             },
             'langgraph': {

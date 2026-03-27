@@ -221,6 +221,7 @@ def _build_crewai_preview(*, slice_name: str, metadata: dict[str, Any], payload_
     access_tier = AccessTier.public
     needs_authentication = False
     mode = OrchestrationMode.structured_tool
+    risk_flags: list[str] = []
 
     if slice_name == 'public':
         selected_tools = _public_selected_tools(metadata)
@@ -247,6 +248,12 @@ def _build_crewai_preview(*, slice_name: str, metadata: dict[str, Any], payload_
         selected_tools = _workflow_selected_tools(metadata)
         domain = QueryDomain.support
 
+    if 'pending_review' in payload_reason or bool(metadata.get('pending_review')):
+        risk_flags = ['pending_human_review']
+    elif 'review_rejected' in payload_reason or bool(metadata.get('review_rejected')):
+        risk_flags = ['human_review_rejected']
+        mode = OrchestrationMode.deny
+
     return OrchestrationPreview(
         mode=mode,
         classification=IntentClassification(
@@ -260,7 +267,7 @@ def _build_crewai_preview(*, slice_name: str, metadata: dict[str, Any], payload_
         citations_required=False,
         needs_authentication=needs_authentication,
         graph_path=_crewai_timeline_labels(metadata),
-        risk_flags=[],
+        risk_flags=risk_flags,
         reason=payload_reason or f'crewai_{slice_name}_primary',
         output_contract='Feature-flagged CrewAI primary response with native Flow/task trace metadata.',
     )

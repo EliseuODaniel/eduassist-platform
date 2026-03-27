@@ -62,6 +62,9 @@ def build_crewai_trace_sections(metadata: dict[str, Any] | None) -> dict[str, di
         'flow_enabled',
         'flow_state_id',
         'flow_state_persisted',
+        'pending_review',
+        'review_flow_id',
+        'review_required',
         'agent_roles',
         'task_names',
         'validation_stack',
@@ -72,9 +75,13 @@ def build_crewai_trace_sections(metadata: dict[str, Any] | None) -> dict[str, di
     for field_name in (
         'latency_ms',
         'deterministic_backstop_used',
+        'review_rejected',
     ):
         if field_name in metadata:
             response_section[field_name] = _json_safe(metadata.get(field_name))
+
+    if 'review_message' in metadata:
+        response_section['review_message'] = _json_safe(metadata.get('review_message'))
 
     judge = metadata.get('judge')
     if isinstance(judge, dict):

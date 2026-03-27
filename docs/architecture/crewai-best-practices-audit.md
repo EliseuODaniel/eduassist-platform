@@ -81,7 +81,7 @@ If we decide to promote CrewAI beyond canary, the next architectural upgrades sh
 1. Expand persisted multi-turn follow-up memory deeper into `support` and `workflow` state.
 2. Move more conversation-affinity and state transitions closer to the CrewAI side, instead of depending on outer runtime shims.
 3. Exercise the native task guardrails and agentic renderer under a live configured LLM in the same environment used for rollout decisions.
-4. Consider whether any protected slice should ever get a CrewAI-side operator approval primitive, or whether that remains a deliberate LangGraph advantage.
+4. Keep `protected` live rollout tied to the explicit user-traffic HITL gate, so parity on replay never bypasses operator-review policy in the pilot runtime.
 
 ## Final Assessment
 

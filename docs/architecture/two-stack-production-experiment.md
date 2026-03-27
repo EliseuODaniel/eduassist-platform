@@ -140,14 +140,14 @@ The current master replay keeps the promotion rule simple:
 - `support`: allowed for controlled canary
 - `workflow`: allowed for controlled canary
 - `public`: allowed for tiny gradual rollout
-- `protected`: **not** promoted yet
+- `protected`: replay-eligible, but still live-blocked until the CrewAI pilot explicitly enables user-traffic HITL
 
 Reason:
 
 - `protected` is back at replay parity in the current master benchmark
 - even so, `protected` carries the highest sensitivity because it handles identity, grades, documentation, and finance
-- before any protected canary, we still want a dedicated live gate with stricter review of auth, student focus, and leakage risk
-- until that gate is explicitly opened, canary scope stays limited to `support`, `public`, and `workflow`
+- the dedicated live gate now exists and checks the pilot status for `crewaiHitlUserTrafficEnabled=true` plus `protected` in `crewaiHitlUserTrafficSlices`
+- until that gate is explicitly opened in the pilot runtime, canary scope stays limited to `support`, `public`, and `workflow`
 
 ## Scorecard-Backed Promotion Gate
 
@@ -160,8 +160,9 @@ Current recommended canary slices from the scorecard:
 - `support`
 - `workflow`
 - `public`
+- `protected` in principle, once the pilot live HITL gate is explicitly enabled
 
-Current blocked slice from the scorecard:
+Current slice blocked by the live pilot gate:
 
 - `protected`
 

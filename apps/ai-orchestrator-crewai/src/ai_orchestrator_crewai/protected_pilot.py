@@ -20,6 +20,7 @@ except Exception:  # pragma: no cover
 
 from .listeners import capture_pilot_events, serialize_pilot_events, suppress_crewai_tracing_messages
 from .flow_persistence import build_flow_state_id
+from .crewai_hitl import HumanFeedbackPending
 
 
 class ProtectedPilotPlan(BaseModel):
@@ -717,8 +718,18 @@ async def run_protected_crewai_pilot(
     telegram_chat_id: int | None,
     channel: str,
     settings: Any,
+    force_hitl: bool = False,
+    hitl_target_slices: list[str] | None = None,
 ) -> dict[str, Any]:
     from .protected_flow import ProtectedShadowFlow
+
+    configured_hitl_slices = [
+        item.strip()
+        for item in str(getattr(settings, 'crewai_hitl_user_traffic_slices', 'protected') or 'protected').split(',')
+        if item.strip()
+    ]
+    hitl_enabled = bool(force_hitl or getattr(settings, 'crewai_hitl_user_traffic_enabled', False))
+    target_slices = list(hitl_target_slices or configured_hitl_slices or ['protected'])
 
     flow = ProtectedShadowFlow(settings=settings)
     with suppress_crewai_tracing_messages():
@@ -734,10 +745,44 @@ async def run_protected_crewai_pilot(
                 'conversation_id': conversation_id,
                 'telegram_chat_id': telegram_chat_id,
                 'channel': channel,
+                'hitl_enabled': hitl_enabled,
+                'hitl_target_slices': target_slices,
             }
         )
     if isinstance(result, dict):
         return result
+    if HumanFeedbackPending is not None and isinstance(result, HumanFeedbackPending):
+        pending_message = (
+            'Essa consulta protegida ficou pendente de revisao humana antes da liberacao final. '
+            'Assim que a validacao for concluida, eu continuo desta mesma conversa.'
+        )
+        return {
+            'engine_name': 'crewai',
+            'executed': True,
+            'reason': 'crewai_protected_pending_review',
+            'metadata': {
+                'slice_name': 'protected',
+                'conversation_id': conversation_id or (f'telegram:{telegram_chat_id}' if telegram_chat_id is not None else None),
+                'normalized_message': _normalize_text(message),
+                'flow_enabled': True,
+                'flow_state_id': getattr(flow.state, 'id', None),
+                'pending_review': True,
+                'review_flow_id': result.context.flow_id,
+                'review_context': result.context.to_dict(),
+                'answer': {
+                    'answer_text': pending_message,
+                    'citations': [],
+                },
+                'judge': {
+                    'valid': True,
+                    'reason': 'pending_human_review',
+                    'revision_needed': False,
+                },
+                'validation_stack': ['flow_state', 'human_review_pending'],
+                'crewai_installed': crewai_pkg is not None,
+                'crewai_version': getattr(crewai_pkg, '__version__', None),
+            },
+        }
     return {
         'engine_name': 'crewai',
         'executed': False,
