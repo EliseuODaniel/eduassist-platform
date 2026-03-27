@@ -107,7 +107,12 @@ def _worktree_is_governance_only(status_short: str) -> tuple[bool, str]:
         return True, 'working tree is clean.'
     paths: list[str] = []
     for line in lines:
-        candidate = line[3:].strip() if len(line) >= 4 else line.strip()
+        if len(line) >= 3 and line[2] == ' ':
+            candidate = line[3:].strip()
+        elif len(line) >= 2 and line[1] == ' ':
+            candidate = line[2:].strip()
+        else:
+            candidate = line.strip()
         if '->' in candidate:
             candidate = candidate.split('->', 1)[1].strip()
         paths.append(candidate)
