@@ -10,6 +10,7 @@ from ..models import (
     AccessTier,
     IntentClassification,
     MessageResponse,
+    MessageResponseSuggestedReply,
     OrchestrationMode,
     OrchestrationPreview,
     QueryDomain,
@@ -265,6 +266,58 @@ def _build_crewai_preview(*, slice_name: str, metadata: dict[str, Any], payload_
     )
 
 
+def _dedupe_reply_texts(values: list[str]) -> list[MessageResponseSuggestedReply]:
+    seen: set[str] = set()
+    replies: list[MessageResponseSuggestedReply] = []
+    for value in values:
+        text = str(value or '').strip()
+        if not text:
+            continue
+        normalized = text.lower()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        replies.append(MessageResponseSuggestedReply(text=text[:80]))
+    return replies[:4]
+
+
+def _build_crewai_suggested_replies(*, slice_name: str, metadata: dict[str, Any], preview: OrchestrationPreview) -> list[MessageResponseSuggestedReply]:
+    reason = str(metadata.get('reason', '') or '').strip().lower()
+    selected_tools = list(preview.selected_tools)
+    if slice_name == 'support':
+        if 'get_workflow_status' in selected_tools:
+            return _dedupe_reply_texts(['Qual o status atual?', 'Qual o protocolo?', 'Quem vai me responder?', 'Resume meu atendimento'])
+        return _dedupe_reply_texts(['Qual o protocolo?', 'Quero falar com o financeiro', 'Quero falar com a secretaria', 'Como acompanho isso?'])
+    if slice_name == 'workflow':
+        if 'schedule_school_visit' in selected_tools:
+            return _dedupe_reply_texts(['Qual o protocolo da visita?', 'Qual o status da visita?', 'Quero remarcar a visita', 'Quero cancelar a visita'])
+        if 'update_visit_booking' in selected_tools:
+            return _dedupe_reply_texts(['Qual o status da visita?', 'Qual o protocolo da visita?', 'Quero cancelar a visita', 'Quero remarcar de novo'])
+        if 'create_institutional_request' in selected_tools or 'update_institutional_request' in selected_tools:
+            return _dedupe_reply_texts(['Qual o protocolo?', 'Qual o status do meu pedido?', 'Quem vai me responder?', 'Quero complementar meu pedido'])
+        return _dedupe_reply_texts(['Qual o protocolo?', 'Qual o status?', 'Quem vai me responder?', 'E agora?'])
+    if slice_name == 'protected':
+        if 'get_financial_summary' in selected_tools:
+            return _dedupe_reply_texts(['Qual o proximo pagamento?', 'Qual valor esta em aberto?', 'Quero ver os boletos', 'E do outro aluno?'])
+        if 'get_student_grades' in selected_tools:
+            return _dedupe_reply_texts(['E as faltas?', 'E as proximas provas?', 'Quero ver a matricula', 'E do outro aluno?'])
+        if 'get_student_attendance' in selected_tools:
+            return _dedupe_reply_texts(['E as notas?', 'Quais as proximas provas?', 'Quero ver as datas das faltas', 'E do outro aluno?'])
+        if 'get_student_administrative_status' in selected_tools:
+            return _dedupe_reply_texts(['E a matricula?', 'Quais documentos faltam?', 'Qual meu acesso?', 'Quais meus filhos?'])
+        if any(tool in selected_tools for tool in ('get_actor_identity_context', 'get_administrative_status')):
+            if 'logado' in reason or 'identity' in reason or 'access' in reason:
+                return _dedupe_reply_texts(['Quais meus filhos?', 'Qual meu acesso?', 'Qual a documentacao do Lucas?', 'Como altero meu cadastro?'])
+            return _dedupe_reply_texts(['Qual meu acesso?', 'Quais meus filhos?', 'Como altero meu cadastro?', 'Qual a documentacao do Lucas?'])
+    if slice_name == 'public':
+        if 'get_public_timeline' in selected_tools:
+            return _dedupe_reply_texts(['Quando comecam as aulas?', 'Quando e a reuniao de pais?', 'Como agendo uma visita?', 'Qual o horario da biblioteca?'])
+        if 'get_public_calendar_events' in selected_tools:
+            return _dedupe_reply_texts(['Quando comecam as aulas?', 'Quando e a formatura?', 'Qual o horario da biblioteca?', 'Como agendo uma visita?'])
+        return _dedupe_reply_texts(['Qual o horario da biblioteca?', 'Como agendo uma visita?', 'Qual o site da escola?', 'Quais atividades complementares existem?'])
+    return _dedupe_reply_texts(['Como posso te ajudar?', 'Qual o proximo passo?', 'Quero mais detalhes', 'Pode continuar'])
+
+
 class CrewAIEngine(ResponseEngine):
     name = 'crewai'
     ready = False
@@ -296,7 +349,6 @@ class CrewAIEngine(ResponseEngine):
 
     async def respond(self, *, request: Any, settings: Any, engine_mode: str | None = None) -> Any:
         from ..runtime import (
-            _build_suggested_replies,
             _conversation_context_payload,
             _effective_conversation_id,
             _fetch_actor_context,
@@ -352,12 +404,10 @@ class CrewAIEngine(ResponseEngine):
             if slice_name == 'public' or preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar}
             else None
         )
-        suggested_replies = _build_suggested_replies(
-            request=request,
+        suggested_replies = _build_crewai_suggested_replies(
+            slice_name=slice_name,
+            metadata=crewai_metadata or {},
             preview=preview,
-            actor=actor,
-            school_profile=school_profile,
-            conversation_context=context_payload,
         )
         await _persist_conversation_turn(
             settings=settings,

@@ -2,6 +2,10 @@
 
 The production canary is implemented in the main orchestrator and is disabled by default.
 
+The primary stack is now also controllable by feature flag:
+
+- `FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK=langgraph|crewai`
+
 ## Goals
 
 - keep `LangGraph` as the safe default
@@ -88,6 +92,19 @@ ORCHESTRATOR_EXPERIMENT_HEALTH_TTL_SECONDS=15
 - `/v1/status` now also exposes:
   - `primaryStackFeatureFlag`
   - `resolvedPrimaryStack`
+
+## Native-Path Rule
+
+When `FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK=crewai`, the primary response path must stay native to the CrewAI side:
+
+- `Flow` remains the primary state machine
+- task/listener metadata remains the primary trace surface
+- the main orchestrator must not invoke the LangGraph runtime just to shape preview, graph path, or suggested replies
+
+LangGraph remains available as:
+
+- explicit fallback if the CrewAI primary call fails
+- the separate baseline when the feature flag resolves to `langgraph`
 
 ## Current Recommendation
 
