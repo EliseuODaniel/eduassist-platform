@@ -286,6 +286,26 @@ Artifacts:
 - [framework-slice-promotion-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-slice-promotion-report.md)
 - [framework-rollout-changelog.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-changelog.md)
 
+## Slice Rollback Wrapper
+
+Rollback uses the same audited path as promotion.
+
+Safe dry-run example using the changelog as the target source:
+
+```bash
+cp .env artifacts/tmp-rollback.env
+python3 tools/evals/rollback_framework_slice.py \
+  --env-file artifacts/tmp-rollback.env \
+  --slice public \
+  --reason "Reverter public para o nivel anterior do canario" \
+  --operator codex \
+  --allow-preflight-fallback
+```
+
+Artifacts:
+
+- [framework-slice-rollback-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-slice-rollback-report.md)
+
 Artifacts:
 
 - [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md)

@@ -57,12 +57,12 @@ def _append_changelog(*, entry: dict[str, Any], md_path: Path, json_path: Path) 
     lines = [
         '# Framework Rollout Changelog',
         '',
-        '| Date | Slice | Before | After | Mode | Result | Operator | Reason | Env File |',
-        '| --- | --- | ---: | ---: | --- | --- | --- | --- | --- |',
+        '| Date | Intent | Slice | Before | After | Mode | Result | Operator | Reason | Env File |',
+        '| --- | --- | --- | ---: | ---: | --- | --- | --- | --- | --- |',
     ]
     for item in reversed(rows[-50:]):
         lines.append(
-            f"| `{item.get('timestamp', '')}` | `{item.get('slice', '')}` | "
+            f"| `{item.get('timestamp', '')}` | `{item.get('intent', 'promotion')}` | `{item.get('slice', '')}` | "
             f"`{item.get('before_rollout_percent', '')}%` | `{item.get('after_rollout_percent', '')}%` | "
             f"`{item.get('mode', '')}` | `{item.get('result', '')}` | "
             f"`{item.get('operator', '')}` | {item.get('reason', '')} | `{item.get('env_file', '')}` |"
@@ -78,6 +78,7 @@ def _write_report(*, report_md: Path, report_json: Path, artifact_json: Path, pa
         '',
         '## Summary',
         '',
+        f"- intent: `{payload['intent']}`",
         f"- slice: `{payload['slice']}`",
         f"- before rollout: `{payload['before_rollout_percent']}%`",
         f"- after rollout: `{payload['after_rollout_percent']}%`",
@@ -103,6 +104,7 @@ def _write_report(*, report_md: Path, report_json: Path, artifact_json: Path, pa
 
 def main() -> int:
     parser = argparse.ArgumentParser(description='Promote a rollout slice through a single command with changelog output.')
+    parser.add_argument('--intent', choices=['promotion', 'rollback'], default='promotion')
     parser.add_argument('--slice', required=True, choices=['public', 'protected', 'support', 'workflow'])
     parser.add_argument('--to-rollout-percent', required=True, type=int)
     parser.add_argument('--reason', required=True)
@@ -179,6 +181,7 @@ def main() -> int:
     operator = str(args.operator or '').strip() or getpass.getuser()
     payload = {
         'timestamp': datetime.now(UTC).isoformat(),
+        'intent': args.intent,
         'slice': args.slice,
         'before_rollout_percent': before_rollout_percent,
         'after_rollout_percent': target_percent,
