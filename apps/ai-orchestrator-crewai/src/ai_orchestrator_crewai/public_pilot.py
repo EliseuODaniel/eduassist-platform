@@ -291,6 +291,8 @@ def _rank_evidence_docs(message: str, docs: list[EvidenceDoc], *, limit: int = 6
     for doc in docs:
         haystack = _normalize_text(f'{doc.title} {doc.text}')
         score = sum(5 if term in _normalize_text(doc.title) else 2 for term in terms if term in haystack)
+        if doc.doc_id == 'profile.segments' and any(term in terms for term in ('curriculo', 'curricular', 'base', 'bncc')):
+            score += 8
         if any(term in haystack for term in ('biblioteca', 'biblioteca aurora')) and any(
             term in terms for term in ('biblioteca', 'horario', 'hora')
         ):
@@ -439,6 +441,23 @@ def _direct_feature_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | 
     return f'Hoje a escola divulga atividades e espacos complementares como {labels_preview}.'
 
 
+def _direct_curriculum_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    terms = _query_terms(message)
+    if not ({'curricular', 'curriculo', 'base', 'bncc'} & terms):
+        return None
+    segments_doc = next((doc for doc in docs if doc.doc_id == 'profile.segments'), None)
+    if segments_doc is None:
+        return None
+    basis_match = re.search(r'base curricular:\s*([^.;]+)', segments_doc.text, flags=re.IGNORECASE)
+    basis = basis_match.group(1).strip() if basis_match else ''
+    if not basis:
+        return None
+    basis = re.sub(r'^\s*a escola segue\s+', '', basis, flags=re.IGNORECASE)
+    if {'medio', 'ensino'} & terms:
+        return f'No Ensino Medio, a escola segue {basis}.'
+    return f'A base curricular publicada pela escola hoje e {basis}.'
+
+
 def _direct_required_documents_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
     terms = _query_terms(message)
     if 'matricula' not in terms or not ({'documentos', 'documento', 'exigidos', 'exigido', 'necessarios'} & terms):
@@ -498,6 +517,9 @@ def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: li
     tuition_answer = _direct_tuition_fast_answer(message, docs)
     if tuition_answer:
         return tuition_answer
+    curriculum_answer = _direct_curriculum_fast_answer(message, docs)
+    if curriculum_answer:
+        return curriculum_answer
     feature_answer = _direct_feature_fast_answer(message, docs)
     if feature_answer:
         return feature_answer
@@ -596,6 +618,10 @@ def _is_public_fast_path_query(message: str) -> bool:
         'exigidos',
         'necessarios',
         'mensalidade',
+        'curriculo',
+        'curricular',
+        'base',
+        'bncc',
         'atividades',
         'atividade',
         'complementares',
@@ -646,209 +672,25 @@ async def run_public_crewai_pilot(
     channel: str,
     settings: Any,
 ) -> dict[str, Any]:
-    normalized_message = ' '.join(message.strip().lower().split())
-    if Crew is None or Agent is None or Task is None or Process is None:
-        return {
-            'engine_name': 'crewai',
-            'executed': False,
-            'reason': 'crewai_dependency_unavailable',
-            'metadata': {
-                'slice_name': 'public',
-                'normalized_message': normalized_message,
-            },
+    from .public_flow import PublicShadowFlow
+
+    flow = PublicShadowFlow(settings=settings)
+    result = await flow.kickoff_async(
+        inputs={
+            'message': message,
+            'conversation_id': conversation_id or (
+                f'telegram:{telegram_chat_id}' if channel == 'telegram' and telegram_chat_id is not None else None
+            ),
+            'telegram_chat_id': telegram_chat_id,
+            'channel': channel,
         }
-
-    overall_started_at = perf_counter()
-    evidence = await _fetch_public_evidence(settings)
-    evidence_docs = _build_evidence_docs(evidence)
-    shortlisted_docs = _rank_evidence_docs(message, evidence_docs)
-    fast_path_answer = (
-        _direct_greeting_fast_answer(message)
-        or
-        _direct_contact_fast_answer(message, evidence_docs)
-        or _direct_contact_fast_answer(message, shortlisted_docs)
-        or _direct_feature_fast_answer(message, evidence_docs)
-        or _direct_feature_fast_answer(message, shortlisted_docs)
-        or _deterministic_backstop(message, None, evidence_docs)
-        or _deterministic_backstop(message, None, shortlisted_docs)
     )
-    if isinstance(fast_path_answer, str) and fast_path_answer.strip() and _is_public_fast_path_query(message):
-        latency_ms = round((perf_counter() - overall_started_at) * 1000, 1)
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'crewai_public_fast_path',
-            'metadata': {
-                'conversation_id': conversation_id or (
-                    f'telegram:{telegram_chat_id}' if channel == 'telegram' and telegram_chat_id is not None else None
-                ),
-                'slice_name': 'public',
-                'normalized_message': normalized_message,
-                'crewai_installed': True,
-                'crewai_version': getattr(crewai_pkg, '__version__', None),
-                'agent_roles': [],
-                'task_names': [],
-                'latency_ms': latency_ms,
-                'plan': None,
-                'answer': {'answer_text': fast_path_answer, 'citations': [shortlisted_docs[0].doc_id] if shortlisted_docs else []},
-                'judge': {'valid': True, 'reason': 'deterministic_fast_path', 'revision_needed': False},
-                'evidence_sources': [doc.doc_id for doc in shortlisted_docs],
-                'deterministic_backstop_used': True,
-            },
-        }
-
-    llm = _build_llm(settings)
-    if llm is None:
-        return {
-            'engine_name': 'crewai',
-            'executed': False,
-            'reason': 'crewai_llm_not_configured',
-            'metadata': {
-                'slice_name': 'public',
-                'normalized_message': normalized_message,
-            },
-        }
-    evidence_bundle = _serialize_evidence_pack(shortlisted_docs)
-    planner = Agent(
-        role='Public question planner',
-        goal='Identify the exact public-school intent, entity, and attribute the user asked about using only the provided shortlisted evidence docs.',
-        backstory='You normalize public school questions into a grounded plan before any answer is written. You must prefer concrete source ids over generic guesses.',
-        llm=llm,
-        allow_delegation=False,
-        verbose=False,
-        max_iter=1,
-    )
-    composer = Agent(
-        role='Grounded answer composer',
-        goal='Write a concise, warm, human answer in pt-BR using only the shortlisted evidence docs and the planner context.',
-        backstory='You avoid robotic wording, adjacent-domain leakage, and unsupported claims. When the evidence is explicit, answer directly instead of hedging.',
-        llm=llm,
-        allow_delegation=False,
-        verbose=False,
-        max_iter=1,
-    )
-    judge = Agent(
-        role='Answer quality judge',
-        goal='Check whether the composed answer actually addressed the asked attribute with the right entity and stayed within the evidence.',
-        backstory='You reject answers that sound plausible but answer a neighboring question.',
-        llm=llm,
-        allow_delegation=False,
-        verbose=False,
-        max_iter=1,
-    )
-
-    planning_task = Task(
-        name='public_planning',
-        description=(
-            'Pergunta do usuario: {message}\n'
-            'Docs de evidencias publicas mais relevantes:\n{evidence_bundle}\n\n'
-            'Retorne um plano estruturado com a intencao principal, entidade, atributo, se precisa de esclarecimento e os ids das fontes mais relevantes.\n'
-            'Use apenas os ids dos docs realmente necessarios.\n'
-            'Se a pergunta pedir horario, contato, instagram, fax, matricula, inicio das aulas, biblioteca, atividades, estrutura ou endereco, escolha o atributo exato.\n'
-            'Se algum doc trouxer um dado literal claro como data, horario, telefone, email, site ou instagram, prefira esse doc especifico no plano.'
-        ),
-        expected_output='Structured public plan.',
-        agent=planner,
-        output_pydantic=PublicPilotPlan,
-    )
-    composition_task = Task(
-        name='public_composition',
-        description=(
-            'Com base na pergunta do usuario, no plano estruturado e nas evidencias publicas, escreva uma resposta curta, natural e calorosa em portugues do Brasil.\n'
-            'Nunca invente fatos. Se a evidencia trouxer um horario, data, nome de espaco, telefone, email, instagram, site ou valor, responda diretamente com esse dado.\n'
-            'Nao invente datas aproximadas, faixas de periodo ou canais nao citados.\n'
-            'Se houver uma data ou horario explicito nos docs selecionados, reproduza esse dado de forma literal na resposta.\n'
-            'Se a informacao nao estiver publicada nos docs, diga isso claramente e ofereca o proximo canal adequado.'
-        ),
-        expected_output='Structured public answer.',
-        agent=composer,
-        context=[planning_task],
-        output_pydantic=PublicPilotAnswer,
-    )
-    judge_task = Task(
-        name='public_judging',
-        description=(
-            'Revise o plano e a resposta final. Marque como invalida qualquer resposta que troque entidade, atributo ou use um dado nao suportado pelos docs.\n'
-            'Se a resposta citar uma data, horario, valor, telefone, instagram, email ou site que nao aparece explicitamente nos docs, marque valid=false.\n'
-            'Se estiver boa, marque valid=true.'
-        ),
-        expected_output='Structured judge result.',
-        agent=judge,
-        context=[planning_task, composition_task],
-        output_pydantic=PublicPilotJudge,
-    )
-
-    crew = Crew(
-        name='eduassist_public_shadow',
-        agents=[planner, composer, judge],
-        tasks=[planning_task, composition_task, judge_task],
-        process=Process.sequential,
-        verbose=False,
-        cache=False,
-        memory=False,
-        tracing=False,
-    )
-
-    with capture_pilot_events('public') as event_recorder:
-        await asyncio.to_thread(
-            crew.kickoff,
-            inputs={
-                'message': message,
-                'evidence_bundle': evidence_bundle,
-            },
-        )
-    latency_ms = round((perf_counter() - overall_started_at) * 1000, 1)
-
-    plan = _extract_task_pydantic(planning_task, PublicPilotPlan)
-    answer = _extract_task_pydantic(composition_task, PublicPilotAnswer)
-    verdict = _extract_task_pydantic(judge_task, PublicPilotJudge)
-    backstop_answer = _deterministic_backstop(message, plan if isinstance(plan, PublicPilotPlan) else None, shortlisted_docs)
-    backstop_used = False
-
-    if isinstance(answer, PublicPilotAnswer) and backstop_answer:
-        should_apply_backstop = _answer_conflicts_with_backstop(answer.answer_text, backstop_answer, message)
-        if isinstance(plan, PublicPilotPlan) and plan.needs_clarification and any(
-            term in _query_terms(message) for term in {'telefone', 'fax', 'instagram', 'email', 'site', 'endereco'}
-        ):
-            should_apply_backstop = True
-        if isinstance(verdict, PublicPilotJudge) and not verdict.valid:
-            should_apply_backstop = True
-        if should_apply_backstop:
-            answer = PublicPilotAnswer(answer_text=backstop_answer, citations=[_select_primary_doc(plan if isinstance(plan, PublicPilotPlan) else None, shortlisted_docs).doc_id] if _select_primary_doc(plan if isinstance(plan, PublicPilotPlan) else None, shortlisted_docs) else [])
-            verdict = PublicPilotJudge(valid=True, reason='deterministic_backstop_applied', revision_needed=False)
-            backstop_used = True
-
-    metadata: dict[str, Any] = {
-        'conversation_id': conversation_id or (
-            f'telegram:{telegram_chat_id}' if channel == 'telegram' and telegram_chat_id is not None else None
-        ),
-        'slice_name': 'public',
-        'normalized_message': normalized_message,
-        'crewai_installed': True,
-        'crewai_version': getattr(crewai_pkg, '__version__', None),
-        'agent_roles': ['planner', 'composer', 'judge'],
-        'task_names': ['public_planning', 'public_composition', 'public_judging'],
-        'latency_ms': latency_ms,
-        'plan': plan.model_dump(mode='json') if isinstance(plan, PublicPilotPlan) else None,
-        'answer': answer.model_dump(mode='json') if isinstance(answer, PublicPilotAnswer) else None,
-        'judge': verdict.model_dump(mode='json') if isinstance(verdict, PublicPilotJudge) else None,
-        'evidence_sources': [doc.doc_id for doc in shortlisted_docs],
-        'deterministic_backstop_used': backstop_used,
-        'validation_stack': ['pydantic_output', 'judge', 'deterministic_backstop'],
-        'event_listener': serialize_pilot_events(event_recorder),
-    }
-
-    if isinstance(verdict, PublicPilotJudge) and not verdict.valid:
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'crewai_public_pilot_judge_invalid',
-            'metadata': metadata,
-        }
-
-    return {
+    return result if isinstance(result, dict) else {
         'engine_name': 'crewai',
-        'executed': True,
-        'reason': 'crewai_public_pilot_completed',
-        'metadata': metadata,
+        'executed': False,
+        'reason': 'crewai_public_flow_unexpected_output',
+        'metadata': {
+            'slice_name': 'public',
+            'output_type': type(result).__name__,
+        },
     }

@@ -88,7 +88,15 @@ async def status(
         'mode': 'pilot',
         'googleModel': settings.google_model,
         'llmConfigured': bool(settings.google_api_key),
-        'capabilities': ['public-shadow-slice', 'protected-shadow-slice', 'workflow-shadow-slice', 'support-shadow-slice', 'isolated-dependencies', 'planner-composer-judge'],
+        'capabilities': [
+            'public-shadow-flow',
+            'protected-shadow-flow',
+            'workflow-shadow-slice',
+            'support-shadow-slice',
+            'isolated-dependencies',
+            'planner-composer-judge',
+            'flow-state-routing',
+        ],
     }
 
 

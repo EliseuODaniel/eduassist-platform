@@ -30,6 +30,7 @@ That is closer to current best practice than trying to turn every request into a
 - bounded crews with explicit roles
 - structured task outputs via `output_pydantic`
 - event-listener telemetry in the public and protected pilots
+- real CrewAI `Flow` wrappers for `public` and `protected`, with typed state and explicit routing labels
 - deterministic validation stack:
   - Pydantic output validation
   - judge step
@@ -53,11 +54,16 @@ This is a pragmatic deviation from the idealized example usage, but it is the sa
 
 ### Flow wrapper around every slice
 
-CrewAI `Flow` is still the best next step if the pilot graduates from comparison to broader production use, especially for long stateful follow-ups.
+CrewAI `Flow` is now in place for the slices that benefit most from stateful semantic routing:
 
-For the current comparison phase, the simpler shape is intentional:
+- `public`
+- `protected`
 
-- public/protected use real crews
+We still intentionally do not force `Flow` into every slice.
+
+For the current comparison phase, the remaining simpler shape is intentional:
+
+- public/protected use real flows plus real crews
 - support/workflow stay narrower and more deterministic
 - stateful experimentation is handled first in the main orchestrator
 
@@ -67,8 +73,8 @@ That keeps the comparison fair and limits production risk.
 
 If we decide to promote CrewAI beyond canary, the next architectural upgrades should be:
 
-1. Wrap public/protected pilots in `Flow` state.
-2. Move conversation-affinity and state transitions closer to the CrewAI side.
+1. Expand `Flow` deeper into multi-turn follow-up handling for `support` and parts of `workflow`.
+2. Move more conversation-affinity and state transitions closer to the CrewAI side.
 3. Expand event-listener telemetry into a more complete per-task trace schema.
 4. Revisit CrewAI-native guardrails only if evidence-aware validation becomes stable in the selected version.
 
