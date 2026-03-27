@@ -139,6 +139,10 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
             (_contains_any(normalized, visit_terms) or self.state.current_type == 'visit_booking')
             and _contains_any(normalized, {'remarcar', 'reagendar', 'mudar'})
         ):
+            if _contains_any(normalized, {'se eu precisar', 'se precisar', 'caso precise'}):
+                self.state.routing_label = 'visit_reschedule_guidance'
+                self.state.reason = 'workflow_visit_reschedule_guidance'
+                return self.state.routing_label
             self.state.routing_label = 'visit_reschedule'
             self.state.reason = 'workflow_visit_reschedule'
             return self.state.routing_label
@@ -301,6 +305,22 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         return await self._finalize_workflow_answer(
             answer_text=_visit_action_response(item, action='reschedule'),
             reason='workflow_visit_reschedule',
+            extra={'workflow_type': 'visit'},
+        )
+
+    @listen('visit_reschedule_guidance')
+    async def handle_visit_reschedule_guidance(self) -> dict[str, Any]:
+        item = self.state.current_item or {}
+        protocol_code = str(item.get('protocol_code') or self.state.active_protocol_code or '').strip()
+        answer_text = (
+            f'Se voce precisar remarcar, me passe o protocolo {protocol_code} ou o novo horario desejado '
+            'que eu sigo com essa atualizacao para a fila de admissoes.'
+            if protocol_code
+            else 'Se voce precisar remarcar, me passe o protocolo da visita ou o novo horario desejado que eu sigo com essa atualizacao.'
+        )
+        return await self._finalize_workflow_answer(
+            answer_text=answer_text,
+            reason='workflow_visit_reschedule_guidance',
             extra={'workflow_type': 'visit'},
         )
 

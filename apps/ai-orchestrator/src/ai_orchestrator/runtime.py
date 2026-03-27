@@ -2677,6 +2677,10 @@ def _compose_public_feature_answer(
         isinstance(recent_focus, dict)
         and str(recent_focus.get('active_task', '')).strip() == 'public:features'
     )
+    if not requested_features and 'name' in requested_attributes and _is_follow_up_query(original_message):
+        recent_feature = _recent_public_feature_key(conversation_context)
+        if recent_feature:
+            requested_features = [recent_feature]
     if (
         not requested_features
         and _is_follow_up_query(original_message)
@@ -3502,6 +3506,14 @@ def _compose_public_document_submission_answer(
     if any('secretaria' in channel for channel in accepted_channels_normalized):
         fallback_channels.append('secretaria presencial')
     fallback_preview = ', '.join(fallback_channels) if fallback_channels else 'portal institucional, email da secretaria ou secretaria presencial'
+    if any(
+        _message_matches_term(normalized_message, term)
+        for term in {'antes voce respondeu', 'você respondeu', 'voce respondeu', 'corrigindo'}
+    ):
+        return (
+            f'Voce esta certo em cobrar essa correcao. Corrigindo: hoje a escola nao utiliza fax para envio de documentos. '
+            f'Para isso, use {fallback_preview}.'
+        )
 
     if _message_matches_term(normalized_message, 'fax'):
         return (
@@ -5792,6 +5804,13 @@ def _build_analysis_message(message: str, conversation_context: ConversationCont
 
     if recent_focus:
         active_task = str(recent_focus.get('active_task', '') or '').strip()
+        if active_task == 'public:document_submission':
+            return f'{message} sobre envio de documentos pela secretaria ou portal institucional'
+        if active_task == 'workflow:human_handoff' and any(
+            _message_matches_term(_normalize_text(message), term)
+            for term in {'abre pra', 'abre para', 'encaminha pra', 'encaminha para'}
+        ):
+            return f'abrir atendimento humano para {message}'
         if active_task.startswith(('admin:', 'finance:', 'academic:', 'workflow:')):
             context_phrase = _follow_up_context_phrase(
                 active_task,
@@ -5870,6 +5889,44 @@ def _filter_retrieval_hits_by_query_hints(retrieval_hits: list[Any], query_hints
 
 
 def _compose_public_gap_answer(query_hints: set[str], message: str | None = None) -> str:
+    normalized_message = _normalize_text(message or '')
+    if message and _is_public_document_submission_query(message):
+        if _message_matches_term(normalized_message, 'fax'):
+            return (
+                'Hoje a escola nao utiliza fax para envio de documentos. '
+                'Para isso, use portal institucional, email da secretaria, secretaria presencial.'
+            )
+        if _message_matches_term(normalized_message, 'telegrama'):
+            return (
+                'Hoje a escola nao publica telegrama como canal valido para documentos. '
+                'Para isso, use portal institucional, email da secretaria, secretaria presencial.'
+            )
+        if _message_matches_term(normalized_message, 'caixa postal'):
+            return (
+                'Hoje a escola nao trabalha com caixa postal para esse tipo de envio. '
+                'Para documentos, use portal institucional, email da secretaria, secretaria presencial.'
+            )
+        return (
+            'Para enviar documentos hoje, use portal institucional, email da secretaria ou secretaria presencial.'
+        )
+    if any(
+        _message_matches_term(normalized_message, term)
+        for term in {'abre pra', 'abre para', 'encaminha pra', 'encaminha para'}
+    ):
+        queue_label = None
+        if any(_message_matches_term(normalized_message, term) for term in {'secretaria'}):
+            queue_label = 'secretaria'
+        elif any(_message_matches_term(normalized_message, term) for term in {'financeiro'}):
+            queue_label = 'financeiro'
+        elif any(_message_matches_term(normalized_message, term) for term in {'direcao', 'direção'}):
+            queue_label = 'direcao'
+        elif any(_message_matches_term(normalized_message, term) for term in {'coordenacao', 'coordenação'}):
+            queue_label = 'coordenacao'
+        if queue_label:
+            return (
+                f'Sem problema, sigo daqui com atendimento humano para {queue_label}. '
+                'Se quiser, eu tambem posso resumir o assunto em uma frase para deixar esse encaminhamento mais claro.'
+            )
     focus = _extract_public_gap_focus(message or '')
     if focus:
         return (
@@ -5890,6 +5947,11 @@ def _compose_public_gap_answer(query_hints: set[str], message: str | None = None
 def _extract_school_reference_candidate(message: str) -> str | None:
     normalized = _normalize_text(message)
     stop_tokens = {
+        'setor',
+        'departamento',
+        'area',
+        'área',
+        'fila',
         'na',
         'no',
         'em',
@@ -5975,13 +6037,49 @@ def _foreign_school_reference(
 ) -> str | None:
     if _is_comparative_query(message):
         return None
+    normalized = _normalize_text(message)
+    recent_focus = _recent_trace_focus(conversation_context) or {}
+    recent_active_task = str(recent_focus.get('active_task', '') or '').strip()
+    recent_student_name = str(
+        recent_focus.get('academic_student_name')
+        or recent_focus.get('finance_student_name')
+        or recent_focus.get('student_name')
+        or ''
+    ).strip()
     school_tokens = _school_identity_tokens(school_profile)
     direct_reference = _extract_school_reference_candidate(message)
     if direct_reference:
+        direct_reference_tokens = set(direct_reference.split())
+        support_like_tokens = {
+            'setor',
+            'financeiro',
+            'secretaria',
+            'direcao',
+            'direção',
+            'diretoria',
+            'coordenacao',
+            'coordenação',
+            'matricula',
+            'matrícula',
+            'atendimento',
+            'humano',
+            'fila',
+        }
+        if direct_reference_tokens & support_like_tokens:
+            return None
+        if (
+            normalized.startswith('e do ')
+            or normalized.startswith('e da ')
+            or normalized.startswith('do ')
+            or normalized.startswith('da ')
+        ) and (
+            recent_active_task.startswith(('academic:', 'finance:', 'admin:'))
+            or bool(recent_student_name)
+        ):
+            return None
         reference_tokens = set(direct_reference.split())
         if not (reference_tokens & school_tokens):
             return direct_reference
-    normalized = _normalize_text(message)
     if not any(
         _message_matches_term(normalized, term)
         for term in {'falar com', 'me passa', 'passa pro', 'passa para', 'diretor', 'diretora', 'contato'}
@@ -8798,7 +8896,11 @@ def _derive_pending_disambiguation(
     if _is_children_overview_query(message, actor):
         return 'linked_students_overview'
     linked_students = _linked_students(actor)
-    if linked_students and not _matching_students_in_text(linked_students, message) and _explicit_unmatched_student_reference(linked_students, message):
+    if linked_students and not _matching_students_in_text(linked_students, message) and _explicit_unmatched_student_reference(
+        linked_students,
+        message,
+        conversation_context=conversation_context,
+    ):
         return 'student_reference_unmatched'
     if _is_student_focus_activation_query(message, actor):
         return 'student_focus'
@@ -8986,7 +9088,11 @@ def _should_use_student_administrative_status(
         return False
     if _matching_students_in_text(students, message):
         return True
-    if _explicit_unmatched_student_reference(students, message):
+    if _explicit_unmatched_student_reference(
+        students,
+        message,
+        conversation_context=conversation_context,
+    ):
         return True
     normalized = _normalize_text(message)
     if any(_message_matches_term(normalized, term) for term in {'meu filho', 'minha filha', 'aluno', 'aluna'}):
@@ -9102,7 +9208,11 @@ def _compose_contextual_clarify_answer(
         return _compose_linked_students_overview_answer(actor)
     if slot_memory.pending_disambiguation == 'student_reference_unmatched':
         students = _linked_students(actor)
-        requested_name = _explicit_unmatched_student_reference(students, request_message)
+        requested_name = _explicit_unmatched_student_reference(
+            students,
+            request_message,
+            conversation_context=conversation_context,
+        )
         if students and requested_name:
             return _compose_unmatched_student_reference_answer(
                 requested_name=requested_name,
@@ -9278,8 +9388,29 @@ def _student_matches_candidate(student: dict[str, Any], candidate: str) -> bool:
 def _explicit_unmatched_student_reference(
     students: list[dict[str, Any]],
     message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
 ) -> str | None:
-    for candidate in _extract_explicit_student_reference_candidates(message):
+    candidates = _extract_explicit_student_reference_candidates(message)
+    if not candidates and isinstance(conversation_context, dict):
+        recent_focus = _recent_trace_focus(conversation_context) or {}
+        recent_active_task = str(recent_focus.get('active_task', '') or '').strip()
+        recent_student_name = str(
+            recent_focus.get('academic_student_name')
+            or recent_focus.get('finance_student_name')
+            or recent_focus.get('student_name')
+            or ''
+        ).strip()
+        normalized = _normalize_text(message)
+        followup_match = re.fullmatch(r'e\s+d[oa]\s+([a-z]{3,}(?:\s+[a-z]{3,}){0,2})\??', normalized)
+        if followup_match and (
+            recent_active_task.startswith(('academic:', 'finance:', 'admin:'))
+            or bool(recent_student_name)
+        ):
+            followup_candidate = followup_match.group(1).strip()
+            if followup_candidate:
+                candidates.append(followup_candidate)
+    for candidate in candidates:
         if any(_student_matches_candidate(student, candidate) for student in students):
             continue
         return candidate
@@ -9373,7 +9504,11 @@ def _select_linked_student(
     if len(matched_students) == 1:
         return matched_students[0], None
 
-    unmatched_student_reference = _explicit_unmatched_student_reference(students, message)
+    unmatched_student_reference = _explicit_unmatched_student_reference(
+        students,
+        message,
+        conversation_context=conversation_context,
+    )
     if unmatched_student_reference:
         return None, _compose_unmatched_student_reference_answer(
             requested_name=unmatched_student_reference,
@@ -10308,6 +10443,17 @@ async def _execute_protected_records_specialist(
             conversation_context=conversation_context,
         )
     )
+    linked_students = _linked_students(actor)
+    unmatched_student_name = _explicit_unmatched_student_reference(
+        linked_students,
+        message,
+        conversation_context=conversation_context,
+    )
+    if linked_students and unmatched_student_name:
+        return _compose_unmatched_student_reference_answer(
+            requested_name=unmatched_student_name,
+            students=linked_students,
+        )
 
     if preview.classification.domain is QueryDomain.institution and 'get_actor_identity_context' in preview.selected_tools:
         return _compose_account_context_answer(
@@ -11785,7 +11931,13 @@ async def generate_message_response(
                 }
             )
 
-        foreign_school_reference = _foreign_school_reference(
+        linked_students = _linked_students(actor)
+        unmatched_student_reference = _explicit_unmatched_student_reference(
+            linked_students,
+            request.message,
+            conversation_context=context_payload,
+        ) if linked_students else None
+        foreign_school_reference = None if unmatched_student_reference else _foreign_school_reference(
             message=request.message,
             school_profile=school_profile,
             conversation_context=context_payload,

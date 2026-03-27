@@ -126,12 +126,40 @@ def _augment_public_message_with_state(
     if normalized_attribute:
         context_hints.append(normalized_attribute)
     if 'biblioteca' in normalized_entity:
-        context_hints.extend(['biblioteca', 'biblioteca aurora', 'horario', 'nome'])
+        context_hints.extend(['biblioteca', 'biblioteca aurora'])
+        if normalized_attribute == 'hours':
+            context_hints.append('horario')
+        elif normalized_attribute == 'name':
+            context_hints.append('nome')
     if normalized_attribute in {'document_submission', 'submission'} or normalized_entity in {'documentos', 'documento'}:
         context_hints.extend(['documentos', 'enviar documentos', 'envio', 'secretaria', 'email', 'portal'])
     if normalized_entity in {'assistente', 'bot'} or normalized_attribute == 'capabilities':
         context_hints.extend(['assistente', 'capacidades', 'ajuda'])
     return ' '.join(part for part in [message, *context_hints] if part).strip()
+
+
+def _stateful_public_followup_fast_answer(
+    message: str,
+    *,
+    active_entity: str | None,
+    docs: list['EvidenceDoc'],
+) -> str | None:
+    normalized_entity = _normalize_text(active_entity or '')
+    if 'biblioteca' not in normalized_entity:
+        return None
+    library_doc = _find_first_matching_doc(docs, 'feature.', ('biblioteca', 'biblioteca aurora'))
+    if library_doc is None:
+        return None
+    terms = _query_terms(message)
+    if 'nome' in terms and not any(term in terms for term in {'horario', 'hora', 'abre', 'fecha'}):
+        return f'O nome desse espaco e {library_doc.title}.'
+    if any(term in terms for term in {'horario', 'hora', 'abre', 'fecha'}):
+        hours_match = re.search(r'das\s+[0-9h:]+\s+as\s+[0-9h:]+', _normalize_text(library_doc.text))
+        hours = hours_match.group(0) if hours_match else None
+        if hours:
+            return f'O horario da {library_doc.title} hoje e de segunda a sexta, {hours}.'
+        return f'O horario da {library_doc.title} hoje segue o registro publico disponivel.'
+    return None
 
 
 def _stringify_items(items: list[Any], keys: tuple[str, ...]) -> list[str]:
@@ -628,8 +656,15 @@ def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: li
     if feature_answer:
         return feature_answer
     text = primary.text
+    library_doc = _find_first_matching_doc(docs, 'feature.', ('biblioteca', 'biblioteca aurora'))
+    if (
+        'nome' in terms
+        and not any(term in terms for term in {'horario', 'hora', 'abre', 'fecha'})
+        and library_doc is not None
+    ):
+        library_title = library_doc.title if library_doc is not None else primary.title
+        return f'O nome desse espaco e {library_title}.'
     if 'biblioteca' in terms and not any(term in terms for term in {'horario', 'hora', 'abre', 'fecha'}):
-        library_doc = _find_first_matching_doc(docs, 'feature.', ('biblioteca', 'biblioteca aurora'))
         if library_doc is not None:
             hours_match = re.search(r'das\s+[0-9h:]+\s+as\s+[0-9h:]+', _normalize_text(library_doc.text))
             hours = hours_match.group(0) if hours_match else None
@@ -640,7 +675,11 @@ def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: li
         match = re.search(r'das\s+[0-9h:]+\s+as\s+[0-9h:]+', _normalize_text(text))
         hours = match.group(0) if match else None
         if 'biblioteca' in _normalize_text(primary.title):
-            return f'A {primary.title} atende ao publico de segunda a sexta, {hours}.' if hours else f'{primary.title}: {text}'
+            return (
+                f'O horario da {primary.title} hoje e de segunda a sexta, {hours}.'
+                if hours
+                else f'O horario da {primary.title} hoje segue o registro publico disponivel.'
+            )
         return text.split('|', 1)[0].strip()
     if any(term in terms for term in {'matricula', 'aulas', 'formatura', 'reuniao'}) and primary.doc_id.startswith('timeline.'):
         return text.split('|', 1)[0].strip()

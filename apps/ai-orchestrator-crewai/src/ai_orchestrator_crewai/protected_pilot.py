@@ -577,7 +577,15 @@ def _identity_backstop(actor: dict[str, Any], message: str) -> str | None:
         'pagamento',
         'mensalidade',
     }
-    if any(term in terms for term in {'logado', 'acesso'}) or 'consigo ver' in normalized_message or 'o que exatamente' in normalized_message:
+    if 'consigo ver' in normalized_message or 'o que exatamente' in normalized_message:
+        names = ', '.join(str(item.get('full_name', '')) for item in linked)
+        return (
+            f"Voce esta autenticado aqui como {actor.get('full_name', 'responsavel')}. "
+            f"Sua conta esta vinculada a {names}. "
+            'Hoje eu consigo consultar exatamente: notas, frequencia, avaliacoes, documentacao e financeiro desses alunos. '
+            'Se quiser, ja posso abrir um desses assuntos agora.'
+        )
+    if any(term in terms for term in {'logado', 'acesso'}):
         names = ', '.join(str(item.get('full_name', '')) for item in linked)
         return (
             f"Voce esta autenticado aqui como {actor.get('full_name', 'responsavel')}. "

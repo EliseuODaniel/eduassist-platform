@@ -49,6 +49,7 @@ from .public_pilot import (
     _rank_evidence_docs,
     _select_primary_doc,
     _serialize_evidence_pack,
+    _stateful_public_followup_fast_answer,
 )
 
 
@@ -113,7 +114,12 @@ class PublicShadowFlow(Flow[PublicFlowState]):
         self.state.evidence_source_ids = [doc.doc_id for doc in self._shortlisted_docs]
 
         fast_path_answer = (
-            _direct_greeting_fast_answer(self.state.effective_message)
+            _stateful_public_followup_fast_answer(
+                self.state.message,
+                active_entity=self.state.active_entity,
+                docs=self._evidence_docs,
+            )
+            or _direct_greeting_fast_answer(self.state.effective_message)
             or _direct_capabilities_fast_answer(self.state.effective_message)
             or _direct_contact_fast_answer(self.state.effective_message, self._evidence_docs)
             or _direct_contact_fast_answer(self.state.effective_message, self._shortlisted_docs)

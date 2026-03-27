@@ -230,6 +230,7 @@ class SupportShadowFlow(Flow[SupportFlowState]):
 
     @listen('handoff')
     async def handle_handoff(self) -> dict[str, Any]:
+        previous_queue_name = str((self.state.current_item or {}).get('queue_name') or self.state.active_queue_name or '').strip()
         payload = await _internal_post(
             self.settings,
             '/v1/internal/support/handoffs',
@@ -248,12 +249,25 @@ class SupportShadowFlow(Flow[SupportFlowState]):
             item.get('protocol_code') or item.get('linked_ticket_code') or ''
         ).strip() or self.state.active_ticket_code
         self.state.active_queue_name = str(item.get('queue_name') or self.state.queue_name or '').strip() or self.state.active_queue_name
+        answer_text = _handoff_create_response(item, created=created)
+        if (
+            previous_queue_name
+            and self.state.queue_name
+            and previous_queue_name != self.state.queue_name
+        ):
+            answer_text = (
+                f'Sem problema, agora segui com a fila de {self.state.queue_name}. '
+                f'{answer_text}'
+            )
         return await self._finalize_support_answer(
-            answer_text=_handoff_create_response(item, created=created),
-            reason='support_handoff_created' if created else 'support_handoff_reused',
+            answer_text=answer_text,
+            reason='support_handoff_created' if created else (
+                'support_handoff_rerouted' if previous_queue_name and previous_queue_name != self.state.queue_name else 'support_handoff_reused'
+            ),
             extra={
                 'queue_name': self.state.queue_name,
                 'created': created,
+                'previous_queue_name': previous_queue_name,
             },
         )
 
