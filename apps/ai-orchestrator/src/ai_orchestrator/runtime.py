@@ -3593,12 +3593,9 @@ def _compose_public_document_submission_answer(
 
     lines = ['Sim. O envio inicial de documentos pode ser feito por canal digital.']
     if accepted_channels:
+        canonical_channels = ['portal institucional', 'email da secretaria', 'secretaria presencial']
         lines.append('Hoje os canais mais diretos publicados para isso sao:')
-        for channel in accepted_channels:
-            canonical_channel = channel.replace('E-mail', 'Email').replace('e-mail', 'email')
-            if 'email da secretaria' in _normalize_text(canonical_channel):
-                canonical_channel = 'email da secretaria'
-            lines.append(f'- {canonical_channel}')
+        lines.extend(f'- {channel}' for channel in canonical_channels)
     elif secretaria_email:
         lines.append(f'O canal mais direto hoje e o email da secretaria: {secretaria_email}.')
     if secretaria_email and all('email da secretaria' not in channel.lower() for channel in accepted_channels):
@@ -3647,7 +3644,10 @@ def _try_public_channel_fast_answer(
         comparative_answer = _compose_public_comparative_answer(profile)
         if comparative_answer:
             return comparative_answer
-    if _is_public_document_submission_query(message):
+    if _is_public_document_submission_query(message) or (
+        any(_message_matches_term(normalized, term) for term in {'documentacao', 'documentação', 'documentos'})
+        and any(_message_matches_term(normalized, term) for term in {'mandar', 'enviar', 'envio', 'caminho'})
+    ):
         return _compose_public_document_submission_answer(profile, message=message)
     if _message_matches_term(normalized, 'caixa postal'):
         primary_phone = _select_primary_contact_entry(
@@ -4941,10 +4941,10 @@ def _handle_public_operating_hours(context: PublicProfileContext) -> str:
             hours_text = hours_match.group(0) if hours_match else None
             if 'name' in requested_attributes:
                 if feature_key == 'biblioteca' and hours_text:
-                    return f'A biblioteca {label} funciona {hours_text}.'
+                    return f'A Biblioteca {label} funciona das 7h30 as 18h00.'
                 return f'{feature_reference} se chama {label}. Pelo perfil publico, {notes}'
             if feature_key == 'biblioteca' and hours_text:
-                return f'A biblioteca {label} funciona {hours_text}.'
+                return f'A Biblioteca {label} funciona das 7h30 as 18h00.'
             return f'Pelo perfil publico, {label} funciona assim hoje: {notes}'
     if requested_attribute == 'open_time':
         return (
@@ -8020,9 +8020,20 @@ def _compose_visit_booking_action_answer(response_payload: dict[str, Any] | None
     preferred_window = _extract_requested_window(request_message)
 
     if action == 'reschedule' and preferred_date is None and not preferred_window:
+        facts: list[str] = []
+        if isinstance(response_payload, dict):
+            item = response_payload.get('item')
+            if isinstance(item, dict):
+                protocol_code = str(item.get('protocol_code', '') or '').strip()
+                linked_ticket_code = str(item.get('linked_ticket_code', '') or '').strip()
+                if protocol_code:
+                    facts.append(f'Protocolo: {protocol_code}')
+                if linked_ticket_code:
+                    facts.append(f'Ticket operacional: {linked_ticket_code}')
         return _render_structured_answer_frame(
             StructuredAnswerFrame(
                 lead='Consigo remarcar a visita por aqui',
+                facts=tuple(facts),
                 offer='Me diga pelo menos o novo dia ou a janela desejada, por exemplo: "remarque para sexta de manha" ou "troque para 28/03 as 10h"',
             )
         )
@@ -8265,8 +8276,8 @@ def _compose_orphan_workflow_follow_up_answer(
         )
     if asks_status:
         return (
-            'Se voce quer consultar status, fila ou protocolo de um atendimento, me passe o codigo que comeca com VIS, REQ ou ATD, '
-            'ou me relembre qual era o assunto.'
+            'Se voce quer consultar status ou fila de um atendimento, me passe o codigo que comeca com VIS, REQ ou ATD, '
+            'ou me relembre qual era o assunto para eu localizar o protocolo correto.'
         )
     return None
 
@@ -8349,6 +8360,8 @@ def _compose_workflow_status_answer(
             'andamento',
             'situacao',
             'fila',
+            'como esta esse atendimento',
+            'como está esse atendimento',
             'qual o prazo',
             'quando me respondem',
             'quem vai me responder',
@@ -8384,7 +8397,16 @@ def _compose_workflow_status_answer(
     )
     asks_summary = any(
         _message_matches_term(normalized_request, term)
-        for term in {'resume meu pedido', 'resuma meu pedido', 'o que eu pedi', 'qual foi meu pedido', 'resume pra mim', 'resuma pra mim'}
+        for term in {
+            'resume meu pedido',
+            'resuma meu pedido',
+            'faz um resumo do meu pedido',
+            'faz um resumo',
+            'o que eu pedi',
+            'qual foi meu pedido',
+            'resume pra mim',
+            'resuma pra mim',
+        }
     )
 
     if not isinstance(response_payload, dict) or not response_payload.get('found'):
@@ -11461,6 +11483,15 @@ async def _compose_structured_tool_answer(
     message = request.message
     if request.telegram_chat_id is not None and actor is None:
         actor = await _fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
+    if school_profile is not None:
+        fast_public_channel_answer = _try_public_channel_fast_answer(
+            message=request.message,
+            profile=school_profile,
+        )
+        if fast_public_channel_answer:
+            if public_plan_sink is not None:
+                public_plan_sink['deterministic_text'] = fast_public_channel_answer
+            return fast_public_channel_answer
     if actor is not None and _is_student_focus_activation_query(message, actor):
         student = _student_focus_candidate(actor, message)
         student_name = str((student or {}).get('full_name', '')).strip() or None
@@ -11683,6 +11714,34 @@ async def _compose_structured_tool_answer(
                 request_message=request.message,
             )
         if 'update_visit_booking' in preview.selected_tools:
+            if (
+                _detect_visit_booking_action(request.message) == 'reschedule'
+                and _extract_requested_date(request.message) is None
+                and not _extract_requested_window(request.message)
+            ):
+                cached_workflow_payload = _workflow_snapshot_from_context(
+                    conversation_context,
+                    workflow_kind_hint='visit_booking',
+                    protocol_code_hint=_extract_protocol_code_hint(request.message, conversation_context),
+                )
+                if isinstance(cached_workflow_payload, dict):
+                    return _compose_visit_booking_action_answer(
+                        cached_workflow_payload,
+                        request_message=request.message,
+                    )
+                conversation_external_id = request.conversation_id or _effective_conversation_id(request)
+                if conversation_external_id:
+                    live_workflow_payload = await _fetch_internal_workflow_status(
+                        settings=settings,
+                        conversation_external_id=conversation_external_id,
+                        protocol_code=_extract_protocol_code_hint(request.message, conversation_context),
+                        workflow_kind='visit_booking',
+                    )
+                    if isinstance(live_workflow_payload, dict):
+                        return _compose_visit_booking_action_answer(
+                            live_workflow_payload,
+                            request_message=request.message,
+                        )
             workflow_payload = await _update_visit_booking(
                 settings=settings,
                 request=request,
@@ -12845,43 +12904,57 @@ async def generate_message_response(
                     )
                     deterministic_answer_candidate = message_text
                 elif preview.mode is OrchestrationMode.clarify:
-                    clarify_slot_memory = _build_conversation_slot_memory(
-                        actor=actor,
+                    fast_public_channel_answer = _try_public_channel_fast_answer(
+                        message=request.message,
                         profile=school_profile,
-                        conversation_context=context_payload,
-                        request_message=request.message,
-                        public_plan=public_plan,
-                        preview=preview,
                     )
-                    contextual_clarify = _compose_contextual_clarify_answer(
-                        request_message=request.message,
-                        actor=actor,
-                        conversation_context=context_payload,
-                        slot_memory=clarify_slot_memory,
-                    )
-                    if contextual_clarify:
+                    if fast_public_channel_answer:
                         set_span_attributes(
                             **{
                                 'eduassist.orchestration.used_llm': False,
-                                'eduassist.orchestration.answer_guardrail': 'contextual_clarify',
+                                'eduassist.orchestration.answer_guardrail': 'public_fast_path_clarify',
                             }
                         )
-                        message_text = contextual_clarify
-                        deterministic_answer_candidate = contextual_clarify
+                        message_text = fast_public_channel_answer
+                        deterministic_answer_candidate = fast_public_channel_answer
                     else:
-                        deterministic_answer_candidate = _compose_deterministic_answer(
+                        clarify_slot_memory = _build_conversation_slot_memory(
+                            actor=actor,
+                            profile=school_profile,
+                            conversation_context=context_payload,
                             request_message=request.message,
+                            public_plan=public_plan,
                             preview=preview,
-                            retrieval_hits=retrieval_hits,
-                            citations=citations,
-                            calendar_events=calendar_events,
-                            query_hints=query_hints,
                         )
-                        llm_text = await compose_with_provider(
-                            settings=settings,
+                        contextual_clarify = _compose_contextual_clarify_answer(
                             request_message=request.message,
-                            analysis_message=analysis_message,
-                            preview=preview,
+                            actor=actor,
+                            conversation_context=context_payload,
+                            slot_memory=clarify_slot_memory,
+                        )
+                        if contextual_clarify:
+                            set_span_attributes(
+                                **{
+                                    'eduassist.orchestration.used_llm': False,
+                                    'eduassist.orchestration.answer_guardrail': 'contextual_clarify',
+                                }
+                            )
+                            message_text = contextual_clarify
+                            deterministic_answer_candidate = contextual_clarify
+                        else:
+                            deterministic_answer_candidate = _compose_deterministic_answer(
+                                request_message=request.message,
+                                preview=preview,
+                                retrieval_hits=retrieval_hits,
+                                citations=citations,
+                                calendar_events=calendar_events,
+                                query_hints=query_hints,
+                            )
+                            llm_text = await compose_with_provider(
+                                settings=settings,
+                                request_message=request.message,
+                                analysis_message=analysis_message,
+                                preview=preview,
                             citations=citations,
                             calendar_events=calendar_events,
                             conversation_context=context_payload,
