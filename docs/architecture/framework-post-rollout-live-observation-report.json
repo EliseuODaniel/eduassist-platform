@@ -1,0 +1,382 @@
+{
+  "generated_at": "2026-03-27T16:11:39.283931+00:00",
+  "classification": "healthy",
+  "observation_healthy": true,
+  "observation_errors": [],
+  "status": {
+    "service": "ai-orchestrator",
+    "ready": true,
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "crewaiPilotConfigured": true,
+    "experimentEnabled": true,
+    "experimentPrimaryEngine": "crewai",
+    "experimentSlices": "public,support,workflow",
+    "experimentRolloutPercent": 0,
+    "experimentSliceRollouts": "public:2,support:100,workflow:100",
+    "experimentAllowlistSlices": "support,workflow",
+    "experimentRequireScorecard": false,
+    "experimentScorecardPath": "/workspace/artifacts/framework-native-scorecard.json",
+    "experimentMinPrimaryEngineScore": 20,
+    "experimentRequireHealthyPilot": false,
+    "experimentScorecardGate": {
+      "loaded": true,
+      "generated_at": "2026-03-27T14:38:46.020428+00:00",
+      "primary_engine": "langgraph",
+      "primary_score": 29,
+      "primary_max_score": 30,
+      "primary_stack_native_path_passed": true,
+      "promotion_gate": {
+        "eligible": true,
+        "minimum_score_for_canary": 20,
+        "primary_stack_native_path_required": true,
+        "recommended_canary_slices": [
+          "public",
+          "protected",
+          "support",
+          "workflow"
+        ],
+        "blocked_canary_slices": [],
+        "slice_eligibility": {
+          "public": {
+            "eligible": true,
+            "reason": "public is allowed for langgraph under the current scorecard gate."
+          },
+          "protected": {
+            "eligible": true,
+            "reason": "protected is allowed for langgraph under the current scorecard gate."
+          },
+          "support": {
+            "eligible": true,
+            "reason": "support is allowed for langgraph under the current scorecard gate."
+          },
+          "workflow": {
+            "eligible": true,
+            "reason": "workflow is allowed for langgraph under the current scorecard gate."
+          }
+        }
+      },
+      "frameworks": {
+        "langgraph": {
+          "total_score": 29,
+          "max_score": 30,
+          "primary_stack_native_path_passed": true,
+          "restart_recovery_passed": true,
+          "crash_recovery_passed": true,
+          "recommended_canary_slices": [
+            "public",
+            "protected",
+            "support",
+            "workflow"
+          ],
+          "blocked_canary_slices": [],
+          "trace_sample": {
+            "thread_id": "conversation:scorecard-topline-langgraph-1",
+            "created_at": "2026-03-27T13:38:23.699812+00:00",
+            "next_nodes": [],
+            "task_names": [],
+            "hitl_status": null,
+            "state_route": "structured_tool",
+            "checkpoint_id": "1f129e23-9f67-6ae0-8005-890a0437d5c8",
+            "state_available": true,
+            "state_slice_name": "public",
+            "snapshot_metadata": {
+              "step": 5,
+              "source": "loop"
+            },
+            "checkpointer_backend": "postgres",
+            "checkpointer_enabled": true,
+            "task_interrupt_count": 0,
+            "has_pending_interrupt": false,
+            "top_level_interrupt_count": 0
+          }
+        },
+        "crewai": {
+          "total_score": 27,
+          "max_score": 30,
+          "primary_stack_native_path_passed": true,
+          "restart_recovery_passed": true,
+          "crash_recovery_passed": true,
+          "trace_sample": {
+            "request": {
+              "slice_name": "support",
+              "flow_enabled": true,
+              "flow_state_id": "2cc869d9-85cf-405a-a336-d4ea317ea22f",
+              "validation_stack": [
+                "flow_router",
+                "deterministic_support"
+              ]
+            },
+            "response": {
+              "latency_ms": 60.7
+            }
+          },
+          "recommended_canary_slices": [
+            "public",
+            "support",
+            "workflow"
+          ],
+          "blocked_canary_slices": [
+            "protected"
+          ],
+          "blocked_reasons": {
+            "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+          }
+        }
+      }
+    },
+    "experimentRolloutReadiness": {
+      "candidate_engine": "crewai",
+      "scorecard_loaded": true,
+      "scorecard_enforced": false,
+      "pilot_health_enforced": false,
+      "primary_stack_native_path_passed": true,
+      "gate_eligible": true,
+      "configured_slices": [
+        "public",
+        "support",
+        "workflow"
+      ],
+      "promotable_now": [
+        "public",
+        "support",
+        "workflow"
+      ],
+      "blocked_now": {
+        "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+      },
+      "recommended_next_promotions": [],
+      "per_slice": {
+        "protected": {
+          "eligible": false,
+          "reason": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review.",
+          "configured": false,
+          "configured_rollout_percent": 0,
+          "allowlist_only": false,
+          "live": false
+        },
+        "public": {
+          "eligible": true,
+          "reason": "public is allowed for crewai under the current scorecard gate.",
+          "configured": true,
+          "configured_rollout_percent": 2,
+          "allowlist_only": false,
+          "live": true
+        },
+        "support": {
+          "eligible": true,
+          "reason": "support is allowed for crewai under the current scorecard gate.",
+          "configured": true,
+          "configured_rollout_percent": 100,
+          "allowlist_only": true,
+          "live": true
+        },
+        "workflow": {
+          "eligible": true,
+          "reason": "workflow is allowed for crewai under the current scorecard gate.",
+          "configured": true,
+          "configured_rollout_percent": 100,
+          "allowlist_only": true,
+          "live": true
+        }
+      }
+    },
+    "experimentLivePromotionSummary": {
+      "resolved_primary_stack": "langgraph",
+      "experiment_enabled": true,
+      "experiment_active": true,
+      "candidate_engine": "crewai",
+      "pilot_configured": true,
+      "pilot_ready": true,
+      "scorecard_loaded": true,
+      "primary_stack_native_path_passed": true,
+      "promotable_now": [
+        "public"
+      ],
+      "maintain_now": [
+        "support",
+        "workflow"
+      ],
+      "blocked_now": {
+        "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+      },
+      "advisory_by_slice": {
+        "protected": {
+          "eligible": false,
+          "configured": false,
+          "live": false,
+          "allowlist_only": false,
+          "configured_rollout_percent": 0,
+          "action": "blocked",
+          "blocked_reasons": [
+            "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+          ]
+        },
+        "public": {
+          "eligible": true,
+          "configured": true,
+          "live": true,
+          "allowlist_only": false,
+          "configured_rollout_percent": 2,
+          "action": "expand_gradually",
+          "blocked_reasons": []
+        },
+        "support": {
+          "eligible": true,
+          "configured": true,
+          "live": true,
+          "allowlist_only": true,
+          "configured_rollout_percent": 100,
+          "action": "maintain_controlled",
+          "blocked_reasons": []
+        },
+        "workflow": {
+          "eligible": true,
+          "configured": true,
+          "live": true,
+          "allowlist_only": true,
+          "configured_rollout_percent": 100,
+          "action": "maintain_controlled",
+          "blocked_reasons": []
+        }
+      }
+    },
+    "llmProvider": "google",
+    "llmConfigured": true,
+    "capabilities": [
+      "langgraph-state-machine",
+      "langgraph-thread-id",
+      "langgraph-hitl-internal",
+      "engine-selector",
+      "tool-routing",
+      "qdrant-hybrid-retrieval",
+      "conversation-memory",
+      "graph-rag-routing",
+      "provider-abstraction"
+    ],
+    "supportedEngines": [
+      "langgraph",
+      "shadow",
+      "crewai"
+    ],
+    "graphRagEnabled": true,
+    "graphRagWorkspaceReady": true,
+    "langgraphCheckpointerEnabled": true,
+    "langgraphCheckpointerReady": true,
+    "langgraphCheckpointerBackend": "postgres",
+    "langgraphThreadIdEnabled": true,
+    "langgraphHitlEnabled": false,
+    "langgraphHitlDefaultSlices": "support"
+  },
+  "services": {
+    "ai-orchestrator": {
+      "exists": true,
+      "running": true,
+      "status": "running",
+      "health_status": "healthy",
+      "started_at": "2026-03-27T16:04:39.926021032Z"
+    },
+    "ai-orchestrator-crewai": {
+      "exists": true,
+      "running": true,
+      "status": "running",
+      "health_status": "healthy",
+      "started_at": "2026-03-27T14:18:56.12672449Z"
+    },
+    "api-core": {
+      "exists": true,
+      "running": true,
+      "status": "running",
+      "health_status": "healthy",
+      "started_at": "2026-03-26T16:51:57.183119439Z"
+    },
+    "telegram-gateway": {
+      "exists": true,
+      "running": true,
+      "status": "running",
+      "health_status": "healthy",
+      "started_at": "2026-03-26T03:43:36.151886071Z"
+    }
+  },
+  "advisory": {
+    "resolved_primary_stack": "langgraph",
+    "experiment_enabled": true,
+    "experiment_active": true,
+    "candidate_engine": "crewai",
+    "pilot_configured": true,
+    "pilot_ready": true,
+    "scorecard_loaded": true,
+    "primary_stack_native_path_passed": true,
+    "promotable_now": [
+      "public"
+    ],
+    "maintain_now": [
+      "support",
+      "workflow"
+    ],
+    "blocked_now": {
+      "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+    },
+    "advisory_by_slice": {
+      "protected": {
+        "eligible": false,
+        "configured": false,
+        "live": false,
+        "allowlist_only": false,
+        "configured_rollout_percent": 0,
+        "action": "blocked",
+        "blocked_reasons": [
+          "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+        ]
+      },
+      "public": {
+        "eligible": true,
+        "configured": true,
+        "live": true,
+        "allowlist_only": false,
+        "configured_rollout_percent": 2,
+        "action": "expand_gradually",
+        "blocked_reasons": []
+      },
+      "support": {
+        "eligible": true,
+        "configured": true,
+        "live": true,
+        "allowlist_only": true,
+        "configured_rollout_percent": 100,
+        "action": "maintain_controlled",
+        "blocked_reasons": []
+      },
+      "workflow": {
+        "eligible": true,
+        "configured": true,
+        "live": true,
+        "allowlist_only": true,
+        "configured_rollout_percent": 100,
+        "action": "maintain_controlled",
+        "blocked_reasons": []
+      }
+    }
+  },
+  "latest_rollout_entry": {
+    "timestamp": "2026-03-27T16:01:18.904547+00:00",
+    "intent": "promotion",
+    "slice": "public",
+    "before_rollout_percent": 1,
+    "after_rollout_percent": 2,
+    "mode": "execute",
+    "apply": true,
+    "result": "failed",
+    "operator": "codex",
+    "reason": "Expandir public de 1% para 2% conforme recomendacao do gate live",
+    "returncode": 1,
+    "env_file": ".env",
+    "proposed_slices": "public,support,workflow",
+    "proposed_slice_rollouts": "public:2,support:100,workflow:100",
+    "proposed_allowlist_slices": "support,workflow",
+    "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md",
+    "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-execution-report.json\n",
+    "stderr": " Container eduassist-ai-orchestrator Recreate \n Container eduassist-ai-orchestrator Recreated \n Container eduassist-ai-orchestrator Starting \n Container eduassist-ai-orchestrator Started \n"
+  }
+}

@@ -110,6 +110,8 @@ Validated in this round:
 - A merge/release checklist can now verify snapshot freshness, health, scorecard gates, and changelog hygiene in one pass before promotion or merge.
 - A recommendation wrapper can now promote the next slice suggested by the live gate using the same audited rollout path, reducing operator guesswork while preserving the existing controls.
 - The rollout execution path can now resync runtime scorecard artifacts after restart and wait for full validated status, avoiding false-negative live checks caused by boot-time partial status surfaces.
+- A post-rollout live observation report can now confirm the real runtime posture after promotion before the next expansion.
+- A merge-preparation report can now turn the final handoff into an explicit gate against the target branch, instead of relying only on ad-hoc Git inspection.
 
 Concrete local evidence:
 

@@ -377,6 +377,42 @@ Operational note:
 
 - the execution path now resyncs the runtime-readable scorecard artifact into `ai-orchestrator` after restart and waits for full status validation, not only `ready=true`
 
+## Post-Rollout Live Observation
+
+After a real promotion, generate a live observation snapshot before the next increase:
+
+```bash
+python3 tools/evals/build_framework_post_rollout_live_observation.py
+```
+
+Artifacts:
+
+- [framework-post-rollout-live-observation-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-post-rollout-live-observation-report.md)
+
+Use this to confirm:
+
+- live rollout percentages match the intended state
+- health and advisory state are still consistent after restart
+- the latest audited rollout entry matches the current live posture
+
+## Merge Preparation
+
+Once snapshot and checklist are green, generate the merge-preparation report:
+
+```bash
+python3 tools/evals/build_framework_merge_preparation.py
+```
+
+Artifacts:
+
+- [framework-merge-preparation-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-merge-preparation-report.md)
+
+This report turns the final step into an explicit merge decision, showing:
+
+- whether the branch is still behind the target branch
+- whether release snapshot and merge checklist are both green
+- the current diff surface against the target branch
+
 Artifacts:
 
 - [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md)
