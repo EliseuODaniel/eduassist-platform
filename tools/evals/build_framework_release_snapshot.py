@@ -24,20 +24,52 @@ SERVICE_CONTAINERS = {
     'telegram-gateway': 'eduassist-telegram-gateway',
 }
 
+GOVERNANCE_ONLY_DIFF_PATHS = {
+    'docs/architecture/framework-release-snapshot-report.md',
+    'docs/architecture/framework-release-snapshot-report.json',
+    'docs/architecture/framework-merge-release-checklist-report.md',
+    'docs/architecture/framework-merge-release-checklist-report.json',
+    'docs/architecture/framework-merge-preparation-report.md',
+    'docs/architecture/framework-merge-preparation-report.json',
+}
+
 
 def _run(cmd: list[str]) -> str:
     completed = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, check=True)
     return completed.stdout.strip()
 
 
+def _worktree_is_governance_only(status_short: str) -> tuple[bool, str]:
+    lines = [line.rstrip() for line in str(status_short or '').splitlines() if line.strip()]
+    if not lines:
+        return True, 'working tree is clean.'
+    paths: list[str] = []
+    for line in lines:
+        if len(line) >= 3 and line[2] == ' ':
+            candidate = line[3:].strip()
+        elif len(line) >= 2 and line[1] == ' ':
+            candidate = line[2:].strip()
+        else:
+            candidate = line.strip()
+        if '->' in candidate:
+            candidate = candidate.split('->', 1)[1].strip()
+        paths.append(candidate)
+    if paths and all(path in GOVERNANCE_ONLY_DIFF_PATHS for path in paths):
+        return True, 'working tree differs only by governance report files.'
+    return False, status_short
+
+
 def _git_snapshot() -> dict[str, Any]:
     branch = _run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
     commit = _run(['git', 'rev-parse', 'HEAD'])
     status = _run(['git', 'status', '--short'])
+    worktree_release_ready, worktree_detail = _worktree_is_governance_only(status)
     return {
         'branch': branch,
         'commit': commit,
         'working_tree_clean': not bool(status.strip()),
+        'working_tree_release_ready': worktree_release_ready,
+        'working_tree_detail': worktree_detail,
         'status_short': status,
     }
 
@@ -96,8 +128,8 @@ def _release_posture(*, git_snapshot: dict[str, Any], status_payload: dict[str, 
     readiness = status_payload.get('experimentRolloutReadiness')
     errors: list[str] = []
 
-    if not git_snapshot.get('working_tree_clean'):
-        errors.append('working tree is not clean')
+    if not git_snapshot.get('working_tree_release_ready'):
+        errors.append(f"working tree is not clean: {git_snapshot.get('working_tree_detail', '')}")
     if not bool(status_payload.get('ready')):
         errors.append('ai-orchestrator status is not ready')
     for name, health in services.items():
@@ -168,6 +200,7 @@ def main() -> int:
         f"- branch: `{git_snapshot['branch']}`",
         f"- commit: `{git_snapshot['commit']}`",
         f"- working tree clean: `{git_snapshot['working_tree_clean']}`",
+        f"- working tree release-ready: `{git_snapshot['working_tree_release_ready']}`",
         '',
         '## Runtime Snapshot',
         '',
