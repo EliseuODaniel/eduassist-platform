@@ -1,0 +1,107 @@
+[
+  {
+    "thread_id": "real_guardian_identity_and_student_scope",
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "protected",
+        "prompt": "estou logado como?",
+        "expected_keywords": ["Maria Oliveira"]
+      },
+      {
+        "slice": "protected",
+        "prompt": "quais notas do meu filho lucas",
+        "expected_keywords": ["Lucas Oliveira"]
+      },
+      {
+        "slice": "protected",
+        "prompt": "quais notas do meu filho joão",
+        "expected_keywords": ["Joao", "Lucas Oliveira", "Ana Oliveira"],
+        "forbidden_keywords": ["Fernando"]
+      },
+      {
+        "slice": "protected",
+        "prompt": "qual situação de documentação do lucas?",
+        "expected_keywords": ["Lucas Oliveira", "regular"],
+        "forbidden_keywords": ["Ana Oliveira"]
+      },
+      {
+        "slice": "protected",
+        "prompt": "lucas oliveira, o luquinha",
+        "expected_keywords": ["Lucas Oliveira"],
+        "forbidden_keywords": ["Ana Oliveira"],
+        "note": "real transcript disambiguation turn"
+      },
+      {
+        "slice": "protected",
+        "prompt": "quais próximas provas do lucas",
+        "expected_keywords": ["Lucas Oliveira", "2026-04-10"]
+      },
+      {
+        "slice": "protected",
+        "prompt": "qual a matricula do lucas",
+        "expected_keywords": ["Lucas Oliveira", "MAT-2026-001"]
+      },
+      {
+        "slice": "protected",
+        "prompt": "e como estão as faltas do lucas",
+        "expected_keywords": ["Lucas Oliveira"],
+        "forbidden_keywords": ["MAT-2026-001"],
+        "note": "real transcript regression: previously echoed enrollment instead of attendance"
+      },
+      {
+        "slice": "protected",
+        "prompt": "E a frequencia do Lucas?",
+        "expected_keywords": ["Lucas Oliveira"],
+        "forbidden_keywords": ["Ana Oliveira"],
+        "note": "real transcript regression: previously treated frequencia as student name"
+      }
+    ]
+  },
+  {
+    "thread_id": "real_document_channels_conflict",
+    "category": "threaded_real_transcript",
+    "turns": [
+      {
+        "slice": "protected",
+        "prompt": "quais documentos faltam pra ana",
+        "expected_keywords": ["Ana"],
+        "forbidden_keywords": ["maria.oliveira@mock.eduassist.local"],
+        "note": "real transcript regression: previously answered the guardian admin profile instead of Ana"
+      },
+      {
+        "slice": "public",
+        "prompt": "posso enviar por fax?",
+        "expected_keywords": ["fax"],
+        "forbidden_keywords": ["sim"],
+        "note": "real transcript regression: previously implied fax was accepted"
+      },
+      {
+        "slice": "public",
+        "prompt": "qual o número do fax?",
+        "expected_keywords": ["fax"],
+        "forbidden_keywords": ["98888-1001"]
+      },
+      {
+        "slice": "public",
+        "prompt": "mas antes você respondeu que eu podia enviar por fax",
+        "expected_keywords": ["fax"],
+        "forbidden_keywords": ["sim"],
+        "note": "repair turn from real transcript"
+      },
+      {
+        "slice": "public",
+        "prompt": "e se eu mandar por telegrama, serve?",
+        "expected_keywords": ["portal", "email", "secretaria"],
+        "forbidden_keywords": ["sim"],
+        "note": "real transcript regression: previously repeated generic digital-channel copy"
+      },
+      {
+        "slice": "public",
+        "prompt": "qual sua caixa postal?",
+        "expected_keywords": ["caixa postal"],
+        "forbidden_keywords": ["sim"]
+      }
+    ]
+  }
+]

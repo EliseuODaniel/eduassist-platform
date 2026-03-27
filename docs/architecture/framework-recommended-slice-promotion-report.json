@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-03-27T16:12:28.626219+00:00",
+  "candidate_engine": "crewai",
+  "selected_slice": "public",
+  "advisory_action": "expand_gradually",
+  "current_rollout_percent": 2,
+  "recommended_rollout_percent": 5,
+  "apply": true,
+  "operator": "codex",
+  "reason": "Expandir public de 2% para 5% conforme recomendacao do gate live",
+  "blocked_reasons": [],
+  "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-slice-promotion-report.md",
+  "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-slice-promotion-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-slice-promotion-report.json\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-changelog.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-changelog.json\n",
+  "stderr": "",
+  "returncode": 0,
+  "live_summary_excerpt": {
+    "promotable_now": [
+      "public"
+    ],
+    "maintain_now": [
+      "support",
+      "workflow"
+    ],
+    "blocked_now": {
+      "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+    }
+  }
+}

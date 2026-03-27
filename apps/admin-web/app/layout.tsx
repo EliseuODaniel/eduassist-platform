@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'EduAssist Operator Console',
-  description: 'Painel autenticado para operar o ecossistema EduAssist.',
+  title: 'Portal EduAssist',
+  description: 'Portal do EduAssist para atendimento, conta e acompanhamento escolar.',
 };
 
 export default function RootLayout({

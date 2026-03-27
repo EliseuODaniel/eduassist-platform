@@ -5,7 +5,7 @@ APP_USER="${POSTGRES_APP_USER:-eduassist_app}"
 APP_PASSWORD="${POSTGRES_APP_PASSWORD:-eduassist_app}"
 ADMIN_USER="${POSTGRES_USER:-eduassist}"
 DB_NAME="${POSTGRES_DB:-eduassist}"
-SCHEMAS=(identity school academic finance calendar documents conversation audit runtime)
+SCHEMAS=(identity school academic finance calendar documents conversation audit runtime langgraph_checkpoint)
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<EOSQL
 DO \$\$
@@ -44,3 +44,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "${ADMIN_USER}" IN SCHEMA "${schema_name}"
   GRANT EXECUTE ON FUNCTIONS TO "${APP_USER}";
 EOSQL
 done
+
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<EOSQL
+GRANT CREATE ON SCHEMA "langgraph_checkpoint" TO "${APP_USER}";
+EOSQL

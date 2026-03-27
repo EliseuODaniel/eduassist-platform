@@ -1,0 +1,134 @@
+# LangGraph User-Traffic HITL Report
+
+Date: 2026-03-27T16:44:26.572601+00:00
+
+## Goal
+
+Validate that normal user traffic can enter native LangGraph `interrupt()` review paths, persist the pending state, and resume the same thread safely.
+
+## Summary
+
+- Passed: `2/2`
+- All passed: `yes`
+
+## Cases
+
+| Case | Slice | Result | Evidence |
+| --- | --- | --- | --- |
+| `langgraph-user-traffic-hitl-support-1` | `support_slice` | `passed` | reason=`langgraph_hitl_pending_review`, pending_before=`1`, pending_after=`0`, graph_path=`classify_request -> security_gate -> route_request -> select_slice -> support_slice -> handoff -> support_human_review -> support_review_approved -> classify_request -> security_gate -> route_request -> select_slice` |
+| `langgraph-user-traffic-hitl-protected-1` | `protected_slice` | `passed` | reason=`langgraph_hitl_pending_review`, pending_before=`1`, pending_after=`0`, graph_path=`classify_request -> security_gate -> route_request -> select_slice -> protected_slice -> structured_tool_call -> protected_human_review -> protected_review_cancelled -> classify_request -> security_gate -> route_request -> select_slice` |
+
+## Raw JSON
+
+```json
+{
+  "generated_at": "2026-03-27T16:44:26.572601+00:00",
+  "summary": {
+    "passed": 2,
+    "total": 2,
+    "all_passed": true
+  },
+  "cases": [
+    {
+      "case_id": "langgraph-user-traffic-hitl-support-1",
+      "slice": "support_slice",
+      "message": "quero falar com a secretaria",
+      "passed": true,
+      "thread_id": "conversation:langgraph-user-traffic-hitl-support-1",
+      "response_reason": "langgraph_hitl_pending_review",
+      "response_mode": "handoff",
+      "response_graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "support_slice",
+        "handoff",
+        "support_human_review",
+        "support_review_approved",
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice"
+      ],
+      "response_risk_flags": [
+        "human_review_required",
+        "human_review_approved",
+        "pending_human_review"
+      ],
+      "pending_before_resume": 1,
+      "pending_after_resume": 0,
+      "resumed_reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+      "resumed_mode": "handoff",
+      "resumed_graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "support_slice",
+        "handoff",
+        "support_human_review",
+        "support_review_approved",
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "support_slice",
+        "handoff",
+        "support_human_review",
+        "support_review_approved"
+      ]
+    },
+    {
+      "case_id": "langgraph-user-traffic-hitl-protected-1",
+      "slice": "protected_slice",
+      "message": "qual meu acesso? a que dados",
+      "passed": true,
+      "thread_id": "conversation:langgraph-user-traffic-hitl-protected-1",
+      "response_reason": "langgraph_hitl_pending_review",
+      "response_mode": "structured_tool",
+      "response_graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call",
+        "protected_human_review",
+        "protected_review_cancelled",
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice"
+      ],
+      "response_risk_flags": [
+        "human_review_required",
+        "human_review_rejected",
+        "pending_human_review"
+      ],
+      "pending_before_resume": 1,
+      "pending_after_resume": 0,
+      "resumed_reason": "consulta protegida bloqueada por revisao humana antes da execucao",
+      "resumed_mode": "deny",
+      "resumed_graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call",
+        "protected_human_review",
+        "protected_review_cancelled",
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call",
+        "protected_human_review",
+        "protected_review_cancelled"
+      ]
+    }
+  ]
+}
+```

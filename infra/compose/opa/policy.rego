@@ -40,11 +40,23 @@ reason := "student_self_finance_access" if student_self_finance_access
 allow if finance_team_access
 reason := "finance_team_access" if finance_team_access
 
+allow if guardian_linked_admin_access
+reason := "guardian_linked_admin_access" if guardian_linked_admin_access
+
+allow if student_self_admin_access
+reason := "student_self_admin_access" if student_self_admin_access
+
+allow if coordination_admin_access
+reason := "coordination_admin_access" if coordination_admin_access
+
 allow if teacher_own_schedule
 reason := "teacher_own_schedule" if teacher_own_schedule
 
 allow if admin_schedule_access
 reason := "admin_schedule_access" if admin_schedule_access
+
+allow if self_administrative_status_read
+reason := "self_administrative_status_read" if self_administrative_status_read
 
 allow if self_operations_overview
 reason := "self_operations_overview" if self_operations_overview
@@ -127,6 +139,26 @@ finance_team_access if {
     input.subject.role in {"finance", "admin"}
 }
 
+guardian_linked_admin_access if {
+    input.action == "student.admin.read"
+    input.subject.authenticated
+    input.subject.role == "guardian"
+    input.resource.student_id in input.subject.linked_student_ids
+}
+
+student_self_admin_access if {
+    input.action == "student.admin.read"
+    input.subject.authenticated
+    input.subject.role == "student"
+    input.resource.student_id == input.subject.student_id
+}
+
+coordination_admin_access if {
+    input.action == "student.admin.read"
+    input.subject.authenticated
+    input.subject.role in {"coordinator", "admin"}
+}
+
 teacher_own_schedule if {
     input.action == "teacher.schedule.read"
     input.subject.authenticated
@@ -138,6 +170,12 @@ admin_schedule_access if {
     input.action == "teacher.schedule.read"
     input.subject.authenticated
     input.subject.role in {"coordinator", "admin"}
+}
+
+self_administrative_status_read if {
+    input.action == "actor.administrative.read"
+    input.subject.authenticated
+    input.resource.user_id == input.subject.user_id
 }
 
 self_operations_overview if {

@@ -6,6 +6,7 @@ import sys
 import unicodedata
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'e2e'))
 
@@ -14,6 +15,7 @@ from _common import Settings, assert_condition, request, wait_for_health
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_DATASET_PATH = ROOT_DIR / 'tests' / 'evals' / 'datasets' / 'orchestrator_cases.json'
+EVAL_RUN_ID = os.getenv('ORCHESTRATOR_EVAL_RUN_ID', uuid4().hex[:8])
 
 
 def _normalize_text(value: str) -> str:
@@ -29,12 +31,18 @@ def _load_cases() -> list[dict[str, Any]]:
     return payload
 
 
-def _post_message_response(settings: Settings, payload: dict[str, Any]) -> tuple[int, Any]:
+def _post_message_response(settings: Settings, payload: dict[str, Any], *, case_id: str) -> tuple[int, Any]:
+    normalized_payload = dict(payload)
+    conversation_id = normalized_payload.get('conversation_id')
+    if isinstance(conversation_id, str) and conversation_id.strip():
+        normalized_payload['conversation_id'] = f'{conversation_id}:{EVAL_RUN_ID}'
+    else:
+        normalized_payload['conversation_id'] = f'eval:{case_id}:{EVAL_RUN_ID}'
     status, _, body = request(
         'POST',
         f'{settings.ai_orchestrator_url}/v1/messages/respond',
         headers={'X-Internal-Api-Token': settings.internal_api_token},
-        json_body=payload,
+        json_body=normalized_payload,
         timeout=60.0,
     )
     return status, body
@@ -69,6 +77,7 @@ def _assert_message_response(case: dict[str, Any], payload: dict[str, Any]) -> N
     expected = case['expected']
     classification = payload.get('classification', {})
     citations = payload.get('citations', [])
+    visual_assets = payload.get('visual_assets', [])
     calendar_events = payload.get('calendar_events', [])
     selected_tools = payload.get('selected_tools', [])
     graph_path = payload.get('graph_path', [])
@@ -116,6 +125,30 @@ def _assert_message_response(case: dict[str, Any], payload: dict[str, Any]) -> N
         len(calendar_events) >= min_calendar_events,
         f'{case_id}:calendar_event_count_too_low',
     )
+
+    min_visual_assets = int(expected.get('min_visual_assets', 0))
+    assert_condition(
+        len(visual_assets) >= min_visual_assets,
+        f'{case_id}:visual_asset_count_too_low',
+    )
+    for asset in visual_assets[:min_visual_assets]:
+        assert_condition(isinstance(asset, dict), f'{case_id}:visual_asset_invalid')
+        for field_name in ('title', 'mime_type', 'base64_data'):
+            assert_condition(asset.get(field_name), f'{case_id}:visual_asset_missing_{field_name}')
+    for mime_type in expected.get('visual_mime_types_include', []):
+        assert_condition(
+            any(str(asset.get('mime_type')) == str(mime_type) for asset in visual_assets if isinstance(asset, dict)),
+            f'{case_id}:missing_visual_mime_type:{mime_type}',
+        )
+    for title_snippet in expected.get('visual_titles_include', []):
+        assert_condition(
+            any(
+                _normalize_text(str(title_snippet)) in _normalize_text(str(asset.get('title', '')))
+                for asset in visual_assets
+                if isinstance(asset, dict)
+            ),
+            f'{case_id}:missing_visual_title:{title_snippet}',
+        )
 
     reason_contains = expected.get('reason_contains')
     if reason_contains:
@@ -178,7 +211,7 @@ def main() -> int:
         case_type = str(case['type'])
         try:
             if case_type == 'message_response':
-                status, body = _post_message_response(settings, case['request'])
+                status, body = _post_message_response(settings, case['request'], case_id=case_id)
                 assert_condition(status == 200 and isinstance(body, dict), f'{case_id}:request_failed')
                 _assert_message_response(case, body)
                 print(

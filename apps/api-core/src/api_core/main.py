@@ -15,14 +15,29 @@ from api_core.contracts import (
     AuthPrincipal,
     AuthSessionResponse,
     CalendarEventsResponse,
+    InternalWorkflowStatusResponse,
+    InstitutionalRequestActionResponse,
+    InstitutionalRequestCreateResponse,
     InternalConversationAppendRequest,
     InternalConversationAppendResponse,
+    InternalConversationToolCallAppendRequest,
+    InternalConversationToolCallAppendResponse,
     InternalConversationContextResponse,
+    InternalInstitutionalRequestActionRequest,
+    InternalInstitutionalRequestCreateRequest,
     InternalSupportHandoffCreateRequest,
+    InternalVisitBookingActionRequest,
+    InternalVisitBookingCreateRequest,
     OperationsOverviewResponse,
     PolicyCheckRequest,
     PolicyCheckResponse,
+    PublicAssistantCapabilitiesResponse,
+    PublicOrgDirectoryResponse,
     PublicSchoolProfileResponse,
+    PublicServiceDirectoryResponse,
+    PublicTimelineResponse,
+    SupportConversationDetailResponse,
+    SupportConversationListResponse,
     SupportHandoffCreateResponse,
     SupportHandoffDetailResponse,
     SupportHandoffFilters,
@@ -32,6 +47,8 @@ from api_core.contracts import (
     TelegramLinkChallengeResponse,
     TelegramLinkConsumeRequest,
     TelegramLinkConsumeResponse,
+    VisitBookingActionResponse,
+    VisitBookingCreateResponse,
 )
 from api_core.db.session import apply_rls_actor_context, apply_rls_service_context, get_engine, session_scope
 from api_core.services.audit import (
@@ -46,19 +63,40 @@ from api_core.services.audit import (
     resolve_operations_scope,
 )
 from api_core.services.auth import decode_access_token, extract_bearer_token
-from api_core.services.conversation_memory import append_conversation_messages, get_conversation_context
+from api_core.services.conversation_memory import (
+    append_conversation_messages,
+    append_conversation_tool_calls,
+    get_conversation_context,
+)
 from api_core.services.domain import (
+    get_actor_administrative_status,
+    get_public_assistant_capabilities,
+    get_public_org_directory,
     get_student_academic_summary,
+    get_student_administrative_status,
+    get_student_attendance_timeline,
     get_student_financial_summary,
+    get_student_upcoming_assessments,
     get_teacher_schedule,
     get_public_school_profile,
+    get_public_service_directory,
+    get_public_timeline,
     list_public_calendar_events,
 )
 from api_core.services.identity import resolve_actor_context
+from api_core.services.institutional_workflows import (
+    create_institutional_request,
+    create_visit_booking,
+    get_workflow_status,
+    update_institutional_request,
+    update_visit_booking,
+)
 from api_core.services.policy import decide_policy
 from api_core.services.support import (
     create_support_handoff,
+    get_support_conversation_detail,
     get_support_handoff_detail,
+    list_support_conversations,
     list_support_handoffs,
     resolve_support_scope,
     update_support_handoff_status,
@@ -215,6 +253,148 @@ async def _student_academic_summary_payload(
     return response
 
 
+async def _student_attendance_timeline_payload(
+    *,
+    actor: ActorContext,
+    auth_mode: str,
+    student_id: uuid.UUID,
+    subject_code: str | None = None,
+) -> dict[str, object]:
+    decision = None
+    if actor.role_code != 'teacher':
+        decision = await decide_policy(
+            action='student.academic.read',
+            actor=actor,
+            resource={
+                'student_id': str(student_id),
+                'class_id': None,
+                'resource_type': 'student_attendance_timeline',
+            },
+        )
+
+    with session_scope() as session:
+        if decision is not None:
+            record_access_decision(
+                session,
+                actor_user_id=actor.user_id,
+                resource_type='student_attendance_timeline',
+                action='student.academic.read',
+                decision='allow' if decision.allow else 'deny',
+                reason=decision.reason,
+            )
+            if not decision.allow:
+                raise HTTPException(status_code=403, detail=decision.reason)
+
+        apply_rls_actor_context(session, actor)
+        summary = get_student_attendance_timeline(session, student_id, subject_code=subject_code)
+        if summary is None:
+            raise HTTPException(status_code=404, detail='student_not_found')
+
+        if actor.role_code == 'teacher':
+            decision = await decide_policy(
+                action='student.academic.read',
+                actor=actor,
+                resource={
+                    'student_id': str(summary.student_id),
+                    'class_id': str(summary.class_id) if summary.class_id else None,
+                    'resource_type': 'student_attendance_timeline',
+                },
+            )
+            record_access_decision(
+                session,
+                actor_user_id=actor.user_id,
+                resource_type='student_attendance_timeline',
+                action='student.academic.read',
+                decision='allow' if decision.allow else 'deny',
+                reason=decision.reason,
+            )
+        if decision is None:
+            raise HTTPException(status_code=500, detail='policy_decision_missing')
+
+        response = {
+            'service': 'api-core',
+            'auth_mode': auth_mode,
+            'actor': _sanitize_actor_for_external_response(actor, auth_mode=auth_mode).model_dump(mode='json'),
+            'decision': decision.model_dump(mode='json'),
+            'summary': summary.model_dump(mode='json'),
+        }
+
+    if not decision.allow:
+        raise HTTPException(status_code=403, detail=decision.reason)
+    return response
+
+
+async def _student_upcoming_assessments_payload(
+    *,
+    actor: ActorContext,
+    auth_mode: str,
+    student_id: uuid.UUID,
+    subject_code: str | None = None,
+) -> dict[str, object]:
+    decision = None
+    if actor.role_code != 'teacher':
+        decision = await decide_policy(
+            action='student.academic.read',
+            actor=actor,
+            resource={
+                'student_id': str(student_id),
+                'class_id': None,
+                'resource_type': 'student_upcoming_assessments',
+            },
+        )
+
+    with session_scope() as session:
+        if decision is not None:
+            record_access_decision(
+                session,
+                actor_user_id=actor.user_id,
+                resource_type='student_upcoming_assessments',
+                action='student.academic.read',
+                decision='allow' if decision.allow else 'deny',
+                reason=decision.reason,
+            )
+            if not decision.allow:
+                raise HTTPException(status_code=403, detail=decision.reason)
+
+        apply_rls_actor_context(session, actor)
+        summary = get_student_upcoming_assessments(session, student_id, subject_code=subject_code)
+        if summary is None:
+            raise HTTPException(status_code=404, detail='student_not_found')
+
+        if actor.role_code == 'teacher':
+            decision = await decide_policy(
+                action='student.academic.read',
+                actor=actor,
+                resource={
+                    'student_id': str(summary.student_id),
+                    'class_id': str(summary.class_id) if summary.class_id else None,
+                    'resource_type': 'student_upcoming_assessments',
+                },
+            )
+            record_access_decision(
+                session,
+                actor_user_id=actor.user_id,
+                resource_type='student_upcoming_assessments',
+                action='student.academic.read',
+                decision='allow' if decision.allow else 'deny',
+                reason=decision.reason,
+            )
+        if decision is None:
+            raise HTTPException(status_code=500, detail='policy_decision_missing')
+
+        response = {
+            'service': 'api-core',
+            'auth_mode': auth_mode,
+            'actor': _sanitize_actor_for_external_response(actor, auth_mode=auth_mode).model_dump(mode='json'),
+            'decision': decision.model_dump(mode='json'),
+            'summary': summary.model_dump(mode='json'),
+        }
+
+    if not decision.allow:
+        raise HTTPException(status_code=403, detail=decision.reason)
+    return response
+
+
 async def _student_financial_summary_payload(
     *,
     actor: ActorContext,
@@ -244,6 +424,50 @@ async def _student_financial_summary_payload(
 
         apply_rls_actor_context(session, actor)
         summary = get_student_financial_summary(session, student_id)
+        if summary is None:
+            raise HTTPException(status_code=404, detail='student_not_found')
+        response = {
+            'service': 'api-core',
+            'auth_mode': auth_mode,
+            'actor': _sanitize_actor_for_external_response(actor, auth_mode=auth_mode).model_dump(mode='json'),
+            'decision': decision.model_dump(mode='json'),
+            'summary': summary.model_dump(mode='json'),
+        }
+
+    if not decision.allow:
+        raise HTTPException(status_code=403, detail=decision.reason)
+    return response
+
+
+async def _student_administrative_status_payload(
+    *,
+    actor: ActorContext,
+    auth_mode: str,
+    student_id: uuid.UUID,
+) -> dict[str, object]:
+    decision = await decide_policy(
+        action='student.admin.read',
+        actor=actor,
+        resource={
+            'student_id': str(student_id),
+            'resource_type': 'student_administrative_status',
+        },
+    )
+
+    with session_scope() as session:
+        record_access_decision(
+            session,
+            actor_user_id=actor.user_id,
+            resource_type='student_administrative_status',
+            action='student.admin.read',
+            decision='allow' if decision.allow else 'deny',
+            reason=decision.reason,
+        )
+        if not decision.allow:
+            raise HTTPException(status_code=403, detail=decision.reason)
+
+        apply_rls_actor_context(session, actor)
+        summary = get_student_administrative_status(session, student_id)
         if summary is None:
             raise HTTPException(status_code=404, detail='student_not_found')
         response = {
@@ -296,6 +520,45 @@ async def _teacher_schedule_payload(
 
     if not decision.allow:
         raise HTTPException(status_code=403, detail=decision.reason)
+    return response
+
+
+async def _administrative_status_payload(
+    *,
+    actor: ActorContext,
+    auth_mode: str,
+) -> dict[str, object]:
+    decision = await decide_policy(
+        action='actor.administrative.read',
+        actor=actor,
+        resource={
+            'user_id': str(actor.user_id),
+            'resource_type': 'actor_administrative_status',
+        },
+    )
+
+    with session_scope() as session:
+        record_access_decision(
+            session,
+            actor_user_id=actor.user_id,
+            resource_type='actor_administrative_status',
+            action='actor.administrative.read',
+            decision='allow' if decision.allow else 'deny',
+            reason=decision.reason,
+        )
+        if not decision.allow:
+            raise HTTPException(status_code=403, detail=decision.reason)
+
+        apply_rls_actor_context(session, actor)
+        summary = get_actor_administrative_status(session, actor)
+        response = {
+            'service': 'api-core',
+            'auth_mode': auth_mode,
+            'actor': _sanitize_actor_for_external_response(actor, auth_mode=auth_mode).model_dump(mode='json'),
+            'decision': decision.model_dump(mode='json'),
+            'summary': summary.model_dump(mode='json'),
+        }
+
     return response
 
 
@@ -366,6 +629,42 @@ async def public_school_profile() -> PublicSchoolProfileResponse:
     if profile is None:
         raise HTTPException(status_code=404, detail='public_school_profile_not_found')
     return PublicSchoolProfileResponse(profile=profile)
+
+
+@app.get('/v1/public/assistant-capabilities', response_model=PublicAssistantCapabilitiesResponse)
+async def public_assistant_capabilities() -> PublicAssistantCapabilitiesResponse:
+    with session_scope() as session:
+        capabilities = get_public_assistant_capabilities(session)
+    if capabilities is None:
+        raise HTTPException(status_code=404, detail='public_assistant_capabilities_not_found')
+    return PublicAssistantCapabilitiesResponse(capabilities=capabilities)
+
+
+@app.get('/v1/public/org-directory', response_model=PublicOrgDirectoryResponse)
+async def public_org_directory() -> PublicOrgDirectoryResponse:
+    with session_scope() as session:
+        directory = get_public_org_directory(session)
+    if directory is None:
+        raise HTTPException(status_code=404, detail='public_org_directory_not_found')
+    return PublicOrgDirectoryResponse(directory=directory)
+
+
+@app.get('/v1/public/service-directory', response_model=PublicServiceDirectoryResponse)
+async def public_service_directory() -> PublicServiceDirectoryResponse:
+    with session_scope() as session:
+        directory = get_public_service_directory(session)
+    if directory is None:
+        raise HTTPException(status_code=404, detail='public_service_directory_not_found')
+    return PublicServiceDirectoryResponse(directory=directory)
+
+
+@app.get('/v1/public/timeline', response_model=PublicTimelineResponse)
+async def public_timeline() -> PublicTimelineResponse:
+    with session_scope() as session:
+        timeline = get_public_timeline(session)
+    if timeline is None:
+        raise HTTPException(status_code=404, detail='public_timeline_not_found')
+    return PublicTimelineResponse(timeline=timeline)
 
 
 @app.get('/v1/operations/overview', response_model=OperationsOverviewResponse)
@@ -591,6 +890,141 @@ async def support_handoff_detail(
     return response_payload
 
 
+@app.get('/v1/support/conversations', response_model=SupportConversationListResponse)
+async def support_conversations(
+    authorization: str | None = Header(default=None, alias='Authorization'),
+    limit: int = Query(default=12, ge=1, le=20),
+) -> SupportConversationListResponse:
+    if extract_bearer_token(authorization) is None:
+        raise HTTPException(status_code=401, detail='bearer_token_required')
+
+    actor, principal, auth_mode = _resolve_request_context(
+        authorization=authorization,
+        telegram_chat_id=None,
+        user_external_code=None,
+    )
+    if principal is None:
+        raise HTTPException(status_code=401, detail='bearer_token_required')
+
+    scope = resolve_support_scope(actor)
+    decision = await decide_policy(
+        action='support.handoffs.read',
+        actor=actor,
+        resource={
+            'resource_type': 'support_conversation_list',
+            'scope': scope,
+            'channel': 'telegram',
+        },
+    )
+
+    response_payload: SupportConversationListResponse | None = None
+    with session_scope() as session:
+        record_access_decision(
+            session,
+            actor_user_id=actor.user_id,
+            resource_type='support_conversation_list',
+            action='support.handoffs.read',
+            decision='allow' if decision.allow else 'deny',
+            reason=decision.reason,
+        )
+
+        if decision.allow:
+            apply_rls_actor_context(session, actor)
+            items = list_support_conversations(
+                session,
+                actor=actor,
+                scope=scope,
+                limit=limit,
+            )
+            response_payload = SupportConversationListResponse(
+                actor=_sanitize_actor_for_external_response(actor, auth_mode=auth_mode),
+                scope=scope,
+                items=items,
+            )
+
+    if not decision.allow:
+        raise HTTPException(status_code=403, detail=decision.reason)
+    if response_payload is None:
+        raise HTTPException(status_code=500, detail='support_conversation_list_unavailable')
+    return response_payload
+
+
+@app.get('/v1/support/conversations/{conversation_id}', response_model=SupportConversationDetailResponse)
+async def support_conversation_detail(
+    conversation_id: uuid.UUID,
+    authorization: str | None = Header(default=None, alias='Authorization'),
+) -> SupportConversationDetailResponse:
+    if extract_bearer_token(authorization) is None:
+        raise HTTPException(status_code=401, detail='bearer_token_required')
+
+    actor, principal, auth_mode = _resolve_request_context(
+        authorization=authorization,
+        telegram_chat_id=None,
+        user_external_code=None,
+    )
+    if principal is None:
+        raise HTTPException(status_code=401, detail='bearer_token_required')
+
+    scope = resolve_support_scope(actor)
+    decision = await decide_policy(
+        action='support.handoffs.read',
+        actor=actor,
+        resource={
+            'resource_type': 'support_conversation',
+            'scope': scope,
+            'conversation_id': str(conversation_id),
+        },
+    )
+
+    response_payload: SupportConversationDetailResponse | None = None
+    with session_scope() as session:
+        record_access_decision(
+            session,
+            actor_user_id=actor.user_id,
+            resource_type='support_conversation',
+            action='support.handoffs.read',
+            decision='allow' if decision.allow else 'deny',
+            reason=decision.reason,
+        )
+
+        if decision.allow:
+            apply_rls_actor_context(session, actor)
+            detail = get_support_conversation_detail(
+                session,
+                actor=actor,
+                scope=scope,
+                conversation_id=conversation_id,
+            )
+            if detail is None:
+                raise HTTPException(status_code=404, detail='support_conversation_not_found')
+
+            item, messages = detail
+            record_audit_event(
+                session,
+                actor_user_id=actor.user_id,
+                event_type='support_conversation.viewed',
+                resource_type='support_conversation',
+                resource_id=str(conversation_id),
+                metadata={
+                    'scope': scope,
+                    'channel': item.channel,
+                    'linked_ticket_code': item.linked_ticket_code,
+                },
+            )
+            response_payload = SupportConversationDetailResponse(
+                actor=_sanitize_actor_for_external_response(actor, auth_mode=auth_mode),
+                scope=scope,
+                item=item,
+                messages=messages,
+            )
+
+    if not decision.allow:
+        raise HTTPException(status_code=403, detail=decision.reason)
+    if response_payload is None:
+        raise HTTPException(status_code=500, detail='support_conversation_detail_unavailable')
+    return response_payload
+
+
 @app.patch('/v1/support/handoffs/{handoff_id}', response_model=SupportHandoffUpdateResponse)
 async def support_handoff_update(
     handoff_id: uuid.UUID,
@@ -720,6 +1154,195 @@ async def internal_support_handoff_create(
         return response_payload
 
 
+@app.post('/v1/internal/workflows/visit-bookings', response_model=VisitBookingCreateResponse)
+async def internal_visit_booking_create(
+    payload: InternalVisitBookingCreateRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> VisitBookingCreateResponse:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='internal-workflows-api')
+        actor = None
+        if payload.telegram_chat_id is not None:
+            actor = resolve_actor_context(session, telegram_chat_id=payload.telegram_chat_id)
+            apply_rls_service_context(session, service_name='internal-workflows-api')
+
+        response_payload = create_visit_booking(
+            session,
+            actor_user_id=actor.user_id if actor else None,
+            channel=payload.channel,
+            conversation_external_id=payload.conversation_external_id,
+            audience_name=payload.audience_name,
+            audience_contact=payload.audience_contact,
+            interested_segment=payload.interested_segment,
+            preferred_date=payload.preferred_date,
+            preferred_window=payload.preferred_window,
+            attendee_count=payload.attendee_count,
+            notes=payload.notes.strip(),
+        )
+        record_audit_event(
+            session,
+            actor_user_id=actor.user_id if actor else None,
+            event_type='visit_booking.created' if response_payload.created else 'visit_booking.updated',
+            resource_type='visit_booking',
+            resource_id=str(response_payload.item.booking_id),
+            metadata={
+                'queue_name': response_payload.item.queue_name,
+                'preferred_date': response_payload.item.preferred_date.isoformat()
+                if response_payload.item.preferred_date
+                else None,
+                'preferred_window': response_payload.item.preferred_window,
+                'interested_segment': response_payload.item.interested_segment,
+                'linked_ticket_code': response_payload.item.linked_ticket_code,
+            },
+        )
+        return response_payload
+
+
+@app.post('/v1/internal/workflows/visit-bookings/actions', response_model=VisitBookingActionResponse)
+async def internal_visit_booking_action(
+    payload: InternalVisitBookingActionRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> VisitBookingActionResponse:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='internal-workflows-api')
+        actor = None
+        if payload.telegram_chat_id is not None:
+            actor = resolve_actor_context(session, telegram_chat_id=payload.telegram_chat_id)
+            apply_rls_service_context(session, service_name='internal-workflows-api')
+
+        response_payload = update_visit_booking(
+            session,
+            channel=payload.channel,
+            conversation_external_id=payload.conversation_external_id,
+            protocol_code=payload.protocol_code.strip() if payload.protocol_code else None,
+            action=payload.action,
+            preferred_date=payload.preferred_date,
+            preferred_window=payload.preferred_window.strip() if payload.preferred_window else None,
+            notes=payload.notes.strip() if payload.notes else None,
+        )
+        record_audit_event(
+            session,
+            actor_user_id=actor.user_id if actor else None,
+            event_type=f'visit_booking.{response_payload.action}',
+            resource_type='visit_booking',
+            resource_id=str(response_payload.item.booking_id),
+            metadata={
+                'protocol_code': response_payload.item.protocol_code,
+                'queue_name': response_payload.item.queue_name,
+                'preferred_date': response_payload.item.preferred_date.isoformat()
+                if response_payload.item.preferred_date
+                else None,
+                'preferred_window': response_payload.item.preferred_window,
+                'linked_ticket_code': response_payload.item.linked_ticket_code,
+            },
+        )
+        return response_payload
+
+
+@app.post('/v1/internal/workflows/institutional-requests', response_model=InstitutionalRequestCreateResponse)
+async def internal_institutional_request_create(
+    payload: InternalInstitutionalRequestCreateRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> InstitutionalRequestCreateResponse:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='internal-workflows-api')
+        actor = None
+        if payload.telegram_chat_id is not None:
+            actor = resolve_actor_context(session, telegram_chat_id=payload.telegram_chat_id)
+            apply_rls_service_context(session, service_name='internal-workflows-api')
+
+        response_payload = create_institutional_request(
+            session,
+            actor_user_id=actor.user_id if actor else None,
+            channel=payload.channel,
+            conversation_external_id=payload.conversation_external_id,
+            target_area=payload.target_area.strip(),
+            category=payload.category.strip(),
+            subject=payload.subject.strip(),
+            details=payload.details.strip(),
+            requester_contact=payload.requester_contact.strip() if payload.requester_contact else None,
+        )
+        record_audit_event(
+            session,
+            actor_user_id=actor.user_id if actor else None,
+            event_type='institutional_request.created' if response_payload.created else 'institutional_request.updated',
+            resource_type='institutional_request',
+            resource_id=str(response_payload.item.request_id),
+            metadata={
+                'target_area': response_payload.item.target_area,
+                'category': response_payload.item.category,
+                'queue_name': response_payload.item.queue_name,
+                'linked_ticket_code': response_payload.item.linked_ticket_code,
+            },
+        )
+        return response_payload
+
+
+@app.post('/v1/internal/workflows/institutional-requests/actions', response_model=InstitutionalRequestActionResponse)
+async def internal_institutional_request_action(
+    payload: InternalInstitutionalRequestActionRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> InstitutionalRequestActionResponse:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='internal-workflows-api')
+        actor = None
+        if payload.telegram_chat_id is not None:
+            actor = resolve_actor_context(session, telegram_chat_id=payload.telegram_chat_id)
+            apply_rls_service_context(session, service_name='internal-workflows-api')
+
+        response_payload = update_institutional_request(
+            session,
+            channel=payload.channel,
+            conversation_external_id=payload.conversation_external_id,
+            protocol_code=payload.protocol_code.strip() if payload.protocol_code else None,
+            action=payload.action,
+            details=payload.details.strip() if payload.details else None,
+        )
+        record_audit_event(
+            session,
+            actor_user_id=actor.user_id if actor else None,
+            event_type=f'institutional_request.{response_payload.action}',
+            resource_type='institutional_request',
+            resource_id=str(response_payload.item.request_id),
+            metadata={
+                'target_area': response_payload.item.target_area,
+                'queue_name': response_payload.item.queue_name,
+                'linked_ticket_code': response_payload.item.linked_ticket_code,
+                'protocol_code': response_payload.item.protocol_code,
+            },
+        )
+        return response_payload
+
+
+@app.get('/v1/internal/workflows/status', response_model=InternalWorkflowStatusResponse)
+async def internal_workflow_status(
+    conversation_external_id: str = Query(min_length=3, max_length=120),
+    channel: str = Query(default='telegram', min_length=2, max_length=30),
+    protocol_code: str | None = Query(default=None, min_length=3, max_length=40),
+    workflow_kind: str | None = Query(default=None, min_length=3, max_length=40),
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> InternalWorkflowStatusResponse:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='internal-workflows-api')
+        return get_workflow_status(
+            session,
+            channel=channel,
+            conversation_external_id=conversation_external_id,
+            protocol_code=protocol_code,
+            workflow_kind=workflow_kind,
+        )
+
+
 @app.get('/v1/internal/conversations/context', response_model=InternalConversationContextResponse)
 async def internal_conversation_context(
     conversation_external_id: str = Query(min_length=3, max_length=120),
@@ -754,6 +1377,26 @@ async def internal_conversation_append_messages(
             conversation_external_id=payload.conversation_external_id,
             actor_user_id=payload.actor_user_id,
             messages=payload.messages,
+        )
+        session.commit()
+        return response_payload
+
+
+@app.post('/v1/internal/conversations/tool-calls', response_model=InternalConversationToolCallAppendResponse)
+async def internal_conversation_append_tool_calls(
+    payload: InternalConversationToolCallAppendRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> InternalConversationToolCallAppendResponse:
+    _require_internal_api_token(x_internal_api_token)
+
+    with session_scope() as session:
+        apply_rls_service_context(session, service_name='internal-support-api')
+        response_payload = append_conversation_tool_calls(
+            session,
+            channel=payload.channel,
+            conversation_external_id=payload.conversation_external_id,
+            actor_user_id=payload.actor_user_id,
+            tool_calls=payload.tool_calls,
         )
         session.commit()
         return response_payload
@@ -929,6 +1572,73 @@ async def student_financial_summary(
     return await _student_financial_summary_payload(actor=actor, auth_mode=auth_mode, student_id=student_id)
 
 
+@app.get('/v1/students/{student_id}/administrative-status')
+async def student_administrative_status(
+    student_id: uuid.UUID,
+    authorization: str | None = Header(default=None, alias='Authorization'),
+    telegram_chat_id: int | None = Query(default=None),
+    user_external_code: str | None = Query(default=None),
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    actor, _principal, auth_mode = _resolve_request_context(
+        authorization=authorization,
+        telegram_chat_id=telegram_chat_id,
+        user_external_code=user_external_code,
+        x_internal_api_token=x_internal_api_token,
+    )
+    return await _student_administrative_status_payload(
+        actor=actor,
+        auth_mode=auth_mode,
+        student_id=student_id,
+    )
+
+
+@app.get('/v1/students/{student_id}/upcoming-assessments')
+async def student_upcoming_assessments(
+    student_id: uuid.UUID,
+    subject_code: str | None = Query(default=None),
+    authorization: str | None = Header(default=None, alias='Authorization'),
+    telegram_chat_id: int | None = Query(default=None),
+    user_external_code: str | None = Query(default=None),
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    actor, _principal, auth_mode = _resolve_request_context(
+        authorization=authorization,
+        telegram_chat_id=telegram_chat_id,
+        user_external_code=user_external_code,
+        x_internal_api_token=x_internal_api_token,
+    )
+    return await _student_upcoming_assessments_payload(
+        actor=actor,
+        auth_mode=auth_mode,
+        student_id=student_id,
+        subject_code=subject_code,
+    )
+
+
+@app.get('/v1/students/{student_id}/attendance-timeline')
+async def student_attendance_timeline(
+    student_id: uuid.UUID,
+    subject_code: str | None = Query(default=None),
+    authorization: str | None = Header(default=None, alias='Authorization'),
+    telegram_chat_id: int | None = Query(default=None),
+    user_external_code: str | None = Query(default=None),
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    actor, _principal, auth_mode = _resolve_request_context(
+        authorization=authorization,
+        telegram_chat_id=telegram_chat_id,
+        user_external_code=user_external_code,
+        x_internal_api_token=x_internal_api_token,
+    )
+    return await _student_attendance_timeline_payload(
+        actor=actor,
+        auth_mode=auth_mode,
+        student_id=student_id,
+        subject_code=subject_code,
+    )
+
+
 @app.get('/v1/calendar/public', response_model=CalendarEventsResponse)
 async def public_calendar_events(
     date_from: date | None = Query(default=None),
@@ -959,3 +1669,19 @@ async def teacher_schedule(
         x_internal_api_token=x_internal_api_token,
     )
     return await _teacher_schedule_payload(actor=actor, auth_mode=auth_mode)
+
+
+@app.get('/v1/actors/me/administrative-status')
+async def actor_administrative_status(
+    authorization: str | None = Header(default=None, alias='Authorization'),
+    telegram_chat_id: int | None = Query(default=None),
+    user_external_code: str | None = Query(default=None),
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    actor, _principal, auth_mode = _resolve_request_context(
+        authorization=authorization,
+        telegram_chat_id=telegram_chat_id,
+        user_external_code=user_external_code,
+        x_internal_api_token=x_internal_api_token,
+    )
+    return await _administrative_status_payload(actor=actor, auth_mode=auth_mode)

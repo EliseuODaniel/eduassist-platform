@@ -39,7 +39,10 @@ Ha recuperacao paralela ao longo do periodo letivo e recuperacao final quando pr
 
 No ensino medio, ha acompanhamento de projeto de vida, orientacao de estudos e encontros sobre escolhas academicas e profissionais.
 
+## Base curricular do ensino medio
+
+No ensino medio, a escola segue a BNCC com componentes como Lingua Portuguesa, Matematica, Biologia, Fisica, Quimica, Historia, Geografia, Lingua Inglesa e Educacao Fisica. O percurso tambem inclui producao textual, projeto de vida, monitorias e trilhas eletivas no contraturno.
+
 ## Apoio ao estudante
 
 A escola oferece monitorias, plantao de duvidas, orientacao educacional e encaminhamento para atendimento humano quando necessario.
-

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, aliased
 from api_core.contracts import (
     ActorContext,
     SupportConversationMessageEntry,
+    SupportConversationThreadEntry,
     SupportHandoffCreateResponse,
     SupportHandoffEntry,
     SupportHandoffFilters,
@@ -24,6 +25,7 @@ OPEN_HANDOFF_STATUSES = frozenset({'queued', 'in_progress'})
 SUPPORTED_HANDOFF_STATUSES = frozenset({'queued', 'in_progress', 'resolved', 'cancelled'})
 SUPPORTED_HANDOFF_ASSIGNMENTS = frozenset({'mine', 'unassigned', 'assigned'})
 SUPPORTED_HANDOFF_SLA_STATES = frozenset({'on_track', 'attention', 'breached', 'closed', 'unknown'})
+PORTAL_HIDDEN_THREAD_PREFIXES = ('check:', 'eval:', 'manual:', 'ops-seed')
 
 
 def build_ticket_code(*, handoff_id: uuid.UUID, created_at) -> str:
@@ -52,6 +54,8 @@ def _truncate_excerpt(text: str | None, *, limit: int = 180) -> str | None:
 def _priority_for_queue(queue_name: str) -> str:
     normalized = queue_name.strip().lower()
     priorities = {
+        'direcao': 'high',
+        'admissoes': 'standard',
         'coordenacao': 'high',
         'financeiro': 'high',
         'secretaria': 'standard',
@@ -119,6 +123,113 @@ def _load_latest_user_messages(
         if conversation_id not in latest_messages:
             latest_messages[conversation_id] = content
     return latest_messages
+
+
+def _is_portal_visible_conversation(
+    conversation: Conversation,
+    *,
+    actor: ActorContext,
+    scope: str,
+) -> bool:
+    if scope == 'global' or actor.role_code in INTERNAL_OPERATOR_ROLES:
+        return True
+
+    if conversation.channel != 'telegram':
+        return False
+
+    normalized = conversation.external_thread_id.strip().lower()
+    return not any(normalized.startswith(prefix) for prefix in PORTAL_HIDDEN_THREAD_PREFIXES)
+
+
+def _load_messages_by_conversation(
+    session: Session,
+    *,
+    conversation_ids: list[uuid.UUID],
+    include_operator_messages: bool,
+) -> dict[uuid.UUID, list[Message]]:
+    if not conversation_ids:
+        return {}
+
+    stmt = (
+        select(Message)
+        .where(Message.conversation_id.in_(conversation_ids))
+        .order_by(Message.created_at.asc(), Message.id.asc())
+    )
+    if not include_operator_messages:
+        stmt = stmt.where(Message.sender_type != 'operator')
+
+    message_map: dict[uuid.UUID, list[Message]] = {}
+    for message in session.execute(stmt).scalars():
+        message_map.setdefault(message.conversation_id, []).append(message)
+    return message_map
+
+
+def _load_latest_handoffs_by_conversation(
+    session: Session,
+    *,
+    conversation_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, Handoff]:
+    if not conversation_ids:
+        return {}
+
+    handoff_map: dict[uuid.UUID, Handoff] = {}
+    rows = session.execute(
+        select(Handoff)
+        .where(Handoff.conversation_id.in_(conversation_ids))
+        .order_by(Handoff.conversation_id.asc(), Handoff.updated_at.desc(), Handoff.created_at.desc())
+    ).scalars()
+    for handoff in rows:
+        handoff_map.setdefault(handoff.conversation_id, handoff)
+    return handoff_map
+
+
+def _serialize_conversation_rows(
+    session: Session,
+    *,
+    actor: ActorContext,
+    scope: str,
+    rows: list[tuple[Conversation, str | None, str | None]],
+) -> list[SupportConversationThreadEntry]:
+    include_operator_messages = can_view_internal_support_notes(actor, scope=scope)
+    visible_rows = [
+        (conversation, requester_name, requester_role)
+        for conversation, requester_name, requester_role in rows
+        if _is_portal_visible_conversation(conversation, actor=actor, scope=scope)
+    ]
+    conversation_ids = [conversation.id for conversation, _, _ in visible_rows]
+    message_map = _load_messages_by_conversation(
+        session,
+        conversation_ids=conversation_ids,
+        include_operator_messages=include_operator_messages,
+    )
+    handoff_map = _load_latest_handoffs_by_conversation(session, conversation_ids=conversation_ids)
+
+    items: list[SupportConversationThreadEntry] = []
+    for conversation, requester_name, requester_role in visible_rows:
+        messages = message_map.get(conversation.id, [])
+        latest_message = messages[-1] if messages else None
+        linked_handoff = handoff_map.get(conversation.id)
+        items.append(
+            SupportConversationThreadEntry(
+                conversation_id=conversation.id,
+                channel=conversation.channel,
+                external_thread_id=conversation.external_thread_id,
+                conversation_status=conversation.status,
+                requester_name=requester_name,
+                requester_role=requester_role,
+                message_count=len(messages),
+                last_message_excerpt=_truncate_excerpt(latest_message.content if latest_message else None),
+                latest_message_at=latest_message.created_at if latest_message else None,
+                linked_ticket_code=build_ticket_code(handoff_id=linked_handoff.id, created_at=linked_handoff.created_at)
+                if linked_handoff
+                else None,
+                linked_queue_name=linked_handoff.queue_name if linked_handoff else None,
+                linked_ticket_status=linked_handoff.status if linked_handoff else None,
+                created_at=conversation.created_at,
+                updated_at=conversation.updated_at,
+            )
+        )
+    return items
 
 
 def _serialize_handoff_rows(
@@ -252,6 +363,22 @@ def _base_handoff_stmt(*, actor: ActorContext, scope: str):
         .join(Conversation, Conversation.id == Handoff.conversation_id)
         .outerjoin(requester, requester.id == Conversation.user_id)
         .outerjoin(assignee, assignee.id == Handoff.assigned_user_id)
+    )
+
+    if scope == 'self':
+        stmt = stmt.where(Conversation.user_id == actor.user_id)
+    return stmt
+
+
+def _base_conversation_stmt(*, actor: ActorContext, scope: str):
+    requester = aliased(User)
+    stmt = (
+        select(
+            Conversation,
+            requester.full_name,
+            requester.role_code,
+        )
+        .outerjoin(requester, requester.id == Conversation.user_id)
     )
 
     if scope == 'self':
@@ -393,6 +520,98 @@ def get_support_handoff_detail(
             }
         )
         return item, conversation.status, messages
+
+
+def list_support_conversations(
+    session: Session,
+    *,
+    actor: ActorContext,
+    scope: str,
+    limit: int = 12,
+) -> list[SupportConversationThreadEntry]:
+    with start_span(
+        'eduassist.support.list_conversations',
+        tracer_name='eduassist.api_core.support',
+        **{
+            'eduassist.actor.role': actor.role_code,
+            'eduassist.support.scope': scope,
+            'eduassist.support.limit': limit,
+        },
+    ):
+        rows = session.execute(
+            _base_conversation_stmt(actor=actor, scope=scope)
+            .order_by(Conversation.updated_at.desc(), Conversation.created_at.desc())
+        ).all()
+        items = _serialize_conversation_rows(session, actor=actor, scope=scope, rows=rows)
+        set_span_attributes(
+            **{
+                'eduassist.support.total_rows': len(rows),
+                'eduassist.support.result_count': len(items),
+            }
+        )
+        return items[: max(1, min(limit, 20))]
+
+
+def get_support_conversation_detail(
+    session: Session,
+    *,
+    actor: ActorContext,
+    scope: str,
+    conversation_id: uuid.UUID,
+) -> tuple[SupportConversationThreadEntry, list[SupportConversationMessageEntry]] | None:
+    with start_span(
+        'eduassist.support.get_conversation_detail',
+        tracer_name='eduassist.api_core.support',
+        **{
+            'eduassist.actor.role': actor.role_code,
+            'eduassist.support.scope': scope,
+            'eduassist.support.conversation_id': conversation_id,
+        },
+    ):
+        row = session.execute(
+            _base_conversation_stmt(actor=actor, scope=scope).where(Conversation.id == conversation_id)
+        ).first()
+        if row is None:
+            set_span_attributes(**{'eduassist.support.found': False})
+            return None
+
+        conversation, requester_name, requester_role = row
+        if not _is_portal_visible_conversation(conversation, actor=actor, scope=scope):
+            set_span_attributes(**{'eduassist.support.found': False})
+            return None
+
+        item = _serialize_conversation_rows(
+            session,
+            actor=actor,
+            scope=scope,
+            rows=[(conversation, requester_name, requester_role)],
+        )[0]
+        include_operator_messages = can_view_internal_support_notes(actor, scope=scope)
+        messages_stmt = (
+            select(Message)
+            .where(Message.conversation_id == conversation.id)
+            .order_by(Message.created_at.asc(), Message.id.asc())
+        )
+        if not include_operator_messages:
+            messages_stmt = messages_stmt.where(Message.sender_type != 'operator')
+
+        messages = [
+            SupportConversationMessageEntry(
+                message_id=message.id,
+                sender_type=message.sender_type,
+                content=message.content,
+                created_at=message.created_at,
+            )
+            for message in session.execute(messages_stmt).scalars()
+        ]
+        set_span_attributes(
+            **{
+                'eduassist.support.found': True,
+                'eduassist.support.status': conversation.status,
+                'eduassist.support.message_count': len(messages),
+            }
+        )
+        return item, messages
 
 
 def create_support_handoff(

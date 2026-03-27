@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from functools import lru_cache
 import secrets
 
@@ -75,16 +76,69 @@ def _extract_link_code(text: str) -> str | None:
     return None
 
 
-async def _send_telegram_message(chat_id: int, text: str) -> None:
+def _build_reply_markup(suggested_replies: list[dict[str, object]] | None) -> dict[str, object] | None:
+    if not isinstance(suggested_replies, list):
+        return None
+    labels: list[str] = []
+    for item in suggested_replies:
+        if not isinstance(item, dict):
+            continue
+        text = str(item.get('text', '')).strip()
+        if not text or text in labels:
+            continue
+        labels.append(text[:80])
+        if len(labels) >= 4:
+            break
+    if not labels:
+        return None
+    keyboard = [labels[index:index + 2] for index in range(0, len(labels), 2)]
+    return {
+        'keyboard': keyboard,
+        'resize_keyboard': True,
+        'one_time_keyboard': True,
+        'input_field_placeholder': 'Escolha um proximo passo ou digite sua mensagem',
+    }
+
+
+async def _send_telegram_message(
+    chat_id: int,
+    text: str,
+    *,
+    reply_markup: dict[str, object] | None = None,
+) -> None:
     settings = get_settings()
     if not settings.telegram_bot_token:
         return
+
+    payload: dict[str, object] = {'chat_id': chat_id, 'text': text}
+    if reply_markup:
+        payload['reply_markup'] = reply_markup
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             await client.post(
                 f'{settings.telegram_api_base_url}/bot{settings.telegram_bot_token}/sendMessage',
-                json={'chat_id': chat_id, 'text': text},
+                json=payload,
+            )
+    except Exception:
+        return
+
+
+async def _send_telegram_photo(chat_id: int, image_bytes: bytes, *, caption: str | None = None) -> None:
+    settings = get_settings()
+    if not settings.telegram_bot_token:
+        return
+
+    data = {'chat_id': str(chat_id)}
+    if caption:
+        data['caption'] = caption[:1024]
+
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            await client.post(
+                f'{settings.telegram_api_base_url}/bot{settings.telegram_bot_token}/sendPhoto',
+                data=data,
+                files={'photo': ('eduassist-visual.png', image_bytes, 'image/png')},
             )
     except Exception:
         return
@@ -208,9 +262,8 @@ def _build_user_context(actor: dict[str, object] | None) -> dict[str, object]:
 
 def _default_help_message() -> str:
     return (
-        'EduAssist esta pronto para orientar sobre informacoes publicas da escola. '
-        'Voce pode perguntar sobre calendario, matricula, secretaria e atendimento digital. '
-        'Para consultas protegidas, vincule sua conta pelo portal e envie o codigo ao bot.'
+        'Oi. Sou o EduAssist do Colegio Horizonte. '
+        'Pode me dizer o assunto do jeito que for mais natural, como matricula, visita, financeiro, notas, secretaria ou direcao.'
     )
 
 
@@ -240,6 +293,15 @@ async def _orchestrate_message(
         )
     response.raise_for_status()
     return response.json()
+
+
+def _command_to_orchestrator_text(text: str) -> str | None:
+    normalized = text.strip().lower()
+    if normalized == '/start':
+        return 'ola'
+    if normalized == '/help':
+        return 'quais opcoes de assuntos eu tenho aqui?'
+    return None
 
 
 @app.post('/webhooks/telegram')
@@ -282,15 +344,9 @@ async def telegram_webhook(
                 'processed': 'missing_chat',
             }
 
-        if text.strip() in {'/start', '/help'}:
-            help_text = _default_help_message()
-            await _send_telegram_message(chat_id, help_text)
-            return {
-                'accepted': True,
-                'service': 'telegram-gateway',
-                'processed': 'help_message',
-                'reply': help_text,
-            }
+        command_text = _command_to_orchestrator_text(text)
+        if command_text is not None:
+            text = command_text
 
         try:
             orchestration = await _orchestrate_message(
@@ -299,12 +355,33 @@ async def telegram_webhook(
                 update_id=update_id if isinstance(update_id, int) else None,
             )
             reply_text = str(orchestration.get('message_text', _default_help_message()))
-            await _send_telegram_message(chat_id, reply_text)
+            reply_markup = _build_reply_markup(orchestration.get('suggested_replies'))
+            await _send_telegram_message(chat_id, reply_text, reply_markup=reply_markup)
+            visual_assets = orchestration.get('visual_assets', [])
+            if isinstance(visual_assets, list):
+                for asset in visual_assets:
+                    if not isinstance(asset, dict):
+                        continue
+                    if str(asset.get('mime_type', '')).lower() != 'image/png':
+                        continue
+                    encoded = asset.get('base64_data')
+                    if not isinstance(encoded, str) or not encoded:
+                        continue
+                    try:
+                        image_bytes = base64.b64decode(encoded)
+                    except Exception:
+                        continue
+                    await _send_telegram_photo(
+                        chat_id,
+                        image_bytes,
+                        caption=str(asset.get('caption') or asset.get('title') or 'Visual institucional'),
+                    )
             return {
                 'accepted': True,
                 'service': 'telegram-gateway',
                 'processed': 'orchestrated_message',
                 'reply': reply_text,
+                'reply_markup': reply_markup,
                 'orchestration': orchestration,
             }
         except httpx.HTTPError as exc:

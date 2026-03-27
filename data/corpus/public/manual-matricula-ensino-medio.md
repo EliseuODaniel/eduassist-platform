@@ -24,6 +24,10 @@ O processo de matricula ocorre em quatro etapas: pre-cadastro, envio de document
 
 Sao exigidos documento de identidade do aluno, CPF quando houver, historico escolar, comprovante de residencia atualizado, documento de identificacao do responsavel legal e formulario cadastral preenchido. Casos de transferencia podem exigir declaracao adicional da escola de origem.
 
+## Envio digital de documentos
+
+O envio inicial dos documentos pode ser feito pelo portal institucional ou pelo e-mail oficial da secretaria para triagem e validacao. Quando houver etapa autenticada disponivel, ela deve ser priorizada para documentos completos, dados sensiveis e atualizacoes cadastrais.
+
 ## Faixas atendidas
 
 O fundamental II contempla estudantes do 6o ao 9o ano. O ensino medio contempla estudantes do 1o ao 3o ano.

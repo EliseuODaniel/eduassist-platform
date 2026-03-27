@@ -64,16 +64,16 @@ export function LinkChallengePanel({ initiallyLinked }: Props) {
       <div className="section-head">
         <div>
           <p className="eyebrow">Telegram</p>
-          <h2>Vincular conta do bot</h2>
+          <h2>Conectar ao Telegram</h2>
         </div>
         <span className={`status-chip ${initiallyLinked ? 'is-linked' : 'is-pending'}`}>
-          {initiallyLinked ? 'Conta já vinculada' : 'Vínculo pendente'}
+          {initiallyLinked ? 'Conectado' : 'Pendente'}
         </span>
       </div>
 
       <p className="section-copy">
-        Gere um código temporário para associar esta sessão web à conta do Telegram. O
-        vínculo é concluído pelo comando enviado ao bot.
+        Conecte sua conta ao bot do Telegram para continuar atendimentos e acessar recursos do seu
+        perfil também pelo chat.
       </p>
 
       <button
@@ -82,7 +82,7 @@ export function LinkChallengePanel({ initiallyLinked }: Props) {
         onClick={handleGenerateChallenge}
         type="button"
       >
-        {isPending ? 'Gerando código...' : initiallyLinked ? 'Gerar novo código' : 'Gerar código'}
+        {isPending ? 'Gerando código...' : initiallyLinked ? 'Gerar novo código' : 'Gerar código de conexão'}
       </button>
 
       {error ? <p className="feedback error-text">{error}</p> : null}
@@ -102,13 +102,13 @@ export function LinkChallengePanel({ initiallyLinked }: Props) {
 
           {challenge.telegram_deep_link ? (
             <a className="secondary-link" href={challenge.telegram_deep_link} rel="noreferrer">
-              Abrir deep link do Telegram
+              Abrir no Telegram
             </a>
           ) : null}
 
           <p className="challenge-note">
-            Envie o comando ao bot para concluir o vínculo. Se já existir uma conta ligada,
-            este novo código substitui a tentativa anterior.
+            Envie o comando ao bot para concluir a conexão. Se você gerar um novo código, o
+            anterior deixa de valer.
           </p>
         </div>
       ) : null}

@@ -5,15 +5,15 @@ export default function NotFound() {
     <main className="console-shell">
       <section className="masthead">
         <div>
-          <p className="eyebrow">EduAssist Operator Console</p>
+          <p className="eyebrow">Portal EduAssist</p>
           <h1>Página não encontrada</h1>
           <p className="lede">
-            O recurso solicitado não existe neste painel operacional. Use a navegação principal
-            ou volte para a home autenticada.
+            O conteúdo que você tentou acessar não está disponível neste portal. Volte para a
+            página inicial e continue a navegação por lá.
           </p>
         </div>
         <Link className="primary-button" href="/">
-          Voltar ao painel
+          Voltar ao início
         </Link>
       </section>
     </main>
