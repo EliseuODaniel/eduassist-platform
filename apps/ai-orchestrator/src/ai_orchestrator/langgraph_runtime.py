@@ -133,20 +133,9 @@ def get_langgraph_artifacts(settings: Any) -> LangGraphArtifacts:
         if _checkpoint_requested(settings) and checkpoint_conn_string:
             try:
                 from langgraph.checkpoint.postgres import PostgresSaver
-                import psycopg
                 from psycopg import sql
 
                 schema = _checkpoint_schema(settings)
-                base_conn_string = _base_checkpoint_conn_string(settings)
-                if schema and base_conn_string:
-                    try:
-                        with psycopg.connect(base_conn_string, autocommit=True) as connection:
-                            with connection.cursor() as cursor:
-                                cursor.execute(
-                                    sql.SQL('CREATE SCHEMA IF NOT EXISTS {}').format(sql.Identifier(schema))
-                                )
-                    except Exception:
-                        logger.warning('langgraph_checkpointer_schema_create_skipped', exc_info=True)
                 checkpointer_context = PostgresSaver.from_conn_string(checkpoint_conn_string)
                 checkpointer = checkpointer_context.__enter__()
                 if schema:

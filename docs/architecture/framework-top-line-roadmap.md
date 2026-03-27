@@ -79,6 +79,7 @@ Validated in this round:
 - LangGraph now runs with a native Postgres-backed checkpointer and stable `thread_id` mapping.
 - LangGraph now exposes native HITL review paths for the `support` slice and for low-risk `protected` reads through internal review/state/resume endpoints backed by the checkpointer.
 - LangGraph checkpointer serializer compatibility is now fixed for the current typed checkpoint payloads; native snapshot reads are working again through the Postgres checkpointer.
+- LangGraph runtime no longer tries to bootstrap the checkpoint schema on startup; schema ownership stays in the database init/migration layer, which removes a recurring privilege warning from service logs.
 - CrewAI now persists `Flow` state for `public` and `protected` through SQLite.
 - LangGraph now delegates through slice subgraphs for `public`, `protected`, and `support`.
 - CrewAI now emits per-task event telemetry with task, agent, crew, and timing summaries on agentic paths.
