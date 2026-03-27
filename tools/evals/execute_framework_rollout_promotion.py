@@ -171,6 +171,20 @@ def _validate_status(*, payload: dict[str, Any], proposed_settings: Any) -> list
     else:
         if str(live_summary.get('candidate_engine', '') or '') != str(proposed_settings.orchestrator_experiment_primary_engine or ''):
             errors.append('live promotion summary candidate engine does not match proposed settings')
+        advisory = live_summary.get('advisory_by_slice') if isinstance(live_summary.get('advisory_by_slice'), dict) else {}
+        pilot_status = live_summary.get('pilot_status') if isinstance(live_summary.get('pilot_status'), dict) else {}
+        configured_slices = {item.strip() for item in str(getattr(proposed_settings, 'orchestrator_experiment_slices', '') or '').split(',') if item.strip()}
+        if 'protected' in configured_slices:
+            protected_advisory = advisory.get('protected') if isinstance(advisory.get('protected'), dict) else {}
+            if not bool(protected_advisory.get('pilot_live_gate_ok', False)):
+                errors.append('protected pilot live gate is not open after restart')
+            if bool(getattr(proposed_settings, 'crewai_hitl_user_traffic_enabled', False)) != bool(pilot_status.get('crewaiHitlUserTrafficEnabled', False)):
+                errors.append('CrewAI pilot user-traffic HITL flag does not match proposed settings')
+            expected_hitl_slices = str(getattr(proposed_settings, 'crewai_hitl_user_traffic_slices', '') or '')
+            if expected_hitl_slices and str(pilot_status.get('crewaiHitlUserTrafficSlices', '') or '') != expected_hitl_slices:
+                errors.append('CrewAI pilot user-traffic HITL slices do not match proposed settings')
+            if int(payload.get('experimentTelegramChatAllowlistCount', 0) or 0) <= 0 and int(payload.get('experimentConversationAllowlistCount', 0) or 0) <= 0:
+                errors.append('protected canary requires at least one allowlist identifier in live status')
     return errors
 
 
@@ -286,7 +300,12 @@ def main() -> int:
     parser.add_argument('--slices', default=None)
     parser.add_argument('--slice-rollouts', default=None)
     parser.add_argument('--allowlist-slices', default=None)
+    parser.add_argument('--telegram-chat-allowlist', default=None)
+    parser.add_argument('--conversation-allowlist', default=None)
     parser.add_argument('--rollout-percent', type=int, default=None)
+    parser.add_argument('--crewai-hitl-user-traffic-enabled', dest='crewai_hitl_user_traffic_enabled', action='store_true')
+    parser.add_argument('--no-crewai-hitl-user-traffic-enabled', dest='crewai_hitl_user_traffic_enabled', action='store_false')
+    parser.add_argument('--crewai-hitl-user-traffic-slices', default=None)
     parser.add_argument('--experiment-enabled', dest='experiment_enabled', action='store_true')
     parser.add_argument('--no-experiment-enabled', dest='experiment_enabled', action='store_false')
     parser.add_argument('--require-scorecard', dest='require_scorecard', action='store_true')
@@ -305,6 +324,7 @@ def main() -> int:
     parser.add_argument('--json', type=Path, default=DEFAULT_JSON)
     parser.add_argument('--artifact-json', type=Path, default=DEFAULT_ARTIFACT_JSON)
     parser.set_defaults(
+        crewai_hitl_user_traffic_enabled=None,
         experiment_enabled=None,
         require_scorecard=None,
         require_healthy_pilot=None,
@@ -368,6 +388,8 @@ def main() -> int:
     args.env_file.write_text(_render_env_lines(original_text, updates), encoding='utf-8')
 
     services = [item.strip() for item in args.services.split(',') if item.strip()]
+    if any(key.startswith('CREWAI_HITL_') for key in updates) and 'ai-orchestrator-crewai' not in services:
+        services.append('ai-orchestrator-crewai')
     live_status: dict[str, Any] | None = None
     live_validation_errors: list[str] = []
     synced_artifacts: list[str] = []

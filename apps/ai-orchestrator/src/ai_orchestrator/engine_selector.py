@@ -130,6 +130,13 @@ def _request_matches_allowlist(*, request: Any, settings: Any, slice_name: str) 
     return (chat_id and chat_id in chat_allowlist) or (conversation_id and conversation_id in conversation_allowlist)
 
 
+def _allowlist_identifier_counts(*, settings: Any) -> dict[str, int]:
+    return {
+        'telegram_chat_count': len(_parse_csv_items(getattr(settings, 'orchestrator_experiment_telegram_chat_allowlist', ''))),
+        'conversation_count': len(_parse_csv_items(getattr(settings, 'orchestrator_experiment_conversation_allowlist', ''))),
+    }
+
+
 def _rollout_percent_for_slice(*, settings: Any, slice_name: str) -> int:
     per_slice = _parse_slice_rollouts(getattr(settings, 'orchestrator_experiment_slice_rollouts', ''))
     if slice_name in per_slice:
@@ -204,6 +211,7 @@ def get_experiment_rollout_readiness(*, settings: Any) -> dict[str, Any]:
         slice_eligibility = {}
     pilot_status = _get_pilot_status_payload(settings=settings) if candidate_engine == 'crewai' else None
     pilot_ready = bool(isinstance(pilot_status, dict) and pilot_status.get('ready'))
+    allowlist_counts = _allowlist_identifier_counts(settings=settings)
 
     known_slices = {'public', 'protected', 'support', 'workflow'}
     known_slices.update(str(item).strip() for item in configured_slices if str(item).strip())
@@ -261,6 +269,7 @@ def get_experiment_rollout_readiness(*, settings: Any) -> dict[str, Any]:
         'pilot_health_enforced': bool(getattr(settings, 'orchestrator_experiment_require_healthy_pilot', False)),
         'pilot_ready': pilot_ready,
         'pilot_status': pilot_status if isinstance(pilot_status, dict) else None,
+        'allowlist_identifier_counts': allowlist_counts,
         'primary_stack_native_path_passed': bool(gate_status.get('primary_stack_native_path_passed')),
         'gate_eligible': bool(isinstance(promotion_gate, dict) and promotion_gate.get('eligible', False)),
         'configured_slices': currently_enrolled,
@@ -418,6 +427,19 @@ def _probe_pilot_health(*, settings: Any) -> bool:
     return bool(isinstance(payload, dict) and payload.get('ready'))
 
 
+def _apply_pilot_status_overrides(*, payload: dict[str, Any], settings: Any) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return payload
+    overridden = dict(payload)
+    user_traffic_enabled = getattr(settings, 'crewai_hitl_user_traffic_enabled', None)
+    if user_traffic_enabled is not None:
+        overridden['crewaiHitlUserTrafficEnabled'] = bool(user_traffic_enabled)
+    user_traffic_slices = getattr(settings, 'crewai_hitl_user_traffic_slices', None)
+    if user_traffic_slices is not None:
+        overridden['crewaiHitlUserTrafficSlices'] = str(user_traffic_slices)
+    return overridden
+
+
 def _get_pilot_status_payload(*, settings: Any) -> dict[str, Any] | None:
     pilot_url = str(getattr(settings, 'crewai_pilot_url', '') or '').strip()
     if not pilot_url:
@@ -428,7 +450,7 @@ def _get_pilot_status_payload(*, settings: Any) -> dict[str, Any] | None:
     cached_payload = _PILOT_STATUS_CACHE.get('payload')
     cached_timestamp = float(_PILOT_STATUS_CACHE.get('timestamp', 0.0) or 0.0)
     if cached_ready is not None and now - cached_timestamp < ttl_seconds:
-        return dict(cached_payload) if isinstance(cached_payload, dict) else None
+        return _apply_pilot_status_overrides(payload=dict(cached_payload), settings=settings) if isinstance(cached_payload, dict) else None
     request = Request(
         f'{pilot_url.rstrip("/")}/v1/status',
         headers={'X-Internal-Api-Token': str(getattr(settings, 'internal_api_token', '') or '')},
@@ -448,7 +470,7 @@ def _get_pilot_status_payload(*, settings: Any) -> dict[str, Any] | None:
         logger.exception('experiment_pilot_health_probe_failed')
         ready = False
     _PILOT_STATUS_CACHE.update({'timestamp': now, 'ready': ready, 'payload': payload})
-    return dict(payload) if isinstance(payload, dict) else None
+    return _apply_pilot_status_overrides(payload=dict(payload), settings=settings) if isinstance(payload, dict) else None
 
 
 def _pilot_live_gate_for_slice(*, settings: Any, slice_name: str) -> tuple[bool, str, dict[str, Any] | None]:

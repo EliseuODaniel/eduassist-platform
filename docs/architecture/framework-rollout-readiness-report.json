@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-27T17:07:27.757314+00:00",
+  "generated_at": "2026-03-27T17:29:34.691134+00:00",
   "gate": {
     "loaded": true,
     "generated_at": "2026-03-27T17:01:56.429893+00:00",
@@ -356,6 +356,10 @@
     "pilot_health_enforced": false,
     "pilot_ready": false,
     "pilot_status": null,
+    "allowlist_identifier_counts": {
+      "telegram_chat_count": 1,
+      "conversation_count": 0
+    },
     "primary_stack_native_path_passed": true,
     "gate_eligible": true,
     "configured_slices": [

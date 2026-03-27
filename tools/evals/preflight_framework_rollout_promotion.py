@@ -84,6 +84,8 @@ def _build_settings(env_file: Path) -> SimpleNamespace:
         orchestrator_experiment_slices=_env_value('ORCHESTRATOR_EXPERIMENT_SLICES', '', env_file_values=env_file_values),
         orchestrator_experiment_rollout_percent=int(_env_value('ORCHESTRATOR_EXPERIMENT_ROLLOUT_PERCENT', '0', env_file_values=env_file_values) or 0),
         orchestrator_experiment_slice_rollouts=_env_value('ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS', '', env_file_values=env_file_values),
+        orchestrator_experiment_telegram_chat_allowlist=_env_value('ORCHESTRATOR_EXPERIMENT_TELEGRAM_CHAT_ALLOWLIST', '', env_file_values=env_file_values),
+        orchestrator_experiment_conversation_allowlist=_env_value('ORCHESTRATOR_EXPERIMENT_CONVERSATION_ALLOWLIST', '', env_file_values=env_file_values),
         orchestrator_experiment_allowlist_slices=_env_value('ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES', '', env_file_values=env_file_values),
         orchestrator_experiment_require_scorecard=_bool_env('ORCHESTRATOR_EXPERIMENT_REQUIRE_SCORECARD', False, env_file_values=env_file_values),
         orchestrator_experiment_scorecard_path=_normalize_scorecard_path(
@@ -94,6 +96,8 @@ def _build_settings(env_file: Path) -> SimpleNamespace:
         ),
         orchestrator_experiment_require_healthy_pilot=_bool_env('ORCHESTRATOR_EXPERIMENT_REQUIRE_HEALTHY_PILOT', False, env_file_values=env_file_values),
         orchestrator_experiment_health_ttl_seconds=int(_env_value('ORCHESTRATOR_EXPERIMENT_HEALTH_TTL_SECONDS', '15', env_file_values=env_file_values) or 15),
+        crewai_hitl_user_traffic_enabled=_bool_env('CREWAI_HITL_USER_TRAFFIC_ENABLED', False, env_file_values=env_file_values),
+        crewai_hitl_user_traffic_slices=_env_value('CREWAI_HITL_USER_TRAFFIC_SLICES', '', env_file_values=env_file_values),
         crewai_pilot_url=_normalize_pilot_url(_env_value('CREWAI_PILOT_URL', '', env_file_values=env_file_values)),
         internal_api_token=_env_value('INTERNAL_API_TOKEN', 'dev-internal-token', env_file_values=env_file_values),
     )
@@ -161,6 +165,10 @@ def _apply_overrides(base: Any, args: argparse.Namespace) -> Any:
         settings.orchestrator_experiment_slice_rollouts = args.slice_rollouts
     if args.allowlist_slices is not None:
         settings.orchestrator_experiment_allowlist_slices = args.allowlist_slices
+    if args.telegram_chat_allowlist is not None:
+        settings.orchestrator_experiment_telegram_chat_allowlist = args.telegram_chat_allowlist
+    if args.conversation_allowlist is not None:
+        settings.orchestrator_experiment_conversation_allowlist = args.conversation_allowlist
     if args.experiment_enabled is not None:
         settings.orchestrator_experiment_enabled = args.experiment_enabled
     if args.require_scorecard is not None:
@@ -169,6 +177,10 @@ def _apply_overrides(base: Any, args: argparse.Namespace) -> Any:
         settings.orchestrator_experiment_require_healthy_pilot = args.require_healthy_pilot
     if args.min_primary_engine_score is not None:
         settings.orchestrator_experiment_min_primary_engine_score = args.min_primary_engine_score
+    if args.crewai_hitl_user_traffic_enabled is not None:
+        settings.crewai_hitl_user_traffic_enabled = args.crewai_hitl_user_traffic_enabled
+    if args.crewai_hitl_user_traffic_slices is not None:
+        settings.crewai_hitl_user_traffic_slices = args.crewai_hitl_user_traffic_slices
     return settings
 
 
@@ -187,6 +199,11 @@ def main() -> int:
     parser.add_argument('--slices', default=None, help='Override ORCHESTRATOR_EXPERIMENT_SLICES')
     parser.add_argument('--slice-rollouts', default=None, help='Override ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS')
     parser.add_argument('--allowlist-slices', default=None, help='Override ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES')
+    parser.add_argument('--telegram-chat-allowlist', default=None, help='Override ORCHESTRATOR_EXPERIMENT_TELEGRAM_CHAT_ALLOWLIST')
+    parser.add_argument('--conversation-allowlist', default=None, help='Override ORCHESTRATOR_EXPERIMENT_CONVERSATION_ALLOWLIST')
+    parser.add_argument('--crewai-hitl-user-traffic-enabled', dest='crewai_hitl_user_traffic_enabled', action='store_true')
+    parser.add_argument('--no-crewai-hitl-user-traffic-enabled', dest='crewai_hitl_user_traffic_enabled', action='store_false')
+    parser.add_argument('--crewai-hitl-user-traffic-slices', default=None, help='Override CREWAI_HITL_USER_TRAFFIC_SLICES')
     parser.add_argument('--experiment-enabled', dest='experiment_enabled', action='store_true')
     parser.add_argument('--no-experiment-enabled', dest='experiment_enabled', action='store_false')
     parser.add_argument('--require-scorecard', dest='require_scorecard', action='store_true')
@@ -199,6 +216,7 @@ def main() -> int:
     parser.add_argument('--json', type=Path, default=DEFAULT_JSON)
     parser.add_argument('--artifact-json', type=Path, default=DEFAULT_ARTIFACT_JSON)
     parser.set_defaults(
+        crewai_hitl_user_traffic_enabled=None,
         experiment_enabled=None,
         require_scorecard=None,
         require_healthy_pilot=None,
@@ -224,6 +242,10 @@ def main() -> int:
             if isinstance(entry, dict) and entry.get('live')
         ]
 
+    proposed_allowlist_slices = _configured_slice_set(getattr(proposed_settings, 'orchestrator_experiment_allowlist_slices', ''))
+    proposed_chat_allowlist = _configured_slice_set(getattr(proposed_settings, 'orchestrator_experiment_telegram_chat_allowlist', ''))
+    proposed_conversation_allowlist = _configured_slice_set(getattr(proposed_settings, 'orchestrator_experiment_conversation_allowlist', ''))
+
     blocking_issues: list[str] = []
     per_slice_verdicts: dict[str, Any] = {}
     for slice_name in ('public', 'protected', 'support', 'workflow'):
@@ -238,8 +260,27 @@ def main() -> int:
             'blocked_reasons': blocked_reasons,
         }
 
+    if 'protected' in requested_live_slices:
+        if 'protected' not in proposed_allowlist_slices:
+            blocking_issues.append('protected: protected canary must keep `protected` inside ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES.')
+        if not proposed_chat_allowlist and not proposed_conversation_allowlist:
+            blocking_issues.append('protected: protected canary requires at least one telegram chat or conversation allowlist identifier.')
+        if not bool(getattr(proposed_settings, 'crewai_hitl_user_traffic_enabled', False)):
+            blocking_issues.append('protected: protected canary requires CREWAI_HITL_USER_TRAFFIC_ENABLED=true.')
+        proposed_hitl_slices = _configured_slice_set(getattr(proposed_settings, 'crewai_hitl_user_traffic_slices', ''))
+        if proposed_hitl_slices and 'protected' not in proposed_hitl_slices:
+            blocking_issues.append('protected: protected canary requires protected inside CREWAI_HITL_USER_TRAFFIC_SLICES.')
+
     safe_to_apply = not blocking_issues
     overall_verdict = 'approve' if safe_to_apply else 'reject'
+    proposed_allowlist_identifiers = {
+        'telegram_chat_ids': sorted(proposed_chat_allowlist),
+        'conversation_ids': sorted(proposed_conversation_allowlist),
+    }
+    proposed_crewai_hitl = {
+        'user_traffic_enabled': bool(getattr(proposed_settings, 'crewai_hitl_user_traffic_enabled', False)),
+        'user_traffic_slices': str(getattr(proposed_settings, 'crewai_hitl_user_traffic_slices', '') or ''),
+    }
 
     lines = [
         '# Framework Rollout Preflight Report',
@@ -256,6 +297,10 @@ def main() -> int:
         f"- safe to apply: `{safe_to_apply}`",
         f"- requested live slices: `{', '.join(requested_live_slices) or '(none)'}`",
         f"- candidate engine: `{proposed_summary['candidate_engine']}`",
+        f"- proposed telegram chat allowlist count: `{len(proposed_allowlist_identifiers['telegram_chat_ids'])}`",
+        f"- proposed conversation allowlist count: `{len(proposed_allowlist_identifiers['conversation_ids'])}`",
+        f"- proposed CrewAI protected user-traffic HITL: `{proposed_crewai_hitl['user_traffic_enabled']}`",
+        f"- proposed CrewAI HITL slices: `{proposed_crewai_hitl['user_traffic_slices']}`",
         '',
         '## Proposed Changes',
         '',
@@ -319,6 +364,8 @@ def main() -> int:
         'current_summary': current_summary,
         'proposed_summary': proposed_summary,
         'per_slice_verdicts': per_slice_verdicts,
+        'proposed_allowlist_identifiers': proposed_allowlist_identifiers,
+        'proposed_crewai_hitl': proposed_crewai_hitl,
     }
     args.report.write_text('\n'.join(lines) + '\n', encoding='utf-8')
     json_text = json.dumps(payload, ensure_ascii=False, indent=2) + '\n'

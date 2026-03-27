@@ -72,6 +72,8 @@ def _build_settings() -> SimpleNamespace:
         orchestrator_experiment_slices=_env_value('ORCHESTRATOR_EXPERIMENT_SLICES', ''),
         orchestrator_experiment_rollout_percent=int(_env_value('ORCHESTRATOR_EXPERIMENT_ROLLOUT_PERCENT', '0') or 0),
         orchestrator_experiment_slice_rollouts=_env_value('ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS', ''),
+        orchestrator_experiment_telegram_chat_allowlist=_env_value('ORCHESTRATOR_EXPERIMENT_TELEGRAM_CHAT_ALLOWLIST', ''),
+        orchestrator_experiment_conversation_allowlist=_env_value('ORCHESTRATOR_EXPERIMENT_CONVERSATION_ALLOWLIST', ''),
         orchestrator_experiment_allowlist_slices=_env_value('ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES', ''),
         orchestrator_experiment_require_scorecard=_bool_env('ORCHESTRATOR_EXPERIMENT_REQUIRE_SCORECARD', False),
         orchestrator_experiment_scorecard_path=_normalize_scorecard_path(
@@ -81,6 +83,8 @@ def _build_settings() -> SimpleNamespace:
             _env_value('ORCHESTRATOR_EXPERIMENT_MIN_PRIMARY_ENGINE_SCORE', '20') or 20
         ),
         orchestrator_experiment_require_healthy_pilot=_bool_env('ORCHESTRATOR_EXPERIMENT_REQUIRE_HEALTHY_PILOT', False),
+        crewai_hitl_user_traffic_enabled=_bool_env('CREWAI_HITL_USER_TRAFFIC_ENABLED', False),
+        crewai_hitl_user_traffic_slices=_env_value('CREWAI_HITL_USER_TRAFFIC_SLICES', ''),
         crewai_pilot_url=_env_value('CREWAI_PILOT_URL', ''),
     )
 
@@ -110,11 +114,14 @@ def main() -> int:
         f"- configured slices: `{', '.join(readiness['configured_slices']) or '(none)'}`",
         f"- promotable now: `{', '.join(readiness['promotable_now']) or '(none)'}`",
         f"- recommended next promotions: `{', '.join(readiness['recommended_next_promotions']) or '(none)'}`",
+        f"- telegram chat allowlist count: `{int((readiness.get('allowlist_identifier_counts') or {}).get('telegram_chat_count', 0) or 0)}`",
+        f"- conversation allowlist count: `{int((readiness.get('allowlist_identifier_counts') or {}).get('conversation_count', 0) or 0)}`",
+        f"- proposed CrewAI protected user-traffic HITL: `{bool((readiness.get('pilot_status') or {}).get('crewaiHitlUserTrafficEnabled', False))}`",
         '',
         '## Per Slice',
         '',
-        '| Slice | Eligible | Configured | Live | Rollout | Allowlist Only | Reason |',
-        '| --- | --- | --- | --- | ---: | --- | --- |',
+        '| Slice | Eligible | Configured | Live | Rollout | Allowlist Only | Pilot Live Gate | Reason |',
+        '| --- | --- | --- | --- | ---: | --- | --- | --- |',
     ]
 
     per_slice = readiness.get('per_slice') or {}
@@ -126,6 +133,7 @@ def main() -> int:
             f"`{'yes' if entry.get('live') else 'no'}` | "
             f"`{int(entry.get('configured_rollout_percent') or 0)}%` | "
             f"`{'yes' if entry.get('allowlist_only') else 'no'}` | "
+            f"`{'yes' if entry.get('pilot_live_gate_ok', True) else 'no'}` | "
             f"{entry.get('reason') or ''} |"
         )
 

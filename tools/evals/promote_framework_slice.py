@@ -39,6 +39,13 @@ def _normalize_csv(values: set[str]) -> str:
     return ','.join(sorted(item for item in values if item))
 
 
+def _resolved_candidate_engine(*, requested_candidate_engine: str | None, settings: Any) -> str:
+    requested = str(requested_candidate_engine or '').strip().lower()
+    if requested:
+        return requested
+    return str(getattr(settings, 'orchestrator_experiment_primary_engine', 'crewai') or 'crewai').strip().lower()
+
+
 def _load_json_array(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
@@ -150,6 +157,10 @@ def _write_report(*, report_md: Path, report_json: Path, artifact_json: Path, pa
         f"- proposed slices: `{payload['proposed_slices']}`",
         f"- proposed slice rollouts: `{payload['proposed_slice_rollouts']}`",
         f"- proposed allowlist slices: `{payload['proposed_allowlist_slices']}`",
+        f"- proposed telegram chat allowlist: `{payload.get('proposed_telegram_chat_allowlist', '')}`",
+        f"- proposed conversation allowlist: `{payload.get('proposed_conversation_allowlist', '')}`",
+        f"- proposed CrewAI protected user-traffic HITL: `{payload.get('proposed_crewai_hitl_user_traffic_enabled')}`",
+        f"- proposed CrewAI HITL slices: `{payload.get('proposed_crewai_hitl_user_traffic_slices', '')}`",
         f"- nested report: `{payload['nested_report']}`",
     ]
     if payload.get('stderr'):
@@ -173,6 +184,9 @@ def main() -> int:
     parser.add_argument('--services', default='ai-orchestrator')
     parser.add_argument('--status-url', default='http://127.0.0.1:8002/v1/status')
     parser.add_argument('--allowlist-mode', choices=['auto', 'keep', 'add', 'remove'], default='auto')
+    parser.add_argument('--protected-hitl-mode', choices=['auto', 'keep', 'enable', 'disable'], default='auto')
+    parser.add_argument('--telegram-chat-allowlist', default=None)
+    parser.add_argument('--conversation-allowlist', default=None)
     parser.add_argument('--apply', action='store_true')
     parser.add_argument('--changelog-md', type=Path, default=DEFAULT_CHANGELOG_MD)
     parser.add_argument('--changelog-json', type=Path, default=DEFAULT_CHANGELOG_JSON)
@@ -182,9 +196,14 @@ def main() -> int:
     args = parser.parse_args()
 
     settings = _build_settings(args.env_file)
+    candidate_engine = _resolved_candidate_engine(requested_candidate_engine=args.candidate_engine, settings=settings)
     slice_rollouts = _parse_slice_rollouts(getattr(settings, 'orchestrator_experiment_slice_rollouts', ''))
     configured_slices = _configured_slice_set(getattr(settings, 'orchestrator_experiment_slices', ''))
     allowlist_slices = _configured_slice_set(getattr(settings, 'orchestrator_experiment_allowlist_slices', ''))
+    telegram_chat_allowlist = _configured_slice_set(getattr(settings, 'orchestrator_experiment_telegram_chat_allowlist', ''))
+    conversation_allowlist = _configured_slice_set(getattr(settings, 'orchestrator_experiment_conversation_allowlist', ''))
+    crewai_hitl_user_traffic_slices = _configured_slice_set(getattr(settings, 'crewai_hitl_user_traffic_slices', ''))
+    crewai_hitl_user_traffic_enabled = bool(getattr(settings, 'crewai_hitl_user_traffic_enabled', False))
 
     before_rollout_percent = int(slice_rollouts.get(args.slice, getattr(settings, 'orchestrator_experiment_rollout_percent', 0) or 0))
     target_percent = max(0, min(100, int(args.to_rollout_percent)))
@@ -205,10 +224,32 @@ def main() -> int:
             allowlist_slices.add(args.slice)
         if args.slice == 'public':
             allowlist_slices.discard(args.slice)
+        if args.slice == 'protected':
+            if target_percent > 0:
+                allowlist_slices.add('protected')
+            else:
+                allowlist_slices.discard('protected')
+
+    if args.telegram_chat_allowlist is not None:
+        telegram_chat_allowlist = _configured_slice_set(args.telegram_chat_allowlist)
+    if args.conversation_allowlist is not None:
+        conversation_allowlist = _configured_slice_set(args.conversation_allowlist)
+
+    if args.slice == 'protected' and candidate_engine == 'crewai':
+        protected_hitl_mode = args.protected_hitl_mode
+        if protected_hitl_mode in {'auto', 'enable'} and target_percent > 0:
+            crewai_hitl_user_traffic_enabled = True
+            crewai_hitl_user_traffic_slices.add('protected')
+        elif protected_hitl_mode in {'auto', 'disable'} and target_percent <= 0:
+            crewai_hitl_user_traffic_slices.discard('protected')
+            crewai_hitl_user_traffic_enabled = bool(crewai_hitl_user_traffic_slices)
 
     proposed_slices = _normalize_csv(configured_slices)
     proposed_slice_rollouts = _normalize_rollouts(slice_rollouts)
     proposed_allowlist_slices = _normalize_csv(allowlist_slices)
+    proposed_telegram_chat_allowlist = _normalize_csv(telegram_chat_allowlist)
+    proposed_conversation_allowlist = _normalize_csv(conversation_allowlist)
+    proposed_crewai_hitl_user_traffic_slices = _normalize_csv(crewai_hitl_user_traffic_slices)
 
     command = [
         'python3',
@@ -221,11 +262,21 @@ def main() -> int:
         proposed_slice_rollouts,
         '--allowlist-slices',
         proposed_allowlist_slices,
+        '--telegram-chat-allowlist',
+        proposed_telegram_chat_allowlist,
+        '--conversation-allowlist',
+        proposed_conversation_allowlist,
+        '--crewai-hitl-user-traffic-slices',
+        proposed_crewai_hitl_user_traffic_slices,
     ]
+    command.append('--crewai-hitl-user-traffic-enabled' if crewai_hitl_user_traffic_enabled else '--no-crewai-hitl-user-traffic-enabled')
     if args.candidate_engine:
         command.extend(['--candidate-engine', args.candidate_engine])
     if args.apply:
-        command.extend(['--services', args.services, '--status-url', args.status_url, '--apply'])
+        services = [item.strip() for item in str(args.services).split(',') if item.strip()]
+        if args.slice == 'protected' and candidate_engine == 'crewai' and 'ai-orchestrator-crewai' not in services:
+            services.append('ai-orchestrator-crewai')
+        command.extend(['--services', ','.join(services), '--status-url', args.status_url, '--apply'])
 
     completed = subprocess.run(
         command,
@@ -254,6 +305,10 @@ def main() -> int:
         'proposed_slices': proposed_slices,
         'proposed_slice_rollouts': proposed_slice_rollouts,
         'proposed_allowlist_slices': proposed_allowlist_slices,
+        'proposed_telegram_chat_allowlist': proposed_telegram_chat_allowlist,
+        'proposed_conversation_allowlist': proposed_conversation_allowlist,
+        'proposed_crewai_hitl_user_traffic_enabled': crewai_hitl_user_traffic_enabled,
+        'proposed_crewai_hitl_user_traffic_slices': proposed_crewai_hitl_user_traffic_slices,
         'nested_report': nested_report,
         'stdout': completed.stdout,
         'stderr': completed.stderr,

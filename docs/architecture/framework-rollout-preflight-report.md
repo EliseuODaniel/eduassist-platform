@@ -1,6 +1,6 @@
 # Framework Rollout Preflight Report
 
-Date: 2026-03-27T15:55:12.418484+00:00
+Date: 2026-03-27T17:25:42.754133+00:00
 
 ## Goal
 
@@ -10,21 +10,25 @@ Validate a proposed canary rollout change before applying environment or rollout
 
 - overall verdict: `approve`
 - safe to apply: `True`
-- requested live slices: `public`
+- requested live slices: `protected`
 - candidate engine: `crewai`
+- proposed telegram chat allowlist count: `0`
+- proposed conversation allowlist count: `1`
+- proposed CrewAI protected user-traffic HITL: `True`
+- proposed CrewAI HITL slices: `protected`
 
 ## Proposed Changes
 
 | Slice | Configured Before | Configured After | Rollout Before | Rollout After |
 | --- | --- | --- | ---: | ---: |
-| `public` | `yes` | `yes` | `1%` | `2%` |
+| `protected` | `no` | `yes` | `0%` | `1%` |
 
 ## Proposed Slice Decisions
 
 | Slice | Decision | Action | Blocked Reasons |
 | --- | --- | --- | --- |
 | `public` | `approve` | `expand_gradually` |  |
-| `protected` | `reject` | `blocked` | protected still trails LangGraph in operator-facing control primitives and should stay behind manual review. |
+| `protected` | `maintain` | `maintain_controlled` |  |
 | `support` | `maintain` | `maintain_controlled` |  |
 | `workflow` | `maintain` | `maintain_controlled` |  |
 
@@ -36,5 +40,5 @@ Validate a proposed canary rollout change before applying environment or rollout
 ## Proposed Live Summary
 
 - promotable now: `public`
-- maintain now: `support, workflow`
+- maintain now: `protected, support, workflow`
 

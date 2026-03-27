@@ -174,6 +174,39 @@ The runtime status surface now exposes the resolved scorecard gate, including pe
 The runtime also exposes a rollout-oriented summary of the current configuration and what can be promoted now:
 
 - `/v1/status -> experimentRolloutReadiness`
+
+## Protected Canary Drill
+
+For `protected`, promotion should go through the same audited slice wrapper, but with the additional guarantee that the CrewAI pilot is running with user-traffic HITL enabled for `protected`.
+
+The wrapper now does this automatically for `protected` when the candidate engine is `crewai`:
+
+- preserves or injects `protected` into `ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES`
+- requires at least one chat or conversation allowlist identifier
+- enables `CREWAI_HITL_USER_TRAFFIC_ENABLED=true`
+- ensures `protected` is present in `CREWAI_HITL_USER_TRAFFIC_SLICES`
+- restarts both `ai-orchestrator` and `ai-orchestrator-crewai` on `--apply`
+
+Example:
+
+```bash
+python3 tools/evals/promote_framework_slice.py \
+  --slice protected \
+  --to-rollout-percent 1 \
+  --reason "Ativar canario protegido controlado do CrewAI com HITL" \
+  --operator codex \
+  --allowlist-mode auto
+```
+
+Operational note from the live drill:
+
+- a `1%` protected canary is correct for a real rollout, but it is not ideal for a validation drill because the stable rollout bucket can exclude the synthetic test thread even when the allowlist and pilot gate are correct
+- for a true end-to-end drill, prefer a temporary `100%` rollout on `protected` together with a synthetic `conversation_id` allowlist and no real chat allowlist
+- that keeps the drill isolated to one controlled conversation while guaranteeing that the request actually routes to the CrewAI protected path and reaches HITL pending/review/resume
+
+After a live activation, the dedicated observation report is:
+
+- [framework-protected-canary-live-observation-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-protected-canary-live-observation-report.md)
 - `/meta -> experimentRolloutReadiness`
 
 The runtime also exposes a live promotion summary that combines current config, pilot health, and gate state into an action per slice:

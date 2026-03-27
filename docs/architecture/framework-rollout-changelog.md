@@ -2,6 +2,9 @@
 
 | Date | Intent | Slice | Before | After | Mode | Result | Operator | Reason | Env File |
 | --- | --- | --- | ---: | ---: | --- | --- | --- | --- | --- |
+| `2026-03-27T17:27:40.589600+00:00` | `promotion` | `protected` | `1%` | `100%` | `execute` | `passed` | `codex` | Drill controlado do protected em 100% com allowlist sintetica | `artifacts/tmp-protected-canary.env` |
+| `2026-03-27T17:26:17.986764+00:00` | `promotion` | `protected` | `0%` | `1%` | `execute` | `passed` | `codex` | Ativar canario protegido controlado do CrewAI com HITL | `artifacts/tmp-protected-canary.env` |
+| `2026-03-27T17:25:42.785370+00:00` | `promotion` | `protected` | `0%` | `1%` | `preflight` | `passed` | `codex` | Ativar canario protegido controlado do CrewAI com HITL | `artifacts/tmp-protected-canary.env` |
 | `2026-03-27T16:12:28.601970+00:00` | `promotion` | `public` | `2%` | `5%` | `execute` | `passed` | `codex` | Expandir public de 2% para 5% conforme recomendacao do gate live | `.env` |
 | `2026-03-27T16:01:18.904547+00:00` | `promotion` | `public` | `1%` | `2%` | `execute` | `failed` | `codex` | Expandir public de 1% para 2% conforme recomendacao do gate live | `.env` |
 | `2026-03-27T15:39:44.095113+00:00` | `rollback` | `public` | `2%` | `1%` | `preflight` | `passed` | `codex` | Reverter public para o nivel anterior do canario | `artifacts/tmp-rollback.env` |

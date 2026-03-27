@@ -1,8 +1,52 @@
 {
-  "generated_at": "2026-03-27T17:29:35.382805+00:00",
-  "classification": "healthy",
-  "observation_healthy": true,
-  "observation_errors": [],
+  "generated_at": "2026-03-27T17:28:22.370800+00:00",
+  "classification": "ready",
+  "errors": [],
+  "protected": {
+    "eligible": true,
+    "configured": true,
+    "live": true,
+    "allowlist_only": true,
+    "configured_rollout_percent": 100,
+    "action": "maintain_controlled",
+    "pilot_live_gate_ok": true,
+    "pilot_live_gate_reason": "",
+    "blocked_reasons": []
+  },
+  "pilot_status": {
+    "service": "ai-orchestrator-crewai",
+    "ready": true,
+    "crewaiInstalled": true,
+    "crewaiVersion": "1.12.2",
+    "slice": "public+protected+workflow+support",
+    "mode": "pilot",
+    "googleModel": "gemini-2.5-flash-preview",
+    "llmConfigured": true,
+    "capabilities": [
+      "public-shadow-flow",
+      "protected-shadow-flow",
+      "workflow-shadow-flow",
+      "support-shadow-flow",
+      "isolated-dependencies",
+      "planner-composer-judge",
+      "flow-state-routing",
+      "flow-state-persistence",
+      "task-trace-telemetry",
+      "task-guardrails",
+      "agentic-rendering-for-support-workflow",
+      "crewai-hitl-internal",
+      "crewai-hitl-user-traffic"
+    ],
+    "flowStateDir": "/workspace/artifacts/crewai-flow-state",
+    "crewaiHitlEnabled": true,
+    "crewaiHitlDefaultSlices": "protected",
+    "crewaiHitlUserTrafficEnabled": true,
+    "crewaiHitlUserTrafficSlices": "protected"
+  },
+  "allowlist_counts": {
+    "telegram_chat_count": 0,
+    "conversation_count": 1
+  },
   "status": {
     "service": "ai-orchestrator",
     "ready": true,
@@ -12,12 +56,12 @@
     "crewaiPilotConfigured": true,
     "experimentEnabled": true,
     "experimentPrimaryEngine": "crewai",
-    "experimentSlices": "public,support,workflow",
+    "experimentSlices": "protected,public,support,workflow",
     "experimentRolloutPercent": 0,
-    "experimentSliceRollouts": "public:5,support:100,workflow:100",
-    "experimentAllowlistSlices": "support,workflow",
-    "experimentTelegramChatAllowlistCount": 1,
-    "experimentConversationAllowlistCount": 0,
+    "experimentSliceRollouts": "protected:100,public:5,support:100,workflow:100",
+    "experimentAllowlistSlices": "protected,support,workflow",
+    "experimentTelegramChatAllowlistCount": 0,
+    "experimentConversationAllowlistCount": 1,
     "experimentRequireScorecard": false,
     "experimentScorecardPath": "/workspace/artifacts/framework-native-scorecard.json",
     "experimentMinPrimaryEngineScore": 20,
@@ -404,40 +448,40 @@
         "flowStateDir": "/workspace/artifacts/crewai-flow-state",
         "crewaiHitlEnabled": true,
         "crewaiHitlDefaultSlices": "protected",
-        "crewaiHitlUserTrafficEnabled": false,
+        "crewaiHitlUserTrafficEnabled": true,
         "crewaiHitlUserTrafficSlices": "protected"
       },
       "allowlist_identifier_counts": {
-        "telegram_chat_count": 1,
-        "conversation_count": 0
+        "telegram_chat_count": 0,
+        "conversation_count": 1
       },
       "primary_stack_native_path_passed": true,
       "gate_eligible": true,
       "configured_slices": [
+        "protected",
         "public",
         "support",
         "workflow"
       ],
       "promotable_now": [
+        "protected",
         "public",
         "support",
         "workflow"
       ],
-      "blocked_now": {
-        "protected": "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot."
-      },
+      "blocked_now": {},
       "recommended_next_promotions": [],
       "per_slice": {
         "protected": {
-          "eligible": false,
-          "reason": "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot.",
+          "eligible": true,
+          "reason": "protected is allowed for crewai under the current scorecard gate.",
           "scorecard_eligible": true,
-          "pilot_live_gate_ok": false,
-          "pilot_live_gate_reason": "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot.",
-          "configured": false,
-          "configured_rollout_percent": 0,
-          "allowlist_only": false,
-          "live": false
+          "pilot_live_gate_ok": true,
+          "pilot_live_gate_reason": "",
+          "configured": true,
+          "configured_rollout_percent": 100,
+          "allowlist_only": true,
+          "live": true
         },
         "public": {
           "eligible": true,
@@ -508,7 +552,7 @@
         "flowStateDir": "/workspace/artifacts/crewai-flow-state",
         "crewaiHitlEnabled": true,
         "crewaiHitlDefaultSlices": "protected",
-        "crewaiHitlUserTrafficEnabled": false,
+        "crewaiHitlUserTrafficEnabled": true,
         "crewaiHitlUserTrafficSlices": "protected"
       },
       "scorecard_loaded": true,
@@ -517,25 +561,22 @@
         "public"
       ],
       "maintain_now": [
+        "protected",
         "support",
         "workflow"
       ],
-      "blocked_now": {
-        "protected": "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot."
-      },
+      "blocked_now": {},
       "advisory_by_slice": {
         "protected": {
-          "eligible": false,
-          "configured": false,
-          "live": false,
-          "allowlist_only": false,
-          "configured_rollout_percent": 0,
-          "action": "blocked",
-          "pilot_live_gate_ok": false,
-          "pilot_live_gate_reason": "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot.",
-          "blocked_reasons": [
-            "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot."
-          ]
+          "eligible": true,
+          "configured": true,
+          "live": true,
+          "allowlist_only": true,
+          "configured_rollout_percent": 100,
+          "action": "maintain_controlled",
+          "pilot_live_gate_ok": true,
+          "pilot_live_gate_reason": "",
+          "blocked_reasons": []
         },
         "public": {
           "eligible": true,
@@ -600,157 +641,5 @@
     "langgraphHitlDefaultSlices": "support",
     "langgraphHitlUserTrafficEnabled": false,
     "langgraphHitlUserTrafficSlices": "support"
-  },
-  "services": {
-    "ai-orchestrator": {
-      "exists": true,
-      "running": true,
-      "status": "running",
-      "health_status": "healthy",
-      "started_at": "2026-03-27T17:28:41.087092308Z"
-    },
-    "ai-orchestrator-crewai": {
-      "exists": true,
-      "running": true,
-      "status": "running",
-      "health_status": "healthy",
-      "started_at": "2026-03-27T17:28:40.495173426Z"
-    },
-    "api-core": {
-      "exists": true,
-      "running": true,
-      "status": "running",
-      "health_status": "healthy",
-      "started_at": "2026-03-26T16:51:57.183119439Z"
-    },
-    "telegram-gateway": {
-      "exists": true,
-      "running": true,
-      "status": "running",
-      "health_status": "healthy",
-      "started_at": "2026-03-26T03:43:36.151886071Z"
-    }
-  },
-  "advisory": {
-    "resolved_primary_stack": "langgraph",
-    "experiment_enabled": true,
-    "experiment_active": true,
-    "candidate_engine": "crewai",
-    "pilot_configured": true,
-    "pilot_ready": true,
-    "pilot_status": {
-      "service": "ai-orchestrator-crewai",
-      "ready": true,
-      "crewaiInstalled": true,
-      "crewaiVersion": "1.12.2",
-      "slice": "public+protected+workflow+support",
-      "mode": "pilot",
-      "googleModel": "gemini-2.5-flash-preview",
-      "llmConfigured": true,
-      "capabilities": [
-        "public-shadow-flow",
-        "protected-shadow-flow",
-        "workflow-shadow-flow",
-        "support-shadow-flow",
-        "isolated-dependencies",
-        "planner-composer-judge",
-        "flow-state-routing",
-        "flow-state-persistence",
-        "task-trace-telemetry",
-        "task-guardrails",
-        "agentic-rendering-for-support-workflow",
-        "crewai-hitl-internal",
-        "crewai-hitl-user-traffic"
-      ],
-      "flowStateDir": "/workspace/artifacts/crewai-flow-state",
-      "crewaiHitlEnabled": true,
-      "crewaiHitlDefaultSlices": "protected",
-      "crewaiHitlUserTrafficEnabled": false,
-      "crewaiHitlUserTrafficSlices": "protected"
-    },
-    "scorecard_loaded": true,
-    "primary_stack_native_path_passed": true,
-    "promotable_now": [
-      "public"
-    ],
-    "maintain_now": [
-      "support",
-      "workflow"
-    ],
-    "blocked_now": {
-      "protected": "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot."
-    },
-    "advisory_by_slice": {
-      "protected": {
-        "eligible": false,
-        "configured": false,
-        "live": false,
-        "allowlist_only": false,
-        "configured_rollout_percent": 0,
-        "action": "blocked",
-        "pilot_live_gate_ok": false,
-        "pilot_live_gate_reason": "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot.",
-        "blocked_reasons": [
-          "CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot."
-        ]
-      },
-      "public": {
-        "eligible": true,
-        "configured": true,
-        "live": true,
-        "allowlist_only": false,
-        "configured_rollout_percent": 5,
-        "action": "expand_gradually",
-        "pilot_live_gate_ok": true,
-        "pilot_live_gate_reason": "",
-        "blocked_reasons": []
-      },
-      "support": {
-        "eligible": true,
-        "configured": true,
-        "live": true,
-        "allowlist_only": true,
-        "configured_rollout_percent": 100,
-        "action": "maintain_controlled",
-        "pilot_live_gate_ok": true,
-        "pilot_live_gate_reason": "",
-        "blocked_reasons": []
-      },
-      "workflow": {
-        "eligible": true,
-        "configured": true,
-        "live": true,
-        "allowlist_only": true,
-        "configured_rollout_percent": 100,
-        "action": "maintain_controlled",
-        "pilot_live_gate_ok": true,
-        "pilot_live_gate_reason": "",
-        "blocked_reasons": []
-      }
-    }
-  },
-  "latest_rollout_entry": {
-    "timestamp": "2026-03-27T17:27:40.589600+00:00",
-    "intent": "promotion",
-    "slice": "protected",
-    "before_rollout_percent": 1,
-    "after_rollout_percent": 100,
-    "mode": "execute",
-    "apply": true,
-    "result": "passed",
-    "operator": "codex",
-    "reason": "Drill controlado do protected em 100% com allowlist sintetica",
-    "returncode": 0,
-    "env_file": "artifacts/tmp-protected-canary.env",
-    "proposed_slices": "protected,public,support,workflow",
-    "proposed_slice_rollouts": "protected:100,public:5,support:100,workflow:100",
-    "proposed_allowlist_slices": "protected,support,workflow",
-    "proposed_telegram_chat_allowlist": "",
-    "proposed_conversation_allowlist": "protected-canary-drill-1",
-    "proposed_crewai_hitl_user_traffic_enabled": true,
-    "proposed_crewai_hitl_user_traffic_slices": "protected",
-    "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md",
-    "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-execution-report.json\n",
-    "stderr": " Container eduassist-ai-orchestrator-crewai Running \n Container eduassist-ai-orchestrator Recreate \n Container eduassist-ai-orchestrator Recreated \n Container eduassist-ai-orchestrator Starting \n Container eduassist-ai-orchestrator Started \n"
   }
 }

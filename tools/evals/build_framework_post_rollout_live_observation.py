@@ -82,6 +82,8 @@ def _write_report(*, report_md: Path, report_json: Path, artifact_json: Path, pa
         f"- resolved primary stack: `{payload['status'].get('resolvedPrimaryStack', '')}`",
         f"- experiment primary engine: `{payload['status'].get('experimentPrimaryEngine', '')}`",
         f"- experiment slice rollouts: `{payload['status'].get('experimentSliceRollouts', '')}`",
+        f"- telegram chat allowlist count: `{payload['status'].get('experimentTelegramChatAllowlistCount', 0)}`",
+        f"- conversation allowlist count: `{payload['status'].get('experimentConversationAllowlistCount', 0)}`",
         '',
         '## Live Advisory',
         '',
@@ -93,6 +95,18 @@ def _write_report(*, report_md: Path, report_json: Path, artifact_json: Path, pa
         lines.extend(['', '## Blocked Slices', ''])
         for slice_name, reason in blocked_now.items():
             lines.append(f"- `{slice_name}`: {reason}")
+
+    pilot_status = payload['advisory'].get('pilot_status') if isinstance(payload.get('advisory'), dict) else {}
+    if isinstance(pilot_status, dict):
+        lines.extend(
+            [
+                '',
+                '## CrewAI Pilot Review Gate',
+                '',
+                f"- user-traffic HITL enabled: `{pilot_status.get('crewaiHitlUserTrafficEnabled')}`",
+                f"- user-traffic HITL slices: `{pilot_status.get('crewaiHitlUserTrafficSlices', '')}`",
+            ]
+        )
 
     lines.extend(['', '## Service Health', '', '| Service | Running | Health | Started At |', '| --- | --- | --- | --- |'])
     for name, item in payload['services'].items():
@@ -151,6 +165,15 @@ def main() -> int:
             errors.append(f'{name} container not running')
         if item.get('health_status') not in {'', 'healthy'}:
             errors.append(f"{name} health={item.get('health_status')}")
+
+    protected = (advisory.get('advisory_by_slice') or {}).get('protected') if isinstance(advisory, dict) else {}
+    if isinstance(protected, dict) and protected.get('live'):
+        if not protected.get('allowlist_only'):
+            errors.append('protected live slice is not restricted to allowlist')
+        if not protected.get('pilot_live_gate_ok'):
+            errors.append('protected live slice does not have CrewAI pilot live gate open')
+        if int(status.get('experimentTelegramChatAllowlistCount', 0) or 0) <= 0 and int(status.get('experimentConversationAllowlistCount', 0) or 0) <= 0:
+            errors.append('protected live slice has no allowlist identifiers configured')
 
     payload = {
         'generated_at': datetime.now(UTC).isoformat(),

@@ -143,6 +143,10 @@ def _normalized_hitl_slices(values: list[str] | None, *, fallback: str) -> list[
     return [item.strip() for item in fallback.split(',') if item.strip()] or ['support']
 
 
+def _csv_count(value: str | None) -> int:
+    return len([item.strip() for item in str(value or '').split(',') if item.strip()])
+
+
 def _hitl_thread_id(
     *,
     conversation_id: str | None,
@@ -334,6 +338,8 @@ async def meta(
         'experimentRolloutPercent': settings.orchestrator_experiment_rollout_percent,
         'experimentSliceRollouts': settings.orchestrator_experiment_slice_rollouts,
         'experimentAllowlistSlices': settings.orchestrator_experiment_allowlist_slices,
+        'experimentTelegramChatAllowlistCount': _csv_count(settings.orchestrator_experiment_telegram_chat_allowlist),
+        'experimentConversationAllowlistCount': _csv_count(settings.orchestrator_experiment_conversation_allowlist),
         'experimentRequireScorecard': settings.orchestrator_experiment_require_scorecard,
         'experimentScorecardPath': settings.orchestrator_experiment_scorecard_path,
         'experimentMinPrimaryEngineScore': settings.orchestrator_experiment_min_primary_engine_score,
@@ -378,6 +384,8 @@ async def status() -> dict[str, object]:
         'experimentRolloutPercent': settings.orchestrator_experiment_rollout_percent,
         'experimentSliceRollouts': settings.orchestrator_experiment_slice_rollouts,
         'experimentAllowlistSlices': settings.orchestrator_experiment_allowlist_slices,
+        'experimentTelegramChatAllowlistCount': _csv_count(settings.orchestrator_experiment_telegram_chat_allowlist),
+        'experimentConversationAllowlistCount': _csv_count(settings.orchestrator_experiment_conversation_allowlist),
         'experimentRequireScorecard': settings.orchestrator_experiment_require_scorecard,
         'experimentScorecardPath': settings.orchestrator_experiment_scorecard_path,
         'experimentMinPrimaryEngineScore': settings.orchestrator_experiment_min_primary_engine_score,

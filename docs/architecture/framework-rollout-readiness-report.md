@@ -1,6 +1,6 @@
 # Framework Rollout Readiness Report
 
-Date: 2026-03-27T17:07:27.757081+00:00
+Date: 2026-03-27T17:29:34.690901+00:00
 
 ## Goal
 
@@ -17,15 +17,18 @@ Summarize what can be promoted now, by slice, before any canary or feature-flag 
 - configured slices: `public, support, workflow`
 - promotable now: `(none)`
 - recommended next promotions: `(none)`
+- telegram chat allowlist count: `1`
+- conversation allowlist count: `0`
+- proposed CrewAI protected user-traffic HITL: `False`
 
 ## Per Slice
 
-| Slice | Eligible | Configured | Live | Rollout | Allowlist Only | Reason |
-| --- | --- | --- | --- | ---: | --- | --- |
-| `public` | `no` | `yes` | `yes` | `5%` | `no` | CrewAI pilot status is not available right now. |
-| `protected` | `no` | `no` | `no` | `0%` | `no` | CrewAI pilot status is not available right now. |
-| `support` | `no` | `yes` | `yes` | `100%` | `yes` | CrewAI pilot status is not available right now. |
-| `workflow` | `no` | `yes` | `yes` | `100%` | `yes` | CrewAI pilot status is not available right now. |
+| Slice | Eligible | Configured | Live | Rollout | Allowlist Only | Pilot Live Gate | Reason |
+| --- | --- | --- | --- | ---: | --- | --- | --- |
+| `public` | `no` | `yes` | `yes` | `5%` | `no` | `no` | CrewAI pilot status is not available right now. |
+| `protected` | `no` | `no` | `no` | `0%` | `no` | `no` | CrewAI pilot status is not available right now. |
+| `support` | `no` | `yes` | `yes` | `100%` | `yes` | `no` | CrewAI pilot status is not available right now. |
+| `workflow` | `no` | `yes` | `yes` | `100%` | `yes` | `no` | CrewAI pilot status is not available right now. |
 
 ## Gate Snapshot
 

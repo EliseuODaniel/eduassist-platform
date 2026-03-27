@@ -1,6 +1,6 @@
 # Framework Live Promotion Summary
 
-Date: 2026-03-27T17:07:27.973328+00:00
+Date: 2026-03-27T17:29:34.897821+00:00
 
 ## Goal
 
@@ -18,12 +18,14 @@ Summarize the live rollout posture before any canary promotion by slice.
 - primary-stack native path passed: `True`
 - promotable now: `public`
 - maintain now: `support, workflow`
+- pilot protected user-traffic HITL enabled: `False`
+- pilot protected user-traffic HITL slices: ``
 
 ## Per Slice Advisory
 
-| Slice | Action | Eligible | Live | Rollout | Allowlist Only | Blocked Reasons |
-| --- | --- | --- | --- | ---: | --- | --- |
-| `public` | `expand_gradually` | `yes` | `yes` | `5%` | `no` |  |
-| `protected` | `blocked` | `no` | `no` | `0%` | `no` | CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot. |
-| `support` | `maintain_controlled` | `yes` | `yes` | `100%` | `yes` |  |
-| `workflow` | `maintain_controlled` | `yes` | `yes` | `100%` | `yes` |  |
+| Slice | Action | Eligible | Live | Rollout | Allowlist Only | Pilot Live Gate | Blocked Reasons |
+| --- | --- | --- | --- | ---: | --- | --- | --- |
+| `public` | `expand_gradually` | `yes` | `yes` | `5%` | `no` | `yes` |  |
+| `protected` | `blocked` | `no` | `no` | `0%` | `no` | `no` | CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot. |
+| `support` | `maintain_controlled` | `yes` | `yes` | `100%` | `yes` | `yes` |  |
+| `workflow` | `maintain_controlled` | `yes` | `yes` | `100%` | `yes` | `yes` |  |
