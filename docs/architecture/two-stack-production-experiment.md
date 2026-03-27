@@ -373,6 +373,10 @@ Artifacts:
 
 - [framework-recommended-slice-promotion-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-recommended-slice-promotion-report.md)
 
+Operational note:
+
+- the execution path now resyncs the runtime-readable scorecard artifact into `ai-orchestrator` after restart and waits for full status validation, not only `ready=true`
+
 Artifacts:
 
 - [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md)

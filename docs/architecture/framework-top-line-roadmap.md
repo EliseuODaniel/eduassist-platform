@@ -109,6 +109,7 @@ Validated in this round:
 - The rollout changelog can now be normalized against the current audit contract, so legacy entries no longer weaken merge/release readiness.
 - A merge/release checklist can now verify snapshot freshness, health, scorecard gates, and changelog hygiene in one pass before promotion or merge.
 - A recommendation wrapper can now promote the next slice suggested by the live gate using the same audited rollout path, reducing operator guesswork while preserving the existing controls.
+- The rollout execution path can now resync runtime scorecard artifacts after restart and wait for full validated status, avoiding false-negative live checks caused by boot-time partial status surfaces.
 
 Concrete local evidence:
 

@@ -32,6 +32,11 @@ DEFAULT_JSON = REPO_ROOT / 'docs/architecture/framework-rollout-execution-report
 DEFAULT_ARTIFACT_JSON = REPO_ROOT / 'artifacts/framework-rollout-execution-report.json'
 DEFAULT_STATUS_URL = 'http://127.0.0.1:8002/v1/status'
 DEFAULT_BACKUP_DIR = REPO_ROOT / 'artifacts/env-snapshots'
+LOCAL_SCORECARD_PATH = REPO_ROOT / 'artifacts/framework-native-scorecard.json'
+LOCAL_SCORECARD_DOC_PATH = REPO_ROOT / 'docs/architecture/framework-native-scorecard.json'
+SERVICE_CONTAINER_NAMES = {
+    'ai-orchestrator': 'eduassist-ai-orchestrator',
+}
 
 
 def _http_json(url: str) -> dict[str, Any]:
@@ -58,6 +63,60 @@ def _wait_for_status(url: str, timeout_seconds: int) -> dict[str, Any]:
             last_error = str(exc)
         time.sleep(1)
     raise RuntimeError(f'timed out waiting for healthy status from {url}: {last_error or "unknown error"}')
+
+
+def _sync_runtime_artifacts(*, services: list[str]) -> list[str]:
+    synced: list[str] = []
+    scorecard_source = LOCAL_SCORECARD_PATH if LOCAL_SCORECARD_PATH.exists() else LOCAL_SCORECARD_DOC_PATH
+    if 'ai-orchestrator' in services and scorecard_source.exists():
+        container_name = SERVICE_CONTAINER_NAMES.get('ai-orchestrator')
+        if container_name:
+            subprocess.run(
+                [
+                    'docker',
+                    'exec',
+                    container_name,
+                    'mkdir',
+                    '-p',
+                    '/workspace/artifacts',
+                ],
+                cwd=REPO_ROOT,
+                check=True,
+            )
+            subprocess.run(
+                [
+                    'docker',
+                    'cp',
+                    str(scorecard_source),
+                    f'{container_name}:/workspace/artifacts/framework-native-scorecard.json',
+                ],
+                cwd=REPO_ROOT,
+                check=True,
+            )
+            synced.append('framework-native-scorecard.json')
+    return synced
+
+
+def _wait_for_validated_status(*, url: str, timeout_seconds: int, proposed_settings: Any) -> tuple[dict[str, Any], list[str]]:
+    deadline = time.monotonic() + timeout_seconds
+    last_payload: dict[str, Any] | None = None
+    last_errors: list[str] = ['status validation did not run']
+    while time.monotonic() < deadline:
+        try:
+            payload = _http_json(url)
+            last_payload = payload
+            if not bool(payload.get('ready')):
+                last_errors = ['status returned ready=false']
+            else:
+                last_errors = _validate_status(payload=payload, proposed_settings=proposed_settings)
+                if not last_errors:
+                    return payload, []
+        except URLError as exc:
+            last_errors = [str(exc)]
+        except Exception as exc:  # pragma: no cover - defensive
+            last_errors = [str(exc)]
+        time.sleep(1)
+    return last_payload or {}, last_errors
 
 
 def _restart_services(*, env_file: Path, compose_file: Path, services: list[str]) -> None:
@@ -127,6 +186,7 @@ def _write_report(
     status_url: str,
     backup_path: Path | None,
     restart_attempted: bool,
+    synced_artifacts: list[str],
     live_status: dict[str, Any] | None,
     live_validation_errors: list[str],
 ) -> None:
@@ -149,6 +209,7 @@ def _write_report(
         f"- backup path: `{backup_path if backup_path else '(none)'}`",
         f"- compose file: `{compose_file}`",
         f"- status url: `{status_url}`",
+        f"- synced runtime artifacts: `{', '.join(synced_artifacts) or '(none)'}`",
         f"- live validation passed: `{not live_validation_errors}`",
         '',
         '## Requested Live Slices',
@@ -208,6 +269,7 @@ def _write_report(
         'status_url': status_url,
         'backup_path': str(backup_path) if backup_path else None,
         'restart_attempted': restart_attempted,
+        'synced_artifacts': synced_artifacts,
         'live_validation_passed': not live_validation_errors,
         'live_validation_errors': live_validation_errors,
         'live_status': live_status,
@@ -264,6 +326,7 @@ def main() -> int:
             status_url=args.status_url,
             backup_path=None,
             restart_attempted=False,
+            synced_artifacts=[],
             live_status=None,
             live_validation_errors=list(preflight.get('blocking_issues') or ['preflight rejected the proposal']),
         )
@@ -284,6 +347,7 @@ def main() -> int:
             status_url=args.status_url,
             backup_path=None,
             restart_attempted=False,
+            synced_artifacts=[],
             live_status=None,
             live_validation_errors=['execution requires --apply'],
         )
@@ -306,10 +370,16 @@ def main() -> int:
     services = [item.strip() for item in args.services.split(',') if item.strip()]
     live_status: dict[str, Any] | None = None
     live_validation_errors: list[str] = []
+    synced_artifacts: list[str] = []
     try:
         _restart_services(env_file=args.env_file, compose_file=args.compose_file, services=services)
         live_status = _wait_for_status(args.status_url, args.status_timeout_seconds)
-        live_validation_errors = _validate_status(payload=live_status, proposed_settings=proposed_settings)
+        synced_artifacts = _sync_runtime_artifacts(services=services)
+        live_status, live_validation_errors = _wait_for_validated_status(
+            url=args.status_url,
+            timeout_seconds=args.status_timeout_seconds,
+            proposed_settings=proposed_settings,
+        )
     except Exception as exc:
         live_validation_errors = [f'rollout execution failed: {exc}']
 
@@ -324,6 +394,7 @@ def main() -> int:
         status_url=args.status_url,
         backup_path=backup_path,
         restart_attempted=True,
+        synced_artifacts=synced_artifacts,
         live_status=live_status,
         live_validation_errors=live_validation_errors,
     )
