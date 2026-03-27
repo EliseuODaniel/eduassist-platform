@@ -6,6 +6,7 @@ from typing import Any
 
 import httpx
 
+from .flow_persistence import build_flow_state_id
 from .listeners import suppress_crewai_tracing_messages
 
 
@@ -236,8 +237,18 @@ async def run_workflow_crewai_pilot(
     with suppress_crewai_tracing_messages():
         result = await flow.kickoff_async(
             inputs={
+                'id': build_flow_state_id(
+                    slice_name='workflow',
+                    conversation_id=conversation_id or (
+                        f'telegram:{telegram_chat_id}' if channel == 'telegram' and telegram_chat_id is not None else None
+                    ),
+                    telegram_chat_id=telegram_chat_id,
+                    channel=channel,
+                ),
                 'message': message,
-                'conversation_id': conversation_id,
+                'conversation_id': conversation_id or (
+                    f'telegram:{telegram_chat_id}' if channel == 'telegram' and telegram_chat_id is not None else None
+                ),
                 'telegram_chat_id': telegram_chat_id,
                 'channel': channel,
             }

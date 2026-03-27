@@ -6,10 +6,14 @@ from typing import Any
 from pydantic import BaseModel
 
 try:
+    from crewai.flow.persistence import persist  # type: ignore
     from crewai.flow.flow import Flow, listen, router, start  # type: ignore
 except Exception:  # pragma: no cover
     Flow = None  # type: ignore[assignment]
     listen = router = start = None  # type: ignore[assignment]
+    persist = None  # type: ignore[assignment]
+
+from .flow_persistence import get_sqlite_flow_persistence
 
 from .support_pilot import (
     _detect_queue,
@@ -30,6 +34,7 @@ from .support_pilot import (
 
 
 class SupportFlowState(BaseModel):
+    id: str | None = None
     message: str = ''
     conversation_id: str | None = None
     telegram_chat_id: int | None = None
@@ -40,14 +45,26 @@ class SupportFlowState(BaseModel):
     ticket_code: str | None = None
     queue_name: str | None = None
     current_item: dict[str, Any] | None = None
+    active_ticket_code: str | None = None
+    active_queue_name: str | None = None
     latency_ms: float = 0.0
 
 
+def _support_flow_decorator(target: type[Flow[SupportFlowState]]) -> type[Flow[SupportFlowState]]:
+    if persist is None:
+        return target
+    persistence = get_sqlite_flow_persistence('support')
+    if persistence is None:
+        return target
+    return persist(persistence=persistence, verbose=False)(target)
+
+
+@_support_flow_decorator
 class SupportShadowFlow(Flow[SupportFlowState]):
-    def __init__(self, *, settings: Any) -> None:
+    def __init__(self, *, settings: Any, persistence: Any | None = None) -> None:
         self.settings = settings
         self._overall_started_at = perf_counter()
-        super().__init__(tracing=False)
+        super().__init__(persistence=persistence, tracing=False)
 
     @start()
     async def prepare_context(self) -> str:
@@ -60,6 +77,8 @@ class SupportShadowFlow(Flow[SupportFlowState]):
             return self.state.routing_label
 
         self.state.ticket_code = _extract_ticket_code(self.state.message)
+        if not self.state.ticket_code and self.state.active_ticket_code:
+            self.state.ticket_code = self.state.active_ticket_code
         support_status = await _get_support_status(
             self.settings,
             conversation_id=conversation_external_id,
@@ -68,6 +87,27 @@ class SupportShadowFlow(Flow[SupportFlowState]):
         )
         current_item = support_status.get('item') if isinstance(support_status, dict) else None
         self.state.current_item = current_item if isinstance(current_item, dict) else None
+        if not isinstance(self.state.current_item, dict) and self.state.active_ticket_code:
+            support_status = await _get_support_status(
+                self.settings,
+                conversation_id=conversation_external_id,
+                channel=self.state.channel,
+                protocol_code=self.state.active_ticket_code,
+            )
+            current_item = support_status.get('item') if isinstance(support_status, dict) else None
+            self.state.current_item = current_item if isinstance(current_item, dict) else None
+        if isinstance(self.state.current_item, dict):
+            self.state.active_ticket_code = str(
+                self.state.current_item.get('protocol_code')
+                or self.state.current_item.get('linked_ticket_code')
+                or self.state.active_ticket_code
+                or ''
+            ).strip() or self.state.active_ticket_code
+            self.state.active_queue_name = str(
+                self.state.current_item.get('queue_name')
+                or self.state.active_queue_name
+                or ''
+            ).strip() or self.state.active_queue_name
 
         if _is_repair_turn(self.state.message):
             self.state.routing_label = 'repair'
@@ -109,6 +149,9 @@ class SupportShadowFlow(Flow[SupportFlowState]):
             'normalized_message': self.state.normalized_message,
             'flow_enabled': True,
             'flow_state_id': getattr(self.state, 'id', None),
+            'flow_state_persisted': get_sqlite_flow_persistence('support') is not None,
+            'active_ticket_code': self.state.active_ticket_code,
+            'active_queue_name': self.state.active_queue_name,
         }
 
     def _finish(self, answer_text: str | None = None, *, extra: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -158,6 +201,10 @@ class SupportShadowFlow(Flow[SupportFlowState]):
         )
         item = payload.get('item') if isinstance(payload, dict) else {}
         created = bool(payload.get('created'))
+        self.state.active_ticket_code = str(
+            item.get('protocol_code') or item.get('linked_ticket_code') or ''
+        ).strip() or self.state.active_ticket_code
+        self.state.active_queue_name = str(item.get('queue_name') or self.state.queue_name or '').strip() or self.state.active_queue_name
         return {
             'engine_name': 'crewai',
             'executed': True,
@@ -173,37 +220,52 @@ class SupportShadowFlow(Flow[SupportFlowState]):
 
     @listen('protocol')
     def handle_protocol(self) -> dict[str, Any]:
+        current_item = self.state.current_item or {}
+        self.state.active_ticket_code = str(
+            current_item.get('protocol_code') or current_item.get('linked_ticket_code') or ''
+        ).strip() or self.state.active_ticket_code
+        self.state.active_queue_name = str(current_item.get('queue_name') or '').strip() or self.state.active_queue_name
         return {
             'engine_name': 'crewai',
             'executed': True,
             'reason': 'support_protocol',
             'metadata': self._finish(
-                _handoff_protocol_response(self.state.current_item or {}),
-                extra={'ticket_code': (self.state.current_item or {}).get('protocol_code')},
+                _handoff_protocol_response(current_item),
+                extra={'ticket_code': current_item.get('protocol_code')},
             ),
         }
 
     @listen('summary')
     def handle_summary(self) -> dict[str, Any]:
+        current_item = self.state.current_item or {}
+        self.state.active_ticket_code = str(
+            current_item.get('protocol_code') or current_item.get('linked_ticket_code') or ''
+        ).strip() or self.state.active_ticket_code
+        self.state.active_queue_name = str(current_item.get('queue_name') or '').strip() or self.state.active_queue_name
         return {
             'engine_name': 'crewai',
             'executed': True,
             'reason': 'support_summary',
             'metadata': self._finish(
-                _handoff_summary_response(self.state.current_item or {}),
-                extra={'ticket_code': (self.state.current_item or {}).get('protocol_code')},
+                _handoff_summary_response(current_item),
+                extra={'ticket_code': current_item.get('protocol_code')},
             ),
         }
 
     @listen('status')
     def handle_status(self) -> dict[str, Any]:
+        current_item = self.state.current_item or {}
+        self.state.active_ticket_code = str(
+            current_item.get('protocol_code') or current_item.get('linked_ticket_code') or ''
+        ).strip() or self.state.active_ticket_code
+        self.state.active_queue_name = str(current_item.get('queue_name') or '').strip() or self.state.active_queue_name
         return {
             'engine_name': 'crewai',
             'executed': True,
             'reason': 'support_status',
             'metadata': self._finish(
-                _handoff_status_response(self.state.current_item or {}),
-                extra={'ticket_code': (self.state.current_item or {}).get('protocol_code')},
+                _handoff_status_response(current_item),
+                extra={'ticket_code': current_item.get('protocol_code')},
             ),
         }
 

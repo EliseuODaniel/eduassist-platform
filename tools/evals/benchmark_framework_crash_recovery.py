@@ -278,6 +278,8 @@ def _render_report(*, dataset_path: Path, results: list[dict[str, Any]]) -> str:
         '- LangGraph protected HITL pause -> kill/start -> inspect pending -> resume',
         '- CrewAI `public` Flow follow-up continuity after container kill/start',
         '- CrewAI `protected` Flow student follow-up continuity after container kill/start',
+        '- CrewAI `support` Flow follow-up continuity after container kill/start',
+        '- CrewAI `workflow` Flow follow-up continuity after container kill/start',
         '',
         f'Dataset: [{dataset_path.name}]({dataset_path})',
         '',
@@ -350,7 +352,7 @@ def _render_report(*, dataset_path: Path, results: list[dict[str, Any]]) -> str:
             'Evidence from this run suggests:',
             '',
             '- LangGraph persistence is now strong enough to survive a hard process kill on the protected HITL path and still resume the same review thread.',
-            '- CrewAI `Flow` state for `public` and `protected` survives kill/start recovery with the same state identity and follow-up continuity.',
+            '- CrewAI `Flow` state for `public`, `protected`, `support`, and `workflow` survives kill/start recovery with the same state identity and follow-up continuity.',
             '- The two stacks are now comparable not only on quality and latency, but on crash-level continuity in their strongest native durability paths.',
         ]
     )

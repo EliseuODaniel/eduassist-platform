@@ -4,6 +4,7 @@ import re
 from typing import Any
 
 from .listeners import suppress_crewai_tracing_messages
+from .flow_persistence import build_flow_state_id
 from .workflow_pilot import _internal_get, _internal_post, _normalize_text
 
 
@@ -167,8 +168,18 @@ async def run_support_crewai_pilot(
     with suppress_crewai_tracing_messages():
         result = await flow.kickoff_async(
             inputs={
+                'id': build_flow_state_id(
+                    slice_name='support',
+                    conversation_id=conversation_id or (
+                        f'telegram:{telegram_chat_id}' if channel == 'telegram' and telegram_chat_id is not None else None
+                    ),
+                    telegram_chat_id=telegram_chat_id,
+                    channel=channel,
+                ),
                 'message': message,
-                'conversation_id': conversation_id,
+                'conversation_id': conversation_id or (
+                    f'telegram:{telegram_chat_id}' if channel == 'telegram' and telegram_chat_id is not None else None
+                ),
                 'telegram_chat_id': telegram_chat_id,
                 'channel': channel,
             }

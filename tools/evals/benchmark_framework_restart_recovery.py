@@ -288,6 +288,8 @@ def _render_report(*, dataset_path: Path, results: list[dict[str, Any]]) -> str:
         '- LangGraph protected HITL resume after process restart',
         '- CrewAI `Flow` continuity for `public` follow-up after process restart',
         '- CrewAI `Flow` continuity for `protected` student follow-up after process restart',
+        '- CrewAI `Flow` continuity for `support` follow-up after process restart',
+        '- CrewAI `Flow` continuity for `workflow` follow-up after process restart',
         '',
         f'Dataset: [{dataset_path.name}]({dataset_path})',
         '',
@@ -363,7 +365,7 @@ def _render_report(*, dataset_path: Path, results: list[dict[str, Any]]) -> str:
             'Evidence from this run suggests:',
             '',
             '- LangGraph checkpoint-backed HITL is now durable enough to pause, restart, inspect pending state, and resume the exact protected review thread.',
-            '- CrewAI `Flow` state for `public` and `protected` now survives service restart strongly enough to keep follow-up continuity with the same `flow_state_id`.',
+            '- CrewAI `Flow` state for `public`, `protected`, `support`, and `workflow` now survives service restart strongly enough to keep follow-up continuity with the same `flow_state_id`.',
             '- This closes the most important durability gap in the top-line roadmap before broader crash/recovery comparisons.',
         ]
     )

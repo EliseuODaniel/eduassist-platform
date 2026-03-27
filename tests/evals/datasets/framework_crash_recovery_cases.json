@@ -69,5 +69,43 @@
     ],
     "expected_flow_state_id": "protected:telegram:conversation:benchmark-crash-crewai-protected-lucas-1",
     "sqlite_path": "/workspace/artifacts/crewai-flow-state/protected.sqlite3"
+  },
+  {
+    "id": "crewai_support_flow_crash_recovery",
+    "type": "crewai_shadow_crash",
+    "framework": "crewai",
+    "slice": "support",
+    "container": "eduassist-ai-orchestrator-crewai",
+    "conversation_id": "benchmark-crash-crewai-support-secretaria-1",
+    "telegram_chat_id": 1649845499,
+    "channel": "telegram",
+    "endpoint": "/v1/shadow/support",
+    "before_message": "quero falar com a secretaria",
+    "after_message": "qual o status?",
+    "expected_keywords_after": [
+      "status atual",
+      "secretaria"
+    ],
+    "expected_flow_state_id": "support:telegram:conversation:benchmark-crash-crewai-support-secretaria-1",
+    "sqlite_path": "/workspace/artifacts/crewai-flow-state/support.sqlite3"
+  },
+  {
+    "id": "crewai_workflow_flow_crash_recovery",
+    "type": "crewai_shadow_crash",
+    "framework": "crewai",
+    "slice": "workflow",
+    "container": "eduassist-ai-orchestrator-crewai",
+    "conversation_id": "benchmark-crash-crewai-workflow-visit-1",
+    "telegram_chat_id": 1649845499,
+    "channel": "telegram",
+    "endpoint": "/v1/shadow/workflow",
+    "before_message": "quero agendar uma visita na quinta a tarde",
+    "after_message": "qual o protocolo?",
+    "expected_keywords_after": [
+      "protocolo",
+      "ticket operacional"
+    ],
+    "expected_flow_state_id": "workflow:telegram:conversation:benchmark-crash-crewai-workflow-visit-1",
+    "sqlite_path": "/workspace/artifacts/crewai-flow-state/workflow.sqlite3"
   }
 ]

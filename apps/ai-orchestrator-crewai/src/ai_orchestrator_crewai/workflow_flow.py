@@ -6,10 +6,14 @@ from typing import Any
 from pydantic import BaseModel
 
 try:
+    from crewai.flow.persistence import persist  # type: ignore
     from crewai.flow.flow import Flow, listen, router, start  # type: ignore
 except Exception:  # pragma: no cover
     Flow = None  # type: ignore[assignment]
     listen = router = start = None  # type: ignore[assignment]
+    persist = None  # type: ignore[assignment]
+
+from .flow_persistence import get_sqlite_flow_persistence
 
 from .workflow_pilot import (
     _contains_any,
@@ -32,6 +36,7 @@ from .workflow_pilot import (
 
 
 class WorkflowFlowState(BaseModel):
+    id: str | None = None
     message: str = ''
     conversation_id: str | None = None
     telegram_chat_id: int | None = None
@@ -44,14 +49,28 @@ class WorkflowFlowState(BaseModel):
     current_type: str = ''
     preferred_window: str | None = None
     preferred_date_iso: str | None = None
+    active_protocol_code: str | None = None
+    active_workflow_type: str | None = None
+    active_preferred_window: str | None = None
+    active_preferred_date_iso: str | None = None
     latency_ms: float = 0.0
 
 
+def _workflow_flow_decorator(target: type[Flow[WorkflowFlowState]]) -> type[Flow[WorkflowFlowState]]:
+    if persist is None:
+        return target
+    persistence = get_sqlite_flow_persistence('workflow')
+    if persistence is None:
+        return target
+    return persist(persistence=persistence, verbose=False)(target)
+
+
+@_workflow_flow_decorator
 class WorkflowShadowFlow(Flow[WorkflowFlowState]):
-    def __init__(self, *, settings: Any) -> None:
+    def __init__(self, *, settings: Any, persistence: Any | None = None) -> None:
         self.settings = settings
         self._overall_started_at = perf_counter()
-        super().__init__(tracing=False)
+        super().__init__(persistence=persistence, tracing=False)
 
     @start()
     async def prepare_context(self) -> str:
@@ -64,9 +83,15 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
             return self.state.routing_label
 
         self.state.protocol_code = _extract_protocol_code(self.state.message)
+        if not self.state.protocol_code and self.state.active_protocol_code:
+            self.state.protocol_code = self.state.active_protocol_code
         preferred_date = _extract_preferred_date(self.state.message)
         self.state.preferred_date_iso = preferred_date.isoformat() if preferred_date else None
         self.state.preferred_window = _extract_preferred_window(self.state.message)
+        if not self.state.preferred_date_iso and self.state.active_preferred_date_iso:
+            self.state.preferred_date_iso = self.state.active_preferred_date_iso
+        if not self.state.preferred_window and self.state.active_preferred_window:
+            self.state.preferred_window = self.state.active_preferred_window
 
         workflow_status = await _get_workflow_status(
             self.settings,
@@ -76,7 +101,29 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         )
         current_item = workflow_status.get('item') if isinstance(workflow_status, dict) else None
         self.state.current_item = current_item if isinstance(current_item, dict) else None
+        if not isinstance(self.state.current_item, dict) and self.state.active_protocol_code:
+            workflow_status = await _get_workflow_status(
+                self.settings,
+                conversation_id=conversation_external_id,
+                channel=self.state.channel,
+                protocol_code=self.state.active_protocol_code,
+            )
+            current_item = workflow_status.get('item') if isinstance(workflow_status, dict) else None
+            self.state.current_item = current_item if isinstance(current_item, dict) else None
         self.state.current_type = str((self.state.current_item or {}).get('workflow_type') or '').strip()
+        if not self.state.current_type and self.state.active_workflow_type:
+            self.state.current_type = self.state.active_workflow_type
+        if isinstance(self.state.current_item, dict):
+            self.state.active_protocol_code = str(
+                self.state.current_item.get('protocol_code') or self.state.active_protocol_code or ''
+            ).strip() or self.state.active_protocol_code
+            self.state.active_workflow_type = self.state.current_type or self.state.active_workflow_type
+            preferred_date_value = str(self.state.current_item.get('preferred_date') or '').strip()
+            if preferred_date_value:
+                self.state.active_preferred_date_iso = preferred_date_value
+            preferred_window_value = str(self.state.current_item.get('preferred_window') or '').strip()
+            if preferred_window_value:
+                self.state.active_preferred_window = preferred_window_value
 
         normalized = self.state.normalized_message
         visit_terms = {'visita', 'tour', 'conhecer a escola'}
@@ -139,6 +186,9 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
             'workflow_type': self.state.current_type or None,
             'flow_enabled': True,
             'flow_state_id': getattr(self.state, 'id', None),
+            'flow_state_persisted': get_sqlite_flow_persistence('workflow') is not None,
+            'active_protocol_code': self.state.active_protocol_code,
+            'active_workflow_type': self.state.active_workflow_type,
         }
 
     def _finish(self, answer_text: str | None = None, *, extra: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -173,6 +223,8 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
             },
         )
         item = payload.get('item', {})
+        self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
+        self.state.active_workflow_type = 'visit_booking'
         return {
             'engine_name': 'crewai',
             'executed': True,
@@ -197,6 +249,10 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
             },
         )
         item = payload.get('item', {})
+        self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
+        self.state.active_workflow_type = 'visit_booking'
+        self.state.active_preferred_date_iso = str(item.get('preferred_date') or self.state.preferred_date_iso or '').strip() or self.state.active_preferred_date_iso
+        self.state.active_preferred_window = str(item.get('preferred_window') or self.state.preferred_window or '').strip() or self.state.active_preferred_window
         return {
             'engine_name': 'crewai',
             'executed': True,
@@ -219,6 +275,10 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
             },
         )
         item = payload.get('item', {})
+        self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
+        self.state.active_workflow_type = 'visit_booking'
+        self.state.active_preferred_date_iso = str(item.get('preferred_date') or self.state.preferred_date_iso or '').strip() or self.state.active_preferred_date_iso
+        self.state.active_preferred_window = str(item.get('preferred_window') or self.state.preferred_window or '').strip() or self.state.active_preferred_window
         return {
             'engine_name': 'crewai',
             'executed': True,
@@ -238,6 +298,8 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
     @listen('protocol_lookup')
     def handle_protocol_lookup(self) -> dict[str, Any]:
         item = self.state.current_item or {}
+        self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
+        self.state.active_workflow_type = self.state.current_type or self.state.active_workflow_type
         text = _visit_protocol_response(item) if self.state.current_type == 'visit_booking' else _request_protocol_response(item)
         return {
             'engine_name': 'crewai',
@@ -249,6 +311,8 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
     @listen('summary_lookup')
     def handle_summary_lookup(self) -> dict[str, Any]:
         item = self.state.current_item or {}
+        self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
+        self.state.active_workflow_type = self.state.current_type or self.state.active_workflow_type
         text = _request_summary_response(item) if self.state.current_type == 'institutional_request' else _visit_status_response(item)
         return {
             'engine_name': 'crewai',
@@ -260,6 +324,8 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
     @listen('status_lookup')
     def handle_status_lookup(self) -> dict[str, Any]:
         item = self.state.current_item or {}
+        self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
+        self.state.active_workflow_type = self.state.current_type or self.state.active_workflow_type
         text = _visit_status_response(item) if self.state.current_type == 'visit_booking' else _request_status_response(item)
         return {
             'engine_name': 'crewai',
@@ -284,6 +350,8 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
             },
         )
         item = payload.get('item', {})
+        self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
+        self.state.active_workflow_type = 'institutional_request'
         return {
             'engine_name': 'crewai',
             'executed': True,
@@ -307,6 +375,8 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         )
         item = payload.get('item', {})
         detail = self.state.message.replace('quero complementar meu pedido dizendo que', '').strip() or self.state.message
+        self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
+        self.state.active_workflow_type = 'institutional_request'
         return {
             'engine_name': 'crewai',
             'executed': True,
