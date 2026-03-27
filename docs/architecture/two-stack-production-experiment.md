@@ -173,7 +173,7 @@ Runtime default path:
 
 ## Primary-Stack Regression
 
-The primary-stack feature flag now has a dedicated regression benchmark to verify that `CrewAI` can become the true primary path without leaking `LangGraph` preview/runtime metadata.
+The primary-stack feature flag now has a dedicated regression benchmark to verify that either framework can become the true primary path without leaking the alternate framework runtime metadata.
 
 Artifacts:
 
@@ -183,8 +183,7 @@ Artifacts:
 
 Current expectation:
 
-- `FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK=crewai`
+- `FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK=crewai|langgraph`
 - `ORCHESTRATOR_EXPERIMENT_ENABLED=false`
-- `engine_name=crewai`
-- `engine_mode=crewai`
-- no `langgraph` request metadata in the canonical trace for those primary-path runs
+- `engine_name` and `engine_mode` match the selected primary stack
+- no alternate-framework request metadata in the canonical trace for those primary-path runs

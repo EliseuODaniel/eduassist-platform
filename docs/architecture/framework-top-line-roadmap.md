@@ -94,7 +94,7 @@ Validated in this round:
   - LangGraph via `langgraph.timeline`
   - CrewAI via `crewai.timeline`
 - A framework-native durability/debug scorecard now exists in both docs and a runtime-readable artifact, so canary promotion can be gated by scorecard plus pilot health instead of only static config.
-- The primary-stack feature flag now has a versioned regression benchmark that verifies `CrewAI` can run as the real primary path, with native trace metadata and without leaking `LangGraph` runtime fields.
+- The primary-stack feature flag now has a versioned regression benchmark that verifies both `CrewAI` and `LangGraph` can run as the real primary path, with native trace metadata and without leaking alternate-runtime fields.
 
 Concrete local evidence:
 

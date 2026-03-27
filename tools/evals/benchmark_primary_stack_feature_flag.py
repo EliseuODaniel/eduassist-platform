@@ -64,6 +64,9 @@ def _docker_exec_python(script_text: str) -> dict[str, Any]:
 
 
 def _run_case(case: dict[str, Any], settings: Settings) -> dict[str, Any]:
+    primary_stack = str(case.get('primary_stack') or 'crewai').strip().lower()
+    base_conversation_id = str(case['conversation_id']).strip()
+    conversation_id = f'{base_conversation_id}-{primary_stack}-primary'
     script_text = dedent(
         f"""
         import asyncio, json
@@ -73,15 +76,15 @@ def _run_case(case: dict[str, Any], settings: Settings) -> dict[str, Any]:
 
         async def main():
             settings = Settings(
-                orchestrator_engine='langgraph',
-                feature_flag_primary_orchestration_stack='crewai',
+                orchestrator_engine='crewai' if {json.dumps(primary_stack)} == 'langgraph' else 'langgraph',
+                feature_flag_primary_orchestration_stack={json.dumps(primary_stack)},
                 crewai_pilot_url='http://ai-orchestrator-crewai:8000',
                 internal_api_token={json.dumps(settings.internal_api_token)},
                 orchestrator_experiment_enabled=False,
             )
             request = MessageResponseRequest(
                 message={json.dumps(case['message'])},
-                conversation_id={json.dumps(case['conversation_id'])},
+                conversation_id={json.dumps(conversation_id)},
                 telegram_chat_id={json.dumps(case['telegram_chat_id'])},
                 channel='telegram',
             )
@@ -107,7 +110,7 @@ def _run_case(case: dict[str, Any], settings: Settings) -> dict[str, Any]:
     runtime_result = _docker_exec_python(script_text)
 
     trace_context = _read_json_via_http(
-        f'{settings.api_core_url}/v1/internal/conversations/context?conversation_external_id={case["conversation_id"]}&channel=telegram&limit=10',
+        f'{settings.api_core_url}/v1/internal/conversations/context?conversation_external_id={conversation_id}&channel=telegram&limit=10',
         _headers(settings),
     )
     trace = None
@@ -116,8 +119,6 @@ def _run_case(case: dict[str, Any], settings: Settings) -> dict[str, Any]:
             trace = tool_call
             break
 
-    assert_condition(runtime_result['engine'] == 'crewai', f'{case["id"]}:wrong_primary_engine')
-    assert_condition(runtime_result['mode'] == 'crewai', f'{case["id"]}:wrong_bundle_mode')
     assert_condition(runtime_result['classification']['domain'] == case['expected_domain'], f'{case["id"]}:wrong_domain')
     assert_condition(runtime_result['classification']['access_tier'] == case['expected_access_tier'], f'{case["id"]}:wrong_access_tier')
     for tool_name in case.get('expected_selected_tools') or []:
@@ -128,25 +129,35 @@ def _run_case(case: dict[str, Any], settings: Settings) -> dict[str, Any]:
     assert_condition(isinstance(trace, dict), f'{case["id"]}:missing_trace')
     request_payload = trace.get('request_payload') or {}
     response_payload = trace.get('response_payload') or {}
-    assert_condition(request_payload.get('engine_name') == 'crewai', f'{case["id"]}:trace_wrong_engine')
-    assert_condition(request_payload.get('engine_mode') == 'crewai', f'{case["id"]}:trace_wrong_mode')
-    assert_condition('langgraph' not in request_payload, f'{case["id"]}:langgraph_leaked_into_trace')
-    assert_condition('crewai' in request_payload, f'{case["id"]}:missing_crewai_trace_request')
+    assert_condition(runtime_result['engine'] == primary_stack, f'{case["id"]}:wrong_primary_engine')
+    assert_condition(runtime_result['mode'] == primary_stack, f'{case["id"]}:wrong_bundle_mode')
+    assert_condition(request_payload.get('engine_name') == primary_stack, f'{case["id"]}:trace_wrong_engine')
+    assert_condition(request_payload.get('engine_mode') == primary_stack, f'{case["id"]}:trace_wrong_mode')
+
+    trace_section = response_payload.get(primary_stack) or {}
+    if primary_stack == 'crewai':
+        assert_condition('langgraph' not in request_payload, f'{case["id"]}:langgraph_leaked_into_trace')
+        assert_condition('crewai' in request_payload, f'{case["id"]}:missing_crewai_trace_request')
+    else:
+        assert_condition('crewai' not in request_payload, f'{case["id"]}:crewai_leaked_into_trace')
+        assert_condition('langgraph' in request_payload, f'{case["id"]}:missing_langgraph_trace_request')
     assert_condition(
-        ((response_payload.get('crewai') or {}).get('timeline_kind') == case['expected_trace_timeline_kind']),
+        (trace_section.get('timeline_kind') == case['expected_trace_timeline_kind']),
         f'{case["id"]}:wrong_trace_timeline_kind',
     )
 
     return {
         'id': case['id'],
+        'primary_stack': primary_stack,
         'slice': case['slice'],
+        'conversation_id': conversation_id,
         'passed': True,
         'engine': runtime_result['engine'],
         'mode': runtime_result['mode'],
         'graph_path': runtime_result['graph_path'],
         'selected_tools': runtime_result['selected_tools'],
         'suggested_replies': runtime_result['suggested_replies'],
-        'trace_timeline_kind': (response_payload.get('crewai') or {}).get('timeline_kind'),
+        'trace_timeline_kind': trace_section.get('timeline_kind'),
     }
 
 
@@ -167,17 +178,21 @@ def main() -> int:
         '',
         '## Goal',
         '',
-        'Validate that `FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK=crewai` switches the primary path to CrewAI natively, without leaking LangGraph runtime metadata into the canonical trace.',
+        'Validate that `FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK` can switch the primary path to either framework natively, without leaking the alternate runtime metadata into the canonical trace.',
         '',
         '## Results',
         '',
-        '| Case | Slice | Result | Notes |',
-        '| --- | --- | --- | --- |',
+        '| Case | Primary | Slice | Result | Notes |',
+        '| --- | --- | --- | --- | --- |',
     ]
     for result in results:
         lines.append(
-            f"| `{result['id']}` | `{result['slice']}` | passed | engine `{result['engine']}`, mode `{result['mode']}`, timeline `{result['trace_timeline_kind']}` |"
+            f"| `{result['id']}` | `{result['primary_stack']}` | `{result['slice']}` | passed | engine `{result['engine']}`, mode `{result['mode']}`, timeline `{result['trace_timeline_kind']}` |"
         )
+
+    stacks = {}
+    for result in results:
+        stacks.setdefault(result['primary_stack'], []).append(result)
 
     lines.extend(
         [
@@ -185,8 +200,10 @@ def main() -> int:
             '## Summary',
             '',
             f"- passed `{sum(1 for item in results if item['passed'])}/{len(results)}` cases",
-            '- canonical traces stayed on `crewai` request metadata only for these primary-path runs',
-            '- `graph_path` and `suggested_replies` came from the CrewAI-native path under the feature flag',
+            f"- `crewai` passed `{sum(1 for item in stacks.get('crewai', []) if item['passed'])}/{len(stacks.get('crewai', []))}` native-path cases",
+            f"- `langgraph` passed `{sum(1 for item in stacks.get('langgraph', []) if item['passed'])}/{len(stacks.get('langgraph', []))}` native-path cases",
+            '- canonical traces stayed on the selected framework metadata only for these primary-path runs',
+            '- `graph_path` and response shaping stayed native to the selected framework under the feature flag',
             '',
         ]
     )
