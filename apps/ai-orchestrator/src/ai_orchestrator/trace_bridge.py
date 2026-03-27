@@ -5,6 +5,7 @@ from typing import Any
 import httpx
 from eduassist_observability import set_span_attributes, start_span
 
+from .crewai_trace import build_crewai_trace_sections
 from .engines.base import ShadowRunResult
 
 
@@ -69,25 +70,37 @@ async def persist_shadow_trace(
         'channel': getattr(getattr(request, 'channel', None), 'value', 'telegram'),
         'conversation_external_id': conversation_external_id,
         'actor_user_id': None,
-        'tool_calls': [
-            {
-                'tool_name': 'orchestration.shadow',
-                'status': 'ok' if shadow_result.executed else 'skipped',
-                'request_payload': {
-                    'primary_engine_name': primary_engine_name,
-                    'primary_engine_mode': primary_engine_mode,
-                    'shadow_engine_name': shadow_result.engine_name,
-                    'request_message': getattr(request, 'message', ''),
-                },
-                'response_payload': {
-                    'executed': shadow_result.executed,
-                    'reason': shadow_result.reason,
-                    'error': shadow_result.error,
-                    'metadata': shadow_result.metadata or {},
-                },
-            }
-        ],
+        'tool_calls': [],
     }
+
+    request_payload: dict[str, object] = {
+        'primary_engine_name': primary_engine_name,
+        'primary_engine_mode': primary_engine_mode,
+        'shadow_engine_name': shadow_result.engine_name,
+        'request_message': getattr(request, 'message', ''),
+    }
+    response_payload: dict[str, object] = {
+        'executed': shadow_result.executed,
+        'reason': shadow_result.reason,
+        'error': shadow_result.error,
+        'metadata': shadow_result.metadata or {},
+    }
+
+    if shadow_result.engine_name == 'crewai':
+        crewai_trace_sections = build_crewai_trace_sections(shadow_result.metadata)
+        if crewai_trace_sections.get('request'):
+            request_payload['crewai'] = crewai_trace_sections['request']
+        if crewai_trace_sections.get('response'):
+            response_payload['crewai'] = crewai_trace_sections['response']
+
+    payload['tool_calls'].append(
+        {
+            'tool_name': 'orchestration.shadow',
+            'status': 'ok' if shadow_result.executed else 'skipped',
+            'request_payload': request_payload,
+            'response_payload': response_payload,
+        }
+    )
     await _api_core_post(
         settings=settings,
         path='/v1/internal/conversations/tool-calls',

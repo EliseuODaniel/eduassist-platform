@@ -24,6 +24,7 @@ from .llm_provider import (
     revise_with_provider,
 )
 from .graph import to_preview
+from .crewai_trace import build_crewai_trace_sections
 from .langgraph_runtime import (
     get_langgraph_artifacts,
     get_orchestration_state_snapshot,
@@ -6157,6 +6158,7 @@ async def _persist_operational_trace(
     deterministic_fallback_available: bool,
     answer_verifier_judge_used: bool,
     langgraph_trace_metadata: dict[str, Any] | None = None,
+    engine_trace_metadata: dict[str, Any] | None = None,
 ) -> None:
     if not conversation_external_id:
         return
@@ -6195,6 +6197,10 @@ async def _persist_operational_trace(
         }
     if isinstance(langgraph_trace_metadata, dict) and langgraph_trace_metadata:
         trace_request_payload['langgraph'] = langgraph_trace_metadata
+    if engine_name == 'crewai':
+        crewai_trace_sections = build_crewai_trace_sections(engine_trace_metadata)
+        if crewai_trace_sections.get('request'):
+            trace_request_payload['crewai'] = crewai_trace_sections['request']
 
     trace_response_payload = {
         'message_length': len(message_text),
@@ -6207,6 +6213,10 @@ async def _persist_operational_trace(
         'deterministic_fallback_available': deterministic_fallback_available,
         'answer_verifier_judge_used': answer_verifier_judge_used,
     }
+    if engine_name == 'crewai':
+        crewai_trace_sections = build_crewai_trace_sections(engine_trace_metadata)
+        if crewai_trace_sections.get('response'):
+            trace_response_payload['crewai'] = crewai_trace_sections['response']
     await _api_core_post(
         settings=settings,
         path='/v1/internal/conversations/tool-calls',

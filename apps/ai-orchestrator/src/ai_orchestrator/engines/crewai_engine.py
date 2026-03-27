@@ -178,9 +178,11 @@ class CrewAIEngine(ResponseEngine):
             logger.exception('crewai_primary_http_failed')
             payload = None
         answer_text = ''
+        crewai_metadata: dict[str, Any] | None = None
         if isinstance(payload, dict):
             metadata = payload.get('metadata')
             if isinstance(metadata, dict):
+                crewai_metadata = metadata
                 answer = metadata.get('answer')
                 if isinstance(answer, dict) and isinstance(answer.get('answer_text'), str):
                     answer_text = str(answer['answer_text'])
@@ -253,6 +255,7 @@ class CrewAIEngine(ResponseEngine):
             answer_verifier_fallback_used=False,
             deterministic_fallback_available=False,
             answer_verifier_judge_used=False,
+            engine_trace_metadata=crewai_metadata,
         )
         return MessageResponse(
             message_text=answer_text,
