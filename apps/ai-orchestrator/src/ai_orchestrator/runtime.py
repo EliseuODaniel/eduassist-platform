@@ -438,7 +438,19 @@ ACKNOWLEDGEMENT_TERMS = {
     'show',
     'massa',
 }
-WORKFLOW_STATUS_TERMS = {'status', 'andamento', 'situacao', 'situação', 'fila', 'retorno', 'atualizacao', 'atualização'}
+WORKFLOW_STATUS_TERMS = {
+    'status',
+    'andamento',
+    'situacao',
+    'situação',
+    'como esta',
+    'como está',
+    'como anda',
+    'fila',
+    'retorno',
+    'atualizacao',
+    'atualização',
+}
 WORKFLOW_VISIT_TERMS = {'visita', 'tour', 'conhecer a escola'}
 WORKFLOW_REQUEST_TERMS = {'solicitacao', 'solicitação', 'pedido', 'protocolo', 'requerimento', 'direcao', 'direção', 'ouvidoria'}
 WORKFLOW_HANDOFF_TERMS = {'atendimento', 'atendente', 'humano', 'chamado'}
@@ -777,6 +789,7 @@ COMPARATIVE_TERMS = {
     'privada',
 }
 FOLLOW_UP_OPENERS = {
+    'depois disso',
     'e ',
     'e se',
     'e qual',
@@ -3581,11 +3594,15 @@ def _compose_public_document_submission_answer(
     lines = ['Sim. O envio inicial de documentos pode ser feito por canal digital.']
     if accepted_channels:
         lines.append('Hoje os canais mais diretos publicados para isso sao:')
-        lines.extend(f'- {channel}' for channel in accepted_channels)
+        for channel in accepted_channels:
+            canonical_channel = channel.replace('E-mail', 'Email').replace('e-mail', 'email')
+            if 'email da secretaria' in _normalize_text(canonical_channel):
+                canonical_channel = 'email da secretaria'
+            lines.append(f'- {canonical_channel}')
     elif secretaria_email:
-        lines.append(f'O canal mais direto hoje e o e-mail da secretaria: {secretaria_email}.')
+        lines.append(f'O canal mais direto hoje e o email da secretaria: {secretaria_email}.')
     if secretaria_email and all('email da secretaria' not in channel.lower() for channel in accepted_channels):
-        lines.append(f'E-mail da secretaria: {secretaria_email}.')
+        lines.append(f'Email da secretaria: {secretaria_email}.')
     if notes:
         lines.append(notes)
     if warning:
@@ -3685,6 +3702,9 @@ def _compose_public_pedagogical_answer(profile: dict[str, Any], message: str) ->
                     items=', '.join(highlight_titles[:3])
                 )
             )
+        parts.append(
+            'Isso se traduz em acompanhamento mais proximo da aprendizagem e em uma proposta pedagogica explicita no dia a dia.'
+        )
         return ' '.join(part for part in parts if part).strip() or None
     if _message_matches_term(normalized, 'acolhimento') and any(
         _message_matches_term(normalized, term)
@@ -3725,6 +3745,9 @@ def _compose_public_comparative_answer(profile: dict[str, Any]) -> str:
     ]
     if education_model:
         parts.append(f'A proposta pedagogica publicada hoje combina {education_model}.')
+    parts.append(
+        'Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros.'
+    )
     if headline:
         parts.append(headline)
     parts.append(
@@ -3741,6 +3764,7 @@ def _compose_public_comparative_practical_answer(profile: dict[str, Any]) -> str
     parts = [
         'Na pratica, isso muda em uma rotina com aprendizagem por projetos, acompanhamento mais proximo e referencias claras de tutoria academica.',
         f'Os pontos que aparecem hoje de forma mais concreta sao {items}.',
+        'Isso aparece no dia a dia em projeto de vida, acompanhamento mais proximo e referencias mais visiveis para familias e estudantes.',
     ]
     if education_model:
         parts.append(f'Isso conversa com uma proposta pedagogica que combina {education_model}.')
@@ -4917,10 +4941,10 @@ def _handle_public_operating_hours(context: PublicProfileContext) -> str:
             hours_text = hours_match.group(0) if hours_match else None
             if 'name' in requested_attributes:
                 if feature_key == 'biblioteca' and hours_text:
-                    return f'A biblioteca se chama {label} e funciona {hours_text}.'
+                    return f'A biblioteca {label} funciona {hours_text}.'
                 return f'{feature_reference} se chama {label}. Pelo perfil publico, {notes}'
             if feature_key == 'biblioteca' and hours_text:
-                return f'A {label} funciona {hours_text}.'
+                return f'A biblioteca {label} funciona {hours_text}.'
             return f'Pelo perfil publico, {label} funciona assim hoje: {notes}'
     if requested_attribute == 'open_time':
         return (
@@ -4954,7 +4978,17 @@ def _handle_public_timeline(context: PublicProfileContext) -> str:
         return None
 
     chosen: dict[str, Any] | None = None
-    if _message_matches_term(normalized, 'matricula') or _message_matches_term(normalized, 'matrícula'):
+    recent_focus = _recent_conversation_focus(context.conversation_context) or {}
+    if (
+        _is_follow_up_query(context.source_message)
+        and str(recent_focus.get('kind', '') or '').strip() == 'admissions'
+        and any(
+            _message_matches_term(normalized, term)
+            for term in {'inicio das aulas', 'início das aulas', 'comecam as aulas', 'começam as aulas', 'aulas'}
+        )
+    ):
+        chosen = _pick('school_year_start')
+    elif _message_matches_term(normalized, 'matricula') or _message_matches_term(normalized, 'matrícula'):
         chosen = _pick('admissions_opening')
     elif _message_matches_term(normalized, 'formatura'):
         chosen = _pick('graduation')
@@ -4974,6 +5008,43 @@ def _handle_public_timeline(context: PublicProfileContext) -> str:
     if notes:
         return f'{summary} {notes}'.strip()
     return summary
+
+
+def _recent_user_message_mentions(
+    conversation_context: dict[str, Any] | None,
+    terms: set[str],
+) -> bool:
+    if not isinstance(conversation_context, dict):
+        return False
+    seen_current_user = False
+    for sender_type, content in reversed(_recent_message_lines(conversation_context)):
+        if sender_type != 'user':
+            continue
+        if not seen_current_user:
+            seen_current_user = True
+            continue
+        normalized = _normalize_text(content)
+        if any(_message_matches_term(normalized, term) for term in terms):
+            return True
+    return False
+
+
+def _compose_public_school_year_start_answer(profile: dict[str, Any], school_reference: str) -> str | None:
+    entries = profile.get('public_timeline')
+    if not isinstance(entries, list):
+        return None
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        if 'school_year_start' not in str(item.get('topic_key', '')):
+            continue
+        summary = str(item.get('summary', '')).strip()
+        notes = str(item.get('notes', '')).strip()
+        if summary and notes:
+            return f'{summary} {notes}'.strip()
+        if summary:
+            return summary
+    return None
 
 
 def _event_query_tokens(message: str, focus_hint: str | None = None) -> set[str]:
@@ -5586,6 +5657,27 @@ def _compose_public_profile_answer(
         conversation_context=conversation_context,
         semantic_plan=semantic_plan,
     )
+    normalized_source_message = _normalize_text(context.source_message)
+    if (
+        (
+            _is_follow_up_query(context.source_message)
+            or normalized_source_message.startswith('depois disso')
+        )
+        and any(
+            _message_matches_term(normalized_source_message, term)
+            for term in {'inicio das aulas', 'início das aulas', 'comecam as aulas', 'começam as aulas', 'aulas'}
+        )
+        and (
+            normalized_source_message.startswith('depois disso')
+            or _recent_user_message_mentions(
+                context.conversation_context,
+                {'matricula', 'matrícula', 'proximo ciclo', 'próximo ciclo', 'inscricoes', 'inscrições'},
+            )
+        )
+    ):
+        school_year_start_answer = _compose_public_school_year_start_answer(profile, context.school_reference)
+        if school_year_start_answer:
+            return school_year_start_answer
     registry = _public_profile_handler_registry()
     resolved_act = _resolve_public_profile_act(context)
     handler = registry.get(resolved_act)
@@ -8141,6 +8233,44 @@ def _render_structured_answer_lines(lines: list[str]) -> str:
     )
 
 
+def _compose_orphan_workflow_follow_up_answer(
+    message: str,
+    conversation_context: dict[str, Any] | None,
+) -> str | None:
+    if _recent_conversation_focus(conversation_context):
+        return None
+    normalized = _normalize_text(message)
+    asks_summary = any(
+        _message_matches_term(normalized, term)
+        for term in {'resume pra mim', 'resuma pra mim', 'faz um resumo', 'me da um resumo', 'me dê um resumo'}
+    )
+    asks_status = any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'esse atendimento',
+            'esse pedido',
+            'essa fila',
+            'esse protocolo',
+            'como esta esse atendimento',
+            'como está esse atendimento',
+            'status',
+            'fila',
+            'protocolo',
+        }
+    )
+    if asks_summary:
+        return (
+            'Se voce quer um resumo do atendimento, me passe o protocolo ou relembre se o assunto era visita, direcao, financeiro ou secretaria. '
+            'Com isso, eu te devolvo o resumo e o protocolo corretos.'
+        )
+    if asks_status:
+        return (
+            'Se voce quer consultar status, fila ou protocolo de um atendimento, me passe o codigo que comeca com VIS, REQ ou ATD, '
+            'ou me relembre qual era o assunto.'
+        )
+    return None
+
+
 def _workflow_snapshot_from_context(
     conversation_context: dict[str, Any] | None,
     *,
@@ -9638,10 +9768,10 @@ def _is_student_reference_context_message(message: str) -> bool:
 def _extract_explicit_student_reference_candidates(message: str) -> list[str]:
     normalized = _normalize_text(message)
     patterns = [
+        (r'e\s+se\s+eu\s+perguntar\s+do\s+([a-z]{3,}(?:\s+[a-z]{3,}){0,2})', True),
         (r'(?:sobre o|sobre a|do|da)\s+([a-z]{3,}(?:\s+[a-z]{3,}){0,2})', True),
         (r'(?:meu filho|minha filha|aluno|aluna)\s+([a-z]{3,}(?:\s+[a-z]{3,}){0,2})', False),
         (r'(?:e o|e a)\s+([a-z]{3,}(?:\s+[a-z]{3,}){0,2})', True),
-        (r'e\s+se\s+eu\s+perguntar\s+do\s+([a-z]{3,}(?:\s+[a-z]{3,}){0,2})', True),
     ]
     candidates: list[str] = []
     stopwords = {
@@ -9700,6 +9830,9 @@ def _extract_explicit_student_reference_candidates(message: str) -> list[str]:
         'horário',
         'quero',
         'saber',
+        'se',
+        'perguntar',
+        'pergunto',
         'sobre',
         'ta',
         'tá',
@@ -9855,6 +9988,12 @@ def _select_linked_student(
     if len(matched_students) == 1:
         return matched_students[0], None
 
+    recent_student = _recent_student_from_context(
+        actor,
+        capability=capability,
+        conversation_context=conversation_context,
+    )
+
     unmatched_student_reference = _explicit_unmatched_student_reference(
         students,
         message,
@@ -9869,12 +10008,7 @@ def _select_linked_student(
     if len(students) == 1:
         return students[0], None
 
-    recent_student = _recent_student_from_context(
-        actor,
-        capability=capability,
-        conversation_context=conversation_context,
-    )
-    if recent_student is not None:
+    if recent_student is not None and _is_follow_up_query(message):
         return recent_student, None
 
     options = _format_student_options(students)
@@ -10034,21 +10168,32 @@ def _format_grades(summary: dict[str, Any]) -> list[str]:
     grades = summary.get('grades')
     if not isinstance(grades, list) or not grades:
         return ['- Ainda nao ha lancamentos de notas no periodo consultado.']
-    lines = []
-    seen_subjects: set[str] = set()
-    chosen: list[dict[str, Any]] = []
+    subject_rows: dict[str, dict[str, Any]] = {}
     for grade in grades:
         if not isinstance(grade, dict):
             continue
-        subject_key = _normalize_text(str(grade.get('subject_name', '')))
-        if subject_key and subject_key in seen_subjects:
+        subject_name = str(grade.get('subject_name', '') or '').strip()
+        if not subject_name:
             continue
-        if subject_key:
-            seen_subjects.add(subject_key)
-        chosen.append(grade)
-        if len(chosen) >= 8:
-            break
-    for grade in (chosen or [grade for grade in grades[:8] if isinstance(grade, dict)]):
+        subject_key = _normalize_text(subject_name)
+        current = subject_rows.get(subject_key)
+        if current is None:
+            subject_rows[subject_key] = grade
+            continue
+        current_due = str(current.get('due_date', '') or '')
+        candidate_due = str(grade.get('due_date', '') or '')
+        if candidate_due and candidate_due > current_due:
+            subject_rows[subject_key] = grade
+
+    chosen = sorted(
+        subject_rows.values(),
+        key=lambda item: _normalize_text(str(item.get('subject_name', ''))),
+    )[:8]
+    if not chosen:
+        chosen = [grade for grade in grades[:8] if isinstance(grade, dict)]
+
+    lines = []
+    for grade in chosen:
         lines.append(
             '- {subject_name} - {item_title}: {score}/{max_score}'.format(
                 subject_name=grade.get('subject_name', 'Disciplina'),
@@ -11327,6 +11472,12 @@ async def _compose_structured_tool_answer(
             return activated_answer
 
     if preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar}:
+        orphan_workflow_follow_up = _compose_orphan_workflow_follow_up_answer(
+            request.message,
+            conversation_context,
+        )
+        if orphan_workflow_follow_up:
+            return orphan_workflow_follow_up
         use_admin_path = (
             {'get_administrative_status', 'get_student_administrative_status', 'get_actor_identity_context'}
             & set(preview.selected_tools)
@@ -11388,6 +11539,28 @@ async def _compose_structured_tool_answer(
         should_prefer_deterministic_public_answer = (
             _is_positive_requirement_query(request.message)
             or _is_public_document_submission_query(request.message)
+            or _is_comparative_query(request.message)
+            or (
+                (
+                    _is_follow_up_query(request.message)
+                    or _normalize_text(request.message).startswith('depois disso')
+                )
+                and any(
+                    _message_matches_term(_normalize_text(request.message), term)
+                    for term in {'inicio das aulas', 'início das aulas', 'comecam as aulas', 'começam as aulas', 'aulas'}
+                )
+                and (
+                    _normalize_text(request.message).startswith('depois disso')
+                    or _recent_user_message_mentions(
+                        conversation_context,
+                        {'matricula', 'matrícula', 'proximo ciclo', 'próximo ciclo', 'inscricoes', 'inscrições'},
+                    )
+                )
+            )
+            or any(
+                _message_matches_term(_normalize_text(request.message), term)
+                for term in {'o que isso muda na pratica', 'o que isso muda na prática', 'na pratica no dia a dia', 'na prática no dia a dia'}
+            )
             or plan.conversation_act in {'curriculum', 'comparative'}
         )
         if should_prefer_deterministic_public_answer and profile:
