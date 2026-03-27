@@ -14,7 +14,7 @@ except Exception:  # pragma: no cover
     persist = None  # type: ignore[assignment]
 
 from .flow_persistence import get_sqlite_flow_persistence
-from .agentic_rendering import maybe_render_agentic_response
+from .agentic_rendering import deterministic_render_result
 
 from .workflow_pilot import (
     _contains_any,
@@ -219,19 +219,10 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         reason: str,
         extra: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        rendered = await maybe_render_agentic_response(
-            slice_name='workflow',
-            settings=self.settings,
-            user_message=self.state.message,
+        rendered = deterministic_render_result(
             deterministic_answer=answer_text,
-            instructions=(
-                'Reescreva a resposta operacional com tom humano e claro, preservando literalmente protocolos, tickets, status, datas, janelas e proximo passo.'
-            ),
-            required_anchors=[
-                str(self.state.active_protocol_code or ''),
-                str(self.state.active_preferred_date_iso or ''),
-                str(self.state.active_preferred_window or ''),
-            ],
+            validation_stack=['flow_router', 'operation_result', 'deterministic_workflow'],
+            judge_reason='workflow_deterministic_fast_path',
         )
         metadata_extra = {
             'crewai_installed': bool(Flow is not None),

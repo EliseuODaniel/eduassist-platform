@@ -56,6 +56,28 @@ def _build_llm(settings: Any) -> Any:
     return LLM(model=model_name, api_key=api_key, temperature=0.1, max_tokens=500)
 
 
+def deterministic_render_result(
+    *,
+    deterministic_answer: str,
+    validation_stack: list[str] | None = None,
+    judge_reason: str = 'deterministic_fast_path',
+) -> dict[str, Any]:
+    empty = serialize_pilot_events(None)
+    return {
+        'answer_text': deterministic_answer,
+        'used_agentic': False,
+        'deterministic_backstop_used': True,
+        'event_listener': empty,
+        'event_summary': empty.get('summary', {}),
+        'task_trace': empty.get('task_trace', {}),
+        'agent_roles': [],
+        'task_names': [],
+        'judge': RenderedJudge(valid=True, reason=judge_reason).model_dump(mode='json'),
+        'validation_stack': validation_stack or ['operation_result', 'deterministic_fast_path'],
+        'crewai_version': getattr(crewai_pkg, '__version__', None),
+    }
+
+
 async def maybe_render_agentic_response(
     *,
     slice_name: str,
@@ -67,20 +89,11 @@ async def maybe_render_agentic_response(
 ) -> dict[str, Any]:
     llm = _build_llm(settings)
     if Crew is None or Agent is None or Task is None or Process is None or llm is None:
-        empty = serialize_pilot_events(None)
-        return {
-            'answer_text': deterministic_answer,
-            'used_agentic': False,
-            'deterministic_backstop_used': True,
-            'event_listener': empty,
-            'event_summary': empty.get('summary', {}),
-            'task_trace': empty.get('task_trace', {}),
-            'agent_roles': [],
-            'task_names': [],
-            'judge': RenderedJudge(valid=True, reason='llm_unavailable_backstop').model_dump(mode='json'),
-            'validation_stack': ['operation_result', 'deterministic_backstop'],
-            'crewai_version': getattr(crewai_pkg, '__version__', None),
-        }
+        return deterministic_render_result(
+            deterministic_answer=deterministic_answer,
+            validation_stack=['operation_result', 'deterministic_backstop'],
+            judge_reason='llm_unavailable_backstop',
+        )
 
     anchor_terms = extract_literal_anchors(deterministic_answer)
     if required_anchors:

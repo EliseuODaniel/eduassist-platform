@@ -14,7 +14,7 @@ except Exception:  # pragma: no cover
     persist = None  # type: ignore[assignment]
 
 from .flow_persistence import get_sqlite_flow_persistence
-from .agentic_rendering import maybe_render_agentic_response
+from .agentic_rendering import deterministic_render_result
 
 from .support_pilot import (
     _detect_queue,
@@ -175,19 +175,10 @@ class SupportShadowFlow(Flow[SupportFlowState]):
         reason: str,
         extra: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        rendered = await maybe_render_agentic_response(
-            slice_name='support',
-            settings=self.settings,
-            user_message=self.state.message,
+        rendered = deterministic_render_result(
             deterministic_answer=answer_text,
-            instructions=(
-                'Reescreva a resposta de suporte com tom humano e direto, sem perder protocolos, status, filas ou proximo passo.'
-            ),
-            required_anchors=[
-                str(self.state.active_ticket_code or ''),
-                str(self.state.active_queue_name or ''),
-                'queued' if 'queued' in answer_text.lower() else '',
-            ],
+            validation_stack=['flow_router', 'operation_result', 'deterministic_support'],
+            judge_reason='support_deterministic_fast_path',
         )
         metadata_extra = {
             'crewai_installed': bool(Flow is not None),
