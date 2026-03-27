@@ -194,6 +194,11 @@ COMPARATIVE_TERMS = {
     'comparar com',
     'comparacao com',
     'comparação com',
+    'publica',
+    'pública',
+    'privada',
+    'pagar se posso estudar na publica',
+    'pagar se posso estudar na pública',
 }
 PUBLIC_CURRICULUM_TERMS = {
     'base curricular',
@@ -1176,6 +1181,8 @@ def _is_public_document_submission_query(message: str) -> bool:
         'enviar por caixa postal',
         'mandar por caixa postal',
         'posso enviar por fax',
+        'posso enviar documentos por fax',
+        'posso mandar documentos por fax',
         'posso mandar por telegrama',
         'posso enviar por telegrama',
     }
@@ -1183,6 +1190,11 @@ def _is_public_document_submission_query(message: str) -> bool:
         return True
     document_terms = {'documento', 'documentos', 'matricula', 'matrícula', 'cadastro'}
     digital_terms = {'online', 'digital', 'portal', 'email', 'e-mail', 'enviar', 'envio'}
+    special_channel_terms = {'fax', 'telegrama', 'caixa postal'}
+    if any(_message_matches_term(lowered, term) for term in document_terms) and any(
+        _message_matches_term(lowered, term) for term in special_channel_terms
+    ):
+        return True
     return any(_message_matches_term(lowered, term) for term in document_terms) and any(
         _message_matches_term(lowered, term) for term in digital_terms
     )

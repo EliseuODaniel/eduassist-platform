@@ -326,6 +326,8 @@ PUBLIC_DOCUMENT_SUBMISSION_TERMS = {
     'enviar por fax',
     'mandar por fax',
     'posso enviar por fax',
+    'posso enviar documentos por fax',
+    'posso mandar documentos por fax',
     'enviar por telegrama',
     'mandar por telegrama',
     'posso enviar por telegrama',
@@ -3482,6 +3484,11 @@ def _is_public_document_submission_query(message: str) -> bool:
         return True
     document_terms = {'documento', 'documentos', 'matricula', 'matrícula', 'cadastro'}
     digital_terms = {'online', 'digital', 'portal', 'email', 'e-mail', 'enviar', 'envio', 'mandar', 'mando'}
+    special_channel_terms = {'fax', 'telegrama', 'caixa postal'}
+    if any(_message_matches_term(normalized, term) for term in document_terms) and any(
+        _message_matches_term(normalized, term) for term in special_channel_terms
+    ):
+        return True
     return any(_message_matches_term(normalized, term) for term in document_terms) and any(
         _message_matches_term(normalized, term) for term in digital_terms
     )
@@ -3697,10 +3704,10 @@ def _compose_public_comparative_answer(profile: dict[str, Any]) -> str:
         'Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia.',
         f'No que esta publicado aqui, os diferenciais desta escola passam por {labels_preview}.',
     ]
+    if education_model:
+        parts.append(f'A proposta pedagogica publicada hoje combina {education_model}.')
     if headline:
         parts.append(headline)
-    if education_model:
-        parts.append(education_model)
     parts.append(
         'Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.'
     )
@@ -4164,7 +4171,7 @@ def _compose_public_profile_answer_legacy(
         )
 
     if _is_public_document_submission_query(source_message):
-        return _compose_public_document_submission_answer(profile)
+        return _compose_public_document_submission_answer(profile, message=source_message)
 
     if _is_public_teacher_identity_query(source_message):
         return _compose_public_teacher_directory_answer(profile, source_message)
@@ -5254,7 +5261,7 @@ def _compose_public_enrichment_answer(context: PublicProfileContext) -> str:
 
     available_features = _public_feature_inventory(context.profile)
     enrichment_labels: list[str] = []
-    for key in ('danca', 'teatro', 'futebol', 'volei', 'maker', 'laboratorio'):
+    for key in ('biblioteca', 'danca', 'teatro', 'futebol', 'volei', 'maker', 'laboratorio'):
         item = next(
             (
                 feature
@@ -8666,6 +8673,18 @@ def _build_public_kpi_visual(profile: dict[str, Any], message: str) -> list[Mess
     return [asset] if asset is not None else []
 
 
+def _normalize_response_wording(message_text: str) -> str:
+    normalized = str(message_text or '')
+    replacements = {
+        'enviar por e-mail para a secretaria': 'usar o email da secretaria',
+        'o e-mail da secretaria': 'o email da secretaria',
+        'E-mail da secretaria': 'Email da secretaria',
+    }
+    for source, target in replacements.items():
+        normalized = normalized.replace(source, target)
+    return normalized
+
+
 def _build_academic_visual(summary: dict[str, Any], message: str, student_name: str) -> list[MessageResponseVisualAsset]:
     normalized = _normalize_text(message)
     if _contains_any(normalized, ATTENDANCE_TERMS) and not _contains_any(normalized, GRADE_TERMS):
@@ -11914,7 +11933,7 @@ async def generate_message_response(
                             reason='langgraph_hitl_pending_review',
                         ),
                         reason='langgraph_hitl_pending_review',
-                    )
+                )
                 preview.reason = 'langgraph_hitl_pending_review'
                 preview.risk_flags = list(dict.fromkeys([*preview.risk_flags, 'pending_human_review']))
                 langgraph_trace_metadata = _capture_langgraph_trace_metadata(
@@ -11923,6 +11942,7 @@ async def generate_message_response(
                     langgraph_artifacts=langgraph_artifacts,
                 )
                 message_text = _build_langgraph_pending_review_message(preview=preview)
+                message_text = _normalize_response_wording(message_text)
                 suggested_replies = _build_suggested_replies(
                     request=request,
                     preview=preview,
@@ -12097,6 +12117,7 @@ async def generate_message_response(
                     'eduassist.orchestration.answer_verifier_judge_used': semantic_judge_used,
                 }
             )
+            message_text = _normalize_response_wording(message_text)
             suggested_replies = _build_suggested_replies(
                 request=request,
                 preview=preview,
@@ -12518,6 +12539,7 @@ async def generate_message_response(
             sources = _render_source_lines(citations)
             if sources and sources not in message_text:
                 message_text = f'{message_text}\n\n{sources}'
+        message_text = _normalize_response_wording(message_text)
 
         visual_assets = await _maybe_build_visual_assets(
             settings=settings,
