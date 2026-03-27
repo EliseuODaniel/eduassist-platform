@@ -170,3 +170,21 @@ Artifacts:
 Runtime default path:
 
 - `/workspace/artifacts/framework-native-scorecard.json`
+
+## Primary-Stack Regression
+
+The primary-stack feature flag now has a dedicated regression benchmark to verify that `CrewAI` can become the true primary path without leaking `LangGraph` preview/runtime metadata.
+
+Artifacts:
+
+- [framework-primary-stack-flag-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-primary-stack-flag-report.md)
+- [framework_primary_stack_flag_cases.json](/home/edann/projects/eduassist-platform/tests/evals/datasets/framework_primary_stack_flag_cases.json)
+- [benchmark_primary_stack_feature_flag.py](/home/edann/projects/eduassist-platform/tools/evals/benchmark_primary_stack_feature_flag.py)
+
+Current expectation:
+
+- `FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK=crewai`
+- `ORCHESTRATOR_EXPERIMENT_ENABLED=false`
+- `engine_name=crewai`
+- `engine_mode=crewai`
+- no `langgraph` request metadata in the canonical trace for those primary-path runs

@@ -562,6 +562,82 @@ def _humanize_admin_status(raw_status: Any) -> str:
     return mapping.get(normalized, str(raw_status or 'regular'))
 
 
+def _infer_fast_path_plan(message: str, student: dict[str, Any] | None) -> ProtectedPilotPlan:
+    terms = _query_terms(message)
+    student_name = str(student.get('full_name', '')).strip() if isinstance(student, dict) else None
+    student_id = str(student.get('student_id', '')).strip() if isinstance(student, dict) else None
+
+    if any(term in terms for term in {'notas', 'nota'}):
+        return ProtectedPilotPlan(
+            intent='student_grades',
+            student_name=student_name or None,
+            student_id=student_id or None,
+            domain='academic',
+            attribute='grades',
+            relevant_sources=['academic.overview'],
+        )
+    if any(term in terms for term in {'faltas', 'frequencia'}):
+        return ProtectedPilotPlan(
+            intent='student_attendance',
+            student_name=student_name or None,
+            student_id=student_id or None,
+            domain='academic',
+            attribute='attendance',
+            relevant_sources=['attendance.overview'],
+        )
+    if any(term in terms for term in {'provas', 'prova', 'avaliacoes'}):
+        return ProtectedPilotPlan(
+            intent='student_assessments',
+            student_name=student_name or None,
+            student_id=student_id or None,
+            domain='academic',
+            attribute='assessments',
+            relevant_sources=['assessments.overview'],
+        )
+    if any(term in terms for term in {'financeiro', 'pagamento', 'mensalidade', 'boleto'}):
+        return ProtectedPilotPlan(
+            intent='student_finance',
+            student_name=student_name or None,
+            student_id=student_id or None,
+            domain='finance',
+            attribute='next_payment' if 'proximo' in terms else 'summary',
+            relevant_sources=['financial.overview'],
+        )
+    if any(term in terms for term in {'documentacao', 'documentos'}):
+        return ProtectedPilotPlan(
+            intent='student_admin',
+            student_name=student_name or None,
+            student_id=student_id or None,
+            domain='institution',
+            attribute='documents',
+            relevant_sources=['admin.overview'],
+        )
+    if 'matricula' in terms:
+        return ProtectedPilotPlan(
+            intent='student_admin',
+            student_name=student_name or None,
+            student_id=student_id or None,
+            domain='institution',
+            attribute='enrollment',
+            relevant_sources=['admin.overview'],
+        )
+    if any(term in terms for term in {'filhos', 'filho', 'filha', 'logado', 'acesso', 'dados', 'conta'}):
+        return ProtectedPilotPlan(
+            intent='actor_identity',
+            domain='identity',
+            attribute='scope',
+            relevant_sources=['identity.actor'],
+        )
+    return ProtectedPilotPlan(
+        intent='actor_identity',
+        student_name=student_name or None,
+        student_id=student_id or None,
+        domain='identity',
+        attribute='general',
+        relevant_sources=['identity.actor'],
+    )
+
+
 def _student_backstop(message: str, student: dict[str, Any] | None, evidence: dict[str, Any], docs: list[EvidenceDoc]) -> str | None:
     if not student:
         return None

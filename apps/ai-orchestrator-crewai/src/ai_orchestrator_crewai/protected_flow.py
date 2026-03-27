@@ -30,6 +30,7 @@ from .protected_pilot import (
     _conversation_state_key,
     _extract_unmatched_student_reference,
     _fetch_protected_evidence,
+    _infer_fast_path_plan,
     _identity_backstop,
     _is_explicit_student_selection_message,
     _is_identity_scope_query,
@@ -161,11 +162,15 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
 
         fast_path_answer = self._identity_backstop_text or _student_backstop(self.state.message, self._student, evidence, self._shortlisted_docs)
         if isinstance(fast_path_answer, str) and fast_path_answer.strip():
+            self.state.plan = _infer_fast_path_plan(self.state.message, self._student)
             self.state.answer = ProtectedPilotAnswer(
                 answer_text=fast_path_answer,
                 citations=[self._shortlisted_docs[0].doc_id] if self._shortlisted_docs else [],
             )
             self.state.judge = ProtectedPilotJudge(valid=True, reason='deterministic_fast_path', revision_needed=False)
+            if isinstance(self.state.plan, ProtectedPilotPlan):
+                self.state.active_domain = self.state.plan.domain
+                self.state.active_attribute = self.state.plan.attribute
             self.state.routing_label = 'fast_path'
             self.state.reason = 'crewai_protected_fast_path'
             return self.state.routing_label
@@ -351,7 +356,7 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
                 'agent_roles': [],
                 'task_names': [],
                 'latency_ms': self.state.latency_ms,
-                'plan': None,
+                'plan': self.state.plan.model_dump(mode='json') if isinstance(self.state.plan, ProtectedPilotPlan) else None,
                 'answer': self.state.answer.model_dump(mode='json') if isinstance(self.state.answer, ProtectedPilotAnswer) else None,
                 'judge': self.state.judge.model_dump(mode='json') if isinstance(self.state.judge, ProtectedPilotJudge) else None,
                 'evidence_sources': list(self.state.evidence_source_ids),

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "crewai_primary_public_native_path",
+    "slice": "public",
+    "message": "qual o horario da biblioteca?",
+    "conversation_id": "benchmark-primary-public-1",
+    "telegram_chat_id": 1649845499,
+    "expected_domain": "institution",
+    "expected_access_tier": "public",
+    "expected_selected_tools": ["get_public_school_profile"],
+    "expected_graph_path_nodes": ["flow_router"],
+    "expected_trace_timeline_kind": "crewai_stage_task_path"
+  },
+  {
+    "id": "crewai_primary_protected_native_path",
+    "slice": "protected",
+    "message": "qual situacao de documentacao do Lucas?",
+    "conversation_id": "benchmark-primary-protected-1",
+    "telegram_chat_id": 1649845499,
+    "expected_domain": "institution",
+    "expected_access_tier": "authenticated",
+    "expected_selected_tools": ["get_student_administrative_status"],
+    "expected_graph_path_nodes": ["flow_router"],
+    "expected_trace_timeline_kind": "crewai_stage_task_path"
+  },
+  {
+    "id": "crewai_primary_support_native_path",
+    "slice": "support",
+    "message": "quero falar com a secretaria",
+    "conversation_id": "benchmark-primary-support-1",
+    "telegram_chat_id": 1649845499,
+    "expected_domain": "support",
+    "expected_access_tier": "public",
+    "expected_selected_tools": ["create_support_ticket", "handoff_to_human"],
+    "expected_graph_path_nodes": ["flow_router", "deterministic_support"],
+    "expected_trace_timeline_kind": "crewai_stage_task_path"
+  },
+  {
+    "id": "crewai_primary_workflow_native_path",
+    "slice": "workflow",
+    "message": "quero agendar uma visita na quinta a tarde",
+    "conversation_id": "benchmark-primary-workflow-1",
+    "telegram_chat_id": 1649845499,
+    "expected_domain": "support",
+    "expected_access_tier": "public",
+    "expected_selected_tools": ["schedule_school_visit"],
+    "expected_graph_path_nodes": ["flow_router", "deterministic_workflow"],
+    "expected_trace_timeline_kind": "crewai_stage_task_path"
+  }
+]

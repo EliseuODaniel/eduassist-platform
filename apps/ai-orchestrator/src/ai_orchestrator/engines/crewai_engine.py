@@ -184,7 +184,7 @@ def _protected_selected_tools(metadata: dict[str, Any]) -> list[str]:
         return ['get_student_attendance']
     if any(term in attribute or term in reason for term in ('assessment', 'assessments', 'provas', 'prova')):
         return ['get_student_upcoming_assessments']
-    if resolved_student_name and any(term in attribute or term in reason for term in ('document', 'documentacao', 'documentos', 'admin')):
+    if resolved_student_name and any(term in attribute or term in reason for term in ('document', 'documents', 'documentacao', 'documentos', 'admin', 'enrollment', 'matricula')):
         return ['get_student_administrative_status']
     if any(term in attribute or term in reason for term in ('identity', 'access', 'scope', 'linked_students', 'filhos', 'logado')):
         return ['get_actor_identity_context']

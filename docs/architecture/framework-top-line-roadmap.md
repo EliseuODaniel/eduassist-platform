@@ -17,6 +17,7 @@ This roadmap distinguishes:
 Current local evidence:
 
 - [two-stack-shadow-master-real-threads-report.md](/home/edann/projects/eduassist-platform/docs/architecture/two-stack-shadow-master-real-threads-report.md)
+- [framework-primary-stack-flag-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-primary-stack-flag-report.md)
 - [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md)
 - [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md)
 - [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md)
@@ -93,6 +94,7 @@ Validated in this round:
   - LangGraph via `langgraph.timeline`
   - CrewAI via `crewai.timeline`
 - A framework-native durability/debug scorecard now exists in both docs and a runtime-readable artifact, so canary promotion can be gated by scorecard plus pilot health instead of only static config.
+- The primary-stack feature flag now has a versioned regression benchmark that verifies `CrewAI` can run as the real primary path, with native trace metadata and without leaking `LangGraph` runtime fields.
 
 Concrete local evidence:
 
