@@ -101,10 +101,26 @@ def _snapshot_matches_head(*, release_git: dict | None, head_branch: str, head_c
     return False, 'snapshot differs from HEAD beyond governance-only report files.'
 
 
+def _worktree_is_governance_only(status_short: str) -> tuple[bool, str]:
+    lines = [line.rstrip() for line in str(status_short or '').splitlines() if line.strip()]
+    if not lines:
+        return True, 'working tree is clean.'
+    paths: list[str] = []
+    for line in lines:
+        candidate = line[3:].strip() if len(line) >= 4 else line.strip()
+        if '->' in candidate:
+            candidate = candidate.split('->', 1)[1].strip()
+        paths.append(candidate)
+    if paths and all(path in GOVERNANCE_ONLY_DIFF_PATHS for path in paths):
+        return True, 'working tree differs only by governance report files.'
+    return False, status_short
+
+
 def _check_items(*, status_payload: dict, snapshot: dict, changelog_rows: list[dict]) -> list[dict]:
     head_branch = _run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
     head_commit = _run(['git', 'rev-parse', 'HEAD'])
     git_status_short = _run(['git', 'status', '--short'])
+    worktree_clean_enough, worktree_detail = _worktree_is_governance_only(git_status_short)
 
     release_git = snapshot.get('git') if isinstance(snapshot, dict) else None
     release_posture = snapshot.get('posture') if isinstance(snapshot, dict) else None
@@ -124,8 +140,8 @@ def _check_items(*, status_payload: dict, snapshot: dict, changelog_rows: list[d
     items = [
         {
             'id': 'git_clean',
-            'status': 'pass' if not git_status_short.strip() else 'fail',
-            'detail': 'working tree is clean.' if not git_status_short.strip() else git_status_short,
+            'status': 'pass' if worktree_clean_enough else 'fail',
+            'detail': worktree_detail,
         },
         {
             'id': 'release_snapshot_exists',
