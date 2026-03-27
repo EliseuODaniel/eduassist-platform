@@ -1,21 +1,21 @@
 # Framework Slice Promotion Report
 
-Date: 2026-03-27T16:01:18.904547+00:00
+Date: 2026-03-27T16:12:28.601970+00:00
 
 ## Summary
 
 - intent: `promotion`
 - slice: `public`
-- before rollout: `1%`
-- after rollout: `2%`
+- before rollout: `2%`
+- after rollout: `5%`
 - mode: `execute`
 - apply requested: `True`
-- result: `failed`
+- result: `passed`
 - operator: `codex`
-- reason: `Expandir public de 1% para 2% conforme recomendacao do gate live`
+- reason: `Expandir public de 2% para 5% conforme recomendacao do gate live`
 - env file: `.env`
 - proposed slices: `public,support,workflow`
-- proposed slice rollouts: `public:2,support:100,workflow:100`
+- proposed slice rollouts: `public:5,support:100,workflow:100`
 - proposed allowlist slices: `support,workflow`
 - nested report: `/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md`
 

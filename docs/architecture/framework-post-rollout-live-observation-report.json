@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-27T16:11:39.283931+00:00",
+  "generated_at": "2026-03-27T16:12:44.370154+00:00",
   "classification": "healthy",
   "observation_healthy": true,
   "observation_errors": [],
@@ -14,7 +14,7 @@
     "experimentPrimaryEngine": "crewai",
     "experimentSlices": "public,support,workflow",
     "experimentRolloutPercent": 0,
-    "experimentSliceRollouts": "public:2,support:100,workflow:100",
+    "experimentSliceRollouts": "public:5,support:100,workflow:100",
     "experimentAllowlistSlices": "support,workflow",
     "experimentRequireScorecard": false,
     "experimentScorecardPath": "/workspace/artifacts/framework-native-scorecard.json",
@@ -160,7 +160,7 @@
           "eligible": true,
           "reason": "public is allowed for crewai under the current scorecard gate.",
           "configured": true,
-          "configured_rollout_percent": 2,
+          "configured_rollout_percent": 5,
           "allowlist_only": false,
           "live": true
         },
@@ -218,7 +218,7 @@
           "configured": true,
           "live": true,
           "allowlist_only": false,
-          "configured_rollout_percent": 2,
+          "configured_rollout_percent": 5,
           "action": "expand_gradually",
           "blocked_reasons": []
         },
@@ -275,7 +275,7 @@
       "running": true,
       "status": "running",
       "health_status": "healthy",
-      "started_at": "2026-03-27T16:04:39.926021032Z"
+      "started_at": "2026-03-27T16:12:01.976605603Z"
     },
     "ai-orchestrator-crewai": {
       "exists": true,
@@ -335,7 +335,7 @@
         "configured": true,
         "live": true,
         "allowlist_only": false,
-        "configured_rollout_percent": 2,
+        "configured_rollout_percent": 5,
         "action": "expand_gradually",
         "blocked_reasons": []
       },
@@ -360,20 +360,20 @@
     }
   },
   "latest_rollout_entry": {
-    "timestamp": "2026-03-27T16:01:18.904547+00:00",
+    "timestamp": "2026-03-27T16:12:28.601970+00:00",
     "intent": "promotion",
     "slice": "public",
-    "before_rollout_percent": 1,
-    "after_rollout_percent": 2,
+    "before_rollout_percent": 2,
+    "after_rollout_percent": 5,
     "mode": "execute",
     "apply": true,
-    "result": "failed",
+    "result": "passed",
     "operator": "codex",
-    "reason": "Expandir public de 1% para 2% conforme recomendacao do gate live",
-    "returncode": 1,
+    "reason": "Expandir public de 2% para 5% conforme recomendacao do gate live",
+    "returncode": 0,
     "env_file": ".env",
     "proposed_slices": "public,support,workflow",
-    "proposed_slice_rollouts": "public:2,support:100,workflow:100",
+    "proposed_slice_rollouts": "public:5,support:100,workflow:100",
     "proposed_allowlist_slices": "support,workflow",
     "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md",
     "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-execution-report.json\n",
