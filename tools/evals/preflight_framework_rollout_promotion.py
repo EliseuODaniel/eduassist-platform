@@ -38,19 +38,16 @@ def _load_env_file(path: Path) -> dict[str, str]:
     return result
 
 
-_ENV_FILE_VALUES = _load_env_file(REPO_ROOT / '.env')
-
-
-def _env_value(name: str, default: str) -> str:
+def _env_value(name: str, default: str, *, env_file_values: dict[str, str]) -> str:
     if name in os.environ:
         return str(os.environ[name])
-    if name in _ENV_FILE_VALUES:
-        return str(_ENV_FILE_VALUES[name])
+    if name in env_file_values:
+        return str(env_file_values[name])
     return default
 
 
-def _bool_env(name: str, default: bool) -> bool:
-    raw = str(_env_value(name, str(default))).strip().lower()
+def _bool_env(name: str, default: bool, *, env_file_values: dict[str, str]) -> bool:
+    raw = str(_env_value(name, str(default), env_file_values=env_file_values)).strip().lower()
     return raw in {'1', 'true', 'yes', 'on'}
 
 
@@ -76,28 +73,29 @@ def _normalize_pilot_url(value: str) -> str:
     return replacements.get(normalized, normalized)
 
 
-def _build_settings() -> SimpleNamespace:
+def _build_settings(env_file: Path) -> SimpleNamespace:
+    env_file_values = _load_env_file(env_file)
     default_scorecard_path = str(LOCAL_SCORECARD_PATH if LOCAL_SCORECARD_PATH.exists() else LOCAL_SCORECARD_DOC_PATH)
     return SimpleNamespace(
-        orchestrator_engine=_env_value('ORCHESTRATOR_ENGINE', 'langgraph'),
-        feature_flag_primary_orchestration_stack=_env_value('FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK', ''),
-        orchestrator_experiment_enabled=_bool_env('ORCHESTRATOR_EXPERIMENT_ENABLED', False),
-        orchestrator_experiment_primary_engine=_env_value('ORCHESTRATOR_EXPERIMENT_PRIMARY_ENGINE', 'crewai'),
-        orchestrator_experiment_slices=_env_value('ORCHESTRATOR_EXPERIMENT_SLICES', ''),
-        orchestrator_experiment_rollout_percent=int(_env_value('ORCHESTRATOR_EXPERIMENT_ROLLOUT_PERCENT', '0') or 0),
-        orchestrator_experiment_slice_rollouts=_env_value('ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS', ''),
-        orchestrator_experiment_allowlist_slices=_env_value('ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES', ''),
-        orchestrator_experiment_require_scorecard=_bool_env('ORCHESTRATOR_EXPERIMENT_REQUIRE_SCORECARD', False),
+        orchestrator_engine=_env_value('ORCHESTRATOR_ENGINE', 'langgraph', env_file_values=env_file_values),
+        feature_flag_primary_orchestration_stack=_env_value('FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK', '', env_file_values=env_file_values),
+        orchestrator_experiment_enabled=_bool_env('ORCHESTRATOR_EXPERIMENT_ENABLED', False, env_file_values=env_file_values),
+        orchestrator_experiment_primary_engine=_env_value('ORCHESTRATOR_EXPERIMENT_PRIMARY_ENGINE', 'crewai', env_file_values=env_file_values),
+        orchestrator_experiment_slices=_env_value('ORCHESTRATOR_EXPERIMENT_SLICES', '', env_file_values=env_file_values),
+        orchestrator_experiment_rollout_percent=int(_env_value('ORCHESTRATOR_EXPERIMENT_ROLLOUT_PERCENT', '0', env_file_values=env_file_values) or 0),
+        orchestrator_experiment_slice_rollouts=_env_value('ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS', '', env_file_values=env_file_values),
+        orchestrator_experiment_allowlist_slices=_env_value('ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES', '', env_file_values=env_file_values),
+        orchestrator_experiment_require_scorecard=_bool_env('ORCHESTRATOR_EXPERIMENT_REQUIRE_SCORECARD', False, env_file_values=env_file_values),
         orchestrator_experiment_scorecard_path=_normalize_scorecard_path(
-            _env_value('ORCHESTRATOR_EXPERIMENT_SCORECARD_PATH', default_scorecard_path)
+            _env_value('ORCHESTRATOR_EXPERIMENT_SCORECARD_PATH', default_scorecard_path, env_file_values=env_file_values)
         ),
         orchestrator_experiment_min_primary_engine_score=int(
-            _env_value('ORCHESTRATOR_EXPERIMENT_MIN_PRIMARY_ENGINE_SCORE', '20') or 20
+            _env_value('ORCHESTRATOR_EXPERIMENT_MIN_PRIMARY_ENGINE_SCORE', '20', env_file_values=env_file_values) or 20
         ),
-        orchestrator_experiment_require_healthy_pilot=_bool_env('ORCHESTRATOR_EXPERIMENT_REQUIRE_HEALTHY_PILOT', False),
-        orchestrator_experiment_health_ttl_seconds=int(_env_value('ORCHESTRATOR_EXPERIMENT_HEALTH_TTL_SECONDS', '15') or 15),
-        crewai_pilot_url=_normalize_pilot_url(_env_value('CREWAI_PILOT_URL', '')),
-        internal_api_token=_env_value('INTERNAL_API_TOKEN', 'dev-internal-token'),
+        orchestrator_experiment_require_healthy_pilot=_bool_env('ORCHESTRATOR_EXPERIMENT_REQUIRE_HEALTHY_PILOT', False, env_file_values=env_file_values),
+        orchestrator_experiment_health_ttl_seconds=int(_env_value('ORCHESTRATOR_EXPERIMENT_HEALTH_TTL_SECONDS', '15', env_file_values=env_file_values) or 15),
+        crewai_pilot_url=_normalize_pilot_url(_env_value('CREWAI_PILOT_URL', '', env_file_values=env_file_values)),
+        internal_api_token=_env_value('INTERNAL_API_TOKEN', 'dev-internal-token', env_file_values=env_file_values),
     )
 
 
@@ -196,6 +194,7 @@ def main() -> int:
     parser.add_argument('--require-healthy-pilot', dest='require_healthy_pilot', action='store_true')
     parser.add_argument('--no-require-healthy-pilot', dest='require_healthy_pilot', action='store_false')
     parser.add_argument('--min-primary-engine-score', type=int, default=None)
+    parser.add_argument('--env-file', type=Path, default=REPO_ROOT / '.env')
     parser.add_argument('--report', type=Path, default=DEFAULT_REPORT)
     parser.add_argument('--json', type=Path, default=DEFAULT_JSON)
     parser.add_argument('--artifact-json', type=Path, default=DEFAULT_ARTIFACT_JSON)
@@ -206,7 +205,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    current_settings = _build_settings()
+    current_settings = _build_settings(args.env_file)
     proposed_settings = _apply_overrides(current_settings, args)
     current_summary = get_experiment_live_promotion_summary(settings=current_settings)
     proposed_summary = get_experiment_live_promotion_summary(settings=proposed_settings)

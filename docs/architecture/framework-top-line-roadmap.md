@@ -102,6 +102,7 @@ Validated in this round:
 - A rollout preflight can now simulate a proposed env change before applying it, turning promotion into an explicit approve/reject step instead of a manual read of multiple reports.
 - A rollout apply routine can now sit behind that preflight, so env mutation happens only through an auditable gate with backup and snapshot output.
 - A rollout execution routine can now extend that apply step into service restart and live status validation, closing the loop from proposal to verified runtime state.
+- A single-command slice wrapper can now sit on top of preflight and execution, removing manual rollout-string editing and creating an operational changelog by default.
 
 Concrete local evidence:
 

@@ -258,6 +258,32 @@ Versioned example output:
 
 - [framework-rollout-execution-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md)
 
+## Slice Promotion Wrapper
+
+For the safest day-to-day operation, prefer the slice wrapper instead of hand-writing rollout strings.
+
+Dry-run example:
+
+```bash
+cp .env artifacts/tmp-slice.env
+python3 tools/evals/promote_framework_slice.py \
+  --env-file artifacts/tmp-slice.env \
+  --slice public \
+  --to-rollout-percent 2
+```
+
+This wrapper:
+
+- calculates `before` and `after` automatically
+- preserves the other configured slices
+- adjusts allowlist scope safely in `auto` mode
+- records every attempt in the rollout changelog
+
+Artifacts:
+
+- [framework-slice-promotion-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-slice-promotion-report.md)
+- [framework-rollout-changelog.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-changelog.md)
+
 Artifacts:
 
 - [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md)
