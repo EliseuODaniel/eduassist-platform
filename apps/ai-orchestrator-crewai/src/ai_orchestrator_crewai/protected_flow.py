@@ -21,6 +21,7 @@ from .protected_pilot import (
     ProtectedPilotAnswer,
     ProtectedPilotJudge,
     ProtectedPilotPlan,
+    _auth_required_backstop,
     _build_llm,
     _build_protected_docs,
     _conversation_state_key,
@@ -186,7 +187,7 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
     @listen('auth_required')
     def handle_auth_required(self) -> dict[str, Any]:
         answer = ProtectedPilotAnswer(
-            answer_text='Para continuar por aqui, eu preciso que sua conta do Telegram esteja vinculada a um responsavel autenticado.',
+            answer_text=_auth_required_backstop(),
         )
         judge = ProtectedPilotJudge(valid=True, reason='auth_required_deterministic', revision_needed=False)
         return {

@@ -109,6 +109,7 @@ The current master replay keeps the promotion rule simple:
 
 Reason:
 
-- `protected` still trails the baseline in the current master replay on keyword pass and quality
-- the main gap is the protected real thread `real_guardian_grades_and_finance_555001`
-- until that slice reaches parity again, canary scope should stay limited to `support`, `public`, and `workflow`
+- `protected` is back at replay parity in the current master benchmark
+- even so, `protected` carries the highest sensitivity because it handles identity, grades, documentation, and finance
+- before any protected canary, we still want a dedicated live gate with stricter review of auth, student focus, and leakage risk
+- until that gate is explicitly opened, canary scope stays limited to `support`, `public`, and `workflow`

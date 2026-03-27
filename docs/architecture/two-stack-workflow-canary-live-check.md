@@ -75,7 +75,8 @@ From the current replay reports:
   - CrewAI: `7/7`, quality `100.0`, average latency `52.6ms`
 - [two-stack-shadow-master-real-threads-report.md](/home/edann/projects/eduassist-platform/docs/architecture/two-stack-shadow-master-real-threads-report.md)
   - `workflow`: baseline `7/7`, CrewAI `7/7`, quality `100.0` vs `100.0`
-  - `protected`: CrewAI still below baseline, so protected remains outside the canary
+  - `protected`: baseline `13/13`, CrewAI `13/13`, quality `100.0` vs `100.0`
+  - even with replay parity restored, `protected` remains outside the canary because it needs a separate live promotion gate
 
 ## Operational Conclusion
 
