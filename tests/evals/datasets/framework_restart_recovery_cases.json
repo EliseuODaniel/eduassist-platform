@@ -1,0 +1,73 @@
+[
+  {
+    "id": "langgraph_protected_hitl_restart_recovery",
+    "type": "langgraph_hitl_restart",
+    "framework": "langgraph",
+    "slice": "protected",
+    "container": "eduassist-ai-orchestrator",
+    "conversation_id": "benchmark-hitl-protected-access-1",
+    "telegram_chat_id": 1649845499,
+    "channel": "telegram",
+    "message": "qual meu acesso? a que dados",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "student-lucas",
+        "student-ana"
+      ],
+      "scopes": []
+    },
+    "target_slices": [
+      "protected"
+    ],
+    "expected_interrupt_kind": "protected_record_review",
+    "expected_graph_path_nodes": [
+      "protected_human_review",
+      "protected_review_approved"
+    ],
+    "resume_value": {
+      "approved": true,
+      "notes": "framework benchmark approval"
+    }
+  },
+  {
+    "id": "crewai_public_flow_restart_recovery",
+    "type": "crewai_shadow_restart",
+    "framework": "crewai",
+    "slice": "public",
+    "container": "eduassist-ai-orchestrator-crewai",
+    "conversation_id": "benchmark-crewai-public-library-1",
+    "telegram_chat_id": 1649845499,
+    "channel": "telegram",
+    "endpoint": "/v1/shadow/public",
+    "before_message": "essa escola tem biblioteca?",
+    "after_message": "e qual o horario?",
+    "expected_keywords_after": [
+      "biblioteca aurora",
+      "7h30",
+      "18h00"
+    ],
+    "expected_flow_state_id": "public:telegram:conversation:benchmark-crewai-public-library-1",
+    "sqlite_path": "/workspace/artifacts/crewai-flow-state/public.sqlite3"
+  },
+  {
+    "id": "crewai_protected_flow_restart_recovery",
+    "type": "crewai_shadow_restart",
+    "framework": "crewai",
+    "slice": "protected",
+    "container": "eduassist-ai-orchestrator-crewai",
+    "conversation_id": "benchmark-crewai-protected-lucas-1",
+    "telegram_chat_id": 1649845499,
+    "channel": "telegram",
+    "endpoint": "/v1/shadow/protected",
+    "before_message": "Lucas Oliveira, o luquinha",
+    "after_message": "e a documentacao?",
+    "expected_keywords_after": [
+      "lucas oliveira",
+      "regular"
+    ],
+    "expected_flow_state_id": "protected:telegram:conversation:benchmark-crewai-protected-lucas-1",
+    "sqlite_path": "/workspace/artifacts/crewai-flow-state/protected.sqlite3"
+  }
+]

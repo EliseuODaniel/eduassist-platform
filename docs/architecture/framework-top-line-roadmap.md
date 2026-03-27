@@ -17,6 +17,7 @@ This roadmap distinguishes:
 Current local evidence:
 
 - [two-stack-shadow-master-real-threads-report.md](/home/edann/projects/eduassist-platform/docs/architecture/two-stack-shadow-master-real-threads-report.md)
+- [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md)
 - [crewai-best-practices-audit.md](/home/edann/projects/eduassist-platform/docs/architecture/crewai-best-practices-audit.md)
 - [graph.py](/home/edann/projects/eduassist-platform/apps/ai-orchestrator/src/ai_orchestrator/graph.py)
 - [public_flow.py](/home/edann/projects/eduassist-platform/apps/ai-orchestrator-crewai/src/ai_orchestrator_crewai/public_flow.py)
@@ -84,6 +85,8 @@ Validated in this round:
 - LangGraph now delegates through slice subgraphs for `public`, `protected`, and `support`.
 - CrewAI now emits per-task event telemetry with task, agent, crew, and timing summaries on agentic paths.
 - CrewAI no longer blocks on the interactive tracing prompt during service requests.
+- CrewAI pilot metadata now bridges into the main orchestrator trace surface, so `orchestration.trace` and `orchestration.shadow` can carry normalized `crewai` request/response telemetry when that engine is exercised.
+- Restart/recovery durability is now benchmarked with a versioned dataset and report, and the current run passed `3/3` cases across LangGraph protected HITL plus CrewAI public/protected Flow continuity.
 
 Concrete local evidence:
 
@@ -99,6 +102,9 @@ Concrete local evidence:
 - protected graph paths now include `select_slice -> protected_slice`
 - support graph paths now include `select_slice -> support_slice`
 - `event_summary` and `task_trace` now appear in agentic CrewAI responses for `public` and `protected`
+- the latest [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md) shows:
+  - LangGraph protected HITL can survive restart and resume the exact review thread
+  - CrewAI `public` and `protected` Flow follow-ups survive restart with stable `flow_state_id`
 
 ## Upgrade Principles
 
@@ -303,6 +309,13 @@ New benchmark classes:
 - approval-required handoff
 - long follow-up chain with topic switch
 - multi-turn ambiguity with explicit repair
+
+Status:
+
+- implemented in this round for restart/recovery durability:
+  - LangGraph protected HITL pause -> restart -> inspect -> resume
+  - CrewAI `public` Flow restart continuity
+  - CrewAI `protected` Flow restart continuity
 
 ### 3. Run live canaries with framework-specific telemetry
 

@@ -247,6 +247,8 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
     def handle_student_selection(self) -> dict[str, Any]:
         answer = ProtectedPilotAnswer(answer_text=_student_focus_backstop(self.state.message, self._student) or '')
         judge = ProtectedPilotJudge(valid=True, reason='student_selection_handled_deterministically', revision_needed=False)
+        if self.state.resolved_student_name:
+            self.state.active_student_name = self.state.resolved_student_name
         if self._state_key:
             _store_recent_student_name(self._state_key, self.state.resolved_student_name)
         return {
@@ -266,6 +268,8 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
     def handle_student_focus_repair(self) -> dict[str, Any]:
         answer = ProtectedPilotAnswer(answer_text=_student_focus_backstop(self.state.message, self._student) or '')
         judge = ProtectedPilotJudge(valid=True, reason='student_focus_repair_handled_deterministically', revision_needed=False)
+        if self.state.resolved_student_name:
+            self.state.active_student_name = self.state.resolved_student_name
         if self._state_key:
             _store_recent_student_name(self._state_key, self.state.resolved_student_name)
         return {
