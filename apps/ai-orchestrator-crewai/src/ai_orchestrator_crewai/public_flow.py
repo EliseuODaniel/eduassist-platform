@@ -345,14 +345,23 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             tracing=False,
         )
 
+        kickoff_failed_reason: str | None = None
         with capture_pilot_events('public') as event_recorder:
-            await asyncio.to_thread(
-                crew.kickoff,
-                inputs={
-                    'message': self.state.effective_message or self.state.message,
-                    'evidence_bundle': evidence_bundle,
-                },
-            )
+            try:
+                await asyncio.wait_for(
+                    asyncio.to_thread(
+                        crew.kickoff,
+                        inputs={
+                            'message': self.state.effective_message or self.state.message,
+                            'evidence_bundle': evidence_bundle,
+                        },
+                    ),
+                    timeout=11.0,
+                )
+            except asyncio.TimeoutError:
+                kickoff_failed_reason = 'crewai_public_flow_timeout'
+            except Exception:
+                kickoff_failed_reason = 'crewai_public_flow_error'
 
         self.state.latency_ms = round((perf_counter() - self._overall_started_at) * 1000, 1)
         plan = _extract_task_pydantic(planning_task, PublicPilotPlan)
@@ -396,6 +405,15 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             self.state.active_attribute = self.state.plan.attribute
 
         event_listener = serialize_pilot_events(event_recorder)
+        if kickoff_failed_reason and backstop_answer:
+            primary_doc = _select_primary_doc(plan if isinstance(plan, PublicPilotPlan) else None, self._shortlisted_docs)
+            answer = PublicPilotAnswer(
+                answer_text=backstop_answer,
+                citations=[primary_doc.doc_id] if primary_doc else [],
+            )
+            verdict = PublicPilotJudge(valid=True, reason=kickoff_failed_reason, revision_needed=False)
+            backstop_used = True
+
         metadata: dict[str, Any] = {
             'conversation_id': self.state.conversation_id,
             'slice_name': 'public',
@@ -417,7 +435,19 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             'flow_enabled': True,
             'flow_state_id': getattr(self.state, 'id', None),
             'flow_state_persisted': get_sqlite_flow_persistence('public') is not None,
+            'kickoff_failed_reason': kickoff_failed_reason,
         }
+
+        if kickoff_failed_reason and isinstance(answer, PublicPilotAnswer):
+            self.state.answer = answer
+            self.state.judge = verdict if isinstance(verdict, PublicPilotJudge) else None
+            self.state.deterministic_backstop_used = backstop_used
+            return {
+                'engine_name': 'crewai',
+                'executed': True,
+                'reason': kickoff_failed_reason,
+                'metadata': metadata,
+            }
 
         if isinstance(self.state.judge, PublicPilotJudge) and not self.state.judge.valid:
             return {

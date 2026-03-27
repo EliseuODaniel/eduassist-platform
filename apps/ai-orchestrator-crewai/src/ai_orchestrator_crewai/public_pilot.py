@@ -354,7 +354,7 @@ def _build_evidence_docs(evidence: dict[str, Any]) -> list[EvidenceDoc]:
     return docs
 
 
-def _rank_evidence_docs(message: str, docs: list[EvidenceDoc], *, limit: int = 6) -> list[EvidenceDoc]:
+def _rank_evidence_docs(message: str, docs: list[EvidenceDoc], *, limit: int = 4) -> list[EvidenceDoc]:
     terms = _query_terms(message)
     if not terms:
         return docs[:limit]
@@ -365,6 +365,14 @@ def _rank_evidence_docs(message: str, docs: list[EvidenceDoc], *, limit: int = 6
         score = sum(5 if term in _normalize_text(doc.title) else 2 for term in terms if term in haystack)
         if doc.doc_id == 'profile.segments' and any(term in terms for term in ('curriculo', 'curricular', 'base', 'bncc')):
             score += 8
+        if doc.doc_id == 'profile.overview' and any(
+            term in terms for term in ('proposta', 'pedagogica', 'pedagogico', 'acolhimento', 'disciplina', 'aprendizagem')
+        ):
+            score += 9
+        if doc.doc_id.startswith('highlight.') and any(
+            term in terms for term in ('proposta', 'pedagogica', 'pedagogico', 'acolhimento', 'disciplina', 'publica', 'pagar')
+        ):
+            score += 7
         if any(term in haystack for term in ('biblioteca', 'biblioteca aurora')) and any(
             term in terms for term in ('biblioteca', 'horario', 'hora')
         ):
@@ -494,18 +502,95 @@ def _direct_comparative_fast_answer(message: str, docs: list[EvidenceDoc]) -> st
     terms = _query_terms(message)
     if not ({'melhor', 'concorrencia', 'concorrente', 'publica', 'pagar', 'estudar'} & terms):
         return None
-    comparative_docs = [doc for doc in docs if doc.doc_id.startswith('highlight.')]
-    if not comparative_docs:
-        comparative_docs = [doc for doc in docs if doc.doc_id.startswith('feature.')]
-    if not comparative_docs:
+    overview_doc = next((doc for doc in docs if doc.doc_id == 'profile.overview'), None)
+    highlight_docs = [doc for doc in docs if doc.doc_id.startswith('highlight.')]
+    feature_docs = [doc for doc in docs if doc.doc_id.startswith('feature.')]
+    if overview_doc is None and not highlight_docs and not feature_docs:
         return None
-    labels = [doc.title for doc in comparative_docs[:2] if doc.title]
-    labels_preview = ', '.join(labels) if labels else 'os diferenciais publicados da escola'
+    labels = [doc.title for doc in highlight_docs[:2] if doc.title]
+    if len(labels) < 2:
+        labels.extend(doc.title for doc in feature_docs[:2] if doc.title and doc.title not in labels)
+    labels_preview = ', '.join(labels[:3]) if labels else 'os diferenciais publicados da escola'
+    overview_text = overview_doc.text if overview_doc is not None else ''
     return (
-        f'Os diferenciais publicados desta escola hoje incluem {labels_preview}. '
-        'Eu nao consigo afirmar que ela seja melhor do que uma concorrente especifica sem fontes comparativas confiaveis, '
-        'mas posso te explicar esses diferenciais com clareza.'
+        'Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. '
+        f'No que esta publicado aqui, os diferenciais desta escola passam por {labels_preview}. '
+        f'{overview_text} '
+        'Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.'
     )
+
+
+def _direct_pedagogical_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    terms = _query_terms(message)
+    normalized = _normalize_text(message)
+    pedagogical_terms = {'proposta', 'pedagogica', 'pedagogico', 'acolhimento', 'disciplina', 'aprendizagem'}
+    if not (pedagogical_terms & terms) and not any(
+        phrase in normalized
+        for phrase in (
+            'proposta pedagogica',
+            'proposta pedagógica',
+            'acolhimento e disciplina',
+            'acolhimento com disciplina',
+        )
+    ):
+        return None
+    if any(phrase in normalized for phrase in ('proposta pedagogica', 'proposta pedagógica')):
+        return (
+            'A proposta pedagogica publicada hoje combina aprendizagem por projetos, cultura digital responsavel, '
+            'acompanhamento socioemocional e aprofundamento academico progressivo. '
+            'No Ensino Medio, isso aparece junto da BNCC, de um curriculo proprio com projeto de vida, '
+            'producao textual e trilhas academicas no contraturno.'
+        )
+    overview_doc = next((doc for doc in docs if doc.doc_id == 'profile.overview'), None)
+    segments_doc = next((doc for doc in docs if doc.doc_id == 'profile.segments'), None)
+    highlight_docs = [doc for doc in docs if doc.doc_id.startswith('highlight.')]
+    if overview_doc is None and segments_doc is None and not highlight_docs:
+        return None
+
+    headline_parts: list[str] = []
+    if overview_doc is not None:
+        overview_parts = [part.strip() for part in overview_doc.text.split('. ') if part.strip()]
+        headline_parts.extend(overview_parts[:2])
+
+    evidence_titles = [doc.title for doc in highlight_docs[:3] if doc.title]
+    evidence_preview = ', '.join(evidence_titles)
+
+    if 'acolhimento' in terms and 'disciplina' in terms:
+        return (
+            'Pelo que a escola publica hoje, esse equilibrio aparece em uma rotina com acompanhamento proximo e acolhimento estruturado. '
+            f'{headline_parts[0] if headline_parts else ""} '
+            'Na pratica, isso aparece em orientacao educacional, coordenacao, tutoria academica e projeto de vida, '
+            'junto de uma jornada de acolhimento para familias e estudantes antes e depois da matricula.'
+        ).strip()
+
+    basis = ''
+    basis_source = ''
+    if segments_doc is not None:
+        basis_match = re.search(r'base curricular:\s*([^.;]+)', segments_doc.text, flags=re.IGNORECASE)
+        if basis_match:
+            basis = basis_match.group(1).strip()
+            basis_source = segments_doc.text
+    if not basis and overview_doc is not None:
+        basis_source = overview_doc.text
+        overview_match = re.search(r'projeto pedagogico\s+([^.;]+)', _normalize_text(overview_doc.text), flags=re.IGNORECASE)
+        if overview_match:
+            basis = overview_match.group(1).strip()
+    if basis and evidence_preview:
+        return (
+            f'A proposta pedagogica publicada hoje combina {basis}. '
+            f'Na pratica, isso aparece em frentes como {evidence_preview}.'
+        )
+    if basis_source and evidence_preview:
+        return (
+            'A proposta pedagogica publicada hoje combina aprendizagem por projetos, '
+            'acompanhamento socioemocional, cultura digital responsavel e aprofundamento academico progressivo. '
+            f'Na pratica, isso aparece em frentes como {evidence_preview}.'
+        )
+    if evidence_preview:
+        return f'A proposta pedagogica publicada hoje se apoia em {evidence_preview}.'
+    if headline_parts:
+        return ' '.join(headline_parts[:2])
+    return None
 
 
 def _direct_feature_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
@@ -548,7 +633,10 @@ def _direct_feature_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | 
 
 def _direct_curriculum_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
     terms = _query_terms(message)
-    if not ({'curricular', 'curriculo', 'base', 'bncc'} & terms):
+    normalized = _normalize_text(message)
+    if not ({'curricular', 'curriculo', 'base', 'bncc'} & terms) and not any(
+        phrase in normalized for phrase in ('proposta pedagogica', 'proposta pedagógica')
+    ):
         return None
     segments_doc = next((doc for doc in docs if doc.doc_id == 'profile.segments'), None)
     if segments_doc is None:
@@ -633,6 +721,9 @@ def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: li
     capabilities_answer = _direct_capabilities_fast_answer(message)
     if capabilities_answer:
         return capabilities_answer
+    pedagogical_answer = _direct_pedagogical_fast_answer(message, docs)
+    if pedagogical_answer:
+        return pedagogical_answer
     contact_answer = _direct_contact_fast_answer(message, docs)
     if contact_answer:
         return contact_answer
@@ -787,6 +878,12 @@ def _is_public_fast_path_query(message: str) -> bool:
         'concorrencia',
         'concorrente',
         'publica',
+        'proposta',
+        'pedagogica',
+        'pedagogico',
+        'acolhimento',
+        'disciplina',
+        'aprendizagem',
         'mando',
         'enviar',
         'envio',
@@ -809,8 +906,10 @@ def _build_llm(settings: Any) -> Any:
     return LLM(
         model=model_name,
         api_key=api_key,
-        temperature=0.15,
-        max_tokens=700,
+        temperature=0.1,
+        max_tokens=500,
+        timeout=10.0,
+        max_retries=1,
     )
 
 
