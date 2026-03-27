@@ -199,6 +199,11 @@ PUBLIC_CURRICULUM_TERMS = {
     'base curricular',
     'curriculo',
     'currículo',
+    'proposta pedagogica',
+    'proposta pedagógica',
+    'projeto pedagogico',
+    'projeto pedagógico',
+    'aprendizagem por projetos',
     'componentes curriculares',
     'componente curricular',
     'materias do ensino medio',
@@ -773,6 +778,11 @@ def _is_public_comparative_query(message: str) -> bool:
 def _is_public_curriculum_query(message: str) -> bool:
     lowered = _normalize_text(message)
     if any(_message_matches_term(lowered, term) for term in PUBLIC_CURRICULUM_TERMS):
+        return True
+    if _message_matches_term(lowered, 'acolhimento') and any(
+        _message_matches_term(lowered, term)
+        for term in {'disciplina', 'disciplinas', 'convivencia', 'convivência', 'aprendizagem', 'rotina'}
+    ):
         return True
     return any(_message_matches_term(lowered, term) for term in {'materia', 'materias', 'disciplina', 'disciplinas'}) and any(
         _message_matches_term(lowered, term)

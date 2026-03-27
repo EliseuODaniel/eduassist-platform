@@ -370,6 +370,18 @@ PUBLIC_HIGHLIGHT_TERMS = {
     'unica',
     'única',
 }
+PUBLIC_PEDAGOGICAL_TERMS = {
+    'proposta pedagogica',
+    'proposta pedagógica',
+    'projeto pedagogico',
+    'projeto pedagógico',
+    'aprendizagem por projetos',
+    'acolhimento',
+    'convivencia',
+    'convivência',
+    'aprendizagem',
+    'socioemocional',
+}
 PUBLIC_VISIT_TERMS = {
     'visita',
     'visitas',
@@ -2952,6 +2964,13 @@ def _is_public_curriculum_query(message: str) -> bool:
     normalized = _normalize_text(message)
     if any(_message_matches_term(normalized, term) for term in PUBLIC_CURRICULUM_TERMS):
         return True
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_PEDAGOGICAL_TERMS):
+        return True
+    if _message_matches_term(normalized, 'acolhimento') and any(
+        _message_matches_term(normalized, term)
+        for term in {'disciplina', 'disciplinas', 'convivencia', 'convivência', 'aprendizagem', 'rotina'}
+    ):
+        return True
     return any(_message_matches_term(normalized, term) for term in {'materia', 'materias', 'disciplina', 'disciplinas'}) and any(
         _message_matches_term(normalized, term)
         for term in {
@@ -3563,8 +3582,28 @@ def _try_public_channel_fast_answer(
     if not isinstance(profile, dict):
         return None
     normalized = _normalize_text(message)
-    if _is_positive_requirement_query(message):
+    if _is_positive_requirement_query(message) or (
+        any(_message_matches_term(normalized, term) for term in {'documento', 'documentos'})
+        and any(_message_matches_term(normalized, term) for term in {'matricula', 'matrícula', 'exigido', 'exigidos'})
+    ):
         return _compose_required_documents_answer(profile)
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {'proposta pedagogica', 'proposta pedagógica', 'projeto pedagogico', 'projeto pedagógico'}
+    ) or (
+        _message_matches_term(normalized, 'acolhimento')
+        and any(_message_matches_term(normalized, term) for term in {'disciplina', 'disciplinas', 'convivencia', 'convivência'})
+    ) or _is_public_curriculum_query(message):
+        pedagogical_answer = _compose_public_pedagogical_answer(profile, message)
+        if pedagogical_answer:
+            return pedagogical_answer
+    if _is_comparative_query(message) or (
+        _message_matches_term(normalized, 'publica')
+        and any(_message_matches_term(normalized, term) for term in {'pagar', 'pagando', 'estudar'})
+    ):
+        comparative_answer = _compose_public_comparative_answer(profile)
+        if comparative_answer:
+            return comparative_answer
     if _is_public_document_submission_query(message):
         return _compose_public_document_submission_answer(profile, message=message)
     if _message_matches_term(normalized, 'caixa postal'):
@@ -3596,6 +3635,76 @@ def _try_public_channel_fast_answer(
             )
         return 'Hoje a escola nao utiliza fax.'
     return None
+
+
+def _compose_public_pedagogical_answer(profile: dict[str, Any], message: str) -> str | None:
+    normalized = _normalize_text(message)
+    education_model = str(profile.get('education_model', '')).strip()
+    curriculum_basis = str(profile.get('curriculum_basis', '')).strip()
+    highlights = _public_highlights(profile)
+    highlight_titles = [str(item.get('title', '')).strip() for item in highlights if str(item.get('title', '')).strip()]
+    overview = str(profile.get('short_headline', '')).strip()
+    if any(
+        _message_matches_term(normalized, phrase)
+        for phrase in {'proposta pedagogica', 'proposta pedagógica', 'projeto pedagogico', 'projeto pedagógico'}
+    ):
+        parts: list[str] = []
+        if education_model:
+            parts.append(f'A proposta pedagogica publicada hoje combina {education_model}.')
+        if curriculum_basis:
+            parts.append(f'No Ensino Medio, isso aparece junto de {curriculum_basis}.')
+        if highlight_titles:
+            parts.append(
+                'Na pratica, isso aparece em frentes como {items}.'.format(
+                    items=', '.join(highlight_titles[:3])
+                )
+            )
+        return ' '.join(part for part in parts if part).strip() or None
+    if _message_matches_term(normalized, 'acolhimento') and any(
+        _message_matches_term(normalized, term)
+        for term in {'disciplina', 'disciplinas', 'convivencia', 'convivência', 'aprendizagem', 'rotina'}
+    ):
+        parts = [
+            'Pelo que a escola publica hoje, esse equilibrio aparece em uma rotina com acompanhamento proximo e acolhimento estruturado.'
+        ]
+        if overview:
+            parts.append(overview)
+        parts.append(
+            'Na pratica, isso aparece em orientacao educacional, coordenacao, tutoria academica e projeto de vida, junto de uma jornada de acolhimento para familias e estudantes antes e depois da matricula.'
+        )
+        return ' '.join(part for part in parts if part).strip()
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_PEDAGOGICAL_TERMS):
+        parts = []
+        if education_model:
+            parts.append(f'A proposta pedagogica publicada hoje combina {education_model}.')
+        if highlight_titles:
+            parts.append(
+                'Os diferenciais pedagogicos mais claros aqui passam por {items}.'.format(
+                    items=', '.join(highlight_titles[:3])
+                )
+            )
+        return ' '.join(part for part in parts if part).strip() or None
+    return None
+
+
+def _compose_public_comparative_answer(profile: dict[str, Any]) -> str:
+    highlights = _public_highlights(profile)
+    highlight_titles = [str(item.get('title', '')).strip() for item in highlights if str(item.get('title', '')).strip()]
+    education_model = str(profile.get('education_model', '')).strip()
+    headline = str(profile.get('short_headline', '')).strip()
+    labels_preview = ', '.join(highlight_titles[:3]) if highlight_titles else 'os diferenciais publicados da escola'
+    parts = [
+        'Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia.',
+        f'No que esta publicado aqui, os diferenciais desta escola passam por {labels_preview}.',
+    ]
+    if headline:
+        parts.append(headline)
+    if education_model:
+        parts.append(education_model)
+    parts.append(
+        'Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.'
+    )
+    return ' '.join(part for part in parts if part).strip()
 
 
 def _compose_concierge_greeting(
@@ -4584,7 +4693,7 @@ def _handle_public_social_presence(context: PublicProfileContext) -> str:
 
 
 def _handle_public_comparative(context: PublicProfileContext) -> str:
-    return _compose_comparative_gap_answer(context.profile)
+    return _compose_public_comparative_answer(context.profile)
 
 
 def _handle_public_contacts(context: PublicProfileContext) -> str:
@@ -4970,6 +5079,9 @@ def _handle_public_confessional(context: PublicProfileContext) -> str:
 
 
 def _handle_public_curriculum(context: PublicProfileContext) -> str:
+    pedagogical_answer = _compose_public_pedagogical_answer(context.profile, context.source_message)
+    if pedagogical_answer:
+        return pedagogical_answer
     requested_unpublished_segment = _requested_unpublished_public_segment(context)
     if requested_unpublished_segment:
         return _compose_public_segment_scope_gap(
@@ -5504,25 +5616,7 @@ def _compose_required_documents_answer(profile: dict[str, Any] | None = None) ->
 
 
 def _compose_comparative_gap_answer(profile: dict[str, Any] | None = None) -> str:
-    highlight_titles = [
-        str(item.get('title', '')).strip()
-        for item in _public_highlights(profile or {})
-        if isinstance(item, dict) and str(item.get('title', '')).strip()
-    ]
-    if highlight_titles:
-        examples = ', '.join(highlight_titles[:2])
-        return (
-            'Posso explicar os diferenciais documentados desta escola, como '
-            f'{examples}, mas a base publica atual nao sustenta uma comparacao justa com uma concorrente especifica '
-            'sem fontes comparativas confiaveis. Se quiser, eu posso resumir os pontos fortes documentados desta escola '
-            'ou fazer uma comparacao limitada se voce informar qual instituicao deseja considerar.'
-        )
-    return (
-        'Posso explicar os diferenciais documentados desta escola, mas a base publica atual nao sustenta uma '
-        'comparacao justa com uma concorrente especifica sem fontes comparativas confiaveis. '
-        'Se quiser, eu posso resumir os pontos fortes documentados desta escola ou fazer uma comparacao limitada '
-        'se voce informar qual instituicao deseja considerar.'
-    )
+    return _compose_public_comparative_answer(profile or {})
 
 
 def _extract_salient_terms(message: str) -> set[str]:
@@ -11010,6 +11104,32 @@ async def _compose_structured_tool_answer(
             plan=plan,
             school_profile=school_profile,
         )
+        should_prefer_deterministic_public_answer = (
+            _is_positive_requirement_query(request.message)
+            or _is_public_document_submission_query(request.message)
+            or plan.conversation_act in {'curriculum', 'comparative'}
+        )
+        if should_prefer_deterministic_public_answer and profile:
+            deterministic_public_answer = _compose_public_profile_answer(
+                profile,
+                analysis_message,
+                actor=actor,
+                original_message=request.message,
+                conversation_context=conversation_context,
+                semantic_plan=plan,
+            )
+            if deterministic_public_answer:
+                if public_plan_sink is not None:
+                    public_plan_sink['deterministic_text'] = deterministic_public_answer
+                return deterministic_public_answer
+        fast_public_channel_answer = _try_public_channel_fast_answer(
+            message=request.message,
+            profile=profile,
+        )
+        if fast_public_channel_answer:
+            if public_plan_sink is not None:
+                public_plan_sink['deterministic_text'] = fast_public_channel_answer
+            return fast_public_channel_answer
         slot_memory = _build_conversation_slot_memory(
             actor=actor,
             profile=profile,
