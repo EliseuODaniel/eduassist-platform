@@ -316,6 +316,10 @@ SUPPORT_PHRASES = {
     'ajuda humana',
     'me transfira',
     'me encaminhe',
+    'quero secretaria',
+    'quero financeiro',
+    'mudei de ideia, quero secretaria',
+    'mudei de ideia, quero financeiro',
 }
 ACKNOWLEDGEMENT_TERMS = {
     'obrigado',
@@ -402,6 +406,8 @@ VISIT_UPDATE_TERMS = {
     'cancelar a visita',
     'desmarcar visita',
     'desmarcar a visita',
+    'se eu precisar remarcar',
+    'e se eu precisar remarcar',
 }
 INSTITUTIONAL_REQUEST_TERMS = {
     'solicitacao a direcao',
@@ -425,12 +431,19 @@ INSTITUTIONAL_REQUEST_UPDATE_TERMS = {
     'adicionar ao protocolo',
     'incluir no protocolo',
     'complemente meu pedido',
+    'complementa dizendo que',
+    'complementar dizendo que',
+    'adiciona dizendo que',
+    'acrescenta dizendo que',
 }
 WORKFLOW_STATUS_TERMS = {
     'status',
     'andamento',
     'situacao',
     'situação',
+    'como esta',
+    'como está',
+    'como anda',
     'fila',
     'retorno',
     'atualizacao',
@@ -460,6 +473,8 @@ WORKFLOW_STATUS_OWNERSHIP_TERMS = {
     'essa solicitação',
     'esse pedido',
     'esse protocolo',
+    'esse atendimento',
+    'essa fila',
 }
 WORKFLOW_FOLLOW_UP_TERMS = {
     'e agora',
@@ -484,10 +499,15 @@ WORKFLOW_FOLLOW_UP_TERMS = {
     'quem fica com isso',
     'o que acontece agora',
     'qual o protocolo',
+    'me fala o protocolo',
     'me passa o protocolo',
     'meu protocolo',
     'resume meu pedido',
     'resuma meu pedido',
+    'resume pra mim',
+    'resuma pra mim',
+    'faz um resumo',
+    'me da um resumo',
     'o que eu pedi',
     'qual foi meu pedido',
 }
@@ -918,6 +938,8 @@ def _is_visit_booking_update_request(message: str) -> bool:
     reschedule_verbs = {'remarcar', 'reagendar', 'mudar', 'trocar'}
     cancel_verbs = {'cancelar', 'desmarcar'}
     visit_targets = {'visita', 'visita guiada', 'tour'}
+    if any(_message_matches_term(lowered, phrase) for phrase in {'se eu precisar remarcar', 'e se eu precisar remarcar'}):
+        return True
     return (_contains_any(lowered, reschedule_verbs) or _contains_any(lowered, cancel_verbs)) and _contains_any(
         lowered,
         visit_targets,
@@ -939,6 +961,8 @@ def _is_institutional_request_update(message: str) -> bool:
         return True
     update_verbs = {'complementar', 'completar', 'acrescentar', 'adicionar', 'incluir'}
     referents = {'pedido', 'solicitacao', 'solicitação', 'protocolo', 'requerimento'}
+    if any(_message_matches_term(lowered, phrase) for phrase in {'complementa dizendo que', 'complementar dizendo que', 'adiciona dizendo que', 'acrescenta dizendo que'}):
+        return True
     return _contains_any(lowered, update_verbs) and _contains_any(lowered, referents)
 
 

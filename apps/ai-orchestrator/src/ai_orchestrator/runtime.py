@@ -4,7 +4,7 @@ import base64
 import io
 import re
 import unicodedata
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 from time import monotonic
 from typing import Any, Callable
@@ -1038,6 +1038,14 @@ class ConversationContextBundle:
     recent_messages: list[dict[str, Any]]
     recent_tool_calls: list[dict[str, Any]]
     message_count: int
+
+
+@dataclass(frozen=True)
+class StructuredAnswerFrame:
+    lead: str
+    facts: tuple[str, ...] = ()
+    next_step: str | None = None
+    offer: str | None = None
 
 
 @dataclass(frozen=True)
@@ -4268,7 +4276,7 @@ def _compose_public_profile_answer_legacy(
             lines.extend(f'- {item}' for item in phone_lines)
             if _message_matches_term(normalized, 'fax'):
                 lines.append('- Fax: nao publicado')
-            return '\n'.join(lines)
+            return _render_structured_answer_lines(lines)
         if requested_channel == 'whatsapp':
             primary_whatsapp = _select_primary_contact_entry(
                 profile,
@@ -4286,7 +4294,7 @@ def _compose_public_profile_answer_legacy(
                 return f'O WhatsApp oficial de {school_reference} hoje e {whatsapp_lines[0]}.'
             lines = [f'Os canais de WhatsApp publicados por {school_reference} hoje sao:']
             lines.extend(f'- {item}' for item in whatsapp_lines)
-            return '\n'.join(lines)
+            return _render_structured_answer_lines(lines)
         if requested_channel == 'email':
             primary_email = _select_primary_contact_entry(
                 profile,
@@ -4304,7 +4312,7 @@ def _compose_public_profile_answer_legacy(
                 return f'O email institucional publicado de {school_reference} e {email_lines[0]}.'
             lines = [f'Os emails institucionais publicados de {school_reference} hoje sao:']
             lines.extend(f'- {item}' for item in email_lines)
-            return '\n'.join(lines)
+            return _render_structured_answer_lines(lines)
         lines = [f'Voce pode falar com {school_reference} por estes canais oficiais:']
         lines.extend(f'- {item}' for item in [*phone_lines, *whatsapp_lines, *email_lines])
         if _message_matches_term(normalized, 'fax'):
@@ -7640,6 +7648,8 @@ def _detect_visit_booking_action(message: str) -> str | None:
         return 'cancel'
     if any(_message_matches_term(normalized, term) for term in VISIT_RESCHEDULE_TERMS):
         return 'reschedule'
+    if any(_message_matches_term(normalized, phrase) for phrase in {'se eu precisar remarcar', 'e se eu precisar remarcar'}):
+        return 'reschedule'
     visit_targets = {'visita', 'visita guiada', 'tour'}
     if _contains_any(normalized, {'cancelar', 'desmarcar'}) and _contains_any(normalized, visit_targets):
         return 'cancel'
@@ -7655,6 +7665,8 @@ def _detect_institutional_request_action(message: str) -> str | None:
     normalized = _normalize_text(message)
     if any(_message_matches_term(normalized, term) for term in INSTITUTIONAL_REQUEST_UPDATE_TERMS):
         return 'append_note'
+    if any(_message_matches_term(normalized, phrase) for phrase in {'complementa dizendo que', 'complementar dizendo que', 'adiciona dizendo que', 'acrescenta dizendo que'}):
+        return 'append_note'
     if _contains_any(normalized, {'complementar', 'completar', 'acrescentar', 'adicionar', 'incluir'}) and _contains_any(
         normalized,
         {'pedido', 'solicitacao', 'solicitação', 'protocolo', 'requerimento'},
@@ -7668,6 +7680,7 @@ def _extract_institutional_request_update_details(message: str) -> str:
     patterns = (
         r'^(?:quero\s+)?(?:complementar|completar|acrescentar|adicionar|incluir)\s+(?:ao?\s+)?(?:meu\s+)?(?:pedido|protocolo|requerimento|solicitacao|solicitação)\s*(?:dizendo\s+que|informando\s+que|com|sobre)?\s*',
         r'^(?:complemente|acrescente|adicione)\s+(?:ao?\s+)?(?:meu\s+)?(?:pedido|protocolo|requerimento|solicitacao|solicitação)\s*(?:com|sobre)?\s*',
+        r'^(?:complementa|complementar|adiciona|acrescenta)\s+dizendo\s+que\s*',
     )
     details = compact
     for pattern in patterns:
@@ -7769,15 +7782,22 @@ async def _update_visit_booking(
         return None
     preferred_date = _extract_requested_date(request.message)
     preferred_window = _extract_requested_window(request.message)
-    if action == 'reschedule' and preferred_date is None and not preferred_window:
-        previous_date, previous_window = _recent_visit_slot(conversation_context)
-        preferred_date = previous_date or preferred_date
-        preferred_window = previous_window or preferred_window
+    protocol_code = _extract_protocol_code_hint(request.message, conversation_context)
+    if not protocol_code:
+        recent_snapshot = _workflow_snapshot_from_context(
+            conversation_context,
+            workflow_kind_hint='visit_booking',
+            protocol_code_hint=None,
+        )
+        if isinstance(recent_snapshot, dict):
+            item = recent_snapshot.get('item')
+            if isinstance(item, dict):
+                protocol_code = str(item.get('protocol_code', '') or '').strip() or None
     payload = {
         'conversation_external_id': conversation_external_id,
         'channel': request.channel.value,
         'telegram_chat_id': request.telegram_chat_id,
-        'protocol_code': _extract_protocol_code_hint(request.message, conversation_context),
+        'protocol_code': protocol_code,
         'action': action,
         'preferred_date': preferred_date.isoformat() if preferred_date else None,
         'preferred_window': preferred_window,
@@ -7834,11 +7854,22 @@ async def _update_institutional_request(
     action = _detect_institutional_request_action(request.message)
     if action is None:
         return None
+    protocol_code = _extract_protocol_code_hint(request.message, conversation_context)
+    if not protocol_code:
+        recent_snapshot = _workflow_snapshot_from_context(
+            conversation_context,
+            workflow_kind_hint='institutional_request',
+            protocol_code_hint=None,
+        )
+        if isinstance(recent_snapshot, dict):
+            item = recent_snapshot.get('item')
+            if isinstance(item, dict):
+                protocol_code = str(item.get('protocol_code', '') or '').strip() or None
     payload = {
         'conversation_external_id': conversation_external_id,
         'channel': request.channel.value,
         'telegram_chat_id': request.telegram_chat_id,
-        'protocol_code': _extract_protocol_code_hint(request.message, conversation_context),
+        'protocol_code': protocol_code,
         'action': action,
         'details': _extract_institutional_request_update_details(request.message),
     }
@@ -7855,15 +7886,19 @@ async def _update_institutional_request(
 def _compose_visit_booking_answer(response_payload: dict[str, Any] | None, school_profile: dict[str, Any] | None) -> str:
     school_name = str((school_profile or {}).get('school_name', 'Colegio Horizonte'))
     if not response_payload:
-        return (
-            f'Posso orientar sobre visitas ao {school_name}, mas nao consegui registrar o pedido agora. '
-            'Tente novamente em instantes ou use o canal de admissions.'
+        return _render_structured_answer_frame(
+            StructuredAnswerFrame(
+                lead=f'Posso orientar sobre visitas ao {school_name}, mas nao consegui registrar o pedido agora',
+                offer='Tente novamente em instantes ou use o canal de admissions',
+            )
         )
     item = response_payload.get('item')
     if not isinstance(item, dict):
-        return (
-            f'Registrei a intencao de visita ao {school_name}, mas nao consegui recuperar o protocolo agora. '
-            'Use admissions para confirmar o agendamento.'
+        return _render_structured_answer_frame(
+            StructuredAnswerFrame(
+                lead=f'Registrei a intencao de visita ao {school_name}, mas nao consegui recuperar o protocolo agora',
+                offer='Use admissions para confirmar o agendamento',
+            )
         )
     preferred_date = item.get('preferred_date')
     preferred_window = item.get('preferred_window')
@@ -7873,12 +7908,17 @@ def _compose_visit_booking_answer(response_payload: dict[str, Any] | None, schoo
     if preferred_window:
         slot_parts.append(str(preferred_window))
     slot = ' - '.join(slot_parts) if slot_parts else 'janela a confirmar'
-    return (
-        f"Pedido de visita registrado para o {school_name}. Protocolo: {item.get('protocol_code', 'indisponivel')}. "
-        f"Preferencia informada: {slot}. "
-        f"Fila responsavel: {item.get('queue_name', 'admissoes')}. "
-        f"Ticket operacional: {item.get('linked_ticket_code', 'a confirmar')}. "
-        'A equipe comercial valida a janela e retorna com a confirmacao.'
+    return _render_structured_answer_frame(
+        StructuredAnswerFrame(
+            lead=f'Pedido de visita registrado para o {school_name}',
+            facts=(
+                f"Protocolo: {item.get('protocol_code', 'indisponivel')}",
+                f'Preferencia informada: {slot}',
+                f"Fila responsavel: {item.get('queue_name', 'admissoes')}",
+                f"Ticket operacional: {item.get('linked_ticket_code', 'a confirmar')}",
+            ),
+            next_step='A equipe comercial valida a janela e retorna com a confirmacao',
+        )
     )
 
 
@@ -7888,15 +7928,19 @@ def _compose_visit_booking_action_answer(response_payload: dict[str, Any] | None
     preferred_window = _extract_requested_window(request_message)
 
     if action == 'reschedule' and preferred_date is None and not preferred_window:
-        return (
-            'Consigo remarcar a visita por aqui. Me diga pelo menos o novo dia ou a janela desejada, '
-            'por exemplo: "remarque para sexta de manha" ou "troque para 28/03 as 10h".'
+        return _render_structured_answer_frame(
+            StructuredAnswerFrame(
+                lead='Consigo remarcar a visita por aqui',
+                offer='Me diga pelo menos o novo dia ou a janela desejada, por exemplo: "remarque para sexta de manha" ou "troque para 28/03 as 10h"',
+            )
         )
 
     if not response_payload or not isinstance(response_payload, dict):
-        return (
-            'Nao consegui atualizar a visita agora. '
-            'Se quiser, me passe novamente o protocolo da visita ou o novo horario desejado.'
+        return _render_structured_answer_frame(
+            StructuredAnswerFrame(
+                lead='Nao consegui atualizar a visita agora',
+                offer='Se quiser, me passe novamente o protocolo da visita ou o novo horario desejado',
+            )
         )
 
     item = response_payload.get('item')
@@ -7909,46 +7953,58 @@ def _compose_visit_booking_action_answer(response_payload: dict[str, Any] | None
     slot_label = str(item.get('slot_label', '') or '').strip()
 
     if action == 'cancel':
-        lines = [
-            f'Visita cancelada no fluxo de {queue_name}.',
-            f'- Protocolo: {protocol_code}',
-        ]
+        facts = [f'Protocolo: {protocol_code}']
         if linked_ticket_code:
-            lines.append(f'- Ticket operacional: {linked_ticket_code}')
-        lines.append('Se quiser, eu tambem posso registrar um novo pedido de visita quando voce preferir.')
-        return '\n'.join(lines)
+            facts.append(f'Ticket operacional: {linked_ticket_code}')
+        return _render_structured_answer_frame(
+            StructuredAnswerFrame(
+                lead=f'Visita cancelada no fluxo de {queue_name}',
+                facts=tuple(facts),
+                offer='Se quiser, eu tambem posso registrar um novo pedido de visita quando voce preferir',
+            )
+        )
 
-    lines = [
-        f'Pedido de visita atualizado com a fila de {queue_name}.',
-        f'- Protocolo: {protocol_code}',
-    ]
+    facts = [f'Protocolo: {protocol_code}']
     if linked_ticket_code:
-        lines.append(f'- Ticket operacional: {linked_ticket_code}')
+        facts.append(f'Ticket operacional: {linked_ticket_code}')
     if slot_label:
-        lines.append(f'- Nova preferencia: {slot_label}')
-    lines.append('Proximo passo: admissions valida a nova janela e retorna com a confirmacao.')
-    return '\n'.join(lines)
+        facts.append(f'Nova preferencia: {slot_label}')
+    return _render_structured_answer_frame(
+        StructuredAnswerFrame(
+            lead=f'Pedido de visita atualizado com a fila de {queue_name}',
+            facts=tuple(facts),
+            next_step='Admissions valida a nova janela e retorna com a confirmacao',
+        )
+    )
 
 
 def _compose_institutional_request_answer(response_payload: dict[str, Any] | None) -> str:
     if not response_payload:
-        return (
-            'Posso orientar sobre protocolos institucionais, mas nao consegui registrar a solicitacao agora. '
-            'Tente novamente em instantes ou use a secretaria.'
+        return _render_structured_answer_frame(
+            StructuredAnswerFrame(
+                lead='Posso orientar sobre protocolos institucionais, mas nao consegui registrar a solicitacao agora',
+                offer='Tente novamente em instantes ou use a secretaria',
+            )
         )
     item = response_payload.get('item')
     if not isinstance(item, dict):
-        return (
-            'Registrei a manifestacao institucional, mas nao consegui recuperar o protocolo neste momento. '
-            'Use a secretaria ou a ouvidoria para confirmar.'
+        return _render_structured_answer_frame(
+            StructuredAnswerFrame(
+                lead='Registrei a manifestacao institucional, mas nao consegui recuperar o protocolo neste momento',
+                offer='Use a secretaria ou a ouvidoria para confirmar',
+            )
         )
-    return (
-        f"Solicitacao institucional registrada para {item.get('target_area', 'o setor responsavel')}. "
-        f"Protocolo: {item.get('protocol_code', 'indisponivel')}. "
-        f"Assunto: {item.get('subject', 'solicitacao institucional')}. "
-        f"Fila responsavel: {item.get('queue_name', 'atendimento')}. "
-        f"Ticket operacional: {item.get('linked_ticket_code', 'a confirmar')}. "
-        'A equipe faz a triagem inicial e segue o retorno pelo fluxo institucional.'
+    return _render_structured_answer_frame(
+        StructuredAnswerFrame(
+            lead=f"Solicitacao institucional registrada para {item.get('target_area', 'o setor responsavel')}",
+            facts=(
+                f"Protocolo: {item.get('protocol_code', 'indisponivel')}",
+                f"Assunto: {item.get('subject', 'solicitacao institucional')}",
+                f"Fila responsavel: {item.get('queue_name', 'atendimento')}",
+                f"Ticket operacional: {item.get('linked_ticket_code', 'a confirmar')}",
+            ),
+            next_step='A equipe faz a triagem inicial e segue o retorno pelo fluxo institucional',
+        )
     )
 
 
@@ -7959,15 +8015,19 @@ def _compose_institutional_request_action_answer(
 ) -> str:
     detail_text = _extract_institutional_request_update_details(request_message)
     if not detail_text:
-        return (
-            'Consigo complementar essa solicitacao por aqui. '
-            'Me diga o que precisa ser acrescentado ao protocolo e eu atualizo o pedido.'
+        return _render_structured_answer_frame(
+            StructuredAnswerFrame(
+                lead='Consigo complementar essa solicitacao por aqui',
+                offer='Me diga o que precisa ser acrescentado ao protocolo e eu atualizo o pedido',
+            )
         )
 
     if not response_payload or not isinstance(response_payload, dict):
-        return (
-            'Nao consegui complementar a solicitacao agora. '
-            'Se quiser, me passe novamente o protocolo ou reescreva o complemento em uma frase curta.'
+        return _render_structured_answer_frame(
+            StructuredAnswerFrame(
+                lead='Nao consegui complementar a solicitacao agora',
+                offer='Se quiser, me passe novamente o protocolo ou reescreva o complemento em uma frase curta',
+            )
         )
 
     item = response_payload.get('item')
@@ -7977,15 +8037,17 @@ def _compose_institutional_request_action_answer(
     protocol_code = str(item.get('protocol_code', 'indisponivel'))
     queue_name = _humanize_workflow_queue(item.get('queue_name'))
     linked_ticket_code = str(item.get('linked_ticket_code', '') or '').strip()
-    lines = [
-        f'Complemento registrado na fila de {queue_name}.',
-        f'- Protocolo: {protocol_code}',
-    ]
+    facts = [f'Protocolo: {protocol_code}']
     if linked_ticket_code:
-        lines.append(f'- Ticket operacional: {linked_ticket_code}')
-    lines.append(f'- Novo complemento: {detail_text}')
-    lines.append('Proximo passo: a equipe responsavel recebe essa atualizacao no mesmo fluxo do pedido.')
-    return '\n'.join(lines)
+        facts.append(f'Ticket operacional: {linked_ticket_code}')
+    facts.append(f'Novo complemento: {detail_text}')
+    return _render_structured_answer_frame(
+        StructuredAnswerFrame(
+            lead=f'Complemento registrado na fila de {queue_name}',
+            facts=tuple(facts),
+            next_step='A equipe responsavel recebe essa atualizacao no mesmo fluxo do pedido',
+        )
+    )
 
 
 def _humanize_workflow_status(status: str) -> str:
@@ -8018,6 +8080,128 @@ def _format_workflow_timestamp(value: Any) -> str | None:
     if target_date == current_date - timedelta(days=1):
         return f'ontem as {time_label}'
     return value.strftime('%d/%m/%Y as %H:%M')
+
+
+def _frame_sentence(text: str | None) -> str | None:
+    normalized = str(text or '').strip()
+    if not normalized:
+        return None
+    if normalized[-1] not in '.!?':
+        normalized = f'{normalized}.'
+    return normalized
+
+
+def _render_structured_answer_frame(frame: StructuredAnswerFrame) -> str:
+    parts: list[str] = []
+    lead = _frame_sentence(frame.lead)
+    if lead:
+        parts.append(lead)
+    for fact in frame.facts:
+        sentence = _frame_sentence(fact)
+        if sentence:
+            parts.append(sentence)
+    next_step = _frame_sentence(frame.next_step)
+    if next_step:
+        parts.append(next_step)
+    offer = _frame_sentence(frame.offer)
+    if offer:
+        parts.append(offer)
+    return ' '.join(parts).strip()
+
+
+def _render_structured_answer_lines(lines: list[str]) -> str:
+    if not lines:
+        return ''
+    lead = str(lines[0] or '').strip()
+    if lead.startswith('- '):
+        lead = lead[2:].strip()
+    facts: list[str] = []
+    next_step: str | None = None
+    offer: str | None = None
+    for raw in lines[1:]:
+        text = str(raw or '').strip()
+        if not text:
+            continue
+        if text.startswith('- '):
+            text = text[2:].strip()
+        normalized = _normalize_text(text)
+        if normalized.startswith('proximo passo:'):
+            next_step = text
+        elif normalized.startswith('se quiser'):
+            offer = text if offer is None else f'{offer} {text}'
+        else:
+            facts.append(text)
+    return _render_structured_answer_frame(
+        StructuredAnswerFrame(
+            lead=lead,
+            facts=tuple(facts),
+            next_step=next_step,
+            offer=offer,
+        )
+    )
+
+
+def _workflow_snapshot_from_context(
+    conversation_context: dict[str, Any] | None,
+    *,
+    workflow_kind_hint: str | None,
+    protocol_code_hint: str | None,
+) -> dict[str, Any] | None:
+    focus = _recent_trace_focus(conversation_context)
+    if not isinstance(focus, dict):
+        return None
+    focus_kind = str(focus.get('kind', '') or '').strip()
+    active_task = str(focus.get('active_task', '') or '').strip()
+    if not _recent_focus_is_fresh(conversation_context, focus_kind=focus_kind, active_task=active_task):
+        return None
+
+    expected_workflow_types: set[str] = set()
+    if workflow_kind_hint:
+        expected_workflow_types.add(str(workflow_kind_hint).strip())
+    elif focus_kind == 'visit':
+        expected_workflow_types.add('visit_booking')
+    elif focus_kind == 'request':
+        expected_workflow_types.add('institutional_request')
+    elif focus_kind == 'support':
+        expected_workflow_types.add('support_handoff')
+
+    for item in reversed(_recent_tool_call_entries(conversation_context)):
+        tool_name = str(item.get('tool_name', '') or '').strip()
+        if tool_name not in {
+            'get_workflow_status',
+            'schedule_school_visit',
+            'update_visit_booking',
+            'create_institutional_request',
+            'update_institutional_request',
+            'create_support_ticket',
+            'handoff_to_human',
+        }:
+            continue
+        response_payload = item.get('response_payload')
+        if not isinstance(response_payload, dict):
+            continue
+        snapshot = response_payload.get('item')
+        if not isinstance(snapshot, dict):
+            continue
+        normalized_snapshot = dict(snapshot)
+        if tool_name in {'schedule_school_visit', 'update_visit_booking'}:
+            normalized_snapshot.setdefault('workflow_type', 'visit_booking')
+        elif tool_name in {'create_institutional_request', 'update_institutional_request'}:
+            normalized_snapshot.setdefault('workflow_type', 'institutional_request')
+        elif tool_name in {'create_support_ticket', 'handoff_to_human'}:
+            normalized_snapshot.setdefault('workflow_type', 'support_handoff')
+            if not normalized_snapshot.get('protocol_code') and normalized_snapshot.get('ticket_code'):
+                normalized_snapshot['protocol_code'] = normalized_snapshot.get('ticket_code')
+            if not normalized_snapshot.get('linked_ticket_code') and normalized_snapshot.get('ticket_code'):
+                normalized_snapshot['linked_ticket_code'] = normalized_snapshot.get('ticket_code')
+        workflow_type = str(normalized_snapshot.get('workflow_type', '') or '').strip()
+        if expected_workflow_types and workflow_type not in expected_workflow_types:
+            continue
+        snapshot_protocol = str(normalized_snapshot.get('protocol_code', '') or '').strip()
+        if protocol_code_hint and snapshot_protocol and snapshot_protocol.upper() != str(protocol_code_hint).strip().upper():
+            continue
+        return {'found': True, 'item': normalized_snapshot}
+    return None
 
 
 def _compose_workflow_status_answer(
@@ -8118,7 +8302,7 @@ def _compose_workflow_status_answer(
             if slot_label:
                 lines.append(f'- Preferencia registrada: {slot_label}')
             lines.append('Se quiser, eu tambem posso te dizer o status, remarcar ou cancelar a visita.')
-            return '\n'.join(lines)
+            return _render_structured_answer_lines(lines)
         if asks_summary:
             lines = ['Resumo do seu pedido de visita:']
             if slot_label:
@@ -8169,7 +8353,7 @@ def _compose_workflow_status_answer(
             lines.append('Quem responde: a equipe comercial de admissions devolve a confirmacao por este fluxo.')
         else:
             lines.append('Proximo passo: a equipe comercial valida a janela e retorna com a confirmacao.')
-        return '\n'.join(lines)
+        return _render_structured_answer_lines(lines)
 
     if workflow_type == 'institutional_request':
         if asks_protocol_only:
@@ -8179,7 +8363,7 @@ def _compose_workflow_status_answer(
             if target_area:
                 lines.append(f'- Area responsavel: {target_area}')
             lines.append('Se quiser, eu tambem posso resumir o pedido ou verificar o status atual.')
-            return '\n'.join(lines)
+            return _render_structured_answer_lines(lines)
         if asks_summary:
             lines = ['Resumo da sua solicitacao institucional:']
             if subject:
@@ -8193,7 +8377,7 @@ def _compose_workflow_status_answer(
                 lines.append(f'- Ticket operacional: {linked_ticket_code}')
             lines.append(f'- Status atual: {status_label}')
             lines.append('Se quiser, eu tambem posso te dizer o prazo estimado ou quem responde por essa fila.')
-            return '\n'.join(lines)
+            return _render_structured_answer_lines(lines)
         if asks_update_explicitly:
             lines = [
                 f'A ultima atualizacao do seu protocolo mostra que ele segue {status_label}.',
@@ -8206,7 +8390,7 @@ def _compose_workflow_status_answer(
             if linked_ticket_code:
                 lines.append(f'- Ticket operacional: {linked_ticket_code}')
             lines.append(f'No momento, a fila de {queue_label} ainda precisa analisar o contexto antes do retorno.')
-            return '\n'.join(lines)
+            return _render_structured_answer_lines(lines)
         if asks_next_step:
             lines = [
                 f'Proximo passo do seu protocolo: a fila de {queue_label} analisa o contexto e prepara o retorno.',
@@ -8217,7 +8401,7 @@ def _compose_workflow_status_answer(
             if target_area:
                 lines.append(f'- Area responsavel: {target_area}')
             lines.append('Se quiser, eu tambem posso resumir o pedido ou registrar um complemento.')
-            return '\n'.join(lines)
+            return _render_structured_answer_lines(lines)
         lines = [
             f'Sua solicitacao institucional segue {status_label} na fila de {queue_label}.',
             f'- Protocolo: {protocol_code}',
@@ -8236,14 +8420,14 @@ def _compose_workflow_status_answer(
             lines.append(f'Quem responde: a equipe da fila de {queue_label} devolve o retorno pelo fluxo institucional.')
         else:
             lines.append('Proximo passo: a equipe responsavel analisa o contexto e devolve o retorno pelo fluxo institucional.')
-        return '\n'.join(lines)
+        return _render_structured_answer_lines(lines)
 
     if asks_protocol_only:
         lines = [f'O protocolo atual do seu atendimento e {protocol_code}.']
         if linked_ticket_code and linked_ticket_code != protocol_code:
             lines.append(f'- Ticket operacional: {linked_ticket_code}')
         lines.append('Se quiser, eu posso te dizer o status atual ou resumir o que ja foi registrado.')
-        return '\n'.join(lines)
+        return _render_structured_answer_lines(lines)
 
     if asks_summary:
         lines = ['Resumo do seu atendimento institucional:']
@@ -8254,7 +8438,7 @@ def _compose_workflow_status_answer(
             lines.append(f'- Ticket operacional: {linked_ticket_code}')
         lines.append(f'- Status atual: {status_label}')
         lines.append('Se quiser, eu tambem posso te orientar sobre o proximo passo.')
-        return '\n'.join(lines)
+        return _render_structured_answer_lines(lines)
 
     lines = [
         f'Seu atendimento segue {status_label} na fila de {queue_label}.',
@@ -8270,7 +8454,7 @@ def _compose_workflow_status_answer(
         lines.append('Prazo esperado: o retorno depende da fila atual, e eu posso te ajudar a identificar o proximo setor.')
     else:
         lines.append('Se quiser, eu tambem posso te orientar sobre o proximo setor ou resumir o que ja foi registrado.')
-    return '\n'.join(lines)
+    return _render_structured_answer_lines(lines)
 
 
 def _dedupe_suggested_replies(texts: list[str], *, limit: int = 4) -> list[MessageResponseSuggestedReply]:
@@ -8868,16 +9052,20 @@ async def _maybe_build_visual_assets(
 
 def _compose_handoff_answer(handoff_payload: dict[str, Any] | None) -> str:
     if not handoff_payload:
-        return (
-            'Posso seguir com orientacoes publicas por aqui, mas nao consegui registrar o '
-            'encaminhamento humano agora. Tente novamente em instantes ou use a secretaria.'
+        return _render_structured_answer_frame(
+            StructuredAnswerFrame(
+                lead='Posso seguir com orientacoes publicas por aqui, mas nao consegui registrar o encaminhamento humano agora',
+                offer='Tente novamente em instantes ou use a secretaria',
+            )
         )
 
     item = handoff_payload.get('item')
     if not isinstance(item, dict):
-        return (
-            'Registrei a necessidade de atendimento humano, mas nao consegui recuperar o protocolo. '
-            'Use a secretaria para confirmar a fila.'
+        return _render_structured_answer_frame(
+            StructuredAnswerFrame(
+                lead='Registrei a necessidade de atendimento humano, mas nao consegui recuperar o protocolo',
+                offer='Use a secretaria para confirmar a fila',
+            )
         )
 
     queue_name = str(item.get('queue_name', 'atendimento'))
@@ -8886,15 +9074,25 @@ def _compose_handoff_answer(handoff_payload: dict[str, Any] | None) -> str:
     created = bool(handoff_payload.get('created', False))
 
     if created:
-        return (
-            f'Encaminhei sua solicitacao para a fila de {queue_name}. '
-            f'Protocolo: {ticket_code}. Status atual: {status}. '
-            'A equipe humana podera continuar esse atendimento no portal operacional.'
+        return _render_structured_answer_frame(
+            StructuredAnswerFrame(
+                lead=f'Encaminhei sua solicitacao para a fila de {queue_name}',
+                facts=(
+                    f'Protocolo: {ticket_code}',
+                    f'Status atual: {status}',
+                ),
+                next_step='A equipe humana pode continuar esse atendimento no portal operacional',
+            )
         )
 
-    return (
-        f'Sua solicitacao ja estava registrada na fila de {queue_name}. '
-        f'Protocolo: {ticket_code}. Status atual: {status}.'
+    return _render_structured_answer_frame(
+        StructuredAnswerFrame(
+            lead=f'Sua solicitacao ja estava registrada na fila de {queue_name}',
+            facts=(
+                f'Protocolo: {ticket_code}',
+                f'Status atual: {status}',
+            ),
+        )
     )
 
 
@@ -11279,6 +11477,27 @@ async def _compose_structured_tool_answer(
                     'eduassist.workflow_manager.workflow_kind_hint': workflow_kind_hint,
                 }
             )
+            cached_workflow_payload = _workflow_snapshot_from_context(
+                conversation_context,
+                workflow_kind_hint=workflow_kind_hint,
+                protocol_code_hint=protocol_code_hint,
+            )
+            if isinstance(cached_workflow_payload, dict):
+                set_span_attributes(
+                    **{
+                        'eduassist.workflow_manager.cache_hit': True,
+                    }
+                )
+                return _compose_workflow_status_answer(
+                    cached_workflow_payload,
+                    protocol_code_hint=protocol_code_hint,
+                    request_message=request.message,
+                )
+            set_span_attributes(
+                **{
+                    'eduassist.workflow_manager.cache_hit': False,
+                }
+            )
             workflow_payload = await _fetch_internal_workflow_status(
                 settings=settings,
                 conversation_external_id=conversation_external_id,
@@ -11458,7 +11677,7 @@ def _should_polish_structured_answer(*, preview: Any, request: MessageResponseRe
     if request.channel.value not in {'telegram', 'web'}:
         return False
     if preview.classification.domain is QueryDomain.support:
-        return True
+        return False
     if (
         preview.classification.access_tier is AccessTier.public
         and preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar}
