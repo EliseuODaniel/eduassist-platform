@@ -15,6 +15,7 @@ from eduassist_observability import record_counter, record_histogram, set_span_a
 from PIL import Image, ImageDraw, ImageFont
 
 from .graph_rag_runtime import graph_rag_workspace_ready, run_graph_rag_query
+from .langgraph_trace import build_langgraph_trace_sections
 from .llm_provider import (
     compose_with_provider,
     compose_public_grounded_with_provider,
@@ -6196,7 +6197,12 @@ async def _persist_operational_trace(
             'required_tools': list(public_plan.required_tools),
         }
     if isinstance(langgraph_trace_metadata, dict) and langgraph_trace_metadata:
-        trace_request_payload['langgraph'] = langgraph_trace_metadata
+        langgraph_trace_sections = build_langgraph_trace_sections(
+            langgraph_trace_metadata,
+            graph_path=list(getattr(preview, 'graph_path', []) or []),
+        )
+        if langgraph_trace_sections.get('request'):
+            trace_request_payload['langgraph'] = langgraph_trace_sections['request']
     if engine_name == 'crewai':
         crewai_trace_sections = build_crewai_trace_sections(engine_trace_metadata)
         if crewai_trace_sections.get('request'):
@@ -6213,6 +6219,13 @@ async def _persist_operational_trace(
         'deterministic_fallback_available': deterministic_fallback_available,
         'answer_verifier_judge_used': answer_verifier_judge_used,
     }
+    if isinstance(langgraph_trace_metadata, dict) and langgraph_trace_metadata:
+        langgraph_trace_sections = build_langgraph_trace_sections(
+            langgraph_trace_metadata,
+            graph_path=list(getattr(preview, 'graph_path', []) or []),
+        )
+        if langgraph_trace_sections.get('response'):
+            trace_response_payload['langgraph'] = langgraph_trace_sections['response']
     if engine_name == 'crewai':
         crewai_trace_sections = build_crewai_trace_sections(engine_trace_metadata)
         if crewai_trace_sections.get('response'):

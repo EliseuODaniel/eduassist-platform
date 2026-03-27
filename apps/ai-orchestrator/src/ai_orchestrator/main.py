@@ -79,6 +79,11 @@ class Settings(BaseSettings):
     orchestrator_experiment_telegram_chat_allowlist: str = ''
     orchestrator_experiment_conversation_allowlist: str = ''
     orchestrator_experiment_allowlist_slices: str = ''
+    orchestrator_experiment_require_scorecard: bool = False
+    orchestrator_experiment_scorecard_path: str = '/workspace/artifacts/framework-native-scorecard.json'
+    orchestrator_experiment_min_primary_engine_score: int = 20
+    orchestrator_experiment_require_healthy_pilot: bool = False
+    orchestrator_experiment_health_ttl_seconds: int = 15
     langgraph_checkpointer_enabled: bool = True
     langgraph_checkpointer_url: str | None = None
     langgraph_checkpointer_schema: str = 'langgraph_checkpoint'
@@ -316,6 +321,10 @@ async def meta(
         'experimentRolloutPercent': settings.orchestrator_experiment_rollout_percent,
         'experimentSliceRollouts': settings.orchestrator_experiment_slice_rollouts,
         'experimentAllowlistSlices': settings.orchestrator_experiment_allowlist_slices,
+        'experimentRequireScorecard': settings.orchestrator_experiment_require_scorecard,
+        'experimentScorecardPath': settings.orchestrator_experiment_scorecard_path,
+        'experimentMinPrimaryEngineScore': settings.orchestrator_experiment_min_primary_engine_score,
+        'experimentRequireHealthyPilot': settings.orchestrator_experiment_require_healthy_pilot,
         'provider': settings.llm_provider,
         'openaiModel': settings.openai_model,
         'googleModel': settings.google_model,
@@ -346,6 +355,10 @@ async def status() -> dict[str, object]:
         'experimentRolloutPercent': settings.orchestrator_experiment_rollout_percent,
         'experimentSliceRollouts': settings.orchestrator_experiment_slice_rollouts,
         'experimentAllowlistSlices': settings.orchestrator_experiment_allowlist_slices,
+        'experimentRequireScorecard': settings.orchestrator_experiment_require_scorecard,
+        'experimentScorecardPath': settings.orchestrator_experiment_scorecard_path,
+        'experimentMinPrimaryEngineScore': settings.orchestrator_experiment_min_primary_engine_score,
+        'experimentRequireHealthyPilot': settings.orchestrator_experiment_require_healthy_pilot,
         'llmProvider': settings.llm_provider,
         'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
         'capabilities': [

@@ -65,13 +65,12 @@ What is strong today:
 - `planner -> composer -> judge`
 - `output_pydantic`
 - event listeners
-- persisted `Flow` state in `public` and `protected`
+- persisted `Flow` state in `public`, `protected`, `support`, and `workflow`
 
 Main gap versus top-line CrewAI usage:
 
 - guardrails rely more on judge plus deterministic backstop than on stable CrewAI-native task guardrails
 - support/workflow still lean heavily on deterministic handlers
-- support/workflow do not persist their `Flow` state yet
 - conversation affinity and longer-lived state still live partly outside the CrewAI side
 - service logs still include CrewAI Flow console panels even though the interactive trace prompt is now suppressed
 
@@ -83,14 +82,17 @@ Validated in this round:
 - LangGraph now exposes native HITL review paths for the `support` slice and for low-risk `protected` reads through internal review/state/resume endpoints backed by the checkpointer.
 - LangGraph checkpointer serializer compatibility is now fixed for the current typed checkpoint payloads; native snapshot reads are working again through the Postgres checkpointer.
 - LangGraph runtime no longer tries to bootstrap the checkpoint schema on startup; schema ownership stays in the database init/migration layer, which removes a recurring privilege warning from service logs.
-- CrewAI now persists `Flow` state for `public` and `protected` through SQLite.
+- CrewAI now persists `Flow` state for `public`, `protected`, `support`, and `workflow` through SQLite.
 - LangGraph now delegates through slice subgraphs for `public`, `protected`, and `support`.
 - CrewAI now emits per-task event telemetry with task, agent, crew, and timing summaries on agentic paths.
 - CrewAI no longer blocks on the interactive tracing prompt during service requests.
 - CrewAI pilot metadata now bridges into the main orchestrator trace surface, so `orchestration.trace` and `orchestration.shadow` can carry normalized `crewai` request/response telemetry when that engine is exercised.
-- Restart/recovery durability is now benchmarked with a versioned dataset and report, and the current run passed `3/3` cases across LangGraph protected HITL plus CrewAI public/protected Flow continuity.
-- Crash/recovery durability is now benchmarked separately with hard `kill/start`, and the current run also passed `3/3`.
-- A framework-native durability/debug scorecard now exists to compare persistence, HITL/recovery, trace richness, and operator ergonomics side by side.
+- Restart/recovery durability is now benchmarked with a versioned dataset and report, and the current run passed `5/5` cases across LangGraph protected HITL plus CrewAI public/protected/support/workflow Flow continuity.
+- Crash/recovery durability is now benchmarked separately with hard `kill/start`, and the current run also passed `5/5`.
+- Canonical traces now expose normalized per-run timelines for both frameworks:
+  - LangGraph via `langgraph.timeline`
+  - CrewAI via `crewai.timeline`
+- A framework-native durability/debug scorecard now exists in both docs and a runtime-readable artifact, so canary promotion can be gated by scorecard plus pilot health instead of only static config.
 
 Concrete local evidence:
 
@@ -100,21 +102,26 @@ Concrete local evidence:
   - `langgraphThreadIdEnabled = true`
 - `langgraph_checkpoint.checkpoints` already contains checkpoints for `conversation:topline-public-1`
 - `GET /v1/internal/hitl/review` can pause a `support` handoff, and `GET /v1/internal/hitl/state` plus `POST /v1/internal/hitl/resume` can inspect and continue the paused thread
-- `/workspace/artifacts/crewai-flow-state/public.sqlite3` and `protected.sqlite3` exist in the CrewAI pilot container
-- both CrewAI SQLite databases already contain persisted `flow_states`
+- `/workspace/artifacts/crewai-flow-state/public.sqlite3`, `protected.sqlite3`, `support.sqlite3`, and `workflow.sqlite3` exist in the CrewAI pilot container
+- all four CrewAI SQLite databases already contain persisted `flow_states`
 - public graph paths now include `select_slice -> public_slice`
 - protected graph paths now include `select_slice -> protected_slice`
 - support graph paths now include `select_slice -> support_slice`
+- workflow graph paths now include `select_slice -> workflow_slice`
 - `event_summary` and `task_trace` now appear in agentic CrewAI responses for `public` and `protected`
+- both frameworks now persist normalized trace timelines for direct comparison:
+  - `response_payload.langgraph.timeline_kind = langgraph_node_path`
+  - `response_payload.crewai.timeline_kind = crewai_stage_task_path`
 - the latest [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md) shows:
   - LangGraph protected HITL can survive restart and resume the exact review thread
-  - CrewAI `public` and `protected` Flow follow-ups survive restart with stable `flow_state_id`
+  - CrewAI `public`, `protected`, `support`, and `workflow` Flow follow-ups survive restart with stable `flow_state_id`
 - the latest [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md) shows:
   - LangGraph protected HITL can survive hard process kill and still resume the same review thread
-  - CrewAI `public` and `protected` Flow continuity also survives hard process kill with stable `flow_state_id`
+  - CrewAI `public`, `protected`, `support`, and `workflow` Flow continuity also survives hard process kill with stable `flow_state_id`
 - the latest [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md) currently scores:
   - `LangGraph`: `24/25`
   - `CrewAI`: `22/25`
+- the runtime-readable scorecard artifact now lives at `/workspace/artifacts/framework-native-scorecard.json` inside the orchestrator container
 
 ## Upgrade Principles
 
@@ -223,7 +230,7 @@ Status:
 
 ## Phase 2: CrewAI To Strong Native Production Shape
 
-### 1. Persist Flow state for public and protected
+### 1. Persist Flow state for public, protected, support, and workflow
 
 Target:
 
@@ -236,7 +243,7 @@ Why:
 
 Success criteria:
 
-- public/protected follow-ups can recover flow state across restarts
+- public/protected/support/workflow follow-ups can recover flow state across restarts
 - replay can confirm stable state continuation
 
 Status:

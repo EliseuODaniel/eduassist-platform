@@ -21,6 +21,11 @@ Environment variables in `ai-orchestrator`:
 - `ORCHESTRATOR_EXPERIMENT_TELEGRAM_CHAT_ALLOWLIST`
 - `ORCHESTRATOR_EXPERIMENT_CONVERSATION_ALLOWLIST`
 - `ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES`
+- `ORCHESTRATOR_EXPERIMENT_REQUIRE_SCORECARD`
+- `ORCHESTRATOR_EXPERIMENT_SCORECARD_PATH`
+- `ORCHESTRATOR_EXPERIMENT_MIN_PRIMARY_ENGINE_SCORE`
+- `ORCHESTRATOR_EXPERIMENT_REQUIRE_HEALTHY_PILOT`
+- `ORCHESTRATOR_EXPERIMENT_HEALTH_TTL_SECONDS`
 
 The runtime exposes these flags in:
 
@@ -37,6 +42,7 @@ The runtime exposes these flags in:
 - rollout is deterministic by hashed conversation bucket
 - conversation affinity can keep follow-up turns in the same experiment slice for `support` and `workflow`
 - per-slice rollout overrides can be applied through `ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS`
+- when enabled, a scorecard artifact and a healthy CrewAI pilot can be required before the selector routes traffic
 
 ## Recommended First Canary
 
@@ -63,6 +69,11 @@ ORCHESTRATOR_EXPERIMENT_ROLLOUT_PERCENT=0
 ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS=support:100,public:1
 ORCHESTRATOR_EXPERIMENT_TELEGRAM_CHAT_ALLOWLIST=1649845499
 ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES=support
+ORCHESTRATOR_EXPERIMENT_REQUIRE_SCORECARD=true
+ORCHESTRATOR_EXPERIMENT_SCORECARD_PATH=/workspace/artifacts/framework-native-scorecard.json
+ORCHESTRATOR_EXPERIMENT_MIN_PRIMARY_ENGINE_SCORE=20
+ORCHESTRATOR_EXPERIMENT_REQUIRE_HEALTHY_PILOT=true
+ORCHESTRATOR_EXPERIMENT_HEALTH_TTL_SECONDS=15
 ```
 
 ## Operational Reading
@@ -113,3 +124,26 @@ Reason:
 - even so, `protected` carries the highest sensitivity because it handles identity, grades, documentation, and finance
 - before any protected canary, we still want a dedicated live gate with stricter review of auth, student focus, and leakage risk
 - until that gate is explicitly opened, canary scope stays limited to `support`, `public`, and `workflow`
+
+## Scorecard-Backed Promotion Gate
+
+The selector can now read a runtime-visible scorecard artifact and combine it with pilot health.
+
+Current recommended canary slices from the scorecard:
+
+- `support`
+- `workflow`
+- `public`
+
+Current blocked slice from the scorecard:
+
+- `protected`
+
+Artifacts:
+
+- [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md)
+- [framework-native-scorecard.json](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.json)
+
+Runtime default path:
+
+- `/workspace/artifacts/framework-native-scorecard.json`

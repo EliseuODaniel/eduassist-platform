@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from collections import OrderedDict
 import hashlib
+import json
 import logging
 from time import monotonic
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 from .engines.base import ResponseEngine, ShadowRunResult
 from .engines.crewai_engine import CrewAIEngine, infer_request_slice
@@ -16,6 +20,7 @@ logger = logging.getLogger(__name__)
 _EXPERIMENT_AFFINITY: OrderedDict[str, dict[str, Any]] = OrderedDict()
 _EXPERIMENT_AFFINITY_LIMIT = 2048
 _EXPERIMENT_AFFINITY_TTL_SECONDS = 60 * 60 * 6
+_PILOT_HEALTH_CACHE: dict[str, Any] = {'timestamp': 0.0, 'ready': None}
 
 
 @dataclass(frozen=True)
@@ -123,6 +128,94 @@ def _rollout_percent_for_slice(*, settings: Any, slice_name: str) -> int:
     if slice_name in per_slice:
         return per_slice[slice_name]
     return max(0, min(100, int(getattr(settings, 'orchestrator_experiment_rollout_percent', 0) or 0)))
+
+
+def _load_scorecard(settings: Any) -> dict[str, Any] | None:
+    configured_path = str(getattr(settings, 'orchestrator_experiment_scorecard_path', '') or '').strip()
+    candidate_paths: list[Path] = []
+    if configured_path:
+        candidate_paths.append(Path(configured_path))
+    for fallback in (
+        '/workspace/artifacts/framework-native-scorecard.json',
+        '/workspace/docs/architecture/framework-native-scorecard.json',
+    ):
+        path = Path(fallback)
+        if path not in candidate_paths:
+            candidate_paths.append(path)
+
+    for scorecard_path in candidate_paths:
+        try:
+            if not scorecard_path.exists():
+                continue
+            payload = json.loads(scorecard_path.read_text(encoding='utf-8'))
+        except Exception:
+            logger.exception('experiment_scorecard_read_failed', extra={'scorecard_path': str(scorecard_path)})
+            continue
+        if isinstance(payload, dict):
+            return payload
+    return None
+
+
+def _slice_allowed_by_scorecard(*, settings: Any, slice_name: str, primary_engine: str) -> bool:
+    if not bool(getattr(settings, 'orchestrator_experiment_require_scorecard', False)):
+        return True
+    scorecard = _load_scorecard(settings)
+    if not isinstance(scorecard, dict):
+        return False
+    frameworks = scorecard.get('frameworks')
+    if not isinstance(frameworks, dict):
+        return False
+    primary_payload = frameworks.get(primary_engine)
+    if not isinstance(primary_payload, dict):
+        return False
+    total_score = int(primary_payload.get('total_score') or 0)
+    minimum_score = int(getattr(settings, 'orchestrator_experiment_min_primary_engine_score', 20) or 20)
+    if total_score < minimum_score:
+        return False
+    promotion_gate = scorecard.get('promotion_gate')
+    if isinstance(promotion_gate, dict):
+        engine_gate = promotion_gate.get(primary_engine)
+        if isinstance(engine_gate, dict):
+            if not bool(engine_gate.get('eligible', False)):
+                return False
+            recommended = engine_gate.get('recommended_canary_slices')
+            if isinstance(recommended, list) and recommended:
+                return slice_name in {str(item).strip() for item in recommended if str(item).strip()}
+    recommended = primary_payload.get('recommended_canary_slices')
+    if isinstance(recommended, list) and recommended:
+        return slice_name in {str(item).strip() for item in recommended if str(item).strip()}
+    return False
+
+
+def _pilot_ready(*, settings: Any) -> bool:
+    if not bool(getattr(settings, 'orchestrator_experiment_require_healthy_pilot', False)):
+        return True
+    pilot_url = str(getattr(settings, 'crewai_pilot_url', '') or '').strip()
+    if not pilot_url:
+        return False
+    ttl_seconds = max(1, int(getattr(settings, 'orchestrator_experiment_health_ttl_seconds', 15) or 15))
+    now = monotonic()
+    cached_ready = _PILOT_HEALTH_CACHE.get('ready')
+    cached_timestamp = float(_PILOT_HEALTH_CACHE.get('timestamp', 0.0) or 0.0)
+    if cached_ready is not None and now - cached_timestamp < ttl_seconds:
+        return bool(cached_ready)
+    request = Request(
+        f'{pilot_url.rstrip("/")}/v1/status',
+        headers={'X-Internal-Api-Token': str(getattr(settings, 'internal_api_token', '') or '')},
+    )
+    ready = False
+    try:
+        with urlopen(request, timeout=3.0) as response:
+            if response.status == 200:
+                payload = json.load(response)
+                ready = bool(isinstance(payload, dict) and payload.get('ready'))
+    except URLError:
+        ready = False
+    except Exception:
+        logger.exception('experiment_pilot_health_probe_failed')
+        ready = False
+    _PILOT_HEALTH_CACHE.update({'timestamp': now, 'ready': ready})
+    return ready
 
 
 def _should_reuse_affinity(*, request: Any, inferred_slice: str, affinity_slice: str) -> bool:
@@ -237,6 +330,14 @@ def _should_route_to_experiment(*, request: Any, settings: Any) -> tuple[bool, d
         'enrolled': enrolled,
         'selection_source': selection_source,
     }
+    if not _slice_allowed_by_scorecard(
+        settings=settings,
+        slice_name=slice_name,
+        primary_engine=str(metadata['engine']),
+    ):
+        return False, None
+    if not _pilot_ready(settings=settings):
+        return False, None
     if enrolled:
         _store_experiment_affinity(request=request, metadata=metadata)
     return enrolled, metadata

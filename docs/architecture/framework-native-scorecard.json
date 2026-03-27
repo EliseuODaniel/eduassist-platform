@@ -1,0 +1,76 @@
+{
+  "generated_at": "2026-03-27T13:56:19.008039+00:00",
+  "frameworks": {
+    "langgraph": {
+      "total_score": 24,
+      "max_score": 25,
+      "restart_recovery_passed": true,
+      "crash_recovery_passed": true,
+      "trace_sample": {
+        "thread_id": "conversation:scorecard-topline-langgraph-1",
+        "created_at": "2026-03-27T13:38:23.699812+00:00",
+        "next_nodes": [],
+        "task_names": [],
+        "hitl_status": null,
+        "state_route": "structured_tool",
+        "checkpoint_id": "1f129e23-9f67-6ae0-8005-890a0437d5c8",
+        "state_available": true,
+        "state_slice_name": "public",
+        "snapshot_metadata": {
+          "step": 5,
+          "source": "loop"
+        },
+        "checkpointer_backend": "postgres",
+        "checkpointer_enabled": true,
+        "task_interrupt_count": 0,
+        "has_pending_interrupt": false,
+        "top_level_interrupt_count": 0
+      }
+    },
+    "crewai": {
+      "total_score": 22,
+      "max_score": 25,
+      "restart_recovery_passed": true,
+      "crash_recovery_passed": true,
+      "trace_sample": {
+        "request": {
+          "slice_name": "support",
+          "flow_enabled": true,
+          "flow_state_id": "2cc869d9-85cf-405a-a336-d4ea317ea22f",
+          "validation_stack": [
+            "flow_router",
+            "deterministic_support"
+          ]
+        },
+        "response": {
+          "latency_ms": 60.7
+        }
+      },
+      "recommended_canary_slices": [
+        "public",
+        "support",
+        "workflow"
+      ],
+      "blocked_canary_slices": [
+        "protected"
+      ],
+      "blocked_reasons": {
+        "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+      }
+    }
+  },
+  "promotion_gate": {
+    "crewai": {
+      "eligible": true,
+      "minimum_score_for_canary": 20,
+      "recommended_canary_slices": [
+        "public",
+        "support",
+        "workflow"
+      ],
+      "blocked_canary_slices": [
+        "protected"
+      ]
+    }
+  }
+}

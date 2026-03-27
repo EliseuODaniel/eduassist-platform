@@ -16,6 +16,8 @@ if str(REPO_ROOT) not in sys.path:
 from tests.e2e._common import Settings, request
 
 OUTPUT_PATH = REPO_ROOT / 'docs/architecture/framework-native-scorecard.md'
+OUTPUT_JSON_PATH = REPO_ROOT / 'docs/architecture/framework-native-scorecard.json'
+ARTIFACT_JSON_PATH = REPO_ROOT / 'artifacts/framework-native-scorecard.json'
 RESTART_REPORT = REPO_ROOT / 'docs/architecture/framework-restart-recovery-report.md'
 CRASH_REPORT = REPO_ROOT / 'docs/architecture/framework-crash-recovery-report.md'
 
@@ -293,7 +295,48 @@ def main() -> int:
         '```',
     ]
     OUTPUT_PATH.write_text('\n'.join(output) + '\n', encoding='utf-8')
+    json_payload = {
+        'generated_at': datetime.now(UTC).isoformat(),
+        'frameworks': {
+            'langgraph': {
+                'total_score': langgraph_score,
+                'max_score': langgraph_max,
+                'restart_recovery_passed': langgraph_restart_ok,
+                'crash_recovery_passed': langgraph_crash_ok,
+                'trace_sample': langgraph_meta,
+            },
+            'crewai': {
+                'total_score': crewai_score,
+                'max_score': crewai_max,
+                'restart_recovery_passed': crewai_restart_ok,
+                'crash_recovery_passed': crewai_crash_ok,
+                'trace_sample': {
+                    'request': crewai_req_meta,
+                    'response': crewai_resp_meta,
+                },
+                'recommended_canary_slices': ['public', 'support', 'workflow'],
+                'blocked_canary_slices': ['protected'],
+                'blocked_reasons': {
+                    'protected': 'protected still trails LangGraph in operator-facing control primitives and should stay behind manual review.',
+                },
+            },
+        },
+        'promotion_gate': {
+            'crewai': {
+                'eligible': crewai_score >= 20 and crewai_restart_ok and crewai_crash_ok,
+                'minimum_score_for_canary': 20,
+                'recommended_canary_slices': ['public', 'support', 'workflow'],
+                'blocked_canary_slices': ['protected'],
+            }
+        },
+    }
+    scorecard_json = json.dumps(json_payload, ensure_ascii=False, indent=2) + '\n'
+    OUTPUT_JSON_PATH.write_text(scorecard_json, encoding='utf-8')
+    ARTIFACT_JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
+    ARTIFACT_JSON_PATH.write_text(scorecard_json, encoding='utf-8')
     print(OUTPUT_PATH)
+    print(OUTPUT_JSON_PATH)
+    print(ARTIFACT_JSON_PATH)
     return 0
 
 

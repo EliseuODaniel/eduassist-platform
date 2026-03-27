@@ -17,6 +17,39 @@ def _json_safe(value: Any) -> Any:
     return str(value)
 
 
+def _build_crewai_timeline(metadata: dict[str, Any]) -> list[dict[str, Any]]:
+    timeline: list[dict[str, Any]] = []
+    validation_stack = metadata.get('validation_stack')
+    if isinstance(validation_stack, list):
+        for index, step_name in enumerate(validation_stack, start=1):
+            normalized_name = str(step_name or '').strip()
+            if not normalized_name:
+                continue
+            timeline.append(
+                {
+                    'index': index,
+                    'kind': 'stage',
+                    'label': normalized_name,
+                }
+            )
+
+    task_names = metadata.get('task_names')
+    if isinstance(task_names, list):
+        base_index = len(timeline)
+        for offset, task_name in enumerate(task_names, start=1):
+            normalized_name = str(task_name or '').strip()
+            if not normalized_name:
+                continue
+            timeline.append(
+                {
+                    'index': base_index + offset,
+                    'kind': 'task',
+                    'label': normalized_name,
+                }
+            )
+    return timeline
+
+
 def build_crewai_trace_sections(metadata: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
     if not isinstance(metadata, dict):
         return {'request': {}, 'response': {}}
@@ -64,6 +97,13 @@ def build_crewai_trace_sections(metadata: dict[str, Any] | None) -> dict[str, di
         counts = event_listener.get('counts')
         if isinstance(counts, dict) and counts:
             response_section['event_counts'] = _json_safe(counts)
+
+    timeline = _build_crewai_timeline(metadata)
+    if timeline:
+        response_section['timeline'] = timeline
+        response_section['timeline_kind'] = 'crewai_stage_task_path'
+        response_section['terminal_stage'] = timeline[-1]['label']
+        response_section['stage_count'] = len(timeline)
 
     return {
         'request': request_section,
