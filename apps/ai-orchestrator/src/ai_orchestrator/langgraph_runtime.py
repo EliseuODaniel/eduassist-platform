@@ -6,7 +6,19 @@ import threading
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from langgraph.types import Command
+
 from .graph import build_orchestration_graph
+from .models import (
+    AccessTier,
+    IntentClassification,
+    OrchestrationMode,
+    OrchestrationRequest,
+    QueryDomain,
+    RetrievalBackend,
+    UserContext,
+    UserRole,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +34,16 @@ class LangGraphArtifacts:
 
 _ARTIFACTS_CACHE: dict[tuple[bool, bool, str], LangGraphArtifacts] = {}
 _ARTIFACTS_LOCK = threading.Lock()
+_CHECKPOINT_MSGPACK_ALLOWLIST: tuple[type[Any], ...] = (
+    UserRole,
+    QueryDomain,
+    AccessTier,
+    OrchestrationMode,
+    RetrievalBackend,
+    UserContext,
+    OrchestrationRequest,
+    IntentClassification,
+)
 
 
 def _normalize_postgres_conn_string(conn_string: str | None) -> str | None:
@@ -72,6 +94,21 @@ def _graph_cache_key(settings: Any) -> tuple[bool, bool, str]:
     )
 
 
+def _apply_checkpoint_serde_allowlist(checkpointer: Any) -> None:
+    serde = getattr(checkpointer, 'serde', None)
+    if serde is None:
+        return
+    with_allowlist = getattr(serde, 'with_msgpack_allowlist', None)
+    if not callable(with_allowlist):
+        return
+    try:
+        updated = with_allowlist(_CHECKPOINT_MSGPACK_ALLOWLIST)
+        if updated is not serde:
+            checkpointer.serde = updated
+    except Exception:
+        logger.warning('langgraph_checkpointer_serde_allowlist_failed', exc_info=True)
+
+
 def get_langgraph_artifacts(settings: Any) -> LangGraphArtifacts:
     cache_key = _graph_cache_key(settings)
     with _ARTIFACTS_LOCK:
@@ -110,6 +147,7 @@ def get_langgraph_artifacts(settings: Any) -> LangGraphArtifacts:
                             sql.SQL('SET search_path TO {}, public').format(sql.Identifier(schema))
                         )
                     checkpointer.conn.commit()
+                _apply_checkpoint_serde_allowlist(checkpointer)
                 checkpointer.setup()
                 checkpointer_enabled = True
                 checkpointer_backend = 'postgres'
@@ -180,7 +218,39 @@ def resolve_langgraph_thread_id(
     return None
 
 
-def invoke_orchestration_graph(*, graph: Any, state_input: dict[str, Any], thread_id: str | None) -> Any:
-    if thread_id:
-        return graph.invoke(state_input, config={'configurable': {'thread_id': thread_id}})
-    return graph.invoke(state_input)
+def _thread_config(thread_id: str | None) -> dict[str, Any] | None:
+    if not thread_id:
+        return None
+    return {'configurable': {'thread_id': thread_id}}
+
+
+def invoke_orchestration_graph(
+    *,
+    graph: Any,
+    state_input: dict[str, Any] | Command | None,
+    thread_id: str | None,
+    version: str = 'v1',
+) -> Any:
+    config = _thread_config(thread_id)
+    if config is not None:
+        return graph.invoke(state_input, config=config, version=version)
+    return graph.invoke(state_input, version=version)
+
+
+def resume_orchestration_graph(
+    *,
+    graph: Any,
+    thread_id: str,
+    resume_value: Any,
+    version: str = 'v1',
+) -> Any:
+    return graph.invoke(Command(resume=resume_value), config=_thread_config(thread_id), version=version)
+
+
+def get_orchestration_state_snapshot(
+    *,
+    graph: Any,
+    thread_id: str,
+    subgraphs: bool = False,
+) -> Any:
+    return graph.get_state(_thread_config(thread_id), subgraphs=subgraphs)

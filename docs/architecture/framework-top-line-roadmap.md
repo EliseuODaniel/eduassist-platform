@@ -48,7 +48,7 @@ What is strong today:
 
 Main gap versus top-line LangGraph usage:
 
-- no native `interrupt()` / `Command` human-in-the-loop path
+- support-slice HITL now exists natively with `interrupt()` / `Command`, but is exposed through internal review endpoints only and not yet promoted into normal user traffic
 - no checkpoint id / node-path metadata bridged into the existing trace surface yet
 - no LangGraph-native durable execution story beyond checkpointed state recovery
 
@@ -77,6 +77,8 @@ Main gap versus top-line CrewAI usage:
 Validated in this round:
 
 - LangGraph now runs with a native Postgres-backed checkpointer and stable `thread_id` mapping.
+- LangGraph now exposes a native HITL review path for the `support` slice through internal review/state/resume endpoints backed by the checkpointer.
+- LangGraph checkpointer serialization warnings are now isolated as a remaining version-specific follow-up item; the safe runtime path stays enabled, but the msgpack allowlist is not yet fully solved in this stack version.
 - CrewAI now persists `Flow` state for `public` and `protected` through SQLite.
 - LangGraph now delegates through slice subgraphs for `public`, `protected`, and `support`.
 - CrewAI now emits per-task event telemetry with task, agent, crew, and timing summaries on agentic paths.
@@ -89,6 +91,7 @@ Concrete local evidence:
   - `langgraphCheckpointerBackend = postgres`
   - `langgraphThreadIdEnabled = true`
 - `langgraph_checkpoint.checkpoints` already contains checkpoints for `conversation:topline-public-1`
+- `GET /v1/internal/hitl/review` can pause a `support` handoff, and `GET /v1/internal/hitl/state` plus `POST /v1/internal/hitl/resume` can inspect and continue the paused thread
 - `/workspace/artifacts/crewai-flow-state/public.sqlite3` and `protected.sqlite3` exist in the CrewAI pilot container
 - both CrewAI SQLite databases already contain persisted `flow_states`
 - public graph paths now include `select_slice -> public_slice`
@@ -148,6 +151,10 @@ Success criteria:
 - selected tool/action approvals pause the graph
 - operators can resume with `Command`
 - app can observe and render pending interrupt state
+
+Status:
+
+- implemented in this round for the `support` slice via internal review/state/resume endpoints
 
 ### 3. Split the large graph into subgraphs by slice
 

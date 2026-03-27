@@ -5,7 +5,7 @@ import logging
 import secrets
 
 from fastapi import FastAPI, Header, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from eduassist_observability import configure_observability
 
@@ -15,12 +15,17 @@ from .graph_rag_runtime import graph_rag_workspace_ready
 from .langgraph_runtime import (
     close_langgraph_runtime,
     get_langgraph_artifacts,
+    get_orchestration_state_snapshot,
     get_langgraph_runtime_status,
     invoke_orchestration_graph,
+    resume_orchestration_graph,
     resolve_langgraph_thread_id,
     warm_langgraph_runtime,
 )
 from .models import (
+    ConversationChannel,
+    AccessTier,
+    QueryDomain,
     MessageResponse,
     MessageResponseRequest,
     OrchestrationMode,
@@ -29,6 +34,7 @@ from .models import (
     RetrievalSearchRequest,
     RetrievalSearchResponse,
     RuntimeCapabilities,
+    UserContext,
 )
 from .retrieval import get_retrieval_service
 from .runtime import generate_message_response
@@ -76,6 +82,8 @@ class Settings(BaseSettings):
     langgraph_checkpointer_enabled: bool = True
     langgraph_checkpointer_url: str | None = None
     langgraph_checkpointer_schema: str = 'langgraph_checkpoint'
+    langgraph_hitl_enabled: bool = False
+    langgraph_hitl_default_slices: str = 'support'
 
 
 @lru_cache
@@ -93,6 +101,149 @@ class HealthResponse(BaseModel):
     status: str
     service: str
     ready: bool
+
+
+class LangGraphHitlRequest(BaseModel):
+    message: str
+    conversation_id: str | None = None
+    telegram_chat_id: int | None = None
+    channel: ConversationChannel = ConversationChannel.telegram
+    user: UserContext = Field(default_factory=UserContext)
+    allow_graph_rag: bool = True
+    allow_handoff: bool = True
+    target_slices: list[str] = Field(default_factory=lambda: ['support'])
+
+
+class LangGraphHitlResumeRequest(BaseModel):
+    conversation_id: str | None = None
+    telegram_chat_id: int | None = None
+    channel: ConversationChannel = ConversationChannel.telegram
+    resume_value: dict[str, object] | list[object] | str | int | float | bool | None
+
+
+def _normalized_hitl_slices(values: list[str] | None, *, fallback: str) -> list[str]:
+    normalized = [str(item).strip() for item in (values or []) if str(item).strip()]
+    if normalized:
+        return normalized
+    return [item.strip() for item in fallback.split(',') if item.strip()] or ['support']
+
+
+def _hitl_thread_id(
+    *,
+    conversation_id: str | None,
+    channel: ConversationChannel,
+    telegram_chat_id: int | None,
+) -> str | None:
+    return resolve_langgraph_thread_id(
+        conversation_external_id=conversation_id,
+        channel=channel.value,
+        telegram_chat_id=telegram_chat_id,
+    )
+
+
+def _serialize_interrupt_entry(item: object) -> dict[str, object]:
+    if hasattr(item, 'value'):
+        value = getattr(item, 'value')
+    else:
+        value = item
+    entry: dict[str, object] = {'value': value}
+    interrupt_id = getattr(item, 'id', None)
+    if interrupt_id is not None:
+        entry['id'] = str(interrupt_id)
+    return entry
+
+
+def _snapshot_interrupt_entries(snapshot: object) -> list[dict[str, object]]:
+    entries: list[dict[str, object]] = []
+    seen: set[tuple[str | None, str]] = set()
+
+    def _append(item: object) -> None:
+        entry = _serialize_interrupt_entry(item)
+        key = (
+            str(entry.get('id')) if entry.get('id') is not None else None,
+            repr(entry.get('value')),
+        )
+        if key in seen:
+            return
+        seen.add(key)
+        entries.append(entry)
+
+    for item in getattr(snapshot, 'interrupts', None) or ():
+        _append(item)
+    for task in getattr(snapshot, 'tasks', None) or ():
+        for item in getattr(task, 'interrupts', None) or ():
+            _append(item)
+    return entries
+
+
+def _snapshot_has_pending_interrupt(snapshot: object) -> bool:
+    return bool(_snapshot_interrupt_entries(snapshot))
+
+
+def _build_hitl_preview(values: dict[str, object]) -> dict[str, object] | None:
+    if not values or 'route' not in values or 'classification' not in values:
+        return None
+    try:
+        return to_preview(values).model_dump(mode='json')
+    except Exception:
+        return None
+
+
+def _serialize_hitl_state_snapshot(snapshot: object) -> dict[str, object]:
+    values = dict(getattr(snapshot, 'values', {}) or {})
+    top_level_interrupts = [_serialize_interrupt_entry(item) for item in (getattr(snapshot, 'interrupts', None) or ())]
+    active_interrupts = _snapshot_interrupt_entries(snapshot)
+    next_nodes = [str(item) for item in (getattr(snapshot, 'next', None) or ())]
+    tasks = []
+    task_interrupt_count = 0
+    for task in getattr(snapshot, 'tasks', None) or ():
+        task_interrupts = [_serialize_interrupt_entry(item) for item in (getattr(task, 'interrupts', None) or ())]
+        task_interrupt_count += len(task_interrupts)
+        tasks.append(
+            {
+                'name': str(getattr(task, 'name', '')),
+                'path': [str(part) for part in (getattr(task, 'path', None) or ())],
+                'interrupts': task_interrupts,
+            }
+        )
+    return {
+        'values': {
+            'route': values.get('route'),
+            'slice_name': values.get('slice_name'),
+            'reason': values.get('reason'),
+            'selected_tools': values.get('selected_tools', []),
+            'graph_path': values.get('graph_path', []),
+            'risk_flags': values.get('risk_flags', []),
+            'output_contract': values.get('output_contract'),
+            'hitl_status': values.get('hitl_status'),
+        },
+        'preview': _build_hitl_preview(values),
+        'interrupts': active_interrupts,
+        'top_level_interrupt_count': len(top_level_interrupts),
+        'interrupt_count': len(active_interrupts),
+        'task_interrupt_count': task_interrupt_count,
+        'has_pending_interrupt': bool(active_interrupts),
+        'next_nodes': next_nodes,
+        'tasks': tasks,
+        'created_at': str(getattr(snapshot, 'created_at', '') or ''),
+    }
+
+
+def _build_hitl_state_input(request: LangGraphHitlRequest, settings: Settings) -> dict[str, object]:
+    return {
+        'request': OrchestrationRequest(
+            message=request.message,
+            conversation_id=request.conversation_id,
+            user=request.user,
+            allow_graph_rag=request.allow_graph_rag,
+            allow_handoff=request.allow_handoff,
+        ),
+        'hitl_enabled': True,
+        'hitl_target_slices': _normalized_hitl_slices(
+            request.target_slices,
+            fallback=settings.langgraph_hitl_default_slices,
+        ),
+    }
 
 
 app = FastAPI(
@@ -175,6 +326,8 @@ async def meta(
         'langgraphCheckpointerReady': langgraph_runtime['checkpointerInitialized'],
         'langgraphCheckpointerBackend': langgraph_runtime['checkpointerBackend'],
         'langgraphThreadIdEnabled': langgraph_runtime['threadIdEnabled'],
+        'langgraphHitlEnabled': settings.langgraph_hitl_enabled,
+        'langgraphHitlDefaultSlices': settings.langgraph_hitl_default_slices,
     }
 
 
@@ -198,6 +351,7 @@ async def status() -> dict[str, object]:
         'capabilities': [
             'langgraph-state-machine',
             'langgraph-thread-id',
+            'langgraph-hitl-internal',
             'engine-selector',
             'tool-routing',
             'qdrant-hybrid-retrieval',
@@ -212,6 +366,8 @@ async def status() -> dict[str, object]:
         'langgraphCheckpointerReady': langgraph_runtime['checkpointerInitialized'],
         'langgraphCheckpointerBackend': langgraph_runtime['checkpointerBackend'],
         'langgraphThreadIdEnabled': langgraph_runtime['threadIdEnabled'],
+        'langgraphHitlEnabled': settings.langgraph_hitl_enabled,
+        'langgraphHitlDefaultSlices': settings.langgraph_hitl_default_slices,
     }
 
 
@@ -333,4 +489,125 @@ async def preview_orchestration(request: OrchestrationRequest) -> dict[str, obje
     return {
         'service': 'ai-orchestrator',
         'preview': preview.model_dump(mode='json'),
+    }
+
+
+@app.post('/v1/internal/hitl/review')
+async def start_hitl_review(
+    request: LangGraphHitlRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    _require_internal_api_token(x_internal_api_token)
+    settings = get_settings()
+    graph = get_langgraph_artifacts(settings).graph
+    thread_id = _hitl_thread_id(
+        conversation_id=request.conversation_id,
+        channel=request.channel,
+        telegram_chat_id=request.telegram_chat_id,
+    )
+    result = invoke_orchestration_graph(
+        graph=graph,
+        state_input=_build_hitl_state_input(request, settings),
+        thread_id=thread_id,
+        version='v1',
+    )
+    snapshot = get_orchestration_state_snapshot(
+        graph=graph,
+        thread_id=thread_id,
+        subgraphs=True,
+    ) if thread_id else None
+    serialized_snapshot = _serialize_hitl_state_snapshot(snapshot) if snapshot is not None else None
+    if isinstance(result, dict) and result.get('__interrupt__'):
+        return {
+            'service': 'ai-orchestrator',
+            'status': 'pending',
+            'thread_id': thread_id,
+            'interrupts': serialized_snapshot['interrupts'] if serialized_snapshot is not None else [_serialize_interrupt_entry(item) for item in result.get('__interrupt__', [])],
+            'snapshot': serialized_snapshot,
+        }
+    return {
+        'service': 'ai-orchestrator',
+        'status': 'completed',
+        'thread_id': thread_id,
+        'preview': (
+            serialized_snapshot['preview']
+            if serialized_snapshot is not None
+            else _build_hitl_preview(result if isinstance(result, dict) else {})
+        ),
+        'snapshot': serialized_snapshot,
+    }
+
+
+@app.get('/v1/internal/hitl/state')
+async def get_hitl_state(
+    conversation_id: str | None = None,
+    telegram_chat_id: int | None = None,
+    channel: ConversationChannel = ConversationChannel.telegram,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    _require_internal_api_token(x_internal_api_token)
+    settings = get_settings()
+    graph = get_langgraph_artifacts(settings).graph
+    thread_id = _hitl_thread_id(
+        conversation_id=conversation_id,
+        channel=channel,
+        telegram_chat_id=telegram_chat_id,
+    )
+    if not thread_id:
+        raise HTTPException(status_code=400, detail='conversation_id_or_telegram_chat_id_required')
+    snapshot = get_orchestration_state_snapshot(
+        graph=graph,
+        thread_id=thread_id,
+        subgraphs=True,
+    )
+    serialized = _serialize_hitl_state_snapshot(snapshot)
+    return {
+        'service': 'ai-orchestrator',
+        'thread_id': thread_id,
+        'pending': bool(serialized['has_pending_interrupt']),
+        'snapshot': serialized,
+    }
+
+
+@app.post('/v1/internal/hitl/resume')
+async def resume_hitl_review(
+    request: LangGraphHitlResumeRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    _require_internal_api_token(x_internal_api_token)
+    settings = get_settings()
+    graph = get_langgraph_artifacts(settings).graph
+    thread_id = _hitl_thread_id(
+        conversation_id=request.conversation_id,
+        channel=request.channel,
+        telegram_chat_id=request.telegram_chat_id,
+    )
+    if not thread_id:
+        raise HTTPException(status_code=400, detail='conversation_id_or_telegram_chat_id_required')
+    result = resume_orchestration_graph(
+        graph=graph,
+        thread_id=thread_id,
+        resume_value=request.resume_value,
+        version='v1',
+    )
+    snapshot = get_orchestration_state_snapshot(
+        graph=graph,
+        thread_id=thread_id,
+        subgraphs=True,
+    )
+    serialized_snapshot = _serialize_hitl_state_snapshot(snapshot)
+    if isinstance(result, dict) and result.get('__interrupt__'):
+        return {
+            'service': 'ai-orchestrator',
+            'status': 'pending',
+            'thread_id': thread_id,
+            'interrupts': serialized_snapshot['interrupts'],
+            'snapshot': serialized_snapshot,
+        }
+    return {
+        'service': 'ai-orchestrator',
+        'status': 'completed',
+        'thread_id': thread_id,
+        'preview': serialized_snapshot['preview'] or _build_hitl_preview(result if isinstance(result, dict) else {}),
+        'snapshot': serialized_snapshot,
     }
