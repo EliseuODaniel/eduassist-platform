@@ -208,6 +208,32 @@ Expected use:
 - approve a small public expansion only when the live summary keeps `public` on `expand_gradually`
 - maintain `support/workflow` under allowlist control unless the scorecard and live signals change
 
+## Rollout Apply
+
+After a proposal is approved, use the apply script to mutate an env file only through the same preflight gate.
+
+Safe validation example against a temporary env copy:
+
+```bash
+cp .env artifacts/tmp-rollout.env
+python3 tools/evals/apply_framework_rollout_promotion.py \
+  --env-file artifacts/tmp-rollout.env \
+  --slices support,public,workflow \
+  --slice-rollouts support:100,public:2,workflow:100 \
+  --allowlist-slices support,workflow \
+  --apply
+```
+
+Versioned example output:
+
+- [framework-rollout-apply-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-apply-report.md)
+
+Expected use:
+
+- never mutate the real env file without a successful preflight verdict
+- keep a backup snapshot of the previous env before writing
+- use the apply report as the audited record of what changed
+
 Artifacts:
 
 - [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md)
