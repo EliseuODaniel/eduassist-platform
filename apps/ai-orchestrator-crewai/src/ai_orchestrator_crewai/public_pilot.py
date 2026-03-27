@@ -17,6 +17,8 @@ except Exception:  # pragma: no cover - defensive import
     crewai_pkg = None  # type: ignore[assignment]
     Agent = Crew = LLM = Process = Task = None  # type: ignore[assignment]
 
+from .listeners import capture_pilot_events, serialize_pilot_events
+
 
 class PublicPilotPlan(BaseModel):
     intent: str = Field(min_length=1)
@@ -707,7 +709,6 @@ async def run_public_crewai_pilot(
             },
         }
     evidence_bundle = _serialize_evidence_pack(shortlisted_docs)
-
     planner = Agent(
         role='Public question planner',
         goal='Identify the exact public-school intent, entity, and attribute the user asked about using only the provided shortlisted evidence docs.',
@@ -788,13 +789,14 @@ async def run_public_crewai_pilot(
         tracing=False,
     )
 
-    await asyncio.to_thread(
-        crew.kickoff,
-        inputs={
-            'message': message,
-            'evidence_bundle': evidence_bundle,
-        },
-    )
+    with capture_pilot_events('public') as event_recorder:
+        await asyncio.to_thread(
+            crew.kickoff,
+            inputs={
+                'message': message,
+                'evidence_bundle': evidence_bundle,
+            },
+        )
     latency_ms = round((perf_counter() - overall_started_at) * 1000, 1)
 
     plan = _extract_task_pydantic(planning_task, PublicPilotPlan)
@@ -832,6 +834,8 @@ async def run_public_crewai_pilot(
         'judge': verdict.model_dump(mode='json') if isinstance(verdict, PublicPilotJudge) else None,
         'evidence_sources': [doc.doc_id for doc in shortlisted_docs],
         'deterministic_backstop_used': backstop_used,
+        'validation_stack': ['pydantic_output', 'judge', 'deterministic_backstop'],
+        'event_listener': serialize_pilot_events(event_recorder),
     }
 
     if isinstance(verdict, PublicPilotJudge) and not verdict.valid:

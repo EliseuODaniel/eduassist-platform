@@ -61,8 +61,10 @@ class Settings(BaseSettings):
     orchestrator_experiment_primary_engine: str = 'crewai'
     orchestrator_experiment_slices: str = ''
     orchestrator_experiment_rollout_percent: int = 0
+    orchestrator_experiment_slice_rollouts: str = ''
     orchestrator_experiment_telegram_chat_allowlist: str = ''
     orchestrator_experiment_conversation_allowlist: str = ''
+    orchestrator_experiment_allowlist_slices: str = ''
 
 
 @lru_cache
@@ -144,6 +146,8 @@ async def meta(
         'experimentPrimaryEngine': settings.orchestrator_experiment_primary_engine,
         'experimentSlices': settings.orchestrator_experiment_slices,
         'experimentRolloutPercent': settings.orchestrator_experiment_rollout_percent,
+        'experimentSliceRollouts': settings.orchestrator_experiment_slice_rollouts,
+        'experimentAllowlistSlices': settings.orchestrator_experiment_allowlist_slices,
         'provider': settings.llm_provider,
         'openaiModel': settings.openai_model,
         'googleModel': settings.google_model,
@@ -165,6 +169,8 @@ async def status() -> dict[str, object]:
         'experimentPrimaryEngine': settings.orchestrator_experiment_primary_engine,
         'experimentSlices': settings.orchestrator_experiment_slices,
         'experimentRolloutPercent': settings.orchestrator_experiment_rollout_percent,
+        'experimentSliceRollouts': settings.orchestrator_experiment_slice_rollouts,
+        'experimentAllowlistSlices': settings.orchestrator_experiment_allowlist_slices,
         'llmProvider': settings.llm_provider,
         'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
         'capabilities': [

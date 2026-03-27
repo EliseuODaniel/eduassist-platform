@@ -118,3 +118,64 @@ Conversation persistence tables are empty in this local environment, so the cana
 - CrewAI pilot access logs
 
 Before widening the canary, it is worth restoring end-to-end persisted trace inspection in the local stack as an extra operational guardrail.
+
+## Updated Result After Conversation Affinity
+
+A later validation round tightened the support canary in two important ways:
+
+- conversation affinity was added to the experiment selector
+- the primary CrewAI engine was updated to respect the forced experiment slice instead of recomputing the slice from the current message alone
+
+This mattered for real follow-ups such as:
+
+- `qual o protocolo?`
+- `qual o status?`
+- `resume meu atendimento`
+- `mas eu cheguei agora`
+
+### Real support battery
+
+A fresh `5-turn` battery on the allowlisted Telegram chat passed end-to-end:
+
+- `quero falar com o setor financeiro`
+- `qual o protocolo?`
+- `qual o status?`
+- `resume meu atendimento`
+- `mas eu cheguei agora`
+
+Observed result:
+
+- `5/5` passed
+- average latency: `226.1ms`
+
+Interpretation:
+
+- the support canary is now stable enough to remain controlled in production-style testing
+- short follow-up turns no longer leak into the public baseline when they clearly belong to the same human-handoff thread
+
+## Public Canary Opened Safely
+
+After the support battery sustained, the public slice was opened with a tiny rollout:
+
+- enrolled slices: `support,public`
+- per-slice rollout: `support:100`, `public:1`
+- allowlist scoped only to `support`
+
+### End-to-end check
+
+Two public conversation ids were checked through the main orchestrator endpoint:
+
+- enrolled public bucket:
+  - `conversation_id=public-canary-246`
+  - latency: `339.9ms`
+  - response style matched the CrewAI public pilot
+- control bucket:
+  - `conversation_id=public-canary-0`
+  - latency: `7211.4ms`
+  - response stayed on the LangGraph baseline
+
+Interpretation:
+
+- `public` is now running as a genuine small canary
+- `support` remains controlled and allowlisted
+- the slice-level experiment controls are working as intended

@@ -147,7 +147,7 @@ def _handoff_summary_response(item: dict[str, Any]) -> str:
 
 def _repair_response() -> str:
     return (
-        'Sem problema, vamos comecar do zero entao. '
+        'Sem problema, vamos comecar do zero entao e abrir um novo atendimento a partir daqui. '
         'Se voce quiser atendimento humano por aqui, me diga em uma frase curta qual e o assunto como financeiro, secretaria, matricula ou direcao, e eu sigo desse ponto.'
     )
 

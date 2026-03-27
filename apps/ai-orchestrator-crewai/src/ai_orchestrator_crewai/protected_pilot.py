@@ -18,6 +18,8 @@ except Exception:  # pragma: no cover
     crewai_pkg = None  # type: ignore[assignment]
     Agent = Crew = LLM = Process = Task = None  # type: ignore[assignment]
 
+from .listeners import capture_pilot_events, serialize_pilot_events
+
 
 class ProtectedPilotPlan(BaseModel):
     intent: str = Field(min_length=1)
@@ -778,7 +780,6 @@ async def run_protected_crewai_pilot(
     if llm is None:
         return {'engine_name': 'crewai', 'executed': False, 'reason': 'crewai_llm_not_configured', 'metadata': {'slice_name': 'protected'}}
     evidence_bundle = _serialize_docs(shortlisted_docs)
-
     planner = Agent(
         role='Protected question planner',
         goal='Resolve the protected intent, student scope, and attribute using only the shortlisted protected docs.',
@@ -851,7 +852,8 @@ async def run_protected_crewai_pilot(
         tracing=False,
     )
 
-    await asyncio.to_thread(crew.kickoff, inputs={'message': message, 'evidence_bundle': evidence_bundle})
+    with capture_pilot_events('protected') as event_recorder:
+        await asyncio.to_thread(crew.kickoff, inputs={'message': message, 'evidence_bundle': evidence_bundle})
     latency_ms = round((perf_counter() - overall_started_at) * 1000, 1)
 
     plan = getattr(planning_task.output, 'pydantic', None)
@@ -880,6 +882,8 @@ async def run_protected_crewai_pilot(
         'evidence_sources': [doc.doc_id for doc in shortlisted_docs],
         'resolved_student_name': student.get('full_name') if isinstance(student, dict) else None,
         'deterministic_backstop_used': backstop_used,
+        'validation_stack': ['pydantic_output', 'judge', 'deterministic_backstop'],
+        'event_listener': serialize_pilot_events(event_recorder),
     }
     _store_recent_student_name(state_key, student.get('full_name') if isinstance(student, dict) else None)
     return {

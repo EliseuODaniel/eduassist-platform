@@ -107,6 +107,24 @@ def infer_request_slice(request: Any) -> str:
     return 'public'
 
 
+def _slice_from_engine_mode(engine_mode: str | None) -> str | None:
+    mode = str(engine_mode or '').strip().lower()
+    if not mode.startswith('experiment:'):
+        return None
+    parts = mode.split(':')
+    if len(parts) < 3:
+        return None
+    slice_name = parts[1].strip()
+    return slice_name or None
+
+
+def _resolve_slice_name(*, request: Any, engine_mode: str | None = None) -> str:
+    forced_slice = _slice_from_engine_mode(engine_mode)
+    if forced_slice:
+        return forced_slice
+    return infer_request_slice(request)
+
+
 class CrewAIEngine(ResponseEngine):
     name = 'crewai'
     ready = False
@@ -152,7 +170,7 @@ class CrewAIEngine(ResponseEngine):
             _user_context_from_actor,
         )
 
-        slice_name = infer_request_slice(request)
+        slice_name = _resolve_slice_name(request=request, engine_mode=engine_mode)
         try:
             payload = await self._call_remote_pilot(request=request, settings=settings, slice_name=slice_name)
         except Exception:
@@ -245,7 +263,7 @@ class CrewAIEngine(ResponseEngine):
     async def shadow_compare(self, *, request: Any, settings: Any) -> ShadowRunResult:
         pilot_url = str(getattr(settings, 'crewai_pilot_url', '') or '').strip()
         if pilot_url:
-            slice_name = infer_request_slice(request)
+            slice_name = _resolve_slice_name(request=request)
             try:
                 payload = await self._call_remote_pilot(request=request, settings=settings, slice_name=slice_name)
                 if isinstance(payload, dict):

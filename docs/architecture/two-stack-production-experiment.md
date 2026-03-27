@@ -17,8 +17,10 @@ Environment variables in `ai-orchestrator`:
 - `ORCHESTRATOR_EXPERIMENT_PRIMARY_ENGINE`
 - `ORCHESTRATOR_EXPERIMENT_SLICES`
 - `ORCHESTRATOR_EXPERIMENT_ROLLOUT_PERCENT`
+- `ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS`
 - `ORCHESTRATOR_EXPERIMENT_TELEGRAM_CHAT_ALLOWLIST`
 - `ORCHESTRATOR_EXPERIMENT_CONVERSATION_ALLOWLIST`
+- `ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES`
 
 The runtime exposes these flags in:
 
@@ -31,8 +33,10 @@ The runtime exposes these flags in:
 - the experiment only applies when `ORCHESTRATOR_ENGINE=langgraph`
 - the pilot URL must be configured
 - the request slice must match `ORCHESTRATOR_EXPERIMENT_SLICES`
-- if an allowlist is configured, the request must match it
+- if an allowlist is configured for the slice, the request must match it
 - rollout is deterministic by hashed conversation bucket
+- conversation affinity can keep follow-up turns in the same experiment slice for `support` and `workflow`
+- per-slice rollout overrides can be applied through `ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS`
 
 ## Recommended First Canary
 
@@ -54,18 +58,21 @@ ORCHESTRATOR_ENGINE=langgraph
 CREWAI_PILOT_URL=http://ai-orchestrator-crewai:8000
 ORCHESTRATOR_EXPERIMENT_ENABLED=true
 ORCHESTRATOR_EXPERIMENT_PRIMARY_ENGINE=crewai
-ORCHESTRATOR_EXPERIMENT_SLICES=support
-ORCHESTRATOR_EXPERIMENT_ROLLOUT_PERCENT=5
+ORCHESTRATOR_EXPERIMENT_SLICES=support,public
+ORCHESTRATOR_EXPERIMENT_ROLLOUT_PERCENT=0
+ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS=support:100,public:1
 ORCHESTRATOR_EXPERIMENT_TELEGRAM_CHAT_ALLOWLIST=1649845499
+ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES=support
 ```
 
 ## Operational Reading
 
 - if the slice is not enrolled, the baseline stays primary
 - if the slice is enrolled, the CrewAI pilot becomes primary for that request
+- if a support/workflow conversation is already enrolled, follow-up turns can stay on that slice even when the wording becomes short or ambiguous
 - the final runtime trace keeps the chosen `engine_name` and `engine_mode`
 
 ## Current Recommendation
 
-- keep the canary disabled in shared environments until a small allowlisted rollout is intentionally approved
-- prefer `support` before `public`
+- keep `support` controlled first, then open `public` with a tiny percentage
+- use allowlist scoping so `support` can stay controlled while `public` rolls out slowly
