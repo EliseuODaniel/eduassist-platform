@@ -103,6 +103,7 @@ Validated in this round:
 - A rollout apply routine can now sit behind that preflight, so env mutation happens only through an auditable gate with backup and snapshot output.
 - A rollout execution routine can now extend that apply step into service restart and live status validation, closing the loop from proposal to verified runtime state.
 - A single-command slice wrapper can now sit on top of preflight and execution, removing manual rollout-string editing and creating an operational changelog by default.
+- The slice wrapper can now require an explicit human reason/operator, raising the audit quality of every promotion attempt instead of logging anonymous rollout changes.
 
 Concrete local evidence:
 

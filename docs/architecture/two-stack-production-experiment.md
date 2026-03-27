@@ -269,7 +269,8 @@ cp .env artifacts/tmp-slice.env
 python3 tools/evals/promote_framework_slice.py \
   --env-file artifacts/tmp-slice.env \
   --slice public \
-  --to-rollout-percent 2
+  --to-rollout-percent 2 \
+  --reason "Expandir public de 1% para 2% apos estabilidade do canario"
 ```
 
 This wrapper:
@@ -277,6 +278,7 @@ This wrapper:
 - calculates `before` and `after` automatically
 - preserves the other configured slices
 - adjusts allowlist scope safely in `auto` mode
+- requires an explicit operational reason
 - records every attempt in the rollout changelog
 
 Artifacts:

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import subprocess
 import sys
@@ -56,14 +57,15 @@ def _append_changelog(*, entry: dict[str, Any], md_path: Path, json_path: Path) 
     lines = [
         '# Framework Rollout Changelog',
         '',
-        '| Date | Slice | Before | After | Mode | Result | Env File |',
-        '| --- | --- | ---: | ---: | --- | --- | --- |',
+        '| Date | Slice | Before | After | Mode | Result | Operator | Reason | Env File |',
+        '| --- | --- | ---: | ---: | --- | --- | --- | --- | --- |',
     ]
     for item in reversed(rows[-50:]):
         lines.append(
             f"| `{item.get('timestamp', '')}` | `{item.get('slice', '')}` | "
             f"`{item.get('before_rollout_percent', '')}%` | `{item.get('after_rollout_percent', '')}%` | "
-            f"`{item.get('mode', '')}` | `{item.get('result', '')}` | `{item.get('env_file', '')}` |"
+            f"`{item.get('mode', '')}` | `{item.get('result', '')}` | "
+            f"`{item.get('operator', '')}` | {item.get('reason', '')} | `{item.get('env_file', '')}` |"
         )
     md_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
 
@@ -82,6 +84,8 @@ def _write_report(*, report_md: Path, report_json: Path, artifact_json: Path, pa
         f"- mode: `{payload['mode']}`",
         f"- apply requested: `{payload['apply']}`",
         f"- result: `{payload['result']}`",
+        f"- operator: `{payload['operator']}`",
+        f"- reason: `{payload['reason']}`",
         f"- env file: `{payload['env_file']}`",
         f"- proposed slices: `{payload['proposed_slices']}`",
         f"- proposed slice rollouts: `{payload['proposed_slice_rollouts']}`",
@@ -101,6 +105,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description='Promote a rollout slice through a single command with changelog output.')
     parser.add_argument('--slice', required=True, choices=['public', 'protected', 'support', 'workflow'])
     parser.add_argument('--to-rollout-percent', required=True, type=int)
+    parser.add_argument('--reason', required=True)
+    parser.add_argument('--operator', default='')
     parser.add_argument('--env-file', type=Path, default=DEFAULT_ENV_FILE)
     parser.add_argument('--candidate-engine', default=None)
     parser.add_argument('--services', default='ai-orchestrator')
@@ -170,6 +176,7 @@ def main() -> int:
     nested_paths = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
     nested_report = nested_paths[0] if nested_paths else ''
     result = 'passed' if completed.returncode == 0 else 'failed'
+    operator = str(args.operator or '').strip() or getpass.getuser()
     payload = {
         'timestamp': datetime.now(UTC).isoformat(),
         'slice': args.slice,
@@ -178,6 +185,8 @@ def main() -> int:
         'mode': 'execute' if args.apply else 'preflight',
         'apply': args.apply,
         'result': result,
+        'operator': operator,
+        'reason': str(args.reason).strip(),
         'returncode': completed.returncode,
         'env_file': str(args.env_file),
         'proposed_slices': proposed_slices,
