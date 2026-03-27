@@ -78,7 +78,7 @@ Validated in this round:
 
 - LangGraph now runs with a native Postgres-backed checkpointer and stable `thread_id` mapping.
 - LangGraph now exposes a native HITL review path for the `support` slice through internal review/state/resume endpoints backed by the checkpointer.
-- LangGraph checkpointer serialization warnings are now isolated as a remaining version-specific follow-up item; the safe runtime path stays enabled, but the msgpack allowlist is not yet fully solved in this stack version.
+- LangGraph checkpointer serializer compatibility is now fixed for the current typed checkpoint payloads; native snapshot reads are working again through the Postgres checkpointer.
 - CrewAI now persists `Flow` state for `public` and `protected` through SQLite.
 - LangGraph now delegates through slice subgraphs for `public`, `protected`, and `support`.
 - CrewAI now emits per-task event telemetry with task, agent, crew, and timing summaries on agentic paths.
@@ -197,10 +197,10 @@ Success criteria:
 
 Status:
 
-- implemented in best-effort mode in this round:
+- implemented in this round:
   - `orchestration.trace` now carries `langgraph.thread_id`, checkpointer backend, and graph-state fetch results
-  - when snapshot inspection works, the trace can carry native state metadata
-  - when checkpoint deserialization fails, the trace records the failure without breaking the user response path
+  - native snapshot inspection is now working again for newly written conversations through the Postgres checkpointer
+  - `state_available=true` and checkpoint metadata are now visible in persisted traces for validated live threads
 
 ## Phase 2: CrewAI To Strong Native Production Shape
 

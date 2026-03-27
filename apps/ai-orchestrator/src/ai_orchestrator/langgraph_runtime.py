@@ -98,13 +98,21 @@ def _apply_checkpoint_serde_allowlist(checkpointer: Any) -> None:
     serde = getattr(checkpointer, 'serde', None)
     if serde is None:
         return
-    with_allowlist = getattr(serde, 'with_msgpack_allowlist', None)
-    if not callable(with_allowlist):
-        return
     try:
-        updated = with_allowlist(_CHECKPOINT_MSGPACK_ALLOWLIST)
-        if updated is not serde:
-            checkpointer.serde = updated
+        from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+
+        current_unpack_ext_hook = getattr(serde, '_unpack_ext_hook', None)
+        custom_unpack_ext_hook = (
+            current_unpack_ext_hook
+            if getattr(serde, '_custom_unpack_ext_hook', False) and callable(current_unpack_ext_hook)
+            else None
+        )
+        checkpointer.serde = JsonPlusSerializer(
+            pickle_fallback=bool(getattr(serde, 'pickle_fallback', False)),
+            allowed_json_modules=getattr(serde, '_allowed_json_modules', None),
+            allowed_msgpack_modules=_CHECKPOINT_MSGPACK_ALLOWLIST,
+            __unpack_ext_hook__=custom_unpack_ext_hook,
+        )
     except Exception:
         logger.warning('langgraph_checkpointer_serde_allowlist_failed', exc_info=True)
 
