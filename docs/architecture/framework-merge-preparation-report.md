@@ -1,21 +1,21 @@
 # Framework Merge Preparation Report
 
-Date: 2026-03-27T16:11:39.421587+00:00
+Date: 2026-03-27T16:14:09.977690+00:00
 
 ## Summary
 
-- classification: `blocked`
-- merge-ready: `False`
+- classification: `ready`
+- merge-ready: `True`
 - source branch: `feature/two-stack-shadow-comparison`
 - target branch: `origin/main`
-- ahead of target: `85` commits
+- ahead of target: `90` commits
 - behind target: `0` commits
 
 ## Preconditions
 
 - release snapshot ready: `True`
 - merge checklist ready: `True`
-- working tree clean: `False`
+- working tree clean: `True`
 
 ## Diff Summary
 
@@ -93,24 +93,28 @@ Date: 2026-03-27T16:11:39.421587+00:00
  .../framework-crash-recovery-report.md             |    98 +
  .../framework-live-promotion-summary-report.json   |    63 +
  .../framework-live-promotion-summary-report.md     |    29 +
+ .../framework-merge-preparation-report.json        |    19 +
+ .../framework-merge-preparation-report.md          |   187 +
  .../framework-merge-release-checklist-report.json  |    70 +
  .../framework-merge-release-checklist-report.md    |    27 +
  docs/architecture/framework-native-scorecard.json  |   134 +
  docs/architecture/framework-native-scorecard.md    |   115 +
+ ...ework-post-rollout-live-observation-report.json |   382 +
+ ...amework-post-rollout-live-observation-report.md |    39 +
  .../framework-primary-stack-flag-report.md         |    29 +
  ...amework-recommended-slice-promotion-report.json |    28 +
  ...framework-recommended-slice-promotion-report.md |    15 +
- .../framework-release-snapshot-report.json         |   404 +
- .../framework-release-snapshot-report.md           |    48 +
+ .../framework-release-snapshot-report.json         |   424 +
+ .../framework-release-snapshot-report.md           |    49 +
  .../framework-restart-recovery-report.md           |    98 +
  .../framework-rollout-apply-report.json            |   173 +
  .../architecture/framework-rollout-apply-report.md |    35 +
  ...ork-rollout-changelog-normalization-report.json |    26 +
  ...ework-rollout-changelog-normalization-report.md |    16 +
- docs/architecture/framework-rollout-changelog.json |    92 +
- docs/architecture/framework-rollout-changelog.md   |     8 +
- .../framework-rollout-execution-report.json        |   229 +
- .../framework-rollout-execution-report.md          |    47 +
+ docs/architecture/framework-rollout-changelog.json |   112 +
+ docs/architecture/framework-rollout-changelog.md   |     9 +
+ .../framework-rollout-execution-report.json        |   444 +
+ .../framework-rollout-execution-report.md          |   107 +
  .../framework-rollout-preflight-report.json        |   162 +
  .../framework-rollout-preflight-report.md          |    40 +
  .../framework-rollout-readiness-report.json        |   166 +
@@ -119,14 +123,14 @@ Date: 2026-03-27T16:11:39.421587+00:00
  .../framework-slice-promotion-report.md            |    30 +
  .../framework-slice-rollback-report.json           |    35 +
  .../framework-slice-rollback-report.md             |    40 +
- docs/architecture/framework-top-line-roadmap.md    |   398 +
+ docs/architecture/framework-top-line-roadmap.md    |   400 +
  docs/architecture/institutional-copilot-roadmap.md |   188 +
  docs/architecture/telegram-recent-threads.json     |   239 +
  docs/architecture/telegram-recent-threads.md       |    37 +
  docs/architecture/telegram-thread-1649845499.json  |  2286 ++++
  docs/architecture/telegram-thread-1649845499.md    |  1524 +++
  docs/architecture/two-stack-comparison-plan.md     |   448 +
- .../two-stack-production-experiment.md             |   404 +
+ .../two-stack-production-experiment.md             |   440 +
  ...wo-stack-shadow-extended-real-threads-report.md |   384 +
  .../two-stack-shadow-master-real-threads-report.md |   574 +
  .../two-stack-shadow-real-threads-report.md        |   206 +
@@ -160,7 +164,9 @@ Date: 2026-03-27T16:11:39.421587+00:00
  .../evals/benchmark_framework_restart_recovery.py  |   400 +
  .../evals/benchmark_primary_stack_feature_flag.py  |   216 +
  .../build_framework_live_promotion_summary.py      |   162 +
+ tools/evals/build_framework_merge_preparation.py   |   178 +
  .../build_framework_merge_release_checklist.py     |   279 +
+ ...uild_framework_post_rollout_live_observation.py |   173 +
  tools/evals/build_framework_release_snapshot.py    |   233 +
  tools/evals/build_framework_rollout_readiness.py   |   161 +
  tools/evals/compare_orchestrator_stacks.py         |   682 ++
@@ -175,13 +181,10 @@ Date: 2026-03-27T16:11:39.421587+00:00
  tools/evals/score_framework_native_capabilities.py |   473 +
  tools/ops/check_db_rls.py                          |    39 +-
  tools/ops/telegram_webhook.py                      |   159 +
- 155 files changed, 50969 insertions(+), 1732 deletions(-)
+ 161 files changed, 52302 insertions(+), 1732 deletions(-)
 ```
 
 ## Recommended Next Actions
 
-- keep using the guarded rollout path until the blocking items are cleared.
-
-## Blocking Items
-
-- working tree is not clean
+- open or finalize the merge from `feature/two-stack-shadow-comparison` into `origin/main`.
+- keep protected blocked unless a separate protected promotion decision is made later.

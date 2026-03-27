@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-27T16:06:40.915801+00:00",
+  "generated_at": "2026-03-27T16:14:09.909633+00:00",
   "classification": "ready",
   "ready_to_merge_or_release": true,
   "passed_checks": 12,
@@ -8,7 +8,7 @@
     {
       "id": "git_clean",
       "status": "pass",
-      "detail": "working tree differs only by governance report files."
+      "detail": "working tree is clean."
     },
     {
       "id": "release_snapshot_exists",
@@ -18,7 +18,7 @@
     {
       "id": "release_snapshot_matches_head",
       "status": "pass",
-      "detail": "snapshot commit matches HEAD exactly."
+      "detail": "snapshot trails HEAD only by governance report files."
     },
     {
       "id": "release_snapshot_ready",

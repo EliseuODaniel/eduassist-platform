@@ -1,6 +1,6 @@
 # Framework Merge Release Checklist Report
 
-Date: 2026-03-27T16:06:40.915801+00:00
+Date: 2026-03-27T16:14:09.909633+00:00
 
 ## Summary
 
@@ -13,9 +13,9 @@ Date: 2026-03-27T16:06:40.915801+00:00
 
 | Item | Status | Detail |
 | --- | --- | --- |
-| `git_clean` | `pass` | working tree differs only by governance report files. |
+| `git_clean` | `pass` | working tree is clean. |
 | `release_snapshot_exists` | `pass` | release snapshot JSON is present. |
-| `release_snapshot_matches_head` | `pass` | snapshot commit matches HEAD exactly. |
+| `release_snapshot_matches_head` | `pass` | snapshot trails HEAD only by governance report files. |
 | `release_snapshot_ready` | `pass` | {"ready_for_guarded_release": true, "classification": "ready", "errors": []} |
 | `runtime_status_ready` | `pass` | status.ready=True |
 | `services_healthy` | `pass` | all tracked services are healthy. |
