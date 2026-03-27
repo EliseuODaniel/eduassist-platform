@@ -195,6 +195,13 @@ Success criteria:
 
 - each run stores thread id, checkpoint id, node path, and terminal node
 
+Status:
+
+- implemented in best-effort mode in this round:
+  - `orchestration.trace` now carries `langgraph.thread_id`, checkpointer backend, and graph-state fetch results
+  - when snapshot inspection works, the trace can carry native state metadata
+  - when checkpoint deserialization fails, the trace records the failure without breaking the user response path
+
 ## Phase 2: CrewAI To Strong Native Production Shape
 
 ### 1. Persist Flow state for public and protected

@@ -24,7 +24,12 @@ from .llm_provider import (
     revise_with_provider,
 )
 from .graph import to_preview
-from .langgraph_runtime import get_langgraph_artifacts, invoke_orchestration_graph, resolve_langgraph_thread_id
+from .langgraph_runtime import (
+    get_langgraph_artifacts,
+    get_orchestration_state_snapshot,
+    invoke_orchestration_graph,
+    resolve_langgraph_thread_id,
+)
 from .models import (
     AccessTier,
     CalendarEventCard,
@@ -6151,6 +6156,7 @@ async def _persist_operational_trace(
     answer_verifier_fallback_used: bool,
     deterministic_fallback_available: bool,
     answer_verifier_judge_used: bool,
+    langgraph_trace_metadata: dict[str, Any] | None = None,
 ) -> None:
     if not conversation_external_id:
         return
@@ -6187,6 +6193,8 @@ async def _persist_operational_trace(
             'requested_channel': public_plan.requested_channel,
             'required_tools': list(public_plan.required_tools),
         }
+    if isinstance(langgraph_trace_metadata, dict) and langgraph_trace_metadata:
+        trace_request_payload['langgraph'] = langgraph_trace_metadata
 
     trace_response_payload = {
         'message_length': len(message_text),
@@ -6216,6 +6224,68 @@ async def _persist_operational_trace(
             ],
         },
     )
+
+
+def _extract_langgraph_snapshot_metadata(snapshot: Any) -> dict[str, Any]:
+    values = dict(getattr(snapshot, 'values', {}) or {})
+    config = getattr(snapshot, 'config', None)
+    parent_config = getattr(snapshot, 'parent_config', None)
+    metadata = getattr(snapshot, 'metadata', None)
+    configurable = config.get('configurable', {}) if isinstance(config, dict) else {}
+    parent_configurable = parent_config.get('configurable', {}) if isinstance(parent_config, dict) else {}
+    next_nodes = [str(item) for item in (getattr(snapshot, 'next', None) or ())]
+    task_names = [str(getattr(task, 'name', '')) for task in (getattr(snapshot, 'tasks', None) or ()) if str(getattr(task, 'name', '')).strip()]
+    top_level_interrupts = list(getattr(snapshot, 'interrupts', None) or ())
+    task_interrupt_count = sum(len(getattr(task, 'interrupts', None) or ()) for task in (getattr(snapshot, 'tasks', None) or ()))
+    payload: dict[str, Any] = {
+        'state_available': True,
+        'created_at': str(getattr(snapshot, 'created_at', '') or ''),
+        'next_nodes': next_nodes,
+        'task_names': task_names,
+        'top_level_interrupt_count': len(top_level_interrupts),
+        'task_interrupt_count': task_interrupt_count,
+        'has_pending_interrupt': bool(top_level_interrupts or task_interrupt_count),
+        'state_route': values.get('route'),
+        'state_slice_name': values.get('slice_name'),
+        'hitl_status': values.get('hitl_status'),
+    }
+    checkpoint_id = configurable.get('checkpoint_id') or parent_configurable.get('checkpoint_id')
+    checkpoint_ns = configurable.get('checkpoint_ns') or parent_configurable.get('checkpoint_ns')
+    if checkpoint_id:
+        payload['checkpoint_id'] = str(checkpoint_id)
+    if checkpoint_ns:
+        payload['checkpoint_ns'] = str(checkpoint_ns)
+    if isinstance(metadata, dict) and metadata:
+        payload['snapshot_metadata'] = {
+            str(key): value
+            for key, value in metadata.items()
+            if isinstance(value, (str, int, float, bool)) or value is None
+        }
+    return payload
+
+
+def _capture_langgraph_trace_metadata(
+    *,
+    graph: Any,
+    thread_id: str | None,
+    langgraph_artifacts: Any,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        'thread_id': thread_id or '',
+        'checkpointer_enabled': bool(getattr(langgraph_artifacts, 'checkpointer_enabled', False)),
+        'checkpointer_backend': str(getattr(langgraph_artifacts, 'checkpointer_backend', '') or ''),
+        'state_available': False,
+    }
+    if not thread_id or not getattr(langgraph_artifacts, 'checkpointer_enabled', False):
+        return payload
+    try:
+        snapshot = get_orchestration_state_snapshot(graph=graph, thread_id=thread_id, subgraphs=True)
+    except Exception as exc:
+        payload['state_fetch_error'] = exc.__class__.__name__
+        payload['state_fetch_error_message'] = str(exc)
+        return payload
+    payload.update(_extract_langgraph_snapshot_metadata(snapshot))
+    return payload
 
 
 async def _fetch_actor_context(*, settings: Any, telegram_chat_id: int | None) -> dict[str, Any] | None:
@@ -11369,6 +11439,11 @@ async def generate_message_response(
                 thread_id=langgraph_thread_id,
             )
             preview = to_preview(state)
+        langgraph_trace_metadata = _capture_langgraph_trace_metadata(
+            graph=graph,
+            thread_id=langgraph_thread_id,
+            langgraph_artifacts=langgraph_artifacts,
+        )
         set_span_attributes(
             **{
                 'eduassist.orchestration.mode': preview.mode.value,
@@ -11381,6 +11456,9 @@ async def generate_message_response(
                 'eduassist.orchestration.langgraph_thread_id': langgraph_thread_id or '',
                 'eduassist.orchestration.langgraph_checkpointer_enabled': langgraph_artifacts.checkpointer_enabled,
                 'eduassist.orchestration.langgraph_checkpointer_backend': langgraph_artifacts.checkpointer_backend or '',
+                'eduassist.orchestration.langgraph_state_available': bool(langgraph_trace_metadata.get('state_available')),
+                'eduassist.orchestration.langgraph_state_fetch_error': str(langgraph_trace_metadata.get('state_fetch_error', '') or ''),
+                'eduassist.orchestration.langgraph_checkpoint_id': str(langgraph_trace_metadata.get('checkpoint_id', '') or ''),
             }
         )
 
@@ -11503,6 +11581,7 @@ async def generate_message_response(
                 answer_verifier_fallback_used=False,
                 deterministic_fallback_available=True,
                 answer_verifier_judge_used=semantic_judge_used,
+                langgraph_trace_metadata=langgraph_trace_metadata,
             )
             await _persist_conversation_turn(
                 settings=settings,
@@ -11941,6 +12020,7 @@ async def generate_message_response(
             answer_verifier_fallback_used=answer_verifier_fallback_used,
             deterministic_fallback_available=bool(deterministic_fallback_text),
             answer_verifier_judge_used=semantic_judge_used,
+            langgraph_trace_metadata=langgraph_trace_metadata,
         )
 
         set_span_attributes(
