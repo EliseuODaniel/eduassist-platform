@@ -1,9 +1,10 @@
 {
-  "generated_at": "2026-03-27T13:56:19.008039+00:00",
+  "generated_at": "2026-03-27T14:31:43.891852+00:00",
   "frameworks": {
     "langgraph": {
-      "total_score": 24,
-      "max_score": 25,
+      "total_score": 29,
+      "max_score": 30,
+      "primary_stack_native_path_passed": true,
       "restart_recovery_passed": true,
       "crash_recovery_passed": true,
       "trace_sample": {
@@ -28,8 +29,9 @@
       }
     },
     "crewai": {
-      "total_score": 22,
-      "max_score": 25,
+      "total_score": 27,
+      "max_score": 30,
+      "primary_stack_native_path_passed": true,
       "restart_recovery_passed": true,
       "crash_recovery_passed": true,
       "trace_sample": {
@@ -63,6 +65,7 @@
     "crewai": {
       "eligible": true,
       "minimum_score_for_canary": 20,
+      "primary_stack_native_path_required": true,
       "recommended_canary_slices": [
         "public",
         "support",
@@ -71,6 +74,18 @@
       "blocked_canary_slices": [
         "protected"
       ]
+    },
+    "langgraph": {
+      "eligible": true,
+      "minimum_score_for_canary": 20,
+      "primary_stack_native_path_required": true,
+      "recommended_canary_slices": [
+        "public",
+        "protected",
+        "support",
+        "workflow"
+      ],
+      "blocked_canary_slices": []
     }
   }
 }

@@ -179,11 +179,15 @@ def _slice_allowed_by_scorecard(*, settings: Any, slice_name: str, primary_engin
     minimum_score = int(getattr(settings, 'orchestrator_experiment_min_primary_engine_score', 20) or 20)
     if total_score < minimum_score:
         return False
+    if not bool(primary_payload.get('primary_stack_native_path_passed', False)):
+        return False
     promotion_gate = scorecard.get('promotion_gate')
     if isinstance(promotion_gate, dict):
         engine_gate = promotion_gate.get(primary_engine)
         if isinstance(engine_gate, dict):
             if not bool(engine_gate.get('eligible', False)):
+                return False
+            if bool(engine_gate.get('primary_stack_native_path_required', False)) and not bool(primary_payload.get('primary_stack_native_path_passed', False)):
                 return False
             recommended = engine_gate.get('recommended_canary_slices')
             if isinstance(recommended, list) and recommended:

@@ -152,6 +152,8 @@ Reason:
 
 The selector can now read a runtime-visible scorecard artifact and combine it with pilot health.
 
+The scorecard now also requires proof that the selected framework can run as the true primary path under `FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK`, using the versioned benchmark in [framework-primary-stack-flag-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-primary-stack-flag-report.md).
+
 Current recommended canary slices from the scorecard:
 
 - `support`

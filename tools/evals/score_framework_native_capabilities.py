@@ -18,6 +18,7 @@ from tests.e2e._common import Settings, request
 OUTPUT_PATH = REPO_ROOT / 'docs/architecture/framework-native-scorecard.md'
 OUTPUT_JSON_PATH = REPO_ROOT / 'docs/architecture/framework-native-scorecard.json'
 ARTIFACT_JSON_PATH = REPO_ROOT / 'artifacts/framework-native-scorecard.json'
+PRIMARY_STACK_REPORT = REPO_ROOT / 'docs/architecture/framework-primary-stack-flag-report.md'
 RESTART_REPORT = REPO_ROOT / 'docs/architecture/framework-restart-recovery-report.md'
 CRASH_REPORT = REPO_ROOT / 'docs/architecture/framework-crash-recovery-report.md'
 
@@ -94,6 +95,7 @@ def _score_lines(title: str, score: int, weight: int, evidence: str) -> str:
 
 def main() -> int:
     settings = Settings()
+    primary_stack_text = _read_text(PRIMARY_STACK_REPORT)
     restart_text = _read_text(RESTART_REPORT)
     crash_text = _read_text(CRASH_REPORT)
     traces = _fetch_trace_summary(settings)
@@ -140,13 +142,44 @@ def main() -> int:
             'stable flow_state_id',
         ],
     )
+    crewai_primary_native_ok = _has_all(
+        primary_stack_text,
+        [
+            'crewai_primary_public_native_path',
+            'crewai_primary_protected_native_path',
+            'crewai_primary_support_native_path',
+            'crewai_primary_workflow_native_path',
+            '| `crewai_primary_public_native_path` | `crewai` | `public` | passed |',
+            '| `crewai_primary_protected_native_path` | `crewai` | `protected` | passed |',
+        ],
+    )
+    langgraph_primary_native_ok = _has_all(
+        primary_stack_text,
+        [
+            'langgraph_primary_public_native_path',
+            'langgraph_primary_protected_native_path',
+            'langgraph_primary_support_native_path',
+            'langgraph_primary_workflow_native_path',
+            '| `langgraph_primary_public_native_path` | `langgraph` | `public` | passed |',
+            '| `langgraph_primary_protected_native_path` | `langgraph` | `protected` | passed |',
+        ],
+    )
 
     langgraph_score = 0
-    langgraph_max = 25
+    langgraph_max = 30
     crewai_score = 0
-    crewai_max = 25
+    crewai_max = 30
 
     langgraph_rows = []
+    langgraph_rows.append(
+        _score_lines(
+            'Primary-stack native feature-flag path',
+            5 if langgraph_primary_native_ok else 0,
+            5,
+            'Validated by [framework-primary-stack-flag-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-primary-stack-flag-report.md).',
+        )
+    )
+    langgraph_score += 5 if langgraph_primary_native_ok else 0
     langgraph_rows.append(
         _score_lines(
             'Checkpointed persistence',
@@ -194,6 +227,15 @@ def main() -> int:
     langgraph_score += 4 if langgraph_meta.get('thread_id') and langgraph_meta.get('checkpoint_id') else 2
 
     crewai_rows = []
+    crewai_rows.append(
+        _score_lines(
+            'Primary-stack native feature-flag path',
+            5 if crewai_primary_native_ok else 0,
+            5,
+            'Validated by [framework-primary-stack-flag-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-primary-stack-flag-report.md).',
+        )
+    )
+    crewai_score += 5 if crewai_primary_native_ok else 0
     crewai_rows.append(
         _score_lines(
             'Flow persistence',
@@ -251,6 +293,7 @@ def main() -> int:
         '',
         '## Evidence Used',
         '',
+        '- [framework-primary-stack-flag-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-primary-stack-flag-report.md)',
         '- [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md)',
         '- [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md)',
         '- live `orchestration.trace` samples for one `LangGraph` path and one `CrewAI` path',
@@ -301,6 +344,7 @@ def main() -> int:
             'langgraph': {
                 'total_score': langgraph_score,
                 'max_score': langgraph_max,
+                'primary_stack_native_path_passed': langgraph_primary_native_ok,
                 'restart_recovery_passed': langgraph_restart_ok,
                 'crash_recovery_passed': langgraph_crash_ok,
                 'trace_sample': langgraph_meta,
@@ -308,6 +352,7 @@ def main() -> int:
             'crewai': {
                 'total_score': crewai_score,
                 'max_score': crewai_max,
+                'primary_stack_native_path_passed': crewai_primary_native_ok,
                 'restart_recovery_passed': crewai_restart_ok,
                 'crash_recovery_passed': crewai_crash_ok,
                 'trace_sample': {
@@ -323,10 +368,18 @@ def main() -> int:
         },
         'promotion_gate': {
             'crewai': {
-                'eligible': crewai_score >= 20 and crewai_restart_ok and crewai_crash_ok,
+                'eligible': crewai_score >= 24 and crewai_primary_native_ok and crewai_restart_ok and crewai_crash_ok,
                 'minimum_score_for_canary': 20,
+                'primary_stack_native_path_required': True,
                 'recommended_canary_slices': ['public', 'support', 'workflow'],
                 'blocked_canary_slices': ['protected'],
+            },
+            'langgraph': {
+                'eligible': langgraph_score >= 24 and langgraph_primary_native_ok and langgraph_restart_ok and langgraph_crash_ok,
+                'minimum_score_for_canary': 20,
+                'primary_stack_native_path_required': True,
+                'recommended_canary_slices': ['public', 'protected', 'support', 'workflow'],
+                'blocked_canary_slices': [],
             }
         },
     }

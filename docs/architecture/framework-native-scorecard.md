@@ -1,6 +1,6 @@
 # Framework Native Scorecard
 
-Date: 2026-03-27T13:56:19.007818+00:00
+Date: 2026-03-27T14:31:43.891601+00:00
 
 ## Goal
 
@@ -8,19 +8,21 @@ Score the two orchestration stacks on framework-native durability and debug capa
 
 ## Evidence Used
 
+- [framework-primary-stack-flag-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-primary-stack-flag-report.md)
 - [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md)
 - [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md)
 - live `orchestration.trace` samples for one `LangGraph` path and one `CrewAI` path
 
 ## Totals
 
-- `LangGraph`: `24/25`
-- `CrewAI`: `22/25`
+- `LangGraph`: `29/30`
+- `CrewAI`: `27/30`
 
 ## LangGraph
 
 | Capability | Score | Evidence |
 | --- | ---: | --- |
+| Primary-stack native feature-flag path | `5/5` | Validated by [framework-primary-stack-flag-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-primary-stack-flag-report.md). |
 | Checkpointed persistence | `5/5` | Live `orchestration.trace` carries `thread_id`, `checkpoint_id`, `state_available=true`, and `checkpointer_backend=postgres`. |
 | HITL durability after restart | `5/5` | Validated by [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md). |
 | HITL durability after crash | `5/5` | Validated by [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md). |
@@ -31,6 +33,7 @@ Score the two orchestration stacks on framework-native durability and debug capa
 
 | Capability | Score | Evidence |
 | --- | ---: | --- |
+| Primary-stack native feature-flag path | `5/5` | Validated by [framework-primary-stack-flag-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-primary-stack-flag-report.md). |
 | Flow persistence | `5/5` | Live `orchestration.trace` carries `flow_enabled=true` and `flow_state_id` for the CrewAI path. |
 | Restart continuity | `5/5` | Validated by [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md). |
 | Crash continuity | `5/5` | Validated by [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md). |
@@ -41,8 +44,8 @@ Score the two orchestration stacks on framework-native durability and debug capa
 
 Current inference from the evidence:
 
-- `LangGraph` leads in native persistence + HITL + checkpoint/state introspection with a score of `24/25`.
-- `CrewAI` is now strong on Flow continuity and good on canonical trace visibility, with `22/25`, but still trails in operator-facing control primitives.
+- `LangGraph` leads in native persistence + HITL + checkpoint/state introspection with a score of `29/30`.
+- `CrewAI` is now strong on Flow continuity and good on canonical trace visibility, with `27/30`, but still trails in operator-facing control primitives.
 - The comparison is now top-line enough for durability/debug to be a real architectural differentiator, not just a qualitative impression.
 
 ## Trace Samples
