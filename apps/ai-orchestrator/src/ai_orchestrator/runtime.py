@@ -42,6 +42,7 @@ from .models import (
     MessageResponseSuggestedReply,
     MessageResponseVisualAsset,
     OrchestrationMode,
+    OrchestrationPreview,
     OrchestrationRequest,
     QueryDomain,
     RetrievalBackend,
@@ -1539,6 +1540,42 @@ def _map_request(request: MessageResponseRequest, user_context: UserContext) -> 
         user=user_context,
         allow_graph_rag=request.allow_graph_rag,
         allow_handoff=request.allow_handoff,
+    )
+
+
+def _parse_csv_slices(value: str | None) -> list[str]:
+    return [item.strip() for item in str(value or '').split(',') if item.strip()]
+
+
+def _build_preview_state_input(
+    *,
+    request: MessageResponseRequest,
+    user_context: UserContext,
+    settings: Any,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        'request': _map_request(request, user_context),
+    }
+    if bool(getattr(settings, 'langgraph_hitl_user_traffic_enabled', False)):
+        payload['hitl_enabled'] = True
+        payload['hitl_target_slices'] = _parse_csv_slices(getattr(settings, 'langgraph_hitl_user_traffic_slices', 'support'))
+    return payload
+
+
+def _build_langgraph_pending_review_message(*, preview: Any) -> str:
+    if preview.classification.domain is QueryDomain.support:
+        return (
+            'Seu pedido entrou em revisao humana antes da proxima etapa para manter o atendimento seguro e rastreavel. '
+            'Assim que a equipe validar esse ponto, eu sigo desta mesma conversa.'
+        )
+    if preview.classification.access_tier is not AccessTier.public:
+        return (
+            'Essa consulta ficou pendente de revisao antes da liberacao final, para proteger os dados da conta e manter a trilha auditavel. '
+            'Assim que esse ponto for validado, eu continuo daqui.'
+        )
+    return (
+        'Esse pedido ficou pendente de revisao antes da resposta final. '
+        'Assim que a validacao for concluida, eu continuo desta mesma conversa.'
     )
 
 
@@ -11458,9 +11495,94 @@ async def generate_message_response(
             preview_request = request.model_copy(update={'message': analysis_message})
             state = invoke_orchestration_graph(
                 graph=graph,
-                state_input={'request': _map_request(preview_request, effective_user)},
+                state_input=_build_preview_state_input(
+                    request=preview_request,
+                    user_context=effective_user,
+                    settings=settings,
+                ),
                 thread_id=langgraph_thread_id,
             )
+            if isinstance(state, dict) and state.get('__interrupt__'):
+                snapshot = get_orchestration_state_snapshot(
+                    graph=graph,
+                    thread_id=langgraph_thread_id,
+                    subgraphs=True,
+                ) if langgraph_thread_id else None
+                snapshot_values = dict(getattr(snapshot, 'values', {}) or {}) if snapshot is not None else {}
+                if snapshot_values:
+                    preview = to_preview(snapshot_values)
+                else:
+                    preview = OrchestrationPreview(
+                        mode=OrchestrationMode.structured_tool,
+                        classification=IntentClassification(
+                            domain=QueryDomain.support,
+                            access_tier=AccessTier.authenticated,
+                            confidence=0.9,
+                            reason='langgraph_hitl_pending_review',
+                        ),
+                        reason='langgraph_hitl_pending_review',
+                    )
+                preview.reason = 'langgraph_hitl_pending_review'
+                preview.risk_flags = list(dict.fromkeys([*preview.risk_flags, 'pending_human_review']))
+                langgraph_trace_metadata = _capture_langgraph_trace_metadata(
+                    graph=graph,
+                    thread_id=langgraph_thread_id,
+                    langgraph_artifacts=langgraph_artifacts,
+                )
+                message_text = _build_langgraph_pending_review_message(preview=preview)
+                suggested_replies = _build_suggested_replies(
+                    request=request,
+                    preview=preview,
+                    actor=actor,
+                    school_profile=school_profile,
+                    conversation_context=context_payload,
+                )
+                await _persist_operational_trace(
+                    settings=settings,
+                    conversation_external_id=effective_conversation_id,
+                    channel=request.channel.value,
+                    engine_name=engine_name,
+                    engine_mode=engine_mode,
+                    actor=actor,
+                    preview=preview,
+                    school_profile=school_profile,
+                    conversation_context=context_payload,
+                    public_plan=None,
+                    request_message=request.message,
+                    message_text=message_text,
+                    citations_count=0,
+                    suggested_reply_count=len(suggested_replies),
+                    visual_asset_count=0,
+                    answer_verifier_valid=True,
+                    answer_verifier_reason='langgraph_hitl_pending_review',
+                    answer_verifier_fallback_used=False,
+                    deterministic_fallback_available=False,
+                    answer_verifier_judge_used=False,
+                    langgraph_trace_metadata=langgraph_trace_metadata,
+                )
+                await _persist_conversation_turn(
+                    settings=settings,
+                    conversation_external_id=effective_conversation_id,
+                    channel=request.channel.value,
+                    actor=actor,
+                    user_message=request.message,
+                    assistant_message=message_text,
+                )
+                return MessageResponse(
+                    message_text=message_text,
+                    mode=preview.mode,
+                    classification=preview.classification,
+                    reason=preview.reason,
+                    selected_tools=preview.selected_tools,
+                    graph_path=preview.graph_path,
+                    retrieval_backend=preview.retrieval_backend,
+                    needs_authentication=preview.needs_authentication,
+                    citations=[],
+                    calendar_events=[],
+                    visual_assets=[],
+                    risk_flags=preview.risk_flags,
+                    suggested_replies=suggested_replies,
+                )
             preview = to_preview(state)
         langgraph_trace_metadata = _capture_langgraph_trace_metadata(
             graph=graph,

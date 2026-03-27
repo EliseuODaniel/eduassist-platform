@@ -14,6 +14,7 @@ except Exception:  # pragma: no cover
     persist = None  # type: ignore[assignment]
 
 from .flow_persistence import get_sqlite_flow_persistence
+from .agentic_rendering import maybe_render_agentic_response
 
 from .support_pilot import (
     _detect_queue,
@@ -167,6 +168,48 @@ class SupportShadowFlow(Flow[SupportFlowState]):
             metadata.update(extra)
         return metadata
 
+    async def _finalize_support_answer(
+        self,
+        *,
+        answer_text: str,
+        reason: str,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        rendered = await maybe_render_agentic_response(
+            slice_name='support',
+            settings=self.settings,
+            user_message=self.state.message,
+            deterministic_answer=answer_text,
+            instructions=(
+                'Reescreva a resposta de suporte com tom humano e direto, sem perder protocolos, status, filas ou proximo passo.'
+            ),
+            required_anchors=[
+                str(self.state.active_ticket_code or ''),
+                str(self.state.active_queue_name or ''),
+                'queued' if 'queued' in answer_text.lower() else '',
+            ],
+        )
+        metadata_extra = {
+            'crewai_installed': bool(Flow is not None),
+            'agent_roles': rendered.get('agent_roles', []),
+            'task_names': rendered.get('task_names', []),
+            'event_listener': rendered.get('event_listener', {}),
+            'event_summary': rendered.get('event_summary', {}),
+            'task_trace': rendered.get('task_trace', {}),
+            'judge': rendered.get('judge'),
+            'deterministic_backstop_used': bool(rendered.get('deterministic_backstop_used', False)),
+            'validation_stack': rendered.get('validation_stack', ['operation_result', 'deterministic_backstop']),
+            'crewai_version': rendered.get('crewai_version'),
+        }
+        if extra:
+            metadata_extra.update(extra)
+        return {
+            'engine_name': 'crewai',
+            'executed': True,
+            'reason': reason,
+            'metadata': self._finish(str(rendered.get('answer_text', answer_text) or answer_text), extra=metadata_extra),
+        }
+
     @listen('missing_conversation')
     def handle_missing_conversation(self) -> dict[str, Any]:
         return {
@@ -205,69 +248,53 @@ class SupportShadowFlow(Flow[SupportFlowState]):
             item.get('protocol_code') or item.get('linked_ticket_code') or ''
         ).strip() or self.state.active_ticket_code
         self.state.active_queue_name = str(item.get('queue_name') or self.state.queue_name or '').strip() or self.state.active_queue_name
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'support_handoff_created' if created else 'support_handoff_reused',
-            'metadata': self._finish(
-                _handoff_create_response(item, created=created),
-                extra={
-                    'queue_name': self.state.queue_name,
-                    'created': created,
-                },
-            ),
-        }
+        return await self._finalize_support_answer(
+            answer_text=_handoff_create_response(item, created=created),
+            reason='support_handoff_created' if created else 'support_handoff_reused',
+            extra={
+                'queue_name': self.state.queue_name,
+                'created': created,
+            },
+        )
 
     @listen('protocol')
-    def handle_protocol(self) -> dict[str, Any]:
+    async def handle_protocol(self) -> dict[str, Any]:
         current_item = self.state.current_item or {}
         self.state.active_ticket_code = str(
             current_item.get('protocol_code') or current_item.get('linked_ticket_code') or ''
         ).strip() or self.state.active_ticket_code
         self.state.active_queue_name = str(current_item.get('queue_name') or '').strip() or self.state.active_queue_name
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'support_protocol',
-            'metadata': self._finish(
-                _handoff_protocol_response(current_item),
-                extra={'ticket_code': current_item.get('protocol_code')},
-            ),
-        }
+        return await self._finalize_support_answer(
+            answer_text=_handoff_protocol_response(current_item),
+            reason='support_protocol',
+            extra={'ticket_code': current_item.get('protocol_code')},
+        )
 
     @listen('summary')
-    def handle_summary(self) -> dict[str, Any]:
+    async def handle_summary(self) -> dict[str, Any]:
         current_item = self.state.current_item or {}
         self.state.active_ticket_code = str(
             current_item.get('protocol_code') or current_item.get('linked_ticket_code') or ''
         ).strip() or self.state.active_ticket_code
         self.state.active_queue_name = str(current_item.get('queue_name') or '').strip() or self.state.active_queue_name
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'support_summary',
-            'metadata': self._finish(
-                _handoff_summary_response(current_item),
-                extra={'ticket_code': current_item.get('protocol_code')},
-            ),
-        }
+        return await self._finalize_support_answer(
+            answer_text=_handoff_summary_response(current_item),
+            reason='support_summary',
+            extra={'ticket_code': current_item.get('protocol_code')},
+        )
 
     @listen('status')
-    def handle_status(self) -> dict[str, Any]:
+    async def handle_status(self) -> dict[str, Any]:
         current_item = self.state.current_item or {}
         self.state.active_ticket_code = str(
             current_item.get('protocol_code') or current_item.get('linked_ticket_code') or ''
         ).strip() or self.state.active_ticket_code
         self.state.active_queue_name = str(current_item.get('queue_name') or '').strip() or self.state.active_queue_name
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'support_status',
-            'metadata': self._finish(
-                _handoff_status_response(current_item),
-                extra={'ticket_code': current_item.get('protocol_code')},
-            ),
-        }
+        return await self._finalize_support_answer(
+            answer_text=_handoff_status_response(current_item),
+            reason='support_status',
+            extra={'ticket_code': current_item.get('protocol_code')},
+        )
 
     @listen('not_supported')
     def handle_not_supported(self) -> dict[str, Any]:

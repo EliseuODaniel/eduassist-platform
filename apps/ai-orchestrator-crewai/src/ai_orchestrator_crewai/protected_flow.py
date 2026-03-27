@@ -18,6 +18,13 @@ except Exception:  # pragma: no cover - defensive import
     persist = None  # type: ignore[assignment]
 
 from .flow_persistence import build_flow_state_id, get_sqlite_flow_persistence
+from .guardrails import (
+    require_answer_citations_subset,
+    require_no_forbidden_entities,
+    require_nonempty_reason_when_invalid,
+    require_pydantic_model,
+    require_sources_subset,
+)
 from .listeners import capture_pilot_events, serialize_pilot_events
 from .protected_pilot import (
     EvidenceDoc,
@@ -27,7 +34,6 @@ from .protected_pilot import (
     _auth_required_backstop,
     _build_llm,
     _build_protected_docs,
-    _conversation_state_key,
     _extract_unmatched_student_reference,
     _fetch_protected_evidence,
     _infer_fast_path_plan,
@@ -36,12 +42,10 @@ from .protected_pilot import (
     _is_identity_scope_query,
     _is_student_focus_repair,
     _load_actor_context,
-    _load_recent_student_name,
     _rank_docs,
     _requires_student,
     _resolve_student,
     _serialize_docs,
-    _store_recent_student_name,
     _student_backstop,
     _student_focus_backstop,
 )
@@ -85,7 +89,6 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
         self._actor_context: dict[str, Any] | None = None
         self._actor: dict[str, Any] | None = None
         self._student: dict[str, Any] | None = None
-        self._state_key: str | None = None
         self._shortlisted_docs: list[EvidenceDoc] = []
         self._identity_backstop_text: str | None = None
         self._llm: Any = None
@@ -112,14 +115,7 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             self.state.reason = 'actor_context_missing'
             return self.state.routing_label
 
-        self._state_key = _conversation_state_key(
-            conversation_id=self.state.conversation_id,
-            telegram_chat_id=self.state.telegram_chat_id,
-            channel=self.state.channel,
-        )
-        recent_student_name = _load_recent_student_name(self._state_key)
-        if not recent_student_name and self.state.active_student_name:
-            recent_student_name = self.state.active_student_name
+        recent_student_name = self.state.active_student_name
         self._student = _resolve_student(self._actor, self.state.message, recent_student_name=recent_student_name)
         self.state.resolved_student_name = self._student.get('full_name') if isinstance(self._student, dict) else None
 
@@ -254,8 +250,6 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
         judge = ProtectedPilotJudge(valid=True, reason='student_selection_handled_deterministically', revision_needed=False)
         if self.state.resolved_student_name:
             self.state.active_student_name = self.state.resolved_student_name
-        if self._state_key:
-            _store_recent_student_name(self._state_key, self.state.resolved_student_name)
         return {
             'engine_name': 'crewai',
             'executed': True,
@@ -275,8 +269,6 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
         judge = ProtectedPilotJudge(valid=True, reason='student_focus_repair_handled_deterministically', revision_needed=False)
         if self.state.resolved_student_name:
             self.state.active_student_name = self.state.resolved_student_name
-        if self._state_key:
-            _store_recent_student_name(self._state_key, self.state.resolved_student_name)
         return {
             'engine_name': 'crewai',
             'executed': True,
@@ -343,8 +335,8 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
     @listen('fast_path')
     def handle_fast_path(self) -> dict[str, Any]:
         self.state.latency_ms = round((perf_counter() - self._overall_started_at) * 1000, 1)
-        if self._state_key:
-            _store_recent_student_name(self._state_key, self.state.resolved_student_name)
+        if self.state.resolved_student_name:
+            self.state.active_student_name = self.state.resolved_student_name
         return {
             'engine_name': 'crewai',
             'executed': True,
@@ -415,6 +407,17 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             verbose=False,
             max_iter=1,
         )
+        linked_student_names = [
+            str(item.get('full_name', '')).strip()
+            for item in (self._actor or {}).get('linked_students', [])
+            if isinstance(item, dict) and str(item.get('full_name', '')).strip()
+        ]
+        forbidden_student_names = [
+            name
+            for name in linked_student_names
+            if not self.state.resolved_student_name
+            or name.casefold() != str(self.state.resolved_student_name).casefold()
+        ]
 
         planning_task = Task(
             name='protected_planning',
@@ -426,6 +429,15 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             expected_output='Structured protected plan.',
             agent=planner,
             output_pydantic=ProtectedPilotPlan,
+            guardrails=[
+                require_pydantic_model(ProtectedPilotPlan),
+                require_sources_subset(
+                    model_type=ProtectedPilotPlan,
+                    field_name='relevant_sources',
+                    valid_source_ids=self.state.evidence_source_ids,
+                ),
+            ],
+            guardrail_max_retries=1,
         )
         composition_task = Task(
             name='protected_composition',
@@ -437,6 +449,18 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             agent=composer,
             context=[planning_task],
             output_pydantic=ProtectedPilotAnswer,
+            guardrails=[
+                require_pydantic_model(ProtectedPilotAnswer),
+                require_answer_citations_subset(
+                    model_type=ProtectedPilotAnswer,
+                    valid_source_ids=self.state.evidence_source_ids,
+                ),
+                require_no_forbidden_entities(
+                    model_type=ProtectedPilotAnswer,
+                    forbidden_names=forbidden_student_names,
+                ),
+            ],
+            guardrail_max_retries=1,
         )
         judge_task = Task(
             name='protected_judging',
@@ -447,6 +471,11 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             agent=judge,
             context=[planning_task, composition_task],
             output_pydantic=ProtectedPilotJudge,
+            guardrails=[
+                require_pydantic_model(ProtectedPilotJudge),
+                require_nonempty_reason_when_invalid(ProtectedPilotJudge),
+            ],
+            guardrail_max_retries=1,
         )
 
         crew = Crew(
@@ -487,8 +516,6 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
         if isinstance(self.state.plan, ProtectedPilotPlan):
             self.state.active_domain = self.state.plan.domain
             self.state.active_attribute = self.state.plan.attribute
-        if self._state_key:
-            _store_recent_student_name(self._state_key, self.state.resolved_student_name)
 
         event_listener = serialize_pilot_events(event_recorder)
         return {

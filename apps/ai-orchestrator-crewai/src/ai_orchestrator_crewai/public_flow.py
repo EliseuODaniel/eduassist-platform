@@ -18,6 +18,14 @@ except Exception:  # pragma: no cover - defensive import
     persist = None  # type: ignore[assignment]
 
 from .flow_persistence import build_flow_state_id, get_sqlite_flow_persistence
+from .guardrails import (
+    extract_literal_anchors,
+    require_anchor_overlap,
+    require_answer_citations_subset,
+    require_nonempty_reason_when_invalid,
+    require_pydantic_model,
+    require_sources_subset,
+)
 from .listeners import capture_pilot_events, serialize_pilot_events
 from .public_pilot import (
     EvidenceDoc,
@@ -244,6 +252,7 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             verbose=False,
             max_iter=1,
         )
+        anticipated_backstop = _deterministic_backstop(self.state.message, None, self._shortlisted_docs) or ''
 
         planning_task = Task(
             name='public_planning',
@@ -258,7 +267,17 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             expected_output='Structured public plan.',
             agent=planner,
             output_pydantic=PublicPilotPlan,
+            guardrails=[
+                require_pydantic_model(PublicPilotPlan),
+                require_sources_subset(
+                    model_type=PublicPilotPlan,
+                    field_name='relevant_sources',
+                    valid_source_ids=self.state.evidence_source_ids,
+                ),
+            ],
+            guardrail_max_retries=1,
         )
+        required_public_anchors = extract_literal_anchors(anticipated_backstop)
         composition_task = Task(
             name='public_composition',
             description=(
@@ -272,6 +291,19 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             agent=composer,
             context=[planning_task],
             output_pydantic=PublicPilotAnswer,
+            guardrails=[
+                require_pydantic_model(PublicPilotAnswer),
+                require_answer_citations_subset(
+                    model_type=PublicPilotAnswer,
+                    valid_source_ids=self.state.evidence_source_ids,
+                ),
+                require_anchor_overlap(
+                    model_type=PublicPilotAnswer,
+                    anchors=required_public_anchors,
+                    allow_if_no_anchors=True,
+                ),
+            ],
+            guardrail_max_retries=1,
         )
         judge_task = Task(
             name='public_judging',
@@ -284,6 +316,11 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             agent=judge,
             context=[planning_task, composition_task],
             output_pydantic=PublicPilotJudge,
+            guardrails=[
+                require_pydantic_model(PublicPilotJudge),
+                require_nonempty_reason_when_invalid(PublicPilotJudge),
+            ],
+            guardrail_max_retries=1,
         )
 
         crew = Crew(

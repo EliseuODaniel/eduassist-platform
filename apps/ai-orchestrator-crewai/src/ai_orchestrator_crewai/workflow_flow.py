@@ -14,6 +14,7 @@ except Exception:  # pragma: no cover
     persist = None  # type: ignore[assignment]
 
 from .flow_persistence import get_sqlite_flow_persistence
+from .agentic_rendering import maybe_render_agentic_response
 
 from .workflow_pilot import (
     _contains_any,
@@ -204,6 +205,48 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
             metadata.update(extra)
         return metadata
 
+    async def _finalize_workflow_answer(
+        self,
+        *,
+        answer_text: str,
+        reason: str,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        rendered = await maybe_render_agentic_response(
+            slice_name='workflow',
+            settings=self.settings,
+            user_message=self.state.message,
+            deterministic_answer=answer_text,
+            instructions=(
+                'Reescreva a resposta operacional com tom humano e claro, preservando literalmente protocolos, tickets, status, datas, janelas e proximo passo.'
+            ),
+            required_anchors=[
+                str(self.state.active_protocol_code or ''),
+                str(self.state.active_preferred_date_iso or ''),
+                str(self.state.active_preferred_window or ''),
+            ],
+        )
+        metadata_extra = {
+            'crewai_installed': bool(Flow is not None),
+            'agent_roles': rendered.get('agent_roles', []),
+            'task_names': rendered.get('task_names', []),
+            'event_listener': rendered.get('event_listener', {}),
+            'event_summary': rendered.get('event_summary', {}),
+            'task_trace': rendered.get('task_trace', {}),
+            'judge': rendered.get('judge'),
+            'deterministic_backstop_used': bool(rendered.get('deterministic_backstop_used', False)),
+            'validation_stack': rendered.get('validation_stack', ['operation_result', 'deterministic_backstop']),
+            'crewai_version': rendered.get('crewai_version'),
+        }
+        if extra:
+            metadata_extra.update(extra)
+        return {
+            'engine_name': 'crewai',
+            'executed': True,
+            'reason': reason,
+            'metadata': self._finish(str(rendered.get('answer_text', answer_text) or answer_text), extra=metadata_extra),
+        }
+
     @listen('missing_conversation')
     def handle_missing_conversation(self) -> dict[str, Any]:
         return {'engine_name': 'crewai', 'executed': False, 'reason': self.state.reason, 'metadata': self._finish()}
@@ -225,12 +268,11 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         item = payload.get('item', {})
         self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
         self.state.active_workflow_type = 'visit_booking'
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'workflow_visit_cancel',
-            'metadata': self._finish(_visit_action_response(item, action='cancel'), extra={'workflow_type': 'visit'}),
-        }
+        return await self._finalize_workflow_answer(
+            answer_text=_visit_action_response(item, action='cancel'),
+            reason='workflow_visit_cancel',
+            extra={'workflow_type': 'visit'},
+        )
 
     @listen('visit_reschedule')
     async def handle_visit_reschedule(self) -> dict[str, Any]:
@@ -253,12 +295,11 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         self.state.active_workflow_type = 'visit_booking'
         self.state.active_preferred_date_iso = str(item.get('preferred_date') or self.state.preferred_date_iso or '').strip() or self.state.active_preferred_date_iso
         self.state.active_preferred_window = str(item.get('preferred_window') or self.state.preferred_window or '').strip() or self.state.active_preferred_window
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'workflow_visit_reschedule',
-            'metadata': self._finish(_visit_action_response(item, action='reschedule'), extra={'workflow_type': 'visit'}),
-        }
+        return await self._finalize_workflow_answer(
+            answer_text=_visit_action_response(item, action='reschedule'),
+            reason='workflow_visit_reschedule',
+            extra={'workflow_type': 'visit'},
+        )
 
     @listen('visit_create')
     async def handle_visit_create(self) -> dict[str, Any]:
@@ -279,12 +320,11 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         self.state.active_workflow_type = 'visit_booking'
         self.state.active_preferred_date_iso = str(item.get('preferred_date') or self.state.preferred_date_iso or '').strip() or self.state.active_preferred_date_iso
         self.state.active_preferred_window = str(item.get('preferred_window') or self.state.preferred_window or '').strip() or self.state.active_preferred_window
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'workflow_visit_create',
-            'metadata': self._finish(_visit_create_response(item), extra={'workflow_type': 'visit'}),
-        }
+        return await self._finalize_workflow_answer(
+            answer_text=_visit_create_response(item),
+            reason='workflow_visit_create',
+            extra={'workflow_type': 'visit'},
+        )
 
     @listen('lookup_not_found')
     def handle_lookup_not_found(self) -> dict[str, Any]:
@@ -296,43 +336,40 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         }
 
     @listen('protocol_lookup')
-    def handle_protocol_lookup(self) -> dict[str, Any]:
+    async def handle_protocol_lookup(self) -> dict[str, Any]:
         item = self.state.current_item or {}
         self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
         self.state.active_workflow_type = self.state.current_type or self.state.active_workflow_type
         text = _visit_protocol_response(item) if self.state.current_type == 'visit_booking' else _request_protocol_response(item)
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'workflow_protocol_lookup',
-            'metadata': self._finish(text, extra={'workflow_type': self.state.current_type}),
-        }
+        return await self._finalize_workflow_answer(
+            answer_text=text,
+            reason='workflow_protocol_lookup',
+            extra={'workflow_type': self.state.current_type},
+        )
 
     @listen('summary_lookup')
-    def handle_summary_lookup(self) -> dict[str, Any]:
+    async def handle_summary_lookup(self) -> dict[str, Any]:
         item = self.state.current_item or {}
         self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
         self.state.active_workflow_type = self.state.current_type or self.state.active_workflow_type
         text = _request_summary_response(item) if self.state.current_type == 'institutional_request' else _visit_status_response(item)
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'workflow_summary_lookup',
-            'metadata': self._finish(text, extra={'workflow_type': self.state.current_type}),
-        }
+        return await self._finalize_workflow_answer(
+            answer_text=text,
+            reason='workflow_summary_lookup',
+            extra={'workflow_type': self.state.current_type},
+        )
 
     @listen('status_lookup')
-    def handle_status_lookup(self) -> dict[str, Any]:
+    async def handle_status_lookup(self) -> dict[str, Any]:
         item = self.state.current_item or {}
         self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
         self.state.active_workflow_type = self.state.current_type or self.state.active_workflow_type
         text = _visit_status_response(item) if self.state.current_type == 'visit_booking' else _request_status_response(item)
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'workflow_status_lookup',
-            'metadata': self._finish(text, extra={'workflow_type': self.state.current_type}),
-        }
+        return await self._finalize_workflow_answer(
+            answer_text=text,
+            reason='workflow_status_lookup',
+            extra={'workflow_type': self.state.current_type},
+        )
 
     @listen('request_create')
     async def handle_request_create(self) -> dict[str, Any]:
@@ -352,12 +389,11 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         item = payload.get('item', {})
         self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
         self.state.active_workflow_type = 'institutional_request'
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'workflow_request_create',
-            'metadata': self._finish(_request_create_response(item, subject=self.state.message), extra={'workflow_type': 'request'}),
-        }
+        return await self._finalize_workflow_answer(
+            answer_text=_request_create_response(item, subject=self.state.message),
+            reason='workflow_request_create',
+            extra={'workflow_type': 'request'},
+        )
 
     @listen('request_update')
     async def handle_request_update(self) -> dict[str, Any]:
@@ -377,12 +413,11 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         detail = self.state.message.replace('quero complementar meu pedido dizendo que', '').strip() or self.state.message
         self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
         self.state.active_workflow_type = 'institutional_request'
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'workflow_request_update',
-            'metadata': self._finish(_request_action_response(item, detail=detail), extra={'workflow_type': 'request'}),
-        }
+        return await self._finalize_workflow_answer(
+            answer_text=_request_action_response(item, detail=detail),
+            reason='workflow_request_update',
+            extra={'workflow_type': 'request'},
+        )
 
     @listen('not_supported')
     def handle_not_supported(self) -> dict[str, Any]:

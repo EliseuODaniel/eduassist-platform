@@ -52,9 +52,8 @@ What is strong today:
 
 Main gap versus top-line LangGraph usage:
 
-- support-slice HITL now exists natively with `interrupt()` / `Command`, but is exposed through internal review endpoints only and not yet promoted into normal user traffic
-- no checkpoint id / node-path metadata bridged into the existing trace surface yet
-- no LangGraph-native durable execution story beyond checkpointed state recovery
+- the hardest remaining gap is not core framework usage anymore, but expanding native operator workflows beyond the currently validated low-risk slices
+- no broader durable execution story yet beyond checkpoint-backed recovery plus HITL review/resume
 
 ### CrewAI
 
@@ -70,10 +69,10 @@ What is strong today:
 
 Main gap versus top-line CrewAI usage:
 
-- guardrails rely more on judge plus deterministic backstop than on stable CrewAI-native task guardrails
-- support/workflow still lean heavily on deterministic handlers
+- support/workflow still lean heavily on deterministic handlers for side-effect safety
 - conversation affinity and longer-lived state still live partly outside the CrewAI side
-- service logs still include CrewAI Flow console panels even though the interactive trace prompt is now suppressed
+- the current local environment is not exercising the LLM-backed agentic path live because `llmConfigured=false`
+- CrewAI still lacks a native operator-approval primitive comparable to LangGraph `interrupt()` for protected traffic
 
 ## Progress Snapshot
 
@@ -81,9 +80,12 @@ Validated in this round:
 
 - LangGraph now runs with a native Postgres-backed checkpointer and stable `thread_id` mapping.
 - LangGraph now exposes native HITL review paths for the `support` slice and for low-risk `protected` reads through internal review/state/resume endpoints backed by the checkpointer.
+- LangGraph now also supports HITL on normal user-traffic execution paths when the feature flag is enabled, returning a safe pending-review response while persisting the interruptible thread state.
 - LangGraph checkpointer serializer compatibility is now fixed for the current typed checkpoint payloads; native snapshot reads are working again through the Postgres checkpointer.
 - LangGraph runtime no longer tries to bootstrap the checkpoint schema on startup; schema ownership stays in the database init/migration layer, which removes a recurring privilege warning from service logs.
 - CrewAI now persists `Flow` state for `public`, `protected`, `support`, and `workflow` through SQLite.
+- CrewAI now uses native task guardrails in the `public` and `protected` flows.
+- CrewAI now wraps `support` and `workflow` deterministic operations in an optional native agentic rendering/judge layer, preserving a deterministic factual backstop.
 - LangGraph now delegates through slice subgraphs for `public`, `protected`, and `support`.
 - CrewAI now emits per-task event telemetry with task, agent, crew, and timing summaries on agentic paths.
 - CrewAI no longer blocks on the interactive tracing prompt during service requests.
@@ -131,15 +133,14 @@ Concrete local evidence:
 - both frameworks now persist normalized trace timelines for direct comparison:
   - `response_payload.langgraph.timeline_kind = langgraph_node_path`
   - `response_payload.crewai.timeline_kind = crewai_stage_task_path`
+- the latest [framework-langgraph-user-traffic-hitl-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-langgraph-user-traffic-hitl-report.md) validates that both `support` and low-risk `protected` requests can enter native LangGraph user-traffic HITL, persist the pending interrupt, and resume safely.
 - the latest [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md) shows:
   - LangGraph protected HITL can survive restart and resume the exact review thread
   - CrewAI `public`, `protected`, `support`, and `workflow` Flow follow-ups survive restart with stable `flow_state_id`
 - the latest [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md) shows:
   - LangGraph protected HITL can survive hard process kill and still resume the same review thread
   - CrewAI `public`, `protected`, `support`, and `workflow` Flow continuity also survives hard process kill with stable `flow_state_id`
-- the latest [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md) currently scores:
-  - `LangGraph`: `24/25`
-  - `CrewAI`: `22/25`
+- the latest [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md) tracks the current top-line native capability totals for both frameworks
 - the runtime-readable scorecard artifact now lives at `/workspace/artifacts/framework-native-scorecard.json` inside the orchestrator container
 
 ## Upgrade Principles

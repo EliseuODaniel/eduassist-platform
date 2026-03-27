@@ -97,6 +97,8 @@ class Settings(BaseSettings):
     langgraph_checkpointer_schema: str = 'langgraph_checkpoint'
     langgraph_hitl_enabled: bool = False
     langgraph_hitl_default_slices: str = 'support'
+    langgraph_hitl_user_traffic_enabled: bool = False
+    langgraph_hitl_user_traffic_slices: str = 'support'
 
 
 @lru_cache
@@ -351,6 +353,8 @@ async def meta(
         'langgraphThreadIdEnabled': langgraph_runtime['threadIdEnabled'],
         'langgraphHitlEnabled': settings.langgraph_hitl_enabled,
         'langgraphHitlDefaultSlices': settings.langgraph_hitl_default_slices,
+        'langgraphHitlUserTrafficEnabled': settings.langgraph_hitl_user_traffic_enabled,
+        'langgraphHitlUserTrafficSlices': settings.langgraph_hitl_user_traffic_slices,
     }
 
 
@@ -403,6 +407,8 @@ async def status() -> dict[str, object]:
         'langgraphThreadIdEnabled': langgraph_runtime['threadIdEnabled'],
         'langgraphHitlEnabled': settings.langgraph_hitl_enabled,
         'langgraphHitlDefaultSlices': settings.langgraph_hitl_default_slices,
+        'langgraphHitlUserTrafficEnabled': settings.langgraph_hitl_user_traffic_enabled,
+        'langgraphHitlUserTrafficSlices': settings.langgraph_hitl_user_traffic_slices,
     }
 
 

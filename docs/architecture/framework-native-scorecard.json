@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-03-27T14:38:46.020428+00:00",
+  "generated_at": "2026-03-27T16:44:36.055700+00:00",
   "frameworks": {
     "langgraph": {
-      "total_score": 29,
+      "total_score": 30,
       "max_score": 30,
       "primary_stack_native_path_passed": true,
       "restart_recovery_passed": true,
@@ -36,7 +36,7 @@
       }
     },
     "crewai": {
-      "total_score": 27,
+      "total_score": 29,
       "max_score": 30,
       "primary_stack_native_path_passed": true,
       "restart_recovery_passed": true,
@@ -53,6 +53,246 @@
         },
         "response": {
           "latency_ms": 60.7
+        },
+        "live": {
+          "status": {
+            "service": "ai-orchestrator-crewai",
+            "ready": true,
+            "crewaiInstalled": true,
+            "crewaiVersion": "1.12.2",
+            "slice": "public+protected+workflow+support",
+            "mode": "pilot",
+            "googleModel": "gemini-2.5-flash-preview",
+            "llmConfigured": false,
+            "capabilities": [
+              "public-shadow-flow",
+              "protected-shadow-flow",
+              "workflow-shadow-flow",
+              "support-shadow-flow",
+              "isolated-dependencies",
+              "planner-composer-judge",
+              "flow-state-routing",
+              "flow-state-persistence",
+              "task-trace-telemetry",
+              "task-guardrails",
+              "agentic-rendering-for-support-workflow"
+            ],
+            "flowStateDir": "/workspace/artifacts/crewai-flow-state"
+          },
+          "public": {
+            "conversation_id": "scorecard-crewai-public-live-1",
+            "slice_name": "public",
+            "normalized_message": "qual o horario da biblioteca?",
+            "crewai_installed": true,
+            "crewai_version": "1.12.2",
+            "agent_roles": [],
+            "task_names": [],
+            "latency_ms": 52.6,
+            "plan": null,
+            "answer": {
+              "answer_text": "A Biblioteca Aurora atende ao publico de segunda a sexta, das 7h30 as 18h00.",
+              "citations": [
+                "feature.1"
+              ]
+            },
+            "judge": {
+              "valid": true,
+              "reason": "deterministic_fast_path",
+              "revision_needed": false
+            },
+            "evidence_sources": [
+              "feature.1"
+            ],
+            "deterministic_backstop_used": true,
+            "validation_stack": [
+              "flow_router",
+              "deterministic_fast_path"
+            ],
+            "flow_enabled": true,
+            "flow_state_id": "public:telegram:conversation:scorecard-crewai-public-live-1",
+            "event_listener": {
+              "counts": {},
+              "events": [],
+              "summary": {},
+              "task_trace": {
+                "tasks": {},
+                "agents": {},
+                "crews": {},
+                "tools": {}
+              }
+            },
+            "event_summary": {},
+            "task_trace": {
+              "tasks": {},
+              "agents": {},
+              "crews": {},
+              "tools": {}
+            }
+          },
+          "protected": {
+            "conversation_id": "scorecard-crewai-protected-live-1",
+            "slice_name": "protected",
+            "normalized_message": "qual situacao de documentacao do lucas?",
+            "resolved_student_name": "Lucas Oliveira",
+            "flow_enabled": true,
+            "flow_state_id": "protected:telegram:conversation:scorecard-crewai-protected-live-1",
+            "event_listener": {
+              "counts": {},
+              "events": [],
+              "summary": {},
+              "task_trace": {
+                "tasks": {},
+                "agents": {},
+                "crews": {},
+                "tools": {}
+              }
+            },
+            "event_summary": {},
+            "task_trace": {
+              "tasks": {},
+              "agents": {},
+              "crews": {},
+              "tools": {}
+            },
+            "crewai_installed": true,
+            "crewai_version": "1.12.2",
+            "agent_roles": [],
+            "task_names": [],
+            "latency_ms": 306.1,
+            "plan": {
+              "intent": "student_admin",
+              "student_name": "Lucas Oliveira",
+              "student_id": "53d70582-36f3-4052-b29c-ede23dec42ff",
+              "domain": "institution",
+              "attribute": "documents",
+              "needs_clarification": false,
+              "clarification_question": null,
+              "relevant_sources": [
+                "admin.overview"
+              ]
+            },
+            "answer": {
+              "answer_text": "A situacao documental de Lucas Oliveira hoje esta regular e completa.",
+              "citations": [
+                "admin.overview"
+              ]
+            },
+            "judge": {
+              "valid": true,
+              "reason": "deterministic_fast_path",
+              "revision_needed": false
+            },
+            "evidence_sources": [
+              "admin.overview",
+              "admin.check.3",
+              "admin.check.2",
+              "admin.check.1",
+              "assessments.overview",
+              "attendance.overview",
+              "identity.student.1",
+              "financial.overview"
+            ],
+            "deterministic_backstop_used": true,
+            "validation_stack": [
+              "flow_router",
+              "deterministic_fast_path"
+            ]
+          },
+          "support": {
+            "slice_name": "support",
+            "conversation_id": "scorecard-crewai-support-live-1",
+            "normalized_message": "quero falar com a secretaria",
+            "flow_enabled": true,
+            "flow_state_id": "support:telegram:conversation:scorecard-crewai-support-live-1",
+            "flow_state_persisted": true,
+            "active_ticket_code": null,
+            "active_queue_name": "secretaria",
+            "latency_ms": 65.7,
+            "validation_stack": [
+              "operation_result",
+              "deterministic_backstop"
+            ],
+            "answer": {
+              "answer_text": "Encaminhei sua solicitacao para a fila de secretaria. Protocolo: ATD-20260327-3AB07787. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional."
+            },
+            "crewai_installed": true,
+            "agent_roles": [],
+            "task_names": [],
+            "event_listener": {
+              "counts": {},
+              "events": [],
+              "summary": {},
+              "task_trace": {
+                "tasks": {},
+                "agents": {},
+                "crews": {},
+                "tools": {}
+              }
+            },
+            "event_summary": {},
+            "task_trace": {
+              "tasks": {},
+              "agents": {},
+              "crews": {},
+              "tools": {}
+            },
+            "judge": {
+              "valid": true,
+              "reason": "llm_unavailable_backstop",
+              "revision_needed": false
+            },
+            "deterministic_backstop_used": true,
+            "crewai_version": "1.12.2",
+            "queue_name": "secretaria",
+            "created": true
+          },
+          "workflow": {
+            "slice_name": "workflow",
+            "conversation_id": "scorecard-crewai-workflow-live-1",
+            "normalized_message": "quero agendar uma visita na quinta a tarde",
+            "workflow_type": "visit",
+            "flow_enabled": true,
+            "flow_state_id": "workflow:telegram:conversation:scorecard-crewai-workflow-live-1",
+            "flow_state_persisted": true,
+            "active_protocol_code": "VIS-20260327-D5147C",
+            "active_workflow_type": "visit_booking",
+            "latency_ms": 65.7,
+            "validation_stack": [
+              "operation_result",
+              "deterministic_backstop"
+            ],
+            "answer": {
+              "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260327-D5147C. Preferencia informada: 02/04/2026 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260327-286F7834. A equipe comercial valida a janela e retorna com a confirmacao."
+            },
+            "crewai_installed": true,
+            "agent_roles": [],
+            "task_names": [],
+            "event_listener": {
+              "counts": {},
+              "events": [],
+              "summary": {},
+              "task_trace": {
+                "tasks": {},
+                "agents": {},
+                "crews": {},
+                "tools": {}
+              }
+            },
+            "event_summary": {},
+            "task_trace": {
+              "tasks": {},
+              "agents": {},
+              "crews": {},
+              "tools": {}
+            },
+            "judge": {
+              "valid": true,
+              "reason": "llm_unavailable_backstop",
+              "revision_needed": false
+            },
+            "deterministic_backstop_used": true,
+            "crewai_version": "1.12.2"
+          }
         }
       },
       "recommended_canary_slices": [

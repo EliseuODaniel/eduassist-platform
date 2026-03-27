@@ -21,6 +21,7 @@ ARTIFACT_JSON_PATH = REPO_ROOT / 'artifacts/framework-native-scorecard.json'
 PRIMARY_STACK_REPORT = REPO_ROOT / 'docs/architecture/framework-primary-stack-flag-report.md'
 RESTART_REPORT = REPO_ROOT / 'docs/architecture/framework-restart-recovery-report.md'
 CRASH_REPORT = REPO_ROOT / 'docs/architecture/framework-crash-recovery-report.md'
+USER_TRAFFIC_HITL_REPORT = REPO_ROOT / 'docs/architecture/framework-langgraph-user-traffic-hitl-report.md'
 
 
 def _read_text(path: Path) -> str:
@@ -89,6 +90,72 @@ def _fetch_trace_summary(settings: Settings) -> dict[str, Any]:
     return summaries
 
 
+def _fetch_crewai_live_summary(settings: Settings) -> dict[str, Any]:
+    headers = {'X-Internal-Api-Token': settings.internal_api_token, 'Content-Type': 'application/json'}
+    crewai_url = 'http://127.0.0.1:8004'
+    _, _, status_payload = request(
+        'GET',
+        f'{crewai_url}/v1/status',
+        headers={'X-Internal-Api-Token': settings.internal_api_token},
+        timeout=20.0,
+    )
+    public_conv = 'scorecard-crewai-public-live-1'
+    protected_conv = 'scorecard-crewai-protected-live-1'
+    support_conv = 'scorecard-crewai-support-live-1'
+    workflow_conv = 'scorecard-crewai-workflow-live-1'
+    _, _, public_payload = request(
+        'POST',
+        f'{crewai_url}/v1/shadow/public',
+        headers=headers,
+        json_body={
+            'message': 'qual o horario da biblioteca?',
+            'conversation_id': public_conv,
+            'telegram_chat_id': 1649845499,
+        },
+        timeout=30.0,
+    )
+    _, _, protected_payload = request(
+        'POST',
+        f'{crewai_url}/v1/shadow/protected',
+        headers=headers,
+        json_body={
+            'message': 'qual situacao de documentacao do Lucas?',
+            'conversation_id': protected_conv,
+            'telegram_chat_id': 1649845499,
+        },
+        timeout=30.0,
+    )
+    _, _, support_payload = request(
+        'POST',
+        f'{crewai_url}/v1/shadow/support',
+        headers=headers,
+        json_body={
+            'message': 'quero falar com a secretaria',
+            'conversation_id': support_conv,
+            'telegram_chat_id': 1649845499,
+        },
+        timeout=30.0,
+    )
+    _, _, workflow_payload = request(
+        'POST',
+        f'{crewai_url}/v1/shadow/workflow',
+        headers=headers,
+        json_body={
+            'message': 'quero agendar uma visita na quinta a tarde',
+            'conversation_id': workflow_conv,
+            'telegram_chat_id': 1649845499,
+        },
+        timeout=30.0,
+    )
+    return {
+        'status': status_payload if isinstance(status_payload, dict) else {},
+        'public': public_payload if isinstance(public_payload, dict) else {},
+        'protected': protected_payload if isinstance(protected_payload, dict) else {},
+        'support': support_payload if isinstance(support_payload, dict) else {},
+        'workflow': workflow_payload if isinstance(workflow_payload, dict) else {},
+    }
+
+
 def _score_lines(title: str, score: int, weight: int, evidence: str) -> str:
     return f'| {title} | `{score}/{weight}` | {evidence} |'
 
@@ -134,7 +201,9 @@ def main() -> int:
     primary_stack_text = _read_text(PRIMARY_STACK_REPORT)
     restart_text = _read_text(RESTART_REPORT)
     crash_text = _read_text(CRASH_REPORT)
+    user_traffic_hitl_text = _read_text(USER_TRAFFIC_HITL_REPORT)
     traces = _fetch_trace_summary(settings)
+    crewai_live = _fetch_crewai_live_summary(settings)
 
     langgraph_trace = traces.get('langgraph', {})
     langgraph_request = langgraph_trace.get('request_payload') or {}
@@ -145,6 +214,12 @@ def main() -> int:
     crewai_response = crewai_trace.get('response_payload') or {}
     crewai_req_meta = crewai_request.get('crewai') or {}
     crewai_resp_meta = crewai_response.get('crewai') or {}
+    crewai_status = crewai_live.get('status') or {}
+    crewai_capabilities = set(crewai_status.get('capabilities') or [])
+    crewai_public_meta = (crewai_live.get('public') or {}).get('metadata') or {}
+    crewai_protected_meta = (crewai_live.get('protected') or {}).get('metadata') or {}
+    crewai_support_meta = (crewai_live.get('support') or {}).get('metadata') or {}
+    crewai_workflow_meta = (crewai_live.get('workflow') or {}).get('metadata') or {}
 
     langgraph_restart_ok = _has_all(
         restart_text,
@@ -198,6 +273,14 @@ def main() -> int:
             'langgraph_primary_workflow_native_path',
             '| `langgraph_primary_public_native_path` | `langgraph` | `public` | passed |',
             '| `langgraph_primary_protected_native_path` | `langgraph` | `protected` | passed |',
+        ],
+    )
+    langgraph_user_traffic_hitl_ok = _has_all(
+        user_traffic_hitl_text,
+        [
+            'langgraph-user-traffic-hitl-support-1',
+            'langgraph-user-traffic-hitl-protected-1',
+            '- All passed: `yes`',
         ],
     )
 
@@ -255,12 +338,19 @@ def main() -> int:
     langgraph_rows.append(
         _score_lines(
             'Operator debug ergonomics',
-            4 if langgraph_meta.get('thread_id') and langgraph_meta.get('checkpoint_id') else 2,
+            5 if langgraph_user_traffic_hitl_ok else (4 if langgraph_meta.get('thread_id') and langgraph_meta.get('checkpoint_id') else 2),
             5,
-            'Internal review/state/resume endpoints plus checkpoint-backed thread inspection are already live.',
+            'Checkpoint-backed thread inspection is live, and user-traffic HITL is now validated in [framework-langgraph-user-traffic-hitl-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-langgraph-user-traffic-hitl-report.md).',
         )
     )
-    langgraph_score += 4 if langgraph_meta.get('thread_id') and langgraph_meta.get('checkpoint_id') else 2
+    langgraph_score += 5 if langgraph_user_traffic_hitl_ok else (4 if langgraph_meta.get('thread_id') and langgraph_meta.get('checkpoint_id') else 2)
+
+    crewai_has_live_flow_ids = all(
+        isinstance(meta, dict) and bool(meta.get('flow_state_id'))
+        for meta in (crewai_public_meta, crewai_protected_meta, crewai_support_meta, crewai_workflow_meta)
+    )
+    crewai_native_guardrails_capable = {'task-trace-telemetry', 'task-guardrails'}.issubset(crewai_capabilities)
+    crewai_agentic_rendering_capable = 'agentic-rendering-for-support-workflow' in crewai_capabilities
 
     crewai_rows = []
     crewai_rows.append(
@@ -302,21 +392,21 @@ def main() -> int:
     crewai_rows.append(
         _score_lines(
             'Task/flow trace richness',
-            4 if 'validation_stack' in crewai_req_meta and isinstance(crewai_resp_meta, dict) and 'latency_ms' in crewai_resp_meta else 2,
+            5 if crewai_has_live_flow_ids and crewai_native_guardrails_capable else (4 if 'validation_stack' in crewai_req_meta and isinstance(crewai_resp_meta, dict) and 'latency_ms' in crewai_resp_meta else 2),
             5,
-            'Canonical trace now exposes normalized CrewAI request/response metadata, and agentic paths emit `event_summary`/`task_trace` in pilot metadata.',
+            'Canonical trace exposes normalized CrewAI metadata, the pilot advertises native `task-guardrails`, and all four live slice checks return persisted `flow_state_id` values.',
         )
     )
-    crewai_score += 4 if 'validation_stack' in crewai_req_meta and isinstance(crewai_resp_meta, dict) and 'latency_ms' in crewai_resp_meta else 2
+    crewai_score += 5 if crewai_has_live_flow_ids and crewai_native_guardrails_capable else (4 if 'validation_stack' in crewai_req_meta and isinstance(crewai_resp_meta, dict) and 'latency_ms' in crewai_resp_meta else 2)
     crewai_rows.append(
         _score_lines(
             'Operator debug ergonomics',
-            3,
+            4 if crewai_has_live_flow_ids and crewai_native_guardrails_capable and crewai_agentic_rendering_capable else 3,
             5,
-            'Good flow-state visibility, but no CrewAI-native HITL equivalent and some deterministic slices still expose thinner traces than agentic ones.',
+            'Flow-state visibility is now strong across all slices, but CrewAI still has no HITL/operator-approval primitive equivalent to LangGraph `interrupt()` for sensitive protected traffic.',
         )
     )
-    crewai_score += 3
+    crewai_score += 4 if crewai_has_live_flow_ids and crewai_native_guardrails_capable and crewai_agentic_rendering_capable else 3
     crewai_blocked_reasons = {
         'protected': 'protected still trails LangGraph in operator-facing control primitives and should stay behind manual review.',
     }
@@ -350,7 +440,9 @@ def main() -> int:
         '- [framework-primary-stack-flag-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-primary-stack-flag-report.md)',
         '- [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md)',
         '- [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md)',
+        '- [framework-langgraph-user-traffic-hitl-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-langgraph-user-traffic-hitl-report.md)',
         '- live `orchestration.trace` samples for one `LangGraph` path and one `CrewAI` path',
+        '- live direct `CrewAI` slice responses for `public`, `protected`, `support`, and `workflow`',
         '',
         '## Totals',
         '',
@@ -408,7 +500,19 @@ def main() -> int:
         '### CrewAI',
         '',
         '```json',
-        json.dumps({'request': crewai_req_meta, 'response': crewai_resp_meta}, ensure_ascii=False, indent=2),
+        json.dumps(
+            {
+                'status': crewai_status,
+                'request': crewai_req_meta,
+                'response': crewai_resp_meta,
+                'live_public': crewai_public_meta,
+                'live_protected': crewai_protected_meta,
+                'live_support': crewai_support_meta,
+                'live_workflow': crewai_workflow_meta,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
         '```',
     ]
     OUTPUT_PATH.write_text('\n'.join(output) + '\n', encoding='utf-8')
@@ -434,6 +538,13 @@ def main() -> int:
                 'trace_sample': {
                     'request': crewai_req_meta,
                     'response': crewai_resp_meta,
+                    'live': {
+                        'status': crewai_status,
+                        'public': crewai_public_meta,
+                        'protected': crewai_protected_meta,
+                        'support': crewai_support_meta,
+                        'workflow': crewai_workflow_meta,
+                    },
                 },
                 'recommended_canary_slices': ['public', 'support', 'workflow'],
                 'blocked_canary_slices': ['protected'],

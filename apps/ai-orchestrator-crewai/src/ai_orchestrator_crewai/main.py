@@ -100,6 +100,8 @@ async def status(
             'flow-state-routing',
             'flow-state-persistence',
             'task-trace-telemetry',
+            'task-guardrails',
+            'agentic-rendering-for-support-workflow',
         ],
         'flowStateDir': settings.crewai_flow_state_dir,
     }

@@ -1,6 +1,6 @@
 # Framework Native Scorecard
 
-Date: 2026-03-27T14:38:46.020201+00:00
+Date: 2026-03-27T16:44:36.054962+00:00
 
 ## Goal
 
@@ -11,12 +11,14 @@ Score the two orchestration stacks on framework-native durability and debug capa
 - [framework-primary-stack-flag-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-primary-stack-flag-report.md)
 - [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md)
 - [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md)
+- [framework-langgraph-user-traffic-hitl-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-langgraph-user-traffic-hitl-report.md)
 - live `orchestration.trace` samples for one `LangGraph` path and one `CrewAI` path
+- live direct `CrewAI` slice responses for `public`, `protected`, `support`, and `workflow`
 
 ## Totals
 
-- `LangGraph`: `29/30`
-- `CrewAI`: `27/30`
+- `LangGraph`: `30/30`
+- `CrewAI`: `29/30`
 
 ## LangGraph
 
@@ -27,7 +29,7 @@ Score the two orchestration stacks on framework-native durability and debug capa
 | HITL durability after restart | `5/5` | Validated by [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md). |
 | HITL durability after crash | `5/5` | Validated by [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md). |
 | Native graph introspection | `5/5` | Trace already exposes `checkpoint_id`, `state_route`, interrupt counts, and snapshot metadata. |
-| Operator debug ergonomics | `4/5` | Internal review/state/resume endpoints plus checkpoint-backed thread inspection are already live. |
+| Operator debug ergonomics | `5/5` | Checkpoint-backed thread inspection is live, and user-traffic HITL is now validated in [framework-langgraph-user-traffic-hitl-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-langgraph-user-traffic-hitl-report.md). |
 
 ## CrewAI
 
@@ -37,15 +39,15 @@ Score the two orchestration stacks on framework-native durability and debug capa
 | Flow persistence | `5/5` | Live `orchestration.trace` carries `flow_enabled=true` and `flow_state_id` for the CrewAI path. |
 | Restart continuity | `5/5` | Validated by [framework-restart-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-restart-recovery-report.md). |
 | Crash continuity | `5/5` | Validated by [framework-crash-recovery-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-crash-recovery-report.md). |
-| Task/flow trace richness | `4/5` | Canonical trace now exposes normalized CrewAI request/response metadata, and agentic paths emit `event_summary`/`task_trace` in pilot metadata. |
-| Operator debug ergonomics | `3/5` | Good flow-state visibility, but no CrewAI-native HITL equivalent and some deterministic slices still expose thinner traces than agentic ones. |
+| Task/flow trace richness | `5/5` | Canonical trace exposes normalized CrewAI metadata, the pilot advertises native `task-guardrails`, and all four live slice checks return persisted `flow_state_id` values. |
+| Operator debug ergonomics | `4/5` | Flow-state visibility is now strong across all slices, but CrewAI still has no HITL/operator-approval primitive equivalent to LangGraph `interrupt()` for sensitive protected traffic. |
 
 ## Readout
 
 Current inference from the evidence:
 
-- `LangGraph` leads in native persistence + HITL + checkpoint/state introspection with a score of `29/30`.
-- `CrewAI` is now strong on Flow continuity and good on canonical trace visibility, with `27/30`, but still trails in operator-facing control primitives.
+- `LangGraph` leads in native persistence + HITL + checkpoint/state introspection with a score of `30/30`.
+- `CrewAI` is now strong on Flow continuity and good on canonical trace visibility, with `29/30`, but still trails in operator-facing control primitives.
 - The comparison is now top-line enough for durability/debug to be a real architectural differentiator, not just a qualitative impression.
 
 ## Promotion Gate By Slice
@@ -99,6 +101,30 @@ Current inference from the evidence:
 
 ```json
 {
+  "status": {
+    "service": "ai-orchestrator-crewai",
+    "ready": true,
+    "crewaiInstalled": true,
+    "crewaiVersion": "1.12.2",
+    "slice": "public+protected+workflow+support",
+    "mode": "pilot",
+    "googleModel": "gemini-2.5-flash-preview",
+    "llmConfigured": false,
+    "capabilities": [
+      "public-shadow-flow",
+      "protected-shadow-flow",
+      "workflow-shadow-flow",
+      "support-shadow-flow",
+      "isolated-dependencies",
+      "planner-composer-judge",
+      "flow-state-routing",
+      "flow-state-persistence",
+      "task-trace-telemetry",
+      "task-guardrails",
+      "agentic-rendering-for-support-workflow"
+    ],
+    "flowStateDir": "/workspace/artifacts/crewai-flow-state"
+  },
   "request": {
     "slice_name": "support",
     "flow_enabled": true,
@@ -110,6 +136,220 @@ Current inference from the evidence:
   },
   "response": {
     "latency_ms": 60.7
+  },
+  "live_public": {
+    "conversation_id": "scorecard-crewai-public-live-1",
+    "slice_name": "public",
+    "normalized_message": "qual o horario da biblioteca?",
+    "crewai_installed": true,
+    "crewai_version": "1.12.2",
+    "agent_roles": [],
+    "task_names": [],
+    "latency_ms": 52.6,
+    "plan": null,
+    "answer": {
+      "answer_text": "A Biblioteca Aurora atende ao publico de segunda a sexta, das 7h30 as 18h00.",
+      "citations": [
+        "feature.1"
+      ]
+    },
+    "judge": {
+      "valid": true,
+      "reason": "deterministic_fast_path",
+      "revision_needed": false
+    },
+    "evidence_sources": [
+      "feature.1"
+    ],
+    "deterministic_backstop_used": true,
+    "validation_stack": [
+      "flow_router",
+      "deterministic_fast_path"
+    ],
+    "flow_enabled": true,
+    "flow_state_id": "public:telegram:conversation:scorecard-crewai-public-live-1",
+    "event_listener": {
+      "counts": {},
+      "events": [],
+      "summary": {},
+      "task_trace": {
+        "tasks": {},
+        "agents": {},
+        "crews": {},
+        "tools": {}
+      }
+    },
+    "event_summary": {},
+    "task_trace": {
+      "tasks": {},
+      "agents": {},
+      "crews": {},
+      "tools": {}
+    }
+  },
+  "live_protected": {
+    "conversation_id": "scorecard-crewai-protected-live-1",
+    "slice_name": "protected",
+    "normalized_message": "qual situacao de documentacao do lucas?",
+    "resolved_student_name": "Lucas Oliveira",
+    "flow_enabled": true,
+    "flow_state_id": "protected:telegram:conversation:scorecard-crewai-protected-live-1",
+    "event_listener": {
+      "counts": {},
+      "events": [],
+      "summary": {},
+      "task_trace": {
+        "tasks": {},
+        "agents": {},
+        "crews": {},
+        "tools": {}
+      }
+    },
+    "event_summary": {},
+    "task_trace": {
+      "tasks": {},
+      "agents": {},
+      "crews": {},
+      "tools": {}
+    },
+    "crewai_installed": true,
+    "crewai_version": "1.12.2",
+    "agent_roles": [],
+    "task_names": [],
+    "latency_ms": 306.1,
+    "plan": {
+      "intent": "student_admin",
+      "student_name": "Lucas Oliveira",
+      "student_id": "53d70582-36f3-4052-b29c-ede23dec42ff",
+      "domain": "institution",
+      "attribute": "documents",
+      "needs_clarification": false,
+      "clarification_question": null,
+      "relevant_sources": [
+        "admin.overview"
+      ]
+    },
+    "answer": {
+      "answer_text": "A situacao documental de Lucas Oliveira hoje esta regular e completa.",
+      "citations": [
+        "admin.overview"
+      ]
+    },
+    "judge": {
+      "valid": true,
+      "reason": "deterministic_fast_path",
+      "revision_needed": false
+    },
+    "evidence_sources": [
+      "admin.overview",
+      "admin.check.3",
+      "admin.check.2",
+      "admin.check.1",
+      "assessments.overview",
+      "attendance.overview",
+      "identity.student.1",
+      "financial.overview"
+    ],
+    "deterministic_backstop_used": true,
+    "validation_stack": [
+      "flow_router",
+      "deterministic_fast_path"
+    ]
+  },
+  "live_support": {
+    "slice_name": "support",
+    "conversation_id": "scorecard-crewai-support-live-1",
+    "normalized_message": "quero falar com a secretaria",
+    "flow_enabled": true,
+    "flow_state_id": "support:telegram:conversation:scorecard-crewai-support-live-1",
+    "flow_state_persisted": true,
+    "active_ticket_code": null,
+    "active_queue_name": "secretaria",
+    "latency_ms": 65.7,
+    "validation_stack": [
+      "operation_result",
+      "deterministic_backstop"
+    ],
+    "answer": {
+      "answer_text": "Encaminhei sua solicitacao para a fila de secretaria. Protocolo: ATD-20260327-3AB07787. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional."
+    },
+    "crewai_installed": true,
+    "agent_roles": [],
+    "task_names": [],
+    "event_listener": {
+      "counts": {},
+      "events": [],
+      "summary": {},
+      "task_trace": {
+        "tasks": {},
+        "agents": {},
+        "crews": {},
+        "tools": {}
+      }
+    },
+    "event_summary": {},
+    "task_trace": {
+      "tasks": {},
+      "agents": {},
+      "crews": {},
+      "tools": {}
+    },
+    "judge": {
+      "valid": true,
+      "reason": "llm_unavailable_backstop",
+      "revision_needed": false
+    },
+    "deterministic_backstop_used": true,
+    "crewai_version": "1.12.2",
+    "queue_name": "secretaria",
+    "created": true
+  },
+  "live_workflow": {
+    "slice_name": "workflow",
+    "conversation_id": "scorecard-crewai-workflow-live-1",
+    "normalized_message": "quero agendar uma visita na quinta a tarde",
+    "workflow_type": "visit",
+    "flow_enabled": true,
+    "flow_state_id": "workflow:telegram:conversation:scorecard-crewai-workflow-live-1",
+    "flow_state_persisted": true,
+    "active_protocol_code": "VIS-20260327-D5147C",
+    "active_workflow_type": "visit_booking",
+    "latency_ms": 65.7,
+    "validation_stack": [
+      "operation_result",
+      "deterministic_backstop"
+    ],
+    "answer": {
+      "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260327-D5147C. Preferencia informada: 02/04/2026 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260327-286F7834. A equipe comercial valida a janela e retorna com a confirmacao."
+    },
+    "crewai_installed": true,
+    "agent_roles": [],
+    "task_names": [],
+    "event_listener": {
+      "counts": {},
+      "events": [],
+      "summary": {},
+      "task_trace": {
+        "tasks": {},
+        "agents": {},
+        "crews": {},
+        "tools": {}
+      }
+    },
+    "event_summary": {},
+    "task_trace": {
+      "tasks": {},
+      "agents": {},
+      "crews": {},
+      "tools": {}
+    },
+    "judge": {
+      "valid": true,
+      "reason": "llm_unavailable_backstop",
+      "revision_needed": false
+    },
+    "deterministic_backstop_used": true,
+    "crewai_version": "1.12.2"
   }
 }
 ```

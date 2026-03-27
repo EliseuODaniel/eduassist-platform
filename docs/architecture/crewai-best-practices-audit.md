@@ -29,30 +29,30 @@ That is closer to current best practice than trying to turn every request into a
 - isolated dependency boundary for CrewAI in `ai-orchestrator-crewai`
 - bounded crews with explicit roles
 - structured task outputs via `output_pydantic`
+- native task guardrails in the `public` and `protected` flows
 - event-listener telemetry in the public and protected pilots
 - stable per-task event telemetry surfaced back in `event_summary` and `task_trace`
-- real CrewAI `Flow` wrappers for `public` and `protected`, with typed state and explicit routing labels
-- persisted `Flow` state for `public` and `protected` using `SQLiteFlowPersistence`
+- real CrewAI `Flow` wrappers for all comparison slices, with typed state and explicit routing labels
+- persisted `Flow` state for `public`, `protected`, `support`, and `workflow` using `SQLiteFlowPersistence`
 - deterministic validation stack:
   - Pydantic output validation
+  - task guardrails where evidence-aware validation is stable
   - judge step
   - deterministic backstop for critical factual answers
 - slice-specific pilots instead of one oversized general-purpose crew
+- agentic rendering on top of deterministic support/workflow operations when the LLM path is available
 
 ## What We Intentionally Did Not Force
 
-### Task-level guardrails inside CrewAI
+### Free-form agentic execution on every slice
 
-We tested CrewAI task guardrails directly in this pilot, but in `crewai==1.12.2` they proved brittle for our public slice because validation did not receive the full evidence context needed to check source-bound constraints reliably.
+We still intentionally do not force every slice into the same degree of free-form multi-agent behavior.
 
-For this project, the more reliable stack is:
+That is aligned with the CrewAI production guidance for this product shape:
 
-- `output_pydantic`
-- judge task
-- deterministic backstop
-- runtime-level safety checks
-
-This is a pragmatic deviation from the idealized example usage, but it is the safer choice for this codebase and version.
+- `public` and `protected` now use real `Flow` state, `planner -> composer -> judge`, `output_pydantic`, and native task guardrails.
+- `support` and `workflow` now also use real `Flow`, but the operational side effects remain deterministic first, with an optional native agentic rendering/judge layer on top.
+- this keeps rollback safety and auditability strong where side effects matter most.
 
 ### Flow wrapper around every slice
 
@@ -63,15 +63,14 @@ CrewAI `Flow` is now in place across all comparison slices:
 - `support`
 - `workflow`
 
-We still intentionally do not force free-form multi-agent behavior into every slice.
-
 For the current comparison phase, the remaining simpler shape is intentional:
 
-- public/protected use real flows plus real crews
-- support/workflow use real flows with deterministic control-plane handlers
-- stateful persistence is already active in `public` and `protected`
+- public/protected use real flows plus real crews plus native task guardrails
+- support/workflow use real flows with deterministic control-plane handlers and an agentic renderer/judge layer
+- stateful persistence is active in all four slices
 - support/workflow still rely more heavily on the main orchestrator for broader conversation affinity
-- interactive tracing prompts are suppressed in service mode, though CrewAI still emits some non-blocking Flow console panels to logs
+- interactive tracing prompts are suppressed in service mode
+- in the current local environment, `llmConfigured=false`, so the live validations mainly exercised deterministic fast paths even though the native agentic layer is already implemented
 
 That keeps the comparison fair and limits production risk.
 
@@ -81,8 +80,8 @@ If we decide to promote CrewAI beyond canary, the next architectural upgrades sh
 
 1. Expand persisted multi-turn follow-up memory deeper into `support` and `workflow` state.
 2. Move more conversation-affinity and state transitions closer to the CrewAI side, instead of depending on outer runtime shims.
-3. Expand event-listener telemetry into a more complete per-task trace schema.
-4. Revisit CrewAI-native guardrails only if evidence-aware validation becomes stable in the selected version.
+3. Exercise the native task guardrails and agentic renderer under a live configured LLM in the same environment used for rollout decisions.
+4. Consider whether any protected slice should ever get a CrewAI-side operator approval primitive, or whether that remains a deliberate LangGraph advantage.
 
 ## Final Assessment
 
@@ -91,9 +90,10 @@ The current implementation is aligned with modern CrewAI practice in the places 
 - structured semantic planning
 - grounded composition
 - output judging
+- native task guardrails in the evidence-heavy slices
 - event telemetry
 - surfaced task-level timing and agent/crew traces
-- flow-owned state persistence in the higher-value multi-turn slices
+- flow-owned state persistence in all comparison slices
 
 And it deliberately keeps deterministic rails where this product still needs stronger operational control:
 

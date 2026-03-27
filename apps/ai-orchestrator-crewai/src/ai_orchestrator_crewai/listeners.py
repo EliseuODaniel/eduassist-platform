@@ -21,6 +21,10 @@ try:
         ToolUsageFinishedEvent,
         ToolUsageStartedEvent,
     )
+    from crewai.events.types.llm_guardrail_events import (
+        LLMGuardrailCompletedEvent,
+        LLMGuardrailStartedEvent,
+    )
     from crewai.events.listeners.tracing.utils import set_suppress_tracing_messages
 except Exception:  # pragma: no cover - defensive import for local tooling
     BaseEventListener = object  # type: ignore[assignment]
@@ -28,6 +32,7 @@ except Exception:  # pragma: no cover - defensive import for local tooling
     TaskStartedEvent = TaskCompletedEvent = TaskFailedEvent = TaskEvaluationEvent = None  # type: ignore[assignment]
     AgentExecutionStartedEvent = AgentExecutionCompletedEvent = None  # type: ignore[assignment]
     ToolUsageStartedEvent = ToolUsageFinishedEvent = ToolUsageErrorEvent = None  # type: ignore[assignment]
+    LLMGuardrailStartedEvent = LLMGuardrailCompletedEvent = None  # type: ignore[assignment]
     set_suppress_tracing_messages = None  # type: ignore[assignment]
 
 
@@ -41,6 +46,7 @@ class PilotEventRecorder:
     agent_trace: dict[str, dict[str, Any]] = field(default_factory=dict)
     crew_trace: dict[str, dict[str, Any]] = field(default_factory=dict)
     tool_trace: dict[str, dict[str, Any]] = field(default_factory=dict)
+    guardrail_trace: dict[str, dict[str, Any]] = field(default_factory=dict)
     _task_started_at: dict[str, float] = field(default_factory=dict)
     _agent_started_at: dict[str, float] = field(default_factory=dict)
     _crew_started_at: dict[str, float] = field(default_factory=dict)
@@ -240,6 +246,51 @@ class PilotEventRecorder:
             },
         )
 
+    def mark_guardrail_started(
+        self,
+        guardrail_name: str | None,
+        *,
+        task_name: str | None = None,
+        agent_role: str | None = None,
+        retry_count: int | None = None,
+    ) -> None:
+        self._mark_started(
+            registry=self.guardrail_trace,
+            started_registry={},
+            key=guardrail_name,
+            counter_key='started_count',
+            payload={
+                'last_task_name': task_name,
+                'last_agent_role': agent_role,
+                'last_retry_count': retry_count,
+            },
+        )
+
+    def mark_guardrail_completed(
+        self,
+        guardrail_name: str | None,
+        *,
+        task_name: str | None = None,
+        agent_role: str | None = None,
+        retry_count: int | None = None,
+        success: bool | None = None,
+        error: str | None = None,
+    ) -> None:
+        bucket = self._bucket(self.guardrail_trace, guardrail_name) if guardrail_name else {}
+        if guardrail_name:
+            bucket['completed_count'] = int(bucket.get('completed_count', 0)) + 1
+            bucket['last_finished_at_ms'] = self._elapsed_ms()
+            if task_name:
+                bucket['last_task_name'] = task_name
+            if agent_role:
+                bucket['last_agent_role'] = agent_role
+            if retry_count is not None:
+                bucket['last_retry_count'] = retry_count
+            if success is not None:
+                bucket['last_success'] = bool(success)
+            if error:
+                bucket['last_error'] = error
+
 
 _ACTIVE_RECORDER: ContextVar[PilotEventRecorder | None] = ContextVar('crewai_pilot_event_recorder', default=None)
 
@@ -272,6 +323,27 @@ def _event_crew_name(event: Any) -> str | None:
 def _event_agent_role(event: Any) -> str | None:
     agent = getattr(event, 'agent', None)
     return _safe_str(getattr(agent, 'role', None)) or _safe_str(getattr(event, 'agent_role', None))
+
+
+def _event_guardrail_name(event: Any) -> str | None:
+    guardrail = getattr(event, 'guardrail', None)
+    if callable(guardrail):
+        return _safe_str(getattr(guardrail, '__name__', None)) or _safe_str(guardrail)
+    return _safe_str(guardrail)
+
+
+def _event_guardrail_task_name(event: Any) -> str | None:
+    task = getattr(event, 'from_task', None)
+    if task is not None:
+        return _safe_str(getattr(task, 'name', None)) or _safe_str(getattr(task, 'description', None))
+    return _safe_str(getattr(event, 'task_name', None))
+
+
+def _event_guardrail_agent_role(event: Any) -> str | None:
+    agent = getattr(event, 'from_agent', None)
+    if agent is not None:
+        return _safe_str(getattr(agent, 'role', None))
+    return _safe_str(getattr(event, 'agent_role', None))
 
 
 def _tool_duration_ms(event: Any) -> float | None:
@@ -464,6 +536,62 @@ class PilotEventListener(BaseEventListener):
                         error=error,
                     )
 
+        if LLMGuardrailStartedEvent is not None:
+            @crewai_event_bus.on(LLMGuardrailStartedEvent)
+            def on_guardrail_started(source, event) -> None:  # pragma: no cover - event bus callback
+                guardrail_name = _event_guardrail_name(event)
+                task_name = _event_guardrail_task_name(event)
+                agent_role = _event_guardrail_agent_role(event)
+                retry_count = getattr(event, 'retry_count', None)
+                _record_event(
+                    'guardrail_started',
+                    {
+                        'guardrail_name': guardrail_name,
+                        'task_name': task_name,
+                        'agent_role': agent_role,
+                        'retry_count': retry_count,
+                    },
+                )
+                recorder = _ACTIVE_RECORDER.get()
+                if recorder is not None:
+                    recorder.mark_guardrail_started(
+                        guardrail_name,
+                        task_name=task_name,
+                        agent_role=agent_role,
+                        retry_count=int(retry_count) if isinstance(retry_count, int) else None,
+                    )
+
+        if LLMGuardrailCompletedEvent is not None:
+            @crewai_event_bus.on(LLMGuardrailCompletedEvent)
+            def on_guardrail_completed(source, event) -> None:  # pragma: no cover - event bus callback
+                guardrail_name = _event_guardrail_name(event)
+                task_name = _event_guardrail_task_name(event)
+                agent_role = _event_guardrail_agent_role(event)
+                retry_count = getattr(event, 'retry_count', None)
+                success = getattr(event, 'success', None)
+                error = _safe_str(getattr(event, 'error', None))
+                _record_event(
+                    'guardrail_completed',
+                    {
+                        'guardrail_name': guardrail_name,
+                        'task_name': task_name,
+                        'agent_role': agent_role,
+                        'retry_count': retry_count,
+                        'success': success,
+                        'error': error,
+                    },
+                )
+                recorder = _ACTIVE_RECORDER.get()
+                if recorder is not None:
+                    recorder.mark_guardrail_completed(
+                        guardrail_name,
+                        task_name=task_name,
+                        agent_role=agent_role,
+                        retry_count=int(retry_count) if isinstance(retry_count, int) else None,
+                        success=bool(success) if success is not None else None,
+                        error=error,
+                    )
+
 
 @contextmanager
 def capture_pilot_events(slice_name: str):
@@ -506,12 +634,14 @@ def serialize_pilot_events(recorder: PilotEventRecorder | None) -> dict[str, Any
             'agent_count': len(recorder.agent_trace),
             'crew_count': len(recorder.crew_trace),
             'tool_count': len(recorder.tool_trace),
+            'guardrail_count': len(recorder.guardrail_trace),
         },
         'task_trace': {
             'tasks': dict(recorder.task_trace),
             'agents': dict(recorder.agent_trace),
             'crews': dict(recorder.crew_trace),
             'tools': dict(recorder.tool_trace),
+            'guardrails': dict(recorder.guardrail_trace),
         },
     }
 
