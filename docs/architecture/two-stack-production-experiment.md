@@ -185,6 +185,29 @@ Versioned operational snapshot:
 - [framework-rollout-readiness-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-readiness-report.md)
 - [framework-live-promotion-summary-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-live-promotion-summary-report.md)
 
+## Rollout Preflight
+
+Before applying any rollout change, run the preflight script against the proposed config.
+
+Example:
+
+```bash
+python3 tools/evals/preflight_framework_rollout_promotion.py \
+  --slices support,public,workflow \
+  --slice-rollouts support:100,public:2,workflow:100 \
+  --allowlist-slices support,workflow
+```
+
+Versioned example output:
+
+- [framework-rollout-preflight-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md)
+
+Expected use:
+
+- reject a proposed change if any requested live slice is blocked
+- approve a small public expansion only when the live summary keeps `public` on `expand_gradually`
+- maintain `support/workflow` under allowlist control unless the scorecard and live signals change
+
 Artifacts:
 
 - [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md)

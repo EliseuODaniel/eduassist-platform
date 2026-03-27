@@ -1,0 +1,162 @@
+{
+  "generated_at": "2026-03-27T15:18:33.791943+00:00",
+  "overall_verdict": "approve",
+  "safe_to_apply": true,
+  "requested_live_slices": [
+    "public"
+  ],
+  "slice_changes": [
+    {
+      "slice": "public",
+      "configured_before": true,
+      "configured_after": true,
+      "rollout_before": 1,
+      "rollout_after": 2
+    }
+  ],
+  "blocking_issues": [],
+  "current_summary": {
+    "resolved_primary_stack": "langgraph",
+    "experiment_enabled": true,
+    "experiment_active": true,
+    "candidate_engine": "crewai",
+    "pilot_configured": true,
+    "pilot_ready": true,
+    "scorecard_loaded": true,
+    "primary_stack_native_path_passed": true,
+    "promotable_now": [
+      "public"
+    ],
+    "maintain_now": [
+      "support",
+      "workflow"
+    ],
+    "blocked_now": {
+      "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+    },
+    "advisory_by_slice": {
+      "protected": {
+        "eligible": false,
+        "configured": false,
+        "live": false,
+        "allowlist_only": false,
+        "configured_rollout_percent": 0,
+        "action": "blocked",
+        "blocked_reasons": [
+          "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+        ]
+      },
+      "public": {
+        "eligible": true,
+        "configured": true,
+        "live": true,
+        "allowlist_only": false,
+        "configured_rollout_percent": 1,
+        "action": "expand_gradually",
+        "blocked_reasons": []
+      },
+      "support": {
+        "eligible": true,
+        "configured": true,
+        "live": true,
+        "allowlist_only": true,
+        "configured_rollout_percent": 100,
+        "action": "maintain_controlled",
+        "blocked_reasons": []
+      },
+      "workflow": {
+        "eligible": true,
+        "configured": true,
+        "live": true,
+        "allowlist_only": true,
+        "configured_rollout_percent": 100,
+        "action": "maintain_controlled",
+        "blocked_reasons": []
+      }
+    }
+  },
+  "proposed_summary": {
+    "resolved_primary_stack": "langgraph",
+    "experiment_enabled": true,
+    "experiment_active": true,
+    "candidate_engine": "crewai",
+    "pilot_configured": true,
+    "pilot_ready": true,
+    "scorecard_loaded": true,
+    "primary_stack_native_path_passed": true,
+    "promotable_now": [
+      "public"
+    ],
+    "maintain_now": [
+      "support",
+      "workflow"
+    ],
+    "blocked_now": {
+      "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+    },
+    "advisory_by_slice": {
+      "protected": {
+        "eligible": false,
+        "configured": false,
+        "live": false,
+        "allowlist_only": false,
+        "configured_rollout_percent": 0,
+        "action": "blocked",
+        "blocked_reasons": [
+          "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+        ]
+      },
+      "public": {
+        "eligible": true,
+        "configured": true,
+        "live": true,
+        "allowlist_only": false,
+        "configured_rollout_percent": 2,
+        "action": "expand_gradually",
+        "blocked_reasons": []
+      },
+      "support": {
+        "eligible": true,
+        "configured": true,
+        "live": true,
+        "allowlist_only": true,
+        "configured_rollout_percent": 100,
+        "action": "maintain_controlled",
+        "blocked_reasons": []
+      },
+      "workflow": {
+        "eligible": true,
+        "configured": true,
+        "live": true,
+        "allowlist_only": true,
+        "configured_rollout_percent": 100,
+        "action": "maintain_controlled",
+        "blocked_reasons": []
+      }
+    }
+  },
+  "per_slice_verdicts": {
+    "public": {
+      "decision": "approve",
+      "action": "expand_gradually",
+      "blocked_reasons": []
+    },
+    "protected": {
+      "decision": "reject",
+      "action": "blocked",
+      "blocked_reasons": [
+        "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+      ]
+    },
+    "support": {
+      "decision": "maintain",
+      "action": "maintain_controlled",
+      "blocked_reasons": []
+    },
+    "workflow": {
+      "decision": "maintain",
+      "action": "maintain_controlled",
+      "blocked_reasons": []
+    }
+  }
+}

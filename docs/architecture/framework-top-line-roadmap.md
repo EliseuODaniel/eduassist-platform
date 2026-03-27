@@ -99,6 +99,7 @@ Validated in this round:
 - Runtime status surfaces can now expose the resolved scorecard gate, including per-slice eligibility and blocking reasons, so promotion state is inspectable without opening the raw JSON artifact.
 - A rollout-readiness summary can now be derived from the same gate, making “what can be promoted now” explicit before any canary or feature-flag change.
 - A live promotion summary can now combine that gate with current pilot health and rollout config, so “maintain, start, expand, or block” is explicit per slice before a production change.
+- A rollout preflight can now simulate a proposed env change before applying it, turning promotion into an explicit approve/reject step instead of a manual read of multiple reports.
 
 Concrete local evidence:
 
