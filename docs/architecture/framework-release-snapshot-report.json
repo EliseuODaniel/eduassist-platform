@@ -1,0 +1,372 @@
+{
+  "generated_at": "2026-03-27T15:48:36.619449+00:00",
+  "git": {
+    "branch": "feature/two-stack-shadow-comparison",
+    "commit": "3a4b8dde4feb6b0ddaca16fdf3fe95cf29f5762d",
+    "working_tree_clean": false,
+    "status_short": "M docs/architecture/framework-top-line-roadmap.md\n M docs/architecture/two-stack-production-experiment.md\n?? tools/evals/build_framework_release_snapshot.py"
+  },
+  "services": {
+    "ai-orchestrator": {
+      "exists": true,
+      "running": true,
+      "status": "running",
+      "health_status": "healthy"
+    },
+    "ai-orchestrator-crewai": {
+      "exists": true,
+      "running": true,
+      "status": "running",
+      "health_status": "healthy"
+    },
+    "api-core": {
+      "exists": true,
+      "running": true,
+      "status": "running",
+      "health_status": "healthy"
+    },
+    "telegram-gateway": {
+      "exists": true,
+      "running": true,
+      "status": "running",
+      "health_status": "healthy"
+    }
+  },
+  "status": {
+    "service": "ai-orchestrator",
+    "ready": true,
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "crewaiPilotConfigured": true,
+    "experimentEnabled": true,
+    "experimentPrimaryEngine": "crewai",
+    "experimentSlices": "support,public,workflow",
+    "experimentRolloutPercent": 0,
+    "experimentSliceRollouts": "support:100,public:1,workflow:100",
+    "experimentAllowlistSlices": "support,workflow",
+    "experimentRequireScorecard": false,
+    "experimentScorecardPath": "/workspace/artifacts/framework-native-scorecard.json",
+    "experimentMinPrimaryEngineScore": 20,
+    "experimentRequireHealthyPilot": false,
+    "experimentScorecardGate": {
+      "loaded": true,
+      "generated_at": "2026-03-27T14:38:46.020428+00:00",
+      "primary_engine": "langgraph",
+      "primary_score": 29,
+      "primary_max_score": 30,
+      "primary_stack_native_path_passed": true,
+      "promotion_gate": {
+        "eligible": true,
+        "minimum_score_for_canary": 20,
+        "primary_stack_native_path_required": true,
+        "recommended_canary_slices": [
+          "public",
+          "protected",
+          "support",
+          "workflow"
+        ],
+        "blocked_canary_slices": [],
+        "slice_eligibility": {
+          "public": {
+            "eligible": true,
+            "reason": "public is allowed for langgraph under the current scorecard gate."
+          },
+          "protected": {
+            "eligible": true,
+            "reason": "protected is allowed for langgraph under the current scorecard gate."
+          },
+          "support": {
+            "eligible": true,
+            "reason": "support is allowed for langgraph under the current scorecard gate."
+          },
+          "workflow": {
+            "eligible": true,
+            "reason": "workflow is allowed for langgraph under the current scorecard gate."
+          }
+        }
+      },
+      "frameworks": {
+        "langgraph": {
+          "total_score": 29,
+          "max_score": 30,
+          "primary_stack_native_path_passed": true,
+          "restart_recovery_passed": true,
+          "crash_recovery_passed": true,
+          "recommended_canary_slices": [
+            "public",
+            "protected",
+            "support",
+            "workflow"
+          ],
+          "blocked_canary_slices": [],
+          "trace_sample": {
+            "thread_id": "conversation:scorecard-topline-langgraph-1",
+            "created_at": "2026-03-27T13:38:23.699812+00:00",
+            "next_nodes": [],
+            "task_names": [],
+            "hitl_status": null,
+            "state_route": "structured_tool",
+            "checkpoint_id": "1f129e23-9f67-6ae0-8005-890a0437d5c8",
+            "state_available": true,
+            "state_slice_name": "public",
+            "snapshot_metadata": {
+              "step": 5,
+              "source": "loop"
+            },
+            "checkpointer_backend": "postgres",
+            "checkpointer_enabled": true,
+            "task_interrupt_count": 0,
+            "has_pending_interrupt": false,
+            "top_level_interrupt_count": 0
+          }
+        },
+        "crewai": {
+          "total_score": 27,
+          "max_score": 30,
+          "primary_stack_native_path_passed": true,
+          "restart_recovery_passed": true,
+          "crash_recovery_passed": true,
+          "trace_sample": {
+            "request": {
+              "slice_name": "support",
+              "flow_enabled": true,
+              "flow_state_id": "2cc869d9-85cf-405a-a336-d4ea317ea22f",
+              "validation_stack": [
+                "flow_router",
+                "deterministic_support"
+              ]
+            },
+            "response": {
+              "latency_ms": 60.7
+            }
+          },
+          "recommended_canary_slices": [
+            "public",
+            "support",
+            "workflow"
+          ],
+          "blocked_canary_slices": [
+            "protected"
+          ],
+          "blocked_reasons": {
+            "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+          }
+        }
+      }
+    },
+    "experimentRolloutReadiness": {
+      "candidate_engine": "crewai",
+      "scorecard_loaded": true,
+      "scorecard_enforced": false,
+      "pilot_health_enforced": false,
+      "primary_stack_native_path_passed": true,
+      "gate_eligible": true,
+      "configured_slices": [
+        "public",
+        "support",
+        "workflow"
+      ],
+      "promotable_now": [
+        "public",
+        "support",
+        "workflow"
+      ],
+      "blocked_now": {
+        "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+      },
+      "recommended_next_promotions": [],
+      "per_slice": {
+        "protected": {
+          "eligible": false,
+          "reason": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review.",
+          "configured": false,
+          "configured_rollout_percent": 0,
+          "allowlist_only": false,
+          "live": false
+        },
+        "public": {
+          "eligible": true,
+          "reason": "public is allowed for crewai under the current scorecard gate.",
+          "configured": true,
+          "configured_rollout_percent": 1,
+          "allowlist_only": false,
+          "live": true
+        },
+        "support": {
+          "eligible": true,
+          "reason": "support is allowed for crewai under the current scorecard gate.",
+          "configured": true,
+          "configured_rollout_percent": 100,
+          "allowlist_only": true,
+          "live": true
+        },
+        "workflow": {
+          "eligible": true,
+          "reason": "workflow is allowed for crewai under the current scorecard gate.",
+          "configured": true,
+          "configured_rollout_percent": 100,
+          "allowlist_only": true,
+          "live": true
+        }
+      }
+    },
+    "experimentLivePromotionSummary": {
+      "resolved_primary_stack": "langgraph",
+      "experiment_enabled": true,
+      "experiment_active": true,
+      "candidate_engine": "crewai",
+      "pilot_configured": true,
+      "pilot_ready": true,
+      "scorecard_loaded": true,
+      "primary_stack_native_path_passed": true,
+      "promotable_now": [
+        "public"
+      ],
+      "maintain_now": [
+        "support",
+        "workflow"
+      ],
+      "blocked_now": {
+        "protected": "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+      },
+      "advisory_by_slice": {
+        "protected": {
+          "eligible": false,
+          "configured": false,
+          "live": false,
+          "allowlist_only": false,
+          "configured_rollout_percent": 0,
+          "action": "blocked",
+          "blocked_reasons": [
+            "protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+          ]
+        },
+        "public": {
+          "eligible": true,
+          "configured": true,
+          "live": true,
+          "allowlist_only": false,
+          "configured_rollout_percent": 1,
+          "action": "expand_gradually",
+          "blocked_reasons": []
+        },
+        "support": {
+          "eligible": true,
+          "configured": true,
+          "live": true,
+          "allowlist_only": true,
+          "configured_rollout_percent": 100,
+          "action": "maintain_controlled",
+          "blocked_reasons": []
+        },
+        "workflow": {
+          "eligible": true,
+          "configured": true,
+          "live": true,
+          "allowlist_only": true,
+          "configured_rollout_percent": 100,
+          "action": "maintain_controlled",
+          "blocked_reasons": []
+        }
+      }
+    },
+    "llmProvider": "google",
+    "llmConfigured": true,
+    "capabilities": [
+      "langgraph-state-machine",
+      "langgraph-thread-id",
+      "langgraph-hitl-internal",
+      "engine-selector",
+      "tool-routing",
+      "qdrant-hybrid-retrieval",
+      "conversation-memory",
+      "graph-rag-routing",
+      "provider-abstraction"
+    ],
+    "supportedEngines": [
+      "langgraph",
+      "shadow",
+      "crewai"
+    ],
+    "graphRagEnabled": true,
+    "graphRagWorkspaceReady": true,
+    "langgraphCheckpointerEnabled": true,
+    "langgraphCheckpointerReady": true,
+    "langgraphCheckpointerBackend": "postgres",
+    "langgraphThreadIdEnabled": true,
+    "langgraphHitlEnabled": false,
+    "langgraphHitlDefaultSlices": "support"
+  },
+  "posture": {
+    "ready_for_guarded_release": false,
+    "classification": "blocked",
+    "errors": [
+      "working tree is not clean"
+    ]
+  },
+  "latest_rollout_entries": [
+    {
+      "timestamp": "2026-03-27T15:39:44.095113+00:00",
+      "intent": "rollback",
+      "slice": "public",
+      "before_rollout_percent": 2,
+      "after_rollout_percent": 1,
+      "mode": "preflight",
+      "apply": false,
+      "result": "passed",
+      "operator": "codex",
+      "reason": "Reverter public para o nivel anterior do canario",
+      "returncode": 0,
+      "env_file": "artifacts/tmp-rollback.env",
+      "proposed_slices": "public,support,workflow",
+      "proposed_slice_rollouts": "public:1,support:100,workflow:100",
+      "proposed_allowlist_slices": "support,workflow",
+      "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md",
+      "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-preflight-report.json\n",
+      "stderr": ""
+    },
+    {
+      "timestamp": "2026-03-27T15:37:33.016974+00:00",
+      "slice": "public",
+      "before_rollout_percent": 1,
+      "after_rollout_percent": 2,
+      "mode": "preflight",
+      "apply": false,
+      "result": "passed",
+      "operator": "codex",
+      "reason": "Expandir public de 1% para 2% apos estabilidade do canario",
+      "returncode": 0,
+      "env_file": "artifacts/tmp-slice.env",
+      "proposed_slices": "public,support,workflow",
+      "proposed_slice_rollouts": "public:2,support:100,workflow:100",
+      "proposed_allowlist_slices": "support,workflow",
+      "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md",
+      "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-preflight-report.json\n",
+      "stderr": ""
+    },
+    {
+      "timestamp": "2026-03-27T15:33:33.005730+00:00",
+      "slice": "public",
+      "before_rollout_percent": 1,
+      "after_rollout_percent": 2,
+      "mode": "preflight",
+      "apply": false,
+      "result": "passed",
+      "returncode": 0,
+      "env_file": "artifacts/tmp-slice.env",
+      "proposed_slices": "public,support,workflow",
+      "proposed_slice_rollouts": "public:2,support:100,workflow:100",
+      "proposed_allowlist_slices": "support,workflow",
+      "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md",
+      "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-preflight-report.json\n",
+      "stderr": ""
+    }
+  ],
+  "next_actions": [
+    "consider gradual promotion for public",
+    "maintain current controlled posture for support",
+    "maintain current controlled posture for workflow",
+    "keep protected blocked: protected still trails LangGraph in operator-facing control primitives and should stay behind manual review."
+  ]
+}

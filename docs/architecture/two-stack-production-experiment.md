@@ -306,6 +306,26 @@ Artifacts:
 
 - [framework-slice-rollback-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-slice-rollback-report.md)
 
+## Release Snapshot
+
+Before merge or a broader rollout decision, generate one consolidated release snapshot:
+
+```bash
+python3 tools/evals/build_framework_release_snapshot.py
+```
+
+Artifacts:
+
+- [framework-release-snapshot-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-release-snapshot-report.md)
+
+This snapshot consolidates:
+
+- git cleanliness
+- live `/v1/status`
+- orchestrator and pilot health
+- current rollout posture
+- latest audited rollout entries
+
 Artifacts:
 
 - [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md)

@@ -105,6 +105,7 @@ Validated in this round:
 - A single-command slice wrapper can now sit on top of preflight and execution, removing manual rollout-string editing and creating an operational changelog by default.
 - The slice wrapper can now require an explicit human reason/operator, raising the audit quality of every promotion attempt instead of logging anonymous rollout changes.
 - A symmetric rollback wrapper can now reuse the same audited promotion path, so rollback is no longer a manual special case.
+- A release snapshot can now consolidate git state, live runtime state, service health, and rollout history into one final operational checkpoint before merge or broader rollout.
 
 Concrete local evidence:
 
