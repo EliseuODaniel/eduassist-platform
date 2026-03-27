@@ -842,6 +842,25 @@ def _append_path(state: OrchestrationState, node_name: str) -> list[str]:
     return [*state.get('graph_path', []), node_name]
 
 
+def _append_unique_risk_flags(state: OrchestrationState, *flags: str) -> list[str]:
+    existing: list[str] = []
+    seen_existing: set[str] = set()
+    for flag in state.get('risk_flags', []):
+        normalized = str(flag).strip()
+        if not normalized or normalized in seen_existing:
+            continue
+        existing.append(normalized)
+        seen_existing.add(normalized)
+    seen = set(existing)
+    for flag in flags:
+        normalized = str(flag).strip()
+        if not normalized or normalized in seen:
+            continue
+        existing.append(normalized)
+        seen.add(normalized)
+    return existing
+
+
 def _normalize_text(text: str) -> str:
     normalized = unicodedata.normalize('NFKD', text)
     without_accents = ''.join(char for char in normalized if not unicodedata.combining(char))
@@ -1820,7 +1839,12 @@ def get_graph_blueprint() -> dict[str, object]:
         ],
         'subgraphs': {
             'public_slice': ['hybrid_retrieval', 'graph_rag_retrieval', 'structured_tool_call'],
-            'protected_slice': ['structured_tool_call'],
+            'protected_slice': [
+                'structured_tool_call',
+                'protected_human_review',
+                'protected_review_approved',
+                'protected_review_cancelled',
+            ],
             'support_slice': [
                 'structured_tool_call',
                 'handoff',
@@ -1891,9 +1915,21 @@ def _build_protected_slice_subgraph() -> object:
     workflow = StateGraph(OrchestrationState)
     workflow.add_node('enter_protected_slice', _enter_protected_slice)
     workflow.add_node('structured_tool_call', structured_tool_call)
+    workflow.add_node('protected_human_review', protected_human_review)
+    workflow.add_node('protected_review_approved', protected_review_approved)
+    workflow.add_node('protected_review_cancelled', protected_review_cancelled)
     workflow.add_edge(START, 'enter_protected_slice')
     workflow.add_edge('enter_protected_slice', 'structured_tool_call')
-    workflow.add_edge('structured_tool_call', END)
+    workflow.add_conditional_edges(
+        'structured_tool_call',
+        _protected_post_action_route,
+        {
+            'review': 'protected_human_review',
+            'complete': END,
+        },
+    )
+    workflow.add_edge('protected_review_approved', END)
+    workflow.add_edge('protected_review_cancelled', END)
     return workflow.compile()
 
 
@@ -1928,6 +1964,37 @@ def _support_post_action_route(state: OrchestrationState) -> str:
     return 'complete'
 
 
+_PROTECTED_HITL_SAFE_TOOLS = {
+    'get_actor_identity_context',
+    'get_administrative_status',
+    'get_student_administrative_status',
+}
+
+
+def _protected_hitl_eligible(state: OrchestrationState) -> bool:
+    if state.get('route') != OrchestrationMode.structured_tool.value:
+        return False
+    classification = state.get('classification')
+    if not isinstance(classification, IntentClassification):
+        return False
+    if classification.domain is not QueryDomain.institution:
+        return False
+    if classification.access_tier is AccessTier.public:
+        return False
+    selected_tools = {
+        str(tool_name).strip()
+        for tool_name in state.get('selected_tools', [])
+        if str(tool_name).strip()
+    }
+    return bool(selected_tools) and selected_tools.issubset(_PROTECTED_HITL_SAFE_TOOLS)
+
+
+def _protected_post_action_route(state: OrchestrationState) -> str:
+    if _hitl_enabled_for_slice(state, 'protected') and _protected_hitl_eligible(state):
+        return 'review'
+    return 'complete'
+
+
 def _support_hitl_interrupt_payload(state: OrchestrationState) -> dict[str, object]:
     request = state['request']
     return {
@@ -1941,6 +2008,32 @@ def _support_hitl_interrupt_payload(state: OrchestrationState) -> dict[str, obje
         'graph_path': list(state.get('graph_path', [])),
         'output_contract': state.get('output_contract'),
         'risk_flags': list(state.get('risk_flags', [])),
+    }
+
+
+def _protected_hitl_interrupt_payload(state: OrchestrationState) -> dict[str, object]:
+    request = state['request']
+    classification = state.get('classification')
+    return {
+        'kind': 'protected_record_review',
+        'question': 'Aprovar a liberacao desta consulta protegida de baixo risco?',
+        'message': request.message,
+        'conversation_id': request.conversation_id,
+        'route': state.get('route'),
+        'reason': state.get('reason'),
+        'selected_tools': list(state.get('selected_tools', [])),
+        'graph_path': list(state.get('graph_path', [])),
+        'output_contract': state.get('output_contract'),
+        'risk_flags': list(state.get('risk_flags', [])),
+        'classification': (
+            {
+                'domain': classification.domain.value,
+                'access_tier': classification.access_tier.value,
+                'confidence': classification.confidence,
+            }
+            if isinstance(classification, IntentClassification)
+            else None
+        ),
     }
 
 
@@ -1965,11 +2058,31 @@ def support_human_review(state: OrchestrationState) -> Command[str]:
             'hitl_status': 'approved' if approved else 'rejected',
             'hitl_resume_payload': resume_value,
             'graph_path': _append_path(state, 'support_human_review'),
-            'risk_flags': [
-                *state.get('risk_flags', []),
+            'risk_flags': _append_unique_risk_flags(
+                state,
                 'human_review_required',
                 'human_review_approved' if approved else 'human_review_rejected',
-            ],
+            ),
+        },
+        goto=next_node,
+    )
+
+
+def protected_human_review(state: OrchestrationState) -> Command[str]:
+    review_payload = _protected_hitl_interrupt_payload(state)
+    resume_value = interrupt(review_payload)
+    approved = _is_hitl_approved(resume_value)
+    next_node = 'protected_review_approved' if approved else 'protected_review_cancelled'
+    return Command(
+        update={
+            'hitl_status': 'approved' if approved else 'rejected',
+            'hitl_resume_payload': resume_value,
+            'graph_path': _append_path(state, 'protected_human_review'),
+            'risk_flags': _append_unique_risk_flags(
+                state,
+                'human_review_required',
+                'human_review_approved' if approved else 'human_review_rejected',
+            ),
         },
         goto=next_node,
     )
@@ -1979,6 +2092,13 @@ def support_review_approved(state: OrchestrationState) -> OrchestrationState:
     return {
         'hitl_status': 'approved',
         'graph_path': _append_path(state, 'support_review_approved'),
+    }
+
+
+def protected_review_approved(state: OrchestrationState) -> OrchestrationState:
+    return {
+        'hitl_status': 'approved',
+        'graph_path': _append_path(state, 'protected_review_approved'),
     }
 
 
@@ -1992,7 +2112,19 @@ def support_review_cancelled(state: OrchestrationState) -> OrchestrationState:
         'output_contract': 'execucao bloqueada por revisao humana com trilha auditavel',
         'hitl_status': 'rejected',
         'graph_path': _append_path(state, 'support_review_cancelled'),
-        'risk_flags': [*state.get('risk_flags', []), 'human_review_rejected'],
+    }
+
+
+def protected_review_cancelled(state: OrchestrationState) -> OrchestrationState:
+    return {
+        'route': OrchestrationMode.deny.value,
+        'retrieval_backend': RetrievalBackend.none.value,
+        'selected_tools': [],
+        'citations_required': False,
+        'reason': 'consulta protegida bloqueada por revisao humana antes da execucao',
+        'output_contract': 'consulta protegida bloqueada por revisao humana com trilha auditavel',
+        'hitl_status': 'rejected',
+        'graph_path': _append_path(state, 'protected_review_cancelled'),
     }
 
 

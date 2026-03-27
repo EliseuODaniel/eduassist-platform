@@ -77,7 +77,7 @@ Main gap versus top-line CrewAI usage:
 Validated in this round:
 
 - LangGraph now runs with a native Postgres-backed checkpointer and stable `thread_id` mapping.
-- LangGraph now exposes a native HITL review path for the `support` slice through internal review/state/resume endpoints backed by the checkpointer.
+- LangGraph now exposes native HITL review paths for the `support` slice and for low-risk `protected` reads through internal review/state/resume endpoints backed by the checkpointer.
 - LangGraph checkpointer serializer compatibility is now fixed for the current typed checkpoint payloads; native snapshot reads are working again through the Postgres checkpointer.
 - CrewAI now persists `Flow` state for `public` and `protected` through SQLite.
 - LangGraph now delegates through slice subgraphs for `public`, `protected`, and `support`.
@@ -154,7 +154,9 @@ Success criteria:
 
 Status:
 
-- implemented in this round for the `support` slice via internal review/state/resume endpoints
+- implemented in this round for:
+  - the `support` slice via internal review/state/resume endpoints
+  - low-risk `protected` reads such as access scope and administrative/documentation status before tool execution
 
 ### 3. Split the large graph into subgraphs by slice
 
