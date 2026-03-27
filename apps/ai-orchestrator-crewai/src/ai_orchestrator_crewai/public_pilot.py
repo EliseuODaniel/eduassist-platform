@@ -145,12 +145,33 @@ def _stateful_public_followup_fast_answer(
     docs: list['EvidenceDoc'],
 ) -> str | None:
     normalized_entity = _normalize_text(active_entity or '')
+    terms = _query_terms(message)
+    if 'timeline' in normalized_entity:
+        timeline_docs = [doc for doc in docs if doc.doc_id.startswith('timeline.')]
+        if not timeline_docs:
+            return None
+        if 'aulas' in terms:
+            aulas_doc = next((doc for doc in timeline_docs if 'aulas' in _normalize_text(f'{doc.title} {doc.text}')), None)
+            if aulas_doc is not None:
+                return aulas_doc.text.split('|', 1)[0].strip()
+        if 'matricula' in terms:
+            matricula_doc = next((doc for doc in timeline_docs if 'matricula' in _normalize_text(f'{doc.title} {doc.text}')), None)
+            if matricula_doc is not None:
+                return matricula_doc.text.split('|', 1)[0].strip()
+        if 'formatura' in terms:
+            formatura_doc = next((doc for doc in timeline_docs if 'formatura' in _normalize_text(f'{doc.title} {doc.text}')), None)
+            if formatura_doc is not None:
+                return formatura_doc.text.split('|', 1)[0].strip()
+        if 'reuniao' in terms:
+            reuniao_doc = next((doc for doc in timeline_docs if 'reuniao' in _normalize_text(f'{doc.title} {doc.text}')), None)
+            if reuniao_doc is not None:
+                return reuniao_doc.text.split('|', 1)[0].strip()
+        return None
     if 'biblioteca' not in normalized_entity:
         return None
     library_doc = _find_first_matching_doc(docs, 'feature.', ('biblioteca', 'biblioteca aurora'))
     if library_doc is None:
         return None
-    terms = _query_terms(message)
     if 'nome' in terms and not any(term in terms for term in {'horario', 'hora', 'abre', 'fecha'}):
         return f'O nome desse espaco e {library_doc.title}.'
     if any(term in terms for term in {'horario', 'hora', 'abre', 'fecha'}):
@@ -381,6 +402,14 @@ def _rank_evidence_docs(message: str, docs: list[EvidenceDoc], *, limit: int = 4
             term in terms for term in ('matricula', 'admissao', 'inscricao')
         ):
             score += 4
+        if doc.doc_id.startswith('timeline.') and any(
+            term in terms for term in ('matricula', 'aulas', 'formatura', 'reuniao')
+        ):
+            score += 10
+        if doc.doc_id.startswith('calendar.') and any(
+            term in terms for term in ('aulas', 'reuniao', 'formatura')
+        ):
+            score += 6
         if any(term in haystack for term in ('fax', 'instagram', 'telefone', 'whatsapp', 'email')) and any(
             term in terms for term in ('fax', 'instagram', 'telefone', 'whatsapp', 'email', 'contato', 'ligo', 'ligar')
         ):
@@ -699,13 +728,26 @@ def _infer_public_followup_slots(
 ) -> tuple[str | None, str | None]:
     normalized = _normalize_text(f'{message} {answer_text}')
     terms = _query_terms(message)
+    if any(term in normalized for term in {'matricula', 'aulas', 'formatura', 'reuniao'}):
+        if 'matricula' in terms:
+            return 'timeline', 'matricula'
+        if 'aulas' in terms:
+            return 'timeline', 'aulas'
+        if 'formatura' in terms:
+            return 'timeline', 'formatura'
+        if 'reuniao' in terms:
+            return 'timeline', 'reuniao'
+        return 'timeline', 'general'
     if 'biblioteca' in normalized:
         if {'horario', 'hora', 'abre', 'fecha'} & terms:
             return 'biblioteca', 'hours'
         if 'nome' in terms:
             return 'biblioteca', 'name'
         return 'biblioteca', 'general'
-    if any(term in normalized for term in {'fax', 'telegrama', 'caixa postal', 'documentos', 'secretaria presencial'}):
+    if ({'documentos', 'documento', 'fax', 'telegrama', 'caixa', 'postal'} & terms) or any(
+        phrase in _normalize_text(message)
+        for phrase in {'como mando os documentos', 'como enviar os documentos', 'posso enviar documentos'}
+    ):
         return 'documentos', 'document_submission'
     if any(term in normalized for term in {'o que voce esta fazendo', 'o que voce faz', 'ajudar por aqui'}):
         return 'assistente', 'capabilities'
