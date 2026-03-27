@@ -306,6 +306,18 @@ Artifacts:
 
 - [framework-slice-rollback-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-slice-rollback-report.md)
 
+## Changelog Normalization
+
+Legacy rollout entries can now be normalized to the current audit contract before merge or release:
+
+```bash
+python3 tools/evals/normalize_framework_rollout_changelog.py
+```
+
+Artifacts:
+
+- [framework-rollout-changelog-normalization-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-changelog-normalization-report.md)
+
 ## Release Snapshot
 
 Before merge or a broader rollout decision, generate one consolidated release snapshot:
@@ -325,6 +337,41 @@ This snapshot consolidates:
 - orchestrator and pilot health
 - current rollout posture
 - latest audited rollout entries
+
+## Merge / Release Checklist
+
+Before merge or guarded promotion, run the checklist that verifies snapshot freshness, health, scorecard gates, and changelog hygiene:
+
+```bash
+python3 tools/evals/build_framework_merge_release_checklist.py
+```
+
+Artifacts:
+
+- [framework-merge-release-checklist-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-merge-release-checklist-report.md)
+
+## Recommended Slice Promotion
+
+When the live summary already points to a clear next slice, prefer the recommendation wrapper instead of manually choosing the target:
+
+```bash
+cp .env artifacts/tmp-recommended.env
+python3 tools/evals/promote_recommended_framework_slice.py \
+  --env-file artifacts/tmp-recommended.env \
+  --reason "Aplicar a proxima promocao sugerida pelo gate operacional" \
+  --operator codex
+```
+
+This wrapper:
+
+- reads the same live promotion summary and scorecard gate already exposed by the runtime
+- chooses the next promotable slice using the current advisory state
+- computes the next rollout step conservatively
+- reuses the audited slice wrapper underneath, preserving the same changelog and reports
+
+Artifacts:
+
+- [framework-recommended-slice-promotion-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-recommended-slice-promotion-report.md)
 
 Artifacts:
 

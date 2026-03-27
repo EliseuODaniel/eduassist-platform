@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-27T15:39:44.062615+00:00",
+  "generated_at": "2026-03-27T15:55:12.418503+00:00",
   "overall_verdict": "approve",
   "safe_to_apply": true,
   "requested_live_slices": [
@@ -10,8 +10,8 @@
       "slice": "public",
       "configured_before": true,
       "configured_after": true,
-      "rollout_before": 2,
-      "rollout_after": 1
+      "rollout_before": 1,
+      "rollout_after": 2
     }
   ],
   "blocking_issues": [],
@@ -51,7 +51,7 @@
         "configured": true,
         "live": true,
         "allowlist_only": false,
-        "configured_rollout_percent": 2,
+        "configured_rollout_percent": 1,
         "action": "expand_gradually",
         "blocked_reasons": []
       },
@@ -111,7 +111,7 @@
         "configured": true,
         "live": true,
         "allowlist_only": false,
-        "configured_rollout_percent": 1,
+        "configured_rollout_percent": 2,
         "action": "expand_gradually",
         "blocked_reasons": []
       },

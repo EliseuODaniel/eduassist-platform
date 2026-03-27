@@ -106,6 +106,9 @@ Validated in this round:
 - The slice wrapper can now require an explicit human reason/operator, raising the audit quality of every promotion attempt instead of logging anonymous rollout changes.
 - A symmetric rollback wrapper can now reuse the same audited promotion path, so rollback is no longer a manual special case.
 - A release snapshot can now consolidate git state, live runtime state, service health, and rollout history into one final operational checkpoint before merge or broader rollout.
+- The rollout changelog can now be normalized against the current audit contract, so legacy entries no longer weaken merge/release readiness.
+- A merge/release checklist can now verify snapshot freshness, health, scorecard gates, and changelog hygiene in one pass before promotion or merge.
+- A recommendation wrapper can now promote the next slice suggested by the live gate using the same audited rollout path, reducing operator guesswork while preserving the existing controls.
 
 Concrete local evidence:
 

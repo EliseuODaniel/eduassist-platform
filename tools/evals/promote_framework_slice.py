@@ -22,6 +22,8 @@ DEFAULT_CHANGELOG_JSON = REPO_ROOT / 'docs/architecture/framework-rollout-change
 DEFAULT_REPORT_MD = REPO_ROOT / 'docs/architecture/framework-slice-promotion-report.md'
 DEFAULT_REPORT_JSON = REPO_ROOT / 'docs/architecture/framework-slice-promotion-report.json'
 DEFAULT_ARTIFACT_JSON = REPO_ROOT / 'artifacts/framework-slice-promotion-report.json'
+LEGACY_OPERATOR = 'legacy-unknown'
+LEGACY_REASON = 'Legacy changelog entry normalized after operator/reason became required audit fields.'
 
 
 def _configured_slice_set(value: str | None) -> set[str]:
@@ -49,9 +51,58 @@ def _load_json_array(path: Path) -> list[dict[str, Any]]:
     return []
 
 
-def _append_changelog(*, entry: dict[str, Any], md_path: Path, json_path: Path) -> None:
-    rows = _load_json_array(json_path)
-    rows.append(entry)
+def _infer_intent(entry: dict[str, Any]) -> str:
+    raw_intent = str(entry.get('intent', '') or '').strip().lower()
+    if raw_intent in {'promotion', 'rollback'}:
+        return raw_intent
+    try:
+        before_percent = int(entry.get('before_rollout_percent', 0) or 0)
+        after_percent = int(entry.get('after_rollout_percent', 0) or 0)
+    except Exception:
+        return 'promotion'
+    return 'rollback' if after_percent < before_percent else 'promotion'
+
+
+def _normalize_changelog_entry(entry: dict[str, Any], *, normalized_at: str | None = None) -> tuple[dict[str, Any], bool]:
+    row = dict(entry)
+    changed = False
+    normalized_fields = set(str(item).strip() for item in row.get('normalized_legacy_fields', []) if str(item).strip())
+
+    if not str(row.get('intent', '') or '').strip():
+        row['intent'] = _infer_intent(row)
+        normalized_fields.add('intent')
+        changed = True
+
+    if not str(row.get('operator', '') or '').strip():
+        row['operator'] = LEGACY_OPERATOR
+        normalized_fields.add('operator')
+        changed = True
+
+    if not str(row.get('reason', '') or '').strip():
+        row['reason'] = LEGACY_REASON
+        normalized_fields.add('reason')
+        changed = True
+
+    if changed:
+        row['normalized_legacy_fields'] = sorted(normalized_fields)
+        row['normalized_legacy_at'] = str(normalized_at or row.get('normalized_legacy_at') or datetime.now(UTC).isoformat())
+
+    return row, changed
+
+
+def _normalize_changelog_rows(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+    normalized_at = datetime.now(UTC).isoformat()
+    normalized_rows: list[dict[str, Any]] = []
+    changed_count = 0
+    for row in rows:
+        normalized_row, changed = _normalize_changelog_entry(row, normalized_at=normalized_at)
+        normalized_rows.append(normalized_row)
+        if changed:
+            changed_count += 1
+    return normalized_rows, changed_count
+
+
+def _write_changelog(*, rows: list[dict[str, Any]], md_path: Path, json_path: Path) -> None:
     json_path.write_text(json.dumps(rows, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
     lines = [
@@ -68,6 +119,14 @@ def _append_changelog(*, entry: dict[str, Any], md_path: Path, json_path: Path) 
             f"`{item.get('operator', '')}` | {item.get('reason', '')} | `{item.get('env_file', '')}` |"
         )
     md_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+
+
+def _append_changelog(*, entry: dict[str, Any], md_path: Path, json_path: Path) -> None:
+    rows = _load_json_array(json_path)
+    rows, _ = _normalize_changelog_rows(rows)
+    normalized_entry, _ = _normalize_changelog_entry(entry)
+    rows.append(normalized_entry)
+    _write_changelog(rows=rows, md_path=md_path, json_path=json_path)
 
 
 def _write_report(*, report_md: Path, report_json: Path, artifact_json: Path, payload: dict[str, Any]) -> None:

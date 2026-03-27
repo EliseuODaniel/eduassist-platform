@@ -1,6 +1,6 @@
 # Framework Rollout Preflight Report
 
-Date: 2026-03-27T15:39:44.062588+00:00
+Date: 2026-03-27T15:55:12.418484+00:00
 
 ## Goal
 
@@ -17,7 +17,7 @@ Validate a proposed canary rollout change before applying environment or rollout
 
 | Slice | Configured Before | Configured After | Rollout Before | Rollout After |
 | --- | --- | --- | ---: | ---: |
-| `public` | `yes` | `yes` | `2%` | `1%` |
+| `public` | `yes` | `yes` | `1%` | `2%` |
 
 ## Proposed Slice Decisions
 

@@ -14,7 +14,16 @@
     "proposed_allowlist_slices": "support,workflow",
     "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md",
     "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-preflight-report.json\n",
-    "stderr": ""
+    "stderr": "",
+    "intent": "promotion",
+    "operator": "legacy-unknown",
+    "reason": "Legacy changelog entry normalized after operator/reason became required audit fields.",
+    "normalized_legacy_fields": [
+      "intent",
+      "operator",
+      "reason"
+    ],
+    "normalized_legacy_at": "2026-03-27T15:54:55.621226+00:00"
   },
   {
     "timestamp": "2026-03-27T15:37:33.016974+00:00",
@@ -33,7 +42,12 @@
     "proposed_allowlist_slices": "support,workflow",
     "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md",
     "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-preflight-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-preflight-report.json\n",
-    "stderr": ""
+    "stderr": "",
+    "intent": "promotion",
+    "normalized_legacy_fields": [
+      "intent"
+    ],
+    "normalized_legacy_at": "2026-03-27T15:54:55.621226+00:00"
   },
   {
     "timestamp": "2026-03-27T15:39:44.095113+00:00",
