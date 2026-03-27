@@ -92,6 +92,7 @@ ORCHESTRATOR_EXPERIMENT_HEALTH_TTL_SECONDS=15
 - `/v1/status` now also exposes:
   - `primaryStackFeatureFlag`
   - `resolvedPrimaryStack`
+  - `experimentScorecardGate`
 
 ## Native-Path Rule
 
@@ -163,6 +164,11 @@ Current recommended canary slices from the scorecard:
 Current blocked slice from the scorecard:
 
 - `protected`
+
+The runtime status surface now exposes the resolved scorecard gate, including per-slice eligibility and reasons:
+
+- `/v1/status -> experimentScorecardGate`
+- `/meta -> experimentScorecardGate`
 
 Artifacts:
 

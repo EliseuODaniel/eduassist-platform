@@ -93,6 +93,42 @@ def _score_lines(title: str, score: int, weight: int, evidence: str) -> str:
     return f'| {title} | `{score}/{weight}` | {evidence} |'
 
 
+def _slice_eligibility_map(
+    *,
+    framework: str,
+    gate_eligible: bool,
+    recommended_canary_slices: list[str],
+    blocked_canary_slices: list[str],
+    blocked_reasons: dict[str, str] | None = None,
+) -> dict[str, dict[str, Any]]:
+    blocked_reasons = blocked_reasons or {}
+    eligibility: dict[str, dict[str, Any]] = {}
+    for slice_name in ('public', 'protected', 'support', 'workflow'):
+        if not gate_eligible:
+            eligibility[slice_name] = {
+                'eligible': False,
+                'reason': f'{framework} does not currently satisfy the promotion gate.',
+            }
+            continue
+        if slice_name in blocked_canary_slices:
+            eligibility[slice_name] = {
+                'eligible': False,
+                'reason': blocked_reasons.get(slice_name) or f'{slice_name} stays blocked for {framework}.',
+            }
+            continue
+        if recommended_canary_slices and slice_name not in recommended_canary_slices:
+            eligibility[slice_name] = {
+                'eligible': False,
+                'reason': f'{slice_name} is not in the recommended canary set for {framework}.',
+            }
+            continue
+        eligibility[slice_name] = {
+            'eligible': True,
+            'reason': f'{slice_name} is allowed for {framework} under the current scorecard gate.',
+        }
+    return eligibility
+
+
 def main() -> int:
     settings = Settings()
     primary_stack_text = _read_text(PRIMARY_STACK_REPORT)
@@ -281,6 +317,24 @@ def main() -> int:
         )
     )
     crewai_score += 3
+    crewai_blocked_reasons = {
+        'protected': 'protected still trails LangGraph in operator-facing control primitives and should stay behind manual review.',
+    }
+    langgraph_gate_eligible = langgraph_score >= 24 and langgraph_primary_native_ok and langgraph_restart_ok and langgraph_crash_ok
+    crewai_gate_eligible = crewai_score >= 24 and crewai_primary_native_ok and crewai_restart_ok and crewai_crash_ok
+    langgraph_slice_eligibility = _slice_eligibility_map(
+        framework='langgraph',
+        gate_eligible=langgraph_gate_eligible,
+        recommended_canary_slices=['public', 'protected', 'support', 'workflow'],
+        blocked_canary_slices=[],
+    )
+    crewai_slice_eligibility = _slice_eligibility_map(
+        framework='crewai',
+        gate_eligible=crewai_gate_eligible,
+        recommended_canary_slices=['public', 'support', 'workflow'],
+        blocked_canary_slices=['protected'],
+        blocked_reasons=crewai_blocked_reasons,
+    )
 
     output = [
         '# Framework Native Scorecard',
@@ -323,6 +377,26 @@ def main() -> int:
         f'- `CrewAI` is now strong on Flow continuity and good on canonical trace visibility, with `{crewai_score}/{crewai_max}`, but still trails in operator-facing control primitives.',
         '- The comparison is now top-line enough for durability/debug to be a real architectural differentiator, not just a qualitative impression.',
         '',
+        '## Promotion Gate By Slice',
+        '',
+        '### LangGraph',
+        '',
+        '| Slice | Eligible | Reason |',
+        '| --- | --- | --- |',
+        *[
+            f"| `{slice_name}` | `{'yes' if details['eligible'] else 'no'}` | {details['reason']} |"
+            for slice_name, details in langgraph_slice_eligibility.items()
+        ],
+        '',
+        '### CrewAI',
+        '',
+        '| Slice | Eligible | Reason |',
+        '| --- | --- | --- |',
+        *[
+            f"| `{slice_name}` | `{'yes' if details['eligible'] else 'no'}` | {details['reason']} |"
+            for slice_name, details in crewai_slice_eligibility.items()
+        ],
+        '',
         '## Trace Samples',
         '',
         '### LangGraph',
@@ -347,6 +421,8 @@ def main() -> int:
                 'primary_stack_native_path_passed': langgraph_primary_native_ok,
                 'restart_recovery_passed': langgraph_restart_ok,
                 'crash_recovery_passed': langgraph_crash_ok,
+                'recommended_canary_slices': ['public', 'protected', 'support', 'workflow'],
+                'blocked_canary_slices': [],
                 'trace_sample': langgraph_meta,
             },
             'crewai': {
@@ -361,25 +437,25 @@ def main() -> int:
                 },
                 'recommended_canary_slices': ['public', 'support', 'workflow'],
                 'blocked_canary_slices': ['protected'],
-                'blocked_reasons': {
-                    'protected': 'protected still trails LangGraph in operator-facing control primitives and should stay behind manual review.',
-                },
+                'blocked_reasons': crewai_blocked_reasons,
             },
         },
         'promotion_gate': {
             'crewai': {
-                'eligible': crewai_score >= 24 and crewai_primary_native_ok and crewai_restart_ok and crewai_crash_ok,
+                'eligible': crewai_gate_eligible,
                 'minimum_score_for_canary': 20,
                 'primary_stack_native_path_required': True,
                 'recommended_canary_slices': ['public', 'support', 'workflow'],
                 'blocked_canary_slices': ['protected'],
+                'slice_eligibility': crewai_slice_eligibility,
             },
             'langgraph': {
-                'eligible': langgraph_score >= 24 and langgraph_primary_native_ok and langgraph_restart_ok and langgraph_crash_ok,
+                'eligible': langgraph_gate_eligible,
                 'minimum_score_for_canary': 20,
                 'primary_stack_native_path_required': True,
                 'recommended_canary_slices': ['public', 'protected', 'support', 'workflow'],
                 'blocked_canary_slices': [],
+                'slice_eligibility': langgraph_slice_eligibility,
             }
         },
     }

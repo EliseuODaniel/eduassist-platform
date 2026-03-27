@@ -1,6 +1,6 @@
 # Framework Native Scorecard
 
-Date: 2026-03-27T14:31:43.891601+00:00
+Date: 2026-03-27T14:38:46.020201+00:00
 
 ## Goal
 
@@ -47,6 +47,26 @@ Current inference from the evidence:
 - `LangGraph` leads in native persistence + HITL + checkpoint/state introspection with a score of `29/30`.
 - `CrewAI` is now strong on Flow continuity and good on canonical trace visibility, with `27/30`, but still trails in operator-facing control primitives.
 - The comparison is now top-line enough for durability/debug to be a real architectural differentiator, not just a qualitative impression.
+
+## Promotion Gate By Slice
+
+### LangGraph
+
+| Slice | Eligible | Reason |
+| --- | --- | --- |
+| `public` | `yes` | public is allowed for langgraph under the current scorecard gate. |
+| `protected` | `yes` | protected is allowed for langgraph under the current scorecard gate. |
+| `support` | `yes` | support is allowed for langgraph under the current scorecard gate. |
+| `workflow` | `yes` | workflow is allowed for langgraph under the current scorecard gate. |
+
+### CrewAI
+
+| Slice | Eligible | Reason |
+| --- | --- | --- |
+| `public` | `yes` | public is allowed for crewai under the current scorecard gate. |
+| `protected` | `no` | protected still trails LangGraph in operator-facing control primitives and should stay behind manual review. |
+| `support` | `yes` | support is allowed for crewai under the current scorecard gate. |
+| `workflow` | `yes` | workflow is allowed for crewai under the current scorecard gate. |
 
 ## Trace Samples
 

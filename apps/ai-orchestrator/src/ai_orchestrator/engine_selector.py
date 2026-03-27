@@ -163,6 +163,36 @@ def _load_scorecard(settings: Any) -> dict[str, Any] | None:
     return None
 
 
+def get_scorecard_gate_status(*, settings: Any, primary_engine: str | None = None) -> dict[str, Any]:
+    selected_engine = str(primary_engine or resolve_primary_stack(settings)).strip().lower() or 'langgraph'
+    scorecard = _load_scorecard(settings)
+    if not isinstance(scorecard, dict):
+        return {
+            'loaded': False,
+            'primary_engine': selected_engine,
+            'primary_score': None,
+            'primary_max_score': None,
+            'primary_stack_native_path_passed': False,
+            'promotion_gate': None,
+        }
+
+    frameworks = scorecard.get('frameworks')
+    framework_payload = frameworks.get(selected_engine) if isinstance(frameworks, dict) else None
+    promotion_gate = scorecard.get('promotion_gate')
+    engine_gate = promotion_gate.get(selected_engine) if isinstance(promotion_gate, dict) else None
+
+    return {
+        'loaded': True,
+        'generated_at': scorecard.get('generated_at'),
+        'primary_engine': selected_engine,
+        'primary_score': framework_payload.get('total_score') if isinstance(framework_payload, dict) else None,
+        'primary_max_score': framework_payload.get('max_score') if isinstance(framework_payload, dict) else None,
+        'primary_stack_native_path_passed': bool(isinstance(framework_payload, dict) and framework_payload.get('primary_stack_native_path_passed')),
+        'promotion_gate': engine_gate if isinstance(engine_gate, dict) else None,
+        'frameworks': frameworks if isinstance(frameworks, dict) else None,
+    }
+
+
 def _slice_allowed_by_scorecard(*, settings: Any, slice_name: str, primary_engine: str) -> bool:
     if not bool(getattr(settings, 'orchestrator_experiment_require_scorecard', False)):
         return True

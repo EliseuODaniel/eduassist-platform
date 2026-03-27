@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from eduassist_observability import configure_observability
 
-from .engine_selector import build_engine_bundle, maybe_run_shadow, resolve_primary_stack
+from .engine_selector import build_engine_bundle, get_scorecard_gate_status, maybe_run_shadow, resolve_primary_stack
 from .graph import get_graph_blueprint, to_preview
 from .graph_rag_runtime import graph_rag_workspace_ready
 from .langgraph_runtime import (
@@ -311,6 +311,7 @@ async def meta(
     _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
     langgraph_runtime = get_langgraph_runtime_status(settings)
+    scorecard_gate = get_scorecard_gate_status(settings=settings)
     return {
         'service': 'ai-orchestrator',
         'environment': settings.app_env,
@@ -326,6 +327,7 @@ async def meta(
         'experimentScorecardPath': settings.orchestrator_experiment_scorecard_path,
         'experimentMinPrimaryEngineScore': settings.orchestrator_experiment_min_primary_engine_score,
         'experimentRequireHealthyPilot': settings.orchestrator_experiment_require_healthy_pilot,
+        'experimentScorecardGate': scorecard_gate,
         'provider': settings.llm_provider,
         'openaiModel': settings.openai_model,
         'googleModel': settings.google_model,
@@ -345,6 +347,7 @@ async def meta(
 async def status() -> dict[str, object]:
     settings = get_settings()
     langgraph_runtime = get_langgraph_runtime_status(settings)
+    scorecard_gate = get_scorecard_gate_status(settings=settings)
     return {
         'service': 'ai-orchestrator',
         'ready': True,
@@ -362,6 +365,7 @@ async def status() -> dict[str, object]:
         'experimentScorecardPath': settings.orchestrator_experiment_scorecard_path,
         'experimentMinPrimaryEngineScore': settings.orchestrator_experiment_min_primary_engine_score,
         'experimentRequireHealthyPilot': settings.orchestrator_experiment_require_healthy_pilot,
+        'experimentScorecardGate': scorecard_gate,
         'llmProvider': settings.llm_provider,
         'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
         'capabilities': [
