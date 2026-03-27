@@ -38,6 +38,7 @@ from .protected_pilot import (
     ProtectedPilotAnswer,
     ProtectedPilotJudge,
     ProtectedPilotPlan,
+    _augment_protected_message_with_state,
     _auth_required_backstop,
     _build_llm,
     _build_protected_docs,
@@ -65,6 +66,7 @@ class ProtectedFlowState(BaseModel):
     telegram_chat_id: int | None = None
     channel: str = 'telegram'
     normalized_message: str = ''
+    effective_message: str = ''
     routing_label: str = 'prepare'
     reason: str = ''
     resolved_student_name: str | None = None
@@ -234,6 +236,12 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
         recent_student_name = self.state.active_student_name
         self._student = _resolve_student(self._actor, self.state.message, recent_student_name=recent_student_name)
         self.state.resolved_student_name = self._student.get('full_name') if isinstance(self._student, dict) else None
+        self.state.effective_message = _augment_protected_message_with_state(
+            self.state.message,
+            active_student_name=self.state.resolved_student_name or self.state.active_student_name,
+            active_domain=self.state.active_domain,
+            active_attribute=self.state.active_attribute,
+        )
 
         self._identity_backstop_text = _identity_backstop(self._actor, self.state.message)
         if self._identity_backstop_text and _is_identity_scope_query(self.state.message):
@@ -283,12 +291,17 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             telegram_chat_id=self.state.telegram_chat_id,
         )
         docs = _build_protected_docs(evidence)
-        self._shortlisted_docs = _rank_docs(self.state.message, docs)
+        self._shortlisted_docs = _rank_docs(self.state.effective_message or self.state.message, docs)
         self.state.evidence_source_ids = [doc.doc_id for doc in self._shortlisted_docs]
 
-        fast_path_answer = self._identity_backstop_text or _student_backstop(self.state.message, self._student, evidence, self._shortlisted_docs)
+        fast_path_answer = self._identity_backstop_text or _student_backstop(
+            self.state.effective_message or self.state.message,
+            self._student,
+            evidence,
+            self._shortlisted_docs,
+        )
         if isinstance(fast_path_answer, str) and fast_path_answer.strip():
-            self.state.plan = _infer_fast_path_plan(self.state.message, self._student)
+            self.state.plan = _infer_fast_path_plan(self.state.effective_message or self.state.message, self._student)
             self.state.answer = ProtectedPilotAnswer(
                 answer_text=fast_path_answer,
                 citations=[self._shortlisted_docs[0].doc_id] if self._shortlisted_docs else [],
@@ -537,7 +550,7 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
         )
         if not self._shortlisted_docs:
             docs = _build_protected_docs(evidence)
-            self._shortlisted_docs = _rank_docs(self.state.message, docs)
+            self._shortlisted_docs = _rank_docs(self.state.effective_message or self.state.message, docs)
             self.state.evidence_source_ids = [doc.doc_id for doc in self._shortlisted_docs]
         evidence_bundle = _serialize_docs(self._shortlisted_docs)
 
@@ -651,14 +664,22 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
         )
 
         with capture_pilot_events('protected') as event_recorder:
-            await asyncio.to_thread(crew.kickoff, inputs={'message': self.state.message, 'evidence_bundle': evidence_bundle})
+            await asyncio.to_thread(
+                crew.kickoff,
+                inputs={'message': self.state.effective_message or self.state.message, 'evidence_bundle': evidence_bundle},
+            )
 
         self.state.latency_ms = round((perf_counter() - self._overall_started_at) * 1000, 1)
         plan = getattr(planning_task.output, 'pydantic', None)
         answer = getattr(composition_task.output, 'pydantic', None)
         verdict = getattr(judge_task.output, 'pydantic', None)
 
-        backstop_answer = self._identity_backstop_text or _student_backstop(self.state.message, self._student, evidence, self._shortlisted_docs)
+        backstop_answer = self._identity_backstop_text or _student_backstop(
+            self.state.effective_message or self.state.message,
+            self._student,
+            evidence,
+            self._shortlisted_docs,
+        )
         backstop_used = False
         if isinstance(backstop_answer, str) and backstop_answer.strip():
             answer = ProtectedPilotAnswer(

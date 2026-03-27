@@ -848,6 +848,8 @@ ACCESS_SCOPE_TERMS = {
     'que informacoes consigo obter',
     'que informações consigo obter',
     'qual acesso eu tenho',
+    'eu consigo ver o que exatamente',
+    'o que exatamente eu consigo ver',
 }
 ACTOR_IDENTITY_TERMS = {
     'estou logado como',
@@ -1505,6 +1507,8 @@ def _is_capability_query(message: str) -> bool:
 
 def _is_access_scope_query(message: str) -> bool:
     normalized = _normalize_text(message)
+    if 'consigo ver' in normalized and 'exatamente' in normalized:
+        return True
     return any(_message_matches_term(normalized, term) for term in ACCESS_SCOPE_TERMS)
 
 
@@ -1993,6 +1997,26 @@ def _detect_academic_attribute_request(message: str) -> ProtectedAttributeReques
 
 def _detect_finance_attribute_request(message: str) -> ProtectedAttributeRequest | None:
     normalized = _normalize_text(message)
+    wants_open_amount = any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'quanto esta em aberto',
+            'quanto está em aberto',
+            'valor em aberto',
+            'saldo em aberto',
+            'quanto devo',
+            'quanto estou devendo',
+            'valor pendente',
+        }
+    ) or (
+        any(_message_matches_term(normalized, term) for term in FINANCE_OPEN_TERMS)
+        and any(
+            _message_matches_term(normalized, term)
+            for term in {'quanto', 'valor', 'saldo', 'devo', 'devendo'}
+        )
+    )
+    if wants_open_amount:
+        return ProtectedAttributeRequest(domain='finance', attribute='open_amount')
     if any(_message_matches_term(normalized, term) for term in FINANCE_NEXT_DUE_TERMS):
         return ProtectedAttributeRequest(domain='finance', attribute='next_due')
     if any(_message_matches_term(normalized, term) for term in FINANCE_IDENTIFIER_TERMS):
@@ -2192,6 +2216,21 @@ def _recent_public_feature_key(conversation_context: dict[str, Any] | None) -> s
         features = _requested_public_features(content)
         if len(features) == 1:
             return features[0]
+        normalized = _normalize_text(content)
+        for feature_key in (
+            'biblioteca',
+            'cantina',
+            'laboratorio',
+            'maker',
+            'quadra',
+            'piscina',
+            'futebol',
+            'volei',
+            'teatro',
+            'danca',
+        ):
+            if _message_matches_term(normalized, feature_key):
+                return feature_key
     return None
 
 
@@ -2632,6 +2671,7 @@ def _compose_public_feature_answer(
     feature_map = _feature_inventory_map(profile)
     school_name = str(profile.get('school_name', 'Colegio Horizonte'))
     requested_features = _requested_public_features(original_message)
+    requested_attributes = set(_requested_public_attributes(original_message))
     recent_focus = _recent_trace_focus(conversation_context)
     feature_followup_context = (
         isinstance(recent_focus, dict)
@@ -2653,6 +2693,10 @@ def _compose_public_feature_answer(
                 'Se quiser, eu posso te mostrar o que esta documentado sobre estrutura e atividades.'
             )
         requested_features = _requested_public_features(analysis_message)
+    if not requested_features and _is_follow_up_query(original_message):
+        recent_feature = _recent_public_feature_key(conversation_context)
+        if recent_feature:
+            requested_features = [recent_feature]
     asks_why_absent = _asks_why_feature_is_missing(original_message)
     if not requested_features and _is_public_feature_query(original_message):
         generic_activity_query = any(
@@ -2718,6 +2762,8 @@ def _compose_public_feature_answer(
         label = str(item.get('label', feature_key)).strip()
         notes = str(item.get('notes', '')).strip()
         available = bool(item.get('available'))
+        if available and 'name' in requested_attributes:
+            return f'O nome desse espaco e {label}.'
         if available:
             if asks_why_absent:
                 return f'Na verdade, o {school_name} tem sim {label}. {notes}'.strip()
@@ -3412,7 +3458,7 @@ def _is_public_document_submission_query(message: str) -> bool:
     if any(_message_matches_term(normalized, term) for term in PUBLIC_DOCUMENT_SUBMISSION_TERMS):
         return True
     document_terms = {'documento', 'documentos', 'matricula', 'matrícula', 'cadastro'}
-    digital_terms = {'online', 'digital', 'portal', 'email', 'e-mail', 'enviar', 'envio'}
+    digital_terms = {'online', 'digital', 'portal', 'email', 'e-mail', 'enviar', 'envio', 'mandar', 'mando'}
     return any(_message_matches_term(normalized, term) for term in document_terms) and any(
         _message_matches_term(normalized, term) for term in digital_terms
     )
@@ -5675,6 +5721,8 @@ def _detect_workflow_kind_hint(
             return 'visit_booking'
         if focus_kind == 'request':
             return 'institutional_request'
+        if focus_kind == 'support':
+            return 'support_handoff'
 
     for _sender_type, content in reversed(_recent_message_lines(conversation_context)):
         content_normalized = _normalize_text(content)
@@ -6945,6 +6993,14 @@ def _normalize_public_plan_for_message(
         normalized_act = 'document_submission'
         ensure_tool('get_public_school_profile')
         normalized_fetch_profile = True
+    elif (
+        _is_follow_up_query(message)
+        and isinstance(_recent_trace_focus(conversation_context), dict)
+        and str((_recent_trace_focus(conversation_context) or {}).get('active_task', '')).strip() == 'public:document_submission'
+    ):
+        normalized_act = 'document_submission'
+        ensure_tool('get_public_school_profile')
+        normalized_fetch_profile = True
     elif _matches_public_contact_rule(message) or _requested_contact_channel(message) is not None:
         normalized_act = 'contacts'
         ensure_tool('get_public_school_profile')
@@ -6962,6 +7018,15 @@ def _normalize_public_plan_for_message(
         normalized_fetch_profile = True
 
     if (
+        _is_follow_up_query(message)
+        and requested_attributes == {'name'}
+        and primary_entity not in {None, 'escola'}
+        and normalized_act not in {'contacts', 'leadership', 'teacher_directory'}
+    ):
+        normalized_act = 'features'
+        ensure_tool('get_public_school_profile')
+        normalized_fetch_profile = True
+    elif (
         normalized_act == 'operating_hours'
         and 'name' in requested_attributes
         and primary_entity not in {None, 'escola'}
@@ -8928,6 +8993,11 @@ def _should_use_student_administrative_status(
         return True
     if not _is_follow_up_query(message):
         return False
+    recent_focus = _recent_trace_focus(conversation_context) or {}
+    if str(recent_focus.get('active_task', '') or '').strip() == 'admin:student_administrative_status':
+        return True
+    if _recent_slot_value(conversation_context, 'admin_attribute'):
+        return True
     return any(
         _recent_slot_value(conversation_context, key)
         for key in ('academic_student_name', 'finance_student_name')
@@ -9670,6 +9740,21 @@ def _format_invoice_lines(
     return lines
 
 
+def _parse_invoice_amount(value: Any) -> float:
+    raw = str(value or '').strip()
+    if not raw:
+        return 0.0
+    raw = raw.replace('R$', '').replace(' ', '')
+    if ',' in raw and '.' in raw:
+        raw = raw.replace('.', '').replace(',', '.')
+    elif ',' in raw:
+        raw = raw.replace(',', '.')
+    try:
+        return float(raw)
+    except ValueError:
+        return 0.0
+
+
 def _format_upcoming_assessments(summary: dict[str, Any]) -> list[str]:
     assessments = summary.get('assessments')
     if not isinstance(assessments, list) or not assessments:
@@ -9960,6 +10045,21 @@ def _compose_finance_attribute_answer(
             f'Status atual: {status_label}.'
         )
 
+    if attribute_request.attribute == 'open_amount':
+        invoices = _filter_invoice_rows(summary, status_filter=status_filter or {'open', 'overdue'})
+        outstanding_invoices = [
+            invoice
+            for invoice in invoices
+            if str(invoice.get('status', '')).lower() in {'open', 'overdue'}
+        ]
+        total_outstanding = sum(_parse_invoice_amount(invoice.get('amount_due')) for invoice in outstanding_invoices)
+        if total_outstanding <= 0:
+            return f'Hoje nao encontrei valor em aberto para {student_name} neste recorte.'
+        return (
+            f'Hoje o valor total em aberto de {student_name} neste recorte e R$ {total_outstanding:.2f}, '
+            f'distribuido em {len(outstanding_invoices)} fatura(s).'
+        )
+
     if attribute_request.attribute == 'invoice_id':
         invoice = _select_relevant_invoice(
             summary,
@@ -10168,6 +10268,33 @@ async def _execute_protected_records_specialist(
         message,
         conversation_context=conversation_context,
     )
+    if _is_access_scope_query(message) or _is_access_scope_repair_query(
+        message,
+        actor,
+        conversation_context,
+    ):
+        return _compose_authenticated_access_scope_answer(actor)
+    if _is_actor_identity_query(message):
+        return _compose_actor_identity_answer(actor)
+    if _is_public_document_submission_query(message):
+        if _message_matches_term(normalized_message, 'fax'):
+            return (
+                'Hoje a escola nao utiliza fax para envio de documentos. '
+                'Para isso, use portal institucional, email da secretaria, secretaria presencial.'
+            )
+        if _message_matches_term(normalized_message, 'telegrama'):
+            return (
+                'Hoje a escola nao publica telegrama como canal valido para documentos. '
+                'Para isso, use portal institucional, email da secretaria, secretaria presencial.'
+            )
+        if _message_matches_term(normalized_message, 'caixa postal'):
+            return (
+                'Hoje a escola nao trabalha com caixa postal para esse tipo de envio. '
+                'Para documentos, use portal institucional, email da secretaria, secretaria presencial.'
+            )
+        return (
+            'Para enviar documentos hoje, use portal institucional, email da secretaria ou secretaria presencial.'
+        )
     should_force_student_admin_path = (
         requested_admin_attribute is not None
         and _effective_finance_attribute_request(

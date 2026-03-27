@@ -145,8 +145,41 @@ def _is_followup_style_message(message: str) -> bool:
     return (
         normalized.startswith('e ')
         or normalized.startswith('mas ')
+        or normalized.startswith('o que falta')
+        or normalized.startswith('e quanto')
         or any(term in normalized for term in {' dele', ' dela', ' desse aluno', ' dessa aluna', ' desse filho', ' dessa filha'})
     )
+
+
+def _augment_protected_message_with_state(
+    message: str,
+    *,
+    active_student_name: str | None,
+    active_domain: str | None,
+    active_attribute: str | None,
+) -> str:
+    if not (active_student_name or active_domain or active_attribute):
+        return message
+    if not _is_followup_style_message(message) and len(_query_terms(message)) > 6:
+        return message
+    hints: list[str] = []
+    if active_student_name:
+        hints.append(active_student_name)
+    normalized_domain = _normalize_text(active_domain or '')
+    normalized_attribute = _normalize_text(active_attribute or '')
+    if normalized_domain:
+        hints.append(normalized_domain)
+    if normalized_attribute:
+        hints.append(normalized_attribute)
+    if normalized_domain == 'institution' and normalized_attribute in {'documents', 'status', 'next_step'}:
+        hints.extend(['documentacao', 'documentos', 'pendencias', 'proximo passo'])
+    if normalized_domain == 'finance':
+        hints.extend(['financeiro', 'mensalidade', 'boleto'])
+        if normalized_attribute in {'next_payment', 'summary', 'open_amount'}:
+            hints.extend(['em aberto', 'saldo'])
+    if normalized_domain == 'academic' and normalized_attribute in {'attendance', 'grades', 'assessments'}:
+        hints.append(normalized_attribute)
+    return ' '.join(part for part in [message, *hints] if part).strip()
 
 
 def _student_by_name(actor: dict[str, Any], student_name: str | None) -> dict[str, Any] | None:
@@ -261,6 +294,11 @@ def _extract_unmatched_student_reference(actor: dict[str, Any], message: str) ->
         'notas', 'nota', 'matricula', 'frequencia', 'faltas', 'provas', 'prova', 'documentacao',
         'documentos', 'situacao', 'status', 'como', 'estao', 'esta', 'está', 'estao', 'e',
     }
+    followup_match = re.search(r'\be\s+do\s+([a-z0-9]+)\b', normalized_message)
+    if followup_match:
+        candidate = followup_match.group(1)
+        if len(candidate) >= 3 and candidate not in known_tokens and candidate not in stopwords:
+            return candidate
     for token in re.findall(r'[a-z0-9]+', normalized_message):
         if len(token) < 3 or token in stopwords:
             continue
@@ -303,7 +341,13 @@ def _is_identity_scope_query(message: str) -> bool:
         'vinculados',
         'vinculada',
         'conta',
+        'consigo',
+        'ver',
+        'exatamente',
     }
+    normalized = _normalize_text(message)
+    if 'consigo ver' in normalized or 'o que exatamente' in normalized:
+        return True
     return bool(terms & identity_terms)
 
 
@@ -515,6 +559,7 @@ def _serialize_docs(docs: list[EvidenceDoc]) -> str:
 
 def _identity_backstop(actor: dict[str, Any], message: str) -> str | None:
     terms = _query_terms(message)
+    normalized_message = _normalize_text(message)
     linked = [item for item in actor.get('linked_students', []) if isinstance(item, dict)]
     record_terms = {
         'notas',
@@ -532,7 +577,7 @@ def _identity_backstop(actor: dict[str, Any], message: str) -> str | None:
         'pagamento',
         'mensalidade',
     }
-    if any(term in terms for term in {'logado', 'acesso'}):
+    if any(term in terms for term in {'logado', 'acesso'}) or 'consigo ver' in normalized_message or 'o que exatamente' in normalized_message:
         names = ', '.join(str(item.get('full_name', '')) for item in linked)
         return (
             f"Voce esta autenticado aqui como {actor.get('full_name', 'responsavel')}. "
@@ -596,12 +641,17 @@ def _infer_fast_path_plan(message: str, student: dict[str, Any] | None) -> Prote
             relevant_sources=['assessments.overview'],
         )
     if any(term in terms for term in {'financeiro', 'pagamento', 'mensalidade', 'boleto'}):
+        attribute = 'summary'
+        if {'aberto', 'saldo', 'devendo', 'divida', 'dividas', 'pendente', 'pendentes'} & terms:
+            attribute = 'open_amount'
+        elif 'proximo' in terms:
+            attribute = 'next_payment'
         return ProtectedPilotPlan(
             intent='student_finance',
             student_name=student_name or None,
             student_id=student_id or None,
             domain='finance',
-            attribute='next_payment' if 'proximo' in terms else 'summary',
+            attribute=attribute,
             relevant_sources=['financial.overview'],
         )
     if any(term in terms for term in {'documentacao', 'documentos'}):
@@ -671,6 +721,25 @@ def _student_backstop(message: str, student: dict[str, Any] | None, evidence: di
         summary = (evidence.get('financial', {}).get('summary', {}) or {})
         invoices = [item for item in (summary.get('invoices') or []) if isinstance(item, dict)]
         open_invoices = [item for item in invoices if str(item.get('status', '')).lower() == 'open']
+        overdue_invoices = [item for item in invoices if str(item.get('status', '')).lower() == 'overdue']
+        outstanding_invoices = open_invoices + [
+            item for item in overdue_invoices if item not in open_invoices
+        ]
+        if {'aberto', 'saldo', 'devendo', 'divida', 'dividas', 'pendente', 'pendentes'} & terms:
+            total_outstanding = 0.0
+            for item in outstanding_invoices:
+                raw_value = str(item.get('amount_due', '') or '').strip().replace('R$', '').replace(' ', '')
+                raw_value = raw_value.replace('.', '').replace(',', '.') if ',' in raw_value else raw_value
+                try:
+                    total_outstanding += float(raw_value or 0.0)
+                except ValueError:
+                    continue
+            if total_outstanding > 0:
+                return (
+                    f'Hoje o valor total em aberto de {name} neste recorte e R$ {total_outstanding:.2f}, '
+                    f'distribuido em {len(outstanding_invoices)} fatura(s).'
+                )
+            return f'No momento, nao encontrei valor em aberto para {name} neste recorte.'
         if 'proximo' in terms:
             next_invoice = sorted(open_invoices or invoices, key=lambda item: str(item.get('due_date', '')))[0] if (open_invoices or invoices) else None
             if next_invoice and str(next_invoice.get('status', '')).lower() == 'open':
@@ -685,6 +754,23 @@ def _student_backstop(message: str, student: dict[str, Any] | None, evidence: di
         )
     if any(term in terms for term in {'documentacao', 'documentos'}):
         summary = (evidence.get('admin', {}).get('summary', {}) or {})
+        if {'falta', 'faltando', 'pendencia', 'pendencias', 'proximo', 'passo'} & terms:
+            checklist = [item for item in (summary.get('checklist') or []) if isinstance(item, dict)]
+            missing = [
+                item for item in checklist
+                if _normalize_text(str(item.get('status', ''))) in {'pending', 'missing', 'incomplete'}
+            ]
+            if missing:
+                first = missing[0]
+                label = str(first.get('label', 'item')).strip() or 'documentacao pendente'
+                detail = str(first.get('detail') or first.get('notes') or '').strip()
+                if detail:
+                    return f'No momento, ainda falta para {name}: {label}. {detail}'
+                labels = ', '.join(str(item.get('label', 'item')).strip() for item in missing[:3])
+                return f'No momento, ainda faltam para {name}: {labels}.'
+            next_step = str(summary.get('next_step') or '').strip()
+            if next_step:
+                return f'Para {name}, o proximo passo registrado hoje e: {next_step}.'
         return f"A situacao documental de {name} hoje esta {_humanize_admin_status(summary.get('overall_status'))}."
     if 'matricula' in terms:
         summary = (evidence.get('admin', {}).get('summary', {}) or {})

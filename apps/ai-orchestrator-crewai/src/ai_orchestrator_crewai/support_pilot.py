@@ -46,6 +46,10 @@ def _wants_human_handoff(message: str) -> bool:
         'atendente',
         'humano',
         'suporte',
+        'abre pra',
+        'abre para',
+        'encaminha pra',
+        'encaminha para',
     )
     return any(marker in normalized for marker in markers)
 

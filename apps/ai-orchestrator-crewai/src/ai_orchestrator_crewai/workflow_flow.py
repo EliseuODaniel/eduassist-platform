@@ -135,7 +135,10 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
             self.state.reason = 'workflow_visit_cancel'
             return self.state.routing_label
 
-        if _contains_any(normalized, visit_terms) and _contains_any(normalized, {'remarcar', 'reagendar', 'mudar'}):
+        if (
+            (_contains_any(normalized, visit_terms) or self.state.current_type == 'visit_booking')
+            and _contains_any(normalized, {'remarcar', 'reagendar', 'mudar'})
+        ):
             self.state.routing_label = 'visit_reschedule'
             self.state.reason = 'workflow_visit_reschedule'
             return self.state.routing_label

@@ -91,6 +91,49 @@ def _query_terms(message: str) -> set[str]:
     }
 
 
+def _is_followup_style_message(message: str) -> bool:
+    normalized = ' '.join(_normalize_text(message).split())
+    return (
+        normalized.startswith('e ')
+        or normalized.startswith('mas ')
+        or normalized.startswith('entao ')
+        or normalized.startswith('entao,')
+        or normalized.startswith('entao como')
+        or normalized.startswith('qual o nome dela')
+        or normalized.startswith('qual o nome dele')
+        or normalized.startswith('qual o horario dela')
+        or normalized.startswith('qual o horario dele')
+        or normalized.startswith('e o horario')
+        or normalized.startswith('e o nome')
+    )
+
+
+def _augment_public_message_with_state(
+    message: str,
+    *,
+    active_entity: str | None,
+    active_attribute: str | None,
+) -> str:
+    if not (active_entity or active_attribute):
+        return message
+    if not _is_followup_style_message(message) and len(_query_terms(message)) > 8:
+        return message
+    context_hints: list[str] = []
+    normalized_entity = _normalize_text(active_entity or '')
+    normalized_attribute = _normalize_text(active_attribute or '')
+    if normalized_entity:
+        context_hints.append(normalized_entity)
+    if normalized_attribute:
+        context_hints.append(normalized_attribute)
+    if 'biblioteca' in normalized_entity:
+        context_hints.extend(['biblioteca', 'biblioteca aurora', 'horario', 'nome'])
+    if normalized_attribute in {'document_submission', 'submission'} or normalized_entity in {'documentos', 'documento'}:
+        context_hints.extend(['documentos', 'enviar documentos', 'envio', 'secretaria', 'email', 'portal'])
+    if normalized_entity in {'assistente', 'bot'} or normalized_attribute == 'capabilities':
+        context_hints.extend(['assistente', 'capacidades', 'ajuda'])
+    return ' '.join(part for part in [message, *context_hints] if part).strip()
+
+
 def _stringify_items(items: list[Any], keys: tuple[str, ...]) -> list[str]:
     lines: list[str] = []
     for item in items:
@@ -340,7 +383,24 @@ def _find_first_matching_doc(docs: list[EvidenceDoc], prefix: str, terms: tuple[
 
 def _direct_contact_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
     terms = _query_terms(message)
-    if not ({'telefone', 'fax', 'ligo', 'ligar', 'contato', 'caixa', 'postal', 'telegrama'} & terms):
+    normalized_message = _normalize_text(message)
+    document_send_followup = (
+        'documentos' in terms
+        and ({'mando', 'envio', 'enviar', 'mandar'} & terms)
+    ) or any(
+        phrase in normalized_message
+        for phrase in {
+            'como mando os documentos',
+            'como enviar os documentos',
+            'como posso enviar os documentos',
+            'entao como mando os documentos',
+            'entao como envio os documentos',
+        }
+    )
+    if not (
+        ({'telefone', 'fax', 'ligo', 'ligar', 'contato', 'caixa', 'postal', 'telegrama'} & terms)
+        or document_send_followup
+    ):
         return None
     phone_doc = _find_first_matching_doc(docs, 'contact.', ('telefone', 'phone', 'secretaria'))
     fax_doc = _find_first_matching_doc(docs, 'profile.', ('fax',))
@@ -351,7 +411,6 @@ def _direct_contact_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | 
     if fax_doc is not None and 'nao utiliza fax' in _normalize_text(fax_doc.text):
         fax_answer = 'Hoje a escola nao utiliza fax institucional.'
     fallback_channels = 'portal institucional, email da secretaria ou secretaria presencial'
-    normalized_message = _normalize_text(message)
     if 'fax' in terms and any(term in normalized_message for term in ('antes voce respondeu', 'antes você respondeu', 'corrigindo', 'mas antes')):
         return (
             'Voce esta certo em cobrar essa correcao. '
@@ -367,6 +426,8 @@ def _direct_contact_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | 
         return f'Hoje a escola nao publica telegrama como canal valido. Para documentos, use {fallback_channels}.'
     if {'caixa', 'postal'} & terms:
         return f'Hoje a escola nao trabalha com caixa postal para esse tipo de envio. Para documentos, use {fallback_channels}.'
+    if document_send_followup:
+        return f'Para enviar documentos hoje, use {fallback_channels}.'
     if ({'telefone', 'ligo', 'ligar', 'contato'} & terms) and 'fax' in terms and phone_answer and fax_answer:
         return f'{phone_answer} {fax_answer}'
     if ({'telefone', 'ligo', 'ligar', 'contato'} & terms) and phone_answer:
@@ -382,6 +443,21 @@ def _direct_greeting_fast_answer(message: str) -> str | None:
         return (
             'Oi. Eu posso te ajudar por aqui com informacoes da escola, canais oficiais, '
             'matricula, visitas, biblioteca, atividades e rotina escolar.'
+        )
+    return None
+
+
+def _direct_capabilities_fast_answer(message: str) -> str | None:
+    normalized = ' '.join(_normalize_text(message).split())
+    if normalized in {
+        'o que voce esta fazendo',
+        'o que você está fazendo',
+        'o que voce faz',
+        'o que você faz',
+    }:
+        return (
+            'Estou te ajudando a navegar as informacoes da escola de forma mais direta. '
+            'Por aqui eu consigo responder sobre biblioteca, contatos, matricula, visitas, atividades, canais oficiais e rotina publica da escola.'
         )
     return None
 
@@ -501,10 +577,37 @@ def _direct_tuition_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | 
     return f'A mensalidade de referencia para {segment} e R$ {monthly_amount}.'
 
 
+def _infer_public_followup_slots(
+    message: str,
+    answer_text: str,
+) -> tuple[str | None, str | None]:
+    normalized = _normalize_text(f'{message} {answer_text}')
+    terms = _query_terms(message)
+    if 'biblioteca' in normalized:
+        if {'horario', 'hora', 'abre', 'fecha'} & terms:
+            return 'biblioteca', 'hours'
+        if 'nome' in terms:
+            return 'biblioteca', 'name'
+        return 'biblioteca', 'general'
+    if any(term in normalized for term in {'fax', 'telegrama', 'caixa postal', 'documentos', 'secretaria presencial'}):
+        return 'documentos', 'document_submission'
+    if any(term in normalized for term in {'o que voce esta fazendo', 'o que voce faz', 'ajudar por aqui'}):
+        return 'assistente', 'capabilities'
+    if 'instagram' in terms:
+        return 'instagram', 'contact'
+    return None, None
+
+
 def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: list[EvidenceDoc]) -> str | None:
     greeting_answer = _direct_greeting_fast_answer(message)
     if greeting_answer:
         return greeting_answer
+    capabilities_answer = _direct_capabilities_fast_answer(message)
+    if capabilities_answer:
+        return capabilities_answer
+    contact_answer = _direct_contact_fast_answer(message, docs)
+    if contact_answer:
+        return contact_answer
     comparative_answer = _direct_comparative_fast_answer(message, docs)
     if comparative_answer:
         return comparative_answer
@@ -589,7 +692,18 @@ def _answer_conflicts_with_backstop(answer_text: str, backstop: str, message: st
 def _is_public_fast_path_query(message: str) -> bool:
     terms = _query_terms(message)
     normalized = ' '.join(_normalize_text(message).split())
-    if normalized in {'oi', 'ola', 'olá', 'bom dia', 'boa tarde', 'boa noite'}:
+    if normalized in {
+        'oi',
+        'ola',
+        'olá',
+        'bom dia',
+        'boa tarde',
+        'boa noite',
+        'o que voce esta fazendo',
+        'o que você está fazendo',
+        'o que voce faz',
+        'o que você faz',
+    }:
         return True
     direct_terms = {
         'horario',
@@ -634,6 +748,10 @@ def _is_public_fast_path_query(message: str) -> bool:
         'concorrencia',
         'concorrente',
         'publica',
+        'mando',
+        'enviar',
+        'envio',
+        'mandar',
     }
     return bool(terms & direct_terms)
 

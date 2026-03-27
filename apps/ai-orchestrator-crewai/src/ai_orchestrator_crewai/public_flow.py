@@ -32,15 +32,18 @@ from .public_pilot import (
     PublicPilotAnswer,
     PublicPilotJudge,
     PublicPilotPlan,
+    _augment_public_message_with_state,
     _answer_conflicts_with_backstop,
     _build_evidence_docs,
     _build_llm,
     _deterministic_backstop,
     _direct_contact_fast_answer,
+    _direct_capabilities_fast_answer,
     _direct_feature_fast_answer,
     _direct_greeting_fast_answer,
     _extract_task_pydantic,
     _fetch_public_evidence,
+    _infer_public_followup_slots,
     _is_public_fast_path_query,
     _query_terms,
     _rank_evidence_docs,
@@ -58,6 +61,7 @@ class PublicFlowState(BaseModel):
     normalized_message: str = ''
     routing_label: str = 'prepare'
     reason: str = ''
+    effective_message: str = ''
     fast_path_answer: str | None = None
     evidence_source_ids: list[str] = Field(default_factory=list)
     plan: PublicPilotPlan | None = None
@@ -92,20 +96,12 @@ class PublicShadowFlow(Flow[PublicFlowState]):
     async def prepare_context(self) -> str:
         self._overall_started_at = perf_counter()
         self.state.normalized_message = ' '.join(self.state.message.strip().lower().split())
-        ranking_message = self.state.message
-        if (
-            len(self.state.normalized_message.split()) <= 8
-            and (self.state.active_entity or self.state.active_attribute)
-        ):
-            ranking_message = ' '.join(
-                part
-                for part in (
-                    self.state.message,
-                    self.state.active_entity or '',
-                    self.state.active_attribute or '',
-                )
-                if part
-            )
+        self.state.effective_message = _augment_public_message_with_state(
+            self.state.message,
+            active_entity=self.state.active_entity,
+            active_attribute=self.state.active_attribute,
+        )
+        ranking_message = self.state.effective_message or self.state.message
         if Crew is None or Agent is None or Task is None or Process is None or Flow is None:
             self.state.routing_label = 'dependency_unavailable'
             self.state.reason = 'crewai_dependency_unavailable'
@@ -117,15 +113,16 @@ class PublicShadowFlow(Flow[PublicFlowState]):
         self.state.evidence_source_ids = [doc.doc_id for doc in self._shortlisted_docs]
 
         fast_path_answer = (
-            _direct_greeting_fast_answer(self.state.message)
-            or _direct_contact_fast_answer(self.state.message, self._evidence_docs)
-            or _direct_contact_fast_answer(self.state.message, self._shortlisted_docs)
-            or _direct_feature_fast_answer(self.state.message, self._evidence_docs)
-            or _direct_feature_fast_answer(self.state.message, self._shortlisted_docs)
-            or _deterministic_backstop(self.state.message, None, self._evidence_docs)
-            or _deterministic_backstop(self.state.message, None, self._shortlisted_docs)
+            _direct_greeting_fast_answer(self.state.effective_message)
+            or _direct_capabilities_fast_answer(self.state.effective_message)
+            or _direct_contact_fast_answer(self.state.effective_message, self._evidence_docs)
+            or _direct_contact_fast_answer(self.state.effective_message, self._shortlisted_docs)
+            or _direct_feature_fast_answer(self.state.effective_message, self._evidence_docs)
+            or _direct_feature_fast_answer(self.state.effective_message, self._shortlisted_docs)
+            or _deterministic_backstop(self.state.effective_message, None, self._evidence_docs)
+            or _deterministic_backstop(self.state.effective_message, None, self._shortlisted_docs)
         )
-        if isinstance(fast_path_answer, str) and fast_path_answer.strip() and _is_public_fast_path_query(self.state.message):
+        if isinstance(fast_path_answer, str) and fast_path_answer.strip() and _is_public_fast_path_query(self.state.effective_message):
             self.state.fast_path_answer = fast_path_answer
             self.state.routing_label = 'fast_path'
             self.state.reason = 'crewai_public_fast_path'
@@ -186,6 +183,14 @@ class PublicShadowFlow(Flow[PublicFlowState]):
     @listen('fast_path')
     def handle_fast_path(self) -> dict[str, Any]:
         self.state.latency_ms = round((perf_counter() - self._overall_started_at) * 1000, 1)
+        inferred_entity, inferred_attribute = _infer_public_followup_slots(
+            self.state.effective_message or self.state.message,
+            str(self.state.fast_path_answer or ''),
+        )
+        if inferred_entity:
+            self.state.active_entity = inferred_entity
+        if inferred_attribute:
+            self.state.active_attribute = inferred_attribute
         answer = PublicPilotAnswer(
             answer_text=str(self.state.fast_path_answer or ''),
             citations=[self._shortlisted_docs[0].doc_id] if self._shortlisted_docs else [],
@@ -338,7 +343,7 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             await asyncio.to_thread(
                 crew.kickoff,
                 inputs={
-                    'message': self.state.message,
+                    'message': self.state.effective_message or self.state.message,
                     'evidence_bundle': evidence_bundle,
                 },
             )
@@ -347,13 +352,22 @@ class PublicShadowFlow(Flow[PublicFlowState]):
         plan = _extract_task_pydantic(planning_task, PublicPilotPlan)
         answer = _extract_task_pydantic(composition_task, PublicPilotAnswer)
         verdict = _extract_task_pydantic(judge_task, PublicPilotJudge)
-        backstop_answer = _deterministic_backstop(self.state.message, plan if isinstance(plan, PublicPilotPlan) else None, self._shortlisted_docs)
+        backstop_answer = _deterministic_backstop(
+            self.state.effective_message or self.state.message,
+            plan if isinstance(plan, PublicPilotPlan) else None,
+            self._shortlisted_docs,
+        )
         backstop_used = False
 
         if isinstance(answer, PublicPilotAnswer) and backstop_answer:
-            should_apply_backstop = _answer_conflicts_with_backstop(answer.answer_text, backstop_answer, self.state.message)
+            should_apply_backstop = _answer_conflicts_with_backstop(
+                answer.answer_text,
+                backstop_answer,
+                self.state.effective_message or self.state.message,
+            )
             if isinstance(plan, PublicPilotPlan) and plan.needs_clarification and any(
-                term in _query_terms(self.state.message) for term in {'telefone', 'fax', 'instagram', 'email', 'site', 'endereco'}
+                term in _query_terms(self.state.effective_message or self.state.message)
+                for term in {'telefone', 'fax', 'instagram', 'email', 'site', 'endereco'}
             ):
                 should_apply_backstop = True
             if isinstance(verdict, PublicPilotJudge) and not verdict.valid:
