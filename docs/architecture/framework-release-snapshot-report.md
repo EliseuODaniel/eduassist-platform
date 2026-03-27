@@ -1,6 +1,6 @@
 # Framework Release Snapshot Report
 
-Date: 2026-03-27T17:33:35.302157+00:00
+Date: 2026-03-27T18:20:50.772643+00:00
 
 ## Goal
 
@@ -10,8 +10,8 @@ Capture a single operational snapshot before merge or rollout promotion, using l
 
 - classification: `ready`
 - ready for guarded release: `True`
-- branch: `feature/two-stack-shadow-comparison`
-- commit: `8c4addb17ce9f3801603994e808efa62e9d2b617`
+- branch: `main`
+- commit: `d9bb3d12fbb15cb4bf19f83fdf9a824c7650a043`
 - working tree clean: `True`
 - working tree release-ready: `True`
 
