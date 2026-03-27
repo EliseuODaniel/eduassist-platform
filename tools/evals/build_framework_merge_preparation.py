@@ -15,6 +15,14 @@ DEFAULT_REPORT_JSON = REPO_ROOT / 'docs/architecture/framework-merge-preparation
 DEFAULT_ARTIFACT_JSON = REPO_ROOT / 'artifacts/framework-merge-preparation-report.json'
 RELEASE_SNAPSHOT_JSON = REPO_ROOT / 'docs/architecture/framework-release-snapshot-report.json'
 CHECKLIST_JSON = REPO_ROOT / 'docs/architecture/framework-merge-release-checklist-report.json'
+GOVERNANCE_ONLY_DIFF_PATHS = {
+    'docs/architecture/framework-release-snapshot-report.md',
+    'docs/architecture/framework-release-snapshot-report.json',
+    'docs/architecture/framework-merge-release-checklist-report.md',
+    'docs/architecture/framework-merge-release-checklist-report.json',
+    'docs/architecture/framework-merge-preparation-report.md',
+    'docs/architecture/framework-merge-preparation-report.json',
+}
 
 
 def _run(cmd: list[str]) -> str:
@@ -39,6 +47,26 @@ def _target_branch(default_target: str) -> str:
     if remote_head.startswith('refs/remotes/'):
         return remote_head.removeprefix('refs/remotes/')
     return default_target
+
+
+def _worktree_is_governance_only(status_short: str) -> tuple[bool, str]:
+    lines = [line.rstrip() for line in str(status_short or '').splitlines() if line.strip()]
+    if not lines:
+        return True, 'working tree is clean.'
+    paths: list[str] = []
+    for line in lines:
+        if len(line) >= 3 and line[2] == ' ':
+            candidate = line[3:].strip()
+        elif len(line) >= 2 and line[1] == ' ':
+            candidate = line[2:].strip()
+        else:
+            candidate = line.strip()
+        if '->' in candidate:
+            candidate = candidate.split('->', 1)[1].strip()
+        paths.append(candidate)
+    if paths and all(path in GOVERNANCE_ONLY_DIFF_PATHS for path in paths):
+        return True, 'working tree differs only by governance report files.'
+    return False, status_short
 
 
 def _write_report(*, report_md: Path, report_json: Path, artifact_json: Path, payload: dict) -> None:
@@ -95,13 +123,14 @@ def main() -> int:
     release_snapshot = _load_json(RELEASE_SNAPSHOT_JSON)
     merge_checklist = _load_json(CHECKLIST_JSON)
     git_status = _run(['git', 'status', '--short'])
+    worktree_clean_enough, worktree_detail = _worktree_is_governance_only(git_status)
     ahead_count = int(_run(['git', 'rev-list', '--count', f'{target_branch}..HEAD']) or '0')
     behind_count = int(_run(['git', 'rev-list', '--count', f'HEAD..{target_branch}']) or '0')
     diff_stat = _run(['git', 'diff', '--stat', f'{target_branch}...HEAD']) or '(no diff)'
 
     release_snapshot_ready = bool(isinstance(release_snapshot, dict) and release_snapshot.get('posture', {}).get('ready_for_guarded_release'))
     merge_checklist_ready = bool(isinstance(merge_checklist, dict) and merge_checklist.get('ready_to_merge_or_release'))
-    working_tree_clean = not bool(git_status.strip())
+    working_tree_clean = worktree_clean_enough
 
     blocking_items: list[str] = []
     if not release_snapshot_ready:
@@ -109,7 +138,7 @@ def main() -> int:
     if not merge_checklist_ready:
         blocking_items.append('merge/release checklist is not ready')
     if not working_tree_clean:
-        blocking_items.append('working tree is not clean')
+        blocking_items.append(f'working tree is not clean: {worktree_detail}')
     if behind_count > 0:
         blocking_items.append(f'branch is behind {target_branch} by {behind_count} commits')
 
@@ -133,6 +162,7 @@ def main() -> int:
         'release_snapshot_ready': release_snapshot_ready,
         'merge_checklist_ready': merge_checklist_ready,
         'working_tree_clean': working_tree_clean,
+        'working_tree_detail': worktree_detail,
         'diff_stat': diff_stat,
         'recommended_actions': recommended_actions,
         'blocking_items': blocking_items,
