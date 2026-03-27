@@ -127,12 +127,14 @@ Concrete local evidence:
 
 1. Keep safety and authorization deterministic.
 2. Improve each framework using its native strengths, not by forcing symmetry where it hurts product quality.
+3. Select the primary orchestration stack through an explicit feature flag and keep canary/shadow controls separate.
 3. Preserve one shared evaluation surface:
    - same tools
    - same datasets
    - same auth rules
    - same trace schema
-4. Upgrade in phases so we can compare after every step.
+4. When one framework is primary, avoid hidden dependence on the other framework's runtime in the primary response path.
+5. Upgrade in phases so we can compare after every step.
 
 ## Phase 1: LangGraph To Strong Native Production Shape
 

@@ -31,6 +31,13 @@ class EngineBundle:
     experiment: dict[str, Any] | None = None
 
 
+def resolve_primary_stack(settings: Any) -> str:
+    feature_flag_value = str(getattr(settings, 'feature_flag_primary_orchestration_stack', '') or '').strip().lower()
+    if feature_flag_value:
+        return feature_flag_value
+    return str(getattr(settings, 'orchestrator_engine', 'langgraph') or 'langgraph').strip().lower()
+
+
 def _parse_csv_items(value: str | None) -> set[str]:
     return {item.strip() for item in str(value or '').split(',') if item.strip()}
 
@@ -266,7 +273,7 @@ def _should_reuse_affinity(*, request: Any, inferred_slice: str, affinity_slice:
 def _should_route_to_experiment(*, request: Any, settings: Any) -> tuple[bool, dict[str, Any] | None]:
     if not bool(getattr(settings, 'orchestrator_experiment_enabled', False)):
         return False, None
-    if str(getattr(settings, 'orchestrator_engine', 'langgraph') or 'langgraph').strip().lower() != 'langgraph':
+    if resolve_primary_stack(settings) != 'langgraph':
         return False, None
     if not str(getattr(settings, 'crewai_pilot_url', '') or '').strip():
         return False, None
@@ -344,7 +351,7 @@ def _should_route_to_experiment(*, request: Any, settings: Any) -> tuple[bool, d
 
 
 def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBundle:
-    mode = str(getattr(settings, 'orchestrator_engine', 'langgraph') or 'langgraph').strip().lower()
+    mode = resolve_primary_stack(settings)
     langgraph_engine = LangGraphEngine()
     crewai_engine = CrewAIEngine(fallback_engine=langgraph_engine)
 

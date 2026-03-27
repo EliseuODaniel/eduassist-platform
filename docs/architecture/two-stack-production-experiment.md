@@ -13,6 +13,7 @@ The production canary is implemented in the main orchestrator and is disabled by
 
 Environment variables in `ai-orchestrator`:
 
+- `FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK`
 - `ORCHESTRATOR_EXPERIMENT_ENABLED`
 - `ORCHESTRATOR_EXPERIMENT_PRIMARY_ENGINE`
 - `ORCHESTRATOR_EXPERIMENT_SLICES`
@@ -35,7 +36,8 @@ The runtime exposes these flags in:
 
 ## Selection Rules
 
-- the experiment only applies when `ORCHESTRATOR_ENGINE=langgraph`
+- the primary stack is resolved from `FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK` first, then falls back to `ORCHESTRATOR_ENGINE`
+- the experiment only applies when the resolved primary stack is `langgraph`
 - the pilot URL must be configured
 - the request slice must match `ORCHESTRATOR_EXPERIMENT_SLICES`
 - if an allowlist is configured for the slice, the request must match it
@@ -60,6 +62,7 @@ Avoid starting with:
 ## Example Safe Start
 
 ```env
+FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK=langgraph
 ORCHESTRATOR_ENGINE=langgraph
 CREWAI_PILOT_URL=http://ai-orchestrator-crewai:8000
 ORCHESTRATOR_EXPERIMENT_ENABLED=true
@@ -82,6 +85,9 @@ ORCHESTRATOR_EXPERIMENT_HEALTH_TTL_SECONDS=15
 - if the slice is enrolled, the CrewAI pilot becomes primary for that request
 - if a support/workflow conversation is already enrolled, follow-up turns can stay on that slice even when the wording becomes short or ambiguous
 - the final runtime trace keeps the chosen `engine_name` and `engine_mode`
+- `/v1/status` now also exposes:
+  - `primaryStackFeatureFlag`
+  - `resolvedPrimaryStack`
 
 ## Current Recommendation
 

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from eduassist_observability import configure_observability
 
-from .engine_selector import build_engine_bundle, maybe_run_shadow
+from .engine_selector import build_engine_bundle, maybe_run_shadow, resolve_primary_stack
 from .graph import get_graph_blueprint, to_preview
 from .graph_rag_runtime import graph_rag_workspace_ready
 from .langgraph_runtime import (
@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     graph_rag_local_chat_api_key: str = 'llama.cpp'
     graph_rag_local_embedding_api_key: str = 'ollama'
     orchestrator_engine: str = 'langgraph'
+    feature_flag_primary_orchestration_stack: str | None = None
     crewai_pilot_url: str | None = None
     orchestrator_experiment_enabled: bool = False
     orchestrator_experiment_primary_engine: str = 'crewai'
@@ -348,6 +349,8 @@ async def status() -> dict[str, object]:
         'service': 'ai-orchestrator',
         'ready': True,
         'orchestratorEngine': settings.orchestrator_engine,
+        'primaryStackFeatureFlag': settings.feature_flag_primary_orchestration_stack,
+        'resolvedPrimaryStack': resolve_primary_stack(settings),
         'crewaiPilotConfigured': bool(settings.crewai_pilot_url),
         'experimentEnabled': settings.orchestrator_experiment_enabled,
         'experimentPrimaryEngine': settings.orchestrator_experiment_primary_engine,
