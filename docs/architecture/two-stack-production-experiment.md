@@ -170,6 +170,15 @@ The runtime status surface now exposes the resolved scorecard gate, including pe
 - `/v1/status -> experimentScorecardGate`
 - `/meta -> experimentScorecardGate`
 
+The runtime also exposes a rollout-oriented summary of the current configuration and what can be promoted now:
+
+- `/v1/status -> experimentRolloutReadiness`
+- `/meta -> experimentRolloutReadiness`
+
+Versioned operational snapshot:
+
+- [framework-rollout-readiness-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-readiness-report.md)
+
 Artifacts:
 
 - [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md)

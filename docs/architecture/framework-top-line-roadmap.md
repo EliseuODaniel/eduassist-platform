@@ -97,6 +97,7 @@ Validated in this round:
 - The primary-stack feature flag now has a versioned regression benchmark that verifies both `CrewAI` and `LangGraph` can run as the real primary path, with native trace metadata and without leaking alternate-runtime fields.
 - The scorecard and canary gate can now incorporate that primary-stack native-path benchmark as an explicit promotion requirement, instead of relying only on total durability/debug score.
 - Runtime status surfaces can now expose the resolved scorecard gate, including per-slice eligibility and blocking reasons, so promotion state is inspectable without opening the raw JSON artifact.
+- A rollout-readiness summary can now be derived from the same gate, making “what can be promoted now” explicit before any canary or feature-flag change.
 
 Concrete local evidence:
 

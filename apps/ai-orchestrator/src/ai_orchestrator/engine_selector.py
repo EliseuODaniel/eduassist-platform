@@ -193,6 +193,69 @@ def get_scorecard_gate_status(*, settings: Any, primary_engine: str | None = Non
     }
 
 
+def get_experiment_rollout_readiness(*, settings: Any) -> dict[str, Any]:
+    candidate_engine = str(getattr(settings, 'orchestrator_experiment_primary_engine', 'crewai') or 'crewai').strip().lower()
+    configured_slices = sorted(_parse_csv_items(getattr(settings, 'orchestrator_experiment_slices', '')))
+    allowlist_scoped_slices = sorted(_parse_csv_items(getattr(settings, 'orchestrator_experiment_allowlist_slices', '')))
+    gate_status = get_scorecard_gate_status(settings=settings, primary_engine=candidate_engine)
+    promotion_gate = gate_status.get('promotion_gate') if isinstance(gate_status, dict) else None
+    slice_eligibility = promotion_gate.get('slice_eligibility') if isinstance(promotion_gate, dict) else None
+    if not isinstance(slice_eligibility, dict):
+        slice_eligibility = {}
+
+    known_slices = {'public', 'protected', 'support', 'workflow'}
+    known_slices.update(str(item).strip() for item in configured_slices if str(item).strip())
+    known_slices.update(str(item).strip() for item in slice_eligibility.keys() if str(item).strip())
+
+    per_slice: dict[str, Any] = {}
+    promotable_now: list[str] = []
+    blocked_now: dict[str, str] = {}
+    currently_enrolled: list[str] = []
+
+    for slice_name in sorted(known_slices):
+        eligibility = slice_eligibility.get(slice_name) if isinstance(slice_eligibility.get(slice_name), dict) else {}
+        eligible = bool(eligibility.get('eligible', False))
+        reason = str(eligibility.get('reason', '') or '').strip()
+        enrolled = slice_name in configured_slices
+        rollout_percent = _rollout_percent_for_slice(settings=settings, slice_name=slice_name)
+        allowlist_only = slice_name in allowlist_scoped_slices
+        live = enrolled and rollout_percent > 0
+        per_slice[slice_name] = {
+            'eligible': eligible,
+            'reason': reason,
+            'configured': enrolled,
+            'configured_rollout_percent': rollout_percent,
+            'allowlist_only': allowlist_only,
+            'live': live,
+        }
+        if eligible:
+            promotable_now.append(slice_name)
+        else:
+            blocked_now[slice_name] = reason or f'{slice_name} is not eligible under the current scorecard gate.'
+        if enrolled:
+            currently_enrolled.append(slice_name)
+
+    recommended_next_promotions = [
+        slice_name
+        for slice_name in promotable_now
+        if not per_slice.get(slice_name, {}).get('live')
+    ]
+
+    return {
+        'candidate_engine': candidate_engine,
+        'scorecard_loaded': bool(gate_status.get('loaded')),
+        'scorecard_enforced': bool(getattr(settings, 'orchestrator_experiment_require_scorecard', False)),
+        'pilot_health_enforced': bool(getattr(settings, 'orchestrator_experiment_require_healthy_pilot', False)),
+        'primary_stack_native_path_passed': bool(gate_status.get('primary_stack_native_path_passed')),
+        'gate_eligible': bool(isinstance(promotion_gate, dict) and promotion_gate.get('eligible', False)),
+        'configured_slices': currently_enrolled,
+        'promotable_now': promotable_now,
+        'blocked_now': blocked_now,
+        'recommended_next_promotions': recommended_next_promotions,
+        'per_slice': per_slice,
+    }
+
+
 def _slice_allowed_by_scorecard(*, settings: Any, slice_name: str, primary_engine: str) -> bool:
     if not bool(getattr(settings, 'orchestrator_experiment_require_scorecard', False)):
         return True
