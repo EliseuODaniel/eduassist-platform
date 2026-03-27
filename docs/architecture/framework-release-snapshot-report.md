@@ -1,6 +1,6 @@
 # Framework Release Snapshot Report
 
-Date: 2026-03-27T15:49:07.130835+00:00
+Date: 2026-03-27T15:57:58.702102+00:00
 
 ## Goal
 
@@ -11,7 +11,7 @@ Capture a single operational snapshot before merge or rollout promotion, using l
 - classification: `ready`
 - ready for guarded release: `True`
 - branch: `feature/two-stack-shadow-comparison`
-- commit: `2f40971d1d9324a4ed4b4f77f2c44a1e1ed64fd4`
+- commit: `04fbdb187ffba2a11609958583479fa70f9b19ce`
 - working tree clean: `True`
 
 ## Runtime Snapshot
@@ -44,4 +44,4 @@ Capture a single operational snapshot before merge or rollout promotion, using l
 | --- | --- | --- | ---: | ---: | --- | --- | --- |
 | `2026-03-27T15:39:44.095113+00:00` | `rollback` | `public` | `2%` | `1%` | `passed` | `codex` | Reverter public para o nivel anterior do canario |
 | `2026-03-27T15:37:33.016974+00:00` | `promotion` | `public` | `1%` | `2%` | `passed` | `codex` | Expandir public de 1% para 2% apos estabilidade do canario |
-| `2026-03-27T15:33:33.005730+00:00` | `promotion` | `public` | `1%` | `2%` | `passed` | `` |  |
+| `2026-03-27T15:33:33.005730+00:00` | `promotion` | `public` | `1%` | `2%` | `passed` | `legacy-unknown` | Legacy changelog entry normalized after operator/reason became required audit fields. |
