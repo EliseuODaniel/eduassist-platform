@@ -91,8 +91,8 @@ async def status(
         'capabilities': [
             'public-shadow-flow',
             'protected-shadow-flow',
-            'workflow-shadow-slice',
-            'support-shadow-slice',
+            'workflow-shadow-flow',
+            'support-shadow-flow',
             'isolated-dependencies',
             'planner-composer-judge',
             'flow-state-routing',

@@ -160,88 +160,25 @@ async def run_support_crewai_pilot(
     channel: str,
     settings: Any,
 ) -> dict[str, Any]:
-    conversation_external_id = str(conversation_id or '').strip()
-    if not conversation_external_id:
-        return {
-            'engine_name': 'crewai',
-            'executed': False,
-            'reason': 'missing_conversation_id_for_support',
-            'metadata': {'slice_name': 'support'},
-        }
+    from .support_flow import SupportShadowFlow
 
-    normalized = _normalize_text(message)
-    ticket_code = _extract_ticket_code(message)
-    support_status = await _get_support_status(
-        settings,
-        conversation_id=conversation_external_id,
-        channel=channel,
-        protocol_code=ticket_code,
+    flow = SupportShadowFlow(settings=settings)
+    result = await flow.kickoff_async(
+        inputs={
+            'message': message,
+            'conversation_id': conversation_id,
+            'telegram_chat_id': telegram_chat_id,
+            'channel': channel,
+        }
     )
-    current_item = support_status.get('item') if isinstance(support_status, dict) else None
-
-    if _is_repair_turn(normalized):
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'support_repair',
-            'metadata': {
-                'slice_name': 'support',
-                'answer': {'answer_text': _repair_response()},
-            },
-        }
-
-    if _wants_human_handoff(message):
-        queue_name = _detect_queue(message)
-        payload = await _internal_post(
-            settings,
-            '/v1/internal/support/handoffs',
-            payload={
-                'conversation_external_id': conversation_external_id,
-                'channel': channel,
-                'queue_name': queue_name,
-                'summary': f'Atendimento humano solicitado para {queue_name}',
-                'telegram_chat_id': telegram_chat_id,
-                'user_message': message,
-            },
-        )
-        item = payload.get('item') if isinstance(payload, dict) else {}
-        created = bool(payload.get('created'))
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': 'support_handoff_created' if created else 'support_handoff_reused',
-            'metadata': {
-                'slice_name': 'support',
-                'queue_name': queue_name,
-                'created': created,
-                'answer': {'answer_text': _handoff_create_response(item, created=created)},
-            },
-        }
-
-    if isinstance(current_item, dict) and (_is_protocol_request(message) or _is_status_request(message) or _is_summary_request(message)):
-        if _is_protocol_request(message) and not _is_status_request(message):
-            answer_text = _handoff_protocol_response(current_item)
-            reason = 'support_protocol'
-        elif _is_summary_request(message):
-            answer_text = _handoff_summary_response(current_item)
-            reason = 'support_summary'
-        else:
-            answer_text = _handoff_status_response(current_item)
-            reason = 'support_status'
-        return {
-            'engine_name': 'crewai',
-            'executed': True,
-            'reason': reason,
-            'metadata': {
-                'slice_name': 'support',
-                'ticket_code': current_item.get('protocol_code'),
-                'answer': {'answer_text': answer_text},
-            },
-        }
-
+    if isinstance(result, dict):
+        return result
     return {
         'engine_name': 'crewai',
         'executed': False,
-        'reason': 'support_not_supported',
-        'metadata': {'slice_name': 'support'},
+        'reason': 'crewai_support_flow_unexpected_output',
+        'metadata': {
+            'slice_name': 'support',
+            'conversation_id': conversation_id,
+        },
     }

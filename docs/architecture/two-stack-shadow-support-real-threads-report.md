@@ -3,7 +3,7 @@
 ## Summary
 
 - Total prompts: 7
-- `support`: baseline ok 7/7, CrewAI ok 7/7, baseline keyword pass 7/7, CrewAI keyword pass 7/7, quality 100.0 vs 100.0, latency 835.8ms vs 34.1ms
+- `support`: baseline ok 7/7, CrewAI ok 7/7, baseline keyword pass 7/7, CrewAI keyword pass 7/7, quality 100.0 vs 100.0, latency 446.9ms vs 53.5ms
 
 ## By Category
 
@@ -32,49 +32,48 @@
 - Slice: `support`
 - Category: `threaded_real_transcript`
 - Thread: `real_support_finance_handoff_1649845499` turn `1`
-- Baseline: status 200, latency 179.6ms, keyword pass `True`, quality `100`
-- CrewAI: status 200, latency 56.9ms, keyword pass `True`, quality `100`
+- Baseline: status 200, latency 370.1ms, keyword pass `True`, quality `100`
+- CrewAI: status 200, latency 70.1ms, keyword pass `True`, quality `100`
 - Baseline quality signals: repair_ack=None, followup_adaptation=None, personalization=None
 - CrewAI quality signals: repair_ack=None, followup_adaptation=None, personalization=None
-- Baseline answer: Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260326-87B5E5B0. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.
-- CrewAI answer: Sua solicitacao ja estava registrada na fila de financeiro. Protocolo: ATD-20260326-87B5E5B0. Status atual: queued.
+- Baseline answer: Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260327-E2AEC2CA. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.
+- CrewAI answer: Sua solicitacao ja estava registrada na fila de financeiro. Protocolo: ATD-20260327-E2AEC2CA. Status atual: queued.
 
 ### qual o protocolo?
 
 - Slice: `support`
 - Category: `threaded_real_transcript`
 - Thread: `real_support_finance_handoff_1649845499` turn `2`
-- Baseline: status 200, latency 1661.1ms, keyword pass `True`, quality `100`
-- CrewAI: status 200, latency 19.2ms, keyword pass `True`, quality `100`
+- Baseline: status 200, latency 185.3ms, keyword pass `True`, quality `100`
+- CrewAI: status 200, latency 35.9ms, keyword pass `True`, quality `100`
 - Baseline quality signals: repair_ack=None, followup_adaptation=None, personalization=None
 - CrewAI quality signals: repair_ack=None, followup_adaptation=None, personalization=None
-- Baseline answer: O protocolo atual do seu atendimento e ATD-20260326-87B5E5B0.
-Se quiser, eu posso te dizer o status atual ou resumir o que ja foi registrado.
-- CrewAI answer: O protocolo do seu atendimento e ATD-20260326-87B5E5B0. Se quiser, posso verificar o status atual ou te dar um resumo do que ja foi registrado.
+- Baseline answer: O protocolo do seu atendimento e ATD-20260327-E2AEC2CA. Se quiser, posso verificar o status atual ou te dar um resumo do que ja foi registrado.
+- CrewAI answer: O protocolo do seu atendimento e ATD-20260327-E2AEC2CA. Se quiser, posso verificar o status atual ou te dar um resumo do que ja foi registrado.
 
 ### qual o status?
 
 - Slice: `support`
 - Category: `threaded_real_transcript`
 - Thread: `real_support_finance_handoff_1649845499` turn `3`
-- Baseline: status 200, latency 2094.7ms, keyword pass `True`, quality `100`
-- CrewAI: status 200, latency 20.3ms, keyword pass `True`, quality `100`
+- Baseline: status 200, latency 197.0ms, keyword pass `True`, quality `100`
+- CrewAI: status 200, latency 39.1ms, keyword pass `True`, quality `100`
 - Baseline quality signals: repair_ack=None, followup_adaptation=None, personalization=None
 - CrewAI quality signals: repair_ack=None, followup_adaptation=None, personalization=None
-- Baseline answer: O protocolo atual do seu atendimento é ATD-20260326-87B5E5B0. O status atual é "queued", o que significa que sua solicitação está na fila para ser atendida pela equipe de financeiro.
-- CrewAI answer: O protocolo do seu atendimento e ATD-20260326-87B5E5B0. O status atual e "queued", o que significa que sua solicitacao esta na fila para ser atendida pela equipe de financeiro.
+- Baseline answer: O protocolo do seu atendimento e ATD-20260327-E2AEC2CA. O status atual e "queued", o que significa que sua solicitacao esta na fila para ser atendida pela equipe de financeiro.
+- CrewAI answer: O protocolo do seu atendimento e ATD-20260327-E2AEC2CA. O status atual e "queued", o que significa que sua solicitacao esta na fila para ser atendida pela equipe de financeiro.
 
 ### como falo com um atendente humano?
 
 - Slice: `support`
 - Category: `threaded_real_transcript`
 - Thread: `real_support_handoff_repair_1649845499` turn `1`
-- Baseline: status 200, latency 158.9ms, keyword pass `True`, quality `100`
-- CrewAI: status 200, latency 51.1ms, keyword pass `True`, quality `100`
+- Baseline: status 200, latency 202.4ms, keyword pass `True`, quality `100`
+- CrewAI: status 200, latency 98.3ms, keyword pass `True`, quality `100`
 - Baseline quality signals: repair_ack=None, followup_adaptation=None, personalization=None
 - CrewAI quality signals: repair_ack=None, followup_adaptation=None, personalization=None
-- Baseline answer: Encaminhei sua solicitacao para a fila de atendimento. Protocolo: ATD-20260326-337B641C. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.
-- CrewAI answer: Sua solicitacao ja estava registrada na fila de atendimento. Protocolo: ATD-20260326-337B641C. Status atual: queued.
+- Baseline answer: Encaminhei sua solicitacao para a fila de atendimento. Protocolo: ATD-20260327-C9232C61. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.
+- CrewAI answer: Sua solicitacao ja estava registrada na fila de atendimento. Protocolo: ATD-20260327-C9232C61. Status atual: queued.
 
 ### mas eu cheguei agora
 
@@ -82,33 +81,33 @@ Se quiser, eu posso te dizer o status atual ou resumir o que ja foi registrado.
 - Category: `threaded_real_transcript`
 - Thread: `real_support_handoff_repair_1649845499` turn `2`
 - Note: repair turn after existing support handoff
-- Baseline: status 200, latency 135.5ms, keyword pass `True`, quality `100`
-- CrewAI: status 200, latency 19.6ms, keyword pass `True`, quality `100`
+- Baseline: status 200, latency 178.1ms, keyword pass `True`, quality `100`
+- CrewAI: status 200, latency 36.4ms, keyword pass `True`, quality `100`
 - Baseline quality signals: repair_ack=True, followup_adaptation=True, personalization=True
 - CrewAI quality signals: repair_ack=True, followup_adaptation=True, personalization=True
-- Baseline answer: Sem problema, vamos comecar do zero entao. Se voce quiser atendimento humano por aqui, me diga em uma frase curta qual e o assunto como financeiro, secretaria, matricula ou direcao, e eu sigo desse ponto.
-- CrewAI answer: Sem problema, vamos comecar do zero entao. Se voce quiser atendimento humano por aqui, me diga em uma frase curta qual e o assunto como financeiro, secretaria, matricula ou direcao, e eu sigo desse ponto.
+- Baseline answer: Sem problema, vamos comecar do zero entao e abrir um novo atendimento a partir daqui. Se voce quiser atendimento humano por aqui, me diga em uma frase curta qual e o assunto como financeiro, secretaria, matricula ou direcao, e eu sigo desse ponto.
+- CrewAI answer: Sem problema, vamos comecar do zero entao e abrir um novo atendimento a partir daqui. Se voce quiser atendimento humano por aqui, me diga em uma frase curta qual e o assunto como financeiro, secretaria, matricula ou direcao, e eu sigo desse ponto.
 
 ### quero falar com um humano sobre a secretaria
 
 - Slice: `support`
 - Category: `threaded_real_transcript`
 - Thread: `real_support_secretaria_handoff_555001` turn `1`
-- Baseline: status 200, latency 146.0ms, keyword pass `True`, quality `100`
-- CrewAI: status 200, latency 52.4ms, keyword pass `True`, quality `100`
+- Baseline: status 200, latency 186.1ms, keyword pass `True`, quality `100`
+- CrewAI: status 200, latency 58.1ms, keyword pass `True`, quality `100`
 - Baseline quality signals: repair_ack=None, followup_adaptation=None, personalization=None
 - CrewAI quality signals: repair_ack=None, followup_adaptation=None, personalization=None
-- Baseline answer: Encaminhei sua solicitacao para a fila de secretaria. Protocolo: ATD-20260326-511533BC. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.
-- CrewAI answer: Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260326-511533BC. Status atual: queued.
+- Baseline answer: Encaminhei sua solicitacao para a fila de secretaria. Protocolo: ATD-20260327-FE5FCE3E. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.
+- CrewAI answer: Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260327-FE5FCE3E. Status atual: queued.
 
 ### qual o protocolo?
 
 - Slice: `support`
 - Category: `threaded_real_transcript`
 - Thread: `real_support_secretaria_handoff_555001` turn `2`
-- Baseline: status 200, latency 1475.0ms, keyword pass `True`, quality `100`
-- CrewAI: status 200, latency 19.1ms, keyword pass `True`, quality `100`
+- Baseline: status 200, latency 1809.6ms, keyword pass `True`, quality `100`
+- CrewAI: status 200, latency 36.5ms, keyword pass `True`, quality `100`
 - Baseline quality signals: repair_ack=None, followup_adaptation=None, personalization=None
 - CrewAI quality signals: repair_ack=None, followup_adaptation=None, personalization=None
-- Baseline answer: O protocolo do seu atendimento é ATD-20260326-511533BC. Se precisar, posso verificar o status atual ou resumir o que já foi registrado para você.
-- CrewAI answer: O protocolo do seu atendimento e ATD-20260326-511533BC. Se quiser, posso verificar o status atual ou te dar um resumo do que ja foi registrado.
+- Baseline answer: O protocolo do seu atendimento é ATD-20260327-FE5FCE3E. Posso verificar o status atual ou resumir o que já foi registrado, se desejar.
+- CrewAI answer: O protocolo do seu atendimento e ATD-20260327-FE5FCE3E. Se quiser, posso verificar o status atual ou te dar um resumo do que ja foi registrado.

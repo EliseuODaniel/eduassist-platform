@@ -228,131 +228,25 @@ async def run_workflow_crewai_pilot(
     channel: str,
     settings: Any,
 ) -> dict[str, Any]:
-    conversation_external_id = str(conversation_id or '').strip()
-    if not conversation_external_id:
-        return {
-            'engine_name': 'crewai',
-            'executed': False,
-            'reason': 'missing_conversation_id_for_workflow',
-            'metadata': {'slice_name': 'workflow'},
+    from .workflow_flow import WorkflowShadowFlow
+
+    flow = WorkflowShadowFlow(settings=settings)
+    result = await flow.kickoff_async(
+        inputs={
+            'message': message,
+            'conversation_id': conversation_id,
+            'telegram_chat_id': telegram_chat_id,
+            'channel': channel,
         }
-
-    normalized = _normalize_text(message)
-    protocol_code = _extract_protocol_code(message)
-    workflow_status = await _get_workflow_status(
-        settings,
-        conversation_id=conversation_external_id,
-        channel=channel,
-        protocol_code=protocol_code,
     )
-    current_item = workflow_status.get('item') if isinstance(workflow_status, dict) else None
-    current_type = str(current_item.get('workflow_type') or '').strip() if isinstance(current_item, dict) else ''
-
-    visit_terms = {'visita', 'tour', 'conhecer a escola'}
-    request_terms = {'direcao', 'direção', 'protocolo', 'protocolar', 'solicitacao', 'solicitação', 'pedido'}
-
-    if _contains_any(normalized, visit_terms) and _contains_any(normalized, {'cancelar', 'desmarcar'}):
-        payload = await _internal_post(
-            settings,
-            '/v1/internal/workflows/visit-bookings/actions',
-            payload={
-                'conversation_external_id': conversation_external_id,
-                'channel': channel,
-                'telegram_chat_id': telegram_chat_id,
-                'protocol_code': protocol_code or (current_item or {}).get('protocol_code'),
-                'action': 'cancel',
-                'notes': message,
-            },
-        )
-        item = payload.get('item', {})
-        return {'engine_name': 'crewai', 'executed': True, 'reason': 'workflow_visit_cancel', 'metadata': {'slice_name': 'workflow', 'answer': {'answer_text': _visit_action_response(item, action='cancel')}, 'workflow_type': 'visit'}}
-
-    if _contains_any(normalized, visit_terms) and _contains_any(normalized, {'remarcar', 'reagendar', 'mudar'}):
-        payload = await _internal_post(
-            settings,
-            '/v1/internal/workflows/visit-bookings/actions',
-            payload={
-                'conversation_external_id': conversation_external_id,
-                'channel': channel,
-                'telegram_chat_id': telegram_chat_id,
-                'protocol_code': protocol_code or (current_item or {}).get('protocol_code'),
-                'action': 'reschedule',
-                'preferred_date': (_extract_preferred_date(message) or date.today()).isoformat(),
-                'preferred_window': _extract_preferred_window(message),
-                'notes': message,
-            },
-        )
-        item = payload.get('item', {})
-        return {'engine_name': 'crewai', 'executed': True, 'reason': 'workflow_visit_reschedule', 'metadata': {'slice_name': 'workflow', 'answer': {'answer_text': _visit_action_response(item, action='reschedule')}, 'workflow_type': 'visit'}}
-
-    if _contains_any(normalized, visit_terms) and _contains_any(normalized, {'agendar', 'marcar', 'quero'}) and 'visita' in normalized:
-        payload = await _internal_post(
-            settings,
-            '/v1/internal/workflows/visit-bookings',
-            payload={
-                'conversation_external_id': conversation_external_id,
-                'channel': channel,
-                'telegram_chat_id': telegram_chat_id,
-                'preferred_date': _extract_preferred_date(message).isoformat() if _extract_preferred_date(message) else None,
-                'preferred_window': _extract_preferred_window(message),
-                'notes': message,
-            },
-        )
-        item = payload.get('item', {})
-        return {'engine_name': 'crewai', 'executed': True, 'reason': 'workflow_visit_create', 'metadata': {'slice_name': 'workflow', 'answer': {'answer_text': _visit_create_response(item)}, 'workflow_type': 'visit'}}
-
-    if _contains_any(normalized, {'status', 'andamento'}) or 'qual o protocolo' in normalized or 'resume meu pedido' in normalized:
-        if not isinstance(current_item, dict):
-            return {'engine_name': 'crewai', 'executed': True, 'reason': 'workflow_not_found', 'metadata': {'slice_name': 'workflow', 'answer': {'answer_text': 'Nao encontrei um protocolo ativo nesta conversa para retomar agora.'}, 'workflow_type': 'unknown'}}
-        if 'qual o protocolo' in normalized:
-            if current_type == 'visit_booking':
-                text = _visit_protocol_response(current_item)
-            else:
-                text = _request_protocol_response(current_item)
-            return {'engine_name': 'crewai', 'executed': True, 'reason': 'workflow_protocol_lookup', 'metadata': {'slice_name': 'workflow', 'answer': {'answer_text': text}, 'workflow_type': current_type}}
-        if 'resume meu pedido' in normalized:
-            text = _request_summary_response(current_item) if current_type == 'institutional_request' else _visit_status_response(current_item)
-            return {'engine_name': 'crewai', 'executed': True, 'reason': 'workflow_summary_lookup', 'metadata': {'slice_name': 'workflow', 'answer': {'answer_text': text}, 'workflow_type': current_type}}
-        text = _visit_status_response(current_item) if current_type == 'visit_booking' else _request_status_response(current_item)
-        return {'engine_name': 'crewai', 'executed': True, 'reason': 'workflow_status_lookup', 'metadata': {'slice_name': 'workflow', 'answer': {'answer_text': text}, 'workflow_type': current_type}}
-
-    if _contains_any(normalized, request_terms) and _contains_any(normalized, {'protocolar', 'solicitacao', 'solicitação', 'pedido'}):
-        payload = await _internal_post(
-            settings,
-            '/v1/internal/workflows/institutional-requests',
-            payload={
-                'conversation_external_id': conversation_external_id,
-                'channel': channel,
-                'telegram_chat_id': telegram_chat_id,
-                'target_area': 'direcao' if _contains_any(normalized, {'direcao', 'direção'}) else 'atendimento',
-                'category': 'solicitacao_institucional',
-                'subject': message,
-                'details': message,
-            },
-        )
-        item = payload.get('item', {})
-        return {'engine_name': 'crewai', 'executed': True, 'reason': 'workflow_request_create', 'metadata': {'slice_name': 'workflow', 'answer': {'answer_text': _request_create_response(item, subject=message)}, 'workflow_type': 'request'}}
-
-    if _contains_any(normalized, {'complementar', 'acrescentar', 'adicionar', 'incluir'}) and current_type == 'institutional_request':
-        payload = await _internal_post(
-            settings,
-            '/v1/internal/workflows/institutional-requests/actions',
-            payload={
-                'conversation_external_id': conversation_external_id,
-                'channel': channel,
-                'telegram_chat_id': telegram_chat_id,
-                'protocol_code': protocol_code or (current_item or {}).get('protocol_code'),
-                'action': 'add_details',
-                'details': message,
-            },
-        )
-        item = payload.get('item', {})
-        detail = message.replace('quero complementar meu pedido dizendo que', '').strip() or message
-        return {'engine_name': 'crewai', 'executed': True, 'reason': 'workflow_request_update', 'metadata': {'slice_name': 'workflow', 'answer': {'answer_text': _request_action_response(item, detail=detail)}, 'workflow_type': 'request'}}
-
+    if isinstance(result, dict):
+        return result
     return {
         'engine_name': 'crewai',
         'executed': False,
-        'reason': 'workflow_not_supported',
-        'metadata': {'slice_name': 'workflow'},
+        'reason': 'crewai_workflow_flow_unexpected_output',
+        'metadata': {
+            'slice_name': 'workflow',
+            'conversation_id': conversation_id,
+        },
     }

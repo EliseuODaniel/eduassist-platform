@@ -54,17 +54,19 @@ This is a pragmatic deviation from the idealized example usage, but it is the sa
 
 ### Flow wrapper around every slice
 
-CrewAI `Flow` is now in place for the slices that benefit most from stateful semantic routing:
+CrewAI `Flow` is now in place across all comparison slices:
 
 - `public`
 - `protected`
+- `support`
+- `workflow`
 
-We still intentionally do not force `Flow` into every slice.
+We still intentionally do not force free-form multi-agent behavior into every slice.
 
 For the current comparison phase, the remaining simpler shape is intentional:
 
 - public/protected use real flows plus real crews
-- support/workflow stay narrower and more deterministic
+- support/workflow use real flows with deterministic control-plane handlers
 - stateful experimentation is handled first in the main orchestrator
 
 That keeps the comparison fair and limits production risk.
@@ -73,7 +75,7 @@ That keeps the comparison fair and limits production risk.
 
 If we decide to promote CrewAI beyond canary, the next architectural upgrades should be:
 
-1. Expand `Flow` deeper into multi-turn follow-up handling for `support` and parts of `workflow`.
+1. Expand multi-turn follow-up memory deeper into `support` and `workflow` state.
 2. Move more conversation-affinity and state transitions closer to the CrewAI side.
 3. Expand event-listener telemetry into a more complete per-task trace schema.
 4. Revisit CrewAI-native guardrails only if evidence-aware validation becomes stable in the selected version.
