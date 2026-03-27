@@ -98,6 +98,7 @@ Validated in this round:
 - The scorecard and canary gate can now incorporate that primary-stack native-path benchmark as an explicit promotion requirement, instead of relying only on total durability/debug score.
 - Runtime status surfaces can now expose the resolved scorecard gate, including per-slice eligibility and blocking reasons, so promotion state is inspectable without opening the raw JSON artifact.
 - A rollout-readiness summary can now be derived from the same gate, making “what can be promoted now” explicit before any canary or feature-flag change.
+- A live promotion summary can now combine that gate with current pilot health and rollout config, so “maintain, start, expand, or block” is explicit per slice before a production change.
 
 Concrete local evidence:
 

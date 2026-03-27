@@ -256,6 +256,102 @@ def get_experiment_rollout_readiness(*, settings: Any) -> dict[str, Any]:
     }
 
 
+def get_experiment_live_promotion_summary(*, settings: Any) -> dict[str, Any]:
+    resolved_primary_stack = resolve_primary_stack(settings)
+    candidate_engine = str(getattr(settings, 'orchestrator_experiment_primary_engine', 'crewai') or 'crewai').strip().lower()
+    readiness = get_experiment_rollout_readiness(settings=settings)
+    experiment_enabled = bool(getattr(settings, 'orchestrator_experiment_enabled', False))
+    pilot_url = str(getattr(settings, 'crewai_pilot_url', '') or '').strip()
+    pilot_configured = bool(pilot_url)
+
+    pilot_ready = False
+    if candidate_engine == 'crewai' and pilot_configured:
+        pilot_ready = _probe_pilot_health(settings=settings)
+
+    experiment_active = experiment_enabled and resolved_primary_stack == 'langgraph' and candidate_engine == 'crewai'
+
+    advisory_by_slice: dict[str, Any] = {}
+    promotable_now: list[str] = []
+    blocked_now: dict[str, str] = {}
+    maintain_now: list[str] = []
+
+    per_slice = readiness.get('per_slice')
+    if not isinstance(per_slice, dict):
+        per_slice = {}
+
+    for slice_name, payload in sorted(per_slice.items()):
+        if not isinstance(payload, dict):
+            continue
+        eligible = bool(payload.get('eligible', False))
+        configured = bool(payload.get('configured', False))
+        live = bool(payload.get('live', False))
+        rollout_percent = int(payload.get('configured_rollout_percent', 0) or 0)
+        allowlist_only = bool(payload.get('allowlist_only', False))
+        reason = str(payload.get('reason', '') or '').strip()
+
+        blocked_reasons: list[str] = []
+        action = 'blocked'
+        if not eligible:
+            blocked_reasons.append(reason or 'Slice is not eligible under the current scorecard gate.')
+        if not experiment_enabled:
+            blocked_reasons.append('Experiment is disabled in runtime settings.')
+        if resolved_primary_stack != 'langgraph':
+            blocked_reasons.append('Live experiment routing only applies while LangGraph remains the resolved primary stack.')
+        if candidate_engine != 'crewai':
+            blocked_reasons.append('Current experiment summary only supports CrewAI as the candidate engine.')
+        if candidate_engine == 'crewai' and not pilot_configured:
+            blocked_reasons.append('CrewAI pilot URL is not configured.')
+        if candidate_engine == 'crewai' and pilot_configured and not pilot_ready:
+            blocked_reasons.append('CrewAI pilot is not healthy right now.')
+
+        if blocked_reasons:
+            action = 'blocked'
+        elif live:
+            if allowlist_only:
+                action = 'maintain_controlled'
+            elif rollout_percent < 100:
+                action = 'expand_gradually'
+            else:
+                action = 'maintain_live'
+        elif configured and rollout_percent <= 0:
+            action = 'activate_configured_slice'
+        elif eligible and not configured:
+            action = 'start_controlled_canary' if slice_name in {'support', 'workflow'} else 'start_tiny_rollout'
+
+        summary = {
+            'eligible': eligible,
+            'configured': configured,
+            'live': live,
+            'allowlist_only': allowlist_only,
+            'configured_rollout_percent': rollout_percent,
+            'action': action,
+            'blocked_reasons': blocked_reasons,
+        }
+        advisory_by_slice[slice_name] = summary
+
+        if action in {'expand_gradually', 'activate_configured_slice', 'start_controlled_canary', 'start_tiny_rollout'}:
+            promotable_now.append(slice_name)
+        elif action in {'maintain_controlled', 'maintain_live'}:
+            maintain_now.append(slice_name)
+        elif blocked_reasons:
+            blocked_now[slice_name] = '; '.join(blocked_reasons)
+
+    return {
+        'resolved_primary_stack': resolved_primary_stack,
+        'experiment_enabled': experiment_enabled,
+        'experiment_active': experiment_active,
+        'candidate_engine': candidate_engine,
+        'pilot_configured': pilot_configured,
+        'pilot_ready': pilot_ready,
+        'scorecard_loaded': bool(readiness.get('scorecard_loaded')),
+        'primary_stack_native_path_passed': bool(readiness.get('primary_stack_native_path_passed')),
+        'promotable_now': promotable_now,
+        'maintain_now': maintain_now,
+        'blocked_now': blocked_now,
+        'advisory_by_slice': advisory_by_slice,
+    }
+
+
 def _slice_allowed_by_scorecard(*, settings: Any, slice_name: str, primary_engine: str) -> bool:
     if not bool(getattr(settings, 'orchestrator_experiment_require_scorecard', False)):
         return True
@@ -291,9 +387,7 @@ def _slice_allowed_by_scorecard(*, settings: Any, slice_name: str, primary_engin
     return False
 
 
-def _pilot_ready(*, settings: Any) -> bool:
-    if not bool(getattr(settings, 'orchestrator_experiment_require_healthy_pilot', False)):
-        return True
+def _probe_pilot_health(*, settings: Any) -> bool:
     pilot_url = str(getattr(settings, 'crewai_pilot_url', '') or '').strip()
     if not pilot_url:
         return False
@@ -320,6 +414,12 @@ def _pilot_ready(*, settings: Any) -> bool:
         ready = False
     _PILOT_HEALTH_CACHE.update({'timestamp': now, 'ready': ready})
     return ready
+
+
+def _pilot_ready(*, settings: Any) -> bool:
+    if not bool(getattr(settings, 'orchestrator_experiment_require_healthy_pilot', False)):
+        return True
+    return _probe_pilot_health(settings=settings)
 
 
 def _should_reuse_affinity(*, request: Any, inferred_slice: str, affinity_slice: str) -> bool:

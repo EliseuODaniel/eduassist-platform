@@ -11,6 +11,7 @@ from eduassist_observability import configure_observability
 
 from .engine_selector import (
     build_engine_bundle,
+    get_experiment_live_promotion_summary,
     get_experiment_rollout_readiness,
     get_scorecard_gate_status,
     maybe_run_shadow,
@@ -319,6 +320,7 @@ async def meta(
     langgraph_runtime = get_langgraph_runtime_status(settings)
     scorecard_gate = get_scorecard_gate_status(settings=settings)
     rollout_readiness = get_experiment_rollout_readiness(settings=settings)
+    live_promotion_summary = get_experiment_live_promotion_summary(settings=settings)
     return {
         'service': 'ai-orchestrator',
         'environment': settings.app_env,
@@ -336,6 +338,7 @@ async def meta(
         'experimentRequireHealthyPilot': settings.orchestrator_experiment_require_healthy_pilot,
         'experimentScorecardGate': scorecard_gate,
         'experimentRolloutReadiness': rollout_readiness,
+        'experimentLivePromotionSummary': live_promotion_summary,
         'provider': settings.llm_provider,
         'openaiModel': settings.openai_model,
         'googleModel': settings.google_model,
@@ -357,6 +360,7 @@ async def status() -> dict[str, object]:
     langgraph_runtime = get_langgraph_runtime_status(settings)
     scorecard_gate = get_scorecard_gate_status(settings=settings)
     rollout_readiness = get_experiment_rollout_readiness(settings=settings)
+    live_promotion_summary = get_experiment_live_promotion_summary(settings=settings)
     return {
         'service': 'ai-orchestrator',
         'ready': True,
@@ -376,6 +380,7 @@ async def status() -> dict[str, object]:
         'experimentRequireHealthyPilot': settings.orchestrator_experiment_require_healthy_pilot,
         'experimentScorecardGate': scorecard_gate,
         'experimentRolloutReadiness': rollout_readiness,
+        'experimentLivePromotionSummary': live_promotion_summary,
         'llmProvider': settings.llm_provider,
         'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
         'capabilities': [

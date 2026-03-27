@@ -175,9 +175,15 @@ The runtime also exposes a rollout-oriented summary of the current configuration
 - `/v1/status -> experimentRolloutReadiness`
 - `/meta -> experimentRolloutReadiness`
 
+The runtime also exposes a live promotion summary that combines current config, pilot health, and gate state into an action per slice:
+
+- `/v1/status -> experimentLivePromotionSummary`
+- `/meta -> experimentLivePromotionSummary`
+
 Versioned operational snapshot:
 
 - [framework-rollout-readiness-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-readiness-report.md)
+- [framework-live-promotion-summary-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-live-promotion-summary-report.md)
 
 Artifacts:
 
