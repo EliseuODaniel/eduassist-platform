@@ -4,9 +4,10 @@ FROM ${PYTHON_BASE_IMAGE}
 WORKDIR /workspace/apps/ai-orchestrator-crewai
 
 COPY apps/ai-orchestrator-crewai/pyproject.toml ./
+COPY apps/ai-orchestrator-crewai/uv.lock ./
 COPY apps/ai-orchestrator-crewai/src ./src
 
-RUN uv sync --no-dev
+RUN uv sync --locked --no-dev
 
 EXPOSE 8000
 

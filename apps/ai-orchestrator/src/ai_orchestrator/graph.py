@@ -1799,8 +1799,7 @@ def get_graph_blueprint() -> dict[str, object]:
     }
 
 
-@lru_cache
-def build_orchestration_graph(graph_rag_enabled: bool) -> object:
+def build_orchestration_graph(graph_rag_enabled: bool, *, checkpointer: object | None = None) -> object:
     workflow = StateGraph(OrchestrationState)
     runtime: GraphRuntimeConfig = {'graph_rag_enabled': graph_rag_enabled}
 
@@ -1835,4 +1834,4 @@ def build_orchestration_graph(graph_rag_enabled: bool) -> object:
     workflow.add_edge('handoff', END)
     workflow.add_edge('deny', END)
     workflow.add_edge('clarify', END)
-    return workflow.compile()
+    return workflow.compile(checkpointer=checkpointer)

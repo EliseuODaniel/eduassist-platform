@@ -10,8 +10,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from eduassist_observability import configure_observability
 
 from .engine_selector import build_engine_bundle, maybe_run_shadow
-from .graph import build_orchestration_graph, get_graph_blueprint, to_preview
+from .graph import get_graph_blueprint, to_preview
 from .graph_rag_runtime import graph_rag_workspace_ready
+from .langgraph_runtime import (
+    close_langgraph_runtime,
+    get_langgraph_artifacts,
+    get_langgraph_runtime_status,
+    invoke_orchestration_graph,
+    resolve_langgraph_thread_id,
+    warm_langgraph_runtime,
+)
 from .models import (
     MessageResponse,
     MessageResponseRequest,
@@ -65,6 +73,9 @@ class Settings(BaseSettings):
     orchestrator_experiment_telegram_chat_allowlist: str = ''
     orchestrator_experiment_conversation_allowlist: str = ''
     orchestrator_experiment_allowlist_slices: str = ''
+    langgraph_checkpointer_enabled: bool = True
+    langgraph_checkpointer_url: str | None = None
+    langgraph_checkpointer_schema: str = 'langgraph_checkpoint'
 
 
 @lru_cache
@@ -117,9 +128,14 @@ def _warm_retrieval_service(settings: Settings) -> None:
 @app.on_event('startup')
 async def warm_runtime_dependencies() -> None:
     settings = get_settings()
-    if not settings.warm_retrieval_on_startup:
-        return
-    _warm_retrieval_service(settings)
+    if settings.warm_retrieval_on_startup:
+        _warm_retrieval_service(settings)
+    warm_langgraph_runtime(settings)
+
+
+@app.on_event('shutdown')
+async def close_runtime_dependencies() -> None:
+    close_langgraph_runtime()
 
 
 @app.get('/healthz', response_model=HealthResponse)
@@ -137,6 +153,7 @@ async def meta(
 ) -> dict[str, object]:
     _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
+    langgraph_runtime = get_langgraph_runtime_status(settings)
     return {
         'service': 'ai-orchestrator',
         'environment': settings.app_env,
@@ -154,12 +171,17 @@ async def meta(
         'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
         'retrievalBackend': 'qdrant-hybrid',
         'graphRagEnabled': settings.graph_rag_enabled,
+        'langgraphCheckpointerEnabled': langgraph_runtime['checkpointerConfigured'],
+        'langgraphCheckpointerReady': langgraph_runtime['checkpointerInitialized'],
+        'langgraphCheckpointerBackend': langgraph_runtime['checkpointerBackend'],
+        'langgraphThreadIdEnabled': langgraph_runtime['threadIdEnabled'],
     }
 
 
 @app.get('/v1/status')
 async def status() -> dict[str, object]:
     settings = get_settings()
+    langgraph_runtime = get_langgraph_runtime_status(settings)
     return {
         'service': 'ai-orchestrator',
         'ready': True,
@@ -175,6 +197,7 @@ async def status() -> dict[str, object]:
         'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
         'capabilities': [
             'langgraph-state-machine',
+            'langgraph-thread-id',
             'engine-selector',
             'tool-routing',
             'qdrant-hybrid-retrieval',
@@ -185,6 +208,10 @@ async def status() -> dict[str, object]:
         'supportedEngines': ['langgraph', 'shadow', 'crewai'],
         'graphRagEnabled': settings.graph_rag_enabled,
         'graphRagWorkspaceReady': graph_rag_workspace_ready(settings.graph_rag_workspace),
+        'langgraphCheckpointerEnabled': langgraph_runtime['checkpointerConfigured'],
+        'langgraphCheckpointerReady': langgraph_runtime['checkpointerInitialized'],
+        'langgraphCheckpointerBackend': langgraph_runtime['checkpointerBackend'],
+        'langgraphThreadIdEnabled': langgraph_runtime['threadIdEnabled'],
     }
 
 
@@ -292,8 +319,16 @@ async def graph_definition() -> dict[str, object]:
 @app.post('/v1/orchestrate/preview')
 async def preview_orchestration(request: OrchestrationRequest) -> dict[str, object]:
     settings = get_settings()
-    graph = build_orchestration_graph(settings.graph_rag_enabled)
-    state = graph.invoke({'request': request})
+    graph = get_langgraph_artifacts(settings).graph
+    thread_id = resolve_langgraph_thread_id(
+        conversation_external_id=request.conversation_id,
+        channel='api',
+    )
+    state = invoke_orchestration_graph(
+        graph=graph,
+        state_input={'request': request},
+        thread_id=thread_id,
+    )
     preview = to_preview(state)
     return {
         'service': 'ai-orchestrator',

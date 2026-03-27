@@ -19,6 +19,7 @@ except Exception:  # pragma: no cover
     Agent = Crew = LLM = Process = Task = None  # type: ignore[assignment]
 
 from .listeners import capture_pilot_events, serialize_pilot_events
+from .flow_persistence import build_flow_state_id
 
 
 class ProtectedPilotPlan(BaseModel):
@@ -646,6 +647,12 @@ async def run_protected_crewai_pilot(
     flow = ProtectedShadowFlow(settings=settings)
     result = await flow.kickoff_async(
         inputs={
+            'id': build_flow_state_id(
+                slice_name='protected',
+                conversation_id=conversation_id,
+                telegram_chat_id=telegram_chat_id,
+                channel=channel,
+            ),
             'message': message,
             'conversation_id': conversation_id,
             'telegram_chat_id': telegram_chat_id,

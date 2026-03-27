@@ -155,7 +155,8 @@ class CrewAIEngine(ResponseEngine):
         return payload if isinstance(payload, dict) else None
 
     async def respond(self, *, request: Any, settings: Any, engine_mode: str | None = None) -> Any:
-        from ..graph import build_orchestration_graph, to_preview
+        from ..graph import to_preview
+        from ..langgraph_runtime import get_langgraph_artifacts, invoke_orchestration_graph, resolve_langgraph_thread_id
         from ..models import MessageResponse
         from ..runtime import (
             _build_suggested_replies,
@@ -204,8 +205,17 @@ class CrewAIEngine(ResponseEngine):
         )
         context_payload = _conversation_context_payload(conversation_context)
         school_profile = await _fetch_public_school_profile(settings=settings)
-        graph = build_orchestration_graph(settings.graph_rag_enabled)
-        state = graph.invoke({'request': _map_request(request, effective_user)})
+        graph = get_langgraph_artifacts(settings).graph
+        thread_id = resolve_langgraph_thread_id(
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            telegram_chat_id=getattr(request, 'telegram_chat_id', None),
+        )
+        state = invoke_orchestration_graph(
+            graph=graph,
+            state_input={'request': _map_request(request, effective_user)},
+            thread_id=thread_id,
+        )
         preview = to_preview(state)
         suggested_replies = _build_suggested_replies(
             request=request,

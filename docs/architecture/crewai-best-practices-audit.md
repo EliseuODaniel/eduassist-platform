@@ -1,6 +1,6 @@
 # CrewAI Best-Practices Audit
 
-Date: 2026-03-26
+Date: 2026-03-27
 
 ## Sources Reviewed
 
@@ -31,6 +31,7 @@ That is closer to current best practice than trying to turn every request into a
 - structured task outputs via `output_pydantic`
 - event-listener telemetry in the public and protected pilots
 - real CrewAI `Flow` wrappers for `public` and `protected`, with typed state and explicit routing labels
+- persisted `Flow` state for `public` and `protected` using `SQLiteFlowPersistence`
 - deterministic validation stack:
   - Pydantic output validation
   - judge step
@@ -67,7 +68,8 @@ For the current comparison phase, the remaining simpler shape is intentional:
 
 - public/protected use real flows plus real crews
 - support/workflow use real flows with deterministic control-plane handlers
-- stateful experimentation is handled first in the main orchestrator
+- stateful persistence is already active in `public` and `protected`
+- support/workflow still rely more heavily on the main orchestrator for broader conversation affinity
 
 That keeps the comparison fair and limits production risk.
 
@@ -75,8 +77,8 @@ That keeps the comparison fair and limits production risk.
 
 If we decide to promote CrewAI beyond canary, the next architectural upgrades should be:
 
-1. Expand multi-turn follow-up memory deeper into `support` and `workflow` state.
-2. Move more conversation-affinity and state transitions closer to the CrewAI side.
+1. Expand persisted multi-turn follow-up memory deeper into `support` and `workflow` state.
+2. Move more conversation-affinity and state transitions closer to the CrewAI side, instead of depending on outer runtime shims.
 3. Expand event-listener telemetry into a more complete per-task trace schema.
 4. Revisit CrewAI-native guardrails only if evidence-aware validation becomes stable in the selected version.
 
@@ -88,6 +90,7 @@ The current implementation is aligned with modern CrewAI practice in the places 
 - grounded composition
 - output judging
 - event telemetry
+- flow-owned state persistence in the higher-value multi-turn slices
 
 And it deliberately keeps deterministic rails where this product still needs stronger operational control:
 

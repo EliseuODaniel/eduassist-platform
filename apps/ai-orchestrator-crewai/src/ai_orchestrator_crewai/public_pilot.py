@@ -18,6 +18,7 @@ except Exception:  # pragma: no cover - defensive import
     Agent = Crew = LLM = Process = Task = None  # type: ignore[assignment]
 
 from .listeners import capture_pilot_events, serialize_pilot_events
+from .flow_persistence import build_flow_state_id
 
 
 class PublicPilotPlan(BaseModel):
@@ -677,6 +678,14 @@ async def run_public_crewai_pilot(
     flow = PublicShadowFlow(settings=settings)
     result = await flow.kickoff_async(
         inputs={
+            'id': build_flow_state_id(
+                slice_name='public',
+                conversation_id=conversation_id or (
+                    f'telegram:{telegram_chat_id}' if channel == 'telegram' and telegram_chat_id is not None else None
+                ),
+                telegram_chat_id=telegram_chat_id,
+                channel=channel,
+            ),
             'message': message,
             'conversation_id': conversation_id or (
                 f'telegram:{telegram_chat_id}' if channel == 'telegram' and telegram_chat_id is not None else None

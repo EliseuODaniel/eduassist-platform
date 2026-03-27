@@ -23,7 +23,8 @@ from .llm_provider import (
     resolve_public_semantic_with_provider,
     revise_with_provider,
 )
-from .graph import build_orchestration_graph, to_preview
+from .graph import to_preview
+from .langgraph_runtime import get_langgraph_artifacts, invoke_orchestration_graph, resolve_langgraph_thread_id
 from .models import (
     AccessTier,
     CalendarEventCard,
@@ -11353,10 +11354,20 @@ async def generate_message_response(
             }
         )
 
-        graph = build_orchestration_graph(settings.graph_rag_enabled)
+        langgraph_artifacts = get_langgraph_artifacts(settings)
+        graph = langgraph_artifacts.graph
+        langgraph_thread_id = resolve_langgraph_thread_id(
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            telegram_chat_id=request.telegram_chat_id,
+        )
         with start_span('eduassist.orchestration.graph_preview', tracer_name='eduassist.ai_orchestrator.runtime'):
             preview_request = request.model_copy(update={'message': analysis_message})
-            state = graph.invoke({'request': _map_request(preview_request, effective_user)})
+            state = invoke_orchestration_graph(
+                graph=graph,
+                state_input={'request': _map_request(preview_request, effective_user)},
+                thread_id=langgraph_thread_id,
+            )
             preview = to_preview(state)
         set_span_attributes(
             **{
@@ -11367,6 +11378,9 @@ async def generate_message_response(
                 'eduassist.orchestration.selected_tools': preview.selected_tools,
                 'eduassist.orchestration.graph_path': preview.graph_path,
                 'eduassist.orchestration.retrieval_backend': preview.retrieval_backend.value,
+                'eduassist.orchestration.langgraph_thread_id': langgraph_thread_id or '',
+                'eduassist.orchestration.langgraph_checkpointer_enabled': langgraph_artifacts.checkpointer_enabled,
+                'eduassist.orchestration.langgraph_checkpointer_backend': langgraph_artifacts.checkpointer_backend or '',
             }
         )
 

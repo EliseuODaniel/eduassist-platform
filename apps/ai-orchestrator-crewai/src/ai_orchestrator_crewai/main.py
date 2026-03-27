@@ -7,6 +7,7 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .flow_persistence import DEFAULT_FLOW_STATE_DIR
 from .public_pilot import run_public_crewai_pilot
 from .protected_pilot import run_protected_crewai_pilot
 from .support_pilot import run_support_crewai_pilot
@@ -28,6 +29,7 @@ class Settings(BaseSettings):
     internal_api_token: str = 'dev-internal-token'
     google_api_key: str | None = None
     google_model: str = 'gemini-2.5-flash-preview'
+    crewai_flow_state_dir: str = DEFAULT_FLOW_STATE_DIR
 
 
 @lru_cache
@@ -96,7 +98,9 @@ async def status(
             'isolated-dependencies',
             'planner-composer-judge',
             'flow-state-routing',
+            'flow-state-persistence',
         ],
+        'flowStateDir': settings.crewai_flow_state_dir,
     }
 
 

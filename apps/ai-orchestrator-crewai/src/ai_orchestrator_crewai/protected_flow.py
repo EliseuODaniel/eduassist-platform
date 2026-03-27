@@ -10,11 +10,14 @@ try:
     import crewai as crewai_pkg  # type: ignore
     from crewai import Agent, Crew, Process, Task  # type: ignore
     from crewai.flow.flow import Flow, listen, router, start  # type: ignore
+    from crewai.flow.persistence import persist  # type: ignore
 except Exception:  # pragma: no cover - defensive import
     crewai_pkg = None  # type: ignore[assignment]
     Agent = Crew = Process = Task = Flow = None  # type: ignore[assignment]
     listen = router = start = None  # type: ignore[assignment]
+    persist = None  # type: ignore[assignment]
 
+from .flow_persistence import build_flow_state_id, get_sqlite_flow_persistence
 from .listeners import capture_pilot_events, serialize_pilot_events
 from .protected_pilot import (
     EvidenceDoc,
@@ -44,6 +47,7 @@ from .protected_pilot import (
 
 
 class ProtectedFlowState(BaseModel):
+    id: str | None = None
     message: str = ''
     conversation_id: str | None = None
     telegram_chat_id: int | None = None
@@ -57,11 +61,24 @@ class ProtectedFlowState(BaseModel):
     answer: ProtectedPilotAnswer | None = None
     judge: ProtectedPilotJudge | None = None
     deterministic_backstop_used: bool = False
+    active_student_name: str | None = None
+    active_domain: str | None = None
+    active_attribute: str | None = None
     latency_ms: float = 0.0
 
 
+def _protected_flow_decorator(target: type[Flow[ProtectedFlowState]]) -> type[Flow[ProtectedFlowState]]:
+    if persist is None:
+        return target
+    persistence = get_sqlite_flow_persistence('protected')
+    if persistence is None:
+        return target
+    return persist(persistence=persistence, verbose=False)(target)
+
+
+@_protected_flow_decorator
 class ProtectedShadowFlow(Flow[ProtectedFlowState]):
-    def __init__(self, *, settings: Any) -> None:
+    def __init__(self, *, settings: Any, persistence: Any | None = None) -> None:
         self.settings = settings
         self._overall_started_at = perf_counter()
         self._actor_context: dict[str, Any] | None = None
@@ -71,7 +88,7 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
         self._shortlisted_docs: list[EvidenceDoc] = []
         self._identity_backstop_text: str | None = None
         self._llm: Any = None
-        super().__init__(tracing=False)
+        super().__init__(persistence=persistence, tracing=False)
 
     @start()
     async def prepare_context(self) -> str:
@@ -100,6 +117,8 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             channel=self.state.channel,
         )
         recent_student_name = _load_recent_student_name(self._state_key)
+        if not recent_student_name and self.state.active_student_name:
+            recent_student_name = self.state.active_student_name
         self._student = _resolve_student(self._actor, self.state.message, recent_student_name=recent_student_name)
         self.state.resolved_student_name = self._student.get('full_name') if isinstance(self._student, dict) else None
 
@@ -450,6 +469,11 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
         self.state.answer = answer if isinstance(answer, ProtectedPilotAnswer) else None
         self.state.judge = verdict if isinstance(verdict, ProtectedPilotJudge) else None
         self.state.deterministic_backstop_used = backstop_used
+        if self.state.resolved_student_name:
+            self.state.active_student_name = self.state.resolved_student_name
+        if isinstance(self.state.plan, ProtectedPilotPlan):
+            self.state.active_domain = self.state.plan.domain
+            self.state.active_attribute = self.state.plan.attribute
         if self._state_key:
             _store_recent_student_name(self._state_key, self.state.resolved_student_name)
 
@@ -471,5 +495,7 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
                 'deterministic_backstop_used': backstop_used,
                 'validation_stack': ['flow_state', 'pydantic_output', 'judge', 'deterministic_backstop'],
                 'event_listener': serialize_pilot_events(event_recorder),
+                'flow_state_id': getattr(self.state, 'id', None),
+                'flow_state_persisted': get_sqlite_flow_persistence('protected') is not None,
             },
         }

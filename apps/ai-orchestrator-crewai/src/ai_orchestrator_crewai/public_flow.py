@@ -10,11 +10,14 @@ try:
     import crewai as crewai_pkg  # type: ignore
     from crewai import Agent, Crew, Process, Task  # type: ignore
     from crewai.flow.flow import Flow, listen, router, start  # type: ignore
+    from crewai.flow.persistence import persist  # type: ignore
 except Exception:  # pragma: no cover - defensive import
     crewai_pkg = None  # type: ignore[assignment]
     Agent = Crew = Process = Task = Flow = None  # type: ignore[assignment]
     listen = router = start = None  # type: ignore[assignment]
+    persist = None  # type: ignore[assignment]
 
+from .flow_persistence import build_flow_state_id, get_sqlite_flow_persistence
 from .listeners import capture_pilot_events, serialize_pilot_events
 from .public_pilot import (
     EvidenceDoc,
@@ -39,6 +42,7 @@ from .public_pilot import (
 
 
 class PublicFlowState(BaseModel):
+    id: str | None = None
     message: str = ''
     conversation_id: str | None = None
     telegram_chat_id: int | None = None
@@ -52,22 +56,48 @@ class PublicFlowState(BaseModel):
     answer: PublicPilotAnswer | None = None
     judge: PublicPilotJudge | None = None
     deterministic_backstop_used: bool = False
+    active_entity: str | None = None
+    active_attribute: str | None = None
     latency_ms: float = 0.0
 
 
+def _public_flow_decorator(target: type[Flow[PublicFlowState]]) -> type[Flow[PublicFlowState]]:
+    if persist is None:
+        return target
+    persistence = get_sqlite_flow_persistence('public')
+    if persistence is None:
+        return target
+    return persist(persistence=persistence, verbose=False)(target)
+
+
+@_public_flow_decorator
 class PublicShadowFlow(Flow[PublicFlowState]):
-    def __init__(self, *, settings: Any) -> None:
+    def __init__(self, *, settings: Any, persistence: Any | None = None) -> None:
         self.settings = settings
         self._overall_started_at = perf_counter()
         self._evidence_docs: list[EvidenceDoc] = []
         self._shortlisted_docs: list[EvidenceDoc] = []
         self._llm: Any = None
-        super().__init__(tracing=False)
+        super().__init__(persistence=persistence, tracing=False)
 
     @start()
     async def prepare_context(self) -> str:
         self._overall_started_at = perf_counter()
         self.state.normalized_message = ' '.join(self.state.message.strip().lower().split())
+        ranking_message = self.state.message
+        if (
+            len(self.state.normalized_message.split()) <= 8
+            and (self.state.active_entity or self.state.active_attribute)
+        ):
+            ranking_message = ' '.join(
+                part
+                for part in (
+                    self.state.message,
+                    self.state.active_entity or '',
+                    self.state.active_attribute or '',
+                )
+                if part
+            )
         if Crew is None or Agent is None or Task is None or Process is None or Flow is None:
             self.state.routing_label = 'dependency_unavailable'
             self.state.reason = 'crewai_dependency_unavailable'
@@ -75,7 +105,7 @@ class PublicShadowFlow(Flow[PublicFlowState]):
 
         evidence = await _fetch_public_evidence(self.settings)
         self._evidence_docs = _build_evidence_docs(evidence)
-        self._shortlisted_docs = _rank_evidence_docs(self.state.message, self._evidence_docs)
+        self._shortlisted_docs = _rank_evidence_docs(ranking_message, self._evidence_docs)
         self.state.evidence_source_ids = [doc.doc_id for doc in self._shortlisted_docs]
 
         fast_path_answer = (
@@ -292,6 +322,9 @@ class PublicShadowFlow(Flow[PublicFlowState]):
         self.state.answer = answer if isinstance(answer, PublicPilotAnswer) else None
         self.state.judge = verdict if isinstance(verdict, PublicPilotJudge) else None
         self.state.deterministic_backstop_used = backstop_used
+        if isinstance(self.state.plan, PublicPilotPlan):
+            self.state.active_entity = self.state.plan.entity
+            self.state.active_attribute = self.state.plan.attribute
 
         metadata: dict[str, Any] = {
             'conversation_id': self.state.conversation_id,
@@ -311,6 +344,7 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             'event_listener': serialize_pilot_events(event_recorder),
             'flow_enabled': True,
             'flow_state_id': getattr(self.state, 'id', None),
+            'flow_state_persisted': get_sqlite_flow_persistence('public') is not None,
         }
 
         if isinstance(self.state.judge, PublicPilotJudge) and not self.state.judge.valid:
