@@ -293,9 +293,18 @@ def _extract_unmatched_student_reference(actor: dict[str, Any], message: str) ->
         'quais', 'qual', 'do', 'da', 'de', 'meu', 'minha', 'filho', 'filha', 'as', 'os',
         'notas', 'nota', 'matricula', 'frequencia', 'faltas', 'provas', 'prova', 'documentacao',
         'documentos', 'situacao', 'status', 'como', 'estao', 'esta', 'está', 'estao', 'e',
+        'proxima', 'proximo', 'data', 'pagamento', 'vencimento',
     }
-    followup_match = re.search(r'\be\s+do\s+([a-z0-9]+)\b', normalized_message)
-    if followup_match:
+    for pattern in (
+        r'\be\s+do\s+([a-z0-9]+)\b',
+        r'\be\s+se\s+eu\s+perguntar\s+do\s+([a-z0-9]+)\b',
+        r'\be\s+sobre\s+([a-z0-9]+)\b',
+        r'\be\s+o\s+([a-z0-9]+)\b',
+        r'\be\s+a\s+([a-z0-9]+)\b',
+    ):
+        followup_match = re.search(pattern, normalized_message)
+        if not followup_match:
+            continue
         candidate = followup_match.group(1)
         if len(candidate) >= 3 and candidate not in known_tokens and candidate not in stopwords:
             return candidate
@@ -648,11 +657,11 @@ def _infer_fast_path_plan(message: str, student: dict[str, Any] | None) -> Prote
             attribute='assessments',
             relevant_sources=['assessments.overview'],
         )
-    if any(term in terms for term in {'financeiro', 'pagamento', 'mensalidade', 'boleto'}):
+    if any(term in terms for term in {'financeiro', 'pagamento', 'mensalidade', 'boleto', 'proximo', 'proxima', 'vencimento', 'data'}):
         attribute = 'summary'
         if {'aberto', 'saldo', 'devendo', 'divida', 'dividas', 'pendente', 'pendentes'} & terms:
             attribute = 'open_amount'
-        elif 'proximo' in terms:
+        elif {'proximo', 'proxima', 'vencimento', 'data'} & terms:
             attribute = 'next_payment'
         return ProtectedPilotPlan(
             intent='student_finance',
@@ -704,7 +713,21 @@ def _student_backstop(message: str, student: dict[str, Any] | None, evidence: di
     name = str(student.get('full_name', 'o aluno'))
     if any(term in terms for term in {'notas', 'nota'}):
         grades = (evidence.get('academic', {}).get('summary', {}) or {}).get('grades', []) or []
-        top = [item for item in grades[:3] if isinstance(item, dict)]
+        top: list[dict[str, Any]] = []
+        seen_subjects: set[str] = set()
+        for item in grades:
+            if not isinstance(item, dict):
+                continue
+            subject_key = _normalize_text(str(item.get('subject_name', '')))
+            if subject_key and subject_key in seen_subjects:
+                continue
+            if subject_key:
+                seen_subjects.add(subject_key)
+            top.append(item)
+            if len(top) >= 8:
+                break
+        if not top:
+            top = [item for item in grades[:8] if isinstance(item, dict)]
         if top:
             parts = [f"{item.get('subject_name')}: {item.get('score')}/{item.get('max_score')}" for item in top]
             return f"As notas mais recentes de {name} incluem " + '; '.join(parts) + '.'
@@ -725,7 +748,27 @@ def _student_backstop(message: str, student: dict[str, Any] | None, evidence: di
         first = next((item for item in assessments if isinstance(item, dict)), None)
         if first:
             return f"A proxima avaliacao registrada de {name} e {first.get('item_title')} em {first.get('due_date')}."
-    if any(term in terms for term in {'financeiro', 'pagamento', 'mensalidade', 'boleto'}):
+    if any(term in terms for term in {'documentacao', 'documentos'}):
+        summary = (evidence.get('admin', {}).get('summary', {}) or {})
+        if {'falta', 'faltando', 'pendencia', 'pendencias', 'proximo', 'passo'} & terms:
+            checklist = [item for item in (summary.get('checklist') or []) if isinstance(item, dict)]
+            missing = [
+                item for item in checklist
+                if _normalize_text(str(item.get('status', ''))) in {'pending', 'missing', 'incomplete'}
+            ]
+            if missing:
+                first = missing[0]
+                label = str(first.get('label', 'item')).strip() or 'documentacao pendente'
+                detail = str(first.get('detail') or first.get('notes') or '').strip()
+                if detail:
+                    return f'No momento, ainda falta para {name}: {label}. {detail}'
+                labels = ', '.join(str(item.get('label', 'item')).strip() for item in missing[:3])
+                return f'No momento, ainda faltam para {name}: {labels}.'
+            next_step = str(summary.get('next_step') or '').strip()
+            if next_step:
+                return f'Para {name}, o proximo passo registrado hoje e: {next_step}.'
+        return f"A situacao documental de {name} hoje esta {_humanize_admin_status(summary.get('overall_status'))}."
+    if any(term in terms for term in {'financeiro', 'pagamento', 'mensalidade', 'boleto', 'aberto', 'saldo', 'devendo', 'pendente', 'proximo', 'vencimento', 'data'}):
         summary = (evidence.get('financial', {}).get('summary', {}) or {})
         invoices = [item for item in (summary.get('invoices') or []) if isinstance(item, dict)]
         open_invoices = [item for item in invoices if str(item.get('status', '')).lower() == 'open']
@@ -748,9 +791,10 @@ def _student_backstop(message: str, student: dict[str, Any] | None, evidence: di
                     f'distribuido em {len(outstanding_invoices)} fatura(s).'
                 )
             return f'No momento, nao encontrei valor em aberto para {name} neste recorte.'
-        if 'proximo' in terms:
-            next_invoice = sorted(open_invoices or invoices, key=lambda item: str(item.get('due_date', '')))[0] if (open_invoices or invoices) else None
-            if next_invoice and str(next_invoice.get('status', '')).lower() == 'open':
+        if {'proximo', 'vencimento', 'data'} & terms:
+            candidate_invoices = outstanding_invoices or open_invoices or overdue_invoices or invoices
+            next_invoice = sorted(candidate_invoices, key=lambda item: str(item.get('due_date', '')))[0] if candidate_invoices else None
+            if next_invoice and str(next_invoice.get('due_date', '')).strip():
                 return (
                     f"O proximo pagamento de {name} vence em {next_invoice.get('due_date')} "
                     f"no valor de {next_invoice.get('amount_due')}."
@@ -760,26 +804,6 @@ def _student_backstop(message: str, student: dict[str, Any] | None, evidence: di
             f"No financeiro de {name}, a mensalidade de referencia e {summary.get('monthly_amount')} "
             f"e ha {summary.get('open_invoice_count')} fatura(s) em aberto, sendo {summary.get('overdue_invoice_count')} vencida(s)."
         )
-    if any(term in terms for term in {'documentacao', 'documentos'}):
-        summary = (evidence.get('admin', {}).get('summary', {}) or {})
-        if {'falta', 'faltando', 'pendencia', 'pendencias', 'proximo', 'passo'} & terms:
-            checklist = [item for item in (summary.get('checklist') or []) if isinstance(item, dict)]
-            missing = [
-                item for item in checklist
-                if _normalize_text(str(item.get('status', ''))) in {'pending', 'missing', 'incomplete'}
-            ]
-            if missing:
-                first = missing[0]
-                label = str(first.get('label', 'item')).strip() or 'documentacao pendente'
-                detail = str(first.get('detail') or first.get('notes') or '').strip()
-                if detail:
-                    return f'No momento, ainda falta para {name}: {label}. {detail}'
-                labels = ', '.join(str(item.get('label', 'item')).strip() for item in missing[:3])
-                return f'No momento, ainda faltam para {name}: {labels}.'
-            next_step = str(summary.get('next_step') or '').strip()
-            if next_step:
-                return f'Para {name}, o proximo passo registrado hoje e: {next_step}.'
-        return f"A situacao documental de {name} hoje esta {_humanize_admin_status(summary.get('overall_status'))}."
     if 'matricula' in terms:
         summary = (evidence.get('admin', {}).get('summary', {}) or {})
         return f"A matricula de {name} e {summary.get('enrollment_code')}."

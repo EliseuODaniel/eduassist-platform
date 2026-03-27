@@ -133,6 +133,8 @@ def _augment_public_message_with_state(
             context_hints.append('nome')
     if normalized_attribute in {'document_submission', 'submission'} or normalized_entity in {'documentos', 'documento'}:
         context_hints.extend(['documentos', 'enviar documentos', 'envio', 'secretaria', 'email', 'portal'])
+    if normalized_entity in {'comparativo', 'diferenciais', 'diferenciais da escola'} or normalized_attribute in {'comparative', 'diferenciais'}:
+        context_hints.extend(['comparacao', 'publica', 'particular', 'projeto', 'acompanhamento', 'rotina'])
     if normalized_entity in {'assistente', 'bot'} or normalized_attribute == 'capabilities':
         context_hints.extend(['assistente', 'capacidades', 'ajuda'])
     return ' '.join(part for part in [message, *context_hints] if part).strip()
@@ -146,6 +148,20 @@ def _stateful_public_followup_fast_answer(
 ) -> str | None:
     normalized_entity = _normalize_text(active_entity or '')
     terms = _query_terms(message)
+    if normalized_entity in {'comparativo', 'diferenciais', 'diferenciais da escola'} and (
+        {'pratica', 'rotina', 'muda', 'dia', 'acompanhamento', 'projeto'} & terms
+    ):
+        return (
+            'Na pratica, isso muda em uma rotina com aprendizagem por projetos, '
+            'acompanhamento mais proximo, tutoria academica e projeto de vida integrados ao percurso escolar.'
+        )
+    if normalized_entity in {'comparativo', 'diferenciais', 'diferenciais da escola'} and (
+        {'bncc', 'curricular', 'curriculo', 'curriculo', 'base'} & terms
+    ):
+        return (
+            'Sim. A base curricular publicada continua apoiada na BNCC, articulada com projeto de vida, '
+            'producao textual, cultura digital responsavel e aprofundamento academico progressivo.'
+        )
     if 'timeline' in normalized_entity:
         timeline_docs = [doc for doc in docs if doc.doc_id.startswith('timeline.')]
         if not timeline_docs:
@@ -728,6 +744,12 @@ def _infer_public_followup_slots(
 ) -> tuple[str | None, str | None]:
     normalized = _normalize_text(f'{message} {answer_text}')
     terms = _query_terms(message)
+    if (
+        ({'publica', 'particular'} & set(normalized.split()))
+        or 'comparacao vazia' in normalized
+        or 'diferenciais desta escola' in normalized
+    ) and any(term in normalized for term in {'proposta pedagogica', 'projeto de vida', 'acompanhamento'}):
+        return 'comparativo', 'diferenciais'
     if any(term in normalized for term in {'matricula', 'aulas', 'formatura', 'reuniao'}):
         if 'matricula' in terms:
             return 'timeline', 'matricula'

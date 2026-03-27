@@ -120,6 +120,10 @@ FINANCE_PAID_TERMS = {
 FINANCE_NEXT_DUE_TERMS = {
     'proximo pagamento',
     'próximo pagamento',
+    'proxima data de pagamento',
+    'próxima data de pagamento',
+    'proxima data do pagamento',
+    'próxima data do pagamento',
     'proxima mensalidade',
     'próxima mensalidade',
     'proximo vencimento',
@@ -3604,6 +3608,13 @@ def _try_public_channel_fast_answer(
         pedagogical_answer = _compose_public_pedagogical_answer(profile, message)
         if pedagogical_answer:
             return pedagogical_answer
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {'o que isso muda na pratica', 'o que isso muda na prática', 'na pratica no dia a dia', 'na prática no dia a dia'}
+    ):
+        practical_answer = _compose_public_comparative_practical_answer(profile)
+        if practical_answer:
+            return practical_answer
     if _is_comparative_query(message) or (
         _message_matches_term(normalized, 'publica')
         and any(_message_matches_term(normalized, term) for term in {'pagar', 'pagando', 'estudar'})
@@ -3711,6 +3722,20 @@ def _compose_public_comparative_answer(profile: dict[str, Any]) -> str:
     parts.append(
         'Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.'
     )
+    return ' '.join(part for part in parts if part).strip()
+
+
+def _compose_public_comparative_practical_answer(profile: dict[str, Any]) -> str:
+    education_model = str(profile.get('education_model', '')).strip()
+    highlights = _public_highlights(profile)
+    highlight_titles = [str(item.get('title', '')).strip() for item in highlights if str(item.get('title', '')).strip()]
+    items = ', '.join(highlight_titles[:3]) if highlight_titles else 'tutoria academica, projeto de vida e acompanhamento proximo'
+    parts = [
+        'Na pratica, isso muda em uma rotina com aprendizagem por projetos, acompanhamento mais proximo e referencias claras de tutoria academica.',
+        f'Os pontos que aparecem hoje de forma mais concreta sao {items}.',
+    ]
+    if education_model:
+        parts.append(f'Isso conversa com uma proposta pedagogica que combina {education_model}.')
     return ' '.join(part for part in parts if part).strip()
 
 
@@ -8001,34 +8026,7 @@ def _compose_workflow_status_answer(
     protocol_code_hint: str | None,
     request_message: str,
 ) -> str:
-    if not isinstance(response_payload, dict) or not response_payload.get('found'):
-        if protocol_code_hint:
-            return (
-                f'Ainda nao localizei um protocolo ativo com o codigo {protocol_code_hint}. '
-                'Se quiser, me encaminhe novamente o codigo completo ou me diga se o assunto era visita, direcao, financeiro ou secretaria.'
-            )
-        return (
-            'Ainda nao encontrei um protocolo recente nesta conversa. '
-            'Se quiser, me diga o codigo que comeca com VIS, REQ ou ATD, ou me lembre se o assunto era visita, direcao, financeiro ou secretaria.'
-        )
-
-    item = response_payload.get('item')
-    if not isinstance(item, dict):
-        return 'Localizei um protocolo desta conversa, mas nao consegui interpretar o status agora.'
-
-    workflow_type = str(item.get('workflow_type', 'support_handoff'))
-    status_label = _humanize_workflow_status(str(item.get('status', '')))
-    queue_label = _humanize_workflow_queue(item.get('queue_name'))
     normalized_request = _normalize_text(request_message)
-    protocol_code = str(item.get('protocol_code', protocol_code_hint or 'indisponivel'))
-    linked_ticket_code = str(item.get('linked_ticket_code', '') or '').strip()
-    subject = str(item.get('subject', '') or '').strip()
-    summary_text = str(item.get('summary', '') or '').strip()
-    target_area = str(item.get('target_area', '') or '').strip()
-    preferred_date = str(item.get('preferred_date', '') or '').strip()
-    preferred_window = str(item.get('preferred_window', '') or '').strip()
-    slot_label = str(item.get('slot_label', '') or '').strip()
-    updated_at_label = _format_workflow_timestamp(item.get('updated_at'))
     asks_status_explicitly = any(
         _message_matches_term(normalized_request, term)
         for term in {
@@ -8068,13 +8066,50 @@ def _compose_workflow_status_answer(
     )
     asks_protocol_only = not asks_status_explicitly and any(
         _message_matches_term(normalized_request, term)
-        for term in {'qual o protocolo', 'me passa o protocolo', 'meu protocolo', 'numero do protocolo'}
+        for term in {'qual o protocolo', 'me passa o protocolo', 'meu protocolo', 'numero do protocolo', 'protocolo'}
     )
     asks_summary = any(
         _message_matches_term(normalized_request, term)
-        for term in {'resume meu pedido', 'resuma meu pedido', 'o que eu pedi', 'qual foi meu pedido'}
+        for term in {'resume meu pedido', 'resuma meu pedido', 'o que eu pedi', 'qual foi meu pedido', 'resume pra mim', 'resuma pra mim'}
     )
 
+    if not isinstance(response_payload, dict) or not response_payload.get('found'):
+        if protocol_code_hint:
+            return (
+                f'Ainda nao localizei um protocolo ativo com o codigo {protocol_code_hint}. '
+                'Se quiser, me encaminhe novamente o codigo completo ou me diga se o assunto era visita, direcao, financeiro ou secretaria.'
+            )
+        if asks_summary:
+            return (
+                'Ainda nao encontrei um protocolo recente nesta conversa para montar o resumo do pedido. '
+                'Se quiser, me diga o codigo que comeca com VIS, REQ ou ATD, ou me lembre se o assunto era visita, direcao, financeiro ou secretaria.'
+            )
+        if asks_status_explicitly or asks_update_explicitly or asks_next_step:
+            return (
+                'Ainda nao encontrei um protocolo recente nesta conversa para consultar o status da fila. '
+                'Se quiser, me diga o codigo que comeca com VIS, REQ ou ATD, ou me lembre se o assunto era visita, direcao, financeiro ou secretaria.'
+            )
+        return (
+            'Ainda nao encontrei um protocolo recente nesta conversa. '
+            'Se quiser, me diga o codigo que comeca com VIS, REQ ou ATD, ou me lembre se o assunto era visita, direcao, financeiro ou secretaria.'
+        )
+
+    item = response_payload.get('item')
+    if not isinstance(item, dict):
+        return 'Localizei um protocolo desta conversa, mas nao consegui interpretar o status agora.'
+
+    workflow_type = str(item.get('workflow_type', 'support_handoff'))
+    status_label = _humanize_workflow_status(str(item.get('status', '')))
+    queue_label = _humanize_workflow_queue(item.get('queue_name'))
+    protocol_code = str(item.get('protocol_code', protocol_code_hint or 'indisponivel'))
+    linked_ticket_code = str(item.get('linked_ticket_code', '') or '').strip()
+    subject = str(item.get('subject', '') or '').strip()
+    summary_text = str(item.get('summary', '') or '').strip()
+    target_area = str(item.get('target_area', '') or '').strip()
+    preferred_date = str(item.get('preferred_date', '') or '').strip()
+    preferred_window = str(item.get('preferred_window', '') or '').strip()
+    slot_label = str(item.get('slot_label', '') or '').strip()
+    updated_at_label = _format_workflow_timestamp(item.get('updated_at'))
     if workflow_type == 'visit_booking':
         if asks_protocol_only:
             lines = [f'O protocolo da sua visita e {protocol_code}.']
@@ -9408,6 +9443,7 @@ def _extract_explicit_student_reference_candidates(message: str) -> list[str]:
         (r'(?:sobre o|sobre a|do|da)\s+([a-z]{3,}(?:\s+[a-z]{3,}){0,2})', True),
         (r'(?:meu filho|minha filha|aluno|aluna)\s+([a-z]{3,}(?:\s+[a-z]{3,}){0,2})', False),
         (r'(?:e o|e a)\s+([a-z]{3,}(?:\s+[a-z]{3,}){0,2})', True),
+        (r'e\s+se\s+eu\s+perguntar\s+do\s+([a-z]{3,}(?:\s+[a-z]{3,}){0,2})', True),
     ]
     candidates: list[str] = []
     stopwords = {
@@ -9450,8 +9486,12 @@ def _extract_explicit_student_reference_candidates(message: str) -> list[str]:
         'documentos',
         'pagamento',
         'pagamentos',
+        'data',
+        'datas',
         'proximo',
+        'proxima',
         'próximo',
+        'próxima',
         'vencimento',
         'vencimentos',
         'boleto',
@@ -9515,7 +9555,7 @@ def _explicit_unmatched_student_reference(
             or ''
         ).strip()
         normalized = _normalize_text(message)
-        followup_match = re.fullmatch(r'e\s+d[oa]\s+([a-z]{3,}(?:\s+[a-z]{3,}){0,2})\??', normalized)
+        followup_match = re.fullmatch(r'(?:e\s+d[oa]|e\s+se\s+eu\s+perguntar\s+d[oa])\s+([a-z]{3,}(?:\s+[a-z]{3,}){0,2})\??', normalized)
         if followup_match and (
             recent_active_task.startswith(('academic:', 'finance:', 'admin:'))
             or bool(recent_student_name)
@@ -9797,9 +9837,20 @@ def _format_grades(summary: dict[str, Any]) -> list[str]:
     if not isinstance(grades, list) or not grades:
         return ['- Ainda nao ha lancamentos de notas no periodo consultado.']
     lines = []
-    for grade in grades[:4]:
+    seen_subjects: set[str] = set()
+    chosen: list[dict[str, Any]] = []
+    for grade in grades:
         if not isinstance(grade, dict):
             continue
+        subject_key = _normalize_text(str(grade.get('subject_name', '')))
+        if subject_key and subject_key in seen_subjects:
+            continue
+        if subject_key:
+            seen_subjects.add(subject_key)
+        chosen.append(grade)
+        if len(chosen) >= 8:
+            break
+    for grade in (chosen or [grade for grade in grades[:8] if isinstance(grade, dict)]):
         lines.append(
             '- {subject_name} - {item_title}: {score}/{max_score}'.format(
                 subject_name=grade.get('subject_name', 'Disciplina'),
@@ -10274,6 +10325,19 @@ def _compose_finance_attribute_answer(
 
     if attribute_request.attribute == 'next_due':
         invoice = _select_next_due_invoice(summary, status_filter=status_filter)
+        if not isinstance(invoice, dict):
+            fallback_invoices = [
+                item for item in (summary.get('invoices') or [])
+                if isinstance(item, dict)
+            ]
+            if fallback_invoices:
+                fallback_invoices.sort(
+                    key=lambda item: (
+                        str(item.get('status', '')).lower() not in {'open', 'overdue'},
+                        str(item.get('due_date', '')),
+                    )
+                )
+                invoice = fallback_invoices[0]
         if not isinstance(invoice, dict):
             return f'Hoje nao encontrei um proximo pagamento pendente de {student_name}.'
         reference_month = str(invoice.get('reference_month', '') or '---').strip()

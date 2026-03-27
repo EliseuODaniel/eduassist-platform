@@ -121,18 +121,30 @@ class SupportShadowFlow(Flow[SupportFlowState]):
             self.state.reason = 'support_handoff_requested'
             return self.state.routing_label
 
-        if isinstance(self.state.current_item, dict) and (
-            _is_protocol_request(self.state.message) or _is_status_request(self.state.message) or _is_summary_request(self.state.message)
-        ):
-            if _is_protocol_request(self.state.message) and not _is_status_request(self.state.message):
+        protocol_request = _is_protocol_request(self.state.message)
+        status_request = _is_status_request(self.state.message)
+        summary_request = _is_summary_request(self.state.message)
+
+        if isinstance(self.state.current_item, dict) and (protocol_request or status_request or summary_request):
+            if protocol_request and not status_request:
                 self.state.routing_label = 'protocol'
                 self.state.reason = 'support_protocol'
-            elif _is_summary_request(self.state.message):
+            elif summary_request:
                 self.state.routing_label = 'summary'
                 self.state.reason = 'support_summary'
             else:
                 self.state.routing_label = 'status'
                 self.state.reason = 'support_status'
+            return self.state.routing_label
+
+        if protocol_request or status_request or summary_request:
+            self.state.routing_label = 'lookup_not_found'
+            if protocol_request and not status_request:
+                self.state.reason = 'support_protocol_not_found'
+            elif summary_request:
+                self.state.reason = 'support_summary_not_found'
+            else:
+                self.state.reason = 'support_status_not_found'
             return self.state.routing_label
 
         self.state.routing_label = 'not_supported'
@@ -299,6 +311,29 @@ class SupportShadowFlow(Flow[SupportFlowState]):
             answer_text=_handoff_status_response(current_item),
             reason='support_status',
             extra={'ticket_code': current_item.get('protocol_code')},
+        )
+
+    @listen('lookup_not_found')
+    async def handle_lookup_not_found(self) -> dict[str, Any]:
+        if self.state.reason == 'support_protocol_not_found':
+            answer_text = (
+                'Ainda nao encontrei um protocolo ativo nesta conversa para esse atendimento humano. '
+                'Se voce quiser, eu posso abrir a fila certa agora e te devolver o protocolo.'
+            )
+        elif self.state.reason == 'support_summary_not_found':
+            answer_text = (
+                'Ainda nao encontrei um protocolo ativo nesta conversa para montar o resumo do atendimento. '
+                'Se voce quiser, eu posso abrir a fila certa agora e seguir desse ponto.'
+            )
+        else:
+            answer_text = (
+                'Ainda nao encontrei um protocolo ativo nesta conversa para consultar o status da fila. '
+                'Se voce quiser, eu posso abrir o atendimento humano agora e te devolver o protocolo.'
+            )
+        return await self._finalize_support_answer(
+            answer_text=answer_text,
+            reason=self.state.reason,
+            extra={'lookup_found': False},
         )
 
     @listen('not_supported')

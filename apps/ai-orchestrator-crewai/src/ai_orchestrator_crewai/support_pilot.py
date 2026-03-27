@@ -33,14 +33,32 @@ def _detect_queue(message: str) -> str:
 
 def _wants_human_handoff(message: str) -> bool:
     normalized = _normalize_text(message)
+    queue_signals = (
+        'financeir',
+        'secretari',
+        'direc',
+        'orienta',
+        'matricul',
+        'admiss',
+    )
     markers = (
         'atendente humano',
         'atendimento humano',
         'quero falar com um humano',
         'preciso falar com um humano',
+        'preciso falar com o financeiro',
+        'preciso falar com a secretaria',
+        'preciso falar com a direcao',
+        'preciso falar com a direção',
         'quero falar com o setor',
         'quero falar com a secretaria',
         'quero falar com o financeiro',
+        'quero secretaria',
+        'quero financeiro',
+        'quero direcao',
+        'quero direção',
+        'preciso de secretaria',
+        'preciso de financeiro',
         'nao resolveu',
         'não resolveu',
         'atendente',
@@ -50,8 +68,15 @@ def _wants_human_handoff(message: str) -> bool:
         'abre para',
         'encaminha pra',
         'encaminha para',
+        'mudei de ideia',
     )
-    return any(marker in normalized for marker in markers)
+    if any(marker in normalized for marker in markers):
+        return True
+    if any(signal in normalized for signal in queue_signals) and any(
+        marker in normalized for marker in ('quero', 'preciso', 'falar', 'encaminha', 'atendimento', 'segue pra', 'segue para')
+    ):
+        return True
+    return False
 
 
 def _is_status_request(message: str) -> bool:
@@ -62,6 +87,10 @@ def _is_status_request(message: str) -> bool:
             'qual o status',
             'como esta',
             'como está',
+            'como anda',
+            'esse atendimento',
+            'esse chamado',
+            'essa fila',
             'segue na fila',
             'fila',
             'status atual',

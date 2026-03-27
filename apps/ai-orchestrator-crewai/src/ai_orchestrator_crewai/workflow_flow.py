@@ -137,7 +137,7 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
 
         if (
             (_contains_any(normalized, visit_terms) or self.state.current_type == 'visit_booking')
-            and _contains_any(normalized, {'remarcar', 'reagendar', 'mudar'})
+            and _contains_any(normalized, {'remarcar', 'remarca', 'reagendar', 'reagenda', 'mudar', 'muda', 'trocar', 'troca'})
         ):
             if _contains_any(normalized, {'se eu precisar', 'se precisar', 'caso precise'}):
                 self.state.routing_label = 'visit_reschedule_guidance'
@@ -152,15 +152,23 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
             self.state.reason = 'workflow_visit_create'
             return self.state.routing_label
 
-        if _contains_any(normalized, {'status', 'andamento'}) or 'qual o protocolo' in normalized or 'resume meu pedido' in normalized:
+        protocol_lookup_requested = 'protocolo' in normalized
+        status_lookup_requested = _contains_any(normalized, {'status', 'andamento', 'fila'}) or any(
+            phrase in normalized for phrase in {'como esta', 'como está', 'qual o andamento'}
+        )
+        summary_lookup_requested = any(
+            phrase in normalized
+            for phrase in {'resume meu pedido', 'resuma meu pedido', 'resume pra mim', 'resuma pra mim', 'faz um resumo', 'me da um resumo'}
+        )
+        if protocol_lookup_requested or status_lookup_requested or summary_lookup_requested:
             if not isinstance(self.state.current_item, dict):
                 self.state.routing_label = 'lookup_not_found'
                 self.state.reason = 'workflow_not_found'
                 return self.state.routing_label
-            if 'qual o protocolo' in normalized:
+            if protocol_lookup_requested and not status_lookup_requested:
                 self.state.routing_label = 'protocol_lookup'
                 self.state.reason = 'workflow_protocol_lookup'
-            elif 'resume meu pedido' in normalized:
+            elif summary_lookup_requested:
                 self.state.routing_label = 'summary_lookup'
                 self.state.reason = 'workflow_summary_lookup'
             else:
@@ -173,7 +181,7 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
             self.state.reason = 'workflow_request_create'
             return self.state.routing_label
 
-        if _contains_any(normalized, {'complementar', 'acrescentar', 'adicionar', 'incluir'}) and self.state.current_type == 'institutional_request':
+        if _contains_any(normalized, {'complementar', 'complementa', 'acrescentar', 'acrescenta', 'adicionar', 'adiciona', 'incluir', 'inclui'}) and self.state.current_type == 'institutional_request':
             self.state.routing_label = 'request_update'
             self.state.reason = 'workflow_request_update'
             return self.state.routing_label
@@ -346,7 +354,11 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
             'engine_name': 'crewai',
             'executed': True,
             'reason': 'workflow_not_found',
-            'metadata': self._finish('Nao encontrei um protocolo ativo nesta conversa para retomar agora.', extra={'workflow_type': 'unknown'}),
+            'metadata': self._finish(
+                'Nao encontrei um protocolo ativo nesta conversa para retomar agora. '
+                'Se voce quiser, eu posso abrir o pedido, te dizer o protocolo, consultar o status ou montar um resumo quando houver um fluxo ativo.',
+                extra={'workflow_type': 'unknown'},
+            ),
         }
 
     @listen('protocol_lookup')
@@ -419,12 +431,23 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
                 'channel': self.state.channel,
                 'telegram_chat_id': self.state.telegram_chat_id,
                 'protocol_code': self.state.protocol_code or (self.state.current_item or {}).get('protocol_code'),
-                'action': 'add_details',
+                'action': 'append_note',
                 'details': self.state.message,
             },
         )
         item = payload.get('item', {})
-        detail = self.state.message.replace('quero complementar meu pedido dizendo que', '').strip() or self.state.message
+        detail = self.state.message
+        for prefix in (
+            'quero complementar meu pedido dizendo que',
+            'complementa dizendo que',
+            'complementar dizendo que',
+            'adiciona dizendo que',
+            'acrescenta dizendo que',
+        ):
+            if detail.lower().startswith(prefix):
+                detail = detail[len(prefix):].strip()
+                break
+        detail = detail or self.state.message
         self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
         self.state.active_workflow_type = 'institutional_request'
         return await self._finalize_workflow_answer(
