@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-03-27T16:06:40.855867+00:00",
+  "generated_at": "2026-03-27T16:13:20.213011+00:00",
   "git": {
     "branch": "feature/two-stack-shadow-comparison",
-    "commit": "d826a3b889d393fccd0d4ce7c19c321e4636e734",
+    "commit": "36b75340d751e2b4f76dc3ec75b78e335af2716a",
     "working_tree_clean": true,
     "status_short": ""
   },
@@ -43,7 +43,7 @@
     "experimentPrimaryEngine": "crewai",
     "experimentSlices": "public,support,workflow",
     "experimentRolloutPercent": 0,
-    "experimentSliceRollouts": "public:2,support:100,workflow:100",
+    "experimentSliceRollouts": "public:5,support:100,workflow:100",
     "experimentAllowlistSlices": "support,workflow",
     "experimentRequireScorecard": false,
     "experimentScorecardPath": "/workspace/artifacts/framework-native-scorecard.json",
@@ -189,7 +189,7 @@
           "eligible": true,
           "reason": "public is allowed for crewai under the current scorecard gate.",
           "configured": true,
-          "configured_rollout_percent": 2,
+          "configured_rollout_percent": 5,
           "allowlist_only": false,
           "live": true
         },
@@ -247,7 +247,7 @@
           "configured": true,
           "live": true,
           "allowlist_only": false,
-          "configured_rollout_percent": 2,
+          "configured_rollout_percent": 5,
           "action": "expand_gradually",
           "blocked_reasons": []
         },
@@ -304,6 +304,26 @@
     "errors": []
   },
   "latest_rollout_entries": [
+    {
+      "timestamp": "2026-03-27T16:12:28.601970+00:00",
+      "intent": "promotion",
+      "slice": "public",
+      "before_rollout_percent": 2,
+      "after_rollout_percent": 5,
+      "mode": "execute",
+      "apply": true,
+      "result": "passed",
+      "operator": "codex",
+      "reason": "Expandir public de 2% para 5% conforme recomendacao do gate live",
+      "returncode": 0,
+      "env_file": ".env",
+      "proposed_slices": "public,support,workflow",
+      "proposed_slice_rollouts": "public:5,support:100,workflow:100",
+      "proposed_allowlist_slices": "support,workflow",
+      "nested_report": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md",
+      "stdout": "/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md\n/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.json\n/home/edann/projects/eduassist-platform/artifacts/framework-rollout-execution-report.json\n",
+      "stderr": " Container eduassist-ai-orchestrator Recreate \n Container eduassist-ai-orchestrator Recreated \n Container eduassist-ai-orchestrator Starting \n Container eduassist-ai-orchestrator Started \n"
+    },
     {
       "timestamp": "2026-03-27T16:01:18.904547+00:00",
       "intent": "promotion",
