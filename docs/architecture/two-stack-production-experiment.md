@@ -234,6 +234,30 @@ Expected use:
 - keep a backup snapshot of the previous env before writing
 - use the apply report as the audited record of what changed
 
+## Rollout Execute
+
+For a full operational run, use the execution script to:
+
+- preflight the proposal
+- apply it to the target env file
+- restart only the required services
+- validate the live `/v1/status`
+- register a post-apply execution report
+
+Safe validation example:
+
+```bash
+cp .env artifacts/tmp-execution.env
+python3 tools/evals/execute_framework_rollout_promotion.py \
+  --env-file artifacts/tmp-execution.env \
+  --services ai-orchestrator \
+  --apply
+```
+
+Versioned example output:
+
+- [framework-rollout-execution-report.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-rollout-execution-report.md)
+
 Artifacts:
 
 - [framework-native-scorecard.md](/home/edann/projects/eduassist-platform/docs/architecture/framework-native-scorecard.md)

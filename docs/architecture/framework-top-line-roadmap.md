@@ -101,6 +101,7 @@ Validated in this round:
 - A live promotion summary can now combine that gate with current pilot health and rollout config, so “maintain, start, expand, or block” is explicit per slice before a production change.
 - A rollout preflight can now simulate a proposed env change before applying it, turning promotion into an explicit approve/reject step instead of a manual read of multiple reports.
 - A rollout apply routine can now sit behind that preflight, so env mutation happens only through an auditable gate with backup and snapshot output.
+- A rollout execution routine can now extend that apply step into service restart and live status validation, closing the loop from proposal to verified runtime state.
 
 Concrete local evidence:
 
