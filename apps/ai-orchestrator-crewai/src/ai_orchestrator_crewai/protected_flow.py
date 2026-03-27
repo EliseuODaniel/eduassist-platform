@@ -185,6 +185,7 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
         return self.state.routing_label
 
     def _base_metadata(self) -> dict[str, Any]:
+        empty_event_telemetry = serialize_pilot_events(None)
         return {
             'conversation_id': self.state.conversation_id or f'telegram:{self.state.telegram_chat_id}',
             'slice_name': 'protected',
@@ -192,6 +193,9 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             'resolved_student_name': self.state.resolved_student_name,
             'flow_enabled': True,
             'flow_state_id': getattr(self.state, 'id', None),
+            'event_listener': empty_event_telemetry,
+            'event_summary': empty_event_telemetry.get('summary', {}),
+            'task_trace': empty_event_telemetry.get('task_trace', {}),
         }
 
     @listen('dependency_unavailable')
@@ -477,6 +481,7 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
         if self._state_key:
             _store_recent_student_name(self._state_key, self.state.resolved_student_name)
 
+        event_listener = serialize_pilot_events(event_recorder)
         return {
             'engine_name': 'crewai',
             'executed': True,
@@ -494,7 +499,9 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
                 'evidence_sources': list(self.state.evidence_source_ids),
                 'deterministic_backstop_used': backstop_used,
                 'validation_stack': ['flow_state', 'pydantic_output', 'judge', 'deterministic_backstop'],
-                'event_listener': serialize_pilot_events(event_recorder),
+                'event_listener': event_listener,
+                'event_summary': event_listener.get('summary', {}),
+                'task_trace': event_listener.get('task_trace', {}),
                 'flow_state_id': getattr(self.state, 'id', None),
                 'flow_state_persisted': get_sqlite_flow_persistence('protected') is not None,
             },

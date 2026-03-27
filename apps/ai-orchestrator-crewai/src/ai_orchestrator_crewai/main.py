@@ -99,6 +99,7 @@ async def status(
             'planner-composer-judge',
             'flow-state-routing',
             'flow-state-persistence',
+            'task-trace-telemetry',
         ],
         'flowStateDir': settings.crewai_flow_state_dir,
     }

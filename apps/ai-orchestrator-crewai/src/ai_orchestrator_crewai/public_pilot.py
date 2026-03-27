@@ -17,7 +17,7 @@ except Exception:  # pragma: no cover - defensive import
     crewai_pkg = None  # type: ignore[assignment]
     Agent = Crew = LLM = Process = Task = None  # type: ignore[assignment]
 
-from .listeners import capture_pilot_events, serialize_pilot_events
+from .listeners import capture_pilot_events, serialize_pilot_events, suppress_crewai_tracing_messages
 from .flow_persistence import build_flow_state_id
 
 
@@ -676,24 +676,25 @@ async def run_public_crewai_pilot(
     from .public_flow import PublicShadowFlow
 
     flow = PublicShadowFlow(settings=settings)
-    result = await flow.kickoff_async(
-        inputs={
-            'id': build_flow_state_id(
-                slice_name='public',
-                conversation_id=conversation_id or (
+    with suppress_crewai_tracing_messages():
+        result = await flow.kickoff_async(
+            inputs={
+                'id': build_flow_state_id(
+                    slice_name='public',
+                    conversation_id=conversation_id or (
+                        f'telegram:{telegram_chat_id}' if channel == 'telegram' and telegram_chat_id is not None else None
+                    ),
+                    telegram_chat_id=telegram_chat_id,
+                    channel=channel,
+                ),
+                'message': message,
+                'conversation_id': conversation_id or (
                     f'telegram:{telegram_chat_id}' if channel == 'telegram' and telegram_chat_id is not None else None
                 ),
-                telegram_chat_id=telegram_chat_id,
-                channel=channel,
-            ),
-            'message': message,
-            'conversation_id': conversation_id or (
-                f'telegram:{telegram_chat_id}' if channel == 'telegram' and telegram_chat_id is not None else None
-            ),
-            'telegram_chat_id': telegram_chat_id,
-            'channel': channel,
-        }
-    )
+                'telegram_chat_id': telegram_chat_id,
+                'channel': channel,
+            }
+        )
     return result if isinstance(result, dict) else {
         'engine_name': 'crewai',
         'executed': False,

@@ -6,6 +6,8 @@ from typing import Any
 
 import httpx
 
+from .listeners import suppress_crewai_tracing_messages
+
 
 def _normalize_text(value: str) -> str:
     return ' '.join(str(value or '').strip().lower().split())
@@ -231,14 +233,15 @@ async def run_workflow_crewai_pilot(
     from .workflow_flow import WorkflowShadowFlow
 
     flow = WorkflowShadowFlow(settings=settings)
-    result = await flow.kickoff_async(
-        inputs={
-            'message': message,
-            'conversation_id': conversation_id,
-            'telegram_chat_id': telegram_chat_id,
-            'channel': channel,
-        }
-    )
+    with suppress_crewai_tracing_messages():
+        result = await flow.kickoff_async(
+            inputs={
+                'message': message,
+                'conversation_id': conversation_id,
+                'telegram_chat_id': telegram_chat_id,
+                'channel': channel,
+            }
+        )
     if isinstance(result, dict):
         return result
     return {

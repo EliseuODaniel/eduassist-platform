@@ -139,6 +139,7 @@ class PublicShadowFlow(Flow[PublicFlowState]):
 
     @listen('dependency_unavailable')
     def handle_dependency_unavailable(self) -> dict[str, Any]:
+        empty_event_telemetry = serialize_pilot_events(None)
         return {
             'engine_name': 'crewai',
             'executed': False,
@@ -149,11 +150,15 @@ class PublicShadowFlow(Flow[PublicFlowState]):
                 'normalized_message': self.state.normalized_message,
                 'flow_enabled': True,
                 'flow_state_id': getattr(self.state, 'id', None),
+                'event_listener': empty_event_telemetry,
+                'event_summary': empty_event_telemetry.get('summary', {}),
+                'task_trace': empty_event_telemetry.get('task_trace', {}),
             },
         }
 
     @listen('llm_unavailable')
     def handle_llm_unavailable(self) -> dict[str, Any]:
+        empty_event_telemetry = serialize_pilot_events(None)
         return {
             'engine_name': 'crewai',
             'executed': False,
@@ -164,6 +169,9 @@ class PublicShadowFlow(Flow[PublicFlowState]):
                 'normalized_message': self.state.normalized_message,
                 'flow_enabled': True,
                 'flow_state_id': getattr(self.state, 'id', None),
+                'event_listener': empty_event_telemetry,
+                'event_summary': empty_event_telemetry.get('summary', {}),
+                'task_trace': empty_event_telemetry.get('task_trace', {}),
             },
         }
 
@@ -175,6 +183,7 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             citations=[self._shortlisted_docs[0].doc_id] if self._shortlisted_docs else [],
         )
         judge = PublicPilotJudge(valid=True, reason='deterministic_fast_path', revision_needed=False)
+        empty_event_telemetry = serialize_pilot_events(None)
         self.state.answer = answer
         self.state.judge = judge
         self.state.deterministic_backstop_used = True
@@ -199,6 +208,9 @@ class PublicShadowFlow(Flow[PublicFlowState]):
                 'validation_stack': ['flow_router', 'deterministic_fast_path'],
                 'flow_enabled': True,
                 'flow_state_id': getattr(self.state, 'id', None),
+                'event_listener': empty_event_telemetry,
+                'event_summary': empty_event_telemetry.get('summary', {}),
+                'task_trace': empty_event_telemetry.get('task_trace', {}),
             },
         }
 
@@ -326,6 +338,7 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             self.state.active_entity = self.state.plan.entity
             self.state.active_attribute = self.state.plan.attribute
 
+        event_listener = serialize_pilot_events(event_recorder)
         metadata: dict[str, Any] = {
             'conversation_id': self.state.conversation_id,
             'slice_name': 'public',
@@ -341,7 +354,9 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             'evidence_sources': list(self.state.evidence_source_ids),
             'deterministic_backstop_used': backstop_used,
             'validation_stack': ['flow_state', 'pydantic_output', 'judge', 'deterministic_backstop'],
-            'event_listener': serialize_pilot_events(event_recorder),
+            'event_listener': event_listener,
+            'event_summary': event_listener.get('summary', {}),
+            'task_trace': event_listener.get('task_trace', {}),
             'flow_enabled': True,
             'flow_state_id': getattr(self.state, 'id', None),
             'flow_state_persisted': get_sqlite_flow_persistence('public') is not None,

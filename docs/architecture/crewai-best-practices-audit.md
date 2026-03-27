@@ -30,6 +30,7 @@ That is closer to current best practice than trying to turn every request into a
 - bounded crews with explicit roles
 - structured task outputs via `output_pydantic`
 - event-listener telemetry in the public and protected pilots
+- stable per-task event telemetry surfaced back in `event_summary` and `task_trace`
 - real CrewAI `Flow` wrappers for `public` and `protected`, with typed state and explicit routing labels
 - persisted `Flow` state for `public` and `protected` using `SQLiteFlowPersistence`
 - deterministic validation stack:
@@ -70,6 +71,7 @@ For the current comparison phase, the remaining simpler shape is intentional:
 - support/workflow use real flows with deterministic control-plane handlers
 - stateful persistence is already active in `public` and `protected`
 - support/workflow still rely more heavily on the main orchestrator for broader conversation affinity
+- interactive tracing prompts are suppressed in service mode, though CrewAI still emits some non-blocking Flow console panels to logs
 
 That keeps the comparison fair and limits production risk.
 
@@ -90,6 +92,7 @@ The current implementation is aligned with modern CrewAI practice in the places 
 - grounded composition
 - output judging
 - event telemetry
+- surfaced task-level timing and agent/crew traces
 - flow-owned state persistence in the higher-value multi-turn slices
 
 And it deliberately keeps deterministic rails where this product still needs stronger operational control:

@@ -49,7 +49,6 @@ What is strong today:
 Main gap versus top-line LangGraph usage:
 
 - no native `interrupt()` / `Command` human-in-the-loop path
-- no subgraph decomposition by slice
 - no checkpoint id / node-path metadata bridged into the existing trace surface yet
 - no LangGraph-native durable execution story beyond checkpointed state recovery
 
@@ -71,6 +70,7 @@ Main gap versus top-line CrewAI usage:
 - support/workflow still lean heavily on deterministic handlers
 - support/workflow do not persist their `Flow` state yet
 - conversation affinity and longer-lived state still live partly outside the CrewAI side
+- service logs still include CrewAI Flow console panels even though the interactive trace prompt is now suppressed
 
 ## Progress Snapshot
 
@@ -78,6 +78,9 @@ Validated in this round:
 
 - LangGraph now runs with a native Postgres-backed checkpointer and stable `thread_id` mapping.
 - CrewAI now persists `Flow` state for `public` and `protected` through SQLite.
+- LangGraph now delegates through slice subgraphs for `public`, `protected`, and `support`.
+- CrewAI now emits per-task event telemetry with task, agent, crew, and timing summaries on agentic paths.
+- CrewAI no longer blocks on the interactive tracing prompt during service requests.
 
 Concrete local evidence:
 
@@ -88,6 +91,10 @@ Concrete local evidence:
 - `langgraph_checkpoint.checkpoints` already contains checkpoints for `conversation:topline-public-1`
 - `/workspace/artifacts/crewai-flow-state/public.sqlite3` and `protected.sqlite3` exist in the CrewAI pilot container
 - both CrewAI SQLite databases already contain persisted `flow_states`
+- public graph paths now include `select_slice -> public_slice`
+- protected graph paths now include `select_slice -> protected_slice`
+- support graph paths now include `select_slice -> support_slice`
+- `event_summary` and `task_trace` now appear in agentic CrewAI responses for `public` and `protected`
 
 ## Upgrade Principles
 
@@ -162,6 +169,10 @@ Success criteria:
 - parent router delegates to named subgraphs
 - per-slice state inspection is simpler
 - no regression in current benchmark suite
+
+Status:
+
+- implemented in this round
 
 ### 4. Add native graph-state observability
 
@@ -248,6 +259,10 @@ Why:
 Success criteria:
 
 - task-level replay artifacts can be compared with LangGraph node-level traces
+
+Status:
+
+- implemented in this round for agentic `public` and `protected` paths
 
 ## Phase 3: Make The Comparison Top-Line, Not Only Fair
 

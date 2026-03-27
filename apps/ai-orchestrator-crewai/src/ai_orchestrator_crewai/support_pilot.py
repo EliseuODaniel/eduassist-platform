@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from .listeners import suppress_crewai_tracing_messages
 from .workflow_pilot import _internal_get, _internal_post, _normalize_text
 
 
@@ -163,14 +164,15 @@ async def run_support_crewai_pilot(
     from .support_flow import SupportShadowFlow
 
     flow = SupportShadowFlow(settings=settings)
-    result = await flow.kickoff_async(
-        inputs={
-            'message': message,
-            'conversation_id': conversation_id,
-            'telegram_chat_id': telegram_chat_id,
-            'channel': channel,
-        }
-    )
+    with suppress_crewai_tracing_messages():
+        result = await flow.kickoff_async(
+            inputs={
+                'message': message,
+                'conversation_id': conversation_id,
+                'telegram_chat_id': telegram_chat_id,
+                'channel': channel,
+            }
+        )
     if isinstance(result, dict):
         return result
     return {

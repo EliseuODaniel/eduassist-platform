@@ -23,6 +23,7 @@ class OrchestrationState(TypedDict, total=False):
     request: OrchestrationRequest
     classification: IntentClassification
     route: str
+    slice_name: str
     reason: str
     retrieval_backend: str
     selected_tools: list[str]
@@ -1557,6 +1558,30 @@ def route_request(state: OrchestrationState, runtime: GraphRuntimeConfig) -> Orc
     }
 
 
+def select_slice(state: OrchestrationState) -> OrchestrationState:
+    route = state['route']
+    classification = state['classification']
+
+    if route == OrchestrationMode.deny.value:
+        slice_name = 'deny'
+    elif route == OrchestrationMode.clarify.value:
+        slice_name = 'clarify'
+    elif classification.domain is QueryDomain.support:
+        slice_name = 'support'
+    elif classification.domain in {QueryDomain.academic, QueryDomain.finance} or classification.access_tier in {
+        AccessTier.authenticated,
+        AccessTier.sensitive,
+    }:
+        slice_name = 'protected'
+    else:
+        slice_name = 'public'
+
+    return {
+        'slice_name': slice_name,
+        'graph_path': _append_path(state, 'select_slice'),
+    }
+
+
 def hybrid_retrieval(state: OrchestrationState) -> OrchestrationState:
     classification = state['classification']
     selected_tools = ['search_public_documents']
@@ -1781,13 +1806,18 @@ def get_graph_blueprint() -> dict[str, object]:
             'classify_request',
             'security_gate',
             'route_request',
-            'hybrid_retrieval',
-            'graph_rag_retrieval',
-            'structured_tool_call',
-            'handoff',
+            'select_slice',
+            'public_slice',
+            'protected_slice',
+            'support_slice',
             'deny',
             'clarify',
         ],
+        'subgraphs': {
+            'public_slice': ['hybrid_retrieval', 'graph_rag_retrieval', 'structured_tool_call'],
+            'protected_slice': ['structured_tool_call'],
+            'support_slice': ['structured_tool_call', 'handoff'],
+        },
         'terminal_routes': [
             OrchestrationMode.hybrid_retrieval.value,
             OrchestrationMode.graph_rag.value,
@@ -1799,39 +1829,130 @@ def get_graph_blueprint() -> dict[str, object]:
     }
 
 
+def _enter_public_slice(state: OrchestrationState) -> OrchestrationState:
+    return {
+        'slice_name': 'public',
+        'graph_path': _append_path(state, 'public_slice'),
+    }
+
+
+def _public_slice_route(state: OrchestrationState) -> str:
+    route = state['route']
+    if route in {
+        OrchestrationMode.hybrid_retrieval.value,
+        OrchestrationMode.graph_rag.value,
+        OrchestrationMode.structured_tool.value,
+    }:
+        return route
+    return OrchestrationMode.structured_tool.value
+
+
+def _build_public_slice_subgraph() -> object:
+    workflow = StateGraph(OrchestrationState)
+    workflow.add_node('enter_public_slice', _enter_public_slice)
+    workflow.add_node('hybrid_retrieval', hybrid_retrieval)
+    workflow.add_node('graph_rag_retrieval', graph_rag_retrieval)
+    workflow.add_node('structured_tool_call', structured_tool_call)
+    workflow.add_edge(START, 'enter_public_slice')
+    workflow.add_conditional_edges(
+        'enter_public_slice',
+        _public_slice_route,
+        {
+            OrchestrationMode.hybrid_retrieval.value: 'hybrid_retrieval',
+            OrchestrationMode.graph_rag.value: 'graph_rag_retrieval',
+            OrchestrationMode.structured_tool.value: 'structured_tool_call',
+        },
+    )
+    workflow.add_edge('hybrid_retrieval', END)
+    workflow.add_edge('graph_rag_retrieval', END)
+    workflow.add_edge('structured_tool_call', END)
+    return workflow.compile()
+
+
+def _enter_protected_slice(state: OrchestrationState) -> OrchestrationState:
+    return {
+        'slice_name': 'protected',
+        'graph_path': _append_path(state, 'protected_slice'),
+    }
+
+
+def _build_protected_slice_subgraph() -> object:
+    workflow = StateGraph(OrchestrationState)
+    workflow.add_node('enter_protected_slice', _enter_protected_slice)
+    workflow.add_node('structured_tool_call', structured_tool_call)
+    workflow.add_edge(START, 'enter_protected_slice')
+    workflow.add_edge('enter_protected_slice', 'structured_tool_call')
+    workflow.add_edge('structured_tool_call', END)
+    return workflow.compile()
+
+
+def _enter_support_slice(state: OrchestrationState) -> OrchestrationState:
+    return {
+        'slice_name': 'support',
+        'graph_path': _append_path(state, 'support_slice'),
+    }
+
+
+def _support_slice_route(state: OrchestrationState) -> str:
+    if state['route'] == OrchestrationMode.handoff.value:
+        return OrchestrationMode.handoff.value
+    return OrchestrationMode.structured_tool.value
+
+
+def _build_support_slice_subgraph() -> object:
+    workflow = StateGraph(OrchestrationState)
+    workflow.add_node('enter_support_slice', _enter_support_slice)
+    workflow.add_node('structured_tool_call', structured_tool_call)
+    workflow.add_node('handoff', handoff)
+    workflow.add_edge(START, 'enter_support_slice')
+    workflow.add_conditional_edges(
+        'enter_support_slice',
+        _support_slice_route,
+        {
+            OrchestrationMode.structured_tool.value: 'structured_tool_call',
+            OrchestrationMode.handoff.value: 'handoff',
+        },
+    )
+    workflow.add_edge('structured_tool_call', END)
+    workflow.add_edge('handoff', END)
+    return workflow.compile()
+
+
 def build_orchestration_graph(graph_rag_enabled: bool, *, checkpointer: object | None = None) -> object:
     workflow = StateGraph(OrchestrationState)
     runtime: GraphRuntimeConfig = {'graph_rag_enabled': graph_rag_enabled}
+    public_slice = _build_public_slice_subgraph()
+    protected_slice = _build_protected_slice_subgraph()
+    support_slice = _build_support_slice_subgraph()
 
     workflow.add_node('classify_request', classify_request)
     workflow.add_node('security_gate', security_gate)
     workflow.add_node('route_request', lambda state: route_request(state, runtime))
-    workflow.add_node('hybrid_retrieval', hybrid_retrieval)
-    workflow.add_node('graph_rag_retrieval', graph_rag_retrieval)
-    workflow.add_node('structured_tool_call', structured_tool_call)
-    workflow.add_node('handoff', handoff)
+    workflow.add_node('select_slice', select_slice)
+    workflow.add_node('public_slice', public_slice)
+    workflow.add_node('protected_slice', protected_slice)
+    workflow.add_node('support_slice', support_slice)
     workflow.add_node('deny', deny)
     workflow.add_node('clarify', clarify)
 
     workflow.add_edge(START, 'classify_request')
     workflow.add_edge('classify_request', 'security_gate')
     workflow.add_edge('security_gate', 'route_request')
+    workflow.add_edge('route_request', 'select_slice')
     workflow.add_conditional_edges(
-        'route_request',
-        lambda state: state['route'],
+        'select_slice',
+        lambda state: state['slice_name'],
         {
-            OrchestrationMode.hybrid_retrieval.value: 'hybrid_retrieval',
-            OrchestrationMode.graph_rag.value: 'graph_rag_retrieval',
-            OrchestrationMode.structured_tool.value: 'structured_tool_call',
-            OrchestrationMode.handoff.value: 'handoff',
-            OrchestrationMode.deny.value: 'deny',
-            OrchestrationMode.clarify.value: 'clarify',
+            'public': 'public_slice',
+            'protected': 'protected_slice',
+            'support': 'support_slice',
+            'deny': 'deny',
+            'clarify': 'clarify',
         },
     )
-    workflow.add_edge('hybrid_retrieval', END)
-    workflow.add_edge('graph_rag_retrieval', END)
-    workflow.add_edge('structured_tool_call', END)
-    workflow.add_edge('handoff', END)
+    workflow.add_edge('public_slice', END)
+    workflow.add_edge('protected_slice', END)
+    workflow.add_edge('support_slice', END)
     workflow.add_edge('deny', END)
     workflow.add_edge('clarify', END)
     return workflow.compile(checkpointer=checkpointer)

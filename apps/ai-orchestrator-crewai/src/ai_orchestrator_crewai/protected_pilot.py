@@ -18,7 +18,7 @@ except Exception:  # pragma: no cover
     crewai_pkg = None  # type: ignore[assignment]
     Agent = Crew = LLM = Process = Task = None  # type: ignore[assignment]
 
-from .listeners import capture_pilot_events, serialize_pilot_events
+from .listeners import capture_pilot_events, serialize_pilot_events, suppress_crewai_tracing_messages
 from .flow_persistence import build_flow_state_id
 
 
@@ -645,20 +645,21 @@ async def run_protected_crewai_pilot(
     from .protected_flow import ProtectedShadowFlow
 
     flow = ProtectedShadowFlow(settings=settings)
-    result = await flow.kickoff_async(
-        inputs={
-            'id': build_flow_state_id(
-                slice_name='protected',
-                conversation_id=conversation_id,
-                telegram_chat_id=telegram_chat_id,
-                channel=channel,
-            ),
-            'message': message,
-            'conversation_id': conversation_id,
-            'telegram_chat_id': telegram_chat_id,
-            'channel': channel,
-        }
-    )
+    with suppress_crewai_tracing_messages():
+        result = await flow.kickoff_async(
+            inputs={
+                'id': build_flow_state_id(
+                    slice_name='protected',
+                    conversation_id=conversation_id,
+                    telegram_chat_id=telegram_chat_id,
+                    channel=channel,
+                ),
+                'message': message,
+                'conversation_id': conversation_id,
+                'telegram_chat_id': telegram_chat_id,
+                'channel': channel,
+            }
+        )
     if isinstance(result, dict):
         return result
     return {
