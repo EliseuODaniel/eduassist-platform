@@ -1,6 +1,6 @@
 # Framework Release Snapshot Report
 
-Date: 2026-03-27T15:48:36.619411+00:00
+Date: 2026-03-27T15:49:07.130835+00:00
 
 ## Goal
 
@@ -8,11 +8,11 @@ Capture a single operational snapshot before merge or rollout promotion, using l
 
 ## Release Posture
 
-- classification: `blocked`
-- ready for guarded release: `False`
+- classification: `ready`
+- ready for guarded release: `True`
 - branch: `feature/two-stack-shadow-comparison`
-- commit: `3a4b8dde4feb6b0ddaca16fdf3fe95cf29f5762d`
-- working tree clean: `False`
+- commit: `2f40971d1d9324a4ed4b4f77f2c44a1e1ed64fd4`
+- working tree clean: `True`
 
 ## Runtime Snapshot
 
@@ -45,7 +45,3 @@ Capture a single operational snapshot before merge or rollout promotion, using l
 | `2026-03-27T15:39:44.095113+00:00` | `rollback` | `public` | `2%` | `1%` | `passed` | `codex` | Reverter public para o nivel anterior do canario |
 | `2026-03-27T15:37:33.016974+00:00` | `promotion` | `public` | `1%` | `2%` | `passed` | `codex` | Expandir public de 1% para 2% apos estabilidade do canario |
 | `2026-03-27T15:33:33.005730+00:00` | `promotion` | `public` | `1%` | `2%` | `passed` | `` |  |
-
-## Blocking Errors
-
-- working tree is not clean
