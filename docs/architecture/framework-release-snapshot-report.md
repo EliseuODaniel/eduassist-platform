@@ -1,6 +1,6 @@
 # Framework Release Snapshot Report
 
-Date: 2026-03-27T15:57:58.702102+00:00
+Date: 2026-03-27T16:06:40.855843+00:00
 
 ## Goal
 
@@ -11,15 +11,15 @@ Capture a single operational snapshot before merge or rollout promotion, using l
 - classification: `ready`
 - ready for guarded release: `True`
 - branch: `feature/two-stack-shadow-comparison`
-- commit: `04fbdb187ffba2a11609958583479fa70f9b19ce`
+- commit: `d826a3b889d393fccd0d4ce7c19c321e4636e734`
 - working tree clean: `True`
 
 ## Runtime Snapshot
 
 - resolved primary stack: `langgraph`
 - experiment primary engine: `crewai`
-- experiment slices: `support,public,workflow`
-- experiment slice rollouts: `support:100,public:1,workflow:100`
+- experiment slices: `public,support,workflow`
+- experiment slice rollouts: `public:2,support:100,workflow:100`
 - experiment allowlist slices: `support,workflow`
 
 ## Service Health
@@ -42,6 +42,7 @@ Capture a single operational snapshot before merge or rollout promotion, using l
 
 | Date | Intent | Slice | Before | After | Result | Operator | Reason |
 | --- | --- | --- | ---: | ---: | --- | --- | --- |
+| `2026-03-27T16:01:18.904547+00:00` | `promotion` | `public` | `1%` | `2%` | `failed` | `codex` | Expandir public de 1% para 2% conforme recomendacao do gate live |
 | `2026-03-27T15:39:44.095113+00:00` | `rollback` | `public` | `2%` | `1%` | `passed` | `codex` | Reverter public para o nivel anterior do canario |
 | `2026-03-27T15:37:33.016974+00:00` | `promotion` | `public` | `1%` | `2%` | `passed` | `codex` | Expandir public de 1% para 2% apos estabilidade do canario |
 | `2026-03-27T15:33:33.005730+00:00` | `promotion` | `public` | `1%` | `2%` | `passed` | `legacy-unknown` | Legacy changelog entry normalized after operator/reason became required audit fields. |
