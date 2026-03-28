@@ -162,6 +162,10 @@ def _is_followup_style_message(message: str) -> bool:
         or normalized.startswith('mas ')
         or normalized.startswith('o que falta')
         or normalized.startswith('e quanto')
+        or normalized.startswith('qual valor')
+        or normalized.startswith('qual vencimento')
+        or normalized.startswith('qual a matricula')
+        or normalized.startswith('qual a matrícula')
         or any(term in normalized for term in {' dele', ' dela', ' desse aluno', ' dessa aluna', ' desse filho', ' dessa filha'})
     )
 
@@ -177,9 +181,35 @@ def _augment_protected_message_with_state(
         return message
     if not _is_followup_style_message(message) and len(_query_terms(message)) > 6:
         return message
+    terms = _query_terms(message)
     hints: list[str] = []
     if active_student_name:
         hints.append(active_student_name)
+    explicit_attribute_terms = {
+        'nota',
+        'notas',
+        'faltas',
+        'frequencia',
+        'provas',
+        'prova',
+        'avaliacoes',
+        'documentacao',
+        'documentos',
+        'matricula',
+        'financeiro',
+        'boleto',
+        'pagamento',
+        'mensalidade',
+        'cadastro',
+        'acesso',
+        'filhos',
+        'filho',
+        'filha',
+        'aberto',
+        'vencimento',
+    }
+    if terms & explicit_attribute_terms:
+        return ' '.join(part for part in [message, *hints] if part).strip()
     normalized_domain = _normalize_text(active_domain or '')
     normalized_attribute = _normalize_text(active_attribute or '')
     if normalized_domain:
@@ -344,9 +374,16 @@ def _requires_student(message: str) -> bool:
         'financeiro',
         'boleto',
         'pagamento',
+        'mensalidade',
         'documentacao',
         'documentos',
         'matricula',
+        'aberto',
+        'saldo',
+        'devendo',
+        'pendente',
+        'vencimento',
+        'data',
         'lucas',
         'ana',
     }
@@ -368,9 +405,18 @@ def _is_identity_scope_query(message: str) -> bool:
         'consigo',
         'ver',
         'exatamente',
+        'cadastro',
+        'alterar',
+        'altero',
     }
     normalized = _normalize_text(message)
-    if 'consigo ver' in normalized or 'o que exatamente' in normalized:
+    if (
+        'consigo ver' in normalized
+        or 'o que exatamente' in normalized
+        or 'altero meu cadastro' in normalized
+        or 'alterar meu cadastro' in normalized
+        or 'dados cadastrais' in normalized
+    ):
         return True
     return bool(terms & identity_terms)
 
@@ -618,6 +664,17 @@ def _identity_backstop(actor: dict[str, Any], message: str) -> str | None:
     if any(term in terms for term in {'filhos', 'filho', 'filha'}) and not (terms & record_terms):
         names = ', '.join(str(item.get('full_name', '')) for item in linked)
         return f"Sua conta esta vinculada a {names}."
+    if (
+        'cadastro' in terms
+        or 'altero meu cadastro' in normalized_message
+        or 'alterar meu cadastro' in normalized_message
+        or 'dados cadastrais' in normalized_message
+    ):
+        return (
+            'Para atualizar seu cadastro, o caminho mais seguro e revisar os dados no portal e, '
+            'se precisar de alteracao assistida, falar com a secretaria. '
+            'Se quiser, eu posso te orientar sobre qual dado voce precisa ajustar primeiro.'
+        )
     return None
 
 
@@ -703,6 +760,13 @@ def _infer_fast_path_plan(message: str, student: dict[str, Any] | None) -> Prote
             domain='institution',
             attribute='enrollment',
             relevant_sources=['admin.overview'],
+        )
+    if any(term in terms for term in {'cadastro', 'alterar', 'altero', 'dados'}):
+        return ProtectedPilotPlan(
+            intent='actor_identity',
+            domain='identity',
+            attribute='profile_update',
+            relevant_sources=['identity.actor'],
         )
     if any(term in terms for term in {'filhos', 'filho', 'filha', 'logado', 'acesso', 'dados', 'conta'}):
         return ProtectedPilotPlan(

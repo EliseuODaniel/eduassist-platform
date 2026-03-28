@@ -21,8 +21,34 @@ from .base import ResponseEngine, ShadowRunResult
 logger = logging.getLogger(__name__)
 
 
+def _public_meta_shadow_slice(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '').strip().lower()
+    if not message:
+        return False
+    direct_meta_terms = (
+        'ola',
+        'olá',
+        'oi',
+        'bom dia',
+        'boa tarde',
+        'boa noite',
+        'qual seu nome',
+        'quem e voce',
+        'quem é você',
+        'voce e uma llm',
+        'você é uma llm',
+        'qual llm',
+        'qual modelo',
+        'com quem eu falo',
+        'com quem estou falando',
+    )
+    return any(term in message for term in direct_meta_terms)
+
+
 def _protected_shadow_slice(request: Any) -> bool:
     message = str(getattr(request, 'message', '') or '').lower()
+    if _public_meta_shadow_slice(request):
+        return False
     protected_terms = (
         'nota',
         'notas',
@@ -44,13 +70,40 @@ def _protected_shadow_slice(request: Any) -> bool:
         'minha filha',
         'estou logado',
         'meu acesso',
+        'meu cadastro',
+        'altero meu cadastro',
+        'alterar meu cadastro',
+        'como altero',
+        'como alterar',
+        'cadastro',
+        'dados cadastrais',
+        'em aberto',
+        'valor em aberto',
+        'vencimento',
+        'matricula',
         'lucas',
         'ana',
     )
     if any(term in message for term in protected_terms):
         return True
     user = getattr(request, 'user', None)
-    if user is not None and bool(getattr(user, 'authenticated', False)):
+    authenticated = user is not None and bool(getattr(user, 'authenticated', False))
+    followup_terms = (
+        'e a',
+        'e o',
+        'e as',
+        'e os',
+        'e do',
+        'e da',
+        'e dele',
+        'e dela',
+        'o que falta',
+        'qual valor',
+        'qual vencimento',
+        'como altero meu cadastro',
+        'como alterar meu cadastro',
+    )
+    if authenticated and any(term in message for term in followup_terms):
         return True
     return False
 
