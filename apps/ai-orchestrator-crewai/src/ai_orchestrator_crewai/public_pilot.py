@@ -135,9 +135,100 @@ def _augment_public_message_with_state(
         context_hints.extend(['documentos', 'enviar documentos', 'envio', 'secretaria', 'email', 'portal'])
     if normalized_entity in {'comparativo', 'diferenciais', 'diferenciais da escola'} or normalized_attribute in {'comparative', 'diferenciais'}:
         context_hints.extend(['comparacao', 'publica', 'particular', 'projeto', 'acompanhamento', 'rotina'])
+    if normalized_entity in {'localizacao', 'endereco'} or normalized_attribute in {'address', 'city', 'state', 'postal_code'}:
+        context_hints.extend(['endereco', 'cidade', 'estado', 'cep'])
     if normalized_entity in {'assistente', 'bot'} or normalized_attribute == 'capabilities':
         context_hints.extend(['assistente', 'capacidades', 'ajuda'])
     return ' '.join(part for part in [message, *context_hints] if part).strip()
+
+
+def _parse_decimal_amount(raw_value: str) -> float | None:
+    value = str(raw_value or '').strip()
+    if not value:
+        return None
+    value = value.replace('R$', '').replace(' ', '')
+    if ',' in value and '.' in value:
+        value = value.replace('.', '').replace(',', '.')
+    elif ',' in value:
+        value = value.replace(',', '.')
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
+def _format_brl(value: float) -> str:
+    formatted = f'{value:,.2f}'
+    return formatted.replace(',', 'X').replace('.', ',').replace('X', '.')
+
+
+def _extract_hypothetical_children_count(message: str) -> int | None:
+    normalized = _normalize_text(message)
+    for pattern in (
+        r'\bse eu tiver\s+(\d+)\s+filhos?\b',
+        r'\bse eu tivesse\s+(\d+)\s+filhos?\b',
+        r'\b(\d+)\s+filhos?\b',
+    ):
+        match = re.search(pattern, normalized)
+        if match:
+            try:
+                return int(match.group(1))
+            except ValueError:
+                return None
+    return None
+
+
+def _tuition_rows(docs: list[EvidenceDoc]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for doc in docs:
+        if not doc.doc_id.startswith('tuition.'):
+            continue
+        parts = [part.strip() for part in doc.text.split('|') if part.strip()]
+        row: dict[str, Any] = {
+            'segment': doc.title.strip(),
+            'shift_label': parts[0] if len(parts) >= 1 else '',
+            'monthly_amount_raw': parts[1] if len(parts) >= 2 else '',
+            'enrollment_fee_raw': parts[2] if len(parts) >= 3 else '',
+            'notes': parts[3] if len(parts) >= 4 else '',
+        }
+        row['monthly_amount'] = _parse_decimal_amount(str(row['monthly_amount_raw']))
+        row['enrollment_fee'] = _parse_decimal_amount(str(row['enrollment_fee_raw']))
+        rows.append(row)
+    return rows
+
+
+def _direct_location_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    terms = _query_terms(message)
+    normalized = _normalize_text(message)
+    if not (
+        {'endereco', 'endereço', 'estado', 'cidade', 'cep', 'localizacao', 'localização'} & terms
+        or 'onde fica' in normalized
+        or 'por que antes nao encontrou o endereco' in normalized
+        or 'por que antes não encontrou o endereco' in normalized
+    ):
+        return None
+    location_doc = next((doc for doc in docs if doc.doc_id == 'profile.location'), None)
+    if location_doc is None:
+        return None
+    text = location_doc.text
+    city_match = re.search(r',\s*([^,]+),\s*([^,/]+)/([A-Z]{2})', text)
+    cep_match = re.search(r'CEP\s*([0-9-]+)', text, flags=re.IGNORECASE)
+    if 'por que antes' in normalized and 'endereco' in normalized:
+        return (
+            'Antes eu nao tinha resolvido corretamente esse item pelo perfil publico. '
+            f"Corrigindo: {text.split('Site:', 1)[0].strip().rstrip('.')}."
+        )
+    if 'estado' in terms:
+        if city_match:
+            return f'O endereco publicado fica em {city_match.group(2).strip()}/{city_match.group(3).strip()}.'
+    if 'cidade' in terms:
+        if city_match:
+            return f'O endereco publicado fica em {city_match.group(2).strip()}, {city_match.group(3).strip()}.'
+    if 'cep' in terms and cep_match:
+        return f'O CEP publicado da escola e {cep_match.group(1)}.'
+    if {'endereco', 'endereço', 'localizacao', 'localização'} & terms or 'onde fica' in normalized:
+        return text.split('Site:', 1)[0].strip().rstrip('.')
+    return None
 
 
 def _stateful_public_followup_fast_answer(
@@ -148,6 +239,10 @@ def _stateful_public_followup_fast_answer(
 ) -> str | None:
     normalized_entity = _normalize_text(active_entity or '')
     terms = _query_terms(message)
+    if normalized_entity in {'localizacao', 'endereco'}:
+        location_answer = _direct_location_fast_answer(message, docs)
+        if location_answer:
+            return location_answer
     if normalized_entity in {'comparativo', 'diferenciais', 'diferenciais da escola'} and (
         {'pratica', 'rotina', 'muda', 'dia', 'acompanhamento', 'projeto'} & terms
     ):
@@ -545,7 +640,12 @@ def _direct_capabilities_fast_answer(message: str) -> str | None:
 
 def _direct_comparative_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
     terms = _query_terms(message)
-    if not ({'melhor', 'concorrencia', 'concorrente', 'publica', 'pagar', 'estudar'} & terms):
+    normalized = _normalize_text(message)
+    if not (
+        ({'melhor', 'concorrencia', 'concorrente', 'publica'} & terms)
+        or 'escola publica' in normalized
+        or 'na publica' in normalized
+    ):
         return None
     overview_doc = next((doc for doc in docs if doc.doc_id == 'profile.overview'), None)
     highlight_docs = [doc for doc in docs if doc.doc_id.startswith('highlight.')]
@@ -713,8 +813,64 @@ def _direct_required_documents_fast_answer(message: str, docs: list[EvidenceDoc]
 
 def _direct_tuition_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
     terms = _query_terms(message)
-    if 'mensalidade' not in terms:
+    normalized = _normalize_text(message)
+    child_count = _extract_hypothetical_children_count(message)
+    tuition_rows = _tuition_rows(docs)
+    tuition_terms = {'mensalidade', 'preco', 'precos', 'preco', 'valor', 'matricula', 'desconto', 'descontos'}
+    if not ((terms & tuition_terms) or child_count is not None):
         return None
+    if child_count is not None and 'filhos' in normalized and 'matricula' in normalized and tuition_rows:
+        enrollment_fees = [
+            float(row['enrollment_fee'])
+            for row in tuition_rows
+            if isinstance(row.get('enrollment_fee'), float)
+        ]
+        unique_fees = sorted({fee for fee in enrollment_fees if fee > 0})
+        if len(unique_fees) == 1:
+            enrollment_fee = unique_fees[0]
+            total = enrollment_fee * child_count
+            return (
+                f'Pela tabela publica atual, a taxa de matricula de referencia e R$ {_format_brl(enrollment_fee)} por aluno. '
+                f'Sem considerar bolsas, descontos comerciais ou variacao por segmento, para {child_count} matriculas isso daria R$ {_format_brl(total)}.'
+            )
+        if unique_fees:
+            preview = '; '.join(
+                f"{row.get('segment', 'Segmento')}: matricula R$ {_format_brl(float(row['enrollment_fee']))}"
+                for row in tuition_rows[:3]
+                if isinstance(row.get('enrollment_fee'), float)
+            )
+            return (
+                'Hoje a taxa de matricula publicada varia por segmento. '
+                f'As referencias que eu encontrei foram: {preview}. '
+                f'Se quiser, eu calculo um cenario hipotetico para {child_count} alunos no segmento que voce preferir.'
+            )
+    if tuition_rows and (
+        'media' in terms
+        or 'media' in normalized
+        or 'média' in normalized
+        or 'cada ano' in normalized
+        or 'por ano' in normalized
+        or 'cada segmento' in normalized
+        or 'por segmento' in normalized
+    ):
+        lines = ['Hoje as referencias publicas de mensalidade e matricula por segmento sao:']
+        for row in tuition_rows:
+            monthly_amount = row.get('monthly_amount')
+            enrollment_fee = row.get('enrollment_fee')
+            if not isinstance(monthly_amount, float):
+                continue
+            detail = (
+                f"- {row.get('segment', 'Segmento')} ({row.get('shift_label') or 'turno'}): "
+                f"mensalidade R$ {_format_brl(monthly_amount)}"
+            )
+            if isinstance(enrollment_fee, float):
+                detail += f" e taxa de matricula R$ {_format_brl(enrollment_fee)}"
+            notes = str(row.get('notes') or '').strip()
+            if notes:
+                detail += f". {notes}"
+            lines.append(detail)
+        if len(lines) > 1:
+            return '\n'.join(lines)
     preferred_terms = ()
     if {'medio', 'ensino'} & terms:
         preferred_terms = ('ensino medio',)
@@ -744,6 +900,14 @@ def _infer_public_followup_slots(
 ) -> tuple[str | None, str | None]:
     normalized = _normalize_text(f'{message} {answer_text}')
     terms = _query_terms(message)
+    if any(term in normalized for term in {'endereco', 'cep', 'sao paulo', 'rua doutor joao santos'}):
+        if 'estado' in terms:
+            return 'localizacao', 'state'
+        if 'cidade' in terms:
+            return 'localizacao', 'city'
+        if 'cep' in terms:
+            return 'localizacao', 'postal_code'
+        return 'localizacao', 'address'
     if (
         ({'publica', 'particular'} & set(normalized.split()))
         or 'comparacao vazia' in normalized
@@ -785,6 +949,12 @@ def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: li
     capabilities_answer = _direct_capabilities_fast_answer(message)
     if capabilities_answer:
         return capabilities_answer
+    location_answer = _direct_location_fast_answer(message, docs)
+    if location_answer:
+        return location_answer
+    tuition_answer = _direct_tuition_fast_answer(message, docs)
+    if tuition_answer:
+        return tuition_answer
     pedagogical_answer = _direct_pedagogical_fast_answer(message, docs)
     if pedagogical_answer:
         return pedagogical_answer
@@ -801,9 +971,6 @@ def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: li
     required_documents_answer = _direct_required_documents_fast_answer(message, docs)
     if required_documents_answer:
         return required_documents_answer
-    tuition_answer = _direct_tuition_fast_answer(message, docs)
-    if tuition_answer:
-        return tuition_answer
     curriculum_answer = _direct_curriculum_fast_answer(message, docs)
     if curriculum_answer:
         return curriculum_answer
@@ -899,6 +1066,14 @@ def _is_public_fast_path_query(message: str) -> bool:
         'o que você faz',
     }:
         return True
+    if (
+        'onde fica' in normalized
+        or ('estado' in normalized and 'endereco' in normalized)
+        or ('cidade' in normalized and 'endereco' in normalized)
+        or ('cep' in normalized and 'endereco' in normalized)
+        or ('por que antes' in normalized and 'endereco' in normalized)
+    ):
+        return True
     direct_terms = {
         'horario',
         'hora',
@@ -918,6 +1093,9 @@ def _is_public_fast_path_query(message: str) -> bool:
         'email',
         'site',
         'endereco',
+        'estado',
+        'cidade',
+        'cep',
         'biblioteca',
         'telegrama',
         'caixa',
@@ -927,6 +1105,12 @@ def _is_public_fast_path_query(message: str) -> bool:
         'exigidos',
         'necessarios',
         'mensalidade',
+        'valor',
+        'preco',
+        'precos',
+        'desconto',
+        'descontos',
+        'filhos',
         'curriculo',
         'curricular',
         'base',

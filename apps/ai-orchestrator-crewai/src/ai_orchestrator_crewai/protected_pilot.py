@@ -326,6 +326,8 @@ def _extract_unmatched_student_reference(actor: dict[str, Any], message: str) ->
     if not isinstance(linked_students, list) or not linked_students:
         return None
     normalized_message = _normalize_text(message)
+    if _is_hypothetical_public_pricing_query(message):
+        return None
     known_tokens: set[str] = set()
     for item in linked_students:
         if not isinstance(item, dict):
@@ -356,13 +358,31 @@ def _extract_unmatched_student_reference(actor: dict[str, Any], message: str) ->
     for token in re.findall(r'[a-z0-9]+', normalized_message):
         if len(token) < 3 or token in stopwords:
             continue
+        if token in {'tiver', 'tivesse', 'hipoteticamente', 'cenario', 'cenario', 'quanto', 'pagar'}:
+            continue
         if token not in known_tokens:
             if any(marker in normalized_message for marker in {'filho', 'filha'}) or token.istitle():
                 return token
     return None
 
 
+def _is_hypothetical_public_pricing_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    pricing_markers = {'mensalidade', 'matricula', 'desconto', 'bolsa', 'pagar', 'valor'}
+    institutional_markers = {'da escola', 'na escola', 'por ano', 'cada ano', 'por segmento', 'cada segmento', 'ensino medio', 'ensino fundamental'}
+    if 'filhos' in normalized:
+        if any(phrase in normalized for phrase in {'se eu tiver', 'se eu tivesse', 'hipoteticamente'}):
+            return any(marker in normalized for marker in pricing_markers)
+        if any(phrase in normalized for phrase in {'quanto vou pagar', 'quanto eu pagaria'}):
+            return any(marker in normalized for marker in pricing_markers)
+    if any(marker in normalized for marker in pricing_markers):
+        return any(marker in normalized for marker in institutional_markers)
+    return False
+
+
 def _requires_student(message: str) -> bool:
+    if _is_hypothetical_public_pricing_query(message):
+        return False
     terms = _query_terms(message)
     protected_terms = {
         'notas',
@@ -391,6 +411,8 @@ def _requires_student(message: str) -> bool:
 
 
 def _is_identity_scope_query(message: str) -> bool:
+    if _is_hypothetical_public_pricing_query(message):
+        return False
     terms = _query_terms(message)
     identity_terms = {
         'filhos',

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
+import unicodedata
 
 import httpx
 
@@ -21,8 +23,60 @@ from .base import ResponseEngine, ShadowRunResult
 logger = logging.getLogger(__name__)
 
 
+def _normalize_shadow_message(value: str) -> str:
+    text = unicodedata.normalize('NFKD', str(value or ''))
+    text = ''.join(ch for ch in text if not unicodedata.combining(ch))
+    text = re.sub(r'[^a-z0-9\s]+', ' ', text.lower())
+    return ' '.join(text.split())
+
+
+def _contains_phrase(message: str, phrase: str) -> bool:
+    normalized_message = _normalize_shadow_message(message)
+    normalized_phrase = _normalize_shadow_message(phrase)
+    if not normalized_message or not normalized_phrase:
+        return False
+    pattern = r'(?<!\w)' + re.escape(normalized_phrase).replace(r'\ ', r'\s+') + r'(?!\w)'
+    return re.search(pattern, normalized_message) is not None
+
+
+def _is_public_institutional_pricing_query(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '')
+    normalized = _normalize_shadow_message(message)
+    if not normalized:
+        return False
+    pricing_terms = ('mensalidade', 'matricula', 'desconto', 'bolsa', 'pagar', 'valor')
+    protected_markers = ('em aberto', 'vencimento', 'boleto', 'fatura', 'lucas', 'ana', 'meus filhos', 'minha filha', 'meu filho')
+    if any(_contains_phrase(normalized, marker) for marker in protected_markers):
+        return False
+    hypothetical_markers = (
+        'se eu tiver',
+        'se eu tivesse',
+        'hipoteticamente',
+        'num cenario hipotetico',
+    )
+    if 'filhos' in normalized and any(_contains_phrase(normalized, marker) for marker in hypothetical_markers):
+        return any(_contains_phrase(normalized, term) for term in pricing_terms)
+    if 'filhos' in normalized and any(_contains_phrase(normalized, term) for term in ('quanto vou pagar', 'quanto eu pagaria')):
+        return any(_contains_phrase(normalized, term) for term in pricing_terms)
+    if any(_contains_phrase(normalized, term) for term in pricing_terms):
+        institutional_markers = (
+            'da escola',
+            'na escola',
+            'por ano',
+            'cada ano',
+            'por segmento',
+            'cada segmento',
+            'ensino medio',
+            'ensino fundamental',
+            'media do valor',
+            'media da mensalidade',
+        )
+        return any(_contains_phrase(normalized, marker) for marker in institutional_markers)
+    return False
+
+
 def _public_meta_shadow_slice(request: Any) -> bool:
-    message = str(getattr(request, 'message', '') or '').strip().lower()
+    message = str(getattr(request, 'message', '') or '').strip()
     if not message:
         return False
     direct_meta_terms = (
@@ -42,12 +96,14 @@ def _public_meta_shadow_slice(request: Any) -> bool:
         'com quem eu falo',
         'com quem estou falando',
     )
-    return any(term in message for term in direct_meta_terms)
+    return any(_contains_phrase(message, term) for term in direct_meta_terms)
 
 
 def _protected_shadow_slice(request: Any) -> bool:
-    message = str(getattr(request, 'message', '') or '').lower()
+    message = str(getattr(request, 'message', '') or '')
     if _public_meta_shadow_slice(request):
+        return False
+    if _is_public_institutional_pricing_query(request):
         return False
     protected_terms = (
         'nota',
@@ -84,7 +140,7 @@ def _protected_shadow_slice(request: Any) -> bool:
         'lucas',
         'ana',
     )
-    if any(term in message for term in protected_terms):
+    if any(_contains_phrase(message, term) for term in protected_terms):
         return True
     user = getattr(request, 'user', None)
     authenticated = user is not None and bool(getattr(user, 'authenticated', False))
@@ -103,7 +159,7 @@ def _protected_shadow_slice(request: Any) -> bool:
         'como altero meu cadastro',
         'como alterar meu cadastro',
     )
-    if authenticated and any(term in message for term in followup_terms):
+    if authenticated and any(_contains_phrase(message, term) for term in followup_terms):
         return True
     return False
 
