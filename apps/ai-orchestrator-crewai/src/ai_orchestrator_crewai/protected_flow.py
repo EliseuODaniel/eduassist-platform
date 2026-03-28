@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from time import perf_counter
 from typing import Any
 
@@ -44,6 +45,7 @@ from .protected_pilot import (
     _build_protected_docs,
     _extract_unmatched_student_reference,
     _fetch_protected_evidence,
+    _extract_task_pydantic,
     _infer_fast_path_plan,
     _identity_backstop,
     _is_explicit_student_selection_message,
@@ -57,6 +59,8 @@ from .protected_pilot import (
     _student_backstop,
     _student_focus_backstop,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ProtectedFlowState(BaseModel):
@@ -211,6 +215,18 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
                 'validation_stack': ['flow_router', 'deterministic_fast_path'],
             },
         }
+
+    def _agentic_recovery_answer_text(self) -> str:
+        target_name = str(self.state.resolved_student_name or '').strip()
+        if target_name:
+            return (
+                f'Eu nao consegui consolidar essa consulta protegida com seguranca agora sobre {target_name}. '
+                'Se quiser, me diga exatamente se voce quer notas, faltas, provas, documentacao, matricula ou financeiro.'
+            )
+        return (
+            'Eu nao consegui consolidar essa consulta protegida com seguranca agora. '
+            'Se quiser, me diga qual aluno e qual dado voce quer consultar.'
+        )
 
     @start()
     async def prepare_context(self) -> str:
@@ -663,16 +679,29 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             tracing=False,
         )
 
+        kickoff_failed_reason: str | None = None
         with capture_pilot_events('protected') as event_recorder:
-            await asyncio.to_thread(
-                crew.kickoff,
-                inputs={'message': self.state.effective_message or self.state.message, 'evidence_bundle': evidence_bundle},
-            )
+            try:
+                await asyncio.wait_for(
+                    asyncio.to_thread(
+                        crew.kickoff,
+                        inputs={
+                            'message': self.state.effective_message or self.state.message,
+                            'evidence_bundle': evidence_bundle,
+                        },
+                    ),
+                    timeout=11.0,
+                )
+            except asyncio.TimeoutError:
+                kickoff_failed_reason = 'crewai_protected_flow_timeout'
+            except Exception:
+                kickoff_failed_reason = 'crewai_protected_flow_error'
+                logger.exception('crewai_protected_flow_kickoff_failed')
 
         self.state.latency_ms = round((perf_counter() - self._overall_started_at) * 1000, 1)
-        plan = getattr(planning_task.output, 'pydantic', None)
-        answer = getattr(composition_task.output, 'pydantic', None)
-        verdict = getattr(judge_task.output, 'pydantic', None)
+        plan = _extract_task_pydantic(planning_task, ProtectedPilotPlan)
+        answer = _extract_task_pydantic(composition_task, ProtectedPilotAnswer)
+        verdict = _extract_task_pydantic(judge_task, ProtectedPilotJudge)
 
         backstop_answer = self._identity_backstop_text or _student_backstop(
             self.state.effective_message or self.state.message,
@@ -686,8 +715,18 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
                 answer_text=backstop_answer,
                 citations=[self._shortlisted_docs[0].doc_id] if self._shortlisted_docs else [],
             )
-            verdict = ProtectedPilotJudge(valid=True, reason='deterministic_backstop_applied', revision_needed=False)
+            verdict = ProtectedPilotJudge(
+                valid=True,
+                reason=kickoff_failed_reason or 'deterministic_backstop_applied',
+                revision_needed=False,
+            )
             backstop_used = True
+        elif kickoff_failed_reason:
+            answer = ProtectedPilotAnswer(
+                answer_text=self._agentic_recovery_answer_text(),
+                citations=[],
+            )
+            verdict = ProtectedPilotJudge(valid=True, reason=kickoff_failed_reason, revision_needed=False)
 
         self.state.plan = plan if isinstance(plan, ProtectedPilotPlan) else None
         self.state.answer = answer if isinstance(answer, ProtectedPilotAnswer) else None
@@ -700,27 +739,43 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             self.state.active_attribute = self.state.plan.attribute
 
         event_listener = serialize_pilot_events(event_recorder)
+        metadata = {
+            **self._base_metadata(),
+            'crewai_installed': True,
+            'crewai_version': getattr(crewai_pkg, '__version__', None),
+            'agent_roles': ['planner', 'composer', 'judge'],
+            'task_names': ['protected_planning', 'protected_composition', 'protected_judging'],
+            'latency_ms': self.state.latency_ms,
+            'plan': self.state.plan.model_dump(mode='json') if isinstance(self.state.plan, ProtectedPilotPlan) else None,
+            'answer': self.state.answer.model_dump(mode='json') if isinstance(self.state.answer, ProtectedPilotAnswer) else None,
+            'judge': self.state.judge.model_dump(mode='json') if isinstance(self.state.judge, ProtectedPilotJudge) else None,
+            'evidence_sources': list(self.state.evidence_source_ids),
+            'deterministic_backstop_used': backstop_used,
+            'validation_stack': ['flow_state', 'pydantic_output', 'judge', 'deterministic_backstop'],
+            'event_listener': event_listener,
+            'event_summary': event_listener.get('summary', {}),
+            'task_trace': event_listener.get('task_trace', {}),
+            'flow_state_id': getattr(self.state, 'id', None),
+            'flow_state_persisted': get_sqlite_flow_persistence('protected') is not None,
+            'kickoff_failed_reason': kickoff_failed_reason,
+        }
+        if kickoff_failed_reason and isinstance(self.state.answer, ProtectedPilotAnswer):
+            return {
+                'engine_name': 'crewai',
+                'executed': True,
+                'reason': kickoff_failed_reason,
+                'metadata': metadata,
+            }
+        if isinstance(self.state.judge, ProtectedPilotJudge) and not self.state.judge.valid:
+            return {
+                'engine_name': 'crewai',
+                'executed': True,
+                'reason': 'crewai_protected_flow_judge_invalid',
+                'metadata': metadata,
+            }
         return {
             'engine_name': 'crewai',
             'executed': True,
             'reason': reason,
-            'metadata': {
-                **self._base_metadata(),
-                'crewai_installed': True,
-                'crewai_version': getattr(crewai_pkg, '__version__', None),
-                'agent_roles': ['planner', 'composer', 'judge'],
-                'task_names': ['protected_planning', 'protected_composition', 'protected_judging'],
-                'latency_ms': self.state.latency_ms,
-                'plan': self.state.plan.model_dump(mode='json') if isinstance(self.state.plan, ProtectedPilotPlan) else None,
-                'answer': self.state.answer.model_dump(mode='json') if isinstance(self.state.answer, ProtectedPilotAnswer) else None,
-                'judge': self.state.judge.model_dump(mode='json') if isinstance(self.state.judge, ProtectedPilotJudge) else None,
-                'evidence_sources': list(self.state.evidence_source_ids),
-                'deterministic_backstop_used': backstop_used,
-                'validation_stack': ['flow_state', 'pydantic_output', 'judge', 'deterministic_backstop'],
-                'event_listener': event_listener,
-                'event_summary': event_listener.get('summary', {}),
-                'task_trace': event_listener.get('task_trace', {}),
-                'flow_state_id': getattr(self.state, 'id', None),
-                'flow_state_persisted': get_sqlite_flow_persistence('protected') is not None,
-            },
+            'metadata': metadata,
         }

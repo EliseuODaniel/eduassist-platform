@@ -93,7 +93,22 @@ def _build_llm(settings: Any) -> Any:
     api_key = getattr(settings, 'google_api_key', None)
     if not api_key:
         return None
-    return LLM(model=model_name, api_key=api_key, temperature=0.1, max_tokens=700)
+    return LLM(
+        model=model_name,
+        api_key=api_key,
+        temperature=0.1,
+        max_tokens=500,
+        timeout=10.0,
+        max_retries=1,
+    )
+
+
+def _extract_task_pydantic(task: Any, model_type: type[BaseModel]) -> BaseModel | None:
+    output = getattr(task, 'output', None)
+    candidate = getattr(output, 'pydantic', None)
+    if isinstance(candidate, model_type):
+        return candidate
+    return None
 
 
 async def _api_get(settings: Any, path: str) -> dict[str, Any]:

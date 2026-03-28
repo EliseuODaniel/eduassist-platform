@@ -336,7 +336,7 @@ class CrewAIEngine(ResponseEngine):
         pilot_url = str(getattr(settings, 'crewai_pilot_url', '') or '').strip()
         if not pilot_url:
             return None
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(13.0, connect=5.0)) as client:
             response = await client.post(
                 f'{pilot_url.rstrip("/")}/v1/shadow/{slice_name}',
                 headers={
