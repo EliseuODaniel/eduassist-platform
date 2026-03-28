@@ -4,6 +4,8 @@ from collections import OrderedDict
 import hashlib
 import json
 import logging
+from datetime import datetime, timezone
+from threading import Lock
 from time import monotonic
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,6 +23,14 @@ _EXPERIMENT_AFFINITY: OrderedDict[str, dict[str, Any]] = OrderedDict()
 _EXPERIMENT_AFFINITY_LIMIT = 2048
 _EXPERIMENT_AFFINITY_TTL_SECONDS = 60 * 60 * 6
 _PILOT_STATUS_CACHE: dict[str, Any] = {'timestamp': 0.0, 'ready': None, 'payload': None}
+_RUNTIME_PRIMARY_STACK_OVERRIDE: dict[str, Any] = {
+    'value': None,
+    'reason': None,
+    'operator': None,
+    'updated_at': None,
+}
+_RUNTIME_PRIMARY_STACK_LOCK = Lock()
+SUPPORTED_PRIMARY_STACKS = {'langgraph', 'crewai', 'shadow'}
 
 
 @dataclass(frozen=True)
@@ -31,11 +41,88 @@ class EngineBundle:
     experiment: dict[str, Any] | None = None
 
 
+def _normalized_primary_stack(value: str | None) -> str | None:
+    normalized = str(value or '').strip().lower()
+    if not normalized:
+        return None
+    if normalized not in SUPPORTED_PRIMARY_STACKS:
+        raise ValueError(f'unsupported_primary_stack:{normalized}')
+    return normalized
+
+
+def get_runtime_primary_stack_override() -> dict[str, Any]:
+    with _RUNTIME_PRIMARY_STACK_LOCK:
+        return dict(_RUNTIME_PRIMARY_STACK_OVERRIDE)
+
+
+def set_runtime_primary_stack_override(
+    *,
+    stack: str | None,
+    reason: str | None = None,
+    operator: str | None = None,
+) -> dict[str, Any]:
+    normalized_stack = _normalized_primary_stack(stack)
+    with _RUNTIME_PRIMARY_STACK_LOCK:
+        if normalized_stack is None:
+            _RUNTIME_PRIMARY_STACK_OVERRIDE.update(
+                {
+                    'value': None,
+                    'reason': reason or None,
+                    'operator': operator or None,
+                    'updated_at': datetime.now(timezone.utc).isoformat(),
+                }
+            )
+        else:
+            _RUNTIME_PRIMARY_STACK_OVERRIDE.update(
+                {
+                    'value': normalized_stack,
+                    'reason': reason or None,
+                    'operator': operator or None,
+                    'updated_at': datetime.now(timezone.utc).isoformat(),
+                }
+            )
+        return dict(_RUNTIME_PRIMARY_STACK_OVERRIDE)
+
+
+def clear_runtime_primary_stack_override(
+    *,
+    reason: str | None = None,
+    operator: str | None = None,
+) -> dict[str, Any]:
+    return set_runtime_primary_stack_override(
+        stack=None,
+        reason=reason,
+        operator=operator,
+    )
+
+
+def get_primary_stack_resolution(settings: Any) -> dict[str, Any]:
+    runtime_override = get_runtime_primary_stack_override()
+    runtime_value = _normalized_primary_stack(runtime_override.get('value'))
+    feature_flag_value = _normalized_primary_stack(
+        getattr(settings, 'feature_flag_primary_orchestration_stack', '') or None
+    )
+    env_fallback = _normalized_primary_stack(getattr(settings, 'orchestrator_engine', 'langgraph') or 'langgraph') or 'langgraph'
+    if runtime_value:
+        resolved = runtime_value
+        source = 'runtime_override'
+    elif feature_flag_value:
+        resolved = feature_flag_value
+        source = 'feature_flag'
+    else:
+        resolved = env_fallback
+        source = 'orchestrator_engine'
+    return {
+        'resolved': resolved,
+        'source': source,
+        'runtime_override': runtime_override,
+        'feature_flag': feature_flag_value,
+        'orchestrator_engine': env_fallback,
+    }
+
+
 def resolve_primary_stack(settings: Any) -> str:
-    feature_flag_value = str(getattr(settings, 'feature_flag_primary_orchestration_stack', '') or '').strip().lower()
-    if feature_flag_value:
-        return feature_flag_value
-    return str(getattr(settings, 'orchestrator_engine', 'langgraph') or 'langgraph').strip().lower()
+    return str(get_primary_stack_resolution(settings).get('resolved') or 'langgraph')
 
 
 def _parse_csv_items(value: str | None) -> set[str]:

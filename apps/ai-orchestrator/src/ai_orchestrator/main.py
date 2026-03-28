@@ -11,11 +11,15 @@ from eduassist_observability import configure_observability
 
 from .engine_selector import (
     build_engine_bundle,
+    clear_runtime_primary_stack_override,
     get_experiment_live_promotion_summary,
     get_experiment_rollout_readiness,
+    get_primary_stack_resolution,
+    get_runtime_primary_stack_override,
     get_scorecard_gate_status,
     maybe_run_shadow,
     resolve_primary_stack,
+    set_runtime_primary_stack_override,
 )
 from .graph import get_graph_blueprint, to_preview
 from .graph_rag_runtime import graph_rag_workspace_ready
@@ -47,6 +51,8 @@ from .retrieval import get_retrieval_service
 from .runtime import generate_message_response
 from .trace_bridge import persist_shadow_trace
 from .tools import get_tool_contracts
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -136,6 +142,13 @@ class LangGraphHitlResumeRequest(BaseModel):
     resume_value: dict[str, object] | list[object] | str | int | float | bool | None
 
 
+class RuntimePrimaryStackUpdateRequest(BaseModel):
+    stack: str | None = None
+    reason: str | None = None
+    operator: str | None = None
+    clear_override: bool = False
+
+
 def _normalized_hitl_slices(values: list[str] | None, *, fallback: str) -> list[str]:
     normalized = [str(item).strip() for item in (values or []) if str(item).strip()]
     if normalized:
@@ -145,6 +158,21 @@ def _normalized_hitl_slices(values: list[str] | None, *, fallback: str) -> list[
 
 def _csv_count(value: str | None) -> int:
     return len([item.strip() for item in str(value or '').split(',') if item.strip()])
+
+
+def _runtime_primary_stack_payload(settings: Settings) -> dict[str, object]:
+    resolution = get_primary_stack_resolution(settings)
+    runtime_override = resolution.get('runtime_override')
+    return {
+        'orchestratorEngine': settings.orchestrator_engine,
+        'primaryStackFeatureFlag': settings.feature_flag_primary_orchestration_stack,
+        'resolvedPrimaryStack': resolution.get('resolved'),
+        'resolvedPrimaryStackSource': resolution.get('source'),
+        'runtimePrimaryStackOverride': runtime_override.get('value') if isinstance(runtime_override, dict) else None,
+        'runtimePrimaryStackOverrideReason': runtime_override.get('reason') if isinstance(runtime_override, dict) else None,
+        'runtimePrimaryStackOverrideOperator': runtime_override.get('operator') if isinstance(runtime_override, dict) else None,
+        'runtimePrimaryStackOverrideUpdatedAt': runtime_override.get('updated_at') if isinstance(runtime_override, dict) else None,
+    }
 
 
 def _hitl_thread_id(
@@ -330,7 +358,7 @@ async def meta(
     return {
         'service': 'ai-orchestrator',
         'environment': settings.app_env,
-        'orchestratorEngine': settings.orchestrator_engine,
+        **_runtime_primary_stack_payload(settings),
         'crewaiPilotConfigured': bool(settings.crewai_pilot_url),
         'experimentEnabled': settings.orchestrator_experiment_enabled,
         'experimentPrimaryEngine': settings.orchestrator_experiment_primary_engine,
@@ -374,9 +402,7 @@ async def status() -> dict[str, object]:
     return {
         'service': 'ai-orchestrator',
         'ready': True,
-        'orchestratorEngine': settings.orchestrator_engine,
-        'primaryStackFeatureFlag': settings.feature_flag_primary_orchestration_stack,
-        'resolvedPrimaryStack': resolve_primary_stack(settings),
+        **_runtime_primary_stack_payload(settings),
         'crewaiPilotConfigured': bool(settings.crewai_pilot_url),
         'experimentEnabled': settings.orchestrator_experiment_enabled,
         'experimentPrimaryEngine': settings.orchestrator_experiment_primary_engine,
@@ -417,6 +443,68 @@ async def status() -> dict[str, object]:
         'langgraphHitlDefaultSlices': settings.langgraph_hitl_default_slices,
         'langgraphHitlUserTrafficEnabled': settings.langgraph_hitl_user_traffic_enabled,
         'langgraphHitlUserTrafficSlices': settings.langgraph_hitl_user_traffic_slices,
+    }
+
+
+@app.get('/v1/internal/runtime/primary-stack')
+async def get_runtime_primary_stack(
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    _require_internal_api_token(x_internal_api_token)
+    settings = get_settings()
+    return {
+        'service': 'ai-orchestrator',
+        **_runtime_primary_stack_payload(settings),
+        'supportedPrimaryStacks': ['langgraph', 'crewai', 'shadow'],
+    }
+
+
+@app.post('/v1/internal/runtime/primary-stack')
+async def update_runtime_primary_stack(
+    request: RuntimePrimaryStackUpdateRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    _require_internal_api_token(x_internal_api_token)
+    settings = get_settings()
+    operator = str(request.operator or 'internal').strip() or 'internal'
+    reason = str(request.reason or '').strip() or None
+    if request.clear_override:
+        override = clear_runtime_primary_stack_override(
+            reason=reason or 'runtime_primary_stack_override_cleared',
+            operator=operator,
+        )
+        logger.info(
+            'runtime_primary_stack_override_cleared',
+            extra={
+                'operator': operator,
+                'reason': reason,
+            },
+        )
+        action = 'cleared'
+    else:
+        try:
+            override = set_runtime_primary_stack_override(
+                stack=request.stack,
+                reason=reason or 'runtime_primary_stack_override_set',
+                operator=operator,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        logger.info(
+            'runtime_primary_stack_override_updated',
+            extra={
+                'operator': operator,
+                'reason': reason,
+                'stack': override.get('value'),
+            },
+        )
+        action = 'updated'
+    return {
+        'service': 'ai-orchestrator',
+        'action': action,
+        'override': override,
+        **_runtime_primary_stack_payload(settings),
+        'supportedPrimaryStacks': ['langgraph', 'crewai', 'shadow'],
     }
 
 
