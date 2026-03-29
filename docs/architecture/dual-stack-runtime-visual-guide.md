@@ -67,18 +67,13 @@ graph TD
 
 ```mermaid
 graph LR
-    subgraph Truth
-        PG["Postgres: dados estruturados, RLS e FTS"]
-        API["api-core interno: contracts e services"]
-        QD["Qdrant: dense e sparse retrieval"]
-        GR["Workspace GraphRAG: artefatos gerados offline"]
-    end
-
-    subgraph Runtime
-        LG["LangGraph"]
-        CE["CrewAI Flows"]
-        LLM["LLM provider"]
-    end
+    PG["Postgres: dados estruturados, RLS e FTS"]
+    API["api-core interno: contracts e services"]
+    QD["Qdrant: dense e sparse retrieval"]
+    GR["Workspace GraphRAG: artefatos gerados offline"]
+    LG["LangGraph"]
+    CE["CrewAI Flows"]
+    LLM["LLM provider"]
 
     LG --> API
     LG --> QD
@@ -377,19 +372,15 @@ Resumo pratico:
 
 ```mermaid
 graph LR
-    subgraph LG
-        LG1["State machine principal"]
-        LG2["Subgraphs por slice"]
-        LG3["Hybrid retrieval + GraphRAG"]
-        LG4["HITL nativo com interrupt/resume"]
-    end
+    LG1["LangGraph: state machine principal"]
+    LG2["LangGraph: subgraphs por slice"]
+    LG3["LangGraph: hybrid retrieval + GraphRAG"]
+    LG4["LangGraph: HITL nativo com interrupt/resume"]
 
-    subgraph CE
-        CE1["Servico isolado"]
-        CE2["Flow persistido por slice"]
-        CE3["planner / composer / judge"]
-        CE4["guardrails + listeners + backstops"]
-    end
+    CE1["CrewAI: servico isolado"]
+    CE2["CrewAI: Flow persistido por slice"]
+    CE3["CrewAI: planner / composer / judge"]
+    CE4["CrewAI: guardrails + listeners + backstops"]
 
     LG1 --> LG2 --> LG3 --> LG4
     CE1 --> CE2 --> CE3 --> CE4
