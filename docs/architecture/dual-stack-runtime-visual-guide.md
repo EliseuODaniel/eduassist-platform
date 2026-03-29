@@ -12,15 +12,15 @@ Objetivos:
 ## 1. Visao Geral
 
 ```mermaid
-flowchart LR
-    User["Usuario<br/>Telegram / Portal / Admin"] --> Gateway["telegram-gateway<br/>canal + normalizacao"]
-    Gateway --> API["api-core<br/>dominio + auth + policies"]
-    API --> Orch["ai-orchestrator<br/>entrypoint unico"]
+graph LR
+    User["Usuario: Telegram, Portal ou Admin"] --> Gateway["telegram-gateway: canal e normalizacao"]
+    Gateway --> API["api-core: dominio, auth e policies"]
+    API --> Orch["ai-orchestrator: entrypoint unico"]
 
     Orch -->|stack resolvida = langgraph| LG["LangGraph runtime"]
     Orch -->|stack resolvida = crewai| CE["CrewAIEngine"]
 
-    CE --> Pilot["ai-orchestrator-crewai<br/>pilot isolado"]
+    CE --> Pilot["ai-orchestrator-crewai: pilot isolado"]
 
     LG --> Truth["Fontes de verdade"]
     Pilot --> Truth
@@ -48,11 +48,11 @@ Hoje a ordem de prioridade e:
 Separadamente, existe o experimento por slice, que pode mandar algumas requests para `CrewAI` mesmo quando o primario continua `LangGraph`.
 
 ```mermaid
-flowchart TD
-    A["Nova request<br/>/v1/messages/respond"] --> B{"Slice entrou no experimento<br/>por allowlist / rollout / scorecard?"}
-    B -- Sim --> C["Primary = CrewAI<br/>mode = experiment:slice:crewai"]
+graph TD
+    A["Nova request: /v1/messages/respond"] --> B{"Slice entrou no experimento por allowlist, rollout ou scorecard?"}
+    B -- Sim --> C["Primary = CrewAI; mode = experiment:slice:crewai"]
     B -- Nao --> D{"Ha runtime override?"}
-    D -- Sim --> E["Usa runtime override<br/>langgraph | crewai | shadow"]
+    D -- Sim --> E["Usa runtime override: langgraph, crewai ou shadow"]
     D -- Nao --> F{"Feature flag definida?"}
     F -- Sim --> G["Usa FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK"]
     F -- Nao --> H["Usa orchestrator_engine do startup"]
@@ -66,15 +66,15 @@ flowchart TD
 ## 3. O Que e Fonte de Verdade Neste Repo
 
 ```mermaid
-flowchart LR
-    subgraph Truth["Fontes de verdade reais"]
-        PG["Postgres<br/>dados estruturados + RLS + FTS"]
-        API["api-core interno<br/>contracts e services"]
-        QD["Qdrant<br/>dense + sparse retrieval"]
-        GR["Workspace GraphRAG<br/>artefatos gerados offline"]
+graph LR
+    subgraph Truth
+        PG["Postgres: dados estruturados, RLS e FTS"]
+        API["api-core interno: contracts e services"]
+        QD["Qdrant: dense e sparse retrieval"]
+        GR["Workspace GraphRAG: artefatos gerados offline"]
     end
 
-    subgraph Runtime["Camada de orquestracao"]
+    subgraph Runtime
         LG["LangGraph"]
         CE["CrewAI Flows"]
         LLM["LLM provider"]
@@ -108,7 +108,7 @@ Regra pratica:
 O `LangGraph` faz primeiro o planejamento do turno, e so depois executa a estrategia escolhida.
 
 ```mermaid
-flowchart TD
+graph TD
     A["Request"] --> B["classify_request"]
     B --> C["security_gate"]
     C --> D["route_request"]
@@ -143,9 +143,9 @@ flowchart TD
 Depois que o preview do grafo define o modo, o runtime executa uma de quatro familias:
 
 ```mermaid
-flowchart LR
+graph LR
     Preview["Preview LangGraph"] --> A{"mode"}
-    A -->|structured_tool| B["Chama tools internas<br/>via api-core"]
+    A -->|structured_tool| B["Chama tools internas via api-core"]
     A -->|hybrid_retrieval| C["Busca em Qdrant + PostgreSQL FTS"]
     A -->|graph_rag| D["Consulta artefatos GraphRAG"]
     A -->|clarify| E["Resposta curta de clarificacao"]
@@ -165,9 +165,9 @@ flowchart LR
 ### 4.3 Quando LangGraph usa retrieval
 
 ```mermaid
-flowchart TD
+graph TD
     Q["Pergunta publica"] --> A{"Fato publico canonicamente estruturado?"}
-    A -- Sim --> B["structured_tool_call<br/>profile / timeline / directory / calendar"]
+    A -- Sim --> B["structured_tool_call: profile, timeline, directory ou calendar"]
     A -- Nao --> C{"Pergunta exige visao multi-documento?"}
     C -- Sim --> D["graph_rag_retrieval"]
     C -- Nao --> E["hybrid_retrieval"]
@@ -188,7 +188,7 @@ flowchart TD
 ### 4.4 Fontes de verdade do LangGraph
 
 ```mermaid
-flowchart LR
+graph LR
     LG["LangGraph runtime"] -->|structured tools| API["api-core interno"]
     API --> ID["identity-service"]
     API --> AC["academic-service"]
@@ -211,7 +211,7 @@ flowchart LR
 No runtime principal, o `CrewAI` entra por um engine adapter que escolhe o slice e chama o piloto remoto isolado.
 
 ```mermaid
-flowchart TD
+graph TD
     A["/v1/messages/respond"] --> B["CrewAIEngine"]
     B --> C["infer_request_slice"]
     C --> D["POST /v1/shadow/public"]
@@ -232,8 +232,8 @@ flowchart TD
 ### 5.1 Slice `public` no CrewAI
 
 ```mermaid
-flowchart TD
-    A["PublicShadowFlow.prepare_context"] --> B["Busca evidencias publicas<br/>school-profile / org-directory / timeline / calendar"]
+graph TD
+    A["PublicShadowFlow.prepare_context"] --> B["Busca evidencias publicas: school-profile, org-directory, timeline e calendar"]
     B --> C{"Fast path stateful ou deterministico?"}
     C -- Sim --> D["handle_fast_path"]
     C -- Nao --> E["Monta shortlist de evidencias"]
@@ -255,8 +255,8 @@ Caracteristicas:
 ### 5.2 Slice `protected` no CrewAI
 
 ```mermaid
-flowchart TD
-    A["ProtectedShadowFlow.prepare_context"] --> B["Carrega identity context<br/>via api-core"]
+graph TD
+    A["ProtectedShadowFlow.prepare_context"] --> B["Carrega identity context via api-core"]
     B --> C["Resolve aluno em foco"]
     C --> D["Enriquece mensagem com memoria curta"]
     D --> E{"Auth / identity / student fast path?"}
@@ -280,8 +280,8 @@ Caracteristicas:
 ### 5.3 Slice `support` no CrewAI
 
 ```mermaid
-flowchart TD
-    A["SupportShadowFlow.prepare_context"] --> B["Le ticket/protocolo atual<br/>/v1/internal/workflows/status"]
+graph TD
+    A["SupportShadowFlow.prepare_context"] --> B["Le ticket ou protocolo atual em /v1/internal/workflows/status"]
     B --> C{"repair / handoff / protocolo / status / resumo"}
     C --> D["repair"]
     C --> E["handoff"]
@@ -305,8 +305,8 @@ Caracteristicas:
 ### 5.4 Slice `workflow` no CrewAI
 
 ```mermaid
-flowchart TD
-    A["WorkflowShadowFlow.prepare_context"] --> B["Le protocolo atual<br/>/v1/internal/workflows/status"]
+graph TD
+    A["WorkflowShadowFlow.prepare_context"] --> B["Le protocolo atual em /v1/internal/workflows/status"]
     B --> C{"visita / protocolo / status / resumo / remarcar / cancelar / pedido"}
     C --> D["visit_create"]
     C --> E["visit_reschedule"]
@@ -328,7 +328,7 @@ flowchart TD
 ## 6. CrewAI e Fontes de Verdade
 
 ```mermaid
-flowchart LR
+graph LR
     CE["CrewAI pilot"] --> PUB["public endpoints do api-core"]
     CE --> PROT["identity + dados protegidos minimizados"]
     CE --> WF["workflow/status/handoff endpoints"]
@@ -354,15 +354,15 @@ Ponto importante:
 ## 7. Quando o Sistema Usa Cada Estrategia de Dados
 
 ```mermaid
-flowchart TD
+graph TD
     Q["Pergunta do usuario"] --> A{"Dado estruturado e de sistema?"}
     A -- Sim --> B["Tool deterministica via api-core"]
     A -- Nao --> C{"E um fato publico canonico?"}
     C -- Sim --> D["Public endpoint canonico"]
     C -- Nao --> E{"Precisa busca documental?"}
     E -- Sim --> F{"Pergunta simples ou media?"}
-    F -- Sim --> G["Hybrid retrieval<br/>Qdrant + Postgres FTS"]
-    F -- Nao --> H["GraphRAG<br/>se habilitado"]
+    F -- Sim --> G["Hybrid retrieval: Qdrant + Postgres FTS"]
+    F -- Nao --> H["GraphRAG: se habilitado"]
     E -- Nao --> I["Resposta curta / clarify / deny / handoff"]
 ```
 
@@ -376,15 +376,15 @@ Resumo pratico:
 ## 8. Diferenca Conceitual Entre as Duas Stacks
 
 ```mermaid
-flowchart LR
-    subgraph LG["LangGraph"]
+graph LR
+    subgraph LG
         LG1["State machine principal"]
         LG2["Subgraphs por slice"]
         LG3["Hybrid retrieval + GraphRAG"]
         LG4["HITL nativo com interrupt/resume"]
     end
 
-    subgraph CE["CrewAI"]
+    subgraph CE
         CE1["Servico isolado"]
         CE2["Flow persistido por slice"]
         CE3["planner / composer / judge"]
