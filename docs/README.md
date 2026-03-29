@@ -8,6 +8,7 @@ Este diretório concentra a documentação formal do projeto.
 - [ADR 0002 - Retrieval e runtime agentic](/home/edann/projects/eduassist-platform/docs/adr/0002-retrieval-and-agent-runtime.md)
 - [PRD](/home/edann/projects/eduassist-platform/docs/prd/product-requirements.md)
 - [Arquitetura do sistema](/home/edann/projects/eduassist-platform/docs/architecture/system-architecture.md)
+- [Guia visual do runtime dual stack](/home/edann/projects/eduassist-platform/docs/architecture/dual-stack-runtime-visual-guide.md)
 - [Catálogo de serviços](/home/edann/projects/eduassist-platform/docs/architecture/service-catalog.md)
 - [Segurança da informação](/home/edann/projects/eduassist-platform/docs/security/security-architecture.md)
 - [Matriz de controle de acesso](/home/edann/projects/eduassist-platform/docs/security/access-control-matrix.md)
