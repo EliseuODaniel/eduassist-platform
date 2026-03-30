@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 from .config import Settings, get_settings
+from .llamaindex_pipeline import LlamaIndexDocumentPipeline
 from .pipeline import DocumentPipeline
 
 
@@ -31,6 +32,18 @@ def _sync_documents(settings: Settings) -> None:
     )
 
 
+def _sync_llamaindex_documents(settings: Settings) -> None:
+    summary = LlamaIndexDocumentPipeline(settings).sync_demo_corpus()
+    print(
+        '[worker] llamaindex corpus synchronized',
+        f"documents={summary['document_count']}",
+        f"ref_docs={summary['ref_doc_count']}",
+        f"upserted={summary['upserted_count']}",
+        f"deleted={summary['deleted_count']}",
+        f"collection={summary['collection']}",
+    )
+
+
 def _sync_documents_background(settings: Settings) -> None:
     try:
         _sync_documents(settings)
@@ -38,9 +51,18 @@ def _sync_documents_background(settings: Settings) -> None:
         logger.exception('worker_bootstrap_sync_failed')
 
 
+def _sync_llamaindex_documents_background(settings: Settings) -> None:
+    try:
+        _sync_llamaindex_documents(settings)
+    except Exception:
+        logger.exception('worker_bootstrap_llamaindex_sync_failed')
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description='EduAssist background worker.')
     parser.add_argument('--sync-once', action='store_true', help='Synchronize the demo document corpus and exit.')
+    parser.add_argument('--sync-legacy-once', action='store_true', help='Synchronize only the legacy document corpus pipeline and exit.')
+    parser.add_argument('--sync-llamaindex-once', action='store_true', help='Synchronize only the LlamaIndex-owned document pipeline and exit.')
     return parser
 
 
@@ -53,8 +75,17 @@ def main() -> None:
 
     settings = get_settings()
 
+    if args.sync_legacy_once:
+        _sync_documents(settings)
+        return
+
+    if args.sync_llamaindex_once:
+        _sync_llamaindex_documents(settings)
+        return
+
     if args.sync_once:
         _sync_documents(settings)
+        _sync_llamaindex_documents(settings)
         return
 
     READY_FILE.write_text(
@@ -68,6 +99,13 @@ def main() -> None:
             args=(settings,),
             daemon=True,
             name='worker-bootstrap-sync',
+        ).start()
+    if settings.worker_bootstrap_llamaindex_documents:
+        threading.Thread(
+            target=_sync_llamaindex_documents_background,
+            args=(settings,),
+            daemon=True,
+            name='worker-bootstrap-llamaindex-sync',
         ).start()
 
     print('[worker] bootstrap background loop started')

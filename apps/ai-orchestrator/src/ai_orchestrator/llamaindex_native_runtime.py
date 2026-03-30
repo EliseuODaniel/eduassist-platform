@@ -117,6 +117,24 @@ def _native_qdrant_vector_store(*, qdrant_url: str, collection_name: str) -> Any
     )
 
 
+@lru_cache(maxsize=16)
+def _qdrant_collection_exists(*, qdrant_url: str, collection_name: str) -> bool:
+    try:
+        client = QdrantClient(url=qdrant_url)
+        client.get_collection(collection_name)
+        return True
+    except Exception:
+        return False
+
+
+def _resolve_llamaindex_qdrant_collection(settings: Any) -> str:
+    preferred = str(getattr(settings, 'llamaindex_qdrant_documents_collection', '') or '').strip()
+    fallback = str(getattr(settings, 'qdrant_documents_collection', 'school_documents'))
+    if preferred and _qdrant_collection_exists(qdrant_url=str(settings.qdrant_url), collection_name=preferred):
+        return preferred
+    return fallback
+
+
 @lru_cache(maxsize=4)
 def _native_qdrant_vector_index(*, qdrant_url: str, collection_name: str, embedding_model: str) -> Any | None:
     vector_store = _native_qdrant_vector_store(qdrant_url=qdrant_url, collection_name=collection_name)
@@ -726,9 +744,10 @@ def _build_public_retrieval_query_engine(
 ) -> tuple[Any, PublicHybridCitationRetriever | None]:
     if llm is not None and prefer_native_qdrant_autoretriever and LLAMAINDEX_QDRANT_AVAILABLE:
         try:
+            collection_name = _resolve_llamaindex_qdrant_collection(settings)
             index = _native_qdrant_vector_index(
                 qdrant_url=str(settings.qdrant_url),
-                collection_name=str(settings.qdrant_documents_collection),
+                collection_name=collection_name,
                 embedding_model=str(settings.document_embedding_model),
             )
             if index is not None:

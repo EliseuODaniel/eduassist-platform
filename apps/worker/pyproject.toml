@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "Background worker for EduAssist Platform."
 requires-python = ">=3.12"
 dependencies = [
+  "llama-index-core>=0.13.0,<0.14.0",
+  "llama-index-vector-stores-qdrant>=0.7.0,<0.8.0",
   "minio>=7.2.8",
   "psycopg[binary]>=3.2.0",
   "pydantic-settings>=2.8.0",
