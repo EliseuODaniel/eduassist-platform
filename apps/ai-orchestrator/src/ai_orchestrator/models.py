@@ -110,6 +110,10 @@ class RuntimeCapabilities(BaseModel):
     llm_configured: bool
     graph_rag_enabled: bool
     graph_rag_workspace_ready: bool
+    strict_framework_isolation_enabled: bool
+    supported_primary_stacks: list[str]
+    python_functions_available: bool
+    llamaindex_workflow_available: bool
     available_modes: list[OrchestrationMode]
     retrieval_backends: list[RetrievalBackend]
 

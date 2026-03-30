@@ -34,6 +34,22 @@ Resumo pratico:
 - `quinto caminho opcional`: `OpenAI Agents SDK`
 - `nao recomendado como caminho principal agora`: `Claude Agent SDK`, `Codex subagents`
 
+## Status de implementacao em 30 de marco de 2026
+
+Hoje o projeto ja saiu do plano e entrou em execucao inicial:
+
+- `1o caminho`: `LangGraph` ja existe e segue operativo;
+- `2o caminho`: `CrewAI` ja existe e segue operativo;
+- `3o caminho`: `Python puro + functions` ja foi implementado de forma experimental, usando o kernel comum;
+- `4o caminho`: `LlamaIndex Workflows` ja foi implementado de forma experimental, tambem sobre o kernel comum;
+- `5o caminho opcional`: `OpenAI Agents SDK` ainda nao foi aberto.
+
+Importante:
+
+- os caminhos `3` e `4` ainda estao em fase `experimental`;
+- eles ja passam em smoke local;
+- eles ainda precisam de benchmark comparativo mais amplo antes de qualquer rollout real.
+
 ## Leitura do arquivo tmp/resposta_chatpg.txt
 
 O texto em [tmp/resposta_chatpg.txt](../../tmp/resposta_chatpg.txt) faz 6 afirmacoes principais. Abaixo esta o diagnostico honesto do estado atual do repo.
@@ -645,4 +661,3 @@ Essa combinacao e a que melhor equilibra:
 - maturidade de retrieval;
 - controle de producao;
 - potencial de qualidade.
-

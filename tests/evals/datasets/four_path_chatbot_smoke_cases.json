@@ -1,0 +1,59 @@
+[
+  {
+    "id": "public_pedagogy",
+    "message": "qual a proposta pedagogica da escola?",
+    "conversation_id": "four-path-public-pedagogy",
+    "telegram_chat_id": 1649845401,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "expected_access_tier": "public"
+  },
+  {
+    "id": "protected_docs",
+    "message": "qual a documentacao do Lucas?",
+    "conversation_id": "four-path-protected-docs",
+    "telegram_chat_id": 1649845499,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read"
+      ]
+    },
+    "expected_access_tier": "authenticated"
+  },
+  {
+    "id": "support_finance",
+    "message": "quero falar com o financeiro",
+    "conversation_id": "four-path-support-finance",
+    "telegram_chat_id": 1649845403,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "expected_access_tier": "public"
+  },
+  {
+    "id": "workflow_visit",
+    "message": "quero agendar uma visita na quinta a tarde",
+    "conversation_id": "four-path-workflow-visit",
+    "telegram_chat_id": 1649845404,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "expected_access_tier": "public"
+  }
+]

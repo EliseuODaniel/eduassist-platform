@@ -10,6 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from eduassist_observability import configure_observability
 
 from .engine_selector import (
+    SUPPORTED_PRIMARY_STACKS,
     build_engine_bundle,
     clear_runtime_primary_stack_override,
     get_experiment_live_promotion_summary,
@@ -21,6 +22,7 @@ from .engine_selector import (
     resolve_primary_stack,
     set_runtime_primary_stack_override,
 )
+from .engines.llamaindex_workflow_engine import LLAMAINDEX_WORKFLOW_AVAILABLE
 from .graph import get_graph_blueprint, to_preview
 from .graph_rag_runtime import graph_rag_workspace_ready
 from .langgraph_runtime import (
@@ -404,6 +406,8 @@ async def meta(
         'langgraphHitlDefaultSlices': settings.langgraph_hitl_default_slices,
         'langgraphHitlUserTrafficEnabled': settings.langgraph_hitl_user_traffic_enabled,
         'langgraphHitlUserTrafficSlices': settings.langgraph_hitl_user_traffic_slices,
+        'pythonFunctionsAvailable': True,
+        'llamaindexWorkflowAvailable': LLAMAINDEX_WORKFLOW_AVAILABLE,
     }
 
 
@@ -441,6 +445,8 @@ async def status() -> dict[str, object]:
             'langgraph-thread-id',
             'langgraph-hitl-internal',
             'engine-selector',
+            'agent-kernel',
+            'shared-entity-resolution',
             'tool-routing',
             'qdrant-hybrid-retrieval',
             'query-planned-retrieval',
@@ -448,8 +454,10 @@ async def status() -> dict[str, object]:
             'conversation-memory',
             'graph-rag-routing',
             'provider-abstraction',
+            'python-functions-engine',
+            'llamaindex-workflow-engine',
         ],
-        'supportedEngines': ['langgraph', 'shadow', 'crewai'],
+        'supportedEngines': sorted(SUPPORTED_PRIMARY_STACKS),
         'graphRagEnabled': settings.graph_rag_enabled,
         'graphRagWorkspaceReady': graph_rag_workspace_ready(settings.graph_rag_workspace),
         'strictFrameworkIsolationEnabled': settings.strict_framework_isolation_enabled,
@@ -464,6 +472,8 @@ async def status() -> dict[str, object]:
         'langgraphHitlDefaultSlices': settings.langgraph_hitl_default_slices,
         'langgraphHitlUserTrafficEnabled': settings.langgraph_hitl_user_traffic_enabled,
         'langgraphHitlUserTrafficSlices': settings.langgraph_hitl_user_traffic_slices,
+        'pythonFunctionsAvailable': True,
+        'llamaindexWorkflowAvailable': LLAMAINDEX_WORKFLOW_AVAILABLE,
     }
 
 
@@ -476,7 +486,7 @@ async def get_runtime_primary_stack(
     return {
         'service': 'ai-orchestrator',
         **_runtime_primary_stack_payload(settings),
-        'supportedPrimaryStacks': ['langgraph', 'crewai', 'shadow'],
+        'supportedPrimaryStacks': sorted(SUPPORTED_PRIMARY_STACKS),
     }
 
 
@@ -525,7 +535,7 @@ async def update_runtime_primary_stack(
         'action': action,
         'override': override,
         **_runtime_primary_stack_payload(settings),
-        'supportedPrimaryStacks': ['langgraph', 'crewai', 'shadow'],
+        'supportedPrimaryStacks': sorted(SUPPORTED_PRIMARY_STACKS),
     }
 
 
@@ -540,6 +550,10 @@ async def capabilities() -> RuntimeCapabilities:
         llm_configured=bool(settings.openai_api_key) or bool(settings.google_api_key),
         graph_rag_enabled=settings.graph_rag_enabled,
         graph_rag_workspace_ready=graph_rag_workspace_ready(settings.graph_rag_workspace),
+        strict_framework_isolation_enabled=settings.strict_framework_isolation_enabled,
+        supported_primary_stacks=sorted(SUPPORTED_PRIMARY_STACKS),
+        python_functions_available=True,
+        llamaindex_workflow_available=LLAMAINDEX_WORKFLOW_AVAILABLE,
         available_modes=[
             OrchestrationMode.hybrid_retrieval,
             OrchestrationMode.graph_rag,

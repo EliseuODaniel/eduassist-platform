@@ -15,7 +15,9 @@ from urllib.request import Request, urlopen
 
 from .engines.base import ResponseEngine, ShadowRunResult
 from .engines.crewai_engine import CrewAIEngine, infer_request_slice
+from .engines.llamaindex_workflow_engine import LlamaIndexWorkflowEngine
 from .engines.langgraph_engine import LangGraphEngine
+from .engines.python_functions_engine import PythonFunctionsEngine
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ _RUNTIME_PRIMARY_STACK_OVERRIDE: dict[str, Any] = {
     'updated_at': None,
 }
 _RUNTIME_PRIMARY_STACK_LOCK = Lock()
-SUPPORTED_PRIMARY_STACKS = {'langgraph', 'crewai', 'shadow'}
+SUPPORTED_PRIMARY_STACKS = {'langgraph', 'crewai', 'python_functions', 'llamaindex', 'shadow'}
 
 
 @dataclass(frozen=True)
@@ -725,6 +727,8 @@ def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBund
     mode = resolve_primary_stack(settings)
     langgraph_engine = LangGraphEngine()
     crewai_engine = CrewAIEngine(fallback_engine=langgraph_engine)
+    python_functions_engine = PythonFunctionsEngine()
+    llamaindex_engine = LlamaIndexWorkflowEngine()
     strict_mode = strict_framework_isolation_enabled(settings)
 
     if request is not None and not strict_mode:
@@ -739,6 +743,10 @@ def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBund
 
     if mode == 'crewai':
         return EngineBundle(mode='crewai', primary=crewai_engine)
+    if mode == 'python_functions':
+        return EngineBundle(mode='python_functions', primary=python_functions_engine)
+    if mode == 'llamaindex':
+        return EngineBundle(mode='llamaindex', primary=llamaindex_engine)
     if mode == 'shadow':
         if strict_mode:
             return EngineBundle(mode='langgraph', primary=langgraph_engine)
