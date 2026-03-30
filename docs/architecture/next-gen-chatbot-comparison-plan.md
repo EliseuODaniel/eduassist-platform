@@ -103,6 +103,22 @@ Status desta fase:
 - a conversa de controle ficou no baseline `LangGraph`;
 - o runtime foi restaurado ao final sem override global e sem override direcionado.
 
+### Janela humana real com TTL
+
+O runtime agora tambem suporta `janela curta com expiracao automatica` para esse canario direcionado:
+
+- voce escolhe a stack (`python_functions` ou `llamaindex`);
+- escolhe o tipo de conversa;
+- escolhe o `chat_id` ou `conversation_id`;
+- define um `TTL`;
+- e o override expira sozinho.
+
+Isso reduz risco operacional porque:
+
+- nao depende de lembrar de limpar manualmente;
+- deixa o status auditar exatamente ate quando a janela esta aberta;
+- e evita que um teste humano fique ligado mais tempo do que deveria.
+
 ## Leitura do arquivo tmp/resposta_chatpg.txt
 
 O texto em [tmp/resposta_chatpg.txt](../../tmp/resposta_chatpg.txt) faz 6 afirmacoes principais. Abaixo esta o diagnostico honesto do estado atual do repo.

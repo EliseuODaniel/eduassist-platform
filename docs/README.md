@@ -18,6 +18,7 @@ Este diretório concentra a documentação formal do projeto.
 - [Preflight operacional dos caminhos next-gen](/home/edann/projects/eduassist-platform/docs/architecture/nextgen-stack-runtime-preflight-report.md)
 - [Observação controlada dos caminhos next-gen em runtime](/home/edann/projects/eduassist-platform/docs/architecture/nextgen-stack-runtime-observation-report.md)
 - [Preflight de canário direcionado dos caminhos next-gen](/home/edann/projects/eduassist-platform/docs/architecture/nextgen-targeted-canary-preflight-report.md)
+- [Ativação de canário direcionado dos caminhos next-gen](/home/edann/projects/eduassist-platform/docs/architecture/nextgen-targeted-canary-activation-report.md)
 - [Catálogo de serviços](/home/edann/projects/eduassist-platform/docs/architecture/service-catalog.md)
 - [Segurança da informação](/home/edann/projects/eduassist-platform/docs/security/security-architecture.md)
 - [Matriz de controle de acesso](/home/edann/projects/eduassist-platform/docs/security/access-control-matrix.md)

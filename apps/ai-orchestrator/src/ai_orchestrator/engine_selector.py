@@ -4,7 +4,7 @@ from collections import OrderedDict
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from threading import Lock
 from time import monotonic
 from dataclasses import dataclass
@@ -37,6 +37,8 @@ _RUNTIME_TARGETED_STACK_OVERRIDE: dict[str, Any] = {
     'reason': None,
     'operator': None,
     'updated_at': None,
+    'ttl_seconds': None,
+    'expires_at': None,
     'slices': [],
     'telegram_chat_allowlist': [],
     'conversation_allowlist': [],
@@ -110,6 +112,26 @@ def clear_runtime_primary_stack_override(
 
 def get_runtime_targeted_stack_override() -> dict[str, Any]:
     with _RUNTIME_TARGETED_STACK_LOCK:
+        expires_at_raw = str(_RUNTIME_TARGETED_STACK_OVERRIDE.get('expires_at') or '').strip()
+        if _RUNTIME_TARGETED_STACK_OVERRIDE.get('value') and expires_at_raw:
+            try:
+                expires_at = datetime.fromisoformat(expires_at_raw)
+            except ValueError:
+                expires_at = None
+            if expires_at is not None and expires_at <= datetime.now(timezone.utc):
+                _RUNTIME_TARGETED_STACK_OVERRIDE.update(
+                    {
+                        'value': None,
+                        'reason': 'expired_runtime_targeted_stack_override',
+                        'operator': 'system',
+                        'updated_at': datetime.now(timezone.utc).isoformat(),
+                        'ttl_seconds': None,
+                        'expires_at': None,
+                        'slices': [],
+                        'telegram_chat_allowlist': [],
+                        'conversation_allowlist': [],
+                    }
+                )
         return dict(_RUNTIME_TARGETED_STACK_OVERRIDE)
 
 
@@ -118,6 +140,7 @@ def set_runtime_targeted_stack_override(
     stack: str | None,
     reason: str | None = None,
     operator: str | None = None,
+    ttl_seconds: int | None = None,
     slices: list[str] | None = None,
     telegram_chat_allowlist: list[str] | None = None,
     conversation_allowlist: list[str] | None = None,
@@ -125,6 +148,11 @@ def set_runtime_targeted_stack_override(
     normalized_stack = _normalized_primary_stack(stack)
     if normalized_stack == 'shadow':
         raise ValueError('unsupported_targeted_stack:shadow')
+    normalized_ttl_seconds: int | None = None
+    if ttl_seconds is not None:
+        normalized_ttl_seconds = int(ttl_seconds)
+        if normalized_ttl_seconds <= 0:
+            normalized_ttl_seconds = None
     with _RUNTIME_TARGETED_STACK_LOCK:
         if normalized_stack is None:
             _RUNTIME_TARGETED_STACK_OVERRIDE.update(
@@ -133,18 +161,28 @@ def set_runtime_targeted_stack_override(
                     'reason': reason or None,
                     'operator': operator or None,
                     'updated_at': datetime.now(timezone.utc).isoformat(),
+                    'ttl_seconds': None,
+                    'expires_at': None,
                     'slices': [],
                     'telegram_chat_allowlist': [],
                     'conversation_allowlist': [],
                 }
             )
         else:
+            updated_at = datetime.now(timezone.utc)
+            expires_at = (
+                (updated_at + timedelta(seconds=normalized_ttl_seconds)).isoformat()
+                if normalized_ttl_seconds
+                else None
+            )
             _RUNTIME_TARGETED_STACK_OVERRIDE.update(
                 {
                     'value': normalized_stack,
                     'reason': reason or None,
                     'operator': operator or None,
-                    'updated_at': datetime.now(timezone.utc).isoformat(),
+                    'updated_at': updated_at.isoformat(),
+                    'ttl_seconds': normalized_ttl_seconds,
+                    'expires_at': expires_at,
                     'slices': sorted({str(item).strip() for item in (slices or []) if str(item).strip()}),
                     'telegram_chat_allowlist': sorted(
                         {str(item).strip() for item in (telegram_chat_allowlist or []) if str(item).strip()}

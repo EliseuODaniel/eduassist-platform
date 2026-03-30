@@ -169,6 +169,7 @@ class RuntimeTargetedStackUpdateRequest(BaseModel):
     reason: str | None = None
     operator: str | None = None
     clear_override: bool = False
+    ttl_seconds: int | None = Field(default=None, ge=60, le=86400)
     slices: list[str] = Field(default_factory=list)
     telegram_chat_allowlist: list[str] = Field(default_factory=list)
     conversation_allowlist: list[str] = Field(default_factory=list)
@@ -202,6 +203,8 @@ def _runtime_primary_stack_payload(settings: Settings) -> dict[str, object]:
         'runtimeTargetedStackOverrideReason': targeted_override.get('reason') if isinstance(targeted_override, dict) else None,
         'runtimeTargetedStackOverrideOperator': targeted_override.get('operator') if isinstance(targeted_override, dict) else None,
         'runtimeTargetedStackOverrideUpdatedAt': targeted_override.get('updated_at') if isinstance(targeted_override, dict) else None,
+        'runtimeTargetedStackOverrideTtlSeconds': targeted_override.get('ttl_seconds') if isinstance(targeted_override, dict) else None,
+        'runtimeTargetedStackOverrideExpiresAt': targeted_override.get('expires_at') if isinstance(targeted_override, dict) else None,
         'runtimeTargetedStackOverrideSlices': targeted_override.get('slices') if isinstance(targeted_override, dict) else [],
         'runtimeTargetedStackOverrideTelegramChatAllowlist': targeted_override.get('telegram_chat_allowlist') if isinstance(targeted_override, dict) else [],
         'runtimeTargetedStackOverrideConversationAllowlist': targeted_override.get('conversation_allowlist') if isinstance(targeted_override, dict) else [],
@@ -671,6 +674,7 @@ async def update_runtime_targeted_stack(
                 stack=request.stack,
                 reason=reason or 'runtime_targeted_stack_override_set',
                 operator=operator,
+                ttl_seconds=request.ttl_seconds,
                 slices=request.slices,
                 telegram_chat_allowlist=request.telegram_chat_allowlist,
                 conversation_allowlist=request.conversation_allowlist,
@@ -683,6 +687,8 @@ async def update_runtime_targeted_stack(
                 'operator': operator,
                 'reason': reason,
                 'stack': override.get('value'),
+                'ttl_seconds': override.get('ttl_seconds'),
+                'expires_at': override.get('expires_at'),
                 'slices': override.get('slices'),
                 'telegram_chat_allowlist': override.get('telegram_chat_allowlist'),
                 'conversation_allowlist': override.get('conversation_allowlist'),
