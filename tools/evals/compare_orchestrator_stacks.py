@@ -120,7 +120,20 @@ def _normalize_prompt_entries(payload: Any) -> list[dict[str, Any]]:
             slice_name = str(item.get('slice') or _infer_slice(prompt))
             category = str(item.get('category') or 'uncategorized')
             expected_keywords = [str(keyword) for keyword in (item.get('expected_keywords') or []) if str(keyword).strip()]
-            entries.append({'prompt': prompt, 'slice': slice_name, 'category': category, 'expected_keywords': expected_keywords})
+            forbidden_keywords = [str(keyword) for keyword in (item.get('forbidden_keywords') or []) if str(keyword).strip()]
+            entries.append(
+                {
+                    'prompt': prompt,
+                    'slice': slice_name,
+                    'category': category,
+                    'expected_keywords': expected_keywords,
+                    'forbidden_keywords': forbidden_keywords,
+                    'thread_id': str(item.get('thread_id') or ''),
+                    'turn_index': int(item.get('turn_index') or 1),
+                    'note': str(item.get('note') or ''),
+                    'telegram_chat_id': item.get('telegram_chat_id'),
+                }
+            )
             continue
         raise SystemExit('Each prompt entry must be a string or an object with a prompt field.')
     return entries

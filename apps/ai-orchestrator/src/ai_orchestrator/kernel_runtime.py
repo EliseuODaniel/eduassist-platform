@@ -66,6 +66,67 @@ def _should_prefer_contextual_tie(*, request: MessageResponseRequest, current: K
     }
 
 
+def _message_requests_academic_domain(message: str) -> bool:
+    normalized = rt._normalize_text(message)
+    academic_terms = {
+        *rt.GRADE_TERMS,
+        *rt.ATTENDANCE_TERMS,
+        *rt.GRADE_REQUIREMENT_TERMS,
+        *rt.GRADE_APPROVAL_TERMS,
+    }
+    return any(rt._message_matches_term(normalized, term) for term in academic_terms)
+
+
+def _message_requests_finance_domain(message: str) -> bool:
+    normalized = rt._normalize_text(message)
+    finance_terms = {
+        'financeiro',
+        'mensalidade',
+        'mensalidades',
+        'pagamento',
+        'pagamentos',
+        'boleto',
+        'boletos',
+        'fatura',
+        'faturas',
+        'em aberto',
+        'vencida',
+        'vencidas',
+    }
+    return any(rt._message_matches_term(normalized, term) for term in finance_terms)
+
+
+def _maybe_explicit_domain_override_plan(
+    *,
+    request: MessageResponseRequest,
+    settings: Any,
+    current: KernelPlan,
+) -> KernelPlan | None:
+    if not request.user.authenticated:
+        return None
+    requested_domain: QueryDomain | None = None
+    if _message_requests_academic_domain(request.message):
+        requested_domain = QueryDomain.academic
+    elif _message_requests_finance_domain(request.message):
+        requested_domain = QueryDomain.finance
+    if requested_domain is None or current.preview.classification.domain is requested_domain:
+        return None
+
+    candidate = build_kernel_plan(
+        request=request,
+        settings=settings,
+        stack_name=current.stack_name,
+        mode=current.mode,
+    )
+    if candidate.preview.classification.domain is not requested_domain:
+        return None
+    return candidate.model_copy(
+        update={
+            'plan_notes': [*current.plan_notes, f'explicit_domain_override:{requested_domain.value}'],
+        }
+    )
+
+
 def _with_repair_ack(*, request_message: str, answer_text: str) -> str:
     normalized = rt._normalize_text(request_message)
     if not any(
@@ -178,6 +239,49 @@ async def _maybe_contextual_public_direct_answer(
     return None
 
 
+def _maybe_hypothetical_public_pricing_answer(
+    *,
+    request: MessageResponseRequest,
+    plan: KernelPlan,
+    preview: Any,
+    school_profile: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None,
+) -> tuple[str, Any] | None:
+    if not isinstance(school_profile, dict):
+        return None
+    if preview.classification.access_tier is not AccessTier.public:
+        return None
+    if preview.classification.domain not in {QueryDomain.institution, QueryDomain.calendar}:
+        return None
+    if plan.entities.domain_hint != 'public_pricing' or not plan.entities.is_hypothetical or not plan.entities.quantity_hint:
+        return None
+
+    public_plan = rt._build_public_institution_plan(
+        request.message,
+        list(preview.selected_tools),
+        semantic_plan=None,
+        conversation_context=conversation_context,
+        school_profile=school_profile,
+    )
+    if public_plan.conversation_act != 'pricing':
+        public_plan = rt.replace(
+            public_plan,
+            conversation_act='pricing',
+            secondary_acts=(),
+        )
+    answer = rt._compose_public_profile_answer(
+        school_profile,
+        request.message,
+        actor=None,
+        original_message=request.message,
+        conversation_context=conversation_context,
+        semantic_plan=public_plan,
+    )
+    if str(plan.entities.quantity_hint) not in answer or 'R$' not in answer:
+        return None
+    return answer, public_plan
+
+
 async def execute_kernel_plan(
     *,
     request: MessageResponseRequest,
@@ -215,6 +319,13 @@ async def execute_kernel_plan(
                     'plan_notes': [*plan.plan_notes, 'contextual_replan'],
                 }
             )
+    explicit_domain_override = _maybe_explicit_domain_override_plan(
+        request=request,
+        settings=settings,
+        current=effective_plan,
+    )
+    if explicit_domain_override is not None:
+        effective_plan = explicit_domain_override
     preview = effective_plan.preview.model_copy(deep=True)
 
     retrieval_hits: list[Any] = []
@@ -234,6 +345,13 @@ async def execute_kernel_plan(
         school_profile=school_profile,
         conversation_context=context_payload,
     )
+    hypothetical_public_pricing_direct = _maybe_hypothetical_public_pricing_answer(
+        request=request,
+        plan=effective_plan,
+        preview=preview,
+        school_profile=school_profile,
+        conversation_context=context_payload,
+    )
 
     if contextual_public_answer:
         message_text = contextual_public_answer
@@ -243,6 +361,18 @@ async def execute_kernel_plan(
                 'mode': OrchestrationMode.structured_tool,
                 'reason': 'contextual_public_direct_answer',
                 'selected_tools': list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
+            }
+        )
+    elif hypothetical_public_pricing_direct:
+        message_text, public_plan = hypothetical_public_pricing_direct
+        deterministic_fallback_text = message_text
+        preview = preview.model_copy(
+            update={
+                'mode': OrchestrationMode.structured_tool,
+                'reason': 'hypothetical_public_pricing_direct_answer',
+                'selected_tools': list(
+                    dict.fromkeys([*preview.selected_tools, 'get_public_school_profile', 'project_public_pricing'])
+                ),
             }
         )
     elif preview.mode is OrchestrationMode.structured_tool:

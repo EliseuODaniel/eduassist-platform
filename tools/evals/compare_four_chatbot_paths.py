@@ -74,7 +74,8 @@ def _user_for_slice(entry: dict[str, Any]) -> UserContext:
 
 async def _run_turn(*, stack: str, entry: dict[str, Any]) -> dict[str, Any]:
     settings = _build_settings(stack=stack)
-    conversation_id = f"{entry.get('thread_id') or 'single'}:{stack}"
+    run_prefix = str(entry.get('run_prefix') or 'debug:four-path')
+    conversation_id = f"{run_prefix}:{entry.get('thread_id') or 'single'}:{stack}"
     request = MessageResponseRequest(
         message=str(entry['prompt']),
         conversation_id=conversation_id,
@@ -118,6 +119,8 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     lines.append(f"Date: {payload['generated_at']}")
     lines.append('')
     lines.append(f"Dataset: `{payload['dataset']}`")
+    lines.append('')
+    lines.append(f"Run prefix: `{payload.get('run_prefix', '')}`")
     lines.append('')
     lines.append('## Stack Summary')
     lines.append('')
@@ -167,10 +170,12 @@ def _render_markdown(payload: dict[str, Any]) -> str:
 
 
 async def _run_all(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    run_prefix = f"debug:four-path:{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
     previous_answers: dict[str, dict[str, str]] = {stack: {} for stack in STACKS}
     results: list[dict[str, Any]] = []
 
     for entry in entries:
+        entry_with_run_prefix = {**entry, 'run_prefix': run_prefix}
         row: dict[str, Any] = {
             'prompt': entry['prompt'],
             'slice': entry['slice'],
@@ -178,9 +183,10 @@ async def _run_all(entries: list[dict[str, Any]]) -> dict[str, Any]:
             'thread_id': entry.get('thread_id') or '',
             'turn_index': entry.get('turn_index') or 1,
             'note': entry.get('note') or '',
+            'run_prefix': run_prefix,
         }
         for stack in STACKS:
-            raw = await _run_turn(stack=stack, entry=entry)
+            raw = await _run_turn(stack=stack, entry=entry_with_run_prefix)
             answer_text = _extract_answer_text(raw['body'])
             thread_key = str(entry.get('thread_id') or '')
             previous_answer = previous_answers[stack].get(thread_key, '') if thread_key else ''
@@ -254,6 +260,7 @@ async def _run_all(entries: list[dict[str, Any]]) -> dict[str, Any]:
             }
     return {
         'generated_at': datetime.now(UTC).isoformat(),
+        'run_prefix': run_prefix,
         'summary': {
             'by_stack': summary_by_stack,
             'by_slice': summary_by_slice,

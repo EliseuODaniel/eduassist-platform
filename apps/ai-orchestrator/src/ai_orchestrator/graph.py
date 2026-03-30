@@ -8,6 +8,7 @@ import unicodedata
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
+from .entity_resolution import resolve_entity_hints
 from .models import (
     AccessTier,
     IntentClassification,
@@ -1001,7 +1002,15 @@ def _is_teacher_self_service_request(message: str, role: UserRole) -> bool:
 
 def _is_public_pricing_query(message: str) -> bool:
     lowered = _normalize_text(message)
-    if not any(_message_matches_term(lowered, term) for term in PUBLIC_PRICING_TERMS):
+    hints = resolve_entity_hints(message)
+    has_public_pricing_terms = any(_message_matches_term(lowered, term) for term in PUBLIC_PRICING_TERMS)
+    if not has_public_pricing_terms:
+        has_public_pricing_terms = (
+            hints.is_hypothetical
+            and bool(hints.quantity_hint)
+            and any(_message_matches_term(lowered, term) for term in {'matricula', 'matrícula'})
+        )
+    if not has_public_pricing_terms:
         return False
     if any(_message_matches_term(lowered, term) for term in PERSONAL_FINANCE_TERMS):
         return False

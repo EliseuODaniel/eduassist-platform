@@ -6,6 +6,7 @@ import re
 import unicodedata
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from time import monotonic
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
@@ -26,6 +27,7 @@ from .llm_provider import (
 )
 from .graph import to_preview
 from .crewai_trace import build_crewai_trace_sections
+from .entity_resolution import resolve_entity_hints
 from .langgraph_runtime import (
     get_langgraph_artifacts,
     get_orchestration_state_snapshot,
@@ -5472,7 +5474,123 @@ def _compose_public_enrichment_answer(context: PublicProfileContext) -> str:
     return ' '.join(line.strip() for line in lines if line and line.strip())
 
 
+def _parse_public_money(value: Any) -> Decimal | None:
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        return value
+    if isinstance(value, (int, float)):
+        return Decimal(str(value))
+    text = str(value).strip()
+    if not text:
+        return None
+    cleaned = re.sub(r'[^0-9,.\-]', '', text)
+    if not cleaned:
+        return None
+    if ',' in cleaned and '.' in cleaned:
+        if cleaned.rfind(',') > cleaned.rfind('.'):
+            cleaned = cleaned.replace('.', '').replace(',', '.')
+        else:
+            cleaned = cleaned.replace(',', '')
+    elif ',' in cleaned:
+        cleaned = cleaned.replace('.', '').replace(',', '.')
+    try:
+        return Decimal(cleaned)
+    except InvalidOperation:
+        return None
+
+
+def _format_brl(value: Any) -> str:
+    amount = _parse_public_money(value)
+    if amount is None:
+        return str(value)
+    quantized = amount.quantize(Decimal('0.01'))
+    formatted = f'{quantized:,.2f}'
+    formatted = formatted.replace(',', 'X').replace('.', ',').replace('X', '.')
+    return f'R$ {formatted}'
+
+
+def _compose_public_pricing_projection_answer(context: PublicProfileContext) -> str | None:
+    hints = resolve_entity_hints(context.source_message)
+    quantity = hints.quantity_hint
+    if not hints.is_hypothetical or quantity is None or quantity <= 0:
+        return None
+
+    normalized = context.normalized
+    wants_enrollment_fee = any(
+        _message_matches_term(normalized, term)
+        for term in {'matricula', 'matrícula', 'taxa de matricula', 'taxa de matrícula'}
+    )
+    wants_monthly_amount = any(
+        _message_matches_term(normalized, term)
+        for term in {'mensalidade', 'mensalidades'}
+    )
+    amount_key = 'monthly_amount' if wants_monthly_amount and not wants_enrollment_fee else 'enrollment_fee'
+    amount_label = 'mensalidade publica de referencia' if amount_key == 'monthly_amount' else 'taxa publica de matricula'
+
+    relevant_rows = [
+        row for row in context.tuition_reference
+        if isinstance(row, dict) and _public_segment_matches(str(row.get('segment')), context.segment)
+    ]
+    if not relevant_rows:
+        relevant_rows = [row for row in context.tuition_reference if isinstance(row, dict)]
+
+    projected_rows: list[dict[str, Any]] = []
+    sibling_discount_note: str | None = None
+    for row in relevant_rows:
+        amount = _parse_public_money(row.get(amount_key))
+        if amount is None or amount <= 0:
+            continue
+        notes = str(row.get('notes', '')).strip()
+        if not sibling_discount_note and any(
+            _message_matches_term(_normalize_text(notes), term)
+            for term in {'irmaos', 'irmãos', 'pagamento pontual', 'politica comercial', 'política comercial', 'desconto'}
+        ):
+            sibling_discount_note = notes
+        projected_rows.append(
+            {
+                'segment': str(row.get('segment', 'Segmento')).strip(),
+                'shift_label': str(row.get('shift_label', 'turno')).strip(),
+                'amount': amount,
+                'notes': notes,
+            }
+        )
+
+    if not projected_rows:
+        return None
+
+    unique_amounts = {row['amount'] for row in projected_rows}
+    if len(unique_amounts) == 1:
+        per_student = projected_rows[0]['amount']
+        total_amount = per_student * quantity
+        shared_scope = 'nos segmentos publicados que usam essa mesma referencia'
+        if len(projected_rows) == 1:
+            shared_scope = f"em {projected_rows[0]['segment']}"
+        lines = [
+            f'Se eu usar a {amount_label} hoje publicada {shared_scope}, a simulacao fica {quantity} x {_format_brl(per_student)} = {_format_brl(total_amount)}.'
+        ]
+    else:
+        lines = [
+            f'Hoje a escola publica mais de uma referencia de {amount_label}. Para {quantity} alunos, a simulacao por segmento fica assim:'
+        ]
+        for row in projected_rows[:4]:
+            total_amount = row['amount'] * quantity
+            lines.append(
+                f"- {row['segment']} ({row['shift_label']}): {quantity} x {_format_brl(row['amount'])} = {_format_brl(total_amount)}."
+            )
+
+    lines.append(
+        'Essa conta usa apenas os valores publicos de referencia e nao inclui material, uniforme ou condicao comercial nao detalhada na base.'
+    )
+    if sibling_discount_note:
+        lines.append(f'A base publica tambem menciona: {sibling_discount_note}')
+    return '\n'.join(lines)
+
+
 def _handle_public_pricing(context: PublicProfileContext) -> str:
+    pricing_projection_answer = _compose_public_pricing_projection_answer(context)
+    if pricing_projection_answer:
+        return pricing_projection_answer
     if _is_public_scholarship_query(context.source_message):
         return _compose_public_scholarship_answer(context)
     requested_unpublished_segment = _requested_unpublished_public_segment(context)
@@ -5492,8 +5610,8 @@ def _handle_public_pricing(context: PublicProfileContext) -> str:
         row = relevant_rows[0]
         return (
             f"Para {row.get('segment', 'esse segmento')} no turno {row.get('shift_label', 'regular')}, "
-            f"a mensalidade publica de referencia em 2026 e {row.get('monthly_amount', '0.00')} "
-            f"e a taxa de matricula e {row.get('enrollment_fee', '0.00')}. "
+            f"a mensalidade publica de referencia em 2026 e {_format_brl(row.get('monthly_amount', '0.00'))} "
+            f"e a taxa de matricula e {_format_brl(row.get('enrollment_fee', '0.00'))}. "
             f"{str(row.get('notes', '')).strip()} "
             'Se quiser, eu tambem posso resumir bolsas, descontos comerciais e canais de matricula.'
         ).strip()
@@ -5503,8 +5621,8 @@ def _handle_public_pricing(context: PublicProfileContext) -> str:
             '- {segment} ({shift_label}): mensalidade {monthly_amount} e taxa de matricula {enrollment_fee}. {notes}'.format(
                 segment=row.get('segment', 'Segmento'),
                 shift_label=row.get('shift_label', 'turno'),
-                monthly_amount=row.get('monthly_amount', '0.00'),
-                enrollment_fee=row.get('enrollment_fee', '0.00'),
+                monthly_amount=_format_brl(row.get('monthly_amount', '0.00')),
+                enrollment_fee=_format_brl(row.get('enrollment_fee', '0.00')),
                 notes=row.get('notes', '').strip(),
             ).rstrip()
         )
@@ -6967,7 +7085,14 @@ def _matches_public_visit_rule(message: str) -> bool:
 
 def _matches_public_pricing_rule(message: str) -> bool:
     normalized = _normalize_text(message)
-    return any(_message_matches_term(normalized, term) for term in PUBLIC_PRICING_TERMS)
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_PRICING_TERMS):
+        return True
+    hints = resolve_entity_hints(message)
+    return (
+        hints.is_hypothetical
+        and bool(hints.quantity_hint)
+        and any(_message_matches_term(normalized, term) for term in {'matricula', 'matrícula'})
+    )
 
 
 def _matches_public_schedule_rule(message: str) -> bool:
@@ -8784,8 +8909,13 @@ def _compose_workflow_status_answer(
         lines.append('Se quiser, eu tambem posso te orientar sobre o proximo passo.')
         return _render_structured_answer_lines(lines)
 
+    lead = (
+        f'Status do atendimento: ele segue {status_label} na fila de {queue_label}.'
+        if asks_status_explicitly or asks_update_explicitly
+        else f'Seu atendimento segue {status_label} na fila de {queue_label}.'
+    )
     lines = [
-        f'Seu atendimento segue {status_label} na fila de {queue_label}.',
+        lead,
         f'- Protocolo: {protocol_code}',
     ]
     if subject:
@@ -10167,11 +10297,17 @@ def _recent_student_from_context(
         return None
     recent_focus = _recent_trace_focus(conversation_context) or {}
     recent_active_task = str(recent_focus.get('active_task', '') or '').strip()
+    primary_slot_key = 'academic_student_name' if capability == 'academic' else 'finance_student_name'
+    secondary_slot_key = 'finance_student_name' if capability == 'academic' else 'academic_student_name'
     candidate_names: list[str] = []
-    for key in ('finance_student_name', 'academic_student_name'):
-        candidate_name = _recent_slot_value(conversation_context, key)
-        if candidate_name and candidate_name not in candidate_names:
-            candidate_names.append(candidate_name)
+    primary_candidate_name = _recent_slot_value(conversation_context, primary_slot_key)
+    if primary_candidate_name:
+        candidate_names.append(primary_candidate_name)
+    same_capability_task = recent_active_task.startswith(f'{capability}:')
+    if same_capability_task:
+        secondary_candidate_name = _recent_slot_value(conversation_context, secondary_slot_key)
+        if secondary_candidate_name and secondary_candidate_name not in candidate_names:
+            candidate_names.append(secondary_candidate_name)
     if recent_active_task == 'admin:student_administrative_status':
         active_entity = str(recent_focus.get('active_entity', '') or '').strip()
         if active_entity and active_entity not in candidate_names and active_entity != 'aluno':
@@ -10180,6 +10316,14 @@ def _recent_student_from_context(
         matched_students = _matching_students_in_text(students, candidate_name)
         if len(matched_students) == 1:
             return matched_students[0]
+    for sender_type, content in reversed(_recent_message_lines(conversation_context)):
+        if sender_type != 'user':
+            continue
+        matched_students = _matching_students_in_text(students, content)
+        if len(matched_students) == 1:
+            return matched_students[0]
+    if not same_capability_task:
+        return None
     for _sender_type, content in reversed(_recent_message_lines(conversation_context)):
         matched_students = _matching_students_in_text(students, content)
         if len(matched_students) == 1:
@@ -10218,6 +10362,35 @@ def _student_from_slot_memory(
     return None
 
 
+def _recent_multi_student_summary_context(
+    actor: dict[str, Any] | None,
+    *,
+    conversation_context: dict[str, Any] | None,
+) -> bool:
+    students = _linked_students(actor)
+    if len(students) <= 1 or not isinstance(conversation_context, dict):
+        return False
+    recent_assistant = next(
+        (
+            content
+            for sender_type, content in reversed(_recent_message_lines(conversation_context))
+            if sender_type == 'assistant' and str(content or '').strip()
+        ),
+        '',
+    )
+    if not recent_assistant:
+        return False
+    normalized = _normalize_text(recent_assistant)
+    if 'resumo financeiro das contas vinculadas' in normalized or 'mais de um aluno vinculado' in normalized:
+        return True
+    mentioned = 0
+    for student in students:
+        full_name = _normalize_text(str(student.get('full_name', '') or ''))
+        if full_name and full_name in normalized:
+            mentioned += 1
+    return mentioned >= 2
+
+
 def _select_linked_student(
     actor: dict[str, Any] | None,
     message: str,
@@ -10253,7 +10426,11 @@ def _select_linked_student(
     if len(students) == 1:
         return students[0], None
 
-    if recent_student is not None and _is_follow_up_query(message):
+    if (
+        recent_student is not None
+        and _is_follow_up_query(message)
+        and not _recent_multi_student_summary_context(actor, conversation_context=conversation_context)
+    ):
         return recent_student, None
 
     options = _format_student_options(students)
