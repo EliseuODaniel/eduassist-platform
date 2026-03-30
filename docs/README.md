@@ -12,6 +12,7 @@ Este diretório concentra a documentação formal do projeto.
 - [Guia visual do LangGraph](/home/edann/projects/eduassist-platform/docs/architecture/langgraph-runtime-visual-guide.md)
 - [Guia visual do CrewAI](/home/edann/projects/eduassist-platform/docs/architecture/crewai-runtime-visual-guide.md)
 - [Strict benchmark mode e advanced retrieval](/home/edann/projects/eduassist-platform/docs/architecture/strict-benchmark-and-advanced-retrieval.md)
+- [Plano next-gen de comparação entre stacks](/home/edann/projects/eduassist-platform/docs/architecture/next-gen-chatbot-comparison-plan.md)
 - [Catálogo de serviços](/home/edann/projects/eduassist-platform/docs/architecture/service-catalog.md)
 - [Segurança da informação](/home/edann/projects/eduassist-platform/docs/security/security-architecture.md)
 - [Matriz de controle de acesso](/home/edann/projects/eduassist-platform/docs/security/access-control-matrix.md)
