@@ -125,6 +125,10 @@ def resolve_primary_stack(settings: Any) -> str:
     return str(get_primary_stack_resolution(settings).get('resolved') or 'langgraph')
 
 
+def strict_framework_isolation_enabled(settings: Any) -> bool:
+    return bool(getattr(settings, 'strict_framework_isolation_enabled', False))
+
+
 def _parse_csv_items(value: str | None) -> set[str]:
     return {item.strip() for item in str(value or '').split(',') if item.strip()}
 
@@ -633,6 +637,8 @@ def _should_reuse_affinity(*, request: Any, inferred_slice: str, affinity_slice:
 
 
 def _should_route_to_experiment(*, request: Any, settings: Any) -> tuple[bool, dict[str, Any] | None]:
+    if strict_framework_isolation_enabled(settings):
+        return False, None
     if not bool(getattr(settings, 'orchestrator_experiment_enabled', False)):
         return False, None
     if resolve_primary_stack(settings) != 'langgraph':
@@ -719,8 +725,9 @@ def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBund
     mode = resolve_primary_stack(settings)
     langgraph_engine = LangGraphEngine()
     crewai_engine = CrewAIEngine(fallback_engine=langgraph_engine)
+    strict_mode = strict_framework_isolation_enabled(settings)
 
-    if request is not None:
+    if request is not None and not strict_mode:
         should_experiment, experiment = _should_route_to_experiment(request=request, settings=settings)
         if should_experiment:
             return EngineBundle(
@@ -733,11 +740,15 @@ def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBund
     if mode == 'crewai':
         return EngineBundle(mode='crewai', primary=crewai_engine)
     if mode == 'shadow':
+        if strict_mode:
+            return EngineBundle(mode='langgraph', primary=langgraph_engine)
         return EngineBundle(mode='shadow', primary=langgraph_engine, shadow=crewai_engine)
     return EngineBundle(mode='langgraph', primary=langgraph_engine)
 
 
 async def maybe_run_shadow(*, bundle: EngineBundle, request: Any, settings: Any) -> ShadowRunResult | None:
+    if strict_framework_isolation_enabled(settings):
+        return None
     if bundle.shadow is None:
         return None
     try:

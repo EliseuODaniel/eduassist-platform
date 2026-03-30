@@ -108,7 +108,10 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             self.state.reason = 'crewai_dependency_unavailable'
             return self.state.routing_label
 
-        evidence = await _fetch_public_evidence(self.settings)
+        evidence = await _fetch_public_evidence(
+            self.settings,
+            retrieval_query=ranking_message,
+        )
         self._evidence_docs = _build_evidence_docs(evidence)
         self._shortlisted_docs = _rank_evidence_docs(ranking_message, self._evidence_docs)
         self.state.evidence_source_ids = [doc.doc_id for doc in self._shortlisted_docs]

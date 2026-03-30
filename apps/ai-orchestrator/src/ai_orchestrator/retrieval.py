@@ -1,29 +1,132 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from functools import lru_cache
+import re
 import shutil
 from time import monotonic
 from typing import Any
+import unicodedata
 
-import psycopg
 from eduassist_observability import record_counter, record_histogram, set_span_attributes, start_span
-from fastembed import TextEmbedding
+from fastembed import LateInteractionTextEmbedding, TextEmbedding
+import numpy as np
+import psycopg
 from psycopg.rows import dict_row
 from qdrant_client import QdrantClient, models
 
-from .models import RetrievalBackend, RetrievalCitation, RetrievalHit, RetrievalSearchResponse
+from .models import (
+    RetrievalBackend,
+    RetrievalCitation,
+    RetrievalHit,
+    RetrievalQueryPlan,
+    RetrievalSearchResponse,
+)
 
 
 RRF_K = 60
+_STOPWORDS = {
+    'a',
+    'as',
+    'ao',
+    'aos',
+    'com',
+    'como',
+    'da',
+    'das',
+    'de',
+    'do',
+    'dos',
+    'e',
+    'ela',
+    'ele',
+    'em',
+    'essa',
+    'esse',
+    'esta',
+    'este',
+    'eu',
+    'me',
+    'minha',
+    'meu',
+    'na',
+    'nas',
+    'no',
+    'nos',
+    'o',
+    'os',
+    'para',
+    'por',
+    'qual',
+    'quais',
+    'se',
+    'sobre',
+    'tem',
+    'tenho',
+    'um',
+    'uma',
+    'voces',
+    'vocês',
+}
+_INTENT_EXPANSIONS = {
+    'pricing_lookup': 'mensalidade matricula valores descontos bolsas segmentos',
+    'timeline_lookup': 'calendario aulas reuniao pais formatura matricula datas',
+    'document_lookup': 'documentacao matricula documentos secretaria email portal',
+    'contact_lookup': 'endereco cidade estado cep telefone email secretaria contato',
+    'corpus_overview': 'proposta pedagogica diferenciais projeto de vida rotina escolar acompanhamento',
+}
+
+
+@dataclass(frozen=True)
+class RetrievalQueryPlanSpec:
+    intent: str
+    normalized_query: str
+    query_variants: list[str]
+    graph_rag_candidate: bool
+    category_bias: str | None
+    lexical_limit: int
+    vector_limit: int
+    rerank_limit: int
+    max_chunks_per_document: int
 
 
 class RetrievalService:
-    def __init__(self, *, database_url: str, qdrant_url: str, collection_name: str, embedding_model: str) -> None:
+    def __init__(
+        self,
+        *,
+        database_url: str,
+        qdrant_url: str,
+        collection_name: str,
+        embedding_model: str,
+        enable_query_variants: bool,
+        enable_late_interaction_rerank: bool,
+        late_interaction_model: str,
+        candidate_pool_size: int,
+    ) -> None:
         self.database_url = database_url
         self.collection_name = collection_name
         self.embedding_model = embedding_model
+        self.enable_query_variants = enable_query_variants
+        self.enable_late_interaction_rerank = enable_late_interaction_rerank
+        self.late_interaction_model = late_interaction_model
+        self.candidate_pool_size = max(6, candidate_pool_size)
         self.qdrant = QdrantClient(url=qdrant_url)
         self.embedder = _build_embedder(embedding_model)
+
+    def warm_components(self) -> None:
+        with start_span(
+            'eduassist.retrieval.warm_components',
+            tracer_name='eduassist.ai_orchestrator.retrieval',
+            **{
+                'eduassist.retrieval.collection': self.collection_name,
+                'eduassist.retrieval.reranker_enabled': self.enable_late_interaction_rerank,
+            },
+        ):
+            next(self.embedder.embed(['warmup retrieval query']))
+            if self.enable_late_interaction_rerank and self.late_interaction_model:
+                reranker = _build_late_interaction_embedder(self.late_interaction_model)
+                next(reranker.embed(['warmup query']))
+                next(reranker.embed(['warmup document context']))
 
     def hybrid_search(
         self,
@@ -34,6 +137,13 @@ class RetrievalService:
         category: str | None = None,
     ) -> RetrievalSearchResponse:
         started_at = monotonic()
+        query_plan = _build_query_plan(
+            query=query,
+            top_k=top_k,
+            category=category,
+            enable_query_variants=self.enable_query_variants,
+            candidate_pool_size=self.candidate_pool_size,
+        )
         with start_span(
             'eduassist.retrieval.hybrid_search',
             tracer_name='eduassist.ai_orchestrator.retrieval',
@@ -43,23 +153,64 @@ class RetrievalService:
                 'eduassist.retrieval.visibility': visibility,
                 'eduassist.retrieval.category': category,
                 'eduassist.retrieval.collection': self.collection_name,
+                'eduassist.retrieval.intent': query_plan.intent,
+                'eduassist.retrieval.graph_rag_candidate': query_plan.graph_rag_candidate,
+                'eduassist.retrieval.variant_count': len(query_plan.query_variants),
             },
         ):
-            lexical_hits = self._lexical_search(query=query, top_k=top_k, visibility=visibility, category=category)
-            vector_hits = self._vector_search(query=query, top_k=top_k, visibility=visibility, category=category)
-            fused_hits = self._fuse_hits(lexical_hits=lexical_hits, vector_hits=vector_hits, top_k=top_k)
+            lexical_sources: dict[str, list[dict[str, Any]]] = {}
+            vector_sources: dict[str, list[dict[str, Any]]] = {}
+
+            lexical_variants = query_plan.query_variants[: min(3, len(query_plan.query_variants))]
+            vector_variants = query_plan.query_variants[: min(2, len(query_plan.query_variants))]
+
+            for index, variant in enumerate(lexical_variants):
+                lexical_sources[f'lexical:{index}'] = self._lexical_search(
+                    query=variant,
+                    top_k=query_plan.lexical_limit,
+                    visibility=visibility,
+                    category=category,
+                )
+            for index, variant in enumerate(vector_variants):
+                vector_sources[f'vector:{index}'] = self._vector_search(
+                    query=variant,
+                    top_k=query_plan.vector_limit,
+                    visibility=visibility,
+                    category=category,
+                )
+
+            fused_hits = self._fuse_hits(
+                lexical_sources=lexical_sources,
+                vector_sources=vector_sources,
+                top_k=max(top_k, query_plan.rerank_limit),
+                category_bias=query_plan.category_bias,
+                max_chunks_per_document=query_plan.max_chunks_per_document,
+                intent=query_plan.intent,
+            )
+            reranked_hits, reranker_applied = self._rerank_hits(
+                query=query,
+                hits=fused_hits,
+                rerank_limit=query_plan.rerank_limit,
+                top_k=top_k,
+            )
+            context_pack = self._build_context_pack(reranked_hits)
+
             set_span_attributes(
                 **{
-                    'eduassist.retrieval.lexical_hits': len(lexical_hits),
-                    'eduassist.retrieval.vector_hits': len(vector_hits),
+                    'eduassist.retrieval.lexical_sources': len(lexical_sources),
+                    'eduassist.retrieval.vector_sources': len(vector_sources),
                     'eduassist.retrieval.fused_hits': len(fused_hits),
+                    'eduassist.retrieval.reranked_hits': len(reranked_hits),
                     'eduassist.retrieval.backend': RetrievalBackend.qdrant_hybrid.value,
+                    'eduassist.retrieval.reranker_applied': reranker_applied,
                 }
             )
             metric_attributes = {
                 'backend': RetrievalBackend.qdrant_hybrid.value,
                 'visibility': visibility,
                 'category': category or 'all',
+                'intent': query_plan.intent,
+                'reranker_applied': str(reranker_applied).lower(),
             }
             record_counter(
                 'eduassist_retrieval_requests',
@@ -74,15 +225,25 @@ class RetrievalService:
             )
             record_histogram(
                 'eduassist_retrieval_fused_hits',
-                len(fused_hits),
+                len(reranked_hits),
                 attributes=metric_attributes,
-                description='Number of fused hits returned by hybrid retrieval.',
+                description='Number of hits returned by the retrieval pipeline.',
             )
             return RetrievalSearchResponse(
                 query=query,
                 retrieval_backend=RetrievalBackend.qdrant_hybrid,
-                total_hits=len(fused_hits),
-                hits=fused_hits,
+                total_hits=len(reranked_hits),
+                hits=reranked_hits,
+                query_plan=RetrievalQueryPlan(
+                    intent=query_plan.intent,
+                    normalized_query=query_plan.normalized_query,
+                    query_variants=query_plan.query_variants,
+                    graph_rag_candidate=query_plan.graph_rag_candidate,
+                    reranker_applied=reranker_applied,
+                    reranker_model=self.late_interaction_model if reranker_applied else None,
+                    category_bias=query_plan.category_bias,
+                ),
+                context_pack=context_pack,
             )
 
     def collection_status(self) -> dict[str, Any]:
@@ -119,6 +280,9 @@ class RetrievalService:
                 'indexed_vectors_count': getattr(collection, 'indexed_vectors_count', None),
                 'vectors_config': str(vectors_config) if vectors_config is not None else None,
                 'status': str(collection.status),
+                'query_variants_enabled': self.enable_query_variants,
+                'late_interaction_rerank_enabled': self.enable_late_interaction_rerank,
+                'late_interaction_model': self.late_interaction_model,
             }
 
     def _lexical_search(
@@ -258,40 +422,64 @@ class RetrievalService:
     def _fuse_hits(
         self,
         *,
-        lexical_hits: list[dict[str, Any]],
-        vector_hits: list[dict[str, Any]],
+        lexical_sources: dict[str, list[dict[str, Any]]],
+        vector_sources: dict[str, list[dict[str, Any]]],
         top_k: int,
+        category_bias: str | None,
+        max_chunks_per_document: int,
+        intent: str,
     ) -> list[RetrievalHit]:
         with start_span(
             'eduassist.retrieval.fuse_hits',
             tracer_name='eduassist.ai_orchestrator.retrieval',
             **{
-                'eduassist.retrieval.lexical_hits': len(lexical_hits),
-                'eduassist.retrieval.vector_hits': len(vector_hits),
+                'eduassist.retrieval.lexical_sources': len(lexical_sources),
+                'eduassist.retrieval.vector_sources': len(vector_sources),
                 'eduassist.retrieval.top_k': top_k,
             },
         ):
             combined: dict[str, dict[str, Any]] = {}
 
-            for rank, hit in enumerate(lexical_hits, start=1):
-                item = combined.setdefault(hit['chunk_id'], dict(hit))
-                item['lexical_score'] = float(hit.get('lexical_score', 0.0))
-                item['rrf_score'] = item.get('rrf_score', 0.0) + 1.0 / (RRF_K + rank)
+            for source_name, hits in lexical_sources.items():
+                for rank, hit in enumerate(hits, start=1):
+                    item = combined.setdefault(hit['chunk_id'], dict(hit))
+                    item['lexical_score'] = max(float(hit.get('lexical_score', 0.0)), float(item.get('lexical_score', 0.0) or 0.0))
+                    item['rrf_score'] = item.get('rrf_score', 0.0) + _source_weight(source_name) * (1.0 / (RRF_K + rank))
 
-            for rank, hit in enumerate(vector_hits, start=1):
-                item = combined.setdefault(hit['chunk_id'], dict(hit))
-                item.setdefault('lexical_score', None)
-                item['vector_score'] = float(hit.get('vector_score', 0.0))
-                item['rrf_score'] = item.get('rrf_score', 0.0) + 1.0 / (RRF_K + rank)
-                for key, value in hit.items():
-                    item.setdefault(key, value)
+            for source_name, hits in vector_sources.items():
+                for rank, hit in enumerate(hits, start=1):
+                    item = combined.setdefault(hit['chunk_id'], dict(hit))
+                    item.setdefault('lexical_score', None)
+                    item['vector_score'] = max(float(hit.get('vector_score', 0.0)), float(item.get('vector_score', 0.0) or 0.0))
+                    item['rrf_score'] = item.get('rrf_score', 0.0) + _source_weight(source_name) * (1.0 / (RRF_K + rank))
+                    for key, value in hit.items():
+                        item.setdefault(key, value)
 
-            fused = sorted(
+            category_bias_normalized = _normalize_text(category_bias or '')
+            ranked = sorted(
                 combined.values(),
-                key=lambda item: (float(item.get('rrf_score', 0.0)), float(item.get('vector_score', 0.0) or 0.0)),
+                key=lambda item: (
+                    float(item.get('rrf_score', 0.0))
+                    + _category_boost(item=item, category_bias=category_bias_normalized)
+                    + _intent_alignment_boost(item=item, intent=intent),
+                    float(item.get('vector_score', 0.0) or 0.0),
+                    float(item.get('lexical_score', 0.0) or 0.0),
+                ),
                 reverse=True,
             )
-            set_span_attributes(**{'eduassist.retrieval.unique_hits': len(fused)})
+            diversified: list[dict[str, Any]] = []
+            per_document_counts: dict[str, int] = {}
+            for item in ranked:
+                document_key = str(item.get('document_title', '') or item.get('storage_path', '') or item['chunk_id'])
+                current_count = per_document_counts.get(document_key, 0)
+                if current_count >= max_chunks_per_document:
+                    continue
+                per_document_counts[document_key] = current_count + 1
+                diversified.append(item)
+                if len(diversified) >= top_k:
+                    break
+
+            set_span_attributes(**{'eduassist.retrieval.unique_hits': len(diversified)})
             return [
                 RetrievalHit(
                     chunk_id=item['chunk_id'],
@@ -320,14 +508,288 @@ class RetrievalService:
                         chunk_index=int(item.get('chunk_index', 0)),
                     ),
                 )
-                for item in fused[:top_k]
+                for item in diversified
             ]
+
+    def _rerank_hits(
+        self,
+        *,
+        query: str,
+        hits: list[RetrievalHit],
+        rerank_limit: int,
+        top_k: int,
+    ) -> tuple[list[RetrievalHit], bool]:
+        if not self.enable_late_interaction_rerank or not self.late_interaction_model or not hits:
+            return hits[:top_k], False
+        try:
+            reranker = _build_late_interaction_embedder(self.late_interaction_model)
+            query_embedding = np.asarray(next(reranker.embed([query])))
+            rerank_candidates = hits[: min(rerank_limit, len(hits))]
+            document_inputs = [
+                _rerank_text_for_hit(hit)
+                for hit in rerank_candidates
+            ]
+            document_embeddings = [np.asarray(item) for item in reranker.embed(document_inputs)]
+            rerank_scores = [
+                _late_interaction_maxsim(query_embedding, document_embedding)
+                for document_embedding in document_embeddings
+            ]
+        except Exception:
+            return hits[:top_k], False
+
+        normalized_fused = _normalize_scores([hit.fused_score for hit in rerank_candidates])
+        normalized_rerank = _normalize_scores(rerank_scores)
+        rescored: list[tuple[float, RetrievalHit]] = []
+        for hit, rerank_score, fused_score, rerank_component in zip(
+            rerank_candidates,
+            rerank_scores,
+            normalized_fused,
+            normalized_rerank,
+            strict=True,
+        ):
+            combined_score = (0.4 * fused_score) + (0.6 * rerank_component)
+            rescored.append(
+                (
+                    combined_score,
+                    hit.model_copy(update={'rerank_score': round(float(rerank_score), 6)}),
+                )
+            )
+        rescored.sort(key=lambda item: item[0], reverse=True)
+        reranked_hits = [hit for _, hit in rescored]
+        if len(hits) > len(rerank_candidates):
+            reranked_hits.extend(hits[len(rerank_candidates):])
+        return reranked_hits[:top_k], True
+
+    def _build_context_pack(self, hits: list[RetrievalHit], *, max_hits: int = 4, max_chars: int = 2200) -> str | None:
+        if not hits:
+            return None
+        sections: list[str] = []
+        current_chars = 0
+        for hit in hits[:max_hits]:
+            excerpt = str(hit.contextual_summary or hit.text_excerpt or '').strip()
+            if not excerpt:
+                continue
+            section = f'[{hit.document_title}] {excerpt}'
+            projected = current_chars + len(section) + 2
+            if projected > max_chars and sections:
+                break
+            sections.append(section[: max(0, max_chars - current_chars)])
+            current_chars += len(section) + 2
+        if not sections:
+            return None
+        return '\n\n'.join(sections)
 
     def _excerpt(self, text: str, max_chars: int = 280) -> str:
         clean = ' '.join(text.split())
         if len(clean) <= max_chars:
             return clean
         return f'{clean[: max_chars - 3].rstrip()}...'
+
+
+def _normalize_text(value: str) -> str:
+    text = unicodedata.normalize('NFKD', str(value or ''))
+    text = ''.join(char for char in text if not unicodedata.combining(char))
+    text = re.sub(r'\s+', ' ', text.lower()).strip()
+    return text
+
+
+def _query_terms(value: str) -> list[str]:
+    normalized = _normalize_text(value)
+    return [
+        token
+        for token in re.findall(r'[a-z0-9]{3,}', normalized)
+        if token not in _STOPWORDS
+    ]
+
+
+def _keyword_variant(query: str) -> str | None:
+    terms = _query_terms(query)
+    if not terms:
+        return None
+    variant = ' '.join(terms[:10]).strip()
+    normalized_variant = _normalize_text(variant)
+    if not normalized_variant or normalized_variant == _normalize_text(query):
+        return None
+    return variant
+
+
+def _intent_for_query(query: str) -> str:
+    normalized = _normalize_text(query)
+    terms = set(_query_terms(query))
+    if (
+        {'panorama', 'visao', 'visao geral', 'comparar', 'comparacao', 'comparativo', 'diferenca', 'diferenciais'} & terms
+        or 'proposta pedagogica' in normalized
+    ):
+        return 'corpus_overview'
+    if {'mensalidade', 'matricula', 'desconto', 'bolsa', 'valor', 'preco', 'precos'} & terms:
+        return 'pricing_lookup'
+    if {'calendario', 'aulas', 'reuniao', 'reuniao', 'formatura', 'datas', 'quando'} & terms:
+        return 'timeline_lookup'
+    if {'documentacao', 'documentos', 'documento', 'portal', 'secretaria', 'email'} & terms:
+        return 'document_lookup'
+    if {'telefone', 'whatsapp', 'instagram', 'endereco', 'cidade', 'estado', 'cep', 'contato'} & terms or 'onde fica' in normalized:
+        return 'contact_lookup'
+    return 'fact_lookup'
+
+
+def _category_bias_for_query(query: str, *, category: str | None, intent: str) -> str | None:
+    if category:
+        return category
+    if intent == 'timeline_lookup':
+        return 'calendar'
+    if intent == 'pricing_lookup':
+        return 'pricing'
+    if intent == 'document_lookup':
+        return 'documents'
+    if intent == 'contact_lookup':
+        return 'directory'
+    return None
+
+
+def _graph_rag_candidate(query: str, *, intent: str) -> bool:
+    normalized = _normalize_text(query)
+    if intent != 'corpus_overview':
+        return False
+    return any(
+        phrase in normalized
+        for phrase in (
+            'visao geral',
+            'panorama',
+            'compare',
+            'comparacao',
+            'comparativo',
+            'diferenciais',
+            'proposta pedagogica',
+        )
+    )
+
+
+def _build_query_plan(
+    *,
+    query: str,
+    top_k: int,
+    category: str | None,
+    enable_query_variants: bool,
+    candidate_pool_size: int,
+) -> RetrievalQueryPlanSpec:
+    intent = _intent_for_query(query)
+    normalized_query = _normalize_text(query)
+    keyword_variant = _keyword_variant(query) if enable_query_variants else None
+    variants = [query]
+    if keyword_variant:
+        variants.append(keyword_variant)
+    expansion = _INTENT_EXPANSIONS.get(intent)
+    if enable_query_variants and expansion:
+        variants.append(f'{query} {expansion}'.strip())
+    deduped_variants = _dedupe_strings(variants)
+    return RetrievalQueryPlanSpec(
+        intent=intent,
+        normalized_query=normalized_query,
+        query_variants=deduped_variants,
+        graph_rag_candidate=_graph_rag_candidate(query, intent=intent),
+        category_bias=_category_bias_for_query(query, category=category, intent=intent),
+        lexical_limit=max(top_k * 3, candidate_pool_size),
+        vector_limit=max(top_k * 3, candidate_pool_size),
+        rerank_limit=max(top_k * 2, min(candidate_pool_size, 10)),
+        max_chunks_per_document=2,
+    )
+
+
+def _dedupe_strings(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for value in values:
+        text = str(value or '').strip()
+        if not text:
+            continue
+        normalized = _normalize_text(text)
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(text)
+    return deduped
+
+
+def _source_weight(source_name: str) -> float:
+    if source_name.startswith('vector:0'):
+        return 1.2
+    if source_name.startswith('lexical:0'):
+        return 1.0
+    if source_name.startswith('vector:'):
+        return 0.95
+    if source_name.startswith('lexical:'):
+        return 0.85
+    return 1.0
+
+
+def _category_boost(*, item: dict[str, Any], category_bias: str) -> float:
+    if not category_bias:
+        return 0.0
+    item_category = _normalize_text(str(item.get('category', '') or ''))
+    if not item_category:
+        return 0.0
+    if category_bias in item_category:
+        return 0.01
+    return 0.0
+
+
+def _intent_alignment_boost(*, item: dict[str, Any], intent: str) -> float:
+    haystack = _normalize_text(
+        ' '.join(
+            part
+            for part in (
+                str(item.get('document_title', '') or ''),
+                str(item.get('contextual_summary', '') or ''),
+                str(item.get('text_content', '') or ''),
+            )
+            if part
+        )
+    )
+    if not haystack:
+        return 0.0
+    if intent == 'contact_lookup':
+        score = 0.0
+        if 'endereco' in haystack:
+            score += 0.03
+        if any(term in haystack for term in ('cidade', 'estado', 'cep', 'sao paulo')):
+            score += 0.015
+        return score
+    if intent == 'document_lookup':
+        return 0.03 if any(term in haystack for term in ('documentacao', 'documentos', 'matricula', 'portal', 'secretaria', 'email')) else 0.0
+    if intent == 'timeline_lookup':
+        return 0.03 if any(term in haystack for term in ('aulas', 'reuniao', 'formatura', 'matricula', 'calendario')) else 0.0
+    if intent == 'pricing_lookup':
+        return 0.03 if any(term in haystack for term in ('mensalidade', 'matricula', 'desconto', 'bolsa', 'segmento')) else 0.0
+    if intent == 'corpus_overview':
+        return 0.03 if any(term in haystack for term in ('proposta pedagogica', 'projeto de vida', 'diferenciais', 'acompanhamento', 'cultura digital')) else 0.0
+    return 0.0
+
+
+def _normalize_scores(values: list[float]) -> list[float]:
+    if not values:
+        return []
+    minimum = min(values)
+    maximum = max(values)
+    if maximum - minimum <= 1e-9:
+        return [1.0 for _ in values]
+    return [(value - minimum) / (maximum - minimum) for value in values]
+
+
+def _rerank_text_for_hit(hit: RetrievalHit) -> str:
+    summary = str(hit.contextual_summary or '').strip()
+    excerpt = str(hit.text_excerpt or '').strip()
+    return f'{hit.document_title}. {summary} {excerpt}'.strip()
+
+
+def _late_interaction_maxsim(query_embedding: np.ndarray, document_embedding: np.ndarray) -> float:
+    if query_embedding.size == 0 or document_embedding.size == 0:
+        return 0.0
+    if query_embedding.ndim != 2 or document_embedding.ndim != 2:
+        return 0.0
+    similarity = np.matmul(query_embedding, document_embedding.T)
+    if similarity.size == 0:
+        return 0.0
+    return float(np.max(similarity, axis=1).sum())
 
 
 @lru_cache
@@ -337,12 +799,20 @@ def get_retrieval_service(
     qdrant_url: str,
     collection_name: str,
     embedding_model: str,
+    enable_query_variants: bool,
+    enable_late_interaction_rerank: bool,
+    late_interaction_model: str,
+    candidate_pool_size: int,
 ) -> RetrievalService:
     return RetrievalService(
         database_url=database_url,
         qdrant_url=qdrant_url,
         collection_name=collection_name,
         embedding_model=embedding_model,
+        enable_query_variants=enable_query_variants,
+        enable_late_interaction_rerank=enable_late_interaction_rerank,
+        late_interaction_model=late_interaction_model,
+        candidate_pool_size=candidate_pool_size,
     )
 
 
@@ -355,3 +825,14 @@ def _build_embedder(model_name: str) -> TextEmbedding:
             raise
         shutil.rmtree('/tmp/fastembed_cache', ignore_errors=True)
         return TextEmbedding(model_name=model_name)
+
+
+def _build_late_interaction_embedder(model_name: str) -> LateInteractionTextEmbedding:
+    try:
+        return LateInteractionTextEmbedding(model_name=model_name)
+    except Exception as exc:
+        message = str(exc)
+        if 'NO_SUCHFILE' not in message and "File doesn't exist" not in message:
+            raise
+        shutil.rmtree('/tmp/fastembed_cache', ignore_errors=True)
+        return LateInteractionTextEmbedding(model_name=model_name)

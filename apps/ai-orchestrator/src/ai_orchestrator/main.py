@@ -75,6 +75,11 @@ class Settings(BaseSettings):
     qdrant_documents_collection: str = 'school_documents'
     document_embedding_model: str = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
     warm_retrieval_on_startup: bool = True
+    retrieval_enable_query_variants: bool = True
+    retrieval_enable_late_interaction_rerank: bool = True
+    retrieval_late_interaction_model: str = 'answerdotai/answerai-colbert-small-v1'
+    retrieval_candidate_pool_size: int = 12
+    strict_framework_isolation_enabled: bool = False
     graph_rag_enabled: bool = False
     graph_rag_workspace: str = '/workspace/artifacts/graphrag/eduassist-public-benchmark'
     graph_rag_response_type: str = 'List of 3-5 concise bullet points in Brazilian Portuguese'
@@ -172,6 +177,7 @@ def _runtime_primary_stack_payload(settings: Settings) -> dict[str, object]:
         'runtimePrimaryStackOverrideReason': runtime_override.get('reason') if isinstance(runtime_override, dict) else None,
         'runtimePrimaryStackOverrideOperator': runtime_override.get('operator') if isinstance(runtime_override, dict) else None,
         'runtimePrimaryStackOverrideUpdatedAt': runtime_override.get('updated_at') if isinstance(runtime_override, dict) else None,
+        'strictFrameworkIsolationEnabled': settings.strict_framework_isolation_enabled,
     }
 
 
@@ -312,12 +318,17 @@ logger = logging.getLogger(__name__)
 
 def _warm_retrieval_service(settings: Settings) -> None:
     try:
-        get_retrieval_service(
+        service = get_retrieval_service(
             database_url=settings.database_url,
             qdrant_url=settings.qdrant_url,
             collection_name=settings.qdrant_documents_collection,
             embedding_model=settings.document_embedding_model,
+            enable_query_variants=settings.retrieval_enable_query_variants,
+            enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
+            late_interaction_model=settings.retrieval_late_interaction_model,
+            candidate_pool_size=settings.retrieval_candidate_pool_size,
         )
+        service.warm_components()
         logger.info('retrieval_service_warmed')
     except Exception:
         logger.exception('retrieval_service_warmup_failed')
@@ -381,6 +392,10 @@ async def meta(
         'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
         'retrievalBackend': 'qdrant-hybrid',
         'graphRagEnabled': settings.graph_rag_enabled,
+        'strictFrameworkIsolationEnabled': settings.strict_framework_isolation_enabled,
+        'retrievalQueryVariantsEnabled': settings.retrieval_enable_query_variants,
+        'retrievalLateInteractionRerankEnabled': settings.retrieval_enable_late_interaction_rerank,
+        'retrievalLateInteractionModel': settings.retrieval_late_interaction_model,
         'langgraphCheckpointerEnabled': langgraph_runtime['checkpointerConfigured'],
         'langgraphCheckpointerReady': langgraph_runtime['checkpointerInitialized'],
         'langgraphCheckpointerBackend': langgraph_runtime['checkpointerBackend'],
@@ -428,6 +443,8 @@ async def status() -> dict[str, object]:
             'engine-selector',
             'tool-routing',
             'qdrant-hybrid-retrieval',
+            'query-planned-retrieval',
+            'late-interaction-reranking',
             'conversation-memory',
             'graph-rag-routing',
             'provider-abstraction',
@@ -435,6 +452,10 @@ async def status() -> dict[str, object]:
         'supportedEngines': ['langgraph', 'shadow', 'crewai'],
         'graphRagEnabled': settings.graph_rag_enabled,
         'graphRagWorkspaceReady': graph_rag_workspace_ready(settings.graph_rag_workspace),
+        'strictFrameworkIsolationEnabled': settings.strict_framework_isolation_enabled,
+        'retrievalQueryVariantsEnabled': settings.retrieval_enable_query_variants,
+        'retrievalLateInteractionRerankEnabled': settings.retrieval_enable_late_interaction_rerank,
+        'retrievalLateInteractionModel': settings.retrieval_late_interaction_model,
         'langgraphCheckpointerEnabled': langgraph_runtime['checkpointerConfigured'],
         'langgraphCheckpointerReady': langgraph_runtime['checkpointerInitialized'],
         'langgraphCheckpointerBackend': langgraph_runtime['checkpointerBackend'],
@@ -543,10 +564,17 @@ async def retrieval_status() -> dict[str, object]:
         qdrant_url=settings.qdrant_url,
         collection_name=settings.qdrant_documents_collection,
         embedding_model=settings.document_embedding_model,
+        enable_query_variants=settings.retrieval_enable_query_variants,
+        enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
+        late_interaction_model=settings.retrieval_late_interaction_model,
+        candidate_pool_size=settings.retrieval_candidate_pool_size,
     )
     return {
         'service': 'ai-orchestrator',
         'retrievalBackend': RetrievalBackend.qdrant_hybrid.value,
+        'queryVariantsEnabled': settings.retrieval_enable_query_variants,
+        'lateInteractionRerankEnabled': settings.retrieval_enable_late_interaction_rerank,
+        'lateInteractionModel': settings.retrieval_late_interaction_model,
         'qdrant': service.collection_status(),
     }
 
@@ -559,6 +587,10 @@ async def retrieval_search(request: RetrievalSearchRequest) -> RetrievalSearchRe
         qdrant_url=settings.qdrant_url,
         collection_name=settings.qdrant_documents_collection,
         embedding_model=settings.document_embedding_model,
+        enable_query_variants=settings.retrieval_enable_query_variants,
+        enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
+        late_interaction_model=settings.retrieval_late_interaction_model,
+        candidate_pool_size=settings.retrieval_candidate_pool_size,
     )
     return service.hybrid_search(
         query=request.query,

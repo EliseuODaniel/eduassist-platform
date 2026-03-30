@@ -28,10 +28,13 @@ class Settings(BaseSettings):
     log_level: str = 'INFO'
     port: int = 8000
     api_core_url: str = 'http://api-core:8000'
+    orchestrator_url: str = 'http://ai-orchestrator:8000'
     internal_api_token: str = 'dev-internal-token'
     google_api_key: str | None = None
     google_model: str = 'gemini-2.5-flash-preview'
     crewai_flow_state_dir: str = DEFAULT_FLOW_STATE_DIR
+    shared_retrieval_enabled: bool = True
+    shared_retrieval_top_k: int = 6
     crewai_hitl_enabled: bool = True
     crewai_hitl_default_slices: str = 'protected'
     crewai_hitl_user_traffic_enabled: bool = False
@@ -115,6 +118,9 @@ async def status(
         'mode': 'pilot',
         'googleModel': settings.google_model,
         'llmConfigured': bool(settings.google_api_key),
+        'sharedRetrievalEnabled': settings.shared_retrieval_enabled,
+        'sharedRetrievalTopK': settings.shared_retrieval_top_k,
+        'orchestratorUrl': settings.orchestrator_url,
         'capabilities': [
             'public-shadow-flow',
             'protected-shadow-flow',
@@ -127,6 +133,7 @@ async def status(
             'task-trace-telemetry',
             'task-guardrails',
             'agentic-rendering-for-support-workflow',
+            'shared-retrieval-consumer',
             'crewai-hitl-internal',
             'crewai-hitl-user-traffic',
         ],

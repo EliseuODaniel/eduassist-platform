@@ -140,7 +140,18 @@ class RetrievalHit(BaseModel):
     fused_score: float
     lexical_score: float | None = None
     vector_score: float | None = None
+    rerank_score: float | None = None
     citation: RetrievalCitation
+
+
+class RetrievalQueryPlan(BaseModel):
+    intent: str
+    normalized_query: str
+    query_variants: list[str] = Field(default_factory=list)
+    graph_rag_candidate: bool = False
+    reranker_applied: bool = False
+    reranker_model: str | None = None
+    category_bias: str | None = None
 
 
 class RetrievalSearchResponse(BaseModel):
@@ -148,6 +159,8 @@ class RetrievalSearchResponse(BaseModel):
     retrieval_backend: RetrievalBackend
     total_hits: int
     hits: list[RetrievalHit]
+    query_plan: RetrievalQueryPlan | None = None
+    context_pack: str | None = None
 
 
 class ConversationChannel(StrEnum):

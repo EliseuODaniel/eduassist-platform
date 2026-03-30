@@ -12694,6 +12694,10 @@ async def generate_message_response(
                     qdrant_url=settings.qdrant_url,
                     collection_name=settings.qdrant_documents_collection,
                     embedding_model=settings.document_embedding_model,
+                    enable_query_variants=settings.retrieval_enable_query_variants,
+                    enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
+                    late_interaction_model=settings.retrieval_late_interaction_model,
+                    candidate_pool_size=settings.retrieval_candidate_pool_size,
                 )
                 search = retrieval_service.hybrid_search(
                     query=analysis_message,
@@ -12762,6 +12766,10 @@ async def generate_message_response(
                         qdrant_url=settings.qdrant_url,
                         collection_name=settings.qdrant_documents_collection,
                         embedding_model=settings.document_embedding_model,
+                        enable_query_variants=settings.retrieval_enable_query_variants,
+                        enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
+                        late_interaction_model=settings.retrieval_late_interaction_model,
+                        candidate_pool_size=settings.retrieval_candidate_pool_size,
                     )
                     search = retrieval_service.hybrid_search(
                         query=analysis_message,

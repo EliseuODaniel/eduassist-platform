@@ -434,6 +434,16 @@ def _build_crewai_suggested_replies(*, slice_name: str, metadata: dict[str, Any]
     return _dedupe_reply_texts(['Como posso te ajudar?', 'Qual o proximo passo?', 'Quero mais detalhes', 'Pode continuar'])
 
 
+def _strict_safe_response_text(*, slice_name: str) -> str:
+    if slice_name == 'public':
+        return 'Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.'
+    if slice_name == 'protected':
+        return 'Nao consegui consolidar essa consulta com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao ou financeiro.'
+    if slice_name == 'support':
+        return 'Nao consegui concluir esse atendimento agora. Se quiser, eu posso tentar de novo ou voce pode me dizer se quer secretaria, financeiro, orientacao ou direcao.'
+    return 'Nao consegui concluir essa acao agora. Se quiser, me diga se voce quer consultar status, protocolo, remarcar ou cancelar.'
+
+
 class CrewAIEngine(ResponseEngine):
     name = 'crewai'
     ready = False
@@ -475,6 +485,7 @@ class CrewAIEngine(ResponseEngine):
         )
 
         slice_name = _resolve_slice_name(request=request, engine_mode=engine_mode)
+        strict_isolation = bool(getattr(settings, 'strict_framework_isolation_enabled', False))
         try:
             payload = await self._call_remote_pilot(request=request, settings=settings, slice_name=slice_name)
         except Exception:
@@ -492,15 +503,26 @@ class CrewAIEngine(ResponseEngine):
                 if isinstance(answer, dict) and isinstance(answer.get('answer_text'), str):
                     answer_text = str(answer['answer_text'])
         if not answer_text:
-            from ..runtime import generate_message_response
+            if strict_isolation:
+                payload_reason = payload_reason or 'crewai_primary_strict_safe_fallback'
+                crewai_metadata = {
+                    **(crewai_metadata or {}),
+                    'reason': payload_reason,
+                    'strict_framework_isolation': True,
+                    'cross_stack_fallback_used': False,
+                    'safe_fallback_used': True,
+                }
+                answer_text = _strict_safe_response_text(slice_name=slice_name)
+            else:
+                from ..runtime import generate_message_response
 
-            logger.warning('crewai_engine_primary_fallback_to_langgraph')
-            return await generate_message_response(
-                request=request,
-                settings=settings,
-                engine_name='crewai_stub',
-                engine_mode=str(engine_mode or self.name),
-            )
+                logger.warning('crewai_engine_primary_fallback_to_langgraph')
+                return await generate_message_response(
+                    request=request,
+                    settings=settings,
+                    engine_name='crewai_stub',
+                    engine_mode=str(engine_mode or self.name),
+                )
 
         actor = await _fetch_actor_context(settings=settings, telegram_chat_id=getattr(request, 'telegram_chat_id', None))
         effective_conversation_id = _effective_conversation_id(request)

@@ -59,18 +59,48 @@ def _crewai_google_model(configured_model: str) -> str:
     return base or 'gemini-2.5-flash'
 
 
-async def _fetch_public_evidence(settings: Any) -> dict[str, Any]:
+def _infer_retrieval_category(message: str) -> str | None:
+    terms = _query_terms(message)
+    if {'aulas', 'reuniao', 'reunião', 'formatura', 'calendario', 'datas'} & terms:
+        return 'calendar'
+    return None
+
+
+async def _fetch_public_evidence(settings: Any, *, retrieval_query: str | None = None) -> dict[str, Any]:
     base_url = str(getattr(settings, 'api_core_url', 'http://api-core:8000')).rstrip('/')
+    orchestrator_url = str(getattr(settings, 'orchestrator_url', 'http://ai-orchestrator:8000')).rstrip('/')
+    names = ['school_profile', 'org_directory', 'timeline', 'calendar_events']
     async with httpx.AsyncClient(timeout=15.0) as client:
-        responses = await asyncio.gather(
+        requests = [
             client.get(f'{base_url}/v1/public/school-profile'),
             client.get(f'{base_url}/v1/public/org-directory'),
             client.get(f'{base_url}/v1/public/timeline'),
             client.get(f'{base_url}/v1/calendar/public'),
-        )
+        ]
+        if bool(getattr(settings, 'shared_retrieval_enabled', False)) and retrieval_query:
+            names.append('shared_retrieval')
+            requests.append(
+                client.post(
+                    f'{orchestrator_url}/v1/retrieval/search',
+                    json={
+                        'query': retrieval_query,
+                        'top_k': int(getattr(settings, 'shared_retrieval_top_k', 6) or 6),
+                        'visibility': 'public',
+                        'category': _infer_retrieval_category(retrieval_query),
+                    },
+                )
+            )
+        responses = await asyncio.gather(*requests, return_exceptions=True)
     payloads: dict[str, Any] = {}
-    names = ('school_profile', 'org_directory', 'timeline', 'calendar_events')
     for name, response in zip(names, responses, strict=True):
+        if isinstance(response, Exception):
+            if name == 'shared_retrieval':
+                payloads[name] = {'hits': [], 'query_plan': None, 'context_pack': None}
+                continue
+            raise response
+        if name == 'shared_retrieval' and response.status_code >= 400:
+            payloads[name] = {'hits': [], 'query_plan': None, 'context_pack': None}
+            continue
         response.raise_for_status()
         payloads[name] = response.json()
     return payloads
@@ -310,6 +340,9 @@ def _build_evidence_docs(evidence: dict[str, Any]) -> list[EvidenceDoc]:
     directory = evidence.get('org_directory', {}).get('directory', {})
     timeline_entries = evidence.get('timeline', {}).get('timeline', {}).get('entries', [])
     calendar_events = evidence.get('calendar_events', {}).get('events', [])
+    shared_retrieval = evidence.get('shared_retrieval', {})
+    retrieval_hits = shared_retrieval.get('hits', []) if isinstance(shared_retrieval, dict) else []
+    retrieval_context_pack = str(shared_retrieval.get('context_pack', '') or '').strip() if isinstance(shared_retrieval, dict) else ''
 
     docs: list[EvidenceDoc] = []
 
@@ -483,6 +516,34 @@ def _build_evidence_docs(evidence: dict[str, Any]) -> list[EvidenceDoc]:
             ),
         )
 
+    if retrieval_context_pack:
+        add(
+            'retrieval.context_pack',
+            'shared_retrieval',
+            'Pacote de contexto recuperado',
+            retrieval_context_pack,
+        )
+
+    for index, hit in enumerate(retrieval_hits[:6], start=1):
+        if not isinstance(hit, dict):
+            continue
+        excerpt = str(hit.get('contextual_summary', '') or hit.get('text_excerpt', '') or '').strip()
+        if not excerpt:
+            continue
+        add(
+            f'retrieval.{index}',
+            'shared_retrieval',
+            str(hit.get('document_title', f'Documento recuperado {index}')),
+            ' | '.join(
+                part
+                for part in (
+                    str(hit.get('category', '')).strip(),
+                    excerpt,
+                )
+                if part
+            ),
+        )
+
     return docs
 
 
@@ -521,6 +582,8 @@ def _rank_evidence_docs(message: str, docs: list[EvidenceDoc], *, limit: int = 4
             term in terms for term in ('aulas', 'reuniao', 'formatura')
         ):
             score += 6
+        if doc.source == 'shared_retrieval':
+            score += 12
         if any(term in haystack for term in ('fax', 'instagram', 'telefone', 'whatsapp', 'email')) and any(
             term in terms for term in ('fax', 'instagram', 'telefone', 'whatsapp', 'email', 'contato', 'ligo', 'ligar')
         ):
