@@ -7,9 +7,11 @@ from typing import Any
 from fastembed import TextEmbedding
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.base.response.schema import Response
-from llama_index.core.query_engine import CustomQueryEngine
+from llama_index.core.query_engine import CustomQueryEngine, RouterQueryEngine, SubQuestionQueryEngine
+from llama_index.core.response_synthesizers import get_response_synthesizer
+from llama_index.core.response_synthesizers.type import ResponseMode
 from llama_index.core.schema import NodeWithScore, TextNode
-from llama_index.core.selectors import EmbeddingSingleSelector
+from llama_index.core.selectors import EmbeddingSingleSelector, PydanticSingleSelector
 from llama_index.core.tools import QueryEngineTool
 from pydantic import PrivateAttr
 
@@ -25,7 +27,16 @@ from .models import (
     QueryDomain,
     RetrievalBackend,
 )
+from .path_profiles import PathExecutionProfile, get_path_execution_profile
 from .retrieval import get_retrieval_service
+
+try:
+    from llama_index.llms.openai import OpenAI as LlamaIndexOpenAI
+
+    LLAMAINDEX_OPENAI_AVAILABLE = True
+except Exception:  # pragma: no cover - optional dependency
+    LlamaIndexOpenAI = None  # type: ignore[assignment]
+    LLAMAINDEX_OPENAI_AVAILABLE = False
 
 
 @dataclass(frozen=True)
@@ -342,6 +353,7 @@ def _route_public_query_tool(
     plan: Any,
     tools: dict[str, QueryEngineTool],
     embedding_model: str,
+    llm: Any | None = None,
 ) -> QueryEngineTool:
     hints = resolve_entity_hints(request.message)
     if hints.domain_hint == 'public_pricing' and hints.is_hypothetical and hints.quantity_hint:
@@ -380,19 +392,142 @@ def _route_public_query_tool(
     if plan.conversation_act in direct_profile_acts:
         return tools['public_profile']
 
-    selector = EmbeddingSingleSelector.from_defaults(
-        embed_model=_selector_embedding(embedding_model),
-    )
-    selection = selector.select(
-        [tool.metadata for tool in tools.values()],
-        request.message,
-    )
+    selection = None
+    if llm is not None:
+        try:
+            selector = PydanticSingleSelector.from_defaults(llm=llm)
+            selection = selector.select(
+                [tool.metadata for tool in tools.values()],
+                request.message,
+            )
+        except Exception:
+            selection = None
+    if selection is None:
+        selector = EmbeddingSingleSelector.from_defaults(
+            embed_model=_selector_embedding(embedding_model),
+        )
+        selection = selector.select(
+            [tool.metadata for tool in tools.values()],
+            request.message,
+        )
     selected_index = 0
     if getattr(selection, 'selections', None):
         selected_index = selection.selections[0].index
     tool_names = list(tools.keys())
     selected_index = max(0, min(selected_index, len(tool_names) - 1))
     return tools[tool_names[selected_index]]
+
+
+def _build_llamaindex_llm(*, settings: Any) -> Any | None:
+    if not LLAMAINDEX_OPENAI_AVAILABLE:
+        return None
+    if getattr(settings, 'llm_provider', 'openai') != 'openai':
+        return None
+    if not getattr(settings, 'openai_api_key', None):
+        return None
+    return LlamaIndexOpenAI(
+        model=str(getattr(settings, 'openai_model', 'gpt-5.4')),
+        api_key=str(settings.openai_api_key),
+        api_base=str(getattr(settings, 'openai_base_url', 'https://api.openai.com/v1')),
+        temperature=0,
+    )
+
+
+def _should_use_llamaindex_native_subquestions(*, request: MessageResponseRequest, public_plan: Any) -> bool:
+    normalized = rt._normalize_text(request.message)
+    multi_part_markers = (
+        '?',
+        ' alem disso ',
+        ' além disso ',
+        ' e tambem ',
+        ' e também ',
+        ' por outro lado ',
+        ' ao mesmo tempo ',
+    )
+    marker_hits = sum(1 for marker in multi_part_markers if marker in f' {normalized} ')
+    if marker_hits >= 2:
+        return True
+    if public_plan.conversation_act in {'comparative', 'curriculum', 'highlight'} and len(normalized.split()) >= 10:
+        return True
+    query_hints = rt._extract_public_entity_hints(request.message)
+    return len(query_hints) >= 3 and len(normalized.split()) >= 10
+
+
+async def _maybe_execute_llamaindex_subquestion_plan(
+    *,
+    analysis_message: str,
+    tools: dict[str, QueryEngineTool],
+    llm: Any | None,
+) -> tuple[Response, str] | None:
+    if llm is None:
+        return None
+    response_synthesizer = get_response_synthesizer(
+        llm=llm,
+        response_mode=ResponseMode.COMPACT,
+        use_async=True,
+        structured_answer_filtering=True,
+    )
+    query_engine = SubQuestionQueryEngine.from_defaults(
+        query_engine_tools=list(tools.values()),
+        llm=llm,
+        response_synthesizer=response_synthesizer,
+        use_async=True,
+        verbose=False,
+    )
+    response = await query_engine.aquery(analysis_message)
+    return response, 'llamaindex_subquestion_query_engine'
+
+
+async def _maybe_execute_llamaindex_router_query_engine(
+    *,
+    analysis_message: str,
+    tools: dict[str, QueryEngineTool],
+    llm: Any | None,
+) -> tuple[Response, tuple[str, ...]] | None:
+    if llm is None:
+        return None
+    response_synthesizer = get_response_synthesizer(
+        llm=llm,
+        response_mode=ResponseMode.COMPACT,
+        use_async=True,
+        structured_answer_filtering=True,
+    )
+    selector = PydanticSingleSelector.from_defaults(llm=llm)
+    query_engine = RouterQueryEngine.from_defaults(
+        query_engine_tools=list(tools.values()),
+        llm=llm,
+        selector=selector,
+        summarizer=response_synthesizer,
+    )
+    response = await query_engine.aquery(analysis_message)
+    selected_names = _extract_router_selected_tool_names(response=response, tool_names=tuple(tools.keys()))
+    return response, selected_names
+
+
+def _extract_router_selected_tool_names(*, response: Response, tool_names: tuple[str, ...]) -> tuple[str, ...]:
+    metadata = response.metadata or {}
+    selector_result = metadata.get('selector_result')
+    if selector_result is None:
+        return ('llamaindex_router_query_engine',)
+    selected_indexes: list[int] = []
+    if hasattr(selector_result, 'inds'):
+        try:
+            selected_indexes.extend(int(index) for index in getattr(selector_result, 'inds'))
+        except Exception:
+            selected_indexes = []
+    elif hasattr(selector_result, 'ind'):
+        try:
+            selected_indexes.append(int(getattr(selector_result, 'ind')))
+        except Exception:
+            selected_indexes = []
+    selected_names = [
+        tool_names[index]
+        for index in selected_indexes
+        if 0 <= index < len(tool_names)
+    ]
+    if not selected_names:
+        return ('llamaindex_router_query_engine',)
+    return tuple(dict.fromkeys(selected_names))
 
 
 async def maybe_execute_llamaindex_native_plan(
@@ -402,7 +537,9 @@ async def maybe_execute_llamaindex_native_plan(
     plan: KernelPlan,
     engine_name: str,
     engine_mode: str,
+    path_profile: PathExecutionProfile | None = None,
 ) -> KernelRunResult | None:
+    effective_path_profile = path_profile or get_path_execution_profile(engine_name)
     if not _should_use_llamaindex_native_public_router(plan):
         return None
 
@@ -469,13 +606,41 @@ async def maybe_execute_llamaindex_native_plan(
             description=descriptions['public_retrieval'],
         ),
     }
-    selected_tool = _route_public_query_tool(
+    llamaindex_llm = _build_llamaindex_llm(settings=settings)
+    selected_tool_names: tuple[str, ...] = ('unknown',)
+    subquestion_result: tuple[Response, str] | None = None
+    router_result: tuple[Response, tuple[str, ...]] | None = None
+    if effective_path_profile.prefer_native_llamaindex_subquestions and _should_use_llamaindex_native_subquestions(
         request=request,
-        plan=public_plan,
-        tools=tools,
-        embedding_model=settings.document_embedding_model,
-    )
-    tool_response = await selected_tool.query_engine.aquery(analysis_message)
+        public_plan=public_plan,
+    ):
+        subquestion_result = await _maybe_execute_llamaindex_subquestion_plan(
+            analysis_message=analysis_message,
+            tools=tools,
+            llm=llamaindex_llm,
+        )
+    if subquestion_result is not None:
+        tool_response, selected_tool_name = subquestion_result
+        selected_tool_names = (selected_tool_name,)
+    elif effective_path_profile.prefer_native_llamaindex_selector and llamaindex_llm is not None:
+        router_result = await _maybe_execute_llamaindex_router_query_engine(
+            analysis_message=analysis_message,
+            tools=tools,
+            llm=llamaindex_llm,
+        )
+        if router_result is not None:
+            tool_response, selected_tool_names = router_result
+    else:
+        selected_tool = _route_public_query_tool(
+            request=request,
+            plan=public_plan,
+            tools=tools,
+            embedding_model=settings.document_embedding_model,
+            llm=llamaindex_llm if effective_path_profile.prefer_native_llamaindex_selector else None,
+        )
+        selected_tool_name = selected_tool.metadata.name
+        selected_tool_names = (selected_tool_name,)
+        tool_response = await selected_tool.query_engine.aquery(analysis_message)
     answer_text = str(getattr(tool_response, 'response', '') or str(tool_response)).strip()
     if not answer_text:
         return None
@@ -545,7 +710,7 @@ async def maybe_execute_llamaindex_native_plan(
         deterministic_fallback_available=True,
         answer_verifier_judge_used=semantic_judge_used,
         langgraph_trace_metadata={
-            'llamaindex_selected_tool': selected_tool.metadata.name,
+            'llamaindex_selected_tool': ','.join(selected_tool_names),
         },
     )
 
@@ -555,6 +720,7 @@ async def maybe_execute_llamaindex_native_plan(
                 *preview.selected_tools,
                 *list((tool_response.metadata or {}).get('selected_tools', [])),
                 'llamaindex_selector_router',
+                *selected_tool_names,
             ]
         )
     )
@@ -576,7 +742,7 @@ async def maybe_execute_llamaindex_native_plan(
             *preview.graph_path,
             'llamaindex:workflow',
             'llamaindex:selector_router',
-            f'llamaindex:tool:{selected_tool.metadata.name}',
+            *[f'llamaindex:tool:{tool_name}' for tool_name in selected_tool_names],
             f'kernel:{plan.stack_name}',
         ],
         risk_flags=preview.risk_flags,
@@ -590,7 +756,7 @@ async def maybe_execute_llamaindex_native_plan(
         notes=[
             f'route:{preview.mode.value}',
             f'slice:{plan.slice_name}',
-            f'llamaindex_tool:{selected_tool.metadata.name}',
+            f'llamaindex_tool:{",".join(selected_tool_names)}',
             *plan.plan_notes,
         ],
     )

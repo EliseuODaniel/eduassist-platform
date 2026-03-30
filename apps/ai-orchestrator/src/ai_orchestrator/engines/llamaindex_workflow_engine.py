@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..agent_kernel import KernelPlan, build_kernel_plan
-from ..kernel_runtime import execute_kernel_plan
-from ..llamaindex_native_runtime import maybe_execute_llamaindex_native_plan
+from ..agent_kernel import KernelPlan
+from ..llamaindex_path_runtime import build_llamaindex_plan, execute_llamaindex_plan
 from ..models import MessageResponse
 from .base import ResponseEngine
 
@@ -38,10 +37,9 @@ if LLAMAINDEX_WORKFLOW_AVAILABLE:
 
         @step
         async def plan(self, ctx: Context, ev: StartEvent) -> PlanBuiltEvent:
-            plan = build_kernel_plan(
+            plan = build_llamaindex_plan(
                 request=self.request,
                 settings=self.settings,
-                stack_name=self.engine_name,
                 mode=self.engine_mode,
             )
             await ctx.store.set('kernel_plan', plan.model_dump(mode='json'))
@@ -49,21 +47,12 @@ if LLAMAINDEX_WORKFLOW_AVAILABLE:
 
         @step
         async def execute(self, ctx: Context, ev: PlanBuiltEvent) -> ResponseReadyEvent:
-            result = await maybe_execute_llamaindex_native_plan(
+            result = await execute_llamaindex_plan(
                 request=self.request,
                 settings=self.settings,
                 plan=ev.plan,
-                engine_name=self.engine_name,
                 engine_mode=self.engine_mode,
             )
-            if result is None:
-                result = await execute_kernel_plan(
-                    request=self.request,
-                    settings=self.settings,
-                    plan=ev.plan,
-                    engine_name=self.engine_name,
-                    engine_mode=self.engine_mode,
-                )
             await ctx.store.set('kernel_reflection', result.reflection.model_dump(mode='json'))
             return ResponseReadyEvent(response_payload=result.response)
 
