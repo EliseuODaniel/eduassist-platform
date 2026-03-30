@@ -14,6 +14,7 @@ class PathExecutionProfile:
     prefer_native_llamaindex_subquestions: bool = False
     prefer_native_llamaindex_citation_engine: bool = False
     prefer_native_llamaindex_function_agent: bool = False
+    prefer_native_llamaindex_qdrant_autoretriever: bool = False
     notes: tuple[str, ...] = ()
 
 
@@ -38,12 +39,14 @@ _PROFILES: dict[str, PathExecutionProfile] = {
         prefer_native_llamaindex_subquestions=True,
         prefer_native_llamaindex_citation_engine=True,
         prefer_native_llamaindex_function_agent=True,
+        prefer_native_llamaindex_qdrant_autoretriever=True,
         notes=(
             'path_family:llamaindex',
             'native_router:enabled',
             'native_subquestions:enabled',
             'native_citation_engine:enabled',
             'native_function_agent:enabled',
+            'native_qdrant_autoretriever:enabled',
         ),
     ),
     'shadow': PathExecutionProfile(

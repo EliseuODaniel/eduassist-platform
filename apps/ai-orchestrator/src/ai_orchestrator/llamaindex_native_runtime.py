@@ -5,10 +5,12 @@ from functools import lru_cache
 from typing import Any
 
 from fastembed import TextEmbedding
+from llama_index.core import VectorStoreIndex
 from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.base.base_retriever import BaseRetriever
 from llama_index.core.base.embeddings.base import BaseEmbedding
+from llama_index.core.indices.vector_store.retrievers import VectorIndexAutoRetriever
 from llama_index.core.base.response.schema import Response
 from llama_index.core.query_engine import CitationQueryEngine, CustomQueryEngine, RouterQueryEngine, SubQuestionQueryEngine
 from llama_index.core.response_synthesizers import get_response_synthesizer
@@ -17,7 +19,9 @@ from llama_index.core.schema import NodeWithScore, QueryBundle, TextNode
 from llama_index.core.selectors import EmbeddingSingleSelector, PydanticSingleSelector
 from llama_index.core.tools import FunctionTool, QueryEngineTool
 from llama_index.core.memory import Memory
+from llama_index.core.vector_stores.types import FilterOperator, MetadataFilter, MetadataFilters, MetadataInfo, VectorStoreInfo
 from pydantic import PrivateAttr
+from qdrant_client import QdrantClient
 
 from . import runtime as rt
 from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult
@@ -53,6 +57,14 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     LlamaIndexGoogleGenAI = None  # type: ignore[assignment]
     LLAMAINDEX_GOOGLE_GENAI_AVAILABLE = False
+
+try:
+    from llama_index.vector_stores.qdrant import QdrantVectorStore
+
+    LLAMAINDEX_QDRANT_AVAILABLE = True
+except Exception:  # pragma: no cover - optional dependency
+    QdrantVectorStore = None  # type: ignore[assignment]
+    LLAMAINDEX_QDRANT_AVAILABLE = False
 
 
 @dataclass(frozen=True)
@@ -91,6 +103,29 @@ class FastembedSelectorEmbedding(BaseEmbedding):
 @lru_cache(maxsize=4)
 def _selector_embedding(model_name: str) -> FastembedSelectorEmbedding:
     return FastembedSelectorEmbedding(model_name=model_name)
+
+
+@lru_cache(maxsize=4)
+def _native_qdrant_vector_store(*, qdrant_url: str, collection_name: str) -> Any | None:
+    if not LLAMAINDEX_QDRANT_AVAILABLE:
+        return None
+    client = QdrantClient(url=qdrant_url)
+    return QdrantVectorStore(
+        collection_name=collection_name,
+        client=client,
+        text_key='text_content',
+    )
+
+
+@lru_cache(maxsize=4)
+def _native_qdrant_vector_index(*, qdrant_url: str, collection_name: str, embedding_model: str) -> Any | None:
+    vector_store = _native_qdrant_vector_store(qdrant_url=qdrant_url, collection_name=collection_name)
+    if vector_store is None:
+        return None
+    return VectorStoreIndex.from_vector_store(
+        vector_store=vector_store,
+        embed_model=_selector_embedding(embedding_model),
+    )
 
 
 class PublicProfileQueryEngine(CustomQueryEngine):
@@ -505,6 +540,19 @@ def _route_public_query_tool(
     hints = resolve_entity_hints(request.message)
     if hints.domain_hint == 'public_pricing' and hints.is_hypothetical and hints.quantity_hint:
         return tools['pricing_projection']
+    normalized = rt._normalize_text(request.message)
+    documentary_cues = (
+        'com base nos documentos',
+        'nos documentos publicos',
+        'nos documentos públicos',
+        'com citacoes',
+        'com citações',
+        'cite as fontes',
+        'cite os documentos',
+        'mostre as fontes',
+    )
+    if any(cue in normalized for cue in documentary_cues):
+        return tools['public_retrieval']
 
     direct_profile_acts = {
         'pricing',
@@ -674,7 +722,57 @@ def _build_public_retrieval_query_engine(
     original_message: str,
     llm: Any | None,
     prefer_citation_engine: bool,
+    prefer_native_qdrant_autoretriever: bool,
 ) -> tuple[Any, PublicHybridCitationRetriever | None]:
+    if llm is not None and prefer_native_qdrant_autoretriever and LLAMAINDEX_QDRANT_AVAILABLE:
+        try:
+            index = _native_qdrant_vector_index(
+                qdrant_url=str(settings.qdrant_url),
+                collection_name=str(settings.qdrant_documents_collection),
+                embedding_model=str(settings.document_embedding_model),
+            )
+            if index is not None:
+                vector_store_info = VectorStoreInfo(
+                    content_info='Documentos publicos institucionais, FAQs, canais, proposta pedagogica e calendario da escola.',
+                    metadata_info=[
+                        MetadataInfo(name='visibility', type='str', description='Visibilidade do documento, como public ou private.'),
+                        MetadataInfo(name='category', type='str', description='Categoria documental, como faq, policy, calendar ou institutional.'),
+                        MetadataInfo(name='document_title', type='str', description='Titulo humano do documento.'),
+                        MetadataInfo(name='audience', type='str', description='Publico-alvo do documento.'),
+                        MetadataInfo(name='version_label', type='str', description='Versao publicada do documento.'),
+                    ],
+                )
+                retriever = VectorIndexAutoRetriever(
+                    index=index,
+                    vector_store_info=vector_store_info,
+                    llm=llm,
+                    similarity_top_k=4,
+                    max_top_k=8,
+                    extra_filters=MetadataFilters(
+                        filters=[
+                            MetadataFilter(key='visibility', value='public', operator=FilterOperator.EQ),
+                        ]
+                    ),
+                    verbose=False,
+                )
+                response_synthesizer = get_response_synthesizer(
+                    llm=llm,
+                    response_mode=ResponseMode.COMPACT,
+                    use_async=True,
+                    structured_answer_filtering=True,
+                )
+                return (
+                    CitationQueryEngine(
+                        retriever=retriever,
+                        llm=llm,
+                        response_synthesizer=response_synthesizer,
+                        citation_chunk_size=384,
+                        citation_chunk_overlap=32,
+                    ),
+                    None,
+                )
+        except Exception:
+            pass
     if llm is None or not prefer_citation_engine:
         return (
             PublicRetrievalQueryEngine(
@@ -958,6 +1056,7 @@ async def maybe_execute_llamaindex_native_plan(
         original_message=request.message,
         llm=llamaindex_llm,
         prefer_citation_engine=effective_path_profile.prefer_native_llamaindex_citation_engine,
+        prefer_native_qdrant_autoretriever=effective_path_profile.prefer_native_llamaindex_qdrant_autoretriever,
     )
     tools = {
         'public_profile': QueryEngineTool.from_defaults(
