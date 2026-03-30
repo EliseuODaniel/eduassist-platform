@@ -1,0 +1,1569 @@
+{
+  "generated_at": "2026-03-30T14:06:22.530464+00:00",
+  "base_url": "http://127.0.0.1:8002",
+  "dataset": "/home/edann/projects/eduassist-platform/tests/evals/datasets/nextgen_runtime_observation_cases.json",
+  "stacks": [
+    "python_functions",
+    "llamaindex"
+  ],
+  "runtime_before": {
+    "service": "ai-orchestrator",
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "resolvedPrimaryStackSource": "orchestrator_engine",
+    "runtimePrimaryStackOverride": null,
+    "runtimePrimaryStackOverrideReason": "restore_default_runtime_stack",
+    "runtimePrimaryStackOverrideOperator": "codex",
+    "runtimePrimaryStackOverrideUpdatedAt": "2026-03-30T14:04:49.140217+00:00",
+    "strictFrameworkIsolationEnabled": false,
+    "supportedPrimaryStacks": [
+      "crewai",
+      "langgraph",
+      "llamaindex",
+      "python_functions",
+      "shadow"
+    ]
+  },
+  "override_actions": [
+    {
+      "stack": "python_functions",
+      "payload": {
+        "service": "ai-orchestrator",
+        "action": "updated",
+        "override": {
+          "value": "python_functions",
+          "reason": "nextgen_runtime_observation_python_functions",
+          "operator": "codex",
+          "updated_at": "2026-03-30T14:05:43.454001+00:00"
+        },
+        "orchestratorEngine": "langgraph",
+        "primaryStackFeatureFlag": "",
+        "resolvedPrimaryStack": "python_functions",
+        "resolvedPrimaryStackSource": "runtime_override",
+        "runtimePrimaryStackOverride": "python_functions",
+        "runtimePrimaryStackOverrideReason": "nextgen_runtime_observation_python_functions",
+        "runtimePrimaryStackOverrideOperator": "codex",
+        "runtimePrimaryStackOverrideUpdatedAt": "2026-03-30T14:05:43.454001+00:00",
+        "strictFrameworkIsolationEnabled": false,
+        "supportedPrimaryStacks": [
+          "crewai",
+          "langgraph",
+          "llamaindex",
+          "python_functions",
+          "shadow"
+        ]
+      }
+    },
+    {
+      "stack": "llamaindex",
+      "payload": {
+        "service": "ai-orchestrator",
+        "action": "updated",
+        "override": {
+          "value": "llamaindex",
+          "reason": "nextgen_runtime_observation_llamaindex",
+          "operator": "codex",
+          "updated_at": "2026-03-30T14:06:02.140558+00:00"
+        },
+        "orchestratorEngine": "langgraph",
+        "primaryStackFeatureFlag": "",
+        "resolvedPrimaryStack": "llamaindex",
+        "resolvedPrimaryStackSource": "runtime_override",
+        "runtimePrimaryStackOverride": "llamaindex",
+        "runtimePrimaryStackOverrideReason": "nextgen_runtime_observation_llamaindex",
+        "runtimePrimaryStackOverrideOperator": "codex",
+        "runtimePrimaryStackOverrideUpdatedAt": "2026-03-30T14:06:02.140558+00:00",
+        "strictFrameworkIsolationEnabled": false,
+        "supportedPrimaryStacks": [
+          "crewai",
+          "langgraph",
+          "llamaindex",
+          "python_functions",
+          "shadow"
+        ]
+      }
+    }
+  ],
+  "runtime_after_restore": {
+    "service": "ai-orchestrator",
+    "action": "cleared",
+    "override": {
+      "value": null,
+      "reason": "restore_default_runtime_stack",
+      "operator": "codex",
+      "updated_at": "2026-03-30T14:06:22.529900+00:00"
+    },
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "resolvedPrimaryStackSource": "orchestrator_engine",
+    "runtimePrimaryStackOverride": null,
+    "runtimePrimaryStackOverrideReason": "restore_default_runtime_stack",
+    "runtimePrimaryStackOverrideOperator": "codex",
+    "runtimePrimaryStackOverrideUpdatedAt": "2026-03-30T14:06:22.529900+00:00",
+    "strictFrameworkIsolationEnabled": false,
+    "supportedPrimaryStacks": [
+      "crewai",
+      "langgraph",
+      "llamaindex",
+      "python_functions",
+      "shadow"
+    ]
+  },
+  "summary": {
+    "by_stack": {
+      "python_functions": {
+        "count": 16,
+        "ok": 16,
+        "keyword_pass": 16,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 1167.6,
+        "max_latency_ms": 7295.9,
+        "kernel_consistency_pass": true,
+        "latency_watch": true,
+        "stable_for_controlled_runtime_window": true
+      },
+      "llamaindex": {
+        "count": 16,
+        "ok": 16,
+        "keyword_pass": 16,
+        "quality_avg": 99.4,
+        "avg_latency_ms": 1273.9,
+        "max_latency_ms": 7459.6,
+        "kernel_consistency_pass": true,
+        "latency_watch": true,
+        "stable_for_controlled_runtime_window": true
+      }
+    },
+    "by_slice": {
+      "protected": {
+        "count": 8,
+        "turn_count": 4,
+        "python_functions": {
+          "count": 4,
+          "ok": 4,
+          "keyword_pass": 4,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 205.9
+        },
+        "llamaindex": {
+          "count": 4,
+          "ok": 4,
+          "keyword_pass": 4,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 208.8
+        }
+      },
+      "public": {
+        "count": 10,
+        "turn_count": 5,
+        "python_functions": {
+          "count": 5,
+          "ok": 5,
+          "keyword_pass": 5,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 3296.3
+        },
+        "llamaindex": {
+          "count": 5,
+          "ok": 5,
+          "keyword_pass": 5,
+          "quality_avg": 98.0,
+          "avg_latency_ms": 3621.3
+        }
+      },
+      "support": {
+        "count": 6,
+        "turn_count": 3,
+        "python_functions": {
+          "count": 3,
+          "ok": 3,
+          "keyword_pass": 3,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 188.1
+        },
+        "llamaindex": {
+          "count": 3,
+          "ok": 3,
+          "keyword_pass": 3,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 199.9
+        }
+      },
+      "workflow": {
+        "count": 8,
+        "turn_count": 4,
+        "python_functions": {
+          "count": 4,
+          "ok": 4,
+          "keyword_pass": 4,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 203.2
+        },
+        "llamaindex": {
+          "count": 4,
+          "ok": 4,
+          "keyword_pass": 4,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 210.1
+        }
+      }
+    },
+    "by_thread": {
+      "obs_protected_docs_focus": {
+        "count": 8,
+        "turn_count": 4,
+        "slice": "protected",
+        "python_functions": {
+          "count": 4,
+          "ok": 4,
+          "keyword_pass": 4,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 205.9
+        },
+        "llamaindex": {
+          "count": 4,
+          "ok": 4,
+          "keyword_pass": 4,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 208.8
+        }
+      },
+      "obs_public_channels_docs": {
+        "count": 6,
+        "turn_count": 3,
+        "slice": "public",
+        "python_functions": {
+          "count": 3,
+          "ok": 3,
+          "keyword_pass": 3,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 2502.3
+        },
+        "llamaindex": {
+          "count": 3,
+          "ok": 3,
+          "keyword_pass": 3,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 2319.7
+        }
+      },
+      "obs_public_library_realism": {
+        "count": 4,
+        "turn_count": 2,
+        "slice": "public",
+        "python_functions": {
+          "count": 2,
+          "ok": 2,
+          "keyword_pass": 2,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 4487.3
+        },
+        "llamaindex": {
+          "count": 2,
+          "ok": 2,
+          "keyword_pass": 2,
+          "quality_avg": 95.0,
+          "avg_latency_ms": 5573.8
+        }
+      },
+      "obs_support_reroute": {
+        "count": 6,
+        "turn_count": 3,
+        "slice": "support",
+        "python_functions": {
+          "count": 3,
+          "ok": 3,
+          "keyword_pass": 3,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 188.1
+        },
+        "llamaindex": {
+          "count": 3,
+          "ok": 3,
+          "keyword_pass": 3,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 199.9
+        }
+      },
+      "obs_workflow_visit": {
+        "count": 8,
+        "turn_count": 4,
+        "slice": "workflow",
+        "python_functions": {
+          "count": 4,
+          "ok": 4,
+          "keyword_pass": 4,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 203.2
+        },
+        "llamaindex": {
+          "count": 4,
+          "ok": 4,
+          "keyword_pass": 4,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 210.1
+        }
+      }
+    },
+    "error_types": {
+      "python_functions": {},
+      "llamaindex": {
+        "repetitive_reply": 1
+      }
+    }
+  },
+  "results": [
+    {
+      "stack": "python_functions",
+      "prompt": "posso enviar documentos por fax ou isso nao existe mais?",
+      "slice": "public",
+      "category": "threaded",
+      "thread_id": "obs_public_channels_docs",
+      "turn_index": 1,
+      "note": "",
+      "status": 200,
+      "latency_ms": 3516.5,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "Hoje a escola não utiliza mais o fax para o envio de documentos. Para isso, por favor, use nosso portal institucional, o email da secretaria ou entregue presencialmente na secretaria.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "fax"
+      ],
+      "forbidden_keywords": [
+        "sim"
+      ]
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "e por telegrama, serve?",
+      "slice": "public",
+      "category": "threaded",
+      "thread_id": "obs_public_channels_docs",
+      "turn_index": 2,
+      "note": "",
+      "status": 200,
+      "latency_ms": 3832.3,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "hybrid_retrieval",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "Não, o Colégio Horizonte não utiliza telegrama para o envio de documentos. Por favor, utilize nosso portal institucional, o email da secretaria ou entregue presencialmente na secretaria.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": true,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "portal",
+        "email",
+        "secretaria"
+      ],
+      "forbidden_keywords": [
+        "sim"
+      ]
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "qual e o caminho certo pra mandar a documentacao?",
+      "slice": "public",
+      "category": "threaded",
+      "thread_id": "obs_public_channels_docs",
+      "turn_index": 3,
+      "note": "",
+      "status": 200,
+      "latency_ms": 158.2,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "clarify",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "Sim. O envio inicial de documentos pode ser feito por canal digital.\nHoje os canais mais diretos publicados para isso sao:\n- portal institucional\n- email da secretaria\n- secretaria presencial\nNo processo de matricula, o envio inicial pode ser digital. A validacao final continua com a secretaria.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "portal",
+        "email",
+        "secretaria"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "voces realmente tem biblioteca ou e so folheto bonito?",
+      "slice": "public",
+      "category": "threaded",
+      "thread_id": "obs_public_library_realism",
+      "turn_index": 1,
+      "note": "",
+      "status": 200,
+      "latency_ms": 7295.9,
+      "mode": "structured_tool",
+      "reason": "fato institucional canonico deve vir de fonte estruturada",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "Sim, o Colégio Horizonte tem a Biblioteca Aurora, que funciona de segunda a sexta-feira, das 7h30 às 18h00. É um espaço real e muito utilizado por nossos alunos!",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "biblioteca"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "como ela se chama e ate que horas funciona?",
+      "slice": "public",
+      "category": "threaded",
+      "thread_id": "obs_public_library_realism",
+      "turn_index": 2,
+      "note": "",
+      "status": 200,
+      "latency_ms": 1678.7,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "A biblioteca se chama Biblioteca Aurora e funciona de segunda a sexta, das 7h30 as 18h00.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": true
+      },
+      "expected_keywords": [
+        "biblioteca aurora",
+        "18h00"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "como esta a documentacao da ana?",
+      "slice": "protected",
+      "category": "threaded",
+      "thread_id": "obs_protected_docs_focus",
+      "turn_index": 1,
+      "note": "",
+      "status": 200,
+      "latency_ms": 211.2,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "access_tier": "authenticated",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "Situacao documental de Ana Oliveira hoje: com pendencias.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": true
+      },
+      "expected_keywords": [
+        "ana",
+        "pendencias"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "o que falta?",
+      "slice": "protected",
+      "category": "threaded",
+      "thread_id": "obs_protected_docs_focus",
+      "turn_index": 2,
+      "note": "",
+      "status": 200,
+      "latency_ms": 222.9,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "access_tier": "authenticated",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "Hoje, o proximo passo do seu cadastro e este: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "ana"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "e a documentacao do lucas?",
+      "slice": "protected",
+      "category": "threaded",
+      "thread_id": "obs_protected_docs_focus",
+      "turn_index": 3,
+      "note": "",
+      "status": 200,
+      "latency_ms": 207.6,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "access_tier": "authenticated",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "Situacao documental de Lucas Oliveira hoje: regular.\n- Identificacao escolar do aluno: regular. Codigo de matricula: MAT-2026-001\n- Responsavel vinculado: regular. Maria Oliveira\n- Documentacao escolar do aluno: regular. A documentacao escolar de Lucas Oliveira esta conferida e sem pendencias relevantes nesta base de testes.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": true,
+        "personalization": true
+      },
+      "expected_keywords": [
+        "lucas",
+        "regular"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "e se eu perguntar do joao?",
+      "slice": "protected",
+      "category": "threaded",
+      "thread_id": "obs_protected_docs_focus",
+      "turn_index": 4,
+      "note": "",
+      "status": 200,
+      "latency_ms": 181.8,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "access_tier": "authenticated",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "Hoje eu nao encontrei Joao entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": true,
+        "personalization": true
+      },
+      "expected_keywords": [
+        "nao",
+        "joao"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "preciso falar com o financeiro",
+      "slice": "support",
+      "category": "threaded",
+      "thread_id": "obs_support_reroute",
+      "turn_index": 1,
+      "note": "",
+      "status": 200,
+      "latency_ms": 181.5,
+      "mode": "handoff",
+      "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "handoff",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "Sua solicitacao ja estava registrada na fila de financeiro. Protocolo: ATD-20260330-FDF65462. Status atual: queued.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "financeiro",
+        "protocolo"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "qual o protocolo?",
+      "slice": "support",
+      "category": "threaded",
+      "thread_id": "obs_support_reroute",
+      "turn_index": 2,
+      "note": "",
+      "status": 200,
+      "latency_ms": 197.3,
+      "mode": "structured_tool",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "O protocolo atual do seu atendimento e ATD-20260330-FDF65462. Se quiser, eu posso te dizer o status atual ou resumir o que ja foi registrado.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "protocolo"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "mudei de ideia, quero secretaria",
+      "slice": "support",
+      "category": "threaded",
+      "thread_id": "obs_support_reroute",
+      "turn_index": 3,
+      "note": "repair reroute",
+      "status": 200,
+      "latency_ms": 185.4,
+      "mode": "handoff",
+      "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "handoff",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "Sem problema, ajustei isso por aqui.\n\nSua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260330-FDF65462. Status atual: queued.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": true,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "secretaria"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "da pra marcar uma visita na quinta a tarde?",
+      "slice": "workflow",
+      "category": "threaded",
+      "thread_id": "obs_workflow_visit",
+      "turn_index": 1,
+      "note": "",
+      "status": 200,
+      "latency_ms": 219.1,
+      "mode": "structured_tool",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-2D2416. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260330-88979DB2. A equipe comercial valida a janela e retorna com a confirmacao.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "protocolo",
+        "visita"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "me fala o protocolo dessa visita",
+      "slice": "workflow",
+      "category": "threaded",
+      "thread_id": "obs_workflow_visit",
+      "turn_index": 2,
+      "note": "",
+      "status": 200,
+      "latency_ms": 190.7,
+      "mode": "structured_tool",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "O protocolo da sua visita e VIS-20260330-2D2416. Ticket operacional: ATD-20260330-88979DB2. Preferencia registrada: 02/04/2026 - tarde. Se quiser, eu tambem posso te dizer o status, remarcar ou cancelar a visita.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "protocolo"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "e se eu precisar remarcar?",
+      "slice": "workflow",
+      "category": "threaded",
+      "thread_id": "obs_workflow_visit",
+      "turn_index": 3,
+      "note": "",
+      "status": 200,
+      "latency_ms": 192.4,
+      "mode": "structured_tool",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "Consigo remarcar a visita por aqui. Protocolo: VIS-20260330-2D2416. Ticket operacional: ATD-20260330-88979DB2. Me diga pelo menos o novo dia ou a janela desejada, por exemplo: \"remarque para sexta de manha\" ou \"troque para 28/03 as 10h\".",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": true,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "protocolo",
+        "remarcar"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "python_functions",
+      "prompt": "entao remarca pra sexta de manha",
+      "slice": "workflow",
+      "category": "threaded",
+      "thread_id": "obs_workflow_visit",
+      "turn_index": 4,
+      "note": "",
+      "status": 200,
+      "latency_ms": 210.6,
+      "mode": "structured_tool",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "expected_kernel": "kernel:python_functions",
+      "observed_kernel": "kernel:python_functions",
+      "foreign_kernel": false,
+      "answer_text": "Pedido de visita atualizado com a fila de admissions. Protocolo: VIS-20260330-2D2416. Ticket operacional: ATD-20260330-88979DB2. Nova preferencia: 03/04/2026 - manha. Admissions valida a nova janela e retorna com a confirmacao.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "nova",
+        "protocolo"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "posso enviar documentos por fax ou isso nao existe mais?",
+      "slice": "public",
+      "category": "threaded",
+      "thread_id": "obs_public_channels_docs",
+      "turn_index": 1,
+      "note": "",
+      "status": 200,
+      "latency_ms": 3632.0,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "Olá! No Colégio Horizonte, não utilizamos mais o fax para o envio de documentos. Para sua comodidade, você pode usar nosso portal institucional, o email da secretaria ou, se preferir, entregar os documentos diretamente na secretaria presencial.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "fax"
+      ],
+      "forbidden_keywords": [
+        "sim"
+      ]
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "e por telegrama, serve?",
+      "slice": "public",
+      "category": "threaded",
+      "thread_id": "obs_public_channels_docs",
+      "turn_index": 2,
+      "note": "",
+      "status": 200,
+      "latency_ms": 3151.0,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "hybrid_retrieval",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "Olá! No Colégio Horizonte, não utilizamos o telegrama para o envio de documentos. Para sua comodidade, você pode usar nosso portal institucional, o email da secretaria ou, se preferir, entregar os documentos diretamente na secretaria presencial.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": true,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "portal",
+        "email",
+        "secretaria"
+      ],
+      "forbidden_keywords": [
+        "sim"
+      ]
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "qual e o caminho certo pra mandar a documentacao?",
+      "slice": "public",
+      "category": "threaded",
+      "thread_id": "obs_public_channels_docs",
+      "turn_index": 3,
+      "note": "",
+      "status": 200,
+      "latency_ms": 176.0,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "clarify",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "Sim. O envio inicial de documentos pode ser feito por canal digital.\nHoje os canais mais diretos publicados para isso sao:\n- portal institucional\n- email da secretaria\n- secretaria presencial\nNo processo de matricula, o envio inicial pode ser digital. A validacao final continua com a secretaria.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "portal",
+        "email",
+        "secretaria"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "voces realmente tem biblioteca ou e so folheto bonito?",
+      "slice": "public",
+      "category": "threaded",
+      "thread_id": "obs_public_library_realism",
+      "turn_index": 1,
+      "note": "",
+      "status": 200,
+      "latency_ms": 7459.6,
+      "mode": "structured_tool",
+      "reason": "fato institucional canonico deve vir de fonte estruturada",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "Que bom que você perguntou! Sim, temos a Biblioteca Aurora, um espaço muito especial para nossos alunos. Ela funciona de segunda a sexta-feira, das 7h30 às 18h00, e está sempre de portas abertas para todos.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "biblioteca"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "como ela se chama e ate que horas funciona?",
+      "slice": "public",
+      "category": "threaded",
+      "thread_id": "obs_public_library_realism",
+      "turn_index": 2,
+      "note": "",
+      "status": 200,
+      "latency_ms": 3688.0,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "Que bom que você perguntou! Sim, temos a Biblioteca Aurora, um espaço muito especial para nossos alunos. Ela funciona de segunda a sexta-feira, das 7h30 às 18h00, e está sempre de portas abertas para todos.",
+      "keyword_pass": true,
+      "quality_score": 90,
+      "error_types": [
+        "repetitive_reply"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": true
+      },
+      "expected_keywords": [
+        "biblioteca aurora",
+        "18h00"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "como esta a documentacao da ana?",
+      "slice": "protected",
+      "category": "threaded",
+      "thread_id": "obs_protected_docs_focus",
+      "turn_index": 1,
+      "note": "",
+      "status": 200,
+      "latency_ms": 218.1,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "access_tier": "authenticated",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "Situacao documental de Ana Oliveira hoje: com pendencias.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": true
+      },
+      "expected_keywords": [
+        "ana",
+        "pendencias"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "o que falta?",
+      "slice": "protected",
+      "category": "threaded",
+      "thread_id": "obs_protected_docs_focus",
+      "turn_index": 2,
+      "note": "",
+      "status": 200,
+      "latency_ms": 232.2,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "access_tier": "authenticated",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "Hoje, o proximo passo do seu cadastro e este: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "ana"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "e a documentacao do lucas?",
+      "slice": "protected",
+      "category": "threaded",
+      "thread_id": "obs_protected_docs_focus",
+      "turn_index": 3,
+      "note": "",
+      "status": 200,
+      "latency_ms": 212.5,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "access_tier": "authenticated",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "Situacao documental de Lucas Oliveira hoje: regular.\n- Identificacao escolar do aluno: regular. Codigo de matricula: MAT-2026-001\n- Responsavel vinculado: regular. Maria Oliveira\n- Documentacao escolar do aluno: regular. A documentacao escolar de Lucas Oliveira esta conferida e sem pendencias relevantes nesta base de testes.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": true,
+        "personalization": true
+      },
+      "expected_keywords": [
+        "lucas",
+        "regular"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "e se eu perguntar do joao?",
+      "slice": "protected",
+      "category": "threaded",
+      "thread_id": "obs_protected_docs_focus",
+      "turn_index": 4,
+      "note": "",
+      "status": 200,
+      "latency_ms": 172.3,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "access_tier": "authenticated",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "Hoje eu nao encontrei Joao entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": true,
+        "personalization": true
+      },
+      "expected_keywords": [
+        "nao",
+        "joao"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "preciso falar com o financeiro",
+      "slice": "support",
+      "category": "threaded",
+      "thread_id": "obs_support_reroute",
+      "turn_index": 1,
+      "note": "",
+      "status": 200,
+      "latency_ms": 187.8,
+      "mode": "handoff",
+      "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "handoff",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "Sua solicitacao ja estava registrada na fila de financeiro. Protocolo: ATD-20260330-2D2B72E6. Status atual: queued.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "financeiro",
+        "protocolo"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "qual o protocolo?",
+      "slice": "support",
+      "category": "threaded",
+      "thread_id": "obs_support_reroute",
+      "turn_index": 2,
+      "note": "",
+      "status": 200,
+      "latency_ms": 204.5,
+      "mode": "structured_tool",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "O protocolo atual do seu atendimento e ATD-20260330-2D2B72E6. Se quiser, eu posso te dizer o status atual ou resumir o que ja foi registrado.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "protocolo"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "mudei de ideia, quero secretaria",
+      "slice": "support",
+      "category": "threaded",
+      "thread_id": "obs_support_reroute",
+      "turn_index": 3,
+      "note": "repair reroute",
+      "status": 200,
+      "latency_ms": 207.4,
+      "mode": "handoff",
+      "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "handoff",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "Sem problema, ajustei isso por aqui.\n\nSua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260330-2D2B72E6. Status atual: queued.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": true,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "secretaria"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "da pra marcar uma visita na quinta a tarde?",
+      "slice": "workflow",
+      "category": "threaded",
+      "thread_id": "obs_workflow_visit",
+      "turn_index": 1,
+      "note": "",
+      "status": 200,
+      "latency_ms": 225.0,
+      "mode": "structured_tool",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-6FAB31. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260330-2B72DD56. A equipe comercial valida a janela e retorna com a confirmacao.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "protocolo",
+        "visita"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "me fala o protocolo dessa visita",
+      "slice": "workflow",
+      "category": "threaded",
+      "thread_id": "obs_workflow_visit",
+      "turn_index": 2,
+      "note": "",
+      "status": 200,
+      "latency_ms": 212.3,
+      "mode": "structured_tool",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "O protocolo da sua visita e VIS-20260330-6FAB31. Ticket operacional: ATD-20260330-2B72DD56. Preferencia registrada: 02/04/2026 - tarde. Se quiser, eu tambem posso te dizer o status, remarcar ou cancelar a visita.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "protocolo"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "e se eu precisar remarcar?",
+      "slice": "workflow",
+      "category": "threaded",
+      "thread_id": "obs_workflow_visit",
+      "turn_index": 3,
+      "note": "",
+      "status": 200,
+      "latency_ms": 195.5,
+      "mode": "structured_tool",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "Consigo remarcar a visita por aqui. Protocolo: VIS-20260330-6FAB31. Ticket operacional: ATD-20260330-2B72DD56. Me diga pelo menos o novo dia ou a janela desejada, por exemplo: \"remarque para sexta de manha\" ou \"troque para 28/03 as 10h\".",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": true,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "protocolo",
+        "remarcar"
+      ],
+      "forbidden_keywords": []
+    },
+    {
+      "stack": "llamaindex",
+      "prompt": "entao remarca pra sexta de manha",
+      "slice": "workflow",
+      "category": "threaded",
+      "thread_id": "obs_workflow_visit",
+      "turn_index": 4,
+      "note": "",
+      "status": 200,
+      "latency_ms": 207.4,
+      "mode": "structured_tool",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "access_tier": "public",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "expected_kernel": "kernel:llamaindex",
+      "observed_kernel": "kernel:llamaindex",
+      "foreign_kernel": false,
+      "answer_text": "Pedido de visita atualizado com a fila de admissions. Protocolo: VIS-20260330-6FAB31. Ticket operacional: ATD-20260330-2B72DD56. Nova preferencia: 03/04/2026 - manha. Admissions valida a nova janela e retorna com a confirmacao.",
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "expected_keywords": [
+        "nova",
+        "protocolo"
+      ],
+      "forbidden_keywords": []
+    }
+  ]
+}

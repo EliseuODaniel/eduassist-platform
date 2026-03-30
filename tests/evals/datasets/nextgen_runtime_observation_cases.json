@@ -1,0 +1,117 @@
+{
+  "threads": [
+    {
+      "thread_id": "obs_public_channels_docs",
+      "telegram_chat_id": 877201,
+      "turns": [
+        {
+          "slice": "public",
+          "prompt": "posso enviar documentos por fax ou isso nao existe mais?",
+          "expected_keywords": ["fax"],
+          "forbidden_keywords": ["sim"]
+        },
+        {
+          "slice": "public",
+          "prompt": "e por telegrama, serve?",
+          "expected_keywords": ["portal", "email", "secretaria"],
+          "forbidden_keywords": ["sim"]
+        },
+        {
+          "slice": "public",
+          "prompt": "qual e o caminho certo pra mandar a documentacao?",
+          "expected_keywords": ["portal", "email", "secretaria"]
+        }
+      ]
+    },
+    {
+      "thread_id": "obs_public_library_realism",
+      "telegram_chat_id": 877202,
+      "turns": [
+        {
+          "slice": "public",
+          "prompt": "voces realmente tem biblioteca ou e so folheto bonito?",
+          "expected_keywords": ["biblioteca"]
+        },
+        {
+          "slice": "public",
+          "prompt": "como ela se chama e ate que horas funciona?",
+          "expected_keywords": ["biblioteca aurora", "18h00"]
+        }
+      ]
+    },
+    {
+      "thread_id": "obs_protected_docs_focus",
+      "telegram_chat_id": 1649845499,
+      "turns": [
+        {
+          "slice": "protected",
+          "prompt": "como esta a documentacao da ana?",
+          "expected_keywords": ["ana", "pendencias"]
+        },
+        {
+          "slice": "protected",
+          "prompt": "o que falta?",
+          "expected_keywords": ["ana"]
+        },
+        {
+          "slice": "protected",
+          "prompt": "e a documentacao do lucas?",
+          "expected_keywords": ["lucas", "regular"]
+        },
+        {
+          "slice": "protected",
+          "prompt": "e se eu perguntar do joao?",
+          "expected_keywords": ["nao", "joao"]
+        }
+      ]
+    },
+    {
+      "thread_id": "obs_support_reroute",
+      "telegram_chat_id": 877205,
+      "turns": [
+        {
+          "slice": "support",
+          "prompt": "preciso falar com o financeiro",
+          "expected_keywords": ["financeiro", "protocolo"]
+        },
+        {
+          "slice": "support",
+          "prompt": "qual o protocolo?",
+          "expected_keywords": ["protocolo"]
+        },
+        {
+          "slice": "support",
+          "prompt": "mudei de ideia, quero secretaria",
+          "expected_keywords": ["secretaria"],
+          "note": "repair reroute"
+        }
+      ]
+    },
+    {
+      "thread_id": "obs_workflow_visit",
+      "telegram_chat_id": 877206,
+      "turns": [
+        {
+          "slice": "workflow",
+          "prompt": "da pra marcar uma visita na quinta a tarde?",
+          "expected_keywords": ["protocolo", "visita"]
+        },
+        {
+          "slice": "workflow",
+          "prompt": "me fala o protocolo dessa visita",
+          "expected_keywords": ["protocolo"]
+        },
+        {
+          "slice": "workflow",
+          "prompt": "e se eu precisar remarcar?",
+          "expected_keywords": ["protocolo", "remarcar"]
+        },
+        {
+          "slice": "workflow",
+          "prompt": "entao remarca pra sexta de manha",
+          "expected_keywords": ["nova", "protocolo"]
+        }
+      ]
+    }
+  ]
+}

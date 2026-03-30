@@ -16,6 +16,7 @@ Este diretório concentra a documentação formal do projeto.
 - [Smoke report de 4 caminhos do chatbot](/home/edann/projects/eduassist-platform/docs/architecture/four-path-chatbot-smoke-report.md)
 - [Comparativo amplo de 4 caminhos do chatbot](/home/edann/projects/eduassist-platform/docs/architecture/four-path-chatbot-comparison-report.md)
 - [Preflight operacional dos caminhos next-gen](/home/edann/projects/eduassist-platform/docs/architecture/nextgen-stack-runtime-preflight-report.md)
+- [Observação controlada dos caminhos next-gen em runtime](/home/edann/projects/eduassist-platform/docs/architecture/nextgen-stack-runtime-observation-report.md)
 - [Catálogo de serviços](/home/edann/projects/eduassist-platform/docs/architecture/service-catalog.md)
 - [Segurança da informação](/home/edann/projects/eduassist-platform/docs/security/security-architecture.md)
 - [Matriz de controle de acesso](/home/edann/projects/eduassist-platform/docs/security/access-control-matrix.md)
