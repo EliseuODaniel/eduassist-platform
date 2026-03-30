@@ -5,7 +5,8 @@ from functools import lru_cache
 from typing import Any
 
 from fastembed import TextEmbedding
-from llama_index.core.agent.workflow import FunctionAgent
+from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
+from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.base.base_retriever import BaseRetriever
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.base.response.schema import Response
@@ -15,12 +16,14 @@ from llama_index.core.response_synthesizers.type import ResponseMode
 from llama_index.core.schema import NodeWithScore, QueryBundle, TextNode
 from llama_index.core.selectors import EmbeddingSingleSelector, PydanticSingleSelector
 from llama_index.core.tools import FunctionTool, QueryEngineTool
+from llama_index.core.memory import Memory
 from pydantic import PrivateAttr
 
 from . import runtime as rt
 from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult
 from .evidence_pack import build_retrieval_evidence_pack, build_structured_tool_evidence_pack
 from .entity_resolution import resolve_entity_hints
+from .kernel_runtime import _maybe_hypothetical_public_pricing_answer
 from .llm_provider import _google_model_candidates
 from .models import (
     AccessTier,
@@ -172,22 +175,42 @@ class PublicPricingProjectionQueryEngine(CustomQueryEngine):
     conversation_context: dict[str, Any] | None = None
     semantic_plan: Any = None
 
-    def custom_query(self, query_str: str) -> Response:
-        pricing_plan = self.semantic_plan
-        if pricing_plan is not None and pricing_plan.conversation_act != 'pricing':
-            pricing_plan = rt.replace(
-                pricing_plan,
-                conversation_act='pricing',
-                secondary_acts=(),
-            )
-        answer = rt._compose_public_profile_answer(
-            self.profile,
-            query_str,
-            actor=self.actor,
-            original_message=self.original_message,
+    def _direct_pricing_answer(self, query_str: str) -> tuple[str, Any] | None:
+        return _maybe_hypothetical_public_pricing_answer(
+            request=self.request,
+            plan=KernelPlan(
+                stack_name='llamaindex',
+                mode='native_public_pricing',
+                analysis_message=query_str,
+                preview=self.preview,
+                slice_name='public',
+                entities=resolve_entity_hints(query_str),
+            ),
+            preview=self.preview,
+            school_profile=self.profile,
             conversation_context=self.conversation_context,
-            semantic_plan=pricing_plan,
         )
+
+    def custom_query(self, query_str: str) -> Response:
+        direct_pricing_answer = self._direct_pricing_answer(query_str)
+        if direct_pricing_answer:
+            answer, pricing_plan = direct_pricing_answer
+        else:
+            pricing_plan = self.semantic_plan
+            if pricing_plan is not None and pricing_plan.conversation_act != 'pricing':
+                pricing_plan = rt.replace(
+                    pricing_plan,
+                    conversation_act='pricing',
+                    secondary_acts=(),
+                )
+            answer = rt._compose_public_profile_answer(
+                self.profile,
+                query_str,
+                actor=self.actor,
+                original_message=self.original_message,
+                conversation_context=self.conversation_context,
+                semantic_plan=pricing_plan,
+            )
         return Response(
             response=answer,
             metadata={
@@ -198,26 +221,33 @@ class PublicPricingProjectionQueryEngine(CustomQueryEngine):
         )
 
     async def acustom_query(self, query_str: str) -> Response:
-        pricing_plan = self.semantic_plan
-        if pricing_plan is not None and pricing_plan.conversation_act != 'pricing':
-            pricing_plan = rt.replace(
-                pricing_plan,
-                conversation_act='pricing',
-                secondary_acts=(),
-            )
         preview = self.preview.model_copy(deep=True)
-        preview.selected_tools = list(getattr(pricing_plan, 'required_tools', ()) or preview.selected_tools)
-        answer = await rt._compose_structured_tool_answer(
-            settings=self.settings,
-            request=self.request,
-            analysis_message=query_str,
-            preview=preview,
-            actor=self.actor,
-            school_profile=self.profile,
-            conversation_context=self.conversation_context,
-            resolved_public_plan=pricing_plan,
-            prefer_fast_public_path=True,
-        )
+        direct_pricing_answer = self._direct_pricing_answer(query_str)
+        if direct_pricing_answer:
+            answer, pricing_plan = direct_pricing_answer
+            preview.selected_tools = list(
+                dict.fromkeys([*preview.selected_tools, 'get_public_school_profile', 'project_public_pricing'])
+            )
+        else:
+            pricing_plan = self.semantic_plan
+            if pricing_plan is not None and pricing_plan.conversation_act != 'pricing':
+                pricing_plan = rt.replace(
+                    pricing_plan,
+                    conversation_act='pricing',
+                    secondary_acts=(),
+                )
+            preview.selected_tools = list(getattr(pricing_plan, 'required_tools', ()) or preview.selected_tools)
+            answer = await rt._compose_structured_tool_answer(
+                settings=self.settings,
+                request=self.request,
+                analysis_message=query_str,
+                preview=preview,
+                actor=self.actor,
+                school_profile=self.profile,
+                conversation_context=self.conversation_context,
+                resolved_public_plan=pricing_plan,
+                prefer_fast_public_path=True,
+            )
         return Response(
             response=answer,
             metadata={
@@ -310,6 +340,11 @@ class PublicHybridCitationRetriever(BaseRetriever):
         super().__init__(**kwargs)
         self._settings = settings
         self._original_message = original_message
+        self._latest_citations = ()
+        self._latest_query_plan = None
+
+    def latest_citations(self) -> tuple[MessageResponseCitation, ...]:
+        return tuple(getattr(self, '_latest_citations', ()) or ())
 
     def _search(self, query_str: str) -> list[NodeWithScore]:
         retrieval_service = get_retrieval_service(
@@ -433,9 +468,30 @@ def _should_use_llamaindex_function_agent(*, request: MessageResponseRequest, pu
     normalized = rt._normalize_text(request.message)
     if _should_use_llamaindex_native_subquestions(request=request, public_plan=public_plan):
         return True
+    if public_plan.conversation_act in {'comparative', 'curriculum', 'highlight', 'features', 'pricing'}:
+        multi_aspect_markers = (
+            ' e como ',
+            ' e na ',
+            ' e no ',
+            ' e qual ',
+            ' e quais ',
+            ' e existe ',
+            ' e isso ',
+        )
+        marker_hits = sum(1 for marker in multi_aspect_markers if marker in f' {normalized} ')
+        if marker_hits >= 2 and len(normalized.split()) >= 12:
+            return True
     if public_plan.conversation_act in {'comparative', 'curriculum', 'highlight'} and len(normalized.split()) >= 8:
         return True
     return normalized.count('?') >= 2
+
+
+def _build_llamaindex_chat_history(conversation_context: dict[str, Any] | None) -> list[ChatMessage]:
+    history: list[ChatMessage] = []
+    for sender_type, content in rt._recent_message_lines(conversation_context):
+        role = MessageRole.ASSISTANT if sender_type == 'assistant' else MessageRole.USER
+        history.append(ChatMessage(role=role, content=content))
+    return history
 
 
 def _route_public_query_tool(
@@ -721,7 +777,115 @@ async def _maybe_execute_llamaindex_function_agent(
         if sources and sources not in answer_text:
             answer_text = f'{answer_text}\n\n{sources}'
     selected_tool_names = tuple(dict.fromkeys(used_tool_names)) or ('llamaindex_function_agent',)
-    return answer_text, selected_tool_names, tuple(captured_citations), captured_reason
+    return answer_text, selected_tool_names, tuple(captured_citations), 'llamaindex_function_agent'
+
+
+async def _maybe_execute_llamaindex_agent_workflow(
+    *,
+    analysis_message: str,
+    conversation_context: dict[str, Any] | None,
+    llm: Any | None,
+    tools: dict[str, QueryEngineTool],
+    session_id: str,
+) -> tuple[str, tuple[str, ...], tuple[MessageResponseCitation, ...], str] | None:
+    if llm is None or not _llamaindex_llm_supports_function_calls(llm):
+        return None
+
+    used_tool_names: list[str] = []
+    captured_citations: list[MessageResponseCitation] = []
+    captured_reason = 'llamaindex_agent_workflow'
+
+    async def _call_tool(tool_name: str, query: str) -> str:
+        nonlocal captured_reason
+        response = await tools[tool_name].query_engine.aquery(query)
+        used_tool_names.append(tool_name)
+        captured_reason = str((response.metadata or {}).get('reason', captured_reason))
+        extracted = list(_extract_response_citations(response))
+        for citation in extracted:
+            if citation not in captured_citations:
+                captured_citations.append(citation)
+        answer = str(getattr(response, 'response', '') or str(response)).strip()
+        if extracted:
+            sources = rt._render_source_lines(extracted)
+            if sources and sources not in answer:
+                answer = f'{answer}\n\n{sources}'
+        return answer
+
+    def _tool(tool_name: str, description: str) -> FunctionTool:
+        async def _run(query: str) -> str:
+            return await _call_tool(tool_name, query)
+
+        return FunctionTool.from_defaults(async_fn=_run, name=tool_name, description=description)
+
+    manager = FunctionAgent(
+        name='manager',
+        description='Gerencia a conversa publica e decide qual especialista deve assumir.',
+        system_prompt=(
+            'Voce e o manager publico. Decida qual especialista deve assumir a pergunta. '
+            'Use handoff quando a pergunta pedir fatos institucionais, precificacao ou sintese documental. '
+            'Nao invente fatos e finalize com a resposta grounded do especialista.'
+        ),
+        llm=llm,
+        can_handoff_to=['profile_specialist', 'pricing_specialist', 'retrieval_specialist'],
+        verbose=False,
+    )
+    profile_specialist = FunctionAgent(
+        name='profile_specialist',
+        description='Especialista em fatos publicos estruturados da escola.',
+        system_prompt='Use apenas a tool public_profile para responder fatos institucionais canonicos.',
+        tools=[_tool('public_profile', tools['public_profile'].metadata.description)],
+        llm=llm,
+        can_handoff_to=['manager'],
+        allow_parallel_tool_calls=False,
+        verbose=False,
+    )
+    pricing_specialist = FunctionAgent(
+        name='pricing_specialist',
+        description='Especialista em simulacoes e perguntas publicas de precificacao.',
+        system_prompt='Use apenas a tool pricing_projection para precos, matricula, quantidade de filhos e cenarios hipoteticos.',
+        tools=[_tool('pricing_projection', tools['pricing_projection'].metadata.description)],
+        llm=llm,
+        can_handoff_to=['manager'],
+        allow_parallel_tool_calls=False,
+        verbose=False,
+    )
+    retrieval_specialist = FunctionAgent(
+        name='retrieval_specialist',
+        description='Especialista em sintese documental publica com citacoes.',
+        system_prompt='Use apenas a tool public_retrieval para perguntas abertas, comparativas e documentais. Preserve citacoes quando existirem.',
+        tools=[_tool('public_retrieval', tools['public_retrieval'].metadata.description)],
+        llm=llm,
+        can_handoff_to=['manager'],
+        allow_parallel_tool_calls=False,
+        verbose=False,
+    )
+    workflow = AgentWorkflow(
+        agents=[manager, profile_specialist, pricing_specialist, retrieval_specialist],
+        root_agent='manager',
+    )
+    memory = Memory.from_defaults(
+        session_id=session_id,
+        chat_history=_build_llamaindex_chat_history(conversation_context),
+        token_limit=6000,
+    )
+    try:
+        handler = workflow.run(
+            user_msg=analysis_message,
+            memory=memory,
+            max_iterations=6,
+        )
+        result = await handler
+    except Exception:
+        return None
+    answer_text = str(result).strip()
+    if not answer_text:
+        return None
+    if captured_citations:
+        sources = rt._render_source_lines(captured_citations)
+        if sources and sources not in answer_text:
+            answer_text = f'{answer_text}\n\n{sources}'
+    selected_tool_names = tuple(dict.fromkeys(used_tool_names)) or ('llamaindex_agent_workflow',)
+    return answer_text, selected_tool_names, tuple(captured_citations), 'llamaindex_agent_workflow'
 
 
 def _extract_router_selected_tool_names(*, response: Response, tool_names: tuple[str, ...]) -> tuple[str, ...]:
@@ -839,8 +1003,24 @@ async def maybe_execute_llamaindex_native_plan(
     retrieval_backend = RetrievalBackend.none
     execution_reason = 'llamaindex_native_public_router'
 
+    agent_workflow_result = None
     function_agent_result = None
     if (
+        effective_path_profile.prefer_native_llamaindex_function_agent
+        and _should_use_llamaindex_function_agent(request=request, public_plan=public_plan)
+    ):
+        agent_workflow_result = await _maybe_execute_llamaindex_agent_workflow(
+            analysis_message=analysis_message,
+            conversation_context=conversation_context,
+            llm=llamaindex_llm,
+            tools=tools,
+            session_id=effective_conversation_id,
+        )
+    if agent_workflow_result is not None:
+        answer_text, selected_tool_names, workflow_citations, execution_reason = agent_workflow_result
+        citations = list(workflow_citations)
+        retrieval_backend = RetrievalBackend.qdrant_hybrid if citations else RetrievalBackend.none
+    elif (
         effective_path_profile.prefer_native_llamaindex_function_agent
         and _should_use_llamaindex_function_agent(request=request, public_plan=public_plan)
     ):
@@ -891,7 +1071,7 @@ async def maybe_execute_llamaindex_native_plan(
         answer_text = str(getattr(tool_response, 'response', '') or str(tool_response)).strip()
         citations = list(_extract_response_citations(tool_response))
         if not citations and citation_retriever is not None:
-            citations = list(citation_retriever._latest_citations)
+            citations = list(citation_retriever.latest_citations())
         retrieval_backend = RetrievalBackend(
             str((tool_response.metadata or {}).get('retrieval_backend', RetrievalBackend.none.value))
         )
