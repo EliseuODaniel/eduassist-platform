@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-30T13:08:12.666143+00:00",
+  "generated_at": "2026-03-30T14:28:50.347773+00:00",
   "summary": {
     "by_stack": {
       "langgraph": {
@@ -7,28 +7,28 @@
         "ok": 32,
         "keyword_pass": 30,
         "quality_avg": 98.2,
-        "avg_latency_ms": 244.9
+        "avg_latency_ms": 205.4
       },
       "crewai": {
         "count": 32,
         "ok": 32,
-        "keyword_pass": 19,
-        "quality_avg": 88.7,
-        "avg_latency_ms": 3025.8
+        "keyword_pass": 18,
+        "quality_avg": 87.9,
+        "avg_latency_ms": 3291.6
       },
       "python_functions": {
         "count": 32,
         "ok": 32,
         "keyword_pass": 32,
         "quality_avg": 100.0,
-        "avg_latency_ms": 177.6
+        "avg_latency_ms": 132.4
       },
       "llamaindex": {
         "count": 32,
         "ok": 32,
         "keyword_pass": 32,
         "quality_avg": 100.0,
-        "avg_latency_ms": 177.2
+        "avg_latency_ms": 134.7
       }
     },
     "by_slice": {
@@ -38,25 +38,25 @@
           "ok": 10,
           "keyword_pass": 10,
           "quality_avg": 100.0,
-          "avg_latency_ms": 173.9
+          "avg_latency_ms": 142.9
         },
         "crewai": {
           "ok": 10,
-          "keyword_pass": 7,
-          "quality_avg": 86.8,
-          "avg_latency_ms": 1682.8
+          "keyword_pass": 6,
+          "quality_avg": 83.5,
+          "avg_latency_ms": 1582.3
         },
         "python_functions": {
           "ok": 10,
           "keyword_pass": 10,
           "quality_avg": 100.0,
-          "avg_latency_ms": 178.5
+          "avg_latency_ms": 145.7
         },
         "llamaindex": {
           "ok": 10,
           "keyword_pass": 10,
           "quality_avg": 100.0,
-          "avg_latency_ms": 180.5
+          "avg_latency_ms": 148.7
         }
       },
       "public": {
@@ -65,25 +65,25 @@
           "ok": 10,
           "keyword_pass": 8,
           "quality_avg": 96.0,
-          "avg_latency_ms": 375.0
+          "avg_latency_ms": 349.8
         },
         "crewai": {
           "ok": 10,
           "keyword_pass": 5,
           "quality_avg": 89.0,
-          "avg_latency_ms": 1767.6
+          "avg_latency_ms": 2857.2
         },
         "python_functions": {
           "ok": 10,
           "keyword_pass": 10,
           "quality_avg": 100.0,
-          "avg_latency_ms": 164.5
+          "avg_latency_ms": 121.4
         },
         "llamaindex": {
           "ok": 10,
           "keyword_pass": 10,
           "quality_avg": 100.0,
-          "avg_latency_ms": 152.4
+          "avg_latency_ms": 123.1
         }
       },
       "support": {
@@ -92,25 +92,25 @@
           "ok": 5,
           "keyword_pass": 5,
           "quality_avg": 96.4,
-          "avg_latency_ms": 159.2
+          "avg_latency_ms": 132.1
         },
         "crewai": {
           "ok": 5,
           "keyword_pass": 3,
-          "quality_avg": 90.0,
-          "avg_latency_ms": 4945.1
+          "quality_avg": 92.0,
+          "avg_latency_ms": 4996.3
         },
         "python_functions": {
           "ok": 5,
           "keyword_pass": 5,
           "quality_avg": 100.0,
-          "avg_latency_ms": 163.5
+          "avg_latency_ms": 125.9
         },
         "llamaindex": {
           "ok": 5,
           "keyword_pass": 5,
           "quality_avg": 100.0,
-          "avg_latency_ms": 169.5
+          "avg_latency_ms": 128.3
         }
       },
       "workflow": {
@@ -119,25 +119,25 @@
           "ok": 7,
           "keyword_pass": 7,
           "quality_avg": 100.0,
-          "avg_latency_ms": 221.8
+          "avg_latency_ms": 140.9
         },
         "crewai": {
           "ok": 7,
           "keyword_pass": 4,
-          "quality_avg": 90.0,
-          "avg_latency_ms": 5370.7
+          "quality_avg": 89.7,
+          "avg_latency_ms": 5136.5
         },
         "python_functions": {
           "ok": 7,
           "keyword_pass": 7,
           "quality_avg": 100.0,
-          "avg_latency_ms": 205.3
+          "avg_latency_ms": 133.9
         },
         "llamaindex": {
           "ok": 7,
           "keyword_pass": 7,
           "quality_avg": 100.0,
-          "avg_latency_ms": 213.6
+          "avg_latency_ms": 135.9
         }
       }
     },
@@ -147,9 +147,9 @@
         "repair_miss": 1
       },
       "crewai": {
-        "missing_expected_keyword": 13,
-        "repetitive_reply": 4,
-        "followup_context_drop": 2,
+        "missing_expected_keyword": 14,
+        "repetitive_reply": 2,
+        "followup_context_drop": 3,
         "unnecessary_clarification": 1
       },
       "python_functions": {},
@@ -166,7 +166,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 232.8,
+        "latency_ms": 207.5,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -189,7 +189,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 212.9,
+        "latency_ms": 280.9,
         "mode": "deny",
         "reason": "crewai_protected_auth_required",
         "graph_path": [
@@ -210,7 +210,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 150.7,
+        "latency_ms": 118.6,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -233,7 +233,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 147.3,
+        "latency_ms": 113.9,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -264,7 +264,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 169.2,
+        "latency_ms": 116.1,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -287,18 +287,10 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 12150.2,
+        "latency_ms": 13130.1,
         "mode": "structured_tool",
-        "reason": "crewai_public_flow_completed",
-        "graph_path": [
-          "flow_state",
-          "pydantic_output",
-          "judge",
-          "deterministic_backstop",
-          "public_planning",
-          "public_composition",
-          "public_judging"
-        ],
+        "reason": "crewai_primary_strict_safe_fallback",
+        "graph_path": [],
         "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
         "keyword_pass": false,
         "quality_score": 80,
@@ -313,7 +305,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 146.2,
+        "latency_ms": 163.5,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -336,7 +328,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 154.0,
+        "latency_ms": 165.4,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -367,7 +359,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 177.7,
+        "latency_ms": 166.5,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -390,7 +382,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 985.8,
+        "latency_ms": 11608.2,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -409,7 +401,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 206.0,
+        "latency_ms": 123.9,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -432,7 +424,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 181.3,
+        "latency_ms": 126.0,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -463,7 +455,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 166.9,
+        "latency_ms": 122.6,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -486,7 +478,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 191.4,
+        "latency_ms": 164.8,
         "mode": "deny",
         "reason": "crewai_protected_auth_required",
         "graph_path": [
@@ -507,7 +499,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 130.8,
+        "latency_ms": 98.0,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -530,7 +522,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 131.8,
+        "latency_ms": 97.8,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -561,7 +553,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 2144.6,
+        "latency_ms": 2196.7,
         "mode": "hybrid_retrieval",
         "reason": "retrieval hibrido e o caminho padrao para faq e documentos",
         "graph_path": [
@@ -584,7 +576,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 966.9,
+        "latency_ms": 722.5,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -603,7 +595,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 147.9,
+        "latency_ms": 137.0,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -626,7 +618,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 135.4,
+        "latency_ms": 126.1,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -657,7 +649,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 129.4,
+        "latency_ms": 112.1,
         "mode": "clarify",
         "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
         "graph_path": [
@@ -679,7 +671,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 282.7,
+        "latency_ms": 191.2,
         "mode": "deny",
         "reason": "crewai_protected_auth_required",
         "graph_path": [
@@ -700,7 +692,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 160.4,
+        "latency_ms": 108.4,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -723,7 +715,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 149.6,
+        "latency_ms": 110.6,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -754,7 +746,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 166.4,
+        "latency_ms": 142.9,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -777,7 +769,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 947.8,
+        "latency_ms": 952.1,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -796,7 +788,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 203.3,
+        "latency_ms": 128.9,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -819,7 +811,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 166.5,
+        "latency_ms": 154.2,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -850,7 +842,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 175.8,
+        "latency_ms": 140.2,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -875,7 +867,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 965.2,
+        "latency_ms": 747.8,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -896,7 +888,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 146.4,
+        "latency_ms": 100.1,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -919,7 +911,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 127.4,
+        "latency_ms": 97.2,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -950,7 +942,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 191.1,
+        "latency_ms": 143.8,
         "mode": "structured_tool",
         "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
         "graph_path": [
@@ -973,7 +965,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 193.6,
+        "latency_ms": 178.5,
         "mode": "deny",
         "reason": "crewai_protected_auth_required",
         "graph_path": [
@@ -994,7 +986,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 183.2,
+        "latency_ms": 123.1,
         "mode": "structured_tool",
         "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
         "graph_path": [
@@ -1017,7 +1009,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 179.9,
+        "latency_ms": 130.8,
         "mode": "structured_tool",
         "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
         "graph_path": [
@@ -1048,7 +1040,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 196.5,
+        "latency_ms": 150.0,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -1073,7 +1065,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 779.7,
+        "latency_ms": 595.8,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -1092,7 +1084,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 169.7,
+        "latency_ms": 112.3,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -1115,7 +1107,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 151.2,
+        "latency_ms": 109.4,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -1146,7 +1138,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 147.7,
+        "latency_ms": 102.3,
         "mode": "structured_tool",
         "reason": "identidade da conta autenticada exige leitura protegida e minimizada",
         "graph_path": [
@@ -1169,7 +1161,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 230.6,
+        "latency_ms": 177.0,
         "mode": "structured_tool",
         "reason": "crewai_protected_identity_backstop",
         "graph_path": [
@@ -1188,7 +1180,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 131.7,
+        "latency_ms": 92.9,
         "mode": "structured_tool",
         "reason": "identidade da conta autenticada exige leitura protegida e minimizada",
         "graph_path": [
@@ -1211,7 +1203,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 129.1,
+        "latency_ms": 103.5,
         "mode": "structured_tool",
         "reason": "identidade da conta autenticada exige leitura protegida e minimizada",
         "graph_path": [
@@ -1242,7 +1234,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 144.4,
+        "latency_ms": 114.2,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1265,7 +1257,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 969.8,
+        "latency_ms": 722.4,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -1287,7 +1279,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 159.4,
+        "latency_ms": 130.0,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1310,7 +1302,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 157.2,
+        "latency_ms": 132.1,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1341,7 +1333,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 253.6,
+        "latency_ms": 200.7,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1364,7 +1356,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 966.3,
+        "latency_ms": 682.6,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -1386,7 +1378,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 234.4,
+        "latency_ms": 192.3,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1409,7 +1401,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 219.1,
+        "latency_ms": 201.1,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1440,7 +1432,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 174.6,
+        "latency_ms": 159.4,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1463,7 +1455,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 475.3,
+        "latency_ms": 396.6,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -1482,7 +1474,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 223.1,
+        "latency_ms": 160.8,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1505,7 +1497,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 247.5,
+        "latency_ms": 151.2,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1536,7 +1528,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 180.6,
+        "latency_ms": 140.1,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1559,7 +1551,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 403.5,
+        "latency_ms": 406.7,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -1578,7 +1570,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 184.5,
+        "latency_ms": 158.9,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1601,7 +1593,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 188.1,
+        "latency_ms": 167.0,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1632,7 +1624,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 168.5,
+        "latency_ms": 150.0,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1655,7 +1647,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 468.9,
+        "latency_ms": 428.1,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -1674,7 +1666,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 176.9,
+        "latency_ms": 173.6,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1697,7 +1689,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 185.9,
+        "latency_ms": 162.4,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1728,7 +1720,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 128.7,
+        "latency_ms": 109.4,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1751,9 +1743,9 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 12019.0,
+        "latency_ms": 11825.7,
         "mode": "structured_tool",
-        "reason": "crewai_public_flow_timeout",
+        "reason": "crewai_public_flow_completed",
         "graph_path": [
           "flow_state",
           "pydantic_output",
@@ -1763,21 +1755,22 @@
           "public_composition",
           "public_judging"
         ],
-        "answer_text": "Olá! Não consegui encontrar informações sobre \"joao general\" nos documentos que tenho. Você poderia me dar mais detalhes ou contexto para que eu possa te ajudar melhor?",
-        "keyword_pass": true,
-        "quality_score": 88,
+        "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
+        "keyword_pass": false,
+        "quality_score": 55,
         "error_types": [
-          "unnecessary_clarification"
+          "followup_context_drop",
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
           "followup_adaptation": true,
-          "personalization": true
+          "personalization": false
         }
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 135.1,
+        "latency_ms": 116.9,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1800,7 +1793,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 142.7,
+        "latency_ms": 120.9,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1831,7 +1824,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 190.5,
+        "latency_ms": 161.3,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1854,7 +1847,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 441.1,
+        "latency_ms": 390.2,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -1873,7 +1866,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 189.9,
+        "latency_ms": 153.3,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1896,7 +1889,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 183.6,
+        "latency_ms": 161.4,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1927,7 +1920,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 177.9,
+        "latency_ms": 154.6,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1950,7 +1943,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 434.5,
+        "latency_ms": 404.4,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -1969,7 +1962,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 172.8,
+        "latency_ms": 140.6,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1992,7 +1985,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 183.1,
+        "latency_ms": 140.7,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -2023,7 +2016,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 172.1,
+        "latency_ms": 137.0,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -2046,7 +2039,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 418.7,
+        "latency_ms": 389.8,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -2068,7 +2061,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 177.2,
+        "latency_ms": 137.8,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -2091,7 +2084,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 168.7,
+        "latency_ms": 147.1,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -2122,7 +2115,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 145.3,
+        "latency_ms": 130.6,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -2145,7 +2138,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 201.4,
+        "latency_ms": 218.7,
         "mode": "structured_tool",
         "reason": "support_handoff_rerouted",
         "graph_path": [
@@ -2165,7 +2158,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 156.7,
+        "latency_ms": 118.1,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -2188,7 +2181,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 164.9,
+        "latency_ms": 122.5,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -2219,7 +2212,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 167.9,
+        "latency_ms": 129.3,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2242,7 +2235,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 170.9,
+        "latency_ms": 179.6,
         "mode": "structured_tool",
         "reason": "workflow_protocol_lookup",
         "graph_path": [
@@ -2262,7 +2255,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 171.1,
+        "latency_ms": 129.7,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2285,7 +2278,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 181.7,
+        "latency_ms": 139.4,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2316,7 +2309,7 @@
       "note": "repair reroute",
       "langgraph": {
         "status": 200,
-        "latency_ms": 154.5,
+        "latency_ms": 143.6,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -2341,7 +2334,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 219.1,
+        "latency_ms": 880.5,
         "mode": "structured_tool",
         "reason": "support_handoff_rerouted",
         "graph_path": [
@@ -2361,7 +2354,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 155.6,
+        "latency_ms": 130.3,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -2384,7 +2377,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 149.1,
+        "latency_ms": 125.5,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -2415,7 +2408,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 156.7,
+        "latency_ms": 128.5,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2438,7 +2431,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 12080.1,
+        "latency_ms": 11747.4,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -2464,7 +2457,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 168.9,
+        "latency_ms": 129.7,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2487,7 +2480,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 170.7,
+        "latency_ms": 128.9,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2518,7 +2511,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 171.4,
+        "latency_ms": 128.3,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2541,9 +2534,9 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 12054.0,
+        "latency_ms": 11955.1,
         "mode": "structured_tool",
-        "reason": "crewai_public_flow_completed",
+        "reason": "crewai_public_flow_timeout",
         "graph_path": [
           "flow_state",
           "pydantic_output",
@@ -2553,12 +2546,11 @@
           "public_composition",
           "public_judging"
         ],
-        "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
+        "answer_text": "A Secretaria e Protocolo atende de segunda a sexta-feira, das 8h às 17h. Se precisar entrar em contato, o telefone é (11) 3091-4945 e o e-mail é secretaria.fca@usp.br.",
         "keyword_pass": false,
-        "quality_score": 70,
+        "quality_score": 80,
         "error_types": [
-          "missing_expected_keyword",
-          "repetitive_reply"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -2568,7 +2560,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 165.3,
+        "latency_ms": 121.8,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2591,7 +2583,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 181.0,
+        "latency_ms": 125.1,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2622,7 +2614,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 194.0,
+        "latency_ms": 137.0,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2645,7 +2637,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 226.4,
+        "latency_ms": 198.1,
         "mode": "structured_tool",
         "reason": "workflow_visit_create",
         "graph_path": [
@@ -2665,7 +2657,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 198.3,
+        "latency_ms": 153.2,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2688,7 +2680,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 194.7,
+        "latency_ms": 144.5,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2719,7 +2711,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 194.6,
+        "latency_ms": 126.5,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2742,7 +2734,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 192.5,
+        "latency_ms": 174.4,
         "mode": "structured_tool",
         "reason": "workflow_protocol_lookup",
         "graph_path": [
@@ -2762,7 +2754,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 179.9,
+        "latency_ms": 122.2,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2785,7 +2777,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 174.5,
+        "latency_ms": 127.0,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2816,7 +2808,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 177.4,
+        "latency_ms": 130.3,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2839,7 +2831,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 197.6,
+        "latency_ms": 155.7,
         "mode": "structured_tool",
         "reason": "workflow_visit_reschedule_guidance",
         "graph_path": [
@@ -2859,7 +2851,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 210.1,
+        "latency_ms": 130.8,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2882,7 +2874,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 194.3,
+        "latency_ms": 125.7,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2913,7 +2905,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 245.4,
+        "latency_ms": 134.1,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2936,7 +2928,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 12087.3,
+        "latency_ms": 11727.6,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -2962,7 +2954,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 218.8,
+        "latency_ms": 138.7,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2985,7 +2977,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 251.9,
+        "latency_ms": 148.8,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3016,7 +3008,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 315.8,
+        "latency_ms": 144.3,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3039,7 +3031,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 289.5,
+        "latency_ms": 204.2,
         "mode": "structured_tool",
         "reason": "support_handoff_reused",
         "graph_path": [
@@ -3059,7 +3051,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 236.6,
+        "latency_ms": 139.9,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3082,7 +3074,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 261.8,
+        "latency_ms": 140.0,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3113,7 +3105,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 223.4,
+        "latency_ms": 183.4,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3136,9 +3128,9 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 12292.5,
+        "latency_ms": 11747.6,
         "mode": "structured_tool",
-        "reason": "crewai_public_flow_completed",
+        "reason": "crewai_public_flow_timeout",
         "graph_path": [
           "flow_state",
           "pydantic_output",
@@ -3148,11 +3140,12 @@
           "public_composition",
           "public_judging"
         ],
-        "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
+        "answer_text": "Para que eu possa te ajudar melhor, poderia especificar o que 'isso' se refere quando diz 'isso pesa mais nas sextas'?",
         "keyword_pass": false,
-        "quality_score": 80,
+        "quality_score": 68,
         "error_types": [
-          "missing_expected_keyword"
+          "missing_expected_keyword",
+          "unnecessary_clarification"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -3162,7 +3155,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 194.6,
+        "latency_ms": 127.8,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3185,7 +3178,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 209.5,
+        "latency_ms": 132.2,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3216,7 +3209,7 @@
       "note": "",
       "langgraph": {
         "status": 200,
-        "latency_ms": 202.0,
+        "latency_ms": 130.8,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3239,7 +3232,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 12309.1,
+        "latency_ms": 11748.1,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -3253,10 +3246,9 @@
         ],
         "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
         "keyword_pass": false,
-        "quality_score": 70,
+        "quality_score": 80,
         "error_types": [
-          "missing_expected_keyword",
-          "repetitive_reply"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -3266,7 +3258,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 198.9,
+        "latency_ms": 125.0,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3289,7 +3281,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 208.5,
+        "latency_ms": 133.1,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [

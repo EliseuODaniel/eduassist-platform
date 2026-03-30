@@ -186,6 +186,7 @@ async def execute_kernel_plan(
     engine_name: str,
     engine_mode: str,
 ) -> KernelRunResult:
+    prefer_fast_public_path = engine_name in {'python_functions', 'llamaindex'}
     actor = await rt._fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
     effective_conversation_id = rt._effective_conversation_id(request)
     conversation_context = await rt._fetch_conversation_context(
@@ -272,6 +273,7 @@ async def execute_kernel_plan(
             conversation_context=context_payload,
             public_plan_sink=public_plan_sink,
             resolved_public_plan=resolved_public_plan,
+            prefer_fast_public_path=prefer_fast_public_path,
         )
         public_plan = public_plan_sink.get('plan')
         deterministic_fallback_text = str(public_plan_sink.get('deterministic_text') or message_text)
@@ -398,7 +400,12 @@ async def execute_kernel_plan(
         )
         deterministic_fallback_text = message_text
 
-    if rt._should_polish_structured_answer(preview=preview, request=request):
+    if not (
+        prefer_fast_public_path
+        and preview.mode is OrchestrationMode.structured_tool
+        and preview.classification.access_tier is AccessTier.public
+        and preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar}
+    ) and rt._should_polish_structured_answer(preview=preview, request=request):
         polished_text = await polish_structured_with_provider(
             settings=settings,
             request_message=request.message,
@@ -415,7 +422,15 @@ async def execute_kernel_plan(
         if polished_text:
             message_text = polished_text
 
-    if settings.llm_provider == 'openai' and rt._should_run_response_critic(preview=preview, request=request):
+    if (
+        not (
+            prefer_fast_public_path
+            and preview.classification.access_tier is AccessTier.public
+            and preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar}
+        )
+        and settings.llm_provider == 'openai'
+        and rt._should_run_response_critic(preview=preview, request=request)
+    ):
         revised_text = await revise_with_provider(
             settings=settings,
             request_message=request.message,

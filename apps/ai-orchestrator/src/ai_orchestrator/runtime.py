@@ -57,6 +57,8 @@ DEFAULT_PUBLIC_HELP = (
     'Posso ajudar com informacoes publicas da escola, como calendario, matricula, '
     'documentos exigidos e regras de atendimento digital.'
 )
+_PUBLIC_RESOURCE_CACHE_TTL_SECONDS = 120.0
+_PUBLIC_RESOURCE_CACHE: dict[str, dict[str, Any]] = {}
 
 ATTENDANCE_TERMS = {'frequencia', 'falta', 'faltas', 'presenca', 'presencas'}
 GRADE_TERMS = {'nota', 'notas', 'boletim', 'avaliacao', 'avaliacoes', 'prova', 'provas'}
@@ -5556,25 +5558,10 @@ def _public_profile_handler_registry() -> dict[str, Callable[[PublicProfileConte
 
 AGENTIC_PUBLIC_COMPOSITION_ACTS = {
     'canonical_fact',
-    'school_name',
-    'segments',
-    'leadership',
-    'contacts',
-    'web_presence',
-    'social_presence',
     'comparative',
-    'pricing',
-    'schedule',
-    'operating_hours',
     'curriculum',
-    'features',
     'highlight',
-    'visit',
-    'location',
     'confessional',
-    'careers',
-    'timeline',
-    'calendar_events',
 }
 
 
@@ -6734,7 +6721,29 @@ async def _fetch_actor_context(*, settings: Any, telegram_chat_id: int | None) -
     return actor if isinstance(actor, dict) else None
 
 
+def _get_cached_public_resource(cache_key: str) -> Any | None:
+    entry = _PUBLIC_RESOURCE_CACHE.get(cache_key)
+    if not isinstance(entry, dict):
+        return None
+    expires_at = float(entry.get('expires_at', 0.0) or 0.0)
+    if expires_at <= monotonic():
+        _PUBLIC_RESOURCE_CACHE.pop(cache_key, None)
+        return None
+    return entry.get('value')
+
+
+def _store_cached_public_resource(cache_key: str, value: Any) -> Any:
+    _PUBLIC_RESOURCE_CACHE[cache_key] = {
+        'value': value,
+        'expires_at': monotonic() + _PUBLIC_RESOURCE_CACHE_TTL_SECONDS,
+    }
+    return value
+
+
 async def _fetch_public_school_profile(*, settings: Any) -> dict[str, Any] | None:
+    cached = _get_cached_public_resource('public_school_profile')
+    if isinstance(cached, dict):
+        return dict(cached)
     payload, status_code = await _api_core_get(
         settings=settings,
         path='/v1/public/school-profile',
@@ -6742,10 +6751,13 @@ async def _fetch_public_school_profile(*, settings: Any) -> dict[str, Any] | Non
     if status_code != 200 or payload is None:
         return None
     profile = payload.get('profile')
-    return profile if isinstance(profile, dict) else None
+    return dict(_store_cached_public_resource('public_school_profile', dict(profile))) if isinstance(profile, dict) else None
 
 
 async def _fetch_public_assistant_capabilities(*, settings: Any) -> dict[str, Any] | None:
+    cached = _get_cached_public_resource('public_assistant_capabilities')
+    if isinstance(cached, dict):
+        return dict(cached)
     payload, status_code = await _api_core_get(
         settings=settings,
         path='/v1/public/assistant-capabilities',
@@ -6753,10 +6765,17 @@ async def _fetch_public_assistant_capabilities(*, settings: Any) -> dict[str, An
     if status_code != 200 or payload is None:
         return None
     capabilities = payload.get('capabilities')
-    return capabilities if isinstance(capabilities, dict) else None
+    return (
+        dict(_store_cached_public_resource('public_assistant_capabilities', dict(capabilities)))
+        if isinstance(capabilities, dict)
+        else None
+    )
 
 
 async def _fetch_public_org_directory(*, settings: Any) -> dict[str, Any] | None:
+    cached = _get_cached_public_resource('public_org_directory')
+    if isinstance(cached, dict):
+        return dict(cached)
     payload, status_code = await _api_core_get(
         settings=settings,
         path='/v1/public/org-directory',
@@ -6764,10 +6783,13 @@ async def _fetch_public_org_directory(*, settings: Any) -> dict[str, Any] | None
     if status_code != 200 or payload is None:
         return None
     directory = payload.get('directory')
-    return directory if isinstance(directory, dict) else None
+    return dict(_store_cached_public_resource('public_org_directory', dict(directory))) if isinstance(directory, dict) else None
 
 
 async def _fetch_public_service_directory(*, settings: Any) -> dict[str, Any] | None:
+    cached = _get_cached_public_resource('public_service_directory')
+    if isinstance(cached, dict):
+        return dict(cached)
     payload, status_code = await _api_core_get(
         settings=settings,
         path='/v1/public/service-directory',
@@ -6775,10 +6797,13 @@ async def _fetch_public_service_directory(*, settings: Any) -> dict[str, Any] | 
     if status_code != 200 or payload is None:
         return None
     directory = payload.get('directory')
-    return directory if isinstance(directory, dict) else None
+    return dict(_store_cached_public_resource('public_service_directory', dict(directory))) if isinstance(directory, dict) else None
 
 
 async def _fetch_public_timeline(*, settings: Any) -> dict[str, Any] | None:
+    cached = _get_cached_public_resource('public_timeline')
+    if isinstance(cached, dict):
+        return dict(cached)
     payload, status_code = await _api_core_get(
         settings=settings,
         path='/v1/public/timeline',
@@ -6786,10 +6811,13 @@ async def _fetch_public_timeline(*, settings: Any) -> dict[str, Any] | None:
     if status_code != 200 or payload is None:
         return None
     timeline = payload.get('timeline')
-    return timeline if isinstance(timeline, dict) else None
+    return dict(_store_cached_public_resource('public_timeline', dict(timeline))) if isinstance(timeline, dict) else None
 
 
 async def _fetch_public_calendar_events(*, settings: Any) -> list[dict[str, Any]]:
+    cached = _get_cached_public_resource('public_calendar_events')
+    if isinstance(cached, list):
+        return [dict(item) for item in cached if isinstance(item, dict)]
     today = date.today()
     payload, status_code = await _api_core_get(
         settings=settings,
@@ -6805,7 +6833,9 @@ async def _fetch_public_calendar_events(*, settings: Any) -> list[dict[str, Any]
     events = payload.get('events')
     if not isinstance(events, list):
         return []
-    return [item for item in events if isinstance(item, dict)]
+    filtered = [dict(item) for item in events if isinstance(item, dict)]
+    _store_cached_public_resource('public_calendar_events', filtered)
+    return filtered
 
 
 async def _fetch_internal_workflow_status(
@@ -7101,6 +7131,38 @@ def _should_run_public_semantic_resolver(
         OrchestrationMode.clarify,
     }:
         return False
+    matched_rules = _prioritize_public_act_rules(
+        message,
+        _matched_public_act_rules(message, conversation_context=conversation_context),
+    )
+    if not _has_public_multi_intent_signal(message) and matched_rules:
+        primary_rule = matched_rules[0]
+        if primary_rule.name in {
+            'greeting',
+            'utility_date',
+            'auth_guidance',
+            'access_scope',
+            'assistant_identity',
+            'service_routing',
+            'capabilities',
+            'document_submission',
+            'careers',
+            'teacher_directory',
+            'leadership',
+            'web_presence',
+            'social_presence',
+            'contacts',
+            'operating_hours',
+            'timeline',
+            'calendar_events',
+            'location',
+            'pricing',
+            'schedule',
+            'features',
+            'segments',
+            'school_name',
+        }:
+            return False
     return True
 
 
@@ -11479,6 +11541,7 @@ async def _compose_structured_tool_answer(
     conversation_context: dict[str, Any] | None = None,
     public_plan_sink: dict[str, Any] | None = None,
     resolved_public_plan: PublicInstitutionPlan | None = None,
+    prefer_fast_public_path: bool = False,
 ) -> str:
     message = request.message
     if request.telegram_chat_id is not None and actor is None:
@@ -11552,13 +11615,22 @@ async def _compose_structured_tool_answer(
             if public_plan_sink is not None:
                 public_plan_sink['deterministic_text'] = fast_public_channel_answer
             return fast_public_channel_answer
-        plan = resolved_public_plan or await _resolve_public_institution_plan(
-            settings=settings,
-            message=request.message,
-            preview=preview,
-            conversation_context=conversation_context,
-            school_profile=school_profile,
-        )
+        if prefer_fast_public_path:
+            plan = resolved_public_plan or _build_public_institution_plan(
+                request.message,
+                list(preview.selected_tools),
+                semantic_plan=None,
+                conversation_context=conversation_context,
+                school_profile=school_profile,
+            )
+        else:
+            plan = resolved_public_plan or await _resolve_public_institution_plan(
+                settings=settings,
+                message=request.message,
+                preview=preview,
+                conversation_context=conversation_context,
+                school_profile=school_profile,
+            )
         if public_plan_sink is not None:
             public_plan_sink['plan'] = plan
         preview.selected_tools = list(plan.required_tools)
@@ -11594,7 +11666,7 @@ async def _compose_structured_tool_answer(
             )
             or plan.conversation_act in {'curriculum', 'comparative'}
         )
-        if should_prefer_deterministic_public_answer and profile:
+        if (prefer_fast_public_path or should_prefer_deterministic_public_answer) and profile:
             deterministic_public_answer = _compose_public_profile_answer(
                 profile,
                 analysis_message,
@@ -11615,6 +11687,19 @@ async def _compose_structured_tool_answer(
             if public_plan_sink is not None:
                 public_plan_sink['deterministic_text'] = fast_public_channel_answer
             return fast_public_channel_answer
+        if prefer_fast_public_path and profile:
+            deterministic_public_answer = _compose_public_profile_answer(
+                profile,
+                analysis_message,
+                actor=actor,
+                original_message=request.message,
+                conversation_context=conversation_context,
+                semantic_plan=plan,
+            )
+            if deterministic_public_answer:
+                if public_plan_sink is not None:
+                    public_plan_sink['deterministic_text'] = deterministic_public_answer
+                return deterministic_public_answer
         slot_memory = _build_conversation_slot_memory(
             actor=actor,
             profile=profile,

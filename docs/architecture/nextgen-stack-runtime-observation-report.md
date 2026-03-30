@@ -1,6 +1,6 @@
 # Next-Gen Stack Runtime Observation Report
 
-Date: 2026-03-30T14:06:22.530464+00:00
+Date: 2026-03-30T14:31:01.384607+00:00
 
 Base URL: `http://127.0.0.1:8002`
 
@@ -10,8 +10,8 @@ Dataset: `/home/edann/projects/eduassist-platform/tests/evals/datasets/nextgen_r
 
 | Stack | OK | Keyword pass | Quality | Avg latency | Stable window | Latency watch |
 | --- | --- | --- | --- | --- | --- | --- |
-| `python_functions` | `16/16` | `16/16` | `100.0` | `1167.6 ms` | `True` | `True` |
-| `llamaindex` | `16/16` | `16/16` | `99.4` | `1273.9 ms` | `True` | `True` |
+| `python_functions` | `16/16` | `16/16` | `100.0` | `148.7 ms` | `True` | `False` |
+| `llamaindex` | `16/16` | `16/16` | `100.0` | `147.6 ms` | `True` | `False` |
 
 ## Runtime State
 
@@ -21,45 +21,45 @@ Dataset: `/home/edann/projects/eduassist-platform/tests/evals/datasets/nextgen_r
 ## By Slice
 
 - `protected` (4 turns)
-  - `python_functions`: ok 4/4, keyword pass 4/4, quality 100.0, latency 205.9ms
-  - `llamaindex`: ok 4/4, keyword pass 4/4, quality 100.0, latency 208.8ms
+  - `python_functions`: ok 4/4, keyword pass 4/4, quality 100.0, latency 165.6ms
+  - `llamaindex`: ok 4/4, keyword pass 4/4, quality 100.0, latency 167.2ms
 - `public` (5 turns)
-  - `python_functions`: ok 5/5, keyword pass 5/5, quality 100.0, latency 3296.3ms
-  - `llamaindex`: ok 5/5, keyword pass 5/5, quality 98.0, latency 3621.3ms
+  - `python_functions`: ok 5/5, keyword pass 5/5, quality 100.0, latency 132.6ms
+  - `llamaindex`: ok 5/5, keyword pass 5/5, quality 100.0, latency 125.5ms
 - `support` (3 turns)
-  - `python_functions`: ok 3/3, keyword pass 3/3, quality 100.0, latency 188.1ms
-  - `llamaindex`: ok 3/3, keyword pass 3/3, quality 100.0, latency 199.9ms
+  - `python_functions`: ok 3/3, keyword pass 3/3, quality 100.0, latency 141.9ms
+  - `llamaindex`: ok 3/3, keyword pass 3/3, quality 100.0, latency 145.2ms
 - `workflow` (4 turns)
-  - `python_functions`: ok 4/4, keyword pass 4/4, quality 100.0, latency 203.2ms
-  - `llamaindex`: ok 4/4, keyword pass 4/4, quality 100.0, latency 210.1ms
+  - `python_functions`: ok 4/4, keyword pass 4/4, quality 100.0, latency 156.8ms
+  - `llamaindex`: ok 4/4, keyword pass 4/4, quality 100.0, latency 157.3ms
 
 ## By Thread
 
 - `obs_protected_docs_focus` (protected, 4 turns)
-  - `python_functions`: ok 4/4, keyword pass 4/4, quality 100.0, latency 205.9ms
-  - `llamaindex`: ok 4/4, keyword pass 4/4, quality 100.0, latency 208.8ms
+  - `python_functions`: ok 4/4, keyword pass 4/4, quality 100.0, latency 165.6ms
+  - `llamaindex`: ok 4/4, keyword pass 4/4, quality 100.0, latency 167.2ms
 - `obs_public_channels_docs` (public, 3 turns)
-  - `python_functions`: ok 3/3, keyword pass 3/3, quality 100.0, latency 2502.3ms
-  - `llamaindex`: ok 3/3, keyword pass 3/3, quality 100.0, latency 2319.7ms
+  - `python_functions`: ok 3/3, keyword pass 3/3, quality 100.0, latency 136.2ms
+  - `llamaindex`: ok 3/3, keyword pass 3/3, quality 100.0, latency 125.6ms
 - `obs_public_library_realism` (public, 2 turns)
-  - `python_functions`: ok 2/2, keyword pass 2/2, quality 100.0, latency 4487.3ms
-  - `llamaindex`: ok 2/2, keyword pass 2/2, quality 95.0, latency 5573.8ms
+  - `python_functions`: ok 2/2, keyword pass 2/2, quality 100.0, latency 127.2ms
+  - `llamaindex`: ok 2/2, keyword pass 2/2, quality 100.0, latency 125.3ms
 - `obs_support_reroute` (support, 3 turns)
-  - `python_functions`: ok 3/3, keyword pass 3/3, quality 100.0, latency 188.1ms
-  - `llamaindex`: ok 3/3, keyword pass 3/3, quality 100.0, latency 199.9ms
+  - `python_functions`: ok 3/3, keyword pass 3/3, quality 100.0, latency 141.9ms
+  - `llamaindex`: ok 3/3, keyword pass 3/3, quality 100.0, latency 145.2ms
 - `obs_workflow_visit` (workflow, 4 turns)
-  - `python_functions`: ok 4/4, keyword pass 4/4, quality 100.0, latency 203.2ms
-  - `llamaindex`: ok 4/4, keyword pass 4/4, quality 100.0, latency 210.1ms
+  - `python_functions`: ok 4/4, keyword pass 4/4, quality 100.0, latency 156.8ms
+  - `llamaindex`: ok 4/4, keyword pass 4/4, quality 100.0, latency 157.3ms
 
 ## Error Types
 
 - `python_functions`: nenhum
-- `llamaindex`: repetitive_reply=1
+- `llamaindex`: nenhum
 
 ## Operational Notes
 
-- `python_functions` entrou em observacao estavel, mas ainda merece atencao de latencia: media `1167.6 ms`, pico `7295.9 ms`.
-- `llamaindex` entrou em observacao estavel, mas ainda merece atencao de latencia: media `1273.9 ms`, pico `7459.6 ms`.
+- `python_functions` ficou estavel e sem alerta de latencia relevante nesta janela curta.
+- `llamaindex` ficou estavel e sem alerta de latencia relevante nesta janela curta.
 
 ## Prompt Results
 
@@ -69,7 +69,7 @@ Dataset: `/home/edann/projects/eduassist-platform/tests/evals/datasets/nextgen_r
 - Slice: `public`
 - Thread: `obs_public_channels_docs` turn `1`
 - Status: `200`
-- Latency: `3516.5 ms`
+- Latency: `152.9 ms`
 - Mode: `structured_tool`
 - Reason: `contextual_public_direct_answer`
 - Access tier: `public`
@@ -78,7 +78,7 @@ Dataset: `/home/edann/projects/eduassist-platform/tests/evals/datasets/nextgen_r
 - Kernel consistency: `True`
 - Keyword pass: `True`
 - Quality score: `100`
-- Answer: Hoje a escola não utiliza mais o fax para o envio de documentos. Para isso, por favor, use nosso portal institucional, o email da secretaria ou entregue presencialmente na secretaria.
+- Answer: Hoje a escola nao utiliza fax para envio de documentos. Para isso, use portal institucional, email da secretaria, secretaria presencial.
 
 ### e por telegrama, serve?
 
@@ -86,7 +86,7 @@ Dataset: `/home/edann/projects/eduassist-platform/tests/evals/datasets/nextgen_r
 - Slice: `public`
 - Thread: `obs_public_channels_docs` turn `2`
 - Status: `200`
-- Latency: `3832.3 ms`
+- Latency: `137.9 ms`
 - Mode: `structured_tool`
 - Reason: `contextual_public_direct_answer`
 - Access tier: `public`
@@ -95,7 +95,7 @@ Dataset: `/home/edann/projects/eduassist-platform/tests/evals/datasets/nextgen_r
 - Kernel consistency: `True`
 - Keyword pass: `True`
 - Quality score: `100`
-- Answer: Não, o Colégio Horizonte não utiliza telegrama para o envio de documentos. Por favor, utilize nosso portal institucional, o email da secretaria ou entregue presencialmente na secretaria.
+- Answer: Hoje a escola nao publica telegrama como canal valido para documentos. Para isso, use portal institucional, email da secretaria, secretaria presencial.
 
 ### qual e o caminho certo pra mandar a documentacao?
 
@@ -103,7 +103,7 @@ Dataset: `/home/edann/projects/eduassist-platform/tests/evals/datasets/nextgen_r
 - Slice: `public`
 - Thread: `obs_public_channels_docs` turn `3`
 - Status: `200`
-- Latency: `158.2 ms`
+- Latency: `117.8 ms`
 - Mode: `structured_tool`
 - Reason: `contextual_public_direct_answer`
 - Access tier: `public`
@@ -126,7 +126,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `public`
 - Thread: `obs_public_library_realism` turn `1`
 - Status: `200`
-- Latency: `7295.9 ms`
+- Latency: `144.1 ms`
 - Mode: `structured_tool`
 - Reason: `fato institucional canonico deve vir de fonte estruturada`
 - Access tier: `public`
@@ -135,7 +135,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Kernel consistency: `True`
 - Keyword pass: `True`
 - Quality score: `100`
-- Answer: Sim, o Colégio Horizonte tem a Biblioteca Aurora, que funciona de segunda a sexta-feira, das 7h30 às 18h00. É um espaço real e muito utilizado por nossos alunos!
+- Answer: Sim. O Colegio Horizonte tem a Biblioteca Aurora. Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.
 
 ### como ela se chama e ate que horas funciona?
 
@@ -143,7 +143,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `public`
 - Thread: `obs_public_library_realism` turn `2`
 - Status: `200`
-- Latency: `1678.7 ms`
+- Latency: `110.3 ms`
 - Mode: `structured_tool`
 - Reason: `contextual_public_direct_answer`
 - Access tier: `public`
@@ -160,7 +160,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `protected`
 - Thread: `obs_protected_docs_focus` turn `1`
 - Status: `200`
-- Latency: `211.2 ms`
+- Latency: `155.8 ms`
 - Mode: `structured_tool`
 - Reason: `status administrativo autenticado exige service deterministico`
 - Access tier: `authenticated`
@@ -177,7 +177,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `protected`
 - Thread: `obs_protected_docs_focus` turn `2`
 - Status: `200`
-- Latency: `222.9 ms`
+- Latency: `220.5 ms`
 - Mode: `structured_tool`
 - Reason: `status administrativo autenticado exige service deterministico`
 - Access tier: `authenticated`
@@ -194,7 +194,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `protected`
 - Thread: `obs_protected_docs_focus` turn `3`
 - Status: `200`
-- Latency: `207.6 ms`
+- Latency: `156.2 ms`
 - Mode: `structured_tool`
 - Reason: `status administrativo autenticado exige service deterministico`
 - Access tier: `authenticated`
@@ -214,7 +214,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `protected`
 - Thread: `obs_protected_docs_focus` turn `4`
 - Status: `200`
-- Latency: `181.8 ms`
+- Latency: `129.9 ms`
 - Mode: `structured_tool`
 - Reason: `status administrativo autenticado exige service deterministico`
 - Access tier: `authenticated`
@@ -231,7 +231,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `support`
 - Thread: `obs_support_reroute` turn `1`
 - Status: `200`
-- Latency: `181.5 ms`
+- Latency: `133.6 ms`
 - Mode: `handoff`
 - Reason: `o usuario demonstrou necessidade de atendimento humano ou operacional`
 - Access tier: `public`
@@ -248,7 +248,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `support`
 - Thread: `obs_support_reroute` turn `2`
 - Status: `200`
-- Latency: `197.3 ms`
+- Latency: `158.2 ms`
 - Mode: `structured_tool`
 - Reason: `a solicitacao pode ser executada por workflow estruturado com protocolo`
 - Access tier: `public`
@@ -265,7 +265,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `support`
 - Thread: `obs_support_reroute` turn `3`
 - Status: `200`
-- Latency: `185.4 ms`
+- Latency: `133.9 ms`
 - Mode: `handoff`
 - Reason: `o usuario demonstrou necessidade de atendimento humano ou operacional`
 - Access tier: `public`
@@ -284,7 +284,7 @@ Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260
 - Slice: `workflow`
 - Thread: `obs_workflow_visit` turn `1`
 - Status: `200`
-- Latency: `219.1 ms`
+- Latency: `151.4 ms`
 - Mode: `structured_tool`
 - Reason: `a solicitacao pode ser executada por workflow estruturado com protocolo`
 - Access tier: `public`
@@ -301,7 +301,7 @@ Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260
 - Slice: `workflow`
 - Thread: `obs_workflow_visit` turn `2`
 - Status: `200`
-- Latency: `190.7 ms`
+- Latency: `151.8 ms`
 - Mode: `structured_tool`
 - Reason: `a solicitacao pode ser executada por workflow estruturado com protocolo`
 - Access tier: `public`
@@ -318,7 +318,7 @@ Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260
 - Slice: `workflow`
 - Thread: `obs_workflow_visit` turn `3`
 - Status: `200`
-- Latency: `192.4 ms`
+- Latency: `150.1 ms`
 - Mode: `structured_tool`
 - Reason: `a solicitacao pode ser executada por workflow estruturado com protocolo`
 - Access tier: `public`
@@ -335,7 +335,7 @@ Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260
 - Slice: `workflow`
 - Thread: `obs_workflow_visit` turn `4`
 - Status: `200`
-- Latency: `210.6 ms`
+- Latency: `174.0 ms`
 - Mode: `structured_tool`
 - Reason: `a solicitacao pode ser executada por workflow estruturado com protocolo`
 - Access tier: `public`
@@ -352,7 +352,7 @@ Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260
 - Slice: `public`
 - Thread: `obs_public_channels_docs` turn `1`
 - Status: `200`
-- Latency: `3632.0 ms`
+- Latency: `133.6 ms`
 - Mode: `structured_tool`
 - Reason: `contextual_public_direct_answer`
 - Access tier: `public`
@@ -361,7 +361,7 @@ Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260
 - Kernel consistency: `True`
 - Keyword pass: `True`
 - Quality score: `100`
-- Answer: Olá! No Colégio Horizonte, não utilizamos mais o fax para o envio de documentos. Para sua comodidade, você pode usar nosso portal institucional, o email da secretaria ou, se preferir, entregar os documentos diretamente na secretaria presencial.
+- Answer: Hoje a escola nao utiliza fax para envio de documentos. Para isso, use portal institucional, email da secretaria, secretaria presencial.
 
 ### e por telegrama, serve?
 
@@ -369,7 +369,7 @@ Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260
 - Slice: `public`
 - Thread: `obs_public_channels_docs` turn `2`
 - Status: `200`
-- Latency: `3151.0 ms`
+- Latency: `135.8 ms`
 - Mode: `structured_tool`
 - Reason: `contextual_public_direct_answer`
 - Access tier: `public`
@@ -378,7 +378,7 @@ Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260
 - Kernel consistency: `True`
 - Keyword pass: `True`
 - Quality score: `100`
-- Answer: Olá! No Colégio Horizonte, não utilizamos o telegrama para o envio de documentos. Para sua comodidade, você pode usar nosso portal institucional, o email da secretaria ou, se preferir, entregar os documentos diretamente na secretaria presencial.
+- Answer: Hoje a escola nao publica telegrama como canal valido para documentos. Para isso, use portal institucional, email da secretaria, secretaria presencial.
 
 ### qual e o caminho certo pra mandar a documentacao?
 
@@ -386,7 +386,7 @@ Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260
 - Slice: `public`
 - Thread: `obs_public_channels_docs` turn `3`
 - Status: `200`
-- Latency: `176.0 ms`
+- Latency: `107.5 ms`
 - Mode: `structured_tool`
 - Reason: `contextual_public_direct_answer`
 - Access tier: `public`
@@ -409,7 +409,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `public`
 - Thread: `obs_public_library_realism` turn `1`
 - Status: `200`
-- Latency: `7459.6 ms`
+- Latency: `138.2 ms`
 - Mode: `structured_tool`
 - Reason: `fato institucional canonico deve vir de fonte estruturada`
 - Access tier: `public`
@@ -418,7 +418,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Kernel consistency: `True`
 - Keyword pass: `True`
 - Quality score: `100`
-- Answer: Que bom que você perguntou! Sim, temos a Biblioteca Aurora, um espaço muito especial para nossos alunos. Ela funciona de segunda a sexta-feira, das 7h30 às 18h00, e está sempre de portas abertas para todos.
+- Answer: Sim. O Colegio Horizonte tem a Biblioteca Aurora. Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.
 
 ### como ela se chama e ate que horas funciona?
 
@@ -426,7 +426,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `public`
 - Thread: `obs_public_library_realism` turn `2`
 - Status: `200`
-- Latency: `3688.0 ms`
+- Latency: `112.4 ms`
 - Mode: `structured_tool`
 - Reason: `contextual_public_direct_answer`
 - Access tier: `public`
@@ -434,9 +434,8 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Observed kernel: `kernel:llamaindex`
 - Kernel consistency: `True`
 - Keyword pass: `True`
-- Quality score: `90`
-- Errors: repetitive_reply
-- Answer: Que bom que você perguntou! Sim, temos a Biblioteca Aurora, um espaço muito especial para nossos alunos. Ela funciona de segunda a sexta-feira, das 7h30 às 18h00, e está sempre de portas abertas para todos.
+- Quality score: `100`
+- Answer: A biblioteca se chama Biblioteca Aurora e funciona de segunda a sexta, das 7h30 as 18h00.
 
 ### como esta a documentacao da ana?
 
@@ -444,7 +443,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `protected`
 - Thread: `obs_protected_docs_focus` turn `1`
 - Status: `200`
-- Latency: `218.1 ms`
+- Latency: `191.2 ms`
 - Mode: `structured_tool`
 - Reason: `status administrativo autenticado exige service deterministico`
 - Access tier: `authenticated`
@@ -461,7 +460,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `protected`
 - Thread: `obs_protected_docs_focus` turn `2`
 - Status: `200`
-- Latency: `232.2 ms`
+- Latency: `182.4 ms`
 - Mode: `structured_tool`
 - Reason: `status administrativo autenticado exige service deterministico`
 - Access tier: `authenticated`
@@ -478,7 +477,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `protected`
 - Thread: `obs_protected_docs_focus` turn `3`
 - Status: `200`
-- Latency: `212.5 ms`
+- Latency: `162.5 ms`
 - Mode: `structured_tool`
 - Reason: `status administrativo autenticado exige service deterministico`
 - Access tier: `authenticated`
@@ -498,7 +497,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `protected`
 - Thread: `obs_protected_docs_focus` turn `4`
 - Status: `200`
-- Latency: `172.3 ms`
+- Latency: `132.5 ms`
 - Mode: `structured_tool`
 - Reason: `status administrativo autenticado exige service deterministico`
 - Access tier: `authenticated`
@@ -515,7 +514,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `support`
 - Thread: `obs_support_reroute` turn `1`
 - Status: `200`
-- Latency: `187.8 ms`
+- Latency: `144.7 ms`
 - Mode: `handoff`
 - Reason: `o usuario demonstrou necessidade de atendimento humano ou operacional`
 - Access tier: `public`
@@ -532,7 +531,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `support`
 - Thread: `obs_support_reroute` turn `2`
 - Status: `200`
-- Latency: `204.5 ms`
+- Latency: `159.6 ms`
 - Mode: `structured_tool`
 - Reason: `a solicitacao pode ser executada por workflow estruturado com protocolo`
 - Access tier: `public`
@@ -549,7 +548,7 @@ O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando p
 - Slice: `support`
 - Thread: `obs_support_reroute` turn `3`
 - Status: `200`
-- Latency: `207.4 ms`
+- Latency: `131.4 ms`
 - Mode: `handoff`
 - Reason: `o usuario demonstrou necessidade de atendimento humano ou operacional`
 - Access tier: `public`
@@ -568,7 +567,7 @@ Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260
 - Slice: `workflow`
 - Thread: `obs_workflow_visit` turn `1`
 - Status: `200`
-- Latency: `225.0 ms`
+- Latency: `161.8 ms`
 - Mode: `structured_tool`
 - Reason: `a solicitacao pode ser executada por workflow estruturado com protocolo`
 - Access tier: `public`
@@ -585,7 +584,7 @@ Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260
 - Slice: `workflow`
 - Thread: `obs_workflow_visit` turn `2`
 - Status: `200`
-- Latency: `212.3 ms`
+- Latency: `143.8 ms`
 - Mode: `structured_tool`
 - Reason: `a solicitacao pode ser executada por workflow estruturado com protocolo`
 - Access tier: `public`
@@ -602,7 +601,7 @@ Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260
 - Slice: `workflow`
 - Thread: `obs_workflow_visit` turn `3`
 - Status: `200`
-- Latency: `195.5 ms`
+- Latency: `167.8 ms`
 - Mode: `structured_tool`
 - Reason: `a solicitacao pode ser executada por workflow estruturado com protocolo`
 - Access tier: `public`
@@ -619,7 +618,7 @@ Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260
 - Slice: `workflow`
 - Thread: `obs_workflow_visit` turn `4`
 - Status: `200`
-- Latency: `207.4 ms`
+- Latency: `155.9 ms`
 - Mode: `structured_tool`
 - Reason: `a solicitacao pode ser executada por workflow estruturado com protocolo`
 - Access tier: `public`

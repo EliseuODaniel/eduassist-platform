@@ -51,26 +51,29 @@ Importante:
 - eles agora tambem contam com benchmark comparativo amplo e preflight operacional para runtime override;
 - eles agora tambem passaram em `observacao controlada` no endpoint vivo usando runtime override;
 - eles ainda nao estao em rollout real continuo, mas ja ficaram prontos para `trafego controlado` com validacao;
-- o principal gap restante nao e qualidade: e `latencia publica`, especialmente quando a pergunta cai em retrieval institucional mais pesada.
+- a rodada seguinte otimizou exatamente esse ponto: `latencia publica` nos caminhos `3` e `4`.
 
 ### Estado pratico dos caminhos 3 e 4 hoje
 
 `Python puro + functions`
 
 - benchmark amplo: `32/32`, qualidade `100.0`
-- observacao controlada ao vivo: `16/16`, qualidade `100.0`
-- ponto de atencao: media de latencia da janela controlada em torno de `1.1s`, puxada pelo slice `public`
+- observacao controlada ao vivo, antes da otimizacao: `16/16`, qualidade `100.0`, media ~`1.1s`
+- observacao controlada ao vivo, depois da otimizacao: `16/16`, qualidade `100.0`, media ~`148.7ms`
+- `public` depois da otimizacao: ~`132.6ms`
 
 `LlamaIndex Workflows`
 
 - benchmark amplo: `32/32`, qualidade `100.0`
-- observacao controlada ao vivo: `16/16`, qualidade `99.4`
-- ponto de atencao: media de latencia da janela controlada em torno de `1.3s`, tambem puxada pelo slice `public`
+- observacao controlada ao vivo, antes da otimizacao: `16/16`, qualidade `99.4`, media ~`1.3s`
+- observacao controlada ao vivo, depois da otimizacao: `16/16`, qualidade `100.0`, media ~`147.6ms`
+- `public` depois da otimizacao: ~`125.5ms`
 
 Conclusao operacional:
 
 - os dois caminhos estao bons o bastante para `trafego controlado`;
-- os dois ainda pedem `otimizacao de retrieval publico` antes de um canario mais permanente.
+- a principal lacuna que existia em `public` foi resolvida nesta rodada;
+- o proximo passo natural deixa de ser `latencia publica` e passa a ser `canario controlado real` ou `expansao do benchmark para trafego humano mais longo`.
 
 ## Leitura do arquivo tmp/resposta_chatpg.txt
 
