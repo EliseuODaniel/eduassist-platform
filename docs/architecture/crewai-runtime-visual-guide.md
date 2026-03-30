@@ -6,9 +6,26 @@ Este guia explica apenas o lado `CrewAI` do sistema. A pergunta central aqui e:
 
 Se voce quiser ver o mapa do sistema inteiro antes, use o [Guia visual macro do runtime dual stack](./dual-stack-runtime-visual-guide.md).
 
+## Traducao rapida sem jargao
+
+Antes de entrar nos detalhes, aqui vai uma traducao simples dos termos que mais aparecem:
+
+- `flow` = sequencia de passos para resolver um tipo de problema
+- `slice` = tipo de conversa
+- `fast path` = caminho rapido para um caso bem conhecido
+- `backstop` = resposta ou regra de seguranca
+- `fallback` = plano B quando o caminho ideal falha
+- `estado persistido` = memoria salva entre um turno e outro
+- `adapter` = camada que liga o orquestrador principal ao servico do CrewAI
+
 ## Como pensar no CrewAI
 
 Pense no `CrewAI` deste projeto como um conjunto de `Flows por slice`.
+
+Traduzindo:
+
+- `Flow` = um passo a passo de resolucao
+- `slice` = um tipo de conversa, como publico, protegido ou workflow
 
 Em vez de um grafo unico grande, o sistema usa:
 
@@ -34,7 +51,7 @@ Leitura simples:
 - a request chega no `ai-orchestrator`
 - o adapter decide se ela vai para o servico `CrewAI`
 - o orquestrador principal continua controlando contratos, tracing e fallback
-- o servico isolado executa o flow do slice certo
+- o servico isolado executa o flow do tipo de conversa certo
 
 Em outras palavras: o `CrewAI` nao esta “solto”. Ele esta encaixado num trilho seguro dentro da arquitetura maior.
 
@@ -52,6 +69,10 @@ Na pratica, o flow tenta:
 - usar fast paths grounded quando isso basta
 - chamar composicao agentic so quando ela realmente agrega valor
 
+Traduzindo:
+
+`composicao agentic` significa deixar o sistema fazer um raciocinio mais elaborado. Isso e util, mas nao precisa acontecer em toda pergunta.
+
 Esse desenho segue uma regra de boas praticas importante:
 
 `nao usar LLM pesada em toda request apenas porque ela esta disponivel`.
@@ -64,7 +85,7 @@ Por isso o `CrewAI` costuma ser tao rapido quando o flow esta bem desenhado.
   <img src="./mermaid-assets/crewai/dual-stack-crewai-visual-flow-3.svg" alt="Protected Flow CrewAI" width="500" style="max-width: 100%; height: auto;" />
 </p>
 
-O `protected` e o slice mais sensivel. Aqui o flow precisa ser cuidadoso com:
+O `protected` e o tipo de conversa mais sensivel. Aqui o flow precisa ser cuidadoso com:
 
 - identidade do usuario
 - escopo de acesso
@@ -132,7 +153,7 @@ Em resumo:
 
 Se uma resposta estiver ruim, esta ordem costuma funcionar bem:
 
-1. o slice certo foi escolhido?
+1. o tipo de conversa certo foi escolhido?
 2. o flow recebeu o contexto certo?
 3. o aluno ou entidade em foco foi resolvido corretamente?
 4. o flow caiu em fast path, agentic path ou timeout/fallback?
@@ -150,7 +171,7 @@ Erros que aparecem bastante quando o flow ainda nao esta maduro:
 Quando olhar um trace do `CrewAI`, tente identificar:
 
 - `engine_name = crewai`
-- qual `slice` respondeu
+- qual tipo de conversa respondeu
 - qual `Flow` foi executado
 - se a resposta veio de `fast_path`, `flow`, `backstop` ou `timeout fallback`
 
@@ -225,7 +246,7 @@ E a sequencia de passos que o `CrewAI` usa para resolver um tipo de problema. No
 
 `slice`
 
-E o recorte do dominio que aquele flow atende, como `public`, `protected`, `support` ou `workflow`.
+E o tipo de conversa que aquele flow atende, como `public`, `protected`, `support` ou `workflow`.
 
 `fast path`
 
@@ -234,6 +255,10 @@ E o caminho mais curto e rapido para responder um caso conhecido e bem mapeado.
 `backstop`
 
 E uma resposta ou regra de seguranca usada quando o caminho principal nao e confiavel o suficiente.
+
+Traduzindo:
+
+Se o sistema nao confia que entendeu bem, ele responde de um jeito mais seguro.
 
 `agentic path`
 

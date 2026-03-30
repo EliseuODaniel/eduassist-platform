@@ -6,9 +6,28 @@ Este guia explica apenas o lado `LangGraph` do sistema. A ideia aqui e responder
 
 Se voce quiser ver o mapa completo antes, use o [Guia visual macro do runtime dual stack](./dual-stack-runtime-visual-guide.md).
 
+## Traducao rapida sem jargao
+
+Antes de entrar nos detalhes, aqui vai uma traducao simples dos termos que mais aparecem:
+
+- `grafo` = mapa de decisoes e caminhos
+- `structured_tool` = consulta estruturada e confiavel
+- `retrieval` = busca de informacao antes de responder
+- `GraphRAG` = busca mais ampla, que conecta partes diferentes do material
+- `handoff` = abrir ou atualizar um atendimento
+- `clarify` = pedir mais contexto ao usuario
+- `deny` = bloquear a resposta naquele contexto
+- `trace` = rastro tecnico da request
+
 ## Como pensar no LangGraph
 
 Pense no `LangGraph` como um `roteador com memoria e passos explicitos`.
+
+Traduzindo:
+
+- `roteador` = ele decide por qual caminho a resposta vai andar
+- `com memoria` = ele reaproveita contexto recente
+- `passos explicitos` = ele tenta deixar claro o que decidiu e por que
 
 Ele nao faz so “chamar uma LLM”. Ele tenta decidir:
 
@@ -30,7 +49,7 @@ Essa e a forca dele: `controle de execucao`.
 Leitura simples:
 
 - a request entra no grafo
-- o sistema entende o slice e o tipo de tarefa
+- o sistema entende o tipo de conversa e o tipo de tarefa
 - ele decide se a resposta vem de:
   - `structured_tool`
   - retrieval
@@ -78,7 +97,7 @@ Por isso existem fast paths e renderizacao natural, em vez de so devolver frases
 
 Este diagrama responde uma duvida muito comum:
 
-`Quando o sistema usa tool, retrieval simples ou GraphRAG?`
+`Quando o sistema usa tool, busca simples ou GraphRAG?`
 
 Leitura pratica:
 
@@ -88,6 +107,10 @@ Leitura pratica:
 - se a pergunta pede visao mais ampla do corpus, pode entrar `GraphRAG`
 
 O `GraphRAG` nao e o padrao. Ele e uma ferramenta mais pesada, usada quando realmente agrega valor.
+
+Traduzindo:
+
+`GraphRAG` entra quando a resposta depende mais de ligar varios pontos do material do que de achar um unico fato.
 
 ## 4. O que o LangGraph faz melhor
 
@@ -114,7 +137,7 @@ Quando o `LangGraph` precisa de fatos, ele normalmente passa por estas camadas:
    Para dados estruturados e, em alguns cenarios, FTS.
 
 3. `Qdrant`
-   Para retrieval vetorial.
+   Para busca vetorial.
 
 4. `GraphRAG`
    Para perguntas com necessidade de visao corpus-level.
@@ -125,7 +148,7 @@ Isso significa que, mesmo quando o usuario “fala com o LangGraph”, a respost
 
 Se uma resposta vier ruim, a ordem boa de investigacao e:
 
-1. o slice foi escolhido corretamente?
+1. o tipo de conversa foi escolhido corretamente?
 2. o preview do grafo escolheu o modo certo?
 3. a fonte de verdade estava correta?
 4. houve reuse correto do contexto recente?
@@ -233,6 +256,10 @@ E quando o sistema abre ou atualiza um atendimento, em vez de apenas responder c
 `answer frame`
 
 E uma estrutura intermediaria com os fatos principais da resposta. Isso ajuda a separar `o que dizer` de `como dizer`.
+
+Traduzindo:
+
+Primeiro o sistema organiza os fatos. Depois ele transforma esses fatos em texto natural.
 
 `checkpoint`
 

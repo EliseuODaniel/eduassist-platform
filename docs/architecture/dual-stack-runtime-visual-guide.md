@@ -9,6 +9,18 @@ Se voce preferir ver os detalhes por tecnologia, use estes guias:
 
 Este arquivo continua em formato `preview-safe` para o `Open Preview` do VS Code: os diagramas aparecem como SVGs gerados a partir do Mermaid, em vez de Mermaid inline.
 
+## Traducao rapida sem jargao
+
+Se algum termo tecnico travar a leitura, use esta traducao simples:
+
+- `slice` = tipo de conversa
+- `runtime override` = troca temporaria com o sistema rodando
+- `feature flag` = chave de configuracao
+- `retrieval` = busca de informacao antes de responder
+- `fallback` = resposta de seguranca
+- `trace` = rastro tecnico da request
+- `HITL` = revisao humana antes da resposta final
+
 ## Como pensar no sistema
 
 Uma forma simples de entender o projeto e esta:
@@ -47,9 +59,12 @@ Em outras palavras: existe `um so sistema`, mas com `duas formas de orquestrar` 
 
 Leitura simples:
 
-- primeiro o sistema verifica se a request entrou num experimento controlado por slice
+- primeiro o sistema verifica se a request entrou num `teste controlado por tipo de conversa`
+  Em linguagem tecnica, isso e um experimento por `slice`
 - se nao entrou, ele olha se existe um `runtime override`
+  Em linguagem simples, isso e uma troca temporaria com o sistema rodando
 - se nao existir override, ele olha a `feature flag`
+  Em linguagem simples, isso e a chave de configuracao principal
 - se nada disso estiver definido, ele usa o default de startup
 
 O que isso significa na pratica:
@@ -70,6 +85,7 @@ Interpretacao correta:
 - `api-core` expoe contratos internos e aplica regras de negocio
 - `Qdrant` ajuda na busca semantica de documentos
 - `GraphRAG` ajuda quando a pergunta pede visao mais global do corpus
+  Em linguagem simples, ele ajuda quando a resposta depende de juntar varias partes do material
 - `LLM`, `LangGraph` e `CrewAI` usam essas fontes, mas nao substituem essas fontes
 
 Se uma resposta estiver errada, a causa quase sempre esta em uma destas camadas:
@@ -89,13 +105,13 @@ Quando o usuario manda uma pergunta, o sistema tenta responder a quatro pergunta
    Isso define autenticacao, escopo de acesso e risco.
 
 2. `sobre o que e a pergunta?`
-   Isso ajuda a descobrir o slice certo: `public`, `protected`, `support` ou `workflow`.
+   Isso ajuda a descobrir o tipo de conversa certo, que aqui chamamos de `slice`: `public`, `protected`, `support` ou `workflow`.
 
 3. `qual stack deve responder esta request?`
-   Aqui entra a logica de feature flag, override e canario.
+   Aqui entra a logica de chave de configuracao, troca temporaria e canario.
 
 4. `qual fonte de verdade eu preciso consultar?`
-   Nem toda pergunta precisa de LLM ou retrieval pesado.
+   Nem toda pergunta precisa de LLM ou de busca pesada antes de responder.
 
 Essa ordem e importante porque evita duas coisas:
 
@@ -112,8 +128,8 @@ Essa ordem e importante porque evita duas coisas:
 
 Leitura simples:
 
-- o `LangGraph` costuma concentrar retrieval mais avancado
-- o `CrewAI` costuma concentrar `Flow`, estado por slice e composicao agentic
+- o `LangGraph` costuma concentrar busca mais avancada
+- o `CrewAI` costuma concentrar `Flow`, estado por tipo de conversa e composicao agentic
 - os dois compartilham a mesma infraestrutura de dados e contratos internos
 
 Isso quer dizer que a diferenca principal entre as stacks nao esta em “qual banco elas usam”. A diferenca esta em `como elas pensam a execucao`.
@@ -128,12 +144,16 @@ Interpretacao didatica:
 
 - se o dado e estruturado e confiavel, o sistema prefere tool deterministica
 - se a resposta publica ja e canonica, ele tenta um caminho rapido
-- se a pergunta precisa buscar documentos, ele decide entre retrieval simples ou mais avancado
+- se a pergunta precisa buscar documentos, ele decide entre busca simples ou mais avancada
 - se nem retrieval nem tool resolvem, ele pode pedir clarificacao, negar ou abrir handoff
 
 Essa e a regra tecnica mais importante do projeto:
 
 `nao usar LLM pesada por default quando um caminho estruturado e grounded ja resolve`.
+
+Traduzindo:
+
+`se o sistema ja consegue responder com seguranca, ele nao deve complicar sem necessidade`.
 
 ## 4. O papel de cada stack
 
@@ -166,9 +186,14 @@ Ele brilha em:
 Se surgir a pergunta `de onde veio esta resposta?`, siga esta ordem:
 
 1. descubra qual stack respondeu
-2. descubra qual slice foi escolhido
+2. descubra qual tipo de conversa foi escolhido
 3. descubra qual modo foi usado
-   Exemplo: fast path, retrieval, handoff, HITL, fallback.
+   Exemplos:
+   `fast path` = caminho rapido
+   `retrieval` = busca antes de responder
+   `handoff` = abrir ou atualizar atendimento
+   `HITL` = revisao humana
+   `fallback` = resposta de seguranca
 4. descubra qual fonte de verdade foi consultada
 5. so depois examine a LLM
 
@@ -176,7 +201,7 @@ Esse metodo economiza muito tempo. Ele evita culpar a LLM quando o erro real foi
 
 - um follow-up que herdou o contexto errado
 - um parser que puxou o aluno errado
-- um slice que foi escolhido de forma errada
+- um tipo de conversa que foi escolhido de forma errada
 - um fallback que perdeu informacao
 
 ## 6. Qual guia ler depois
@@ -220,7 +245,7 @@ Na arquitetura real, o caminho e este:
 6. a stack escolhida consulta as fontes de verdade
    Normalmente via `api-core` e dados estruturados em `Postgres`
 7. a resposta final e montada e devolvida ao usuario
-8. traces e auditoria sao registrados
+8. rastros tecnicos e auditoria sao registrados
 
 ### O ponto mais importante desse exemplo
 
@@ -239,7 +264,7 @@ Esse exemplo mostra a ideia central do projeto:
 
 `slice`
 
-E um recorte do problema. No projeto, os principais sao:
+E um tipo de conversa. No projeto, os principais sao:
 
 - `public`: perguntas abertas e institucionais
 - `protected`: perguntas autenticadas e sensiveis
@@ -248,7 +273,7 @@ E um recorte do problema. No projeto, os principais sao:
 
 `feature flag`
 
-E uma chave de configuracao que muda o comportamento do sistema sem mudar o contrato externo. Aqui ela ajuda a trocar a stack principal entre `LangGraph` e `CrewAI`.
+E uma chave de configuracao que muda o comportamento do sistema sem mudar a cara do produto para o usuario. Aqui ela ajuda a trocar a stack principal entre `LangGraph` e `CrewAI`.
 
 `runtime override`
 
@@ -279,7 +304,7 @@ Significa `human-in-the-loop`. Em portugues: existe uma etapa de revisao humana 
 E o rastro tecnico da request. Ele ajuda a responder perguntas como:
 
 - qual stack respondeu?
-- qual slice foi escolhido?
+- qual tipo de conversa foi escolhido?
 - qual fonte de verdade foi usada?
 
 ## Onde procurar no codigo
