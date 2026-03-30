@@ -2490,6 +2490,129 @@
     }
   },
   {
+    "case_id": "guardian_finance_setup_for_academic_switch",
+    "type": "message_response",
+    "request": {
+      "message": "como estão meus pagamentos",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-finance-academic-switch-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "finance",
+      "access_tier": "sensitive",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_financial_summary"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Resumo financeiro"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_finance_to_academic_switch_followup",
+    "type": "message_response",
+    "request": {
+      "message": "e as notas",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-finance-academic-switch-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_student_academic_summary", "get_student_grades"],
+      "graph_path_includes": ["structured_tool_call", "protected_domain_rescue"],
+      "message_contains": ["mais de um aluno vinculado", "Lucas Oliveira", "Ana Oliveira"],
+      "message_excludes": ["Resumo financeiro"],
+      "reason_contains": "dominio protegido"
+    }
+  },
+  {
+    "case_id": "guardian_ana_grades_context_switch",
+    "type": "message_response",
+    "request": {
+      "message": "ana, notas",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-finance-academic-switch-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_student_academic_summary", "get_student_grades"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Notas de Ana Oliveira", "Fisica"],
+      "message_excludes": ["Notas de Lucas Oliveira"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_ana_grade_requirement_subject_explicit",
+    "type": "message_response",
+    "request": {
+      "message": "quanto falta pra ana ser aprovada em física?",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-finance-academic-switch-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_student_academic_summary", "get_student_grades"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Ana Oliveira", "Fisica", "media parcial de 6,4/10", "faltam 0,6"],
+      "message_excludes": ["6 falta", "atraso"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_ana_grade_requirement_subject_implicit_followup",
+    "type": "message_response",
+    "request": {
+      "message": "mas e as notas? quanto ela precisa tirar de nota",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-finance-academic-switch-thread"
+    },
+    "expected": {
+      "mode": "structured_tool",
+      "domain": "academic",
+      "access_tier": "authenticated",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "selected_tools_includes": ["get_student_academic_summary", "get_student_grades"],
+      "graph_path_includes": ["structured_tool_call"],
+      "message_contains": ["Ana Oliveira", "Fisica", "media parcial de 6,4/10", "faltam 0,6"],
+      "message_excludes": ["6 falta", "atraso", "mais de um aluno vinculado"],
+      "reason_contains": "service deterministico"
+    }
+  },
+  {
+    "case_id": "guardian_ana_focus_activation_followup",
+    "type": "message_response",
+    "request": {
+      "message": "a ana",
+      "telegram_chat_id": 1649845499,
+      "conversation_id": "eval:guardian-finance-academic-switch-thread"
+    },
+    "expected": {
+      "mode": "clarify",
+      "domain": "unknown",
+      "access_tier": "public",
+      "retrieval_backend": "none",
+      "needs_authentication": false,
+      "message_contains": ["seguimos com Ana Oliveira"],
+      "message_excludes": ["Internal Server Error"],
+      "reason_contains": "exige clarificacao"
+    }
+  },
+  {
     "case_id": "public_high_school_pricing_scope",
     "type": "message_response",
     "request": {

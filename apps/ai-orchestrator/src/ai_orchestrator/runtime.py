@@ -62,6 +62,32 @@ _PUBLIC_RESOURCE_CACHE: dict[str, dict[str, Any]] = {}
 
 ATTENDANCE_TERMS = {'frequencia', 'falta', 'faltas', 'presenca', 'presencas'}
 GRADE_TERMS = {'nota', 'notas', 'boletim', 'avaliacao', 'avaliacoes', 'prova', 'provas'}
+GRADE_REQUIREMENT_TERMS = {
+    'quanto precisa tirar',
+    'quanto precisa de nota',
+    'quanto precisa tirar de nota',
+    'precisa tirar',
+    'precisa tirar de nota',
+    'precisa de nota',
+    'nota precisa',
+    'nota para passar',
+    'nota pra passar',
+    'nota para aprovar',
+    'nota pra aprovar',
+}
+GRADE_APPROVAL_TERMS = {
+    'passar',
+    'aprovar',
+    'aprovado',
+    'aprovada',
+    'ser aprovado',
+    'ser aprovada',
+    'media de aprovacao',
+    'média de aprovação',
+    'media para passar',
+    'média para passar',
+}
+PASSING_GRADE_TARGET = 7.0
 UPCOMING_ASSESSMENT_TERMS = {
     'proxima prova',
     'proximas provas',
@@ -802,6 +828,16 @@ FOLLOW_UP_OPENERS = {
     'e onde',
     'e por que',
     'e pq',
+    'mas e ',
+    'mas e se',
+    'mas e qual',
+    'mas e quais',
+    'mas e quanto',
+    'mas e quando',
+    'mas e como',
+    'mas e onde',
+    'mas e por que',
+    'mas e pq',
 }
 FOLLOW_UP_REFERENTS = {
     'isso',
@@ -811,6 +847,8 @@ FOLLOW_UP_REFERENTS = {
     'esses',
     'dela',
     'dele',
+    'ela',
+    'ele',
     'disso',
     'daquilo',
     'nisso',
@@ -2029,6 +2067,8 @@ def _detect_academic_attribute_request(message: str) -> ProtectedAttributeReques
         return None
     if any(_message_matches_term(normalized, term) for term in UPCOMING_ASSESSMENT_TERMS):
         return None
+    if _wants_academic_grade_requirement(message):
+        return ProtectedAttributeRequest(domain='academic', attribute='grade_requirement')
     if _contains_any(message, ATTENDANCE_TERMS) and not _contains_any(message, GRADE_TERMS):
         return ProtectedAttributeRequest(domain='academic', attribute='attendance')
     if _contains_any(message, GRADE_TERMS):
@@ -2132,6 +2172,37 @@ def _effective_academic_attribute_request(
     if raw:
         return ProtectedAttributeRequest(domain='academic', attribute=raw)
     return None
+
+
+def _wants_academic_grade_requirement(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if any(_message_matches_term(normalized, term) for term in GRADE_REQUIREMENT_TERMS):
+        return True
+    if any(_message_matches_term(normalized, term) for term in {'quanto falta', 'falta quanto'}):
+        return any(_message_matches_term(normalized, term) for term in GRADE_APPROVAL_TERMS)
+    if any(_message_matches_term(normalized, term) for term in GRADE_APPROVAL_TERMS):
+        return bool(_subject_reference_tokens(normalized)) or _contains_any(normalized, GRADE_TERMS)
+    return False
+
+
+def _subject_reference_tokens(text: str) -> set[str]:
+    normalized = _normalize_text(text)
+    return {
+        token
+        for token in {
+            'fisica',
+            'matematica',
+            'biologia',
+            'filosofia',
+            'geografia',
+            'historia',
+            'quimica',
+            'portugues',
+            'educacao fisica',
+            'ingles',
+        }
+        if token in normalized
+    }
 
 
 def _is_public_school_name_query(message: str) -> bool:
@@ -2425,9 +2496,9 @@ def _build_conversation_slot_memory(
         conversation_context=conversation_context,
     )
     mentioned_student = _student_focus_candidate(actor, current_message)
-    if academic_student is None and isinstance(mentioned_student, dict) and bool(mentioned_student.get('can_view_academic', False)):
+    if isinstance(mentioned_student, dict) and bool(mentioned_student.get('can_view_academic', False)):
         academic_student = mentioned_student
-    if finance_student is None and isinstance(mentioned_student, dict) and bool(mentioned_student.get('can_view_finance', False)):
+    if isinstance(mentioned_student, dict) and bool(mentioned_student.get('can_view_finance', False)):
         finance_student = mentioned_student
     preview_domain = getattr(getattr(preview, 'classification', None), 'domain', None)
     if (
@@ -7211,6 +7282,84 @@ def _recent_student_disambiguation_domain(
     return None
 
 
+def _protected_selected_tools_for_domain(domain: QueryDomain) -> list[str]:
+    if domain is QueryDomain.academic:
+        return [
+            'get_student_academic_summary',
+            'get_student_attendance',
+            'get_student_grades',
+            'get_student_upcoming_assessments',
+            'get_student_attendance_timeline',
+        ]
+    return ['get_financial_summary']
+
+
+def _apply_protected_domain_override(
+    preview: Any,
+    *,
+    domain: QueryDomain,
+    confidence: float,
+    reason: str,
+    graph_marker: str,
+) -> None:
+    preview.mode = OrchestrationMode.structured_tool
+    preview.classification = IntentClassification(
+        domain=domain,
+        access_tier=AccessTier.sensitive if domain is QueryDomain.finance else AccessTier.authenticated,
+        confidence=confidence,
+        reason=reason,
+    )
+    preview.selected_tools = _protected_selected_tools_for_domain(domain)
+    if domain is QueryDomain.academic:
+        preview.output_contract = 'dados academicos autorizados, auditaveis e minimizados'
+        preview.risk_flags = [flag for flag in preview.risk_flags if flag != 'sensitive_data_path']
+    else:
+        preview.output_contract = 'dados financeiros autorizados, auditaveis e com trilha reforcada'
+        if 'sensitive_data_path' not in preview.risk_flags:
+            preview.risk_flags = [*preview.risk_flags, 'sensitive_data_path']
+    preview.retrieval_backend = RetrievalBackend.none
+    preview.citations_required = False
+    preview.needs_authentication = False
+    preview.reason = reason
+    preview.graph_path = [*preview.graph_path, graph_marker]
+
+
+def _explicit_protected_domain_hint(message: str) -> QueryDomain | None:
+    if _detect_academic_attribute_request(message) is not None or _detect_academic_focus_kind(message) is not None:
+        return QueryDomain.academic
+    if (
+        _detect_finance_attribute_request(message) is not None
+        or _detect_finance_status_filter(message) is not None
+        or any(
+            _message_matches_term(_normalize_text(message), term)
+            for term in FINANCE_SECOND_COPY_TERMS
+        )
+    ):
+        return QueryDomain.finance
+    return None
+
+
+def _apply_protected_domain_rescue(
+    *,
+    preview: Any,
+    message: str,
+) -> bool:
+    current_domain = getattr(getattr(preview, 'classification', None), 'domain', None)
+    if current_domain not in {QueryDomain.academic, QueryDomain.finance}:
+        return False
+    target_domain = _explicit_protected_domain_hint(message)
+    if target_domain is None or target_domain is current_domain:
+        return False
+    _apply_protected_domain_override(
+        preview,
+        domain=target_domain,
+        confidence=0.89,
+        reason='o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido',
+        graph_marker='protected_domain_rescue',
+    )
+    return True
+
+
 def _apply_student_disambiguation_rescue(
     *,
     preview: Any,
@@ -7233,32 +7382,13 @@ def _apply_student_disambiguation_rescue(
     if len(matched_students) != 1:
         return False
 
-    preview.mode = OrchestrationMode.structured_tool
-    preview.classification = IntentClassification(
+    _apply_protected_domain_override(
+        preview,
         domain=rescued_domain,
-        access_tier=AccessTier.sensitive if rescued_domain is QueryDomain.finance else AccessTier.authenticated,
         confidence=0.87,
-        reason='follow-up curto resolveu a desambiguacao do aluno com base no contexto recente',
+        reason='o usuario respondeu a desambiguacao do aluno e o fluxo protegido pode continuar',
+        graph_marker='student_disambiguation_rescue',
     )
-    if rescued_domain is QueryDomain.academic:
-        preview.selected_tools = [
-            'get_student_academic_summary',
-            'get_student_attendance',
-            'get_student_grades',
-            'get_student_upcoming_assessments',
-            'get_student_attendance_timeline',
-        ]
-        preview.output_contract = 'dados academicos autorizados, auditaveis e minimizados'
-    else:
-        preview.selected_tools = ['get_financial_summary']
-        preview.output_contract = 'dados financeiros autorizados, auditaveis e com trilha reforcada'
-    preview.retrieval_backend = RetrievalBackend.none
-    preview.citations_required = False
-    preview.needs_authentication = False
-    preview.reason = 'o usuario respondeu a desambiguacao do aluno e o fluxo protegido pode continuar'
-    preview.graph_path = [*preview.graph_path, 'student_disambiguation_rescue']
-    if rescued_domain is QueryDomain.finance and 'sensitive_data_path' not in preview.risk_flags:
-        preview.risk_flags = [*preview.risk_flags, 'sensitive_data_path']
     return True
 
 
@@ -10057,6 +10187,37 @@ def _recent_student_from_context(
     return None
 
 
+def _student_from_slot_memory(
+    actor: dict[str, Any] | None,
+    *,
+    capability: str,
+    slot_memory: ConversationSlotMemory | None,
+) -> dict[str, Any] | None:
+    students = _eligible_students(actor, capability=capability)
+    if not students or slot_memory is None:
+        return None
+    candidate_names: list[str] = []
+    primary_name = (
+        slot_memory.academic_student_name
+        if capability == 'academic'
+        else slot_memory.finance_student_name
+    )
+    secondary_name = (
+        slot_memory.finance_student_name
+        if capability == 'academic'
+        else slot_memory.academic_student_name
+    )
+    for candidate_name in (primary_name, secondary_name, slot_memory.active_entity):
+        normalized_candidate = str(candidate_name or '').strip()
+        if normalized_candidate and normalized_candidate not in candidate_names and normalized_candidate != 'aluno':
+            candidate_names.append(normalized_candidate)
+    for candidate_name in candidate_names:
+        matched_students = _matching_students_in_text(students, candidate_name)
+        if len(matched_students) == 1:
+            return matched_students[0]
+    return None
+
+
 def _select_linked_student(
     actor: dict[str, Any] | None,
     message: str,
@@ -10146,6 +10307,8 @@ def _detect_academic_focus_kind(message: str) -> str | None:
         return 'upcoming'
     if _contains_any(message, ATTENDANCE_TIMELINE_TERMS):
         return 'attendance_timeline'
+    if _wants_academic_grade_requirement(message):
+        return 'grades'
     if _contains_any(message, ATTENDANCE_TERMS) and not _contains_any(message, GRADE_TERMS):
         return 'attendance'
     if _contains_any(message, GRADE_TERMS):
@@ -10168,7 +10331,9 @@ def _recent_subject_filter_from_context(
             continue
         if content.strip() == message.strip():
             continue
-        if focus_kind == 'grades' and not _contains_any(content, GRADE_TERMS):
+        if focus_kind == 'grades' and not (
+            _contains_any(content, GRADE_TERMS) or _wants_academic_grade_requirement(content)
+        ):
             continue
         if focus_kind in {'attendance', 'attendance_timeline'} and not (
             _contains_any(content, ATTENDANCE_TERMS) or _contains_any(content, ATTENDANCE_TIMELINE_TERMS)
@@ -10528,6 +10693,77 @@ def _format_attendance_timeline(summary: dict[str, Any]) -> list[str]:
     return lines or ['- Nao encontrei faltas ou registros recentes com data neste recorte.']
 
 
+def _format_grade_target_value(value: float) -> str:
+    return f'{value:.1f}'.replace('.', ',')
+
+
+def _subject_label_from_filter(summary: dict[str, Any], subject_filter: str | None) -> str | None:
+    if not subject_filter:
+        return None
+    available_subjects = _available_subjects(summary)
+    subject = available_subjects.get(subject_filter)
+    if isinstance(subject, dict):
+        label = str(subject.get('subject_name', '')).strip()
+        if label:
+            return label
+    return subject_filter.title()
+
+
+def _compose_grade_requirement_answer(
+    summary: dict[str, Any],
+    *,
+    student_name: str,
+    message: str | None,
+    conversation_context: dict[str, Any] | None,
+) -> str:
+    subject_filter = _detect_subject_filter(
+        message or '',
+        summary,
+        conversation_context=conversation_context,
+        focus_kind='grades',
+    )
+    subject_label = _subject_label_from_filter(summary, subject_filter)
+    if not subject_filter or not subject_label:
+        return (
+            f'Para eu te dizer quanto falta para {student_name} atingir a media de aprovacao, '
+            'me diga a disciplina. Por exemplo: "em Fisica".'
+        )
+
+    filtered_grades = _filter_grade_rows(summary, subject_filter=subject_filter, term_filter=None)
+    normalized_scores: list[float] = []
+    for item in filtered_grades:
+        if not isinstance(item, dict):
+            continue
+        score = float(item.get('score', 0) or 0)
+        max_score = float(item.get('max_score', 0) or 0)
+        if max_score <= 0:
+            continue
+        normalized_scores.append((score / max_score) * 10.0)
+
+    if not normalized_scores:
+        return (
+            f'Ainda nao encontrei notas lancadas de {student_name} em {subject_label} '
+            'para calcular a media parcial.'
+        )
+
+    current_average = sum(normalized_scores) / len(normalized_scores)
+    gap = max(0.0, PASSING_GRADE_TARGET - current_average)
+    average_label = _format_grade_target_value(current_average)
+    if gap <= 0:
+        return (
+            f'Com as notas lancadas ate agora, {student_name} esta com media parcial de '
+            f'{average_label}/10 em {subject_label}. '
+            'Se a referencia de aprovacao for 7,0, ja esta acima do necessario.'
+        )
+
+    gap_label = _format_grade_target_value(gap)
+    return (
+        f'Com as notas lancadas ate agora, {student_name} esta com media parcial de '
+        f'{average_label}/10 em {subject_label}. '
+        f'Se a referencia de aprovacao for 7,0, faltam {gap_label} ponto(s) para atingir essa media.'
+    )
+
+
 def _administrative_checklist_lines(summary: dict[str, Any]) -> list[str]:
     checklist = summary.get('checklist')
     if not isinstance(checklist, list) or not checklist:
@@ -10696,6 +10932,7 @@ def _compose_academic_attribute_answer(
     attribute_request: ProtectedAttributeRequest,
     student_name: str,
     message: str | None = None,
+    conversation_context: dict[str, Any] | None = None,
 ) -> str:
     if attribute_request.attribute == 'enrollment_code':
         enrollment_code = str(summary.get('enrollment_code', '') or '').strip()
@@ -10733,6 +10970,13 @@ def _compose_academic_attribute_answer(
         lines = [f'Notas de {student_name}:']
         lines.extend(_format_grades(summary))
         return '\n'.join(lines)
+    if attribute_request.attribute == 'grade_requirement':
+        return _compose_grade_requirement_answer(
+            summary,
+            student_name=student_name,
+            message=message,
+            conversation_context=conversation_context,
+        )
     return f'Nao encontrei um atributo academico suportado para {student_name} neste recorte.'
 
 
@@ -11059,6 +11303,14 @@ async def _execute_protected_records_specialist(
             students=linked_students,
         )
 
+    slot_memory = _build_conversation_slot_memory(
+        actor=actor,
+        profile=None,
+        conversation_context=conversation_context,
+        request_message=message,
+        preview=preview,
+    )
+
     if preview.classification.domain is QueryDomain.institution and 'get_actor_identity_context' in preview.selected_tools:
         return _compose_account_context_answer(
             actor,
@@ -11149,6 +11401,14 @@ async def _execute_protected_records_specialist(
                 capability='finance',
                 conversation_context=conversation_context,
             )
+            if student is None:
+                student = _student_from_slot_memory(
+                    actor,
+                    capability='finance',
+                    slot_memory=slot_memory,
+                )
+                if student is not None:
+                    clarification = None
             if student is None and clarification is not None:
                 if finance_attribute_request is not None:
                     return clarification
@@ -11225,6 +11485,14 @@ async def _execute_protected_records_specialist(
         capability=requested_capability,
         conversation_context=conversation_context,
     )
+    if student is None:
+        student = _student_from_slot_memory(
+            actor,
+            capability=requested_capability,
+            slot_memory=slot_memory,
+        )
+        if student is not None:
+            clarification = None
     if clarification is not None:
         return clarification
     if student is None:
@@ -11260,6 +11528,7 @@ async def _execute_protected_records_specialist(
                 attribute_request=academic_attribute_request,
                 student_name=student_name,
                 message=message,
+                conversation_context=conversation_context,
             )
 
         focus_kind = _detect_academic_focus_kind(message)
@@ -12670,6 +12939,16 @@ async def generate_message_response(
                     'eduassist.orchestration.student_disambiguation_rescue_domain': preview.classification.domain.value,
                 }
             )
+        elif _apply_protected_domain_rescue(
+            preview=preview,
+            message=request.message,
+        ):
+            set_span_attributes(
+                **{
+                    'eduassist.orchestration.protected_domain_rescue_applied': True,
+                    'eduassist.orchestration.protected_domain_rescue_domain': preview.classification.domain.value,
+                }
+            )
 
         linked_students = _linked_students(actor)
         unmatched_student_reference = _explicit_unmatched_student_reference(
@@ -12872,6 +13151,8 @@ async def generate_message_response(
                         }
                     )
 
+        llm_text: str | None = None
+
         if preview.mode is OrchestrationMode.structured_tool:
             with start_span('eduassist.orchestration.structured_tool', tracer_name='eduassist.ai_orchestrator.runtime'):
                 public_plan_sink: dict[str, Any] = {}
@@ -13048,18 +13329,18 @@ async def generate_message_response(
                                 request_message=request.message,
                                 analysis_message=analysis_message,
                                 preview=preview,
-                            citations=citations,
-                            calendar_events=calendar_events,
-                            conversation_context=context_payload,
-                            school_profile=school_profile,
-                        )
-                        set_span_attributes(
-                            **{
-                                'eduassist.orchestration.used_llm': bool(llm_text),
-                                'eduassist.orchestration.llm_provider': settings.llm_provider,
-                            }
-                        )
-                        message_text = llm_text or deterministic_answer_candidate
+                                citations=citations,
+                                calendar_events=calendar_events,
+                                conversation_context=context_payload,
+                                school_profile=school_profile,
+                            )
+                            set_span_attributes(
+                                **{
+                                    'eduassist.orchestration.used_llm': bool(llm_text),
+                                    'eduassist.orchestration.llm_provider': settings.llm_provider,
+                                }
+                            )
+                            message_text = llm_text or deterministic_answer_candidate
                 else:
                     deterministic_answer_candidate = _compose_deterministic_answer(
                         request_message=request.message,
