@@ -48,7 +48,8 @@ Importante:
 
 - os caminhos `3` e `4` ainda estao em fase `experimental`;
 - eles ja passam em smoke local;
-- eles ainda precisam de benchmark comparativo mais amplo antes de qualquer rollout real.
+- eles agora tambem contam com benchmark comparativo amplo e preflight operacional para runtime override;
+- eles ainda nao estao em rollout real continuo, mas ja ficaram prontos para `trafego controlado` com validacao.
 
 ## Leitura do arquivo tmp/resposta_chatpg.txt
 

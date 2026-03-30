@@ -114,6 +114,7 @@ class RuntimeCapabilities(BaseModel):
     supported_primary_stacks: list[str]
     python_functions_available: bool
     llamaindex_workflow_available: bool
+    experimental_stack_readiness: dict[str, dict[str, object]] = Field(default_factory=dict)
     available_modes: list[OrchestrationMode]
     retrieval_backends: list[RetrievalBackend]
 

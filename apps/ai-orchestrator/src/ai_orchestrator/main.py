@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import json
 import logging
 import secrets
+from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
@@ -55,6 +57,9 @@ from .trace_bridge import persist_shadow_trace
 from .tools import get_tool_contracts
 
 logger = logging.getLogger(__name__)
+REPO_ROOT = Path(__file__).resolve().parents[4]
+FOUR_PATH_COMPARISON_REPORT_JSON = REPO_ROOT / 'docs/architecture/four-path-chatbot-comparison-report.json'
+FOUR_PATH_SMOKE_REPORT_JSON = REPO_ROOT / 'docs/architecture/four-path-chatbot-smoke-report.json'
 
 
 class Settings(BaseSettings):
@@ -181,6 +186,71 @@ def _runtime_primary_stack_payload(settings: Settings) -> dict[str, object]:
         'runtimePrimaryStackOverrideUpdatedAt': runtime_override.get('updated_at') if isinstance(runtime_override, dict) else None,
         'strictFrameworkIsolationEnabled': settings.strict_framework_isolation_enabled,
     }
+
+
+def _load_report_json(path: Path) -> dict[str, object] | None:
+    try:
+        payload = json.loads(path.read_text(encoding='utf-8'))
+    except Exception:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _experimental_stack_readiness(settings: Settings) -> dict[str, dict[str, object]]:
+    comparison_payload = _load_report_json(FOUR_PATH_COMPARISON_REPORT_JSON) or {}
+    smoke_payload = _load_report_json(FOUR_PATH_SMOKE_REPORT_JSON) or {}
+    comparison_summary = comparison_payload.get('summary') if isinstance(comparison_payload.get('summary'), dict) else {}
+    comparison_by_stack = comparison_summary.get('by_stack') if isinstance(comparison_summary, dict) else {}
+    smoke_by_stack = smoke_payload.get('stacks') if isinstance(smoke_payload.get('stacks'), dict) else {}
+
+    readiness: dict[str, dict[str, object]] = {}
+    for stack_name in ('python_functions', 'llamaindex'):
+        available = True if stack_name == 'python_functions' else LLAMAINDEX_WORKFLOW_AVAILABLE
+        broad = comparison_by_stack.get(stack_name) if isinstance(comparison_by_stack, dict) else {}
+        broad = broad if isinstance(broad, dict) else {}
+        smoke = smoke_by_stack.get(stack_name) if isinstance(smoke_by_stack, dict) else {}
+        smoke = smoke if isinstance(smoke, dict) else {}
+        comparison_report_available = bool(broad)
+        smoke_report_available = bool(smoke)
+
+        keyword_pass = int(broad.get('keyword_pass') or 0) if comparison_report_available else None
+        count = int(broad.get('count') or 0) if comparison_report_available else None
+        smoke_passed = int(smoke.get('passed') or 0) if smoke_report_available else None
+        smoke_total = int(smoke.get('total') or 0) if smoke_report_available else None
+        quality_avg = float(broad.get('quality_avg') or 0.0) if comparison_report_available else None
+        ready_for_controlled_runtime = bool(
+            available
+            and settings.strict_framework_isolation_enabled
+            and comparison_report_available
+            and smoke_report_available
+            and count is not None
+            and keyword_pass is not None
+            and count > 0
+            and keyword_pass == count
+            and smoke_total is not None
+            and smoke_passed is not None
+            and smoke_total > 0
+            and smoke_passed == smoke_total
+            and quality_avg is not None
+            and quality_avg >= 99.0
+        )
+        readiness[stack_name] = {
+            'available': available,
+            'strict_isolation_enabled': settings.strict_framework_isolation_enabled,
+            'comparison_report_available': comparison_report_available,
+            'smoke_report_available': smoke_report_available,
+            'broad_benchmark_keyword_pass': keyword_pass,
+            'broad_benchmark_total': count,
+            'broad_benchmark_quality_avg': quality_avg,
+            'broad_benchmark_avg_latency_ms': float(broad.get('avg_latency_ms') or 0.0) if comparison_report_available else None,
+            'smoke_passed': smoke_passed,
+            'smoke_total': smoke_total,
+            'smoke_avg_latency_ms': float(smoke.get('avg_latency_ms') or 0.0) if smoke_report_available else None,
+            'ready_for_controlled_runtime': ready_for_controlled_runtime,
+            'comparison_report_path': str(FOUR_PATH_COMPARISON_REPORT_JSON),
+            'smoke_report_path': str(FOUR_PATH_SMOKE_REPORT_JSON),
+        }
+    return readiness
 
 
 def _hitl_thread_id(
@@ -418,6 +488,7 @@ async def status() -> dict[str, object]:
     scorecard_gate = get_scorecard_gate_status(settings=settings)
     rollout_readiness = get_experiment_rollout_readiness(settings=settings)
     live_promotion_summary = get_experiment_live_promotion_summary(settings=settings)
+    experimental_stack_readiness = _experimental_stack_readiness(settings)
     return {
         'service': 'ai-orchestrator',
         'ready': True,
@@ -474,6 +545,7 @@ async def status() -> dict[str, object]:
         'langgraphHitlUserTrafficSlices': settings.langgraph_hitl_user_traffic_slices,
         'pythonFunctionsAvailable': True,
         'llamaindexWorkflowAvailable': LLAMAINDEX_WORKFLOW_AVAILABLE,
+        'experimentalStackReadiness': experimental_stack_readiness,
     }
 
 
@@ -542,6 +614,7 @@ async def update_runtime_primary_stack(
 @app.get('/v1/capabilities', response_model=RuntimeCapabilities)
 async def capabilities() -> RuntimeCapabilities:
     settings = get_settings()
+    experimental_stack_readiness = _experimental_stack_readiness(settings)
     return RuntimeCapabilities(
         service='ai-orchestrator',
         llm_provider=settings.llm_provider,
@@ -554,6 +627,7 @@ async def capabilities() -> RuntimeCapabilities:
         supported_primary_stacks=sorted(SUPPORTED_PRIMARY_STACKS),
         python_functions_available=True,
         llamaindex_workflow_available=LLAMAINDEX_WORKFLOW_AVAILABLE,
+        experimental_stack_readiness=experimental_stack_readiness,
         available_modes=[
             OrchestrationMode.hybrid_retrieval,
             OrchestrationMode.graph_rag,

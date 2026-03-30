@@ -1,0 +1,282 @@
+{
+  "generated_at": "2026-03-30T13:32:37.604769+00:00",
+  "base_url": "http://127.0.0.1:8002",
+  "dataset": "/home/edann/projects/eduassist-platform/tests/evals/datasets/four_path_chatbot_smoke_cases.json",
+  "stacks": [
+    "python_functions",
+    "llamaindex"
+  ],
+  "runtime_before": {
+    "service": "ai-orchestrator",
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "resolvedPrimaryStackSource": "orchestrator_engine",
+    "runtimePrimaryStackOverride": null,
+    "runtimePrimaryStackOverrideReason": null,
+    "runtimePrimaryStackOverrideOperator": null,
+    "runtimePrimaryStackOverrideUpdatedAt": null,
+    "strictFrameworkIsolationEnabled": false,
+    "supportedPrimaryStacks": [
+      "crewai",
+      "langgraph",
+      "llamaindex",
+      "python_functions",
+      "shadow"
+    ]
+  },
+  "override_actions": [
+    {
+      "stack": "python_functions",
+      "payload": {
+        "service": "ai-orchestrator",
+        "action": "updated",
+        "override": {
+          "value": "python_functions",
+          "reason": "nextgen_runtime_preflight_python_functions",
+          "operator": "codex",
+          "updated_at": "2026-03-30T13:32:26.514819+00:00"
+        },
+        "orchestratorEngine": "langgraph",
+        "primaryStackFeatureFlag": "",
+        "resolvedPrimaryStack": "python_functions",
+        "resolvedPrimaryStackSource": "runtime_override",
+        "runtimePrimaryStackOverride": "python_functions",
+        "runtimePrimaryStackOverrideReason": "nextgen_runtime_preflight_python_functions",
+        "runtimePrimaryStackOverrideOperator": "codex",
+        "runtimePrimaryStackOverrideUpdatedAt": "2026-03-30T13:32:26.514819+00:00",
+        "strictFrameworkIsolationEnabled": false,
+        "supportedPrimaryStacks": [
+          "crewai",
+          "langgraph",
+          "llamaindex",
+          "python_functions",
+          "shadow"
+        ]
+      }
+    },
+    {
+      "stack": "llamaindex",
+      "payload": {
+        "service": "ai-orchestrator",
+        "action": "updated",
+        "override": {
+          "value": "llamaindex",
+          "reason": "nextgen_runtime_preflight_llamaindex",
+          "operator": "codex",
+          "updated_at": "2026-03-30T13:32:31.714994+00:00"
+        },
+        "orchestratorEngine": "langgraph",
+        "primaryStackFeatureFlag": "",
+        "resolvedPrimaryStack": "llamaindex",
+        "resolvedPrimaryStackSource": "runtime_override",
+        "runtimePrimaryStackOverride": "llamaindex",
+        "runtimePrimaryStackOverrideReason": "nextgen_runtime_preflight_llamaindex",
+        "runtimePrimaryStackOverrideOperator": "codex",
+        "runtimePrimaryStackOverrideUpdatedAt": "2026-03-30T13:32:31.714994+00:00",
+        "strictFrameworkIsolationEnabled": false,
+        "supportedPrimaryStacks": [
+          "crewai",
+          "langgraph",
+          "llamaindex",
+          "python_functions",
+          "shadow"
+        ]
+      }
+    }
+  ],
+  "runtime_after_restore": {
+    "service": "ai-orchestrator",
+    "action": "cleared",
+    "override": {
+      "value": null,
+      "reason": "restore_default_runtime_stack",
+      "operator": "codex",
+      "updated_at": "2026-03-30T13:32:37.604054+00:00"
+    },
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "resolvedPrimaryStackSource": "orchestrator_engine",
+    "runtimePrimaryStackOverride": null,
+    "runtimePrimaryStackOverrideReason": "restore_default_runtime_stack",
+    "runtimePrimaryStackOverrideOperator": "codex",
+    "runtimePrimaryStackOverrideUpdatedAt": "2026-03-30T13:32:37.604054+00:00",
+    "strictFrameworkIsolationEnabled": false,
+    "supportedPrimaryStacks": [
+      "crewai",
+      "langgraph",
+      "llamaindex",
+      "python_functions",
+      "shadow"
+    ]
+  },
+  "summary": {
+    "by_stack": {
+      "python_functions": {
+        "passed": 4,
+        "total": 4,
+        "ready_for_controlled_runtime": true
+      },
+      "llamaindex": {
+        "passed": 4,
+        "total": 4,
+        "ready_for_controlled_runtime": true
+      }
+    }
+  },
+  "results": [
+    {
+      "case_id": "public_pedagogy",
+      "stack": "python_functions",
+      "status": 200,
+      "passed": true,
+      "expected_access_tier": "public",
+      "access_tier": "public",
+      "reason": "fato institucional canonico deve vir de fonte estruturada",
+      "mode": "structured_tool",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "message_preview": "Que bom que você perguntou! Nossa proposta pedagógica no Colégio Horizonte é laica e se baseia na aprendizagem por projetos, com um forte foco em cultura digital responsável e acompanhamento socioemocional. No Ensino Méd"
+    },
+    {
+      "case_id": "protected_docs",
+      "stack": "python_functions",
+      "status": 200,
+      "passed": true,
+      "expected_access_tier": "authenticated",
+      "access_tier": "authenticated",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "mode": "structured_tool",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "message_preview": "Situacao documental de Lucas Oliveira hoje: regular.\n- Identificacao escolar do aluno: regular. Codigo de matricula: MAT-2026-001\n- Responsavel vinculado: regular. Maria Oliveira\n- Documentacao escolar do aluno: regular."
+    },
+    {
+      "case_id": "support_finance",
+      "stack": "python_functions",
+      "status": 200,
+      "passed": true,
+      "expected_access_tier": "public",
+      "access_tier": "public",
+      "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+      "mode": "handoff",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "handoff",
+        "kernel:python_functions"
+      ],
+      "message_preview": "Sua solicitacao ja estava registrada na fila de financeiro. Protocolo: ATD-20260330-6A62C668. Status atual: queued."
+    },
+    {
+      "case_id": "workflow_visit",
+      "stack": "python_functions",
+      "status": 200,
+      "passed": true,
+      "expected_access_tier": "public",
+      "access_tier": "public",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "mode": "structured_tool",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "message_preview": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-080440. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260330-5DA50D2B. A equipe comercial "
+    },
+    {
+      "case_id": "public_pedagogy",
+      "stack": "llamaindex",
+      "status": 200,
+      "passed": true,
+      "expected_access_tier": "public",
+      "access_tier": "public",
+      "reason": "fato institucional canonico deve vir de fonte estruturada",
+      "mode": "structured_tool",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "message_preview": "Que bom que você perguntou! Nossa proposta pedagógica no Colégio Horizonte é laica e se baseia na aprendizagem por projetos, com um forte foco em cultura digital responsável e acompanhamento socioemocional.\n\nNo Ensino Mé"
+    },
+    {
+      "case_id": "protected_docs",
+      "stack": "llamaindex",
+      "status": 200,
+      "passed": true,
+      "expected_access_tier": "authenticated",
+      "access_tier": "authenticated",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "mode": "structured_tool",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "message_preview": "Situacao documental de Lucas Oliveira hoje: regular.\n- Identificacao escolar do aluno: regular. Codigo de matricula: MAT-2026-001\n- Responsavel vinculado: regular. Maria Oliveira\n- Documentacao escolar do aluno: regular."
+    },
+    {
+      "case_id": "support_finance",
+      "stack": "llamaindex",
+      "status": 200,
+      "passed": true,
+      "expected_access_tier": "public",
+      "access_tier": "public",
+      "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+      "mode": "handoff",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "handoff",
+        "kernel:llamaindex"
+      ],
+      "message_preview": "Sua solicitacao ja estava registrada na fila de financeiro. Protocolo: ATD-20260330-6AB4AD7A. Status atual: queued."
+    },
+    {
+      "case_id": "workflow_visit",
+      "stack": "llamaindex",
+      "status": 200,
+      "passed": true,
+      "expected_access_tier": "public",
+      "access_tier": "public",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "mode": "structured_tool",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "message_preview": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-B59606. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260330-BB407F54. A equipe comercial "
+    }
+  ]
+}

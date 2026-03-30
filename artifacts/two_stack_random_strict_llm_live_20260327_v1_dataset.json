@@ -1,0 +1,328 @@
+{
+  "seed": 20260327,
+  "threads": [
+    {
+      "thread_id": "rand_public_value_compare",
+      "telegram_chat_id": 777101,
+      "turns": [
+        {
+          "slice": "public",
+          "prompt": "sendo bem sincero, por que eu colocaria meu filho ai e nao na publica?",
+          "expected_keywords": [
+            "publica",
+            "proposta pedagogica"
+          ]
+        },
+        {
+          "slice": "public",
+          "prompt": "mas o que isso muda na pratica no dia a dia?",
+          "expected_keywords": [
+            "projeto",
+            "acompanhamento"
+          ]
+        },
+        {
+          "slice": "public",
+          "prompt": "entao a base curricular de voces continua seguindo a bncc?",
+          "expected_keywords": [
+            "bncc"
+          ]
+        }
+      ]
+    },
+    {
+      "thread_id": "rand_public_channels_docs",
+      "telegram_chat_id": 777102,
+      "turns": [
+        {
+          "slice": "public",
+          "prompt": "posso enviar documentos por fax ou isso nao existe mais?",
+          "expected_keywords": [
+            "fax"
+          ],
+          "forbidden_keywords": [
+            "sim"
+          ]
+        },
+        {
+          "slice": "public",
+          "prompt": "e por telegrama, serve?",
+          "expected_keywords": [
+            "portal",
+            "email",
+            "secretaria"
+          ],
+          "forbidden_keywords": [
+            "sim"
+          ]
+        },
+        {
+          "slice": "public",
+          "prompt": "qual e o caminho certo pra mandar a documentacao?",
+          "expected_keywords": [
+            "portal",
+            "email",
+            "secretaria"
+          ]
+        }
+      ]
+    },
+    {
+      "thread_id": "rand_public_library_realism",
+      "telegram_chat_id": 777103,
+      "turns": [
+        {
+          "slice": "public",
+          "prompt": "voces realmente tem biblioteca ou e so folheto bonito?",
+          "expected_keywords": [
+            "biblioteca"
+          ]
+        },
+        {
+          "slice": "public",
+          "prompt": "como ela se chama e ate que horas funciona?",
+          "expected_keywords": [
+            "biblioteca aurora",
+            "18h00"
+          ]
+        }
+      ]
+    },
+    {
+      "thread_id": "rand_public_timeline_visit",
+      "telegram_chat_id": 777104,
+      "turns": [
+        {
+          "slice": "public",
+          "prompt": "quando comeca a matricula do proximo ciclo?",
+          "expected_keywords": [
+            "outubro",
+            "2025"
+          ]
+        },
+        {
+          "slice": "public",
+          "prompt": "depois disso, quando as aulas comecam?",
+          "expected_keywords": [
+            "fevereiro",
+            "2026"
+          ]
+        }
+      ]
+    },
+    {
+      "thread_id": "rand_protected_identity_scope",
+      "telegram_chat_id": 1649845499,
+      "turns": [
+        {
+          "slice": "protected",
+          "prompt": "estou logado como?",
+          "expected_keywords": [
+            "maria oliveira"
+          ]
+        },
+        {
+          "slice": "protected",
+          "prompt": "e eu consigo ver o que exatamente por aqui?",
+          "expected_keywords": [
+            "lucas",
+            "ana"
+          ]
+        },
+        {
+          "slice": "protected",
+          "prompt": "quais filhos eu tenho matriculados nessa conta?",
+          "expected_keywords": [
+            "lucas",
+            "ana"
+          ]
+        }
+      ]
+    },
+    {
+      "thread_id": "rand_protected_docs_focus",
+      "telegram_chat_id": 1649845499,
+      "turns": [
+        {
+          "slice": "protected",
+          "prompt": "como esta a documentacao da ana?",
+          "expected_keywords": [
+            "ana",
+            "pendencias"
+          ]
+        },
+        {
+          "slice": "protected",
+          "prompt": "o que falta?",
+          "expected_keywords": [
+            "ana"
+          ]
+        },
+        {
+          "slice": "protected",
+          "prompt": "e a documentacao do lucas?",
+          "expected_keywords": [
+            "lucas",
+            "regular"
+          ]
+        },
+        {
+          "slice": "protected",
+          "prompt": "e se eu perguntar do joao?",
+          "expected_keywords": [
+            "nao",
+            "joao"
+          ]
+        }
+      ]
+    },
+    {
+      "thread_id": "rand_protected_academic_finance",
+      "telegram_chat_id": 1649845499,
+      "turns": [
+        {
+          "slice": "protected",
+          "prompt": "quero ver as notas do lucas",
+          "expected_keywords": [
+            "lucas",
+            "matematica"
+          ]
+        },
+        {
+          "slice": "protected",
+          "prompt": "e quanto esta em aberto?",
+          "expected_keywords": [
+            "aberto",
+            "lucas"
+          ]
+        },
+        {
+          "slice": "protected",
+          "prompt": "e a proxima data de pagamento?",
+          "expected_keywords": [
+            "vencimento",
+            "lucas"
+          ]
+        }
+      ]
+    },
+    {
+      "thread_id": "rand_support_reroute",
+      "telegram_chat_id": 777105,
+      "turns": [
+        {
+          "slice": "support",
+          "prompt": "preciso falar com o financeiro",
+          "expected_keywords": [
+            "financeiro",
+            "protocolo"
+          ]
+        },
+        {
+          "slice": "support",
+          "prompt": "qual o protocolo?",
+          "expected_keywords": [
+            "protocolo"
+          ]
+        },
+        {
+          "slice": "support",
+          "prompt": "mudei de ideia, quero secretaria",
+          "expected_keywords": [
+            "secretaria"
+          ],
+          "note": "repair reroute"
+        }
+      ]
+    },
+    {
+      "thread_id": "rand_support_status_summary",
+      "telegram_chat_id": 777105,
+      "turns": [
+        {
+          "slice": "support",
+          "prompt": "e como esta esse atendimento?",
+          "expected_keywords": [
+            "status",
+            "fila"
+          ]
+        },
+        {
+          "slice": "support",
+          "prompt": "resume pra mim",
+          "expected_keywords": [
+            "resumo",
+            "protocolo"
+          ]
+        }
+      ]
+    },
+    {
+      "thread_id": "rand_workflow_visit",
+      "telegram_chat_id": 777106,
+      "turns": [
+        {
+          "slice": "workflow",
+          "prompt": "da pra marcar uma visita na quinta a tarde?",
+          "expected_keywords": [
+            "protocolo",
+            "visita"
+          ]
+        },
+        {
+          "slice": "workflow",
+          "prompt": "me fala o protocolo dessa visita",
+          "expected_keywords": [
+            "protocolo"
+          ]
+        },
+        {
+          "slice": "workflow",
+          "prompt": "e se eu precisar remarcar?",
+          "expected_keywords": [
+            "protocolo",
+            "remarcar"
+          ]
+        },
+        {
+          "slice": "workflow",
+          "prompt": "entao remarca pra sexta de manha",
+          "expected_keywords": [
+            "nova",
+            "protocolo"
+          ]
+        }
+      ]
+    },
+    {
+      "thread_id": "rand_workflow_request",
+      "telegram_chat_id": 777107,
+      "turns": [
+        {
+          "slice": "workflow",
+          "prompt": "quero protocolar um pedido pra direcao sobre reforco de seguranca na saida",
+          "expected_keywords": [
+            "protocolo",
+            "direcao"
+          ]
+        },
+        {
+          "slice": "workflow",
+          "prompt": "complementa dizendo que isso pesa mais nas sextas",
+          "expected_keywords": [
+            "complemento",
+            "protocolo"
+          ]
+        },
+        {
+          "slice": "workflow",
+          "prompt": "faz um resumo do meu pedido",
+          "expected_keywords": [
+            "resumo",
+            "protocolo"
+          ]
+        }
+      ]
+    }
+  ]
+}

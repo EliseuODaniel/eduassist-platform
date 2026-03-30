@@ -264,6 +264,7 @@ services:
       QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
       QDRANT_DOCUMENTS_COLLECTION: ${QDRANT_DOCUMENTS_COLLECTION:-school_documents}
       DOCUMENT_EMBEDDING_MODEL: ${DOCUMENT_EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      WARM_RETRIEVAL_ON_STARTUP: ${WARM_RETRIEVAL_ON_STARTUP:-true}
       GRAPH_RAG_ENABLED: ${GRAPH_RAG_ENABLED:-true}
       GRAPH_RAG_WORKSPACE: ${GRAPH_RAG_WORKSPACE:-/workspace/artifacts/graphrag/eduassist-public-benchmark}
       GRAPH_RAG_RESPONSE_TYPE: ${GRAPH_RAG_RESPONSE_TYPE:-List of 3-5 concise bullet points in Brazilian Portuguese}
