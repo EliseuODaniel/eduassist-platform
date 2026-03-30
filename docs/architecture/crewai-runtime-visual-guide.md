@@ -161,7 +161,63 @@ Isso ajuda a entender se o problema foi:
 - no parser de contexto
 - ou na fase de composicao
 
-## 9. Arquivos mais importantes
+## 9. Exemplo real de pergunta do usuario no CrewAI
+
+Vamos usar um exemplo que combina bem com o desenho do `CrewAI`:
+
+`Quero cancelar a visita`
+
+### O que a pessoa acha que aconteceu
+
+Do lado do usuario, parece uma conversa bem simples:
+
+1. ele pediu o cancelamento
+2. o sistema entendeu qual visita estava em jogo
+3. o atendimento foi atualizado
+4. a resposta voltou com confirmacao e protocolo
+
+### O que o CrewAI faz de verdade
+
+O caminho real tende a ser este:
+
+1. o `ai-orchestrator` envia a request para o adapter do `CrewAI`
+2. o adapter resolve o slice `workflow`
+3. o piloto do `CrewAI` abre o `workflow flow`
+4. o flow le o estado atual do atendimento
+5. ele verifica se existe um pedido operacional conhecido
+6. se o caso estiver bem reconhecido, segue por caminho rapido e grounded
+7. se precisar, atualiza o handoff ou o workflow no backend
+8. devolve uma resposta curta, clara e auditavel
+
+### Por que esse e um bom caso para o CrewAI
+
+Esse tipo de pergunta combina com o `CrewAI` porque:
+
+- o dominio e bem delimitado
+- o estado atual importa
+- existe um fluxo operacional claro
+- a resposta precisa ser rapida e segura
+
+Em cenarios assim, o `CrewAI` costuma ir muito bem porque o `Flow` consegue organizar a conversa sem gastar uma etapa agentic desnecessaria.
+
+### Quando esse exemplo da problema
+
+Os erros mais comuns aqui sao:
+
+- o flow nao encontrou o atendimento atual
+- o protocolo em foco nao era o certo
+- o pedido caiu em fallback cedo demais
+- o parser entendeu outra intencao operacional
+
+Nesses casos, o trace costuma mostrar bem onde a falha ocorreu:
+
+- `slice`
+- `flow`
+- `fast_path`
+- `backstop`
+- `timeout fallback`
+
+## 10. Arquivos mais importantes
 
 - adapter no orquestrador: [crewai_engine.py](../../apps/ai-orchestrator/src/ai_orchestrator/engines/crewai_engine.py)
 - servico principal do piloto: [main.py](../../apps/ai-orchestrator-crewai/src/ai_orchestrator_crewai/main.py)

@@ -149,7 +149,62 @@ Quando voce olhar um trace, tente procurar:
 
 Esses sinais costumam explicar mais do que olhar apenas o texto final.
 
-## 8. Arquivos mais importantes
+## 8. Exemplo real de pergunta do usuario no LangGraph
+
+Vamos usar este exemplo:
+
+`Quero ver as notas do Lucas`
+
+### O que a pessoa acha que aconteceu
+
+Do ponto de vista do usuario, parece algo simples:
+
+1. ele pede as notas
+2. o sistema reconhece Lucas
+3. a resposta volta com a informacao certa
+
+### O que o LangGraph faz de verdade
+
+Por baixo, o caminho tende a ser mais ou menos este:
+
+1. o runtime recebe a request ja contextualizada
+2. o grafo entende que a pergunta e `protected`
+3. ele decide se isso pode sair por `structured_tool`
+4. como notas sao dado estruturado e sensivel, ele prefere um caminho confiavel
+5. consulta a fonte de verdade via contratos internos
+6. reaproveita o foco recente do aluno, se esse contexto estiver forte
+7. monta um `answer frame`
+8. renderiza a resposta final com texto natural
+
+### Por que isso e diferente de “so chamar uma LLM”
+
+O LangGraph nao deveria responder essa pergunta “inventando” uma explicacao livre.
+
+Ele tenta fazer isto:
+
+- primeiro descobrir o caminho certo
+- depois buscar o fato certo
+- so entao falar com linguagem natural
+
+Isso ajuda muito em dominios sensiveis, porque reduz o risco de uma resposta bonita, mas errada.
+
+### Quando esse exemplo da problema
+
+Os erros mais comuns aqui sao:
+
+- o foco do aluno veio errado
+- o slice foi detectado errado
+- a conversa tinha follow-up ambiguo
+- o renderer final resumiu mal o fato recuperado
+
+Quando isso acontece, o melhor lugar para investigar e:
+
+- `graph_path`
+- `thread_id`
+- `state`
+- e o ponto onde o `structured_tool` foi ou nao foi escolhido
+
+## 9. Arquivos mais importantes
 
 - runtime e composicao: [runtime.py](../../apps/ai-orchestrator/src/ai_orchestrator/runtime.py)
 - grafo principal: [graph.py](../../apps/ai-orchestrator/src/ai_orchestrator/graph.py)

@@ -193,6 +193,48 @@ Leia o [Guia visual do CrewAI](./crewai-runtime-visual-guide.md) se voce quiser 
 - como os `Flows` funcionam por slice
 - por que o `CrewAI` fica tao rapido quando o flow esta bem desenhado
 
+## 7. Exemplo real de pergunta do usuario
+
+Vamos usar uma pergunta protegida simples:
+
+`Qual a documentacao do Lucas?`
+
+### O que o usuario enxerga
+
+Para o usuario, parece so isto:
+
+1. ele manda a pergunta no Telegram ou no portal
+2. o sistema “entende” que ele quer saber algo sobre o aluno Lucas
+3. a resposta volta com a situacao documental
+
+### O que o sistema faz por baixo
+
+Na arquitetura real, o caminho e este:
+
+1. o canal entrega a mensagem para o `api-core`
+2. o `api-core` valida identidade, sessao e contexto da conta
+3. o `ai-orchestrator` recebe a request
+4. ele decide qual stack vai responder
+   Pode ser `LangGraph` ou `CrewAI`, dependendo de override, feature flag ou experimento
+5. o sistema detecta que isso e `protected`
+6. a stack escolhida consulta as fontes de verdade
+   Normalmente via `api-core` e dados estruturados em `Postgres`
+7. a resposta final e montada e devolvida ao usuario
+8. traces e auditoria sao registrados
+
+### O ponto mais importante desse exemplo
+
+Mesmo que a orquestracao mude, a pergunta continua batendo nas mesmas verdades de negocio.
+
+Ou seja:
+
+- a stack muda `como pensar`
+- mas nao deveria mudar `o que e verdade`
+
+Esse exemplo mostra a ideia central do projeto:
+
+`duas stacks, um contrato externo, as mesmas fontes de verdade`.
+
 ## Onde procurar no codigo
 
 - entrada principal: [main.py](../../apps/ai-orchestrator/src/ai_orchestrator/main.py)
