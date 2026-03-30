@@ -217,7 +217,41 @@ Nesses casos, o trace costuma mostrar bem onde a falha ocorreu:
 - `backstop`
 - `timeout fallback`
 
-## 10. Arquivos mais importantes
+## 10. Glossario rapido
+
+`flow`
+
+E a sequencia de passos que o `CrewAI` usa para resolver um tipo de problema. No projeto, cada slice tem seu proprio flow.
+
+`slice`
+
+E o recorte do dominio que aquele flow atende, como `public`, `protected`, `support` ou `workflow`.
+
+`fast path`
+
+E o caminho mais curto e rapido para responder um caso conhecido e bem mapeado.
+
+`backstop`
+
+E uma resposta ou regra de seguranca usada quando o caminho principal nao e confiavel o suficiente.
+
+`agentic path`
+
+E o trecho em que o flow usa composicao mais “inteligente”, com mais decisao ou elaboracao, em vez de seguir so por caminho deterministico.
+
+`timeout fallback`
+
+E o plano de seguranca quando o caminho agentic demora demais ou nao fecha bem.
+
+`estado persistido`
+
+E a memoria do flow salva entre turns. Isso ajuda o `CrewAI` a continuar uma conversa operacional sem se perder.
+
+`adapter`
+
+E a camada no `ai-orchestrator` que conversa com o servico isolado do `CrewAI`, mantendo contratos, tracing e fallback padronizados.
+
+## 11. Arquivos mais importantes
 
 - adapter no orquestrador: [crewai_engine.py](../../apps/ai-orchestrator/src/ai_orchestrator/engines/crewai_engine.py)
 - servico principal do piloto: [main.py](../../apps/ai-orchestrator-crewai/src/ai_orchestrator_crewai/main.py)

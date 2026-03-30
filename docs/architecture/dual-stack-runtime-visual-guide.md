@@ -235,6 +235,53 @@ Esse exemplo mostra a ideia central do projeto:
 
 `duas stacks, um contrato externo, as mesmas fontes de verdade`.
 
+## 8. Glossario rapido
+
+`slice`
+
+E um recorte do problema. No projeto, os principais sao:
+
+- `public`: perguntas abertas e institucionais
+- `protected`: perguntas autenticadas e sensiveis
+- `support`: pedidos de atendimento e acompanhamento
+- `workflow`: operacoes como agendar, remarcar ou cancelar
+
+`feature flag`
+
+E uma chave de configuracao que muda o comportamento do sistema sem mudar o contrato externo. Aqui ela ajuda a trocar a stack principal entre `LangGraph` e `CrewAI`.
+
+`runtime override`
+
+E uma troca temporaria feita com o app rodando. Serve para forcar uma stack sem reiniciar o servico.
+
+`fonte de verdade`
+
+E o lugar que realmente guarda o dado confiavel. Exemplo: `Postgres`, `api-core`, `Qdrant` e `GraphRAG`, dependendo do caso.
+
+`retrieval`
+
+E o processo de buscar informacoes relevantes antes de responder. Nem todo retrieval e igual:
+
+- alguns casos usam dado estruturado
+- outros usam busca documental
+- outros usam visao mais ampla do corpus
+
+`fallback`
+
+E o caminho de seguranca usado quando o caminho ideal nao fecha bem. O objetivo e evitar erro grave ou quebra da conversa.
+
+`HITL`
+
+Significa `human-in-the-loop`. Em portugues: existe uma etapa de revisao humana antes da resposta final em casos mais sensiveis.
+
+`trace`
+
+E o rastro tecnico da request. Ele ajuda a responder perguntas como:
+
+- qual stack respondeu?
+- qual slice foi escolhido?
+- qual fonte de verdade foi usada?
+
 ## Onde procurar no codigo
 
 - entrada principal: [main.py](../../apps/ai-orchestrator/src/ai_orchestrator/main.py)

@@ -204,7 +204,41 @@ Quando isso acontece, o melhor lugar para investigar e:
 - `state`
 - e o ponto onde o `structured_tool` foi ou nao foi escolhido
 
-## 9. Arquivos mais importantes
+## 9. Glossario rapido
+
+`grafo`
+
+E a sequencia de passos e decisoes que o `LangGraph` pode percorrer para responder.
+
+`graph_path`
+
+E o caminho concreto que a request percorreu dentro do grafo. Ele ajuda a explicar por que o sistema respondeu do jeito que respondeu.
+
+`structured_tool`
+
+E um caminho que busca fatos estruturados de forma mais deterministica. Em geral, e preferido quando ha dado confiavel e sensivel.
+
+`clarify`
+
+E quando o sistema pede clarificacao ao usuario porque ainda nao tem contexto suficiente para responder bem.
+
+`deny`
+
+E quando o sistema identifica que nao deve responder aquele pedido naquele contexto.
+
+`handoff`
+
+E quando o sistema abre ou atualiza um atendimento, em vez de apenas responder com texto.
+
+`answer frame`
+
+E uma estrutura intermediaria com os fatos principais da resposta. Isso ajuda a separar `o que dizer` de `como dizer`.
+
+`checkpoint`
+
+E um estado salvo da execucao. Isso ajuda em persistencia, recuperacao e fluxos com revisao humana.
+
+## 10. Arquivos mais importantes
 
 - runtime e composicao: [runtime.py](../../apps/ai-orchestrator/src/ai_orchestrator/runtime.py)
 - grafo principal: [graph.py](../../apps/ai-orchestrator/src/ai_orchestrator/graph.py)
