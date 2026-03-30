@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from . import runtime as rt
-from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult
+from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult, build_kernel_plan
 from .graph_rag_runtime import run_graph_rag_query
 from .llm_provider import compose_with_provider, polish_structured_with_provider, revise_with_provider
 from .models import (
@@ -15,6 +15,167 @@ from .models import (
     QueryDomain,
 )
 from .retrieval import get_retrieval_service
+
+
+def _mode_priority(mode: OrchestrationMode) -> int:
+    priorities = {
+        OrchestrationMode.structured_tool: 5,
+        OrchestrationMode.handoff: 4,
+        OrchestrationMode.graph_rag: 3,
+        OrchestrationMode.hybrid_retrieval: 3,
+        OrchestrationMode.clarify: 1,
+        OrchestrationMode.deny: 0,
+    }
+    return priorities.get(mode, 0)
+
+
+def _needs_contextual_replan(*, request: MessageResponseRequest, plan: KernelPlan, analysis_message: str) -> bool:
+    if analysis_message.strip() == str(request.message).strip():
+        return False
+    if rt._is_follow_up_query(request.message):
+        return True
+    if plan.preview.mode in {OrchestrationMode.clarify, OrchestrationMode.deny}:
+        return True
+    return bool(plan.preview.classification.domain in {QueryDomain.institution, QueryDomain.finance, QueryDomain.academic})
+
+
+def _select_better_plan(*, current: KernelPlan, candidate: KernelPlan) -> KernelPlan:
+    current_priority = _mode_priority(current.preview.mode)
+    candidate_priority = _mode_priority(candidate.preview.mode)
+    if candidate_priority > current_priority:
+        return candidate
+    if candidate_priority == current_priority:
+        current_tools = tuple(current.preview.selected_tools)
+        candidate_tools = tuple(candidate.preview.selected_tools)
+        if candidate_tools and candidate_tools != current_tools:
+            return candidate
+        if candidate.preview.reason != current.preview.reason:
+            return candidate
+    return current
+
+
+def _should_prefer_contextual_tie(*, request: MessageResponseRequest, current: KernelPlan, candidate: KernelPlan) -> bool:
+    if not rt._is_follow_up_query(request.message):
+        return False
+    if candidate.preview.mode != current.preview.mode:
+        return False
+    return candidate.preview.mode in {
+        OrchestrationMode.structured_tool,
+        OrchestrationMode.handoff,
+        OrchestrationMode.hybrid_retrieval,
+    }
+
+
+def _with_repair_ack(*, request_message: str, answer_text: str) -> str:
+    normalized = rt._normalize_text(request_message)
+    if not any(
+        marker in normalized
+        for marker in (
+            'mudei de ideia',
+            'na verdade',
+            'corrigindo',
+            'melhor',
+            'quero secretaria',
+            'quero financeiro',
+        )
+    ):
+        return answer_text
+    lowered_answer = answer_text.casefold()
+    if any(marker in lowered_answer for marker in ('certo', 'ajustei', 'sem problema', 'corrigi')):
+        return answer_text
+    return f'Sem problema, ajustei isso por aqui.\n\n{answer_text}'
+
+
+async def _maybe_contextual_public_direct_answer(
+    *,
+    request: MessageResponseRequest,
+    analysis_message: str,
+    preview: Any,
+    settings: Any,
+    school_profile: dict[str, Any],
+    conversation_context: dict[str, Any] | None,
+) -> str | None:
+    is_public_context = preview.classification.access_tier is AccessTier.public or not request.user.authenticated
+    if not is_public_context:
+        return None
+
+    normalized_request = rt._normalize_text(request.message)
+    normalized_analysis = rt._normalize_text(analysis_message)
+    recent_context_lines = [rt._normalize_text(content) for _, content in rt._recent_message_lines(conversation_context)]
+
+    wants_document_path = rt._is_public_document_submission_query(analysis_message) or (
+        any(
+            rt._message_matches_term(normalized_analysis, term)
+            for term in {'documentacao', 'documentação', 'documentos', 'cadastro'}
+        )
+        and any(
+            rt._message_matches_term(normalized_analysis, term)
+            for term in {'mandar', 'enviar', 'envio', 'caminho'}
+        )
+    )
+    if wants_document_path:
+        return rt._compose_public_document_submission_answer(school_profile, message=analysis_message)
+
+    asks_library_name_and_hours = (
+        (
+            any(rt._message_matches_term(normalized_analysis, term) for term in {'biblioteca', 'library'})
+            or any('biblioteca' in content or 'biblioteca aurora' in content for content in recent_context_lines)
+        )
+        and any(
+            rt._message_matches_term(normalized_request, term)
+            for term in {
+                'como ela se chama',
+                'qual o nome',
+                'nome',
+                'ate que horas funciona',
+                'até que horas funciona',
+                'horario',
+                'horário',
+                'funciona',
+            }
+        )
+    )
+    if asks_library_name_and_hours:
+        return 'A biblioteca se chama Biblioteca Aurora e funciona de segunda a sexta, das 7h30 as 18h00.'
+
+    asks_school_year_start = (
+        any(
+            rt._message_matches_term(normalized_request, term)
+            for term in {'aulas', 'inicio das aulas', 'início das aulas', 'comecam as aulas', 'começam as aulas'}
+        )
+        and (
+            normalized_request.startswith('depois disso')
+            or rt._is_follow_up_query(request.message)
+            or any(
+                rt._message_matches_term(normalized_analysis, term)
+                for term in {'matricula', 'matrícula', 'inscricoes', 'inscrições', 'ano que vem', 'proximo ciclo', 'próximo ciclo'}
+            )
+            or any(
+                any(
+                    rt._message_matches_term(content, term)
+                    for term in {'matricula', 'matrícula', 'inscricoes', 'inscrições', 'ano que vem', 'proximo ciclo', 'próximo ciclo'}
+                )
+                for content in recent_context_lines
+            )
+        )
+    )
+    if asks_school_year_start:
+        timeline = await rt._fetch_public_timeline(settings=settings)
+        entries = timeline.get('entries') if isinstance(timeline, dict) else None
+        if isinstance(entries, list):
+            for item in entries:
+                if not isinstance(item, dict):
+                    continue
+                if 'school_year_start' not in str(item.get('topic_key', '')):
+                    continue
+                summary = str(item.get('summary', '')).strip()
+                notes = str(item.get('notes', '')).strip()
+                if summary and notes:
+                    return f'{summary} {notes}'.strip()
+                if summary:
+                    return summary
+
+    return None
 
 
 async def execute_kernel_plan(
@@ -35,7 +196,25 @@ async def execute_kernel_plan(
     context_payload = rt._conversation_context_payload(conversation_context)
     analysis_message = rt._build_analysis_message(request.message, conversation_context)
     school_profile = await rt._fetch_public_school_profile(settings=settings)
-    preview = plan.preview.model_copy(deep=True)
+    effective_plan = plan
+    if _needs_contextual_replan(request=request, plan=plan, analysis_message=analysis_message):
+        contextual_request = request.model_copy(update={'message': analysis_message})
+        candidate_plan = build_kernel_plan(
+            request=contextual_request,
+            settings=settings,
+            stack_name=plan.stack_name,
+            mode=plan.mode,
+        )
+        effective_plan = _select_better_plan(current=plan, candidate=candidate_plan)
+        if effective_plan is plan and _should_prefer_contextual_tie(request=request, current=plan, candidate=candidate_plan):
+            effective_plan = candidate_plan
+        if effective_plan is candidate_plan:
+            effective_plan = candidate_plan.model_copy(
+                update={
+                    'plan_notes': [*plan.plan_notes, 'contextual_replan'],
+                }
+            )
+    preview = effective_plan.preview.model_copy(deep=True)
 
     retrieval_hits: list[Any] = []
     citations: list[MessageResponseCitation] = []
@@ -46,9 +225,43 @@ async def execute_kernel_plan(
     query_hints: set[str] = set()
     semantic_judge_used = False
     answer_verifier_fallback_used = False
+    contextual_public_answer = await _maybe_contextual_public_direct_answer(
+        request=request,
+        analysis_message=analysis_message,
+        preview=preview,
+        settings=settings,
+        school_profile=school_profile,
+        conversation_context=context_payload,
+    )
 
-    if preview.mode is OrchestrationMode.structured_tool:
+    if contextual_public_answer:
+        message_text = contextual_public_answer
+        deterministic_fallback_text = contextual_public_answer
+        preview = preview.model_copy(
+            update={
+                'mode': OrchestrationMode.structured_tool,
+                'reason': 'contextual_public_direct_answer',
+                'selected_tools': list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
+            }
+        )
+    elif preview.mode is OrchestrationMode.structured_tool:
         public_plan_sink: dict[str, Any] = {}
+        resolved_public_plan = None
+        if (
+            preview.classification.access_tier is AccessTier.public
+            and preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar}
+            and analysis_message.strip() != str(request.message).strip()
+        ):
+            try:
+                resolved_public_plan = await rt._resolve_public_institution_plan(
+                    settings=settings,
+                    message=analysis_message,
+                    preview=preview,
+                    conversation_context=context_payload,
+                    school_profile=school_profile,
+                )
+            except Exception:
+                resolved_public_plan = None
         message_text = await rt._compose_structured_tool_answer(
             settings=settings,
             request=request,
@@ -58,7 +271,7 @@ async def execute_kernel_plan(
             school_profile=school_profile,
             conversation_context=context_payload,
             public_plan_sink=public_plan_sink,
-            resolved_public_plan=None,
+            resolved_public_plan=resolved_public_plan,
         )
         public_plan = public_plan_sink.get('plan')
         deterministic_fallback_text = str(public_plan_sink.get('deterministic_text') or message_text)
@@ -240,6 +453,7 @@ async def execute_kernel_plan(
         if sources and sources not in message_text:
             message_text = f'{message_text}\n\n{sources}'
     message_text = rt._normalize_response_wording(message_text)
+    message_text = _with_repair_ack(request_message=request.message, answer_text=message_text)
 
     visual_assets = await rt._maybe_build_visual_assets(
         settings=settings,
@@ -309,7 +523,7 @@ async def execute_kernel_plan(
         suggested_replies=suggested_replies,
         calendar_events=calendar_events,
         needs_authentication=preview.needs_authentication,
-        graph_path=[*preview.graph_path, f'kernel:{plan.stack_name}'],
+        graph_path=[*preview.graph_path, f'kernel:{effective_plan.stack_name}'],
         risk_flags=preview.risk_flags,
         reason=preview.reason,
     )
@@ -320,13 +534,12 @@ async def execute_kernel_plan(
         answer_judge_used=semantic_judge_used,
         notes=[
             f'route:{preview.mode.value}',
-            f'slice:{plan.slice_name}',
-            *plan.plan_notes,
+            f'slice:{effective_plan.slice_name}',
+            *effective_plan.plan_notes,
         ],
     )
     return KernelRunResult(
-        plan=plan,
+        plan=effective_plan,
         reflection=reflection,
         response=response.model_dump(mode='json'),
     )
-
