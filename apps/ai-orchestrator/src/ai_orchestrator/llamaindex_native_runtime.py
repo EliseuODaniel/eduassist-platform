@@ -5,21 +5,26 @@ from functools import lru_cache
 from typing import Any
 
 from fastembed import TextEmbedding
+from llama_index.core.agent.workflow import FunctionAgent
+from llama_index.core.base.base_retriever import BaseRetriever
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.base.response.schema import Response
-from llama_index.core.query_engine import CustomQueryEngine, RouterQueryEngine, SubQuestionQueryEngine
+from llama_index.core.query_engine import CitationQueryEngine, CustomQueryEngine, RouterQueryEngine, SubQuestionQueryEngine
 from llama_index.core.response_synthesizers import get_response_synthesizer
 from llama_index.core.response_synthesizers.type import ResponseMode
-from llama_index.core.schema import NodeWithScore, TextNode
+from llama_index.core.schema import NodeWithScore, QueryBundle, TextNode
 from llama_index.core.selectors import EmbeddingSingleSelector, PydanticSingleSelector
-from llama_index.core.tools import QueryEngineTool
+from llama_index.core.tools import FunctionTool, QueryEngineTool
 from pydantic import PrivateAttr
 
 from . import runtime as rt
 from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult
+from .evidence_pack import build_retrieval_evidence_pack, build_structured_tool_evidence_pack
 from .entity_resolution import resolve_entity_hints
+from .llm_provider import _google_model_candidates
 from .models import (
     AccessTier,
+    MessageEvidencePack,
     MessageResponse,
     MessageResponseCitation,
     MessageResponseRequest,
@@ -37,6 +42,14 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     LlamaIndexOpenAI = None  # type: ignore[assignment]
     LLAMAINDEX_OPENAI_AVAILABLE = False
+
+try:
+    from llama_index.llms.google_genai import GoogleGenAI as LlamaIndexGoogleGenAI
+
+    LLAMAINDEX_GOOGLE_GENAI_AVAILABLE = True
+except Exception:  # pragma: no cover - optional dependency
+    LlamaIndexGoogleGenAI = None  # type: ignore[assignment]
+    LLAMAINDEX_GOOGLE_GENAI_AVAILABLE = False
 
 
 @dataclass(frozen=True)
@@ -287,6 +300,70 @@ class PublicRetrievalQueryEngine(CustomQueryEngine):
         )
 
 
+class PublicHybridCitationRetriever(BaseRetriever):
+    _settings: Any = PrivateAttr()
+    _original_message: str = PrivateAttr()
+    _latest_citations: tuple[MessageResponseCitation, ...] = PrivateAttr(default_factory=tuple)
+    _latest_query_plan: Any | None = PrivateAttr(default=None)
+
+    def __init__(self, *, settings: Any, original_message: str, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._settings = settings
+        self._original_message = original_message
+
+    def _search(self, query_str: str) -> list[NodeWithScore]:
+        retrieval_service = get_retrieval_service(
+            database_url=self._settings.database_url,
+            qdrant_url=self._settings.qdrant_url,
+            collection_name=self._settings.qdrant_documents_collection,
+            embedding_model=self._settings.document_embedding_model,
+            enable_query_variants=self._settings.retrieval_enable_query_variants,
+            enable_late_interaction_rerank=self._settings.retrieval_enable_late_interaction_rerank,
+            late_interaction_model=self._settings.retrieval_late_interaction_model,
+            candidate_pool_size=self._settings.retrieval_candidate_pool_size,
+        )
+        search = retrieval_service.hybrid_search(
+            query=query_str,
+            top_k=4,
+            visibility='public',
+            category=None,
+        )
+        query_hints = {
+            *rt._extract_public_entity_hints(self._original_message),
+            *rt._extract_public_entity_hints(query_str),
+        }
+        retrieval_hits = list(search.hits)
+        if rt._retrieval_hits_cover_query_hints(retrieval_hits, query_hints):
+            retrieval_hits = rt._filter_retrieval_hits_by_query_hints(retrieval_hits, query_hints)
+        public_answerability = rt._assess_public_answerability(query_str, retrieval_hits, query_hints)
+        if not public_answerability.enough_support:
+            retrieval_hits = []
+        citations = rt._collect_citations(retrieval_hits)
+        self._latest_citations = tuple(citations)
+        self._latest_query_plan = search.query_plan
+        return [
+            NodeWithScore(
+                node=TextNode(
+                    text=hit.text_excerpt,
+                    extra_info={
+                        'document_title': hit.document_title,
+                        'version_label': hit.citation.version_label,
+                        'storage_path': hit.citation.storage_path,
+                        'chunk_id': hit.citation.chunk_id,
+                    },
+                ),
+                score=hit.rerank_score or hit.fused_score,
+            )
+            for hit in retrieval_hits[:4]
+        ]
+
+    def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
+        return self._search(query_bundle.query_str)
+
+    async def _aretrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
+        return self._search(query_bundle.query_str)
+
+
 def _should_use_llamaindex_native_public_router(plan: KernelPlan) -> bool:
     preview = plan.preview
     if preview.classification.access_tier is not AccessTier.public:
@@ -345,6 +422,20 @@ def _extract_response_citations(response: Response) -> tuple[MessageResponseCita
         except Exception:
             continue
     return tuple(citations)
+
+
+def _llamaindex_llm_supports_function_calls(llm: Any | None) -> bool:
+    metadata = getattr(llm, 'metadata', None)
+    return bool(getattr(metadata, 'is_function_calling_model', False))
+
+
+def _should_use_llamaindex_function_agent(*, request: MessageResponseRequest, public_plan: Any) -> bool:
+    normalized = rt._normalize_text(request.message)
+    if _should_use_llamaindex_native_subquestions(request=request, public_plan=public_plan):
+        return True
+    if public_plan.conversation_act in {'comparative', 'curriculum', 'highlight'} and len(normalized.split()) >= 8:
+        return True
+    return normalized.count('?') >= 2
 
 
 def _route_public_query_tool(
@@ -419,18 +510,34 @@ def _route_public_query_tool(
 
 
 def _build_llamaindex_llm(*, settings: Any) -> Any | None:
-    if not LLAMAINDEX_OPENAI_AVAILABLE:
+    provider = str(getattr(settings, 'llm_provider', 'openai'))
+    if provider == 'openai':
+        if not LLAMAINDEX_OPENAI_AVAILABLE:
+            return None
+        if not getattr(settings, 'openai_api_key', None):
+            return None
+        return LlamaIndexOpenAI(
+            model=str(getattr(settings, 'openai_model', 'gpt-5.4')),
+            api_key=str(settings.openai_api_key),
+            api_base=str(getattr(settings, 'openai_base_url', 'https://api.openai.com/v1')),
+            temperature=0,
+        )
+    if provider in {'google', 'gemini'}:
+        if not LLAMAINDEX_GOOGLE_GENAI_AVAILABLE:
+            return None
+        if not getattr(settings, 'google_api_key', None):
+            return None
+        for candidate in _google_model_candidates(str(getattr(settings, 'google_model', 'gemini-2.5-flash'))):
+            try:
+                return LlamaIndexGoogleGenAI(
+                    model=str(candidate),
+                    api_key=str(settings.google_api_key),
+                    temperature=0,
+                )
+            except Exception:
+                continue
         return None
-    if getattr(settings, 'llm_provider', 'openai') != 'openai':
-        return None
-    if not getattr(settings, 'openai_api_key', None):
-        return None
-    return LlamaIndexOpenAI(
-        model=str(getattr(settings, 'openai_model', 'gpt-5.4')),
-        api_key=str(settings.openai_api_key),
-        api_base=str(getattr(settings, 'openai_base_url', 'https://api.openai.com/v1')),
-        temperature=0,
-    )
+    return None
 
 
 def _should_use_llamaindex_native_subquestions(*, request: MessageResponseRequest, public_plan: Any) -> bool:
@@ -504,6 +611,119 @@ async def _maybe_execute_llamaindex_router_query_engine(
     return response, selected_names
 
 
+def _build_public_retrieval_query_engine(
+    *,
+    settings: Any,
+    preview: Any,
+    original_message: str,
+    llm: Any | None,
+    prefer_citation_engine: bool,
+) -> tuple[Any, PublicHybridCitationRetriever | None]:
+    if llm is None or not prefer_citation_engine:
+        return (
+            PublicRetrievalQueryEngine(
+                settings=settings,
+                preview=preview,
+                original_message=original_message,
+            ),
+            None,
+        )
+    retriever = PublicHybridCitationRetriever(
+        settings=settings,
+        original_message=original_message,
+    )
+    response_synthesizer = get_response_synthesizer(
+        llm=llm,
+        response_mode=ResponseMode.COMPACT,
+        use_async=True,
+        structured_answer_filtering=True,
+    )
+    return (
+        CitationQueryEngine(
+            retriever=retriever,
+            llm=llm,
+            response_synthesizer=response_synthesizer,
+            citation_chunk_size=384,
+            citation_chunk_overlap=32,
+        ),
+        retriever,
+    )
+
+
+async def _maybe_execute_llamaindex_function_agent(
+    *,
+    analysis_message: str,
+    original_message: str,
+    llm: Any | None,
+    tools: dict[str, QueryEngineTool],
+) -> tuple[str, tuple[str, ...], tuple[MessageResponseCitation, ...], str] | None:
+    if llm is None or not _llamaindex_llm_supports_function_calls(llm):
+        return None
+
+    used_tool_names: list[str] = []
+    captured_citations: list[MessageResponseCitation] = []
+    captured_reason = 'llamaindex_function_agent'
+
+    async def _call_tool(tool_name: str, query: str) -> str:
+        nonlocal captured_reason
+        tool = tools[tool_name]
+        response = await tool.query_engine.aquery(query)
+        used_tool_names.append(tool_name)
+        captured_reason = str((response.metadata or {}).get('reason', captured_reason))
+        extracted = list(_extract_response_citations(response))
+        for citation in extracted:
+            if citation not in captured_citations:
+                captured_citations.append(citation)
+        answer = str(getattr(response, 'response', '') or str(response)).strip()
+        if extracted:
+            sources = rt._render_source_lines(extracted)
+            if sources and sources not in answer:
+                answer = f'{answer}\n\n{sources}'
+        return answer
+
+    def _build_async_tool(tool_name: str):
+        async def _tool(query: str) -> str:
+            return await _call_tool(tool_name, query)
+
+        return _tool
+
+    function_tools = [
+        FunctionTool.from_defaults(
+            async_fn=_build_async_tool(tool_name),
+            name=tool_name,
+            description=tool.metadata.description,
+        )
+        for tool_name, tool in tools.items()
+    ]
+    agent = FunctionAgent(
+        name='public_assistant',
+        description='Resolve perguntas publicas da escola usando ferramentas grounding-first.',
+        system_prompt=(
+            'Voce responde em portugues do Brasil. Use somente as ferramentas disponiveis. '
+            'Prefira a menor quantidade de ferramentas possivel. Nao invente fatos. '
+            'Se usar evidencias documentais, preserve os sinais de citacao da propria ferramenta.'
+        ),
+        tools=function_tools,
+        llm=llm,
+        allow_parallel_tool_calls=False,
+        verbose=False,
+    )
+    try:
+        handler = agent.run(user_msg=analysis_message, max_iterations=5)
+        result = await handler
+    except Exception:
+        return None
+    answer_text = str(result).strip()
+    if not answer_text:
+        return None
+    if captured_citations:
+        sources = rt._render_source_lines(captured_citations)
+        if sources and sources not in answer_text:
+            answer_text = f'{answer_text}\n\n{sources}'
+    selected_tool_names = tuple(dict.fromkeys(used_tool_names)) or ('llamaindex_function_agent',)
+    return answer_text, selected_tool_names, tuple(captured_citations), captured_reason
+
+
 def _extract_router_selected_tool_names(*, response: Response, tool_names: tuple[str, ...]) -> tuple[str, ...]:
     metadata = response.metadata or {}
     selector_result = metadata.get('selector_result')
@@ -567,6 +787,14 @@ async def maybe_execute_llamaindex_native_plan(
     preview.selected_tools = list(public_plan.required_tools)
 
     descriptions = _tool_descriptions(public_plan)
+    llamaindex_llm = _build_llamaindex_llm(settings=settings)
+    retrieval_query_engine, citation_retriever = _build_public_retrieval_query_engine(
+        settings=settings,
+        preview=preview,
+        original_message=request.message,
+        llm=llamaindex_llm,
+        prefer_citation_engine=effective_path_profile.prefer_native_llamaindex_citation_engine,
+    )
     tools = {
         'public_profile': QueryEngineTool.from_defaults(
             query_engine=PublicProfileQueryEngine(
@@ -597,20 +825,36 @@ async def maybe_execute_llamaindex_native_plan(
             description=descriptions['pricing_projection'],
         ),
         'public_retrieval': QueryEngineTool.from_defaults(
-            query_engine=PublicRetrievalQueryEngine(
-                settings=settings,
-                preview=preview,
-                original_message=request.message,
-            ),
+            query_engine=retrieval_query_engine,
             name='public_retrieval',
             description=descriptions['public_retrieval'],
         ),
     }
-    llamaindex_llm = _build_llamaindex_llm(settings=settings)
     selected_tool_names: tuple[str, ...] = ('unknown',)
     subquestion_result: tuple[Response, str] | None = None
     router_result: tuple[Response, tuple[str, ...]] | None = None
-    if effective_path_profile.prefer_native_llamaindex_subquestions and _should_use_llamaindex_native_subquestions(
+    tool_response: Response | None = None
+    answer_text = ''
+    citations: list[MessageResponseCitation] = []
+    retrieval_backend = RetrievalBackend.none
+    execution_reason = 'llamaindex_native_public_router'
+
+    function_agent_result = None
+    if (
+        effective_path_profile.prefer_native_llamaindex_function_agent
+        and _should_use_llamaindex_function_agent(request=request, public_plan=public_plan)
+    ):
+        function_agent_result = await _maybe_execute_llamaindex_function_agent(
+            analysis_message=analysis_message,
+            original_message=request.message,
+            llm=llamaindex_llm,
+            tools=tools,
+        )
+    if function_agent_result is not None:
+        answer_text, selected_tool_names, function_agent_citations, execution_reason = function_agent_result
+        citations = list(function_agent_citations)
+        retrieval_backend = RetrievalBackend.qdrant_hybrid if citations else RetrievalBackend.none
+    elif effective_path_profile.prefer_native_llamaindex_subquestions and _should_use_llamaindex_native_subquestions(
         request=request,
         public_plan=public_plan,
     ):
@@ -622,6 +866,7 @@ async def maybe_execute_llamaindex_native_plan(
     if subquestion_result is not None:
         tool_response, selected_tool_name = subquestion_result
         selected_tool_names = (selected_tool_name,)
+        execution_reason = 'llamaindex_subquestion_query_engine'
     elif effective_path_profile.prefer_native_llamaindex_selector and llamaindex_llm is not None:
         router_result = await _maybe_execute_llamaindex_router_query_engine(
             analysis_message=analysis_message,
@@ -630,6 +875,7 @@ async def maybe_execute_llamaindex_native_plan(
         )
         if router_result is not None:
             tool_response, selected_tool_names = router_result
+            execution_reason = 'llamaindex_router_query_engine'
     else:
         selected_tool = _route_public_query_tool(
             request=request,
@@ -641,11 +887,22 @@ async def maybe_execute_llamaindex_native_plan(
         selected_tool_name = selected_tool.metadata.name
         selected_tool_names = (selected_tool_name,)
         tool_response = await selected_tool.query_engine.aquery(analysis_message)
-    answer_text = str(getattr(tool_response, 'response', '') or str(tool_response)).strip()
+    if tool_response is not None:
+        answer_text = str(getattr(tool_response, 'response', '') or str(tool_response)).strip()
+        citations = list(_extract_response_citations(tool_response))
+        if not citations and citation_retriever is not None:
+            citations = list(citation_retriever._latest_citations)
+        retrieval_backend = RetrievalBackend(
+            str((tool_response.metadata or {}).get('retrieval_backend', RetrievalBackend.none.value))
+        )
+        execution_reason = str((tool_response.metadata or {}).get('reason', execution_reason))
+        if citation_retriever is not None and 'public_retrieval' in selected_tool_names:
+            retrieval_backend = RetrievalBackend.qdrant_hybrid
+            if execution_reason in {'llamaindex_native_public_router', 'llamaindex_router_query_engine'}:
+                execution_reason = 'llamaindex_public_citation_query_engine'
     if not answer_text:
         return None
 
-    citations = list(_extract_response_citations(tool_response))
     message_text = answer_text
     verification_slot_memory = rt._build_conversation_slot_memory(
         actor=actor,
@@ -672,6 +929,20 @@ async def maybe_execute_llamaindex_native_plan(
         if sources and sources not in message_text:
             message_text = f'{message_text}\n\n{sources}'
     message_text = rt._normalize_response_wording(message_text)
+    evidence_pack: MessageEvidencePack
+    if citations:
+        evidence_pack = build_retrieval_evidence_pack(
+            citations=citations,
+            selected_tools=selected_tool_names,
+            retrieval_backend=retrieval_backend,
+            summary='Resposta grounded em routing nativo do LlamaIndex com evidencias citadas.',
+        )
+    else:
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=selected_tool_names,
+            slice_name=plan.slice_name,
+            summary='Resposta grounded em roteamento nativo do LlamaIndex sobre ferramentas publicas.',
+        )
     suggested_replies = rt._build_suggested_replies(
         request=request,
         preview=preview,
@@ -711,6 +982,10 @@ async def maybe_execute_llamaindex_native_plan(
         answer_verifier_judge_used=semantic_judge_used,
         langgraph_trace_metadata={
             'llamaindex_selected_tool': ','.join(selected_tool_names),
+            'llamaindex_execution_reason': execution_reason,
+            'llamaindex_citation_engine_used': bool(citation_retriever),
+            'llamaindex_function_agent_used': execution_reason == 'llamaindex_function_agent',
+            'llamaindex_evidence_support_count': evidence_pack.support_count,
         },
     )
 
@@ -718,14 +993,11 @@ async def maybe_execute_llamaindex_native_plan(
         dict.fromkeys(
             [
                 *preview.selected_tools,
-                *list((tool_response.metadata or {}).get('selected_tools', [])),
+                *list(((tool_response.metadata or {}) if tool_response is not None else {}).get('selected_tools', [])),
                 'llamaindex_selector_router',
                 *selected_tool_names,
             ]
         )
-    )
-    retrieval_backend = RetrievalBackend(
-        str((tool_response.metadata or {}).get('retrieval_backend', RetrievalBackend.none.value))
     )
     response = MessageResponse(
         message_text=message_text,
@@ -737,16 +1009,17 @@ async def maybe_execute_llamaindex_native_plan(
         visual_assets=[],
         suggested_replies=suggested_replies,
         calendar_events=[],
+        evidence_pack=evidence_pack,
         needs_authentication=preview.needs_authentication,
         graph_path=[
             *preview.graph_path,
             'llamaindex:workflow',
-            'llamaindex:selector_router',
+            f'llamaindex:{execution_reason}',
             *[f'llamaindex:tool:{tool_name}' for tool_name in selected_tool_names],
             f'kernel:{plan.stack_name}',
         ],
         risk_flags=preview.risk_flags,
-        reason='llamaindex_native_public_router',
+        reason=execution_reason,
     )
     reflection = KernelReflection(
         grounded=verification.valid,
@@ -757,6 +1030,7 @@ async def maybe_execute_llamaindex_native_plan(
             f'route:{preview.mode.value}',
             f'slice:{plan.slice_name}',
             f'llamaindex_tool:{",".join(selected_tool_names)}',
+            f'evidence:{evidence_pack.strategy}',
             *plan.plan_notes,
         ],
     )

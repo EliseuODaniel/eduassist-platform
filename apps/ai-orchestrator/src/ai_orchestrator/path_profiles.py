@@ -12,6 +12,8 @@ class PathExecutionProfile:
     use_contextual_replan: bool = True
     prefer_native_llamaindex_selector: bool = False
     prefer_native_llamaindex_subquestions: bool = False
+    prefer_native_llamaindex_citation_engine: bool = False
+    prefer_native_llamaindex_function_agent: bool = False
     notes: tuple[str, ...] = ()
 
 
@@ -34,7 +36,15 @@ _PROFILES: dict[str, PathExecutionProfile] = {
         prefer_fast_public_path=True,
         prefer_native_llamaindex_selector=True,
         prefer_native_llamaindex_subquestions=True,
-        notes=('path_family:llamaindex', 'native_router:enabled', 'native_subquestions:enabled'),
+        prefer_native_llamaindex_citation_engine=True,
+        prefer_native_llamaindex_function_agent=True,
+        notes=(
+            'path_family:llamaindex',
+            'native_router:enabled',
+            'native_subquestions:enabled',
+            'native_citation_engine:enabled',
+            'native_function_agent:enabled',
+        ),
     ),
     'shadow': PathExecutionProfile(
         name='shadow',

@@ -193,6 +193,21 @@ class MessageResponseCitation(BaseModel):
     excerpt: str
 
 
+class MessageEvidenceSupport(BaseModel):
+    kind: str
+    label: str
+    detail: str | None = None
+    excerpt: str | None = None
+
+
+class MessageEvidencePack(BaseModel):
+    strategy: str
+    summary: str
+    source_count: int = 0
+    support_count: int = 0
+    supports: list[MessageEvidenceSupport] = Field(default_factory=list)
+
+
 class MessageResponseVisualAsset(BaseModel):
     asset_type: str = 'image'
     title: str
@@ -225,6 +240,7 @@ class MessageResponse(BaseModel):
     visual_assets: list[MessageResponseVisualAsset] = Field(default_factory=list)
     suggested_replies: list[MessageResponseSuggestedReply] = Field(default_factory=list)
     calendar_events: list[CalendarEventCard] = Field(default_factory=list)
+    evidence_pack: MessageEvidencePack | None = None
     needs_authentication: bool = False
     graph_path: list[str] = Field(default_factory=list)
     risk_flags: list[str] = Field(default_factory=list)

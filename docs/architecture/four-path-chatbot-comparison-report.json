@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-30T20:27:51.481551+00:00",
-  "run_prefix": "debug:four-path:20260330T202540Z",
+  "generated_at": "2026-03-30T20:45:31.192423+00:00",
+  "run_prefix": "debug:four-path:20260330T204321Z",
   "summary": {
     "by_stack": {
       "langgraph": {
@@ -8,28 +8,28 @@
         "ok": 32,
         "keyword_pass": 31,
         "quality_avg": 98.8,
-        "avg_latency_ms": 200.2
+        "avg_latency_ms": 189.1
       },
       "crewai": {
         "count": 32,
         "ok": 32,
         "keyword_pass": 18,
-        "quality_avg": 87.7,
-        "avg_latency_ms": 3599.8
+        "quality_avg": 87.3,
+        "avg_latency_ms": 3599.6
       },
       "python_functions": {
         "count": 32,
         "ok": 32,
         "keyword_pass": 32,
         "quality_avg": 100.0,
-        "avg_latency_ms": 135.1
+        "avg_latency_ms": 135.4
       },
       "llamaindex": {
         "count": 32,
         "ok": 32,
         "keyword_pass": 32,
         "quality_avg": 100.0,
-        "avg_latency_ms": 146.2
+        "avg_latency_ms": 138.1
       }
     },
     "by_slice": {
@@ -39,25 +39,25 @@
           "ok": 10,
           "keyword_pass": 10,
           "quality_avg": 100.0,
-          "avg_latency_ms": 147.3
+          "avg_latency_ms": 142.1
         },
         "crewai": {
           "ok": 10,
           "keyword_pass": 6,
-          "quality_avg": 83.5,
-          "avg_latency_ms": 3794.2
+          "quality_avg": 82.3,
+          "avg_latency_ms": 3822.9
         },
         "python_functions": {
           "ok": 10,
           "keyword_pass": 10,
           "quality_avg": 100.0,
-          "avg_latency_ms": 148.0
+          "avg_latency_ms": 153.0
         },
         "llamaindex": {
           "ok": 10,
           "keyword_pass": 10,
           "quality_avg": 100.0,
-          "avg_latency_ms": 154.6
+          "avg_latency_ms": 152.4
         }
       },
       "public": {
@@ -66,25 +66,25 @@
           "ok": 10,
           "keyword_pass": 9,
           "quality_avg": 98.0,
-          "avg_latency_ms": 320.3
+          "avg_latency_ms": 303.6
         },
         "crewai": {
           "ok": 10,
           "keyword_pass": 5,
           "quality_avg": 89.0,
-          "avg_latency_ms": 1640.6
+          "avg_latency_ms": 1659.6
         },
         "python_functions": {
           "ok": 10,
           "keyword_pass": 10,
           "quality_avg": 100.0,
-          "avg_latency_ms": 116.5
+          "avg_latency_ms": 118.3
         },
         "llamaindex": {
           "ok": 10,
           "keyword_pass": 10,
           "quality_avg": 100.0,
-          "avg_latency_ms": 130.8
+          "avg_latency_ms": 125.5
         }
       },
       "support": {
@@ -93,25 +93,25 @@
           "ok": 5,
           "keyword_pass": 5,
           "quality_avg": 96.4,
-          "avg_latency_ms": 135.5
+          "avg_latency_ms": 130.1
         },
         "crewai": {
           "ok": 5,
           "keyword_pass": 3,
           "quality_avg": 90.0,
-          "avg_latency_ms": 4845.4
+          "avg_latency_ms": 4831.1
         },
         "python_functions": {
           "ok": 5,
           "keyword_pass": 5,
           "quality_avg": 100.0,
-          "avg_latency_ms": 131.4
+          "avg_latency_ms": 123.5
         },
         "llamaindex": {
           "ok": 5,
           "keyword_pass": 5,
           "quality_avg": 100.0,
-          "avg_latency_ms": 151.8
+          "avg_latency_ms": 131.6
         }
       },
       "workflow": {
@@ -120,25 +120,25 @@
           "ok": 7,
           "keyword_pass": 7,
           "quality_avg": 100.0,
-          "avg_latency_ms": 150.2
+          "avg_latency_ms": 135.1
         },
         "crewai": {
           "ok": 7,
           "keyword_pass": 4,
           "quality_avg": 90.0,
-          "avg_latency_ms": 5231.2
+          "avg_latency_ms": 5172.4
         },
         "python_functions": {
           "ok": 7,
           "keyword_pass": 7,
           "quality_avg": 100.0,
-          "avg_latency_ms": 146.0
+          "avg_latency_ms": 143.3
         },
         "llamaindex": {
           "ok": 7,
           "keyword_pass": 7,
           "quality_avg": 100.0,
-          "avg_latency_ms": 152.4
+          "avg_latency_ms": 140.1
         }
       }
     },
@@ -150,7 +150,8 @@
       "crewai": {
         "missing_expected_keyword": 14,
         "repetitive_reply": 4,
-        "followup_context_drop": 3
+        "followup_context_drop": 3,
+        "unnecessary_clarification": 1
       },
       "python_functions": {},
       "llamaindex": {}
@@ -164,10 +165,10 @@
       "thread_id": "rand_public_value_compare",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 252.7,
+        "latency_ms": 181.7,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -190,7 +191,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 168.6,
+        "latency_ms": 162.6,
         "mode": "deny",
         "reason": "crewai_protected_auth_required",
         "graph_path": [
@@ -211,16 +212,16 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 126.2,
+        "latency_ms": 122.2,
         "mode": "structured_tool",
-        "reason": "python_functions_native_public_structured",
+        "reason": "python_functions_native_structured:institution",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
-          "python_functions:native_public",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
@@ -235,9 +236,9 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 127.3,
+        "latency_ms": 120.6,
         "mode": "structured_tool",
-        "reason": "llamaindex_native_public_router",
+        "reason": "llamaindex_public_profile",
         "graph_path": [
           "classify_request",
           "security_gate",
@@ -245,7 +246,7 @@
           "select_slice",
           "structured_tool_call",
           "llamaindex:workflow",
-          "llamaindex:selector_router",
+          "llamaindex:llamaindex_public_profile",
           "llamaindex:tool:public_profile",
           "kernel:llamaindex"
         ],
@@ -267,10 +268,10 @@
       "thread_id": "rand_public_value_compare",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 119.0,
+        "latency_ms": 123.0,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -293,7 +294,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11982.6,
+        "latency_ms": 11876.2,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -319,7 +320,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 129.3,
+        "latency_ms": 127.9,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -342,7 +343,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 133.4,
+        "latency_ms": 151.3,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -371,10 +372,10 @@
       "thread_id": "rand_public_value_compare",
       "turn_index": 3,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 138.4,
+        "latency_ms": 132.7,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -397,7 +398,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 745.1,
+        "latency_ms": 867.5,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -416,16 +417,16 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 130.9,
+        "latency_ms": 130.6,
         "mode": "structured_tool",
-        "reason": "python_functions_native_public_structured",
+        "reason": "python_functions_native_structured:institution",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
-          "python_functions:native_public",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "No Ensino Medio, Colegio Horizonte segue a BNCC e um curriculo proprio de aprofundamento academico. Os componentes que aparecem hoje na base publica incluem Lingua Portuguesa e producao textual, Matematica, Biologia, Fisica, Quimica, Historia, Geografia, Lingua Inglesa, alem de projeto de vida, monitorias e trilhas eletivas.",
@@ -440,9 +441,9 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 184.5,
+        "latency_ms": 137.2,
         "mode": "structured_tool",
-        "reason": "llamaindex_native_public_router",
+        "reason": "llamaindex_public_profile",
         "graph_path": [
           "classify_request",
           "security_gate",
@@ -450,7 +451,7 @@
           "select_slice",
           "structured_tool_call",
           "llamaindex:workflow",
-          "llamaindex:selector_router",
+          "llamaindex:llamaindex_public_profile",
           "llamaindex:tool:public_profile",
           "kernel:llamaindex"
         ],
@@ -472,10 +473,10 @@
       "thread_id": "rand_public_channels_docs",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 116.8,
+        "latency_ms": 117.8,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -498,7 +499,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 147.5,
+        "latency_ms": 150.3,
         "mode": "deny",
         "reason": "crewai_protected_auth_required",
         "graph_path": [
@@ -528,7 +529,7 @@
           "route_request",
           "select_slice",
           "structured_tool_call",
-          "python_functions:native_public",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "Hoje a escola nao utiliza fax para envio de documentos. Para isso, use portal institucional, email da secretaria, secretaria presencial.",
@@ -543,9 +544,9 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 117.3,
+        "latency_ms": 114.8,
         "mode": "structured_tool",
-        "reason": "llamaindex_native_public_router",
+        "reason": "llamaindex_public_profile",
         "graph_path": [
           "classify_request",
           "security_gate",
@@ -553,7 +554,7 @@
           "select_slice",
           "structured_tool_call",
           "llamaindex:workflow",
-          "llamaindex:selector_router",
+          "llamaindex:llamaindex_public_profile",
           "llamaindex:tool:public_profile",
           "kernel:llamaindex"
         ],
@@ -575,10 +576,10 @@
       "thread_id": "rand_public_channels_docs",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 1879.6,
+        "latency_ms": 1816.3,
         "mode": "hybrid_retrieval",
         "reason": "retrieval hibrido e o caminho padrao para faq e documentos",
         "graph_path": [
@@ -601,7 +602,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 838.4,
+        "latency_ms": 833.3,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -620,7 +621,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 114.5,
+        "latency_ms": 119.7,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -643,7 +644,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 112.7,
+        "latency_ms": 111.0,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -672,10 +673,10 @@
       "thread_id": "rand_public_channels_docs",
       "turn_index": 3,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 127.9,
+        "latency_ms": 111.0,
         "mode": "clarify",
         "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
         "graph_path": [
@@ -697,7 +698,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 160.9,
+        "latency_ms": 156.9,
         "mode": "deny",
         "reason": "crewai_protected_auth_required",
         "graph_path": [
@@ -718,7 +719,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 109.0,
+        "latency_ms": 128.0,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -741,7 +742,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 115.1,
+        "latency_ms": 117.4,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -770,10 +771,10 @@
       "thread_id": "rand_public_library_realism",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 127.6,
+        "latency_ms": 129.8,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -796,7 +797,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 810.4,
+        "latency_ms": 843.9,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -815,16 +816,16 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 127.0,
+        "latency_ms": 123.1,
         "mode": "structured_tool",
-        "reason": "python_functions_native_public_structured",
+        "reason": "python_functions_native_structured:institution",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
-          "python_functions:native_public",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "Sim. O Colegio Horizonte tem a Biblioteca Aurora. Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.",
@@ -839,9 +840,9 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 122.0,
+        "latency_ms": 121.3,
         "mode": "structured_tool",
-        "reason": "llamaindex_native_public_router",
+        "reason": "llamaindex_public_profile",
         "graph_path": [
           "classify_request",
           "security_gate",
@@ -849,7 +850,7 @@
           "select_slice",
           "structured_tool_call",
           "llamaindex:workflow",
-          "llamaindex:selector_router",
+          "llamaindex:llamaindex_public_profile",
           "llamaindex:tool:public_profile",
           "kernel:llamaindex"
         ],
@@ -871,10 +872,10 @@
       "thread_id": "rand_public_library_realism",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 134.8,
+        "latency_ms": 132.3,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -897,7 +898,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 718.7,
+        "latency_ms": 770.3,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -918,7 +919,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 109.6,
+        "latency_ms": 103.9,
         "mode": "structured_tool",
         "reason": "python_functions_native_contextual_public_answer",
         "graph_path": [
@@ -927,7 +928,7 @@
           "route_request",
           "select_slice",
           "structured_tool_call",
-          "python_functions:native_public",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "A biblioteca se chama Biblioteca Aurora e funciona de segunda a sexta, das 7h30 as 18h00.",
@@ -942,9 +943,9 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 143.4,
+        "latency_ms": 137.6,
         "mode": "structured_tool",
-        "reason": "llamaindex_native_public_router",
+        "reason": "llamaindex_public_profile",
         "graph_path": [
           "classify_request",
           "security_gate",
@@ -952,7 +953,7 @@
           "select_slice",
           "structured_tool_call",
           "llamaindex:workflow",
-          "llamaindex:selector_router",
+          "llamaindex:llamaindex_public_profile",
           "llamaindex:tool:public_profile",
           "kernel:llamaindex"
         ],
@@ -974,10 +975,10 @@
       "thread_id": "rand_public_timeline_visit",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 141.8,
+        "latency_ms": 148.0,
         "mode": "structured_tool",
         "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
         "graph_path": [
@@ -1000,7 +1001,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 150.2,
+        "latency_ms": 160.5,
         "mode": "deny",
         "reason": "crewai_protected_auth_required",
         "graph_path": [
@@ -1021,16 +1022,16 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 120.1,
+        "latency_ms": 124.0,
         "mode": "structured_tool",
-        "reason": "python_functions_native_public_structured",
+        "reason": "python_functions_native_structured:calendar",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
-          "python_functions:native_public",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos. O atendimento comercial segue enquanto houver vagas por segmento.",
@@ -1045,9 +1046,9 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 142.0,
+        "latency_ms": 129.4,
         "mode": "structured_tool",
-        "reason": "llamaindex_native_public_router",
+        "reason": "llamaindex_public_profile",
         "graph_path": [
           "classify_request",
           "security_gate",
@@ -1055,7 +1056,7 @@
           "select_slice",
           "structured_tool_call",
           "llamaindex:workflow",
-          "llamaindex:selector_router",
+          "llamaindex:llamaindex_public_profile",
           "llamaindex:tool:public_profile",
           "kernel:llamaindex"
         ],
@@ -1077,10 +1078,10 @@
       "thread_id": "rand_public_timeline_visit",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 164.8,
+        "latency_ms": 143.6,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -1105,7 +1106,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 684.0,
+        "latency_ms": 774.7,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -1124,7 +1125,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 110.6,
+        "latency_ms": 116.2,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -1147,7 +1148,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 110.7,
+        "latency_ms": 114.6,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -1176,10 +1177,10 @@
       "thread_id": "rand_protected_identity_scope",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 98.3,
+        "latency_ms": 100.9,
         "mode": "structured_tool",
         "reason": "identidade da conta autenticada exige leitura protegida e minimizada",
         "graph_path": [
@@ -1202,7 +1203,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 157.8,
+        "latency_ms": 155.0,
         "mode": "structured_tool",
         "reason": "crewai_protected_identity_backstop",
         "graph_path": [
@@ -1221,15 +1222,16 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 94.9,
+        "latency_ms": 93.8,
         "mode": "structured_tool",
-        "reason": "identidade da conta autenticada exige leitura protegida e minimizada",
+        "reason": "python_functions_native_structured:institution",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "Voce esta falando aqui como Maria Oliveira, no perfil de responsavel. Sua conta esta vinculada a Lucas Oliveira e Ana Oliveira. Por aqui eu consigo consultar notas, faltas, proximas provas, matricula, financeiro, boletos, dentro das permissoes dessa vinculacao.",
@@ -1244,7 +1246,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 100.8,
+        "latency_ms": 99.1,
         "mode": "structured_tool",
         "reason": "identidade da conta autenticada exige leitura protegida e minimizada",
         "graph_path": [
@@ -1273,10 +1275,10 @@
       "thread_id": "rand_protected_identity_scope",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 118.2,
+        "latency_ms": 117.9,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1299,7 +1301,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11814.5,
+        "latency_ms": 11933.6,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -1326,7 +1328,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 130.2,
+        "latency_ms": 128.9,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1349,7 +1351,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 141.2,
+        "latency_ms": 137.8,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1378,10 +1380,10 @@
       "thread_id": "rand_protected_identity_scope",
       "turn_index": 3,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 203.8,
+        "latency_ms": 201.8,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1404,7 +1406,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11772.5,
+        "latency_ms": 11874.0,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -1431,15 +1433,16 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 195.0,
+        "latency_ms": 245.1,
         "mode": "structured_tool",
-        "reason": "dados estruturados devem passar por service deterministico",
+        "reason": "python_functions_native_structured:finance",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "Resumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 1\n- Total de faturas vencidas: 0\n- Lucas Oliveira: 0 em aberto, 0 vencidas\n  2026-03: vencimento 2026-03-10, status paga, valor 1450.00\n- Ana Oliveira: 1 em aberto, 0 vencidas\n  2026-03: vencimento 2026-03-10, status em aberto, valor 1450.00",
@@ -1454,7 +1457,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 207.4,
+        "latency_ms": 191.1,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1483,10 +1486,10 @@
       "thread_id": "rand_protected_docs_focus",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 141.9,
+        "latency_ms": 135.1,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1509,7 +1512,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 392.6,
+        "latency_ms": 366.1,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -1528,15 +1531,16 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 138.4,
+        "latency_ms": 133.4,
         "mode": "structured_tool",
-        "reason": "status administrativo autenticado exige service deterministico",
+        "reason": "python_functions_native_structured:institution",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "Situacao documental de Ana Oliveira hoje: com pendencias.",
@@ -1551,7 +1555,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 150.7,
+        "latency_ms": 148.5,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1580,10 +1584,10 @@
       "thread_id": "rand_protected_docs_focus",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 171.4,
+        "latency_ms": 151.5,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1606,7 +1610,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 381.9,
+        "latency_ms": 383.2,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -1625,15 +1629,16 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 186.9,
+        "latency_ms": 170.0,
         "mode": "structured_tool",
-        "reason": "dados estruturados devem passar por service deterministico",
+        "reason": "python_functions_native_structured:academic",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "No recorte de faltas de Ana Oliveira, eu encontrei 6 falta(s) e 8 atraso(s).",
@@ -1648,7 +1653,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 183.3,
+        "latency_ms": 183.6,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1677,10 +1682,10 @@
       "thread_id": "rand_protected_docs_focus",
       "turn_index": 3,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 167.4,
+        "latency_ms": 157.2,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1703,7 +1708,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 396.0,
+        "latency_ms": 404.1,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -1722,15 +1727,16 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 149.6,
+        "latency_ms": 173.4,
         "mode": "structured_tool",
-        "reason": "status administrativo autenticado exige service deterministico",
+        "reason": "python_functions_native_structured:institution",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "Situacao documental de Lucas Oliveira hoje: regular.\n- Identificacao escolar do aluno: regular. Codigo de matricula: MAT-2026-001\n- Responsavel vinculado: regular. Maria Oliveira\n- Documentacao escolar do aluno: regular. A documentacao escolar de Lucas Oliveira esta conferida e sem pendencias relevantes nesta base de testes.",
@@ -1745,7 +1751,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 159.8,
+        "latency_ms": 176.1,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1774,10 +1780,10 @@
       "thread_id": "rand_protected_docs_focus",
       "turn_index": 4,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 104.6,
+        "latency_ms": 107.0,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1800,9 +1806,9 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11858.4,
+        "latency_ms": 11907.0,
         "mode": "structured_tool",
-        "reason": "crewai_public_flow_completed",
+        "reason": "crewai_public_flow_timeout",
         "graph_path": [
           "flow_state",
           "pydantic_output",
@@ -1812,12 +1818,13 @@
           "public_composition",
           "public_judging"
         ],
-        "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
+        "answer_text": "Para que eu possa te ajudar melhor, você poderia especificar quem é João no contexto da escola? Por exemplo, ele é um aluno, professor, funcionário, ou você está procurando informações sobre um departamento ou serviço específico?",
         "keyword_pass": false,
-        "quality_score": 55,
+        "quality_score": 43,
         "error_types": [
           "followup_context_drop",
-          "missing_expected_keyword"
+          "missing_expected_keyword",
+          "unnecessary_clarification"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -1827,7 +1834,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 121.0,
+        "latency_ms": 115.6,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1850,7 +1857,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 127.6,
+        "latency_ms": 123.5,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1879,10 +1886,10 @@
       "thread_id": "rand_protected_academic_finance",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 169.4,
+        "latency_ms": 154.2,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1905,7 +1912,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 373.0,
+        "latency_ms": 404.9,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -1924,15 +1931,16 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 159.4,
+        "latency_ms": 156.5,
         "mode": "structured_tool",
-        "reason": "dados estruturados devem passar por service deterministico",
+        "reason": "python_functions_native_structured:academic",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "Notas de Lucas Oliveira:\n- Biologia - Avaliacao B1: 8.40/10.00\n- Educacao Fisica - Avaliacao 2026-B1 - EF: 6.40/10.00\n- Filosofia - Avaliacao 2026-B1 - FIL: 7.00/10.00\n- Fisica - Avaliacao 2026-B1 - FIS: 5.80/10.00\n- Geografia - Avaliacao 2026-B1 - GEO: 6.40/10.00\n- Historia - Avaliacao 2026-B1 - HIS: 6.70/10.00\n- Ingles - Avaliacao B1: 8.90/10.00\n- Matematica - Avaliacao B1: 8.70/10.00",
@@ -1947,7 +1955,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 163.1,
+        "latency_ms": 161.3,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1976,10 +1984,10 @@
       "thread_id": "rand_protected_academic_finance",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 151.4,
+        "latency_ms": 156.3,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -2002,7 +2010,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 410.4,
+        "latency_ms": 406.7,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -2021,15 +2029,16 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 159.0,
+        "latency_ms": 153.6,
         "mode": "structured_tool",
-        "reason": "dados estruturados devem passar por service deterministico",
+        "reason": "python_functions_native_structured:finance",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "Hoje nao encontrei valor em aberto para Lucas Oliveira neste recorte.",
@@ -2044,7 +2053,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 159.4,
+        "latency_ms": 152.0,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -2073,10 +2082,10 @@
       "thread_id": "rand_protected_academic_finance",
       "turn_index": 3,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 146.9,
+        "latency_ms": 138.6,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -2099,7 +2108,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 385.3,
+        "latency_ms": 394.6,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -2121,15 +2130,16 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 145.9,
+        "latency_ms": 159.7,
         "mode": "structured_tool",
-        "reason": "dados estruturados devem passar por service deterministico",
+        "reason": "python_functions_native_structured:finance",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "Hoje a cobranca pendente mais imediata de Lucas Oliveira e a referencia 2026-03, com vencimento em 10 de marco de 2026 e valor 1450.00. Status atual: paga.",
@@ -2144,7 +2154,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 152.2,
+        "latency_ms": 151.4,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -2173,10 +2183,10 @@
       "thread_id": "rand_support_reroute",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 117.8,
+        "latency_ms": 123.0,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -2187,7 +2197,7 @@
           "support_slice",
           "handoff"
         ],
-        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260330-ED1C427E. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260330-F87D3E67. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2199,7 +2209,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 188.7,
+        "latency_ms": 185.7,
         "mode": "structured_tool",
         "reason": "support_handoff_created",
         "graph_path": [
@@ -2207,7 +2217,7 @@
           "operation_result",
           "deterministic_support"
         ],
-        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260330-CE2C7478. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
+        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260330-00D9CDCF. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2219,7 +2229,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 117.3,
+        "latency_ms": 115.2,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -2230,7 +2240,7 @@
           "handoff",
           "kernel:python_functions"
         ],
-        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260330-C63075E6. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260330-6C56E5DD. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2242,7 +2252,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 122.5,
+        "latency_ms": 117.1,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -2253,7 +2263,7 @@
           "handoff",
           "kernel:llamaindex"
         ],
-        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260330-3E3F9786. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260330-26EA162E. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2271,10 +2281,10 @@
       "thread_id": "rand_support_reroute",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 134.9,
+        "latency_ms": 137.7,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2285,7 +2295,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "O protocolo atual do seu atendimento e ATD-20260330-ED1C427E. Se quiser, eu posso te dizer o status atual ou resumir o que ja foi registrado.",
+        "answer_text": "O protocolo atual do seu atendimento e ATD-20260330-F87D3E67. Se quiser, eu posso te dizer o status atual ou resumir o que ja foi registrado.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2297,7 +2307,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 159.9,
+        "latency_ms": 151.1,
         "mode": "structured_tool",
         "reason": "workflow_protocol_lookup",
         "graph_path": [
@@ -2305,7 +2315,7 @@
           "operation_result",
           "deterministic_workflow"
         ],
-        "answer_text": "O protocolo da sua solicitacao e ATD-20260330-CE2C7478. - Ticket operacional: ATD-20260330-CE2C7478 - Area responsavel: None Se quiser, eu tambem posso resumir o pedido ou verificar o status atual.",
+        "answer_text": "O protocolo da sua solicitacao e ATD-20260330-00D9CDCF. - Ticket operacional: ATD-20260330-00D9CDCF - Area responsavel: None Se quiser, eu tambem posso resumir o pedido ou verificar o status atual.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2317,18 +2327,19 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 136.9,
+        "latency_ms": 132.5,
         "mode": "structured_tool",
-        "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+        "reason": "python_functions_native_structured:support",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
-        "answer_text": "O protocolo atual do seu atendimento e ATD-20260330-C63075E6. Se quiser, eu posso te dizer o status atual ou resumir o que ja foi registrado.",
+        "answer_text": "O protocolo atual do seu atendimento e ATD-20260330-6C56E5DD. Se quiser, eu posso te dizer o status atual ou resumir o que ja foi registrado.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2340,7 +2351,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 143.5,
+        "latency_ms": 142.4,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2351,7 +2362,7 @@
           "structured_tool_call",
           "kernel:llamaindex"
         ],
-        "answer_text": "O protocolo atual do seu atendimento e ATD-20260330-3E3F9786. Se quiser, eu posso te dizer o status atual ou resumir o que ja foi registrado.",
+        "answer_text": "O protocolo atual do seu atendimento e ATD-20260330-26EA162E. Se quiser, eu posso te dizer o status atual ou resumir o que ja foi registrado.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2369,10 +2380,10 @@
       "thread_id": "rand_support_reroute",
       "turn_index": 3,
       "note": "repair reroute",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 147.1,
+        "latency_ms": 140.6,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -2383,7 +2394,7 @@
           "support_slice",
           "handoff"
         ],
-        "answer_text": "Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260330-ED1C427E. Status atual: queued.",
+        "answer_text": "Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260330-F87D3E67. Status atual: queued.",
         "keyword_pass": true,
         "quality_score": 82,
         "error_types": [
@@ -2397,7 +2408,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 188.7,
+        "latency_ms": 171.8,
         "mode": "structured_tool",
         "reason": "support_handoff_rerouted",
         "graph_path": [
@@ -2405,7 +2416,7 @@
           "operation_result",
           "deterministic_support"
         ],
-        "answer_text": "Sem problema, agora segui com a fila de secretaria. Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260330-CE2C7478. Status atual: queued.",
+        "answer_text": "Sem problema, agora segui com a fila de secretaria. Sua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260330-00D9CDCF. Status atual: queued.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2417,7 +2428,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 127.8,
+        "latency_ms": 123.9,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -2428,7 +2439,7 @@
           "handoff",
           "kernel:python_functions"
         ],
-        "answer_text": "Sem problema, ajustei isso por aqui.\n\nSua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260330-C63075E6. Status atual: queued.",
+        "answer_text": "Sem problema, ajustei isso por aqui.\n\nSua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260330-6C56E5DD. Status atual: queued.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2440,7 +2451,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 185.7,
+        "latency_ms": 133.0,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -2451,7 +2462,7 @@
           "handoff",
           "kernel:llamaindex"
         ],
-        "answer_text": "Sem problema, ajustei isso por aqui.\n\nSua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260330-3E3F9786. Status atual: queued.",
+        "answer_text": "Sem problema, ajustei isso por aqui.\n\nSua solicitacao ja estava registrada na fila de secretaria. Protocolo: ATD-20260330-26EA162E. Status atual: queued.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2469,10 +2480,10 @@
       "thread_id": "rand_support_status_summary",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 136.2,
+        "latency_ms": 124.0,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2495,7 +2506,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11813.4,
+        "latency_ms": 11828.4,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -2521,15 +2532,16 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 128.9,
+        "latency_ms": 120.1,
         "mode": "structured_tool",
-        "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+        "reason": "python_functions_native_structured:support",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "Ainda nao encontrei um protocolo recente nesta conversa para consultar o status da fila. Se quiser, me diga o codigo que comeca com VIS, REQ ou ATD, ou me lembre se o assunto era visita, direcao, financeiro ou secretaria.",
@@ -2544,7 +2556,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 153.1,
+        "latency_ms": 131.7,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2573,10 +2585,10 @@
       "thread_id": "rand_support_status_summary",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 141.3,
+        "latency_ms": 125.3,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2599,7 +2611,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11876.4,
+        "latency_ms": 11818.5,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -2626,15 +2638,16 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 146.0,
+        "latency_ms": 125.9,
         "mode": "structured_tool",
-        "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+        "reason": "python_functions_native_structured:support",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
         "answer_text": "Ainda nao encontrei um protocolo recente nesta conversa para montar o resumo do pedido. Se quiser, me diga o codigo que comeca com VIS, REQ ou ATD, ou me lembre se o assunto era visita, direcao, financeiro ou secretaria.",
@@ -2649,7 +2662,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 154.1,
+        "latency_ms": 133.6,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2678,10 +2691,10 @@
       "thread_id": "rand_workflow_visit",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 181.9,
+        "latency_ms": 139.9,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2692,7 +2705,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-499699. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260330-571955BF. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-DE76EE. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260330-D04F9571. A equipe comercial valida a janela e retorna com a confirmacao.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2704,7 +2717,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 254.9,
+        "latency_ms": 184.6,
         "mode": "structured_tool",
         "reason": "workflow_visit_create",
         "graph_path": [
@@ -2712,7 +2725,7 @@
           "operation_result",
           "deterministic_workflow"
         ],
-        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-78DF8D. Preferencia informada: 02/04/2026 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260330-66ABC5CB. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-DA0665. Preferencia informada: 02/04/2026 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260330-D9A1931D. A equipe comercial valida a janela e retorna com a confirmacao.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2724,18 +2737,19 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 157.4,
+        "latency_ms": 137.1,
         "mode": "structured_tool",
-        "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+        "reason": "python_functions_native_structured:support",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
-        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-88DBEF. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260330-4475CBF9. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-BDEB47. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260330-B5E28260. A equipe comercial valida a janela e retorna com a confirmacao.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2747,7 +2761,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 149.8,
+        "latency_ms": 147.8,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2758,7 +2772,7 @@
           "structured_tool_call",
           "kernel:llamaindex"
         ],
-        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-720173. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260330-FCAD14A7. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-6F0F90. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260330-C894112F. A equipe comercial valida a janela e retorna com a confirmacao.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2776,10 +2790,10 @@
       "thread_id": "rand_workflow_visit",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 134.3,
+        "latency_ms": 149.1,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2790,7 +2804,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "O protocolo da sua visita e VIS-20260330-499699. Ticket operacional: ATD-20260330-571955BF. Preferencia registrada: 02/04/2026 - tarde. Se quiser, eu tambem posso te dizer o status, remarcar ou cancelar a visita.",
+        "answer_text": "O protocolo da sua visita e VIS-20260330-DE76EE. Ticket operacional: ATD-20260330-D04F9571. Preferencia registrada: 02/04/2026 - tarde. Se quiser, eu tambem posso te dizer o status, remarcar ou cancelar a visita.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2802,7 +2816,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 176.7,
+        "latency_ms": 179.8,
         "mode": "structured_tool",
         "reason": "workflow_protocol_lookup",
         "graph_path": [
@@ -2810,7 +2824,7 @@
           "operation_result",
           "deterministic_workflow"
         ],
-        "answer_text": "O protocolo da sua visita e VIS-20260330-78DF8D. - Ticket operacional: ATD-20260330-66ABC5CB - Preferencia registrada: 02/04/2026 - tarde Se quiser, eu tambem posso te dizer o status, remarcar ou cancelar a visita.",
+        "answer_text": "O protocolo da sua visita e VIS-20260330-DA0665. - Ticket operacional: ATD-20260330-D9A1931D - Preferencia registrada: 02/04/2026 - tarde Se quiser, eu tambem posso te dizer o status, remarcar ou cancelar a visita.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2822,18 +2836,19 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 139.2,
+        "latency_ms": 136.9,
         "mode": "structured_tool",
-        "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+        "reason": "python_functions_native_structured:support",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
-        "answer_text": "O protocolo da sua visita e VIS-20260330-88DBEF. Ticket operacional: ATD-20260330-4475CBF9. Preferencia registrada: 02/04/2026 - tarde. Se quiser, eu tambem posso te dizer o status, remarcar ou cancelar a visita.",
+        "answer_text": "O protocolo da sua visita e VIS-20260330-BDEB47. Ticket operacional: ATD-20260330-B5E28260. Preferencia registrada: 02/04/2026 - tarde. Se quiser, eu tambem posso te dizer o status, remarcar ou cancelar a visita.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2845,7 +2860,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 167.9,
+        "latency_ms": 143.6,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2856,7 +2871,7 @@
           "structured_tool_call",
           "kernel:llamaindex"
         ],
-        "answer_text": "O protocolo da sua visita e VIS-20260330-720173. Ticket operacional: ATD-20260330-FCAD14A7. Preferencia registrada: 02/04/2026 - tarde. Se quiser, eu tambem posso te dizer o status, remarcar ou cancelar a visita.",
+        "answer_text": "O protocolo da sua visita e VIS-20260330-6F0F90. Ticket operacional: ATD-20260330-C894112F. Preferencia registrada: 02/04/2026 - tarde. Se quiser, eu tambem posso te dizer o status, remarcar ou cancelar a visita.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2874,10 +2889,10 @@
       "thread_id": "rand_workflow_visit",
       "turn_index": 3,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 146.2,
+        "latency_ms": 131.4,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2888,7 +2903,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "Consigo remarcar a visita por aqui. Protocolo: VIS-20260330-499699. Ticket operacional: ATD-20260330-571955BF. Me diga pelo menos o novo dia ou a janela desejada, por exemplo: \"remarque para sexta de manha\" ou \"troque para 28/03 as 10h\".",
+        "answer_text": "Consigo remarcar a visita por aqui. Protocolo: VIS-20260330-DE76EE. Ticket operacional: ATD-20260330-D04F9571. Me diga pelo menos o novo dia ou a janela desejada, por exemplo: \"remarque para sexta de manha\" ou \"troque para 28/03 as 10h\".",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2900,7 +2915,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 153.6,
+        "latency_ms": 159.3,
         "mode": "structured_tool",
         "reason": "workflow_visit_reschedule_guidance",
         "graph_path": [
@@ -2908,7 +2923,7 @@
           "operation_result",
           "deterministic_workflow"
         ],
-        "answer_text": "Se voce precisar remarcar, me passe o protocolo VIS-20260330-78DF8D ou o novo horario desejado que eu sigo com essa atualizacao para a fila de admissoes.",
+        "answer_text": "Se voce precisar remarcar, me passe o protocolo VIS-20260330-DA0665 ou o novo horario desejado que eu sigo com essa atualizacao para a fila de admissoes.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2920,18 +2935,19 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 133.9,
+        "latency_ms": 181.3,
         "mode": "structured_tool",
-        "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+        "reason": "python_functions_native_structured:support",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
-        "answer_text": "Consigo remarcar a visita por aqui. Protocolo: VIS-20260330-88DBEF. Ticket operacional: ATD-20260330-4475CBF9. Me diga pelo menos o novo dia ou a janela desejada, por exemplo: \"remarque para sexta de manha\" ou \"troque para 28/03 as 10h\".",
+        "answer_text": "Consigo remarcar a visita por aqui. Protocolo: VIS-20260330-BDEB47. Ticket operacional: ATD-20260330-B5E28260. Me diga pelo menos o novo dia ou a janela desejada, por exemplo: \"remarque para sexta de manha\" ou \"troque para 28/03 as 10h\".",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2943,7 +2959,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 135.0,
+        "latency_ms": 128.9,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2954,7 +2970,7 @@
           "structured_tool_call",
           "kernel:llamaindex"
         ],
-        "answer_text": "Consigo remarcar a visita por aqui. Protocolo: VIS-20260330-720173. Ticket operacional: ATD-20260330-FCAD14A7. Me diga pelo menos o novo dia ou a janela desejada, por exemplo: \"remarque para sexta de manha\" ou \"troque para 28/03 as 10h\".",
+        "answer_text": "Consigo remarcar a visita por aqui. Protocolo: VIS-20260330-6F0F90. Ticket operacional: ATD-20260330-C894112F. Me diga pelo menos o novo dia ou a janela desejada, por exemplo: \"remarque para sexta de manha\" ou \"troque para 28/03 as 10h\".",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2972,10 +2988,10 @@
       "thread_id": "rand_workflow_visit",
       "turn_index": 4,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 132.5,
+        "latency_ms": 133.5,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2986,7 +3002,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "Pedido de visita atualizado com a fila de admissions. Protocolo: VIS-20260330-499699. Ticket operacional: ATD-20260330-571955BF. Nova preferencia: 03/04/2026 - manha. Admissions valida a nova janela e retorna com a confirmacao.",
+        "answer_text": "Pedido de visita atualizado com a fila de admissions. Protocolo: VIS-20260330-DE76EE. Ticket operacional: ATD-20260330-D04F9571. Nova preferencia: 03/04/2026 - manha. Admissions valida a nova janela e retorna com a confirmacao.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2998,7 +3014,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11909.2,
+        "latency_ms": 11851.6,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -3024,7 +3040,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 153.0,
+        "latency_ms": 137.8,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3035,7 +3051,7 @@
           "structured_tool_call",
           "kernel:python_functions"
         ],
-        "answer_text": "Pedido de visita atualizado com a fila de admissions. Protocolo: VIS-20260330-88DBEF. Ticket operacional: ATD-20260330-4475CBF9. Nova preferencia: 03/04/2026 - manha. Admissions valida a nova janela e retorna com a confirmacao.",
+        "answer_text": "Pedido de visita atualizado com a fila de admissions. Protocolo: VIS-20260330-BDEB47. Ticket operacional: ATD-20260330-B5E28260. Nova preferencia: 03/04/2026 - manha. Admissions valida a nova janela e retorna com a confirmacao.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -3047,7 +3063,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 164.8,
+        "latency_ms": 147.1,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3058,7 +3074,7 @@
           "structured_tool_call",
           "kernel:llamaindex"
         ],
-        "answer_text": "Pedido de visita atualizado com a fila de admissions. Protocolo: VIS-20260330-720173. Ticket operacional: ATD-20260330-FCAD14A7. Nova preferencia: 03/04/2026 - manha. Admissions valida a nova janela e retorna com a confirmacao.",
+        "answer_text": "Pedido de visita atualizado com a fila de admissions. Protocolo: VIS-20260330-6F0F90. Ticket operacional: ATD-20260330-C894112F. Nova preferencia: 03/04/2026 - manha. Admissions valida a nova janela e retorna com a confirmacao.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -3076,10 +3092,10 @@
       "thread_id": "rand_workflow_request",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 161.8,
+        "latency_ms": 131.3,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3090,7 +3106,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "Solicitacao institucional registrada para direcao. Protocolo: REQ-20260330-1164C7. Assunto: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida. Fila responsavel: direcao. Ticket operacional: ATD-20260330-1BBFAD2A. A equipe faz a triagem inicial e segue o retorno pelo fluxo institucional.",
+        "answer_text": "Solicitacao institucional registrada para direcao. Protocolo: REQ-20260330-723FAA. Assunto: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida. Fila responsavel: direcao. Ticket operacional: ATD-20260330-95539EC8. A equipe faz a triagem inicial e segue o retorno pelo fluxo institucional.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -3102,7 +3118,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 212.3,
+        "latency_ms": 179.2,
         "mode": "structured_tool",
         "reason": "support_handoff_created",
         "graph_path": [
@@ -3110,7 +3126,7 @@
           "operation_result",
           "deterministic_support"
         ],
-        "answer_text": "Encaminhei sua solicitacao para a fila de direcao. Protocolo: ATD-20260330-531ADE91. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
+        "answer_text": "Encaminhei sua solicitacao para a fila de direcao. Protocolo: ATD-20260330-8DE048B4. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -3122,18 +3138,19 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 167.0,
+        "latency_ms": 137.4,
         "mode": "structured_tool",
-        "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+        "reason": "python_functions_native_structured:support",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
-        "answer_text": "Solicitacao institucional registrada para direcao. Protocolo: REQ-20260330-0501C3. Assunto: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida. Fila responsavel: direcao. Ticket operacional: ATD-20260330-1C445BAC. A equipe faz a triagem inicial e segue o retorno pelo fluxo institucional.",
+        "answer_text": "Solicitacao institucional registrada para direcao. Protocolo: REQ-20260330-A7DC81. Assunto: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida. Fila responsavel: direcao. Ticket operacional: ATD-20260330-24446371. A equipe faz a triagem inicial e segue o retorno pelo fluxo institucional.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -3145,7 +3162,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 167.9,
+        "latency_ms": 141.0,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3156,7 +3173,7 @@
           "structured_tool_call",
           "kernel:llamaindex"
         ],
-        "answer_text": "Solicitacao institucional registrada para direcao. Protocolo: REQ-20260330-11841E. Assunto: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida. Fila responsavel: direcao. Ticket operacional: ATD-20260330-D5CD6D92. A equipe faz a triagem inicial e segue o retorno pelo fluxo institucional.",
+        "answer_text": "Solicitacao institucional registrada para direcao. Protocolo: REQ-20260330-DFDA16. Assunto: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida. Fila responsavel: direcao. Ticket operacional: ATD-20260330-01C26A76. A equipe faz a triagem inicial e segue o retorno pelo fluxo institucional.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -3174,10 +3191,10 @@
       "thread_id": "rand_workflow_request",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 159.4,
+        "latency_ms": 132.1,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3188,7 +3205,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "Complemento registrado na fila de direcao. Protocolo: REQ-20260330-1164C7. Ticket operacional: ATD-20260330-1BBFAD2A. Novo complemento: isso pesa mais nas sextas. A equipe responsavel recebe essa atualizacao no mesmo fluxo do pedido.",
+        "answer_text": "Complemento registrado na fila de direcao. Protocolo: REQ-20260330-723FAA. Ticket operacional: ATD-20260330-95539EC8. Novo complemento: isso pesa mais nas sextas. A equipe responsavel recebe essa atualizacao no mesmo fluxo do pedido.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -3200,7 +3217,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11977.4,
+        "latency_ms": 11778.3,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -3226,18 +3243,19 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 137.4,
+        "latency_ms": 137.2,
         "mode": "structured_tool",
-        "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+        "reason": "python_functions_native_structured:support",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
-        "answer_text": "Complemento registrado na fila de direcao. Protocolo: REQ-20260330-0501C3. Ticket operacional: ATD-20260330-1C445BAC. Novo complemento: isso pesa mais nas sextas. A equipe responsavel recebe essa atualizacao no mesmo fluxo do pedido.",
+        "answer_text": "Complemento registrado na fila de direcao. Protocolo: REQ-20260330-A7DC81. Ticket operacional: ATD-20260330-24446371. Novo complemento: isso pesa mais nas sextas. A equipe responsavel recebe essa atualizacao no mesmo fluxo do pedido.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -3249,7 +3267,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 147.5,
+        "latency_ms": 129.8,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3260,7 +3278,7 @@
           "structured_tool_call",
           "kernel:llamaindex"
         ],
-        "answer_text": "Complemento registrado na fila de direcao. Protocolo: REQ-20260330-11841E. Ticket operacional: ATD-20260330-D5CD6D92. Novo complemento: isso pesa mais nas sextas. A equipe responsavel recebe essa atualizacao no mesmo fluxo do pedido.",
+        "answer_text": "Complemento registrado na fila de direcao. Protocolo: REQ-20260330-DFDA16. Ticket operacional: ATD-20260330-01C26A76. Novo complemento: isso pesa mais nas sextas. A equipe responsavel recebe essa atualizacao no mesmo fluxo do pedido.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -3278,10 +3296,10 @@
       "thread_id": "rand_workflow_request",
       "turn_index": 3,
       "note": "",
-      "run_prefix": "debug:four-path:20260330T202540Z",
+      "run_prefix": "debug:four-path:20260330T204321Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 135.6,
+        "latency_ms": 128.1,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3292,7 +3310,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "Resumo da sua solicitacao institucional:. Assunto: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida. Area responsavel: direcao. Detalhes registrados: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida\n\nComplemento registrado: isso pesa mais nas sextas. Protocolo: REQ-20260330-1164C7. Ticket operacional: ATD-20260330-1BBFAD2A. Status atual: em fila. Se quiser, eu tambem posso te dizer o prazo estimado ou quem responde por essa fila.",
+        "answer_text": "Resumo da sua solicitacao institucional:. Assunto: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida. Area responsavel: direcao. Detalhes registrados: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida\n\nComplemento registrado: isso pesa mais nas sextas. Protocolo: REQ-20260330-723FAA. Ticket operacional: ATD-20260330-95539EC8. Status atual: em fila. Se quiser, eu tambem posso te dizer o prazo estimado ou quem responde por essa fila.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -3304,7 +3322,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11934.0,
+        "latency_ms": 11873.9,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -3331,18 +3349,19 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 133.9,
+        "latency_ms": 135.5,
         "mode": "structured_tool",
-        "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+        "reason": "python_functions_native_structured:support",
         "graph_path": [
           "classify_request",
           "security_gate",
           "route_request",
           "select_slice",
           "structured_tool_call",
+          "python_functions:native_runtime",
           "kernel:python_functions"
         ],
-        "answer_text": "Resumo da sua solicitacao institucional:. Assunto: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida. Area responsavel: direcao. Detalhes registrados: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida\n\nComplemento registrado: isso pesa mais nas sextas. Protocolo: REQ-20260330-0501C3. Ticket operacional: ATD-20260330-1C445BAC. Status atual: em fila. Se quiser, eu tambem posso te dizer o prazo estimado ou quem responde por essa fila.",
+        "answer_text": "Resumo da sua solicitacao institucional:. Assunto: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida. Area responsavel: direcao. Detalhes registrados: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida\n\nComplemento registrado: isso pesa mais nas sextas. Protocolo: REQ-20260330-A7DC81. Ticket operacional: ATD-20260330-24446371. Status atual: em fila. Se quiser, eu tambem posso te dizer o prazo estimado ou quem responde por essa fila.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -3354,7 +3373,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 133.6,
+        "latency_ms": 142.3,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -3365,7 +3384,7 @@
           "structured_tool_call",
           "kernel:llamaindex"
         ],
-        "answer_text": "Resumo da sua solicitacao institucional:. Assunto: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida. Area responsavel: direcao. Detalhes registrados: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida\n\nComplemento registrado: isso pesa mais nas sextas. Protocolo: REQ-20260330-11841E. Ticket operacional: ATD-20260330-D5CD6D92. Status atual: em fila. Se quiser, eu tambem posso te dizer o prazo estimado ou quem responde por essa fila.",
+        "answer_text": "Resumo da sua solicitacao institucional:. Assunto: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida. Area responsavel: direcao. Detalhes registrados: quero protocolar um pedido pra direcao sobre reforco de seguranca na saida\n\nComplemento registrado: isso pesa mais nas sextas. Protocolo: REQ-20260330-DFDA16. Ticket operacional: ATD-20260330-01C26A76. Status atual: em fila. Se quiser, eu tambem posso te dizer o prazo estimado ou quem responde por essa fila.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],

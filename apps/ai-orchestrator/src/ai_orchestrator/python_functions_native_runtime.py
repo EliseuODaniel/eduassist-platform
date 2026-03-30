@@ -4,6 +4,7 @@ from typing import Any
 
 from . import runtime as rt
 from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult
+from .evidence_pack import build_retrieval_evidence_pack, build_structured_tool_evidence_pack
 from .kernel_runtime import _maybe_contextual_public_direct_answer, _maybe_hypothetical_public_pricing_answer
 from .llm_provider import compose_with_provider
 from .models import (
@@ -18,13 +19,15 @@ from .path_profiles import PathExecutionProfile, get_path_execution_profile
 from .retrieval import get_retrieval_service
 
 
-def _should_use_python_functions_native_public_path(plan: KernelPlan) -> bool:
+def _should_use_python_functions_native_path(plan: KernelPlan) -> bool:
     preview = plan.preview
+    if preview.mode is OrchestrationMode.structured_tool:
+        return True
     if preview.classification.access_tier is not AccessTier.public:
         return False
     if preview.classification.domain not in {QueryDomain.institution, QueryDomain.calendar}:
         return False
-    return preview.mode in {OrchestrationMode.structured_tool, OrchestrationMode.hybrid_retrieval}
+    return preview.mode is OrchestrationMode.hybrid_retrieval
 
 
 async def maybe_execute_python_functions_native_plan(
@@ -37,7 +40,7 @@ async def maybe_execute_python_functions_native_plan(
     path_profile: PathExecutionProfile | None = None,
 ) -> KernelRunResult | None:
     effective_path_profile = path_profile or get_path_execution_profile(engine_name)
-    if not _should_use_python_functions_native_public_path(plan):
+    if not _should_use_python_functions_native_path(plan):
         return None
 
     actor = await rt._fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
@@ -60,6 +63,7 @@ async def maybe_execute_python_functions_native_plan(
     query_hints: set[str] = set()
     semantic_judge_used = False
     answer_verifier_fallback_used = False
+    evidence_pack = None
 
     contextual_public_answer = await _maybe_contextual_public_direct_answer(
         request=request,
@@ -90,6 +94,11 @@ async def maybe_execute_python_functions_native_plan(
             }
         )
         execution_reason = 'python_functions_native_contextual_public_answer'
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=preview.selected_tools,
+            slice_name=plan.slice_name,
+            summary='Resposta direta grounded em fatos publicos canonicos.',
+        )
     elif hypothetical_public_pricing_direct:
         message_text, public_plan = hypothetical_public_pricing_direct
         deterministic_fallback_text = message_text
@@ -103,6 +112,11 @@ async def maybe_execute_python_functions_native_plan(
             }
         )
         execution_reason = 'python_functions_native_pricing_projection'
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=preview.selected_tools,
+            slice_name=plan.slice_name,
+            summary='Resposta grounded em simulacao publica deterministica de precificacao.',
+        )
     elif preview.mode is OrchestrationMode.structured_tool:
         public_plan_sink: dict[str, Any] = {}
         resolved_public_plan = None
@@ -131,7 +145,12 @@ async def maybe_execute_python_functions_native_plan(
         )
         public_plan = public_plan_sink.get('plan')
         deterministic_fallback_text = str(public_plan_sink.get('deterministic_text') or message_text)
-        execution_reason = 'python_functions_native_public_structured'
+        execution_reason = f'python_functions_native_structured:{preview.classification.domain.value}'
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=preview.selected_tools,
+            slice_name=plan.slice_name,
+            summary=f'Resposta grounded em tools estruturadas do dominio {preview.classification.domain.value}.',
+        )
     elif preview.mode is OrchestrationMode.hybrid_retrieval:
         retrieval_service = get_retrieval_service(
             database_url=settings.database_url,
@@ -192,6 +211,12 @@ async def maybe_execute_python_functions_native_plan(
             )
             message_text = llm_text or deterministic_fallback_text
         execution_reason = 'python_functions_native_public_retrieval'
+        evidence_pack = build_retrieval_evidence_pack(
+            citations=citations,
+            selected_tools=preview.selected_tools,
+            retrieval_backend=RetrievalBackend.qdrant_hybrid,
+            summary='Resposta grounded em retrieval hibrida com reranqueamento compartilhado.',
+        )
     else:  # pragma: no cover - native path is intentionally bounded
         return None
 
@@ -260,6 +285,8 @@ async def maybe_execute_python_functions_native_plan(
         answer_verifier_judge_used=semantic_judge_used,
         langgraph_trace_metadata={
             'python_functions_native_reason': execution_reason,
+            'python_functions_evidence_strategy': evidence_pack.strategy if evidence_pack else '',
+            'python_functions_evidence_support_count': evidence_pack.support_count if evidence_pack else 0,
         },
     )
 
@@ -285,10 +312,11 @@ async def maybe_execute_python_functions_native_plan(
         visual_assets=[],
         suggested_replies=suggested_replies,
         calendar_events=calendar_events,
+        evidence_pack=evidence_pack,
         needs_authentication=preview.needs_authentication,
         graph_path=[
             *preview.graph_path,
-            'python_functions:native_public',
+            'python_functions:native_runtime',
             f'kernel:{plan.stack_name}',
         ],
         risk_flags=preview.risk_flags,
@@ -302,6 +330,7 @@ async def maybe_execute_python_functions_native_plan(
         notes=[
             f'route:{preview.mode.value}',
             f'slice:{plan.slice_name}',
+            f'evidence:{evidence_pack.strategy}' if evidence_pack is not None else 'evidence:none',
             *plan.plan_notes,
         ],
     )
