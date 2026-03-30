@@ -2,6 +2,8 @@
 
 Este guia foi dividido em paginas menores porque alguns renderizadores do VS Code `Open Preview` ficam instaveis quando ha muitos blocos Mermaid no mesmo Markdown.
 
+As paginas abaixo agora sao `preview-safe`: elas mostram SVGs gerados a partir do Mermaid, em vez de depender de renderizacao Mermaid inline no preview.
+
 Use este arquivo como indice principal.
 
 ## Leitura recomendada
@@ -10,6 +12,15 @@ Use este arquivo como indice principal.
 2. [Fluxo detalhado do LangGraph](./dual-stack-langgraph-visual-flow.md)
 3. [Fluxo detalhado do CrewAI](./dual-stack-crewai-visual-flow.md)
 4. [Operacao, fontes de verdade e estrategia de dados](./dual-stack-data-retrieval-visual-flow.md)
+
+## Fontes Mermaid
+
+Os fontes originais dos diagramas continuam versionados aqui:
+
+- [mermaid-src/dual-stack-runtime-visual-overview.md](./mermaid-src/dual-stack-runtime-visual-overview.md)
+- [mermaid-src/dual-stack-langgraph-visual-flow.md](./mermaid-src/dual-stack-langgraph-visual-flow.md)
+- [mermaid-src/dual-stack-crewai-visual-flow.md](./mermaid-src/dual-stack-crewai-visual-flow.md)
+- [mermaid-src/dual-stack-data-retrieval-visual-flow.md](./mermaid-src/dual-stack-data-retrieval-visual-flow.md)
 
 ## O que voce vai encontrar
 

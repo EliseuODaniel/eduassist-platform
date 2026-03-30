@@ -2,53 +2,15 @@
 
 ## 1. Adapter no runtime principal
 
-```mermaid
-graph TD
-    A["/v1/messages/respond"] --> B["CrewAIEngine"]
-    B --> C["infer_request_slice"]
-    C --> D["POST /v1/shadow/public"]
-    C --> E["POST /v1/shadow/protected"]
-    C --> F["POST /v1/shadow/support"]
-    C --> G["POST /v1/shadow/workflow"]
-    D --> H["ai-orchestrator-crewai"]
-    E --> H
-    F --> H
-    G --> H
-```
+![diagram](./mermaid-assets/crewai/dual-stack-crewai-visual-flow-1.svg)
 
 ## 2. Slice public
 
-```mermaid
-graph TD
-    A["PublicShadowFlow.prepare_context"] --> B["Busca evidencias publicas"]
-    B --> C{"Fast path stateful ou deterministico?"}
-    C -- Sim --> D["handle_fast_path"]
-    C -- Nao --> E["shortlist de evidencias"]
-    E --> F["planner"]
-    F --> G["composer"]
-    G --> H["judge"]
-    H --> I{"guardrails passaram?"}
-    I -- Sim --> J["resposta grounded"]
-    I -- Nao --> K["deterministic backstop"]
-```
+![diagram](./mermaid-assets/crewai/dual-stack-crewai-visual-flow-2.svg)
 
 ## 3. Slice protected
 
-```mermaid
-graph TD
-    A["ProtectedShadowFlow.prepare_context"] --> B["Carrega identity context via api-core"]
-    B --> C["Resolve aluno em foco"]
-    C --> D["Enriquece mensagem com memoria curta"]
-    D --> E{"Auth, identity ou student fast path?"}
-    E -- Sim --> F["backstop protegido deterministico"]
-    E -- Nao --> G["evidencias protegidas minimizadas"]
-    G --> H["planner"]
-    H --> I["composer"]
-    I --> J["judge + guardrails"]
-    J --> K{"precisa HITL?"}
-    K -- Sim --> L["pending review / resume"]
-    K -- Nao --> M["resposta final"]
-```
+![diagram](./mermaid-assets/crewai/dual-stack-crewai-visual-flow-3.svg)
 
 Notas:
 
