@@ -14,15 +14,21 @@ Este arquivo ficou em formato `preview-safe` para o `Open Preview` do VS Code: o
 
 ### 1.1 Visao geral
 
-![Visao geral](./mermaid-assets/overview/dual-stack-runtime-visual-overview-1.svg)
+<p align="center">
+  <img src="./mermaid-assets/overview/dual-stack-runtime-visual-overview-1.svg" alt="Visao geral" width="420" style="max-width: 100%; height: auto;" />
+</p>
 
 ### 1.2 Como a stack primaria e resolvida
 
-![Resolucao de stack](./mermaid-assets/overview/dual-stack-runtime-visual-overview-2.svg)
+<p align="center">
+  <img src="./mermaid-assets/overview/dual-stack-runtime-visual-overview-2.svg" alt="Resolucao de stack" width="1020" style="max-width: 100%; height: auto;" />
+</p>
 
 ### 1.3 O que e fonte de verdade
 
-![Fontes de verdade](./mermaid-assets/overview/dual-stack-runtime-visual-overview-3.svg)
+<p align="center">
+  <img src="./mermaid-assets/overview/dual-stack-runtime-visual-overview-3.svg" alt="Fontes de verdade" width="380" style="max-width: 100%; height: auto;" />
+</p>
 
 Resumo:
 
@@ -35,15 +41,21 @@ Resumo:
 
 ### 2.1 Planejamento do grafo
 
-![Planejamento LangGraph](./mermaid-assets/langgraph/dual-stack-langgraph-visual-flow-1.svg)
+<p align="center">
+  <img src="./mermaid-assets/langgraph/dual-stack-langgraph-visual-flow-1.svg" alt="Planejamento LangGraph" width="680" style="max-width: 100%; height: auto;" />
+</p>
 
 ### 2.2 O que acontece depois do preview
 
-![Execucao LangGraph](./mermaid-assets/langgraph/dual-stack-langgraph-visual-flow-2.svg)
+<p align="center">
+  <img src="./mermaid-assets/langgraph/dual-stack-langgraph-visual-flow-2.svg" alt="Execucao LangGraph" width="780" style="max-width: 100%; height: auto;" />
+</p>
 
 ### 2.3 Decisao de retrieval no slice publico
 
-![Retrieval LangGraph](./mermaid-assets/langgraph/dual-stack-langgraph-visual-flow-3.svg)
+<p align="center">
+  <img src="./mermaid-assets/langgraph/dual-stack-langgraph-visual-flow-3.svg" alt="Retrieval LangGraph" width="620" style="max-width: 100%; height: auto;" />
+</p>
 
 Notas:
 
@@ -55,15 +67,21 @@ Notas:
 
 ### 3.1 Adapter no runtime principal
 
-![Adapter CrewAI](./mermaid-assets/crewai/dual-stack-crewai-visual-flow-1.svg)
+<p align="center">
+  <img src="./mermaid-assets/crewai/dual-stack-crewai-visual-flow-1.svg" alt="Adapter CrewAI" width="900" style="max-width: 100%; height: auto;" />
+</p>
 
 ### 3.2 Slice public
 
-![Public Flow CrewAI](./mermaid-assets/crewai/dual-stack-crewai-visual-flow-2.svg)
+<p align="center">
+  <img src="./mermaid-assets/crewai/dual-stack-crewai-visual-flow-2.svg" alt="Public Flow CrewAI" width="480" style="max-width: 100%; height: auto;" />
+</p>
 
 ### 3.3 Slice protected
 
-![Protected Flow CrewAI](./mermaid-assets/crewai/dual-stack-crewai-visual-flow-3.svg)
+<p align="center">
+  <img src="./mermaid-assets/crewai/dual-stack-crewai-visual-flow-3.svg" alt="Protected Flow CrewAI" width="500" style="max-width: 100%; height: auto;" />
+</p>
 
 Notas:
 
@@ -75,15 +93,21 @@ Notas:
 
 ### 4.1 Support e workflow no CrewAI
 
-![Support e workflow CrewAI](./mermaid-assets/data/dual-stack-data-retrieval-visual-flow-1.svg)
+<p align="center">
+  <img src="./mermaid-assets/data/dual-stack-data-retrieval-visual-flow-1.svg" alt="Support e workflow CrewAI" width="280" style="max-width: 100%; height: auto;" />
+</p>
 
 ### 4.2 Fontes de verdade por stack
 
-![Fontes por stack](./mermaid-assets/data/dual-stack-data-retrieval-visual-flow-2.svg)
+<p align="center">
+  <img src="./mermaid-assets/data/dual-stack-data-retrieval-visual-flow-2.svg" alt="Fontes por stack" width="460" style="max-width: 100%; height: auto;" />
+</p>
 
 ### 4.3 Quando o sistema usa cada estrategia
 
-![Estrategia de dados](./mermaid-assets/data/dual-stack-data-retrieval-visual-flow-3.svg)
+<p align="center">
+  <img src="./mermaid-assets/data/dual-stack-data-retrieval-visual-flow-3.svg" alt="Estrategia de dados" width="660" style="max-width: 100%; height: auto;" />
+</p>
 
 Resumo:
 

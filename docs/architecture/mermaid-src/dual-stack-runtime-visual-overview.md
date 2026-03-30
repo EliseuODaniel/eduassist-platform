@@ -3,18 +3,18 @@
 ## 1. Visao Geral
 
 ```mermaid
-graph LR
+graph TD
     User["Usuario: Telegram, Portal ou Admin"] --> Gateway["telegram-gateway: canal e normalizacao"]
     Gateway --> API["api-core: dominio, auth e policies"]
     API --> Orch["ai-orchestrator: entrypoint unico"]
+    Orch --> Router{"Stack resolvida"}
 
-    Orch -->|langgraph| LG["LangGraph runtime"]
-    Orch -->|crewai| CE["CrewAIEngine"]
+    Router -->|langgraph| LG["LangGraph runtime"]
+    Router -->|crewai| CE["CrewAIEngine"]
     CE --> Pilot["ai-orchestrator-crewai: pilot isolado"]
 
     LG --> Truth["Fontes de verdade"]
     Pilot --> Truth
-    Truth --> API
 ```
 
 ## 2. Como a stack primaria e resolvida
