@@ -203,6 +203,9 @@ COMPARATIVE_TERMS = {
 }
 PUBLIC_CURRICULUM_TERMS = {
     'base curricular',
+    'bncc',
+    'segue a bncc',
+    'seguir a bncc',
     'curriculo',
     'currículo',
     'proposta pedagogica',
@@ -233,6 +236,9 @@ PUBLIC_OPERATING_HOURS_TERMS = {
 PUBLIC_LOCATION_TERMS = {
     'endereco',
     'endereço',
+    'bairro',
+    'qual bairro',
+    'em qual bairro',
     'onde fica',
     'localizacao',
     'localização',

@@ -317,6 +317,9 @@ PUBLIC_CAREERS_TERMS = {
 }
 PUBLIC_CURRICULUM_TERMS = {
     'base curricular',
+    'bncc',
+    'segue a bncc',
+    'seguir a bncc',
     'curriculo',
     'currículo',
     'componentes curriculares',
@@ -371,7 +374,18 @@ PUBLIC_DOCUMENT_SUBMISSION_TERMS = {
     'caixa postal',
     'telegrama',
 }
-PUBLIC_LOCATION_TERMS = {'endereco', 'endereço', 'cidade', 'estado', 'onde fica', 'localizacao', 'localização'}
+PUBLIC_LOCATION_TERMS = {
+    'endereco',
+    'endereço',
+    'cidade',
+    'estado',
+    'bairro',
+    'qual bairro',
+    'em qual bairro',
+    'onde fica',
+    'localizacao',
+    'localização',
+}
 PUBLIC_CONFESSIONAL_TERMS = {'confessional', 'laica', 'religiosa'}
 PUBLIC_LEADERSHIP_TERMS = {
     'diretora',

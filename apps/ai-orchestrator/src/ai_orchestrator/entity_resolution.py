@@ -11,6 +11,12 @@ _QUANTITY_PATTERN = re.compile(r'\b(\d{1,3})\s+(?:filho|filhos|dependente|depend
 _HYPOTHETICAL_MARKERS = (
     'se eu tiver',
     'se eu tivesse',
+    'se eu matricular',
+    'se eu matriculasse',
+    'se eu inscrever',
+    'se eu inscrevesse',
+    'se eu colocar',
+    'se eu colocasse',
     'hipoteticamente',
     'num cenario hipotetico',
     'num cenário hipotético',
@@ -36,6 +42,9 @@ _ADMIN_TERMS = (
 _LOCATION_TERMS = (
     'endereco',
     'endereço',
+    'bairro',
+    'qual bairro',
+    'em qual bairro',
     'onde fica',
     'estado fica',
     'cidade fica',
@@ -102,4 +111,3 @@ def resolve_entity_hints(message: str) -> ResolvedEntityHints:
         focus_hint=focus_hint,
         confidence=confidence,
     )
-
