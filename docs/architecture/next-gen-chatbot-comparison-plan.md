@@ -75,6 +75,34 @@ Conclusao operacional:
 - a principal lacuna que existia em `public` foi resolvida nesta rodada;
 - o proximo passo natural deixa de ser `latencia publica` e passa a ser `canario controlado real` ou `expansao do benchmark para trafego humano mais longo`.
 
+### Novo passo operacional: canario direcionado por allowlist
+
+O runtime agora tambem suporta um modo ainda mais seguro que `runtime override` global:
+
+- um `canario direcionado por allowlist`;
+- so chats ou conversas explicitamente listados entram na stack nova;
+- o restante continua no baseline normal.
+
+Na pratica, isso permite:
+
+- testar `python_functions` ou `llamaindex` com uma pessoa real;
+- sem trocar o sistema inteiro;
+- sem abrir canario para todos;
+- e sem misturar a resposta final entre stacks.
+
+Esse modelo e o mais adequado para a proxima fase porque combina:
+
+- comparacao justa;
+- risco operacional baixo;
+- e observacao humana real.
+
+Status desta fase:
+
+- o preflight de canario direcionado ja passou para `python_functions` e `llamaindex`;
+- a conversa allowlisted entrou na stack nova;
+- a conversa de controle ficou no baseline `LangGraph`;
+- o runtime foi restaurado ao final sem override global e sem override direcionado.
+
 ## Leitura do arquivo tmp/resposta_chatpg.txt
 
 O texto em [tmp/resposta_chatpg.txt](../../tmp/resposta_chatpg.txt) faz 6 afirmacoes principais. Abaixo esta o diagnostico honesto do estado atual do repo.

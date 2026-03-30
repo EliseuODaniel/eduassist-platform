@@ -1,0 +1,56 @@
+[
+  {
+    "id": "protected_lucas_docs",
+    "slice": "protected",
+    "message": "qual a documentacao do Lucas?",
+    "conversation_id": "nextgen-targeted-canary-lucas-docs",
+    "telegram_chat_id": 1649845499,
+    "control_telegram_chat_id": 1649846501,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "expected_access_tier": "authenticated",
+    "expected_keywords": [
+      "lucas",
+      "regular"
+    ]
+  },
+  {
+    "id": "protected_ana_docs",
+    "slice": "protected",
+    "message": "como esta a documentacao da Ana?",
+    "conversation_id": "nextgen-targeted-canary-ana-docs",
+    "telegram_chat_id": 1649845499,
+    "control_telegram_chat_id": 1649846502,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "expected_access_tier": "authenticated",
+    "expected_keywords": [
+      "ana",
+      "pendencias"
+    ]
+  }
+]

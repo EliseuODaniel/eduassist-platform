@@ -1,0 +1,506 @@
+{
+  "generated_at": "2026-03-30T14:46:21.491010+00:00",
+  "base_url": "http://127.0.0.1:8002",
+  "dataset": "/home/edann/projects/eduassist-platform/tests/evals/datasets/nextgen_targeted_canary_cases.json",
+  "stacks": [
+    "python_functions",
+    "llamaindex"
+  ],
+  "runtime_before": {
+    "service": "ai-orchestrator",
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "resolvedPrimaryStackSource": "orchestrator_engine",
+    "runtimePrimaryStackOverride": null,
+    "runtimePrimaryStackOverrideReason": "restore_default_runtime_stack",
+    "runtimePrimaryStackOverrideOperator": "codex",
+    "runtimePrimaryStackOverrideUpdatedAt": "2026-03-30T14:45:45.477762+00:00",
+    "runtimeTargetedStackOverride": null,
+    "runtimeTargetedStackOverrideReason": "restore_default_targeted_runtime_stack",
+    "runtimeTargetedStackOverrideOperator": "codex",
+    "runtimeTargetedStackOverrideUpdatedAt": "2026-03-30T14:45:45.479487+00:00",
+    "runtimeTargetedStackOverrideSlices": [],
+    "runtimeTargetedStackOverrideTelegramChatAllowlist": [],
+    "runtimeTargetedStackOverrideConversationAllowlist": [],
+    "strictFrameworkIsolationEnabled": false,
+    "supportedPrimaryStacks": [
+      "crewai",
+      "langgraph",
+      "llamaindex",
+      "python_functions",
+      "shadow"
+    ]
+  },
+  "baseline_runtime": {
+    "service": "ai-orchestrator",
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "resolvedPrimaryStackSource": "orchestrator_engine",
+    "runtimePrimaryStackOverride": null,
+    "runtimePrimaryStackOverrideReason": "restore_default_runtime_stack",
+    "runtimePrimaryStackOverrideOperator": "codex",
+    "runtimePrimaryStackOverrideUpdatedAt": "2026-03-30T14:45:45.477762+00:00",
+    "runtimeTargetedStackOverride": null,
+    "runtimeTargetedStackOverrideReason": "restore_default_targeted_runtime_stack",
+    "runtimeTargetedStackOverrideOperator": "codex",
+    "runtimeTargetedStackOverrideUpdatedAt": "2026-03-30T14:45:45.479487+00:00",
+    "runtimeTargetedStackOverrideSlices": [],
+    "runtimeTargetedStackOverrideTelegramChatAllowlist": [],
+    "runtimeTargetedStackOverrideConversationAllowlist": [],
+    "strictFrameworkIsolationEnabled": false,
+    "supportedPrimaryStacks": [
+      "crewai",
+      "langgraph",
+      "llamaindex",
+      "python_functions",
+      "shadow"
+    ]
+  },
+  "targeted_before": {
+    "service": "ai-orchestrator",
+    "targetedOverride": {
+      "value": null,
+      "reason": "restore_default_targeted_runtime_stack",
+      "operator": "codex",
+      "updated_at": "2026-03-30T14:45:45.479487+00:00",
+      "slices": [],
+      "telegram_chat_allowlist": [],
+      "conversation_allowlist": []
+    },
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "resolvedPrimaryStackSource": "orchestrator_engine",
+    "runtimePrimaryStackOverride": null,
+    "runtimePrimaryStackOverrideReason": "restore_default_runtime_stack",
+    "runtimePrimaryStackOverrideOperator": "codex",
+    "runtimePrimaryStackOverrideUpdatedAt": "2026-03-30T14:45:45.477762+00:00",
+    "runtimeTargetedStackOverride": null,
+    "runtimeTargetedStackOverrideReason": "restore_default_targeted_runtime_stack",
+    "runtimeTargetedStackOverrideOperator": "codex",
+    "runtimeTargetedStackOverrideUpdatedAt": "2026-03-30T14:45:45.479487+00:00",
+    "runtimeTargetedStackOverrideSlices": [],
+    "runtimeTargetedStackOverrideTelegramChatAllowlist": [],
+    "runtimeTargetedStackOverrideConversationAllowlist": [],
+    "strictFrameworkIsolationEnabled": false,
+    "supportedPrimaryStacks": [
+      "crewai",
+      "langgraph",
+      "llamaindex",
+      "python_functions",
+      "shadow"
+    ]
+  },
+  "targeted_actions": [
+    {
+      "stack": "python_functions",
+      "payload": {
+        "service": "ai-orchestrator",
+        "action": "updated",
+        "targetedOverride": {
+          "value": "python_functions",
+          "reason": "nextgen_targeted_canary_preflight_python_functions",
+          "operator": "codex",
+          "updated_at": "2026-03-30T14:46:19.803900+00:00",
+          "slices": [
+            "protected"
+          ],
+          "telegram_chat_allowlist": [],
+          "conversation_allowlist": [
+            "nextgen-targeted-canary-ana-docs:python_functions:allowlisted",
+            "nextgen-targeted-canary-lucas-docs:python_functions:allowlisted"
+          ]
+        },
+        "orchestratorEngine": "langgraph",
+        "primaryStackFeatureFlag": "",
+        "resolvedPrimaryStack": "langgraph",
+        "resolvedPrimaryStackSource": "orchestrator_engine",
+        "runtimePrimaryStackOverride": null,
+        "runtimePrimaryStackOverrideReason": "restore_default_runtime_stack",
+        "runtimePrimaryStackOverrideOperator": "codex",
+        "runtimePrimaryStackOverrideUpdatedAt": "2026-03-30T14:45:45.477762+00:00",
+        "runtimeTargetedStackOverride": "python_functions",
+        "runtimeTargetedStackOverrideReason": "nextgen_targeted_canary_preflight_python_functions",
+        "runtimeTargetedStackOverrideOperator": "codex",
+        "runtimeTargetedStackOverrideUpdatedAt": "2026-03-30T14:46:19.803900+00:00",
+        "runtimeTargetedStackOverrideSlices": [
+          "protected"
+        ],
+        "runtimeTargetedStackOverrideTelegramChatAllowlist": [],
+        "runtimeTargetedStackOverrideConversationAllowlist": [
+          "nextgen-targeted-canary-ana-docs:python_functions:allowlisted",
+          "nextgen-targeted-canary-lucas-docs:python_functions:allowlisted"
+        ],
+        "strictFrameworkIsolationEnabled": false,
+        "supportedPrimaryStacks": [
+          "crewai",
+          "langgraph",
+          "llamaindex",
+          "python_functions",
+          "shadow"
+        ]
+      }
+    },
+    {
+      "stack": "llamaindex",
+      "payload": {
+        "service": "ai-orchestrator",
+        "action": "updated",
+        "targetedOverride": {
+          "value": "llamaindex",
+          "reason": "nextgen_targeted_canary_preflight_llamaindex",
+          "operator": "codex",
+          "updated_at": "2026-03-30T14:46:20.663905+00:00",
+          "slices": [
+            "protected"
+          ],
+          "telegram_chat_allowlist": [],
+          "conversation_allowlist": [
+            "nextgen-targeted-canary-ana-docs:llamaindex:allowlisted",
+            "nextgen-targeted-canary-lucas-docs:llamaindex:allowlisted"
+          ]
+        },
+        "orchestratorEngine": "langgraph",
+        "primaryStackFeatureFlag": "",
+        "resolvedPrimaryStack": "langgraph",
+        "resolvedPrimaryStackSource": "orchestrator_engine",
+        "runtimePrimaryStackOverride": null,
+        "runtimePrimaryStackOverrideReason": "restore_default_runtime_stack",
+        "runtimePrimaryStackOverrideOperator": "codex",
+        "runtimePrimaryStackOverrideUpdatedAt": "2026-03-30T14:45:45.477762+00:00",
+        "runtimeTargetedStackOverride": "llamaindex",
+        "runtimeTargetedStackOverrideReason": "nextgen_targeted_canary_preflight_llamaindex",
+        "runtimeTargetedStackOverrideOperator": "codex",
+        "runtimeTargetedStackOverrideUpdatedAt": "2026-03-30T14:46:20.663905+00:00",
+        "runtimeTargetedStackOverrideSlices": [
+          "protected"
+        ],
+        "runtimeTargetedStackOverrideTelegramChatAllowlist": [],
+        "runtimeTargetedStackOverrideConversationAllowlist": [
+          "nextgen-targeted-canary-ana-docs:llamaindex:allowlisted",
+          "nextgen-targeted-canary-lucas-docs:llamaindex:allowlisted"
+        ],
+        "strictFrameworkIsolationEnabled": false,
+        "supportedPrimaryStacks": [
+          "crewai",
+          "langgraph",
+          "llamaindex",
+          "python_functions",
+          "shadow"
+        ]
+      }
+    }
+  ],
+  "runtime_after_restore": {
+    "service": "ai-orchestrator",
+    "action": "cleared",
+    "override": {
+      "value": null,
+      "reason": "restore_default_runtime_stack",
+      "operator": "codex",
+      "updated_at": "2026-03-30T14:46:21.488875+00:00"
+    },
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "resolvedPrimaryStackSource": "orchestrator_engine",
+    "runtimePrimaryStackOverride": null,
+    "runtimePrimaryStackOverrideReason": "restore_default_runtime_stack",
+    "runtimePrimaryStackOverrideOperator": "codex",
+    "runtimePrimaryStackOverrideUpdatedAt": "2026-03-30T14:46:21.488875+00:00",
+    "runtimeTargetedStackOverride": "llamaindex",
+    "runtimeTargetedStackOverrideReason": "nextgen_targeted_canary_preflight_llamaindex",
+    "runtimeTargetedStackOverrideOperator": "codex",
+    "runtimeTargetedStackOverrideUpdatedAt": "2026-03-30T14:46:20.663905+00:00",
+    "runtimeTargetedStackOverrideSlices": [
+      "protected"
+    ],
+    "runtimeTargetedStackOverrideTelegramChatAllowlist": [],
+    "runtimeTargetedStackOverrideConversationAllowlist": [
+      "nextgen-targeted-canary-ana-docs:llamaindex:allowlisted",
+      "nextgen-targeted-canary-lucas-docs:llamaindex:allowlisted"
+    ],
+    "strictFrameworkIsolationEnabled": false,
+    "supportedPrimaryStacks": [
+      "crewai",
+      "langgraph",
+      "llamaindex",
+      "python_functions",
+      "shadow"
+    ]
+  },
+  "targeted_after_restore": {
+    "service": "ai-orchestrator",
+    "action": "cleared",
+    "targetedOverride": {
+      "value": null,
+      "reason": "restore_default_targeted_runtime_stack",
+      "operator": "codex",
+      "updated_at": "2026-03-30T14:46:21.490461+00:00",
+      "slices": [],
+      "telegram_chat_allowlist": [],
+      "conversation_allowlist": []
+    },
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "resolvedPrimaryStackSource": "orchestrator_engine",
+    "runtimePrimaryStackOverride": null,
+    "runtimePrimaryStackOverrideReason": "restore_default_runtime_stack",
+    "runtimePrimaryStackOverrideOperator": "codex",
+    "runtimePrimaryStackOverrideUpdatedAt": "2026-03-30T14:46:21.488875+00:00",
+    "runtimeTargetedStackOverride": null,
+    "runtimeTargetedStackOverrideReason": "restore_default_targeted_runtime_stack",
+    "runtimeTargetedStackOverrideOperator": "codex",
+    "runtimeTargetedStackOverrideUpdatedAt": "2026-03-30T14:46:21.490461+00:00",
+    "runtimeTargetedStackOverrideSlices": [],
+    "runtimeTargetedStackOverrideTelegramChatAllowlist": [],
+    "runtimeTargetedStackOverrideConversationAllowlist": [],
+    "strictFrameworkIsolationEnabled": false,
+    "supportedPrimaryStacks": [
+      "crewai",
+      "langgraph",
+      "llamaindex",
+      "python_functions",
+      "shadow"
+    ]
+  },
+  "results": [
+    {
+      "case_id": "protected_lucas_docs",
+      "stack": "python_functions",
+      "lane": "allowlisted",
+      "status": 200,
+      "passed": true,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "access_tier": "authenticated",
+      "keyword_pass": true,
+      "targeted_hit": true,
+      "message_preview": "Situacao documental de Lucas Oliveira hoje: regular.\n- Identificacao escolar do aluno: regular. Codigo de matricula: MAT-2026-001\n- Responsavel vinculado: regular. Maria Oliveira\n- Documentacao escolar do aluno: regular."
+    },
+    {
+      "case_id": "protected_lucas_docs",
+      "stack": "python_functions",
+      "lane": "control",
+      "status": 200,
+      "passed": true,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call",
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call",
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call"
+      ],
+      "access_tier": "authenticated",
+      "keyword_pass": true,
+      "targeted_hit": false,
+      "message_preview": "Situacao documental de Lucas Oliveira hoje: regular.\n- Identificacao escolar do aluno: regular. Codigo de matricula: MAT-2026-001\n- Responsavel vinculado: regular. Maria Oliveira\n- Documentacao escolar do aluno: regular."
+    },
+    {
+      "case_id": "protected_ana_docs",
+      "stack": "python_functions",
+      "lane": "allowlisted",
+      "status": 200,
+      "passed": true,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:python_functions"
+      ],
+      "access_tier": "authenticated",
+      "keyword_pass": true,
+      "targeted_hit": true,
+      "message_preview": "Situacao documental de Ana Oliveira hoje: com pendencias."
+    },
+    {
+      "case_id": "protected_ana_docs",
+      "stack": "python_functions",
+      "lane": "control",
+      "status": 200,
+      "passed": true,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call",
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call",
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call"
+      ],
+      "access_tier": "authenticated",
+      "keyword_pass": true,
+      "targeted_hit": false,
+      "message_preview": "Situacao documental de Ana Oliveira hoje: com pendencias."
+    },
+    {
+      "case_id": "protected_lucas_docs",
+      "stack": "llamaindex",
+      "lane": "allowlisted",
+      "status": 200,
+      "passed": true,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "access_tier": "authenticated",
+      "keyword_pass": true,
+      "targeted_hit": true,
+      "message_preview": "Situacao documental de Lucas Oliveira hoje: regular.\n- Identificacao escolar do aluno: regular. Codigo de matricula: MAT-2026-001\n- Responsavel vinculado: regular. Maria Oliveira\n- Documentacao escolar do aluno: regular."
+    },
+    {
+      "case_id": "protected_lucas_docs",
+      "stack": "llamaindex",
+      "lane": "control",
+      "status": 200,
+      "passed": true,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call",
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call",
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call"
+      ],
+      "access_tier": "authenticated",
+      "keyword_pass": true,
+      "targeted_hit": false,
+      "message_preview": "Situacao documental de Lucas Oliveira hoje: regular.\n- Identificacao escolar do aluno: regular. Codigo de matricula: MAT-2026-001\n- Responsavel vinculado: regular. Maria Oliveira\n- Documentacao escolar do aluno: regular."
+    },
+    {
+      "case_id": "protected_ana_docs",
+      "stack": "llamaindex",
+      "lane": "allowlisted",
+      "status": 200,
+      "passed": true,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "access_tier": "authenticated",
+      "keyword_pass": true,
+      "targeted_hit": true,
+      "message_preview": "Situacao documental de Ana Oliveira hoje: com pendencias."
+    },
+    {
+      "case_id": "protected_ana_docs",
+      "stack": "llamaindex",
+      "lane": "control",
+      "status": 200,
+      "passed": true,
+      "mode": "structured_tool",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call",
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call",
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call"
+      ],
+      "access_tier": "authenticated",
+      "keyword_pass": true,
+      "targeted_hit": false,
+      "message_preview": "Situacao documental de Ana Oliveira hoje: com pendencias."
+    }
+  ],
+  "summary": {
+    "by_stack": {
+      "python_functions": {
+        "allowlisted_passed": 2,
+        "allowlisted_total": 2,
+        "control_passed": 2,
+        "control_total": 2,
+        "ready_for_targeted_canary": true
+      },
+      "llamaindex": {
+        "allowlisted_passed": 2,
+        "allowlisted_total": 2,
+        "control_passed": 2,
+        "control_total": 2,
+        "ready_for_targeted_canary": true
+      }
+    }
+  }
+}

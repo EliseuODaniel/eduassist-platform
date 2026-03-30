@@ -14,14 +14,17 @@ from eduassist_observability import configure_observability
 from .engine_selector import (
     SUPPORTED_PRIMARY_STACKS,
     build_engine_bundle,
+    clear_runtime_targeted_stack_override,
     clear_runtime_primary_stack_override,
     get_experiment_live_promotion_summary,
     get_experiment_rollout_readiness,
     get_primary_stack_resolution,
+    get_runtime_targeted_stack_override,
     get_runtime_primary_stack_override,
     get_scorecard_gate_status,
     maybe_run_shadow,
     resolve_primary_stack,
+    set_runtime_targeted_stack_override,
     set_runtime_primary_stack_override,
 )
 from .engines.llamaindex_workflow_engine import LLAMAINDEX_WORKFLOW_AVAILABLE
@@ -161,6 +164,16 @@ class RuntimePrimaryStackUpdateRequest(BaseModel):
     clear_override: bool = False
 
 
+class RuntimeTargetedStackUpdateRequest(BaseModel):
+    stack: str | None = None
+    reason: str | None = None
+    operator: str | None = None
+    clear_override: bool = False
+    slices: list[str] = Field(default_factory=list)
+    telegram_chat_allowlist: list[str] = Field(default_factory=list)
+    conversation_allowlist: list[str] = Field(default_factory=list)
+
+
 def _normalized_hitl_slices(values: list[str] | None, *, fallback: str) -> list[str]:
     normalized = [str(item).strip() for item in (values or []) if str(item).strip()]
     if normalized:
@@ -175,6 +188,7 @@ def _csv_count(value: str | None) -> int:
 def _runtime_primary_stack_payload(settings: Settings) -> dict[str, object]:
     resolution = get_primary_stack_resolution(settings)
     runtime_override = resolution.get('runtime_override')
+    targeted_override = get_runtime_targeted_stack_override()
     return {
         'orchestratorEngine': settings.orchestrator_engine,
         'primaryStackFeatureFlag': settings.feature_flag_primary_orchestration_stack,
@@ -184,6 +198,13 @@ def _runtime_primary_stack_payload(settings: Settings) -> dict[str, object]:
         'runtimePrimaryStackOverrideReason': runtime_override.get('reason') if isinstance(runtime_override, dict) else None,
         'runtimePrimaryStackOverrideOperator': runtime_override.get('operator') if isinstance(runtime_override, dict) else None,
         'runtimePrimaryStackOverrideUpdatedAt': runtime_override.get('updated_at') if isinstance(runtime_override, dict) else None,
+        'runtimeTargetedStackOverride': targeted_override.get('value') if isinstance(targeted_override, dict) else None,
+        'runtimeTargetedStackOverrideReason': targeted_override.get('reason') if isinstance(targeted_override, dict) else None,
+        'runtimeTargetedStackOverrideOperator': targeted_override.get('operator') if isinstance(targeted_override, dict) else None,
+        'runtimeTargetedStackOverrideUpdatedAt': targeted_override.get('updated_at') if isinstance(targeted_override, dict) else None,
+        'runtimeTargetedStackOverrideSlices': targeted_override.get('slices') if isinstance(targeted_override, dict) else [],
+        'runtimeTargetedStackOverrideTelegramChatAllowlist': targeted_override.get('telegram_chat_allowlist') if isinstance(targeted_override, dict) else [],
+        'runtimeTargetedStackOverrideConversationAllowlist': targeted_override.get('conversation_allowlist') if isinstance(targeted_override, dict) else [],
         'strictFrameworkIsolationEnabled': settings.strict_framework_isolation_enabled,
     }
 
@@ -606,6 +627,72 @@ async def update_runtime_primary_stack(
         'service': 'ai-orchestrator',
         'action': action,
         'override': override,
+        **_runtime_primary_stack_payload(settings),
+        'supportedPrimaryStacks': sorted(SUPPORTED_PRIMARY_STACKS),
+    }
+
+
+@app.get('/v1/internal/runtime/targeted-stack')
+async def get_runtime_targeted_stack(
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    _require_internal_api_token(x_internal_api_token)
+    settings = get_settings()
+    return {
+        'service': 'ai-orchestrator',
+        'targetedOverride': get_runtime_targeted_stack_override(),
+        **_runtime_primary_stack_payload(settings),
+        'supportedPrimaryStacks': sorted(SUPPORTED_PRIMARY_STACKS),
+    }
+
+
+@app.post('/v1/internal/runtime/targeted-stack')
+async def update_runtime_targeted_stack(
+    request: RuntimeTargetedStackUpdateRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    _require_internal_api_token(x_internal_api_token)
+    settings = get_settings()
+    operator = str(request.operator or 'internal').strip() or 'internal'
+    reason = str(request.reason or '').strip() or None
+    if request.clear_override:
+        override = clear_runtime_targeted_stack_override(
+            reason=reason or 'runtime_targeted_stack_override_cleared',
+            operator=operator,
+        )
+        logger.info(
+            'runtime_targeted_stack_override_cleared',
+            extra={'operator': operator, 'reason': reason},
+        )
+        action = 'cleared'
+    else:
+        try:
+            override = set_runtime_targeted_stack_override(
+                stack=request.stack,
+                reason=reason or 'runtime_targeted_stack_override_set',
+                operator=operator,
+                slices=request.slices,
+                telegram_chat_allowlist=request.telegram_chat_allowlist,
+                conversation_allowlist=request.conversation_allowlist,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        logger.info(
+            'runtime_targeted_stack_override_updated',
+            extra={
+                'operator': operator,
+                'reason': reason,
+                'stack': override.get('value'),
+                'slices': override.get('slices'),
+                'telegram_chat_allowlist': override.get('telegram_chat_allowlist'),
+                'conversation_allowlist': override.get('conversation_allowlist'),
+            },
+        )
+        action = 'updated'
+    return {
+        'service': 'ai-orchestrator',
+        'action': action,
+        'targetedOverride': override,
         **_runtime_primary_stack_payload(settings),
         'supportedPrimaryStacks': sorted(SUPPORTED_PRIMARY_STACKS),
     }

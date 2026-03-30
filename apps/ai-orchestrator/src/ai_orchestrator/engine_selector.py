@@ -32,6 +32,16 @@ _RUNTIME_PRIMARY_STACK_OVERRIDE: dict[str, Any] = {
     'updated_at': None,
 }
 _RUNTIME_PRIMARY_STACK_LOCK = Lock()
+_RUNTIME_TARGETED_STACK_OVERRIDE: dict[str, Any] = {
+    'value': None,
+    'reason': None,
+    'operator': None,
+    'updated_at': None,
+    'slices': [],
+    'telegram_chat_allowlist': [],
+    'conversation_allowlist': [],
+}
+_RUNTIME_TARGETED_STACK_LOCK = Lock()
 SUPPORTED_PRIMARY_STACKS = {'langgraph', 'crewai', 'python_functions', 'llamaindex', 'shadow'}
 
 
@@ -92,6 +102,67 @@ def clear_runtime_primary_stack_override(
     operator: str | None = None,
 ) -> dict[str, Any]:
     return set_runtime_primary_stack_override(
+        stack=None,
+        reason=reason,
+        operator=operator,
+    )
+
+
+def get_runtime_targeted_stack_override() -> dict[str, Any]:
+    with _RUNTIME_TARGETED_STACK_LOCK:
+        return dict(_RUNTIME_TARGETED_STACK_OVERRIDE)
+
+
+def set_runtime_targeted_stack_override(
+    *,
+    stack: str | None,
+    reason: str | None = None,
+    operator: str | None = None,
+    slices: list[str] | None = None,
+    telegram_chat_allowlist: list[str] | None = None,
+    conversation_allowlist: list[str] | None = None,
+) -> dict[str, Any]:
+    normalized_stack = _normalized_primary_stack(stack)
+    if normalized_stack == 'shadow':
+        raise ValueError('unsupported_targeted_stack:shadow')
+    with _RUNTIME_TARGETED_STACK_LOCK:
+        if normalized_stack is None:
+            _RUNTIME_TARGETED_STACK_OVERRIDE.update(
+                {
+                    'value': None,
+                    'reason': reason or None,
+                    'operator': operator or None,
+                    'updated_at': datetime.now(timezone.utc).isoformat(),
+                    'slices': [],
+                    'telegram_chat_allowlist': [],
+                    'conversation_allowlist': [],
+                }
+            )
+        else:
+            _RUNTIME_TARGETED_STACK_OVERRIDE.update(
+                {
+                    'value': normalized_stack,
+                    'reason': reason or None,
+                    'operator': operator or None,
+                    'updated_at': datetime.now(timezone.utc).isoformat(),
+                    'slices': sorted({str(item).strip() for item in (slices or []) if str(item).strip()}),
+                    'telegram_chat_allowlist': sorted(
+                        {str(item).strip() for item in (telegram_chat_allowlist or []) if str(item).strip()}
+                    ),
+                    'conversation_allowlist': sorted(
+                        {str(item).strip() for item in (conversation_allowlist or []) if str(item).strip()}
+                    ),
+                }
+            )
+        return dict(_RUNTIME_TARGETED_STACK_OVERRIDE)
+
+
+def clear_runtime_targeted_stack_override(
+    *,
+    reason: str | None = None,
+    operator: str | None = None,
+) -> dict[str, Any]:
+    return set_runtime_targeted_stack_override(
         stack=None,
         reason=reason,
         operator=operator,
@@ -220,6 +291,21 @@ def _request_matches_allowlist(*, request: Any, settings: Any, slice_name: str) 
         return True
     chat_id = str(getattr(request, 'telegram_chat_id', '') or '')
     conversation_id = str(getattr(request, 'conversation_id', '') or '')
+    return (chat_id and chat_id in chat_allowlist) or (conversation_id and conversation_id in conversation_allowlist)
+
+
+def _request_matches_targeted_allowlist(*, request: Any, override: dict[str, Any], slice_name: str) -> bool:
+    scoped_slices = {str(item).strip() for item in (override.get('slices') or []) if str(item).strip()}
+    if scoped_slices and slice_name not in scoped_slices:
+        return False
+    chat_allowlist = {str(item).strip() for item in (override.get('telegram_chat_allowlist') or []) if str(item).strip()}
+    conversation_allowlist = {
+        str(item).strip() for item in (override.get('conversation_allowlist') or []) if str(item).strip()
+    }
+    if not chat_allowlist and not conversation_allowlist:
+        return False
+    chat_id = str(getattr(request, 'telegram_chat_id', '') or '').strip()
+    conversation_id = str(getattr(request, 'conversation_id', '') or '').strip()
     return (chat_id and chat_id in chat_allowlist) or (conversation_id and conversation_id in conversation_allowlist)
 
 
@@ -723,6 +809,26 @@ def _should_route_to_experiment(*, request: Any, settings: Any) -> tuple[bool, d
     return enrolled, metadata
 
 
+def _targeted_runtime_stack_for_request(*, request: Any) -> dict[str, Any] | None:
+    override = get_runtime_targeted_stack_override()
+    stack_value = _normalized_primary_stack(override.get('value'))
+    if not stack_value or stack_value == 'shadow':
+        return None
+    slice_name = infer_request_slice(request)
+    if not _request_matches_targeted_allowlist(request=request, override=override, slice_name=slice_name):
+        return None
+    return {
+        'stack': stack_value,
+        'slice': slice_name,
+        'reason': str(override.get('reason') or ''),
+        'operator': str(override.get('operator') or ''),
+        'updated_at': str(override.get('updated_at') or ''),
+        'slices': list(override.get('slices') or []),
+        'telegram_chat_allowlist': list(override.get('telegram_chat_allowlist') or []),
+        'conversation_allowlist': list(override.get('conversation_allowlist') or []),
+    }
+
+
 def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBundle:
     mode = resolve_primary_stack(settings)
     langgraph_engine = LangGraphEngine()
@@ -731,11 +837,38 @@ def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBund
     llamaindex_engine = LlamaIndexWorkflowEngine()
     strict_mode = strict_framework_isolation_enabled(settings)
 
+    if request is not None and not get_runtime_primary_stack_override().get('value'):
+        targeted = _targeted_runtime_stack_for_request(request=request)
+        if targeted is not None:
+            targeted_stack = str(targeted['stack'])
+            if targeted_stack == 'crewai':
+                return EngineBundle(mode=f"targeted:{targeted['slice']}:{targeted_stack}", primary=crewai_engine, experiment=targeted)
+            if targeted_stack == 'python_functions':
+                return EngineBundle(mode=f"targeted:{targeted['slice']}:{targeted_stack}", primary=python_functions_engine, experiment=targeted)
+            if targeted_stack == 'llamaindex':
+                return EngineBundle(mode=f"targeted:{targeted['slice']}:{targeted_stack}", primary=llamaindex_engine, experiment=targeted)
+            return EngineBundle(mode=f"targeted:{targeted['slice']}:{targeted_stack}", primary=langgraph_engine, experiment=targeted)
+
     if request is not None and not strict_mode:
         should_experiment, experiment = _should_route_to_experiment(request=request, settings=settings)
         if should_experiment:
+            experiment_engine = str(experiment.get('engine') or 'crewai')
+            if experiment_engine == 'python_functions':
+                return EngineBundle(
+                    mode=f"experiment:{experiment['slice']}:{experiment_engine}",
+                    primary=python_functions_engine,
+                    shadow=None,
+                    experiment=experiment,
+                )
+            if experiment_engine == 'llamaindex':
+                return EngineBundle(
+                    mode=f"experiment:{experiment['slice']}:{experiment_engine}",
+                    primary=llamaindex_engine,
+                    shadow=None,
+                    experiment=experiment,
+                )
             return EngineBundle(
-                mode=f"experiment:{experiment['slice']}:{experiment['engine']}",
+                mode=f"experiment:{experiment['slice']}:{experiment_engine}",
                 primary=crewai_engine,
                 shadow=None,
                 experiment=experiment,
