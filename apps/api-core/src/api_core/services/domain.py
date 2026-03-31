@@ -16,7 +16,9 @@ from api_core.contracts import (
     CalendarEventEntry,
     GradeEntry,
     InvoiceEntry,
+    PublicAcademicPolicy,
     PublicAssistantCapabilities,
+    PublicAttendancePolicy,
     PublicContactChannel,
     PublicDocumentSubmissionPolicy,
     PublicFeatureAvailability,
@@ -24,6 +26,7 @@ from api_core.contracts import (
     PublicKpiEntry,
     PublicLeadershipMember,
     PublicOrgDirectory,
+    PublicPassingPolicy,
     PublicSchoolProfile,
     PublicServiceDirectory,
     PublicServiceCatalogEntry,
@@ -897,6 +900,42 @@ def get_public_school_profile(session: Session) -> PublicSchoolProfile | None:
             ],
             warning='O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.',
             notes='No processo de matricula, o envio inicial pode ser digital. A validacao final continua com a secretaria.',
+        ),
+        academic_policy=PublicAcademicPolicy(
+            project_of_life_summary=(
+                'Projeto de vida funciona como componente curricular e eixo de tutoria do Ensino Medio. '
+                'Na pratica, o estudante trabalha autoconhecimento, planejamento academico, organizacao da rotina '
+                'e acompanhamento tutorial ao longo do ano.'
+            ),
+            passing_policy=PublicPassingPolicy(
+                passing_average=Decimal('7.0'),
+                reference_scale='0-10',
+                recovery_support=(
+                    'Quando a media fica abaixo da referencia, a escola combina monitorias, plantoes e orientacoes '
+                    'de recuperacao conforme o calendario pedagogico.'
+                ),
+                notes=(
+                    'A referencia publica de aprovacao usada nas orientacoes do colegio e 7,0, com fechamento final '
+                    'sempre acompanhado pela equipe pedagogica no periodo letivo.'
+                ),
+            ),
+            attendance_policy=PublicAttendancePolicy(
+                minimum_attendance_percent=Decimal('75.0'),
+                first_absence_guidance=(
+                    'Uma falta isolada na primeira aula entra normalmente no registro de frequencia da disciplina. '
+                    'Dependendo da atividade do dia, o professor pode orientar recomposicao ou acompanhamento posterior.'
+                ),
+                chronic_absence_guidance=(
+                    'Se a frequencia de um componente cair abaixo de 75%, o estudante entra em alerta academico e a '
+                    'coordenacao pode acionar a familia. A permanencia abaixo desse limite pode comprometer a aprovacao '
+                    'por frequencia.'
+                ),
+                follow_up_channel='Coordenacao pedagogica e orientacao educacional',
+                notes=(
+                    'A escola acompanha justificativas, recorrencia e necessidade de plano de recomposicao junto a '
+                    'familia e ao estudante.'
+                ),
+            ),
         ),
         documented_services=[
             'Secretaria presencial e digital',

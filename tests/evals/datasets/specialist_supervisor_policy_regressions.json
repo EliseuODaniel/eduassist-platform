@@ -1,0 +1,52 @@
+[
+  {
+    "prompt": "O que é o Projeto de vida?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "specialist_policy_project_of_life",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["Projeto de vida", "Colegio Horizonte"],
+    "forbidden_keywords": ["plano que uma pessoa elabora para o seu futuro"]
+  },
+  {
+    "prompt": "se eu faltar na primeira aula, o que acontece?",
+    "slice": "public",
+    "category": "academic_policy",
+    "thread_id": "specialist_policy_attendance",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["registro de frequencia", "professor"],
+    "forbidden_keywords": ["Ainda nao consegui sustentar", "2 de fevereiro de 2026"]
+  },
+  {
+    "prompt": "se eu faltar mais que metade das aulas, o que acontece?",
+    "slice": "public",
+    "category": "academic_policy",
+    "thread_id": "specialist_policy_attendance",
+    "turn_index": 2,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["75,0%", "aprovacao por frequencia"],
+    "forbidden_keywords": ["2 de fevereiro de 2026", "sem evidencias suficientes"]
+  },
+  {
+    "prompt": "qual a nota de aprovação?",
+    "slice": "protected",
+    "category": "academic_policy",
+    "thread_id": "specialist_policy_passing",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["7,0/10"],
+    "forbidden_keywords": ["Panorama academico das contas vinculadas"]
+  },
+  {
+    "prompt": "qual nota preciso tirar para aprovação?",
+    "slice": "protected",
+    "category": "academic_policy",
+    "thread_id": "specialist_policy_passing",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["7,0/10"],
+    "forbidden_keywords": ["Panorama academico das contas vinculadas", "em a disciplina"]
+  }
+]

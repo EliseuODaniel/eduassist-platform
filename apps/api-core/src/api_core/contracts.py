@@ -362,6 +362,27 @@ class PublicDocumentSubmissionPolicy(BaseModel):
     notes: str | None = None
 
 
+class PublicPassingPolicy(BaseModel):
+    passing_average: Decimal
+    reference_scale: str = '0-10'
+    recovery_support: str | None = None
+    notes: str | None = None
+
+
+class PublicAttendancePolicy(BaseModel):
+    minimum_attendance_percent: Decimal
+    first_absence_guidance: str | None = None
+    chronic_absence_guidance: str | None = None
+    follow_up_channel: str | None = None
+    notes: str | None = None
+
+
+class PublicAcademicPolicy(BaseModel):
+    project_of_life_summary: str | None = None
+    passing_policy: PublicPassingPolicy
+    attendance_policy: PublicAttendancePolicy
+
+
 class PublicSchoolProfile(BaseModel):
     school_unit_code: str
     school_name: str
@@ -389,6 +410,7 @@ class PublicSchoolProfile(BaseModel):
     visit_offers: list[PublicVisitOffer] = Field(default_factory=list)
     service_catalog: list[PublicServiceCatalogEntry] = Field(default_factory=list)
     document_submission_policy: PublicDocumentSubmissionPolicy | None = None
+    academic_policy: PublicAcademicPolicy | None = None
     documented_services: list[str] = Field(default_factory=list)
     admissions_highlights: list[str] = Field(default_factory=list)
     admissions_required_documents: list[str] = Field(default_factory=list)

@@ -14,6 +14,7 @@ SPECIALIST_REGISTRY: tuple[SpecialistSpec, ...] = (
             "search_public_documents",
             "search_private_documents",
             "get_public_profile_bundle",
+            "fetch_academic_policy",
             "run_graph_rag_query",
             "project_public_pricing",
             "fetch_workflow_status",
@@ -29,6 +30,7 @@ SPECIALIST_REGISTRY: tuple[SpecialistSpec, ...] = (
         supported_slices=["public"],
         allowed_tools=[
             "get_public_profile_bundle",
+            "fetch_academic_policy",
             "search_public_documents",
             "run_graph_rag_query",
             "project_public_pricing",
@@ -43,6 +45,7 @@ SPECIALIST_REGISTRY: tuple[SpecialistSpec, ...] = (
         supported_slices=["protected"],
         allowed_tools=[
             "fetch_actor_identity",
+            "fetch_academic_policy",
             "fetch_academic_summary",
             "fetch_upcoming_assessments",
             "fetch_attendance_timeline",

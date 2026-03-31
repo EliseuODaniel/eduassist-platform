@@ -14,6 +14,7 @@ SPECIALIST_REGISTRY: tuple[SpecialistSpec, ...] = (
             'search_public_documents',
             'search_private_documents',
             'get_public_school_profile',
+            'fetch_academic_policy',
             'graph_rag',
             'pricing_projection',
             'workflow_status',
@@ -29,6 +30,7 @@ SPECIALIST_REGISTRY: tuple[SpecialistSpec, ...] = (
         supported_slices=('public',),
         allowed_tools=(
             'get_public_school_profile',
+            'fetch_academic_policy',
             'get_public_timeline',
             'get_public_calendar_events',
             'get_org_directory',
@@ -47,6 +49,7 @@ SPECIALIST_REGISTRY: tuple[SpecialistSpec, ...] = (
         supported_slices=('protected',),
         allowed_tools=(
             'get_actor_identity_context',
+            'fetch_academic_policy',
             'get_student_academic_summary',
             'get_student_attendance',
             'get_student_grades',
@@ -118,4 +121,3 @@ SPECIALIST_REGISTRY: tuple[SpecialistSpec, ...] = (
 
 def get_specialist_registry() -> dict[str, SpecialistSpec]:
     return {spec.id: spec for spec in SPECIALIST_REGISTRY if spec.activation_flag}
-

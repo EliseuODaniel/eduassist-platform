@@ -286,6 +286,15 @@ def _school_domain_terms() -> set[str]:
         "disciplinas",
         "matematica",
         "matemática",
+        "frequencia",
+        "frequência",
+        "presenca",
+        "presença",
+        "projeto de vida",
+        "aprovacao",
+        "aprovação",
+        "recuperacao",
+        "recuperação",
     }
 
 
@@ -995,6 +1004,154 @@ def _compose_curriculum_components_answer(profile: dict[str, Any] | None, *, seg
     return answer
 
 
+def _academic_policy(profile: dict[str, Any] | None) -> dict[str, Any] | None:
+    policy = (profile or {}).get("academic_policy")
+    return policy if isinstance(policy, dict) else None
+
+
+def _looks_like_project_of_life_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return "projeto de vida" in normalized
+
+
+def _looks_like_attendance_policy_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if not any(term in normalized for term in {"falta", "faltas", "frequencia", "frequência", "presenca", "presença"}):
+        return False
+    return any(
+        term in normalized
+        for term in {
+            "primeira aula",
+            "metade das aulas",
+            "limite de faltas",
+            "limite de frequencia",
+            "limite de frequência",
+            "frequencia minima",
+            "frequência mínima",
+            "frequencia minima",
+            "o que acontece",
+            "quantas faltas",
+            "abaixo de 75",
+            "75%",
+        }
+    )
+
+
+def _looks_like_passing_policy_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if any(
+        term in normalized
+        for term in {
+            "nota de aprovacao",
+            "nota de aprovação",
+            "media de aprovacao",
+            "média de aprovação",
+            "media para passar",
+            "média para passar",
+            "qual a nota de aprovacao",
+            "qual a nota de aprovação",
+            "qual nota preciso tirar para aprovacao",
+            "qual nota preciso tirar para aprovação",
+        }
+    ):
+        return True
+    return False
+
+
+def _render_decimal_label(value: Any, *, suffix: str = "") -> str:
+    amount = Decimal(str(value or "0")).quantize(Decimal("0.1"))
+    rendered = str(amount).replace(".", ",")
+    return f"{rendered}{suffix}"
+
+
+def _compose_project_of_life_answer(profile: dict[str, Any] | None) -> str | None:
+    policy = _academic_policy(profile)
+    summary = str((policy or {}).get("project_of_life_summary") or "").strip()
+    if not summary:
+        highlights = (profile or {}).get("highlights")
+        if isinstance(highlights, list):
+            for item in highlights:
+                if not isinstance(item, dict):
+                    continue
+                title = _normalize_text(item.get("title"))
+                description = str(item.get("description") or "").strip()
+                if "projeto de vida" in title and description:
+                    summary = description
+                    break
+    if not summary:
+        return None
+    return (
+        f"No Colegio Horizonte, Projeto de vida e parte da proposta pedagogica. {summary}"
+    )
+
+
+def _compose_attendance_policy_answer(profile: dict[str, Any] | None, *, message: str) -> str | None:
+    policy = _academic_policy(profile)
+    attendance = policy.get("attendance_policy") if isinstance(policy, dict) else None
+    if not isinstance(attendance, dict):
+        return None
+    minimum = _render_decimal_label(attendance.get("minimum_attendance_percent"), suffix="%")
+    first_absence = str(attendance.get("first_absence_guidance") or "").strip()
+    chronic = str(attendance.get("chronic_absence_guidance") or "").strip()
+    follow_up = str(attendance.get("follow_up_channel") or "").strip()
+    notes = str(attendance.get("notes") or "").strip()
+    normalized = _normalize_text(message)
+    if "primeira aula" in normalized and first_absence:
+        answer = first_absence
+        if follow_up:
+            answer += f" Se a situacao se repetir, o acompanhamento costuma passar por {follow_up}."
+        return answer
+    if any(term in normalized for term in {"metade das aulas", "75%", "abaixo de 75", "limite de faltas", "frequencia minima", "frequência mínima"}) and chronic:
+        answer = f"No Colegio Horizonte, a referencia publica minima de frequencia e {minimum} por componente. {chronic}"
+        if notes:
+            answer += f" {notes}"
+        return answer
+    if chronic:
+        answer = f"No Colegio Horizonte, a referencia publica minima de frequencia e {minimum} por componente. {chronic}"
+        if notes:
+            answer += f" {notes}"
+        return answer
+    return None
+
+
+def _compose_passing_policy_answer(profile: dict[str, Any] | None, *, authenticated: bool) -> str | None:
+    policy = _academic_policy(profile)
+    passing = policy.get("passing_policy") if isinstance(policy, dict) else None
+    if not isinstance(passing, dict):
+        return None
+    target = _render_decimal_label(passing.get("passing_average"))
+    scale = str(passing.get("reference_scale") or "0-10").strip()
+    support = str(passing.get("recovery_support") or "").strip()
+    notes = str(passing.get("notes") or "").strip()
+    answer = f"No Colegio Horizonte, a referencia publica de aprovacao e media {target}/{scale.split('-')[-1]}."
+    if support:
+        answer += f" {support}"
+    if notes:
+        answer += f" {notes}"
+    if authenticated:
+        answer += " Se quiser, eu posso calcular quanto falta para Lucas ou Ana em uma disciplina especifica."
+    return answer
+
+
+def _recent_subject_from_context(summary: dict[str, Any], conversation_context: dict[str, Any] | None) -> str | None:
+    grades = summary.get("grades")
+    if not isinstance(grades, list):
+        return None
+    haystack_items = (conversation_context or {}).get("recent_messages")
+    if not isinstance(haystack_items, list):
+        return None
+    haystack = " ".join(str(item.get("content") or "") for item in haystack_items if isinstance(item, dict))
+    normalized_haystack = _normalize_text(haystack)
+    for item in grades:
+        if not isinstance(item, dict):
+            continue
+        subject_name = str(item.get("subject_name") or "").strip()
+        normalized_name = _normalize_text(subject_name)
+        if normalized_name and normalized_name in normalized_haystack:
+            return subject_name
+    return None
+
+
 def _compose_admin_status_answer(summary: dict[str, Any]) -> str:
     student_name = str(summary.get("student_name") or "Aluno").strip()
     overall_status = str(summary.get("overall_status") or "").strip().lower()
@@ -1687,6 +1844,84 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
     preview = ctx.preview_hint if isinstance(ctx.preview_hint, dict) else {}
     preview_mode = str(preview.get("mode") or "").strip()
 
+    if profile and _looks_like_project_of_life_query(ctx.request.message):
+        answer_text = _compose_project_of_life_answer(profile)
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier=_access_tier_for_domain("institution", ctx.request.user.authenticated),
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:project_of_life_policy",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Resposta deterministica baseada na politica academica publica da escola.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[
+                        MessageEvidenceSupport(kind="policy", label="Projeto de vida", detail=_safe_excerpt(answer_text, limit=180)),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "tool_first", "project_of_life_policy"],
+                reason="specialist_supervisor_tool_first:project_of_life_policy",
+            )
+
+    if profile and _looks_like_attendance_policy_query(ctx.request.message):
+        answer_text = _compose_attendance_policy_answer(profile, message=ctx.request.message)
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="academic",
+                    access_tier=_access_tier_for_domain("academic", ctx.request.user.authenticated),
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:attendance_policy",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Resposta deterministica baseada na politica publica de frequencia.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[
+                        MessageEvidenceSupport(kind="policy", label="Politica de frequencia", detail=_safe_excerpt(answer_text, limit=180)),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("academic"),
+                graph_path=["specialist_supervisor", "tool_first", "attendance_policy"],
+                reason="specialist_supervisor_tool_first:attendance_policy",
+            )
+
+    if profile and _looks_like_passing_policy_query(ctx.request.message):
+        answer_text = _compose_passing_policy_answer(profile, authenticated=ctx.request.user.authenticated)
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="academic",
+                    access_tier=_access_tier_for_domain("academic", ctx.request.user.authenticated),
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:passing_policy",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Resposta deterministica baseada na politica publica de aprovacao.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[
+                        MessageEvidenceSupport(kind="policy", label="Meta de aprovacao", detail="media publica 7,0/10"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("academic"),
+                graph_path=["specialist_supervisor", "tool_first", "passing_policy"],
+                reason="specialist_supervisor_tool_first:passing_policy",
+            )
+
     if profile and (
         "mandar documentos" in normalized
         or "enviar documentos" in normalized
@@ -1726,9 +1961,23 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 reason="specialist_supervisor_tool_first:document_submission_policy",
             )
 
-    if any(term in normalized for term in {"matricula de 2026", "matrícula de 2026", "abre a matricula", "abre a matrícula"}) or (
-        any(term in normalized for term in {"aulas", "ano letivo", "inicio das aulas", "início das aulas"})
-    ):
+    timeline_query = (
+        any(term in normalized for term in {"matricula de 2026", "matrícula de 2026", "abre a matricula", "abre a matrícula"})
+        or any(
+            term in normalized
+            for term in {
+                "quando comecam as aulas",
+                "quando começam as aulas",
+                "inicio das aulas",
+                "início das aulas",
+                "quando comeca o ano letivo",
+                "quando começa o ano letivo",
+                "inicio do ano letivo",
+                "início do ano letivo",
+            }
+        )
+    )
+    if timeline_query:
         timeline_payload = await _fetch_public_payload(ctx, "/v1/public/timeline", "timeline")
         entries = timeline_payload.get("entries") if isinstance(timeline_payload, dict) else None
         if isinstance(entries, list):
@@ -2015,7 +2264,7 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
         "nota" in normalized
         or "notas" in normalized
         or str(preview.get("classification", {}).get("domain") or "") == "academic"
-    ):
+    ) and not _looks_like_passing_policy_query(ctx.request.message):
         student_hint = _student_hint_from_message(ctx.actor, ctx.request.message)
         if student_hint:
             payload = await _fetch_academic_summary_payload(ctx, student_name_hint=student_hint)
@@ -2119,6 +2368,8 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
 
 def _academic_grade_requirement(summary: dict[str, Any], *, subject_hint: str | None) -> dict[str, Any]:
     subject_code, subject_name = _subject_code_from_hint(summary, subject_hint)
+    if not subject_code and not subject_name:
+        return {"error": "subject_not_found", "subject_hint": subject_hint}
     grades = summary.get("grades")
     if not isinstance(grades, list):
         return {"error": "grades_unavailable"}
@@ -2150,7 +2401,12 @@ def _academic_grade_requirement(summary: dict[str, Any], *, subject_hint: str | 
     }
 
 
-def _detected_subject_hint(summary: dict[str, Any], message: str) -> str | None:
+def _detected_subject_hint(
+    summary: dict[str, Any],
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> str | None:
     normalized_message = _normalize_text(message)
     grades = summary.get("grades")
     if not isinstance(grades, list):
@@ -2165,7 +2421,7 @@ def _detected_subject_hint(summary: dict[str, Any], message: str) -> str | None:
     match = re.search(r"\bem\s+([a-zA-ZÀ-ÿ ]+?)(?:\?|$)", message, flags=re.IGNORECASE)
     if match:
         return match.group(1).strip()
-    return None
+    return _recent_subject_from_context(summary, conversation_context)
 
 
 async def _academic_grade_fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | None:
@@ -2184,7 +2440,7 @@ async def _academic_grade_fast_path_answer(ctx: SupervisorRunContext) -> Supervi
     summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else None
     if not student or not summary:
         return None
-    subject_hint = _detected_subject_hint(summary, ctx.request.message)
+    subject_hint = _detected_subject_hint(summary, ctx.request.message, conversation_context=ctx.conversation_context)
     requirement = _academic_grade_requirement(summary, subject_hint=subject_hint)
     if requirement.get("error") == "subject_not_found":
         return SupervisorAnswerPayload(
@@ -2260,7 +2516,12 @@ async def _academic_grade_fast_path_answer(ctx: SupervisorRunContext) -> Supervi
     )
 
 
-def _detected_subject_hint(summary: dict[str, Any], message: str) -> str | None:
+def _detected_subject_hint(
+    summary: dict[str, Any],
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> str | None:
     normalized_message = _normalize_text(message)
     grades = summary.get("grades")
     if not isinstance(grades, list):
@@ -2275,7 +2536,7 @@ def _detected_subject_hint(summary: dict[str, Any], message: str) -> str | None:
     match = re.search(r"\bem\s+([a-zA-ZÀ-ÿ ]+?)(?:\?|$)", message, flags=re.IGNORECASE)
     if match:
         return match.group(1).strip()
-    return None
+    return _recent_subject_from_context(summary, conversation_context)
 
 
 async def _academic_grade_fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | None:
@@ -2294,7 +2555,7 @@ async def _academic_grade_fast_path_answer(ctx: SupervisorRunContext) -> Supervi
     summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else None
     if not student or not summary:
         return None
-    subject_hint = _detected_subject_hint(summary, ctx.request.message)
+    subject_hint = _detected_subject_hint(summary, ctx.request.message, conversation_context=ctx.conversation_context)
     requirement = _academic_grade_requirement(summary, subject_hint=subject_hint)
     if requirement.get("error") == "subject_not_found":
         return SupervisorAnswerPayload(
@@ -2401,6 +2662,22 @@ async def get_public_profile_bundle(context: RunContextWrapper[SupervisorRunCont
         "service_directory": service_directory,
         "timeline": timeline,
         "calendar_events": calendar_payload.get("events", []) if isinstance(calendar_payload, dict) else [],
+    }
+
+
+@function_tool
+async def fetch_academic_policy(context: RunContextWrapper[SupervisorRunContext]) -> dict[str, Any]:
+    """Fetch the public academic policy bundle for attendance, passing threshold and projeto de vida."""
+    ctx = context.context
+    school_profile = ctx.school_profile or await _fetch_public_school_profile(ctx)
+    if not isinstance(school_profile, dict):
+        return {"error": "school_profile_unavailable"}
+    policy = school_profile.get("academic_policy")
+    if not isinstance(policy, dict):
+        return {"error": "academic_policy_unavailable", "school_name": _school_name(school_profile)}
+    return {
+        "school_name": _school_name(school_profile),
+        "academic_policy": policy,
     }
 
 
@@ -2884,11 +3161,12 @@ def _institution_specialist(settings: Any, model: Any) -> Agent[SupervisorRunCon
     return Agent[SupervisorRunContext](
         name="Institution Specialist",
         model=model,
-        tools=[get_public_profile_bundle, search_public_documents, run_graph_rag_query, project_public_pricing],
+        tools=[get_public_profile_bundle, fetch_academic_policy, search_public_documents, run_graph_rag_query, project_public_pricing],
         model_settings=_tool_model_settings(settings),
         instructions=(
             "Responda perguntas institucionais publicas com grounding. "
             "Use tools antes de responder. "
+            "Quando a pergunta for sobre projeto de vida, politica de frequencia, media de aprovacao ou regras publicas da escola, use fetch_academic_policy. "
             "Quando a pergunta for sobre identidade do assistente, apresente-se como EduAssist, o assistente institucional da escola, e nunca mencione provedor, modelo ou detalhes tecnicos internos. "
             "Se a pergunta pedir panorama ou comparacao documental, considere GraphRAG ou search_public_documents. "
             "Para simulacao de matricula/mensalidade, use project_public_pricing. "
@@ -2903,11 +3181,12 @@ def _academic_specialist(settings: Any, model: Any) -> Agent[SupervisorRunContex
     return Agent[SupervisorRunContext](
         name="Academic Specialist",
         model=model,
-        tools=[fetch_actor_identity, fetch_academic_summary, fetch_upcoming_assessments, fetch_attendance_timeline, calculate_grade_requirement],
+        tools=[fetch_actor_identity, fetch_academic_policy, fetch_academic_summary, fetch_upcoming_assessments, fetch_attendance_timeline, calculate_grade_requirement],
         model_settings=_tool_model_settings(settings),
         instructions=(
             "Responda apenas sobre notas, frequencia, provas futuras e aprovacao. "
             "Sempre use tools. "
+            "Se a pergunta for sobre politica de frequencia, media minima, recuperacao ou regras gerais de aprovacao, use fetch_academic_policy antes de responder. "
             "Quando o usuario perguntar quanto falta para passar/aprovar, use calculate_grade_requirement. "
             "Se o aluno estiver ambiguo, use fetch_actor_identity e diga claramente a ambiguidade. "
             + ("Retorne SpecialistResult." if structured else _specialist_result_contract())
