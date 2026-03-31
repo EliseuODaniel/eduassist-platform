@@ -882,6 +882,18 @@ def _looks_like_student_pronoun_followup(message: str) -> bool:
     return bool(re.search(r"\b(dele|dela|dele\?|dela\?)\b", normalized))
 
 
+def _looks_like_subject_followup(message: str) -> bool:
+    normalized = _normalize_text(message)
+    subject_hint = _subject_hint_from_text(message)
+    if not subject_hint:
+        return False
+    if normalized.startswith("e de ") or normalized.startswith("e em "):
+        return True
+    if len(normalized.split()) <= 4:
+        return True
+    return bool(re.search(r"\b(de historia|de matemática|de matematica|de fisica|de física|de portugues|de português)\b", normalized))
+
+
 def _preview_domain(preview_hint: dict[str, Any] | None) -> str:
     preview = preview_hint if isinstance(preview_hint, dict) else {}
     classification = preview.get("classification")
@@ -898,6 +910,7 @@ def _score_intent_spec(
     operational_memory: OperationalMemory,
     has_student_pronoun: bool,
     subject_hint: str | None,
+    subject_followup: bool,
     authenticated: bool,
 ) -> int:
     if spec.requires_auth and not authenticated:
@@ -907,14 +920,22 @@ def _score_intent_spec(
     if spec.all_terms and not all(term in normalized_message for term in spec.all_terms):
         return -1
     any_hits = sum(1 for term in spec.any_terms if term and term in normalized_message)
-    if spec.any_terms and any_hits == 0:
-        return -1
-    score = any_hits * 10
-    if preview_domain and preview_domain in spec.preview_domains:
-        score += 6
     active_domains = set(operational_memory.active_domains)
     if operational_memory.active_domain:
         active_domains.add(str(operational_memory.active_domain))
+    if spec.any_terms and any_hits == 0:
+        allow_subject_followup = (
+            subject_followup
+            and spec.domain == "academic"
+            and spec.carry_active_student
+            and any(domain in active_domains for domain in spec.memory_domains)
+        )
+        if not allow_subject_followup:
+            return -1
+        any_hits = 1
+    score = any_hits * 10
+    if preview_domain and preview_domain in spec.preview_domains:
+        score += 6
     if any(domain in active_domains for domain in spec.memory_domains):
         score += 5
     if has_student_pronoun and spec.carry_active_student:
@@ -961,6 +982,7 @@ def _resolve_turn_intent(ctx: SupervisorRunContext) -> ResolvedTurnIntent:
     memory = ctx.operational_memory or OperationalMemory()
     has_student_pronoun = _looks_like_student_pronoun_followup(ctx.request.message)
     subject_hint = _subject_hint_from_text(ctx.request.message)
+    subject_followup = _looks_like_subject_followup(ctx.request.message)
     name_only_hint = _is_student_name_only_followup(ctx.actor, ctx.request.message)
     best_spec: IntentRouteSpec | None = None
     best_score = -1
@@ -972,6 +994,7 @@ def _resolve_turn_intent(ctx: SupervisorRunContext) -> ResolvedTurnIntent:
             operational_memory=memory,
             has_student_pronoun=has_student_pronoun,
             subject_hint=subject_hint,
+            subject_followup=subject_followup,
             authenticated=ctx.request.user.authenticated,
         )
         if score < 0:
@@ -1333,6 +1356,40 @@ def _compose_named_grade_answer(summary: dict[str, Any]) -> str:
     for name, avg in snapshots:
         lines.append(f"- {name}: media parcial {str(avg).replace('.', ',')}")
     return "\n".join(lines)
+
+
+def _compose_named_subject_grade_answer(summary: dict[str, Any], *, subject_hint: str | None) -> str | None:
+    subject_code, subject_name = _subject_code_from_hint(summary, subject_hint)
+    if not subject_code and not subject_name:
+        return None
+    grades = summary.get("grades")
+    if not isinstance(grades, list):
+        return None
+    scores: list[Decimal] = []
+    resolved_subject_name = subject_name
+    for row in grades:
+        if not isinstance(row, dict):
+            continue
+        row_subject_code = str(row.get("subject_code") or "").strip()
+        row_subject_name = str(row.get("subject_name") or "").strip()
+        if subject_code and row_subject_code != subject_code:
+            continue
+        if not subject_code and subject_name and _normalize_text(row_subject_name) != _normalize_text(subject_name):
+            continue
+        try:
+            scores.append(Decimal(str(row.get("score"))))
+        except Exception:
+            continue
+        if row_subject_name:
+            resolved_subject_name = row_subject_name
+    if not scores:
+        return None
+    student_name = str(summary.get("student_name") or "Aluno").strip()
+    average = (sum(scores) / Decimal(len(scores))).quantize(Decimal("0.1"))
+    return (
+        f"A media parcial de {student_name} em {resolved_subject_name or subject_hint or 'a disciplina'} "
+        f"e {str(average).replace('.', ',')}."
+    )
 
 
 def _compose_academic_finance_combo_answer(*, academic_summary: dict[str, Any], finance_summary: dict[str, Any]) -> str:
@@ -3221,8 +3278,12 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
             payload = await _fetch_academic_summary_payload(ctx, student_name_hint=student_hint)
             summary = payload.get("summary") if isinstance(payload, dict) else None
             if isinstance(summary, dict):
+                subject_hint = _subject_hint_from_text(ctx.request.message) or (
+                    memory.active_subject if _looks_like_subject_followup(ctx.request.message) else None
+                )
+                answer_text = _compose_named_subject_grade_answer(summary, subject_hint=subject_hint) or _compose_named_grade_answer(summary)
                 return SupervisorAnswerPayload(
-                    message_text=_compose_named_grade_answer(summary),
+                    message_text=answer_text,
                     mode="structured_tool",
                     classification=MessageIntentClassification(
                         domain="academic",
@@ -3236,7 +3297,7 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                         source_count=1,
                         support_count=1,
                         supports=[
-                            MessageEvidenceSupport(kind="academic_summary", label=str(summary.get("student_name") or "Aluno"), detail=_safe_excerpt(_compose_named_grade_answer(summary), limit=180)),
+                            MessageEvidenceSupport(kind="academic_summary", label=str(summary.get("student_name") or "Aluno"), detail=_safe_excerpt(answer_text, limit=180)),
                         ],
                     ),
                     suggested_replies=_default_suggested_replies("academic"),
@@ -3394,7 +3455,10 @@ async def _resolved_academic_student_grades_answer(
         payload = await _fetch_academic_summary_payload(ctx, student_name_hint=target_name)
         summary = payload.get("summary") if isinstance(payload, dict) else None
         if isinstance(summary, dict):
-            answer_text = _compose_named_grade_answer(summary)
+            subject_hint = str(resolved.referenced_subject or "").strip() or None
+            answer_text = _compose_named_subject_grade_answer(summary, subject_hint=subject_hint) or _compose_named_grade_answer(summary)
+            support_label = str(summary.get("student_name") or "Aluno")
+            support_detail = _safe_excerpt(answer_text, limit=180)
             return SupervisorAnswerPayload(
                 message_text=answer_text,
                 mode="structured_tool",
@@ -3410,7 +3474,7 @@ async def _resolved_academic_student_grades_answer(
                     source_count=1,
                     support_count=1,
                     supports=[
-                        MessageEvidenceSupport(kind="academic_summary", label=str(summary.get("student_name") or "Aluno"), detail=_safe_excerpt(answer_text, limit=180)),
+                        MessageEvidenceSupport(kind="academic_summary", label=support_label, detail=support_detail),
                     ],
                 ),
                 suggested_replies=_default_suggested_replies("academic"),

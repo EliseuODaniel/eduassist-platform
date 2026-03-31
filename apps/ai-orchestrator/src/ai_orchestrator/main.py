@@ -85,6 +85,7 @@ class Settings(BaseSettings):
     qdrant_url: str = 'http://qdrant:6333'
     qdrant_documents_collection: str = 'school_documents'
     llamaindex_qdrant_documents_collection: str = 'school_documents_llamaindex'
+    llamaindex_native_timeout_seconds: float = 20.0
     document_embedding_model: str = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
     warm_retrieval_on_startup: bool = True
     retrieval_enable_query_variants: bool = True

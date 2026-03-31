@@ -168,6 +168,21 @@ async def _maybe_contextual_public_direct_answer(
     normalized_request = rt._normalize_text(request.message)
     normalized_analysis = rt._normalize_text(analysis_message)
     recent_context_lines = [rt._normalize_text(content) for _, content in rt._recent_message_lines(conversation_context)]
+    recent_context_mentions_library = any('biblioteca' in content or 'biblioteca aurora' in content for content in recent_context_lines)
+    current_message_mentions_library = any(rt._message_matches_term(normalized_analysis, term) for term in {'biblioteca', 'library'})
+    current_message_mentions_leadership = any(
+        rt._message_matches_term(normalized_request, term)
+        for term in {'diretora', 'diretor', 'direcao', 'direção', 'diretoria'}
+    )
+    library_followup_terms = {
+        'como ela se chama',
+        'como se chama',
+        'ate que horas funciona',
+        'até que horas funciona',
+        'horario',
+        'horário',
+        'funciona',
+    }
 
     wants_document_path = rt._is_public_document_submission_query(analysis_message) or (
         any(
@@ -184,21 +199,28 @@ async def _maybe_contextual_public_direct_answer(
 
     asks_library_name_and_hours = (
         (
-            any(rt._message_matches_term(normalized_analysis, term) for term in {'biblioteca', 'library'})
-            or any('biblioteca' in content or 'biblioteca aurora' in content for content in recent_context_lines)
-        )
-        and any(
-            rt._message_matches_term(normalized_request, term)
-            for term in {
-                'como ela se chama',
-                'qual o nome',
-                'nome',
-                'ate que horas funciona',
-                'até que horas funciona',
-                'horario',
-                'horário',
-                'funciona',
-            }
+            (
+                current_message_mentions_library
+                and any(
+                    rt._message_matches_term(normalized_request, term)
+                    for term in {
+                        'como ela se chama',
+                        'qual o nome da biblioteca',
+                        'nome da biblioteca',
+                        'ate que horas funciona',
+                        'até que horas funciona',
+                        'horario da biblioteca',
+                        'horário da biblioteca',
+                        'funciona',
+                    }
+                )
+            )
+            or (
+                recent_context_mentions_library
+                and rt._is_follow_up_query(request.message)
+                and not current_message_mentions_leadership
+                and any(rt._message_matches_term(normalized_request, term) for term in library_followup_terms)
+            )
         )
     )
     if asks_library_name_and_hours:
@@ -241,6 +263,37 @@ async def _maybe_contextual_public_direct_answer(
                 if summary:
                     return summary
 
+    return None
+
+
+def _maybe_public_unpublished_direct_answer(
+    *,
+    request: MessageResponseRequest,
+    preview: Any,
+) -> str | None:
+    is_public_context = preview.classification.access_tier is AccessTier.public or not request.user.authenticated
+    if not is_public_context:
+        return None
+    normalized_message = rt._normalize_text(request.message)
+    if any(
+        rt._message_matches_term(normalized_message, term)
+        for term in {'quantos alunos', 'quantidade de alunos', 'numero de alunos', 'número de alunos'}
+    ):
+        return (
+            'Hoje os canais publicos do Colegio Horizonte nao informam o total de alunos matriculados. '
+            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
+        )
+    if any(
+        rt._message_matches_term(normalized_message, term)
+        for term in {'quantos livros', 'quantidade de livros', 'numero de livros', 'número de livros'}
+    ) and any(
+        rt._message_matches_term(normalized_message, term)
+        for term in {'biblioteca', 'livros', 'acervo'}
+    ):
+        return (
+            'Hoje os canais publicos do Colegio Horizonte nao informam a quantidade total de livros da Biblioteca Aurora. '
+            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
+        )
     return None
 
 
@@ -361,6 +414,10 @@ async def execute_kernel_plan(
         school_profile=school_profile,
         conversation_context=context_payload,
     )
+    unpublished_public_answer = _maybe_public_unpublished_direct_answer(
+        request=request,
+        preview=preview,
+    )
     hypothetical_public_pricing_direct = _maybe_hypothetical_public_pricing_answer(
         request=request,
         plan=effective_plan,
@@ -376,6 +433,16 @@ async def execute_kernel_plan(
             update={
                 'mode': OrchestrationMode.structured_tool,
                 'reason': 'contextual_public_direct_answer',
+                'selected_tools': list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
+            }
+        )
+    elif unpublished_public_answer:
+        message_text = unpublished_public_answer
+        deterministic_fallback_text = unpublished_public_answer
+        preview = preview.model_copy(
+            update={
+                'mode': OrchestrationMode.structured_tool,
+                'reason': 'public_unpublished_fact_direct_answer',
                 'selected_tools': list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
             }
         )

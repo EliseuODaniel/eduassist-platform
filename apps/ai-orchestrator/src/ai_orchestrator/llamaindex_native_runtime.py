@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
@@ -21,7 +22,7 @@ from llama_index.core.tools import FunctionTool, QueryEngineTool
 from llama_index.core.memory import Memory
 from llama_index.core.vector_stores.types import FilterOperator, MetadataFilter, MetadataFilters, MetadataInfo, VectorStoreInfo
 from pydantic import PrivateAttr
-from qdrant_client import QdrantClient
+from qdrant_client import AsyncQdrantClient, QdrantClient
 
 from . import runtime as rt
 from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult
@@ -110,9 +111,11 @@ def _native_qdrant_vector_store(*, qdrant_url: str, collection_name: str) -> Any
     if not LLAMAINDEX_QDRANT_AVAILABLE:
         return None
     client = QdrantClient(url=qdrant_url)
+    aclient = AsyncQdrantClient(url=qdrant_url)
     return QdrantVectorStore(
         collection_name=collection_name,
         client=client,
+        aclient=aclient,
         text_key='text_content',
     )
 
@@ -133,6 +136,18 @@ def _resolve_llamaindex_qdrant_collection(settings: Any) -> str:
     if preferred and _qdrant_collection_exists(qdrant_url=str(settings.qdrant_url), collection_name=preferred):
         return preferred
     return fallback
+
+
+def _llamaindex_timeout_seconds(settings: Any | None = None) -> float:
+    configured = getattr(settings, 'llamaindex_native_timeout_seconds', 20.0) if settings is not None else 20.0
+    try:
+        return max(5.0, float(configured))
+    except Exception:
+        return 20.0
+
+
+async def _await_with_llamaindex_timeout(awaitable: Any, *, settings: Any | None = None) -> Any:
+    return await asyncio.wait_for(awaitable, timeout=_llamaindex_timeout_seconds(settings))
 
 
 @lru_cache(maxsize=4)
@@ -687,6 +702,7 @@ async def _maybe_execute_llamaindex_subquestion_plan(
     analysis_message: str,
     tools: dict[str, QueryEngineTool],
     llm: Any | None,
+    settings: Any | None = None,
 ) -> tuple[Response, str] | None:
     if llm is None:
         return None
@@ -703,7 +719,10 @@ async def _maybe_execute_llamaindex_subquestion_plan(
         use_async=True,
         verbose=False,
     )
-    response = await query_engine.aquery(analysis_message)
+    try:
+        response = await _await_with_llamaindex_timeout(query_engine.aquery(analysis_message), settings=settings)
+    except Exception:
+        return None
     return response, 'llamaindex_subquestion_query_engine'
 
 
@@ -712,6 +731,7 @@ async def _maybe_execute_llamaindex_router_query_engine(
     analysis_message: str,
     tools: dict[str, QueryEngineTool],
     llm: Any | None,
+    settings: Any | None = None,
 ) -> tuple[Response, tuple[str, ...]] | None:
     if llm is None:
         return None
@@ -728,7 +748,10 @@ async def _maybe_execute_llamaindex_router_query_engine(
         selector=selector,
         summarizer=response_synthesizer,
     )
-    response = await query_engine.aquery(analysis_message)
+    try:
+        response = await _await_with_llamaindex_timeout(query_engine.aquery(analysis_message), settings=settings)
+    except Exception:
+        return None
     selected_names = _extract_router_selected_tool_names(response=response, tool_names=tuple(tools.keys()))
     return response, selected_names
 
@@ -829,6 +852,7 @@ async def _maybe_execute_llamaindex_function_agent(
     original_message: str,
     llm: Any | None,
     tools: dict[str, QueryEngineTool],
+    settings: Any | None = None,
 ) -> tuple[str, tuple[str, ...], tuple[MessageResponseCitation, ...], str] | None:
     if llm is None or not _llamaindex_llm_supports_function_calls(llm):
         return None
@@ -840,7 +864,7 @@ async def _maybe_execute_llamaindex_function_agent(
     async def _call_tool(tool_name: str, query: str) -> str:
         nonlocal captured_reason
         tool = tools[tool_name]
-        response = await tool.query_engine.aquery(query)
+        response = await _await_with_llamaindex_timeout(tool.query_engine.aquery(query), settings=settings)
         used_tool_names.append(tool_name)
         captured_reason = str((response.metadata or {}).get('reason', captured_reason))
         extracted = list(_extract_response_citations(response))
@@ -883,7 +907,7 @@ async def _maybe_execute_llamaindex_function_agent(
     )
     try:
         handler = agent.run(user_msg=analysis_message, max_iterations=5)
-        result = await handler
+        result = await _await_with_llamaindex_timeout(handler, settings=settings)
     except Exception:
         return None
     answer_text = str(result).strip()
@@ -904,6 +928,7 @@ async def _maybe_execute_llamaindex_agent_workflow(
     llm: Any | None,
     tools: dict[str, QueryEngineTool],
     session_id: str,
+    settings: Any | None = None,
 ) -> tuple[str, tuple[str, ...], tuple[MessageResponseCitation, ...], str] | None:
     if llm is None or not _llamaindex_llm_supports_function_calls(llm):
         return None
@@ -914,7 +939,7 @@ async def _maybe_execute_llamaindex_agent_workflow(
 
     async def _call_tool(tool_name: str, query: str) -> str:
         nonlocal captured_reason
-        response = await tools[tool_name].query_engine.aquery(query)
+        response = await _await_with_llamaindex_timeout(tools[tool_name].query_engine.aquery(query), settings=settings)
         used_tool_names.append(tool_name)
         captured_reason = str((response.metadata or {}).get('reason', captured_reason))
         extracted = list(_extract_response_citations(response))
@@ -991,7 +1016,7 @@ async def _maybe_execute_llamaindex_agent_workflow(
             memory=memory,
             max_iterations=6,
         )
-        result = await handler
+        result = await _await_with_llamaindex_timeout(handler, settings=settings)
     except Exception:
         return None
     answer_text = str(result).strip()
@@ -1133,6 +1158,7 @@ async def maybe_execute_llamaindex_native_plan(
             llm=llamaindex_llm,
             tools=tools,
             session_id=effective_conversation_id,
+            settings=settings,
         )
     if agent_workflow_result is not None:
         answer_text, selected_tool_names, workflow_citations, execution_reason = agent_workflow_result
@@ -1147,6 +1173,7 @@ async def maybe_execute_llamaindex_native_plan(
             original_message=request.message,
             llm=llamaindex_llm,
             tools=tools,
+            settings=settings,
         )
     if function_agent_result is not None:
         answer_text, selected_tool_names, function_agent_citations, execution_reason = function_agent_result
@@ -1160,6 +1187,7 @@ async def maybe_execute_llamaindex_native_plan(
             analysis_message=analysis_message,
             tools=tools,
             llm=llamaindex_llm,
+            settings=settings,
         )
     if subquestion_result is not None:
         tool_response, selected_tool_name = subquestion_result
@@ -1170,6 +1198,7 @@ async def maybe_execute_llamaindex_native_plan(
             analysis_message=analysis_message,
             tools=tools,
             llm=llamaindex_llm,
+            settings=settings,
         )
         if router_result is not None:
             tool_response, selected_tool_names = router_result
@@ -1184,7 +1213,13 @@ async def maybe_execute_llamaindex_native_plan(
         )
         selected_tool_name = selected_tool.metadata.name
         selected_tool_names = (selected_tool_name,)
-        tool_response = await selected_tool.query_engine.aquery(analysis_message)
+        try:
+            tool_response = await _await_with_llamaindex_timeout(
+                selected_tool.query_engine.aquery(analysis_message),
+                settings=settings,
+            )
+        except Exception:
+            return None
     if tool_response is not None:
         answer_text = str(getattr(tool_response, 'response', '') or str(tool_response)).strip()
         citations = list(_extract_response_citations(tool_response))

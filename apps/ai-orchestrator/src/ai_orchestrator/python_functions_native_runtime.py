@@ -5,7 +5,11 @@ from typing import Any
 from . import runtime as rt
 from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult
 from .evidence_pack import build_retrieval_evidence_pack, build_structured_tool_evidence_pack
-from .kernel_runtime import _maybe_contextual_public_direct_answer, _maybe_hypothetical_public_pricing_answer
+from .kernel_runtime import (
+    _maybe_contextual_public_direct_answer,
+    _maybe_hypothetical_public_pricing_answer,
+    _maybe_public_unpublished_direct_answer,
+)
 from .llm_provider import compose_with_provider
 from .models import (
     AccessTier,
@@ -73,6 +77,10 @@ async def maybe_execute_python_functions_native_plan(
         school_profile=school_profile,
         conversation_context=conversation_context,
     )
+    unpublished_public_answer = _maybe_public_unpublished_direct_answer(
+        request=request,
+        preview=preview,
+    )
     hypothetical_public_pricing_direct = _maybe_hypothetical_public_pricing_answer(
         request=request,
         plan=plan,
@@ -98,6 +106,22 @@ async def maybe_execute_python_functions_native_plan(
             selected_tools=preview.selected_tools,
             slice_name=plan.slice_name,
             summary='Resposta direta grounded em fatos publicos canonicos.',
+        )
+    elif unpublished_public_answer:
+        message_text = unpublished_public_answer
+        deterministic_fallback_text = unpublished_public_answer
+        preview = preview.model_copy(
+            update={
+                'mode': OrchestrationMode.structured_tool,
+                'reason': 'python_functions_native_public_unpublished_fact',
+                'selected_tools': list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
+            }
+        )
+        execution_reason = 'python_functions_native_public_unpublished_fact'
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=preview.selected_tools,
+            slice_name=plan.slice_name,
+            summary='Pergunta publica valida, mas o dado solicitado nao esta publicado oficialmente.',
         )
     elif hypothetical_public_pricing_direct:
         message_text, public_plan = hypothetical_public_pricing_direct
