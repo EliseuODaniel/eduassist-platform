@@ -1421,6 +1421,126 @@ def _compose_human_handoff_answer(profile: dict[str, Any] | None) -> str:
     return "\n".join(parts)
 
 
+def _looks_like_human_handoff_request(message: str) -> bool:
+    normalized = _normalize_text(message)
+    queue_signals = (
+        "financeir",
+        "secretari",
+        "direc",
+        "coordena",
+        "orienta",
+        "matricul",
+        "admiss",
+        "document",
+    )
+    direct_markers = (
+        "atendente humano",
+        "atendimento humano",
+        "quero falar com humano",
+        "quero falar com um humano",
+        "preciso falar com um humano",
+        "preciso falar com humano",
+        "quero falar com o financeiro",
+        "quero falar com a secretaria",
+        "quero falar com a direção",
+        "quero falar com a direcao",
+        "quero falar com a coordenação",
+        "quero falar com a coordenacao",
+        "quero falar com a orientação",
+        "quero falar com a orientacao",
+        "quero falar com admissions",
+        "quero falar com atendimento",
+        "quero um atendente",
+        "quero secretaria",
+        "quero financeiro",
+        "quero direcao",
+        "quero direção",
+        "preciso de secretaria",
+        "preciso de financeiro",
+        "abre um atendimento",
+        "abre um chamado",
+        "abre um protocolo",
+        "me encaminha",
+        "me encaminhe",
+        "encaminha pra",
+        "encaminha para",
+        "encaminhe pra",
+        "encaminhe para",
+    )
+    if any(marker in normalized for marker in direct_markers):
+        return True
+    if any(signal in normalized for signal in queue_signals) and any(
+        marker in normalized for marker in ("quero", "preciso", "falar", "atendimento", "encaminha", "encaminhe", "abre")
+    ):
+        return True
+    return False
+
+
+def _detect_support_handoff_queue(ctx: SupervisorRunContext) -> str:
+    normalized = _normalize_text(ctx.request.message)
+    registry = ctx.specialist_registry or {}
+
+    def _queue_from_specialist(specialist_id: str) -> str | None:
+        spec = registry.get(specialist_id)
+        if spec is None or not getattr(spec, "handoff_enabled", False):
+            return None
+        queue_name = str(getattr(spec, "handoff_queue", "") or "").strip()
+        return queue_name or None
+
+    if any(term in normalized for term in {"financeir", "mensalidad", "boleto", "fatura", "segunda via"}):
+        return "financeiro"
+    if any(term in normalized for term in {"coordena", "nota", "falt", "boletim", "professor", "disciplina"}):
+        return "coordenacao"
+    if any(term in normalized for term in {"orienta", "bullying", "emocional", "convivencia", "comportamento"}):
+        return "orientacao"
+    if any(term in normalized for term in {"direc", "direção", "ouvidoria"}):
+        return "direcao"
+    if any(term in normalized for term in {"matricul", "visita", "admiss", "vaga"}):
+        return "admissoes"
+    if any(term in normalized for term in {"secretari", "document", "declaracao", "declaração", "historico", "histórico"}):
+        return "secretaria"
+    if ctx.operational_memory is not None:
+        if "finance" in ctx.operational_memory.active_domains or ctx.operational_memory.active_domain == "finance":
+            return _queue_from_specialist("finance_specialist") or "financeiro"
+        if "academic" in ctx.operational_memory.active_domains or ctx.operational_memory.active_domain == "academic":
+            return _queue_from_specialist("academic_specialist") or "coordenacao"
+        if "support" in ctx.operational_memory.active_domains or ctx.operational_memory.active_domain == "support":
+            return _queue_from_specialist("workflow_specialist") or "atendimento"
+    return _queue_from_specialist("workflow_specialist") or "atendimento"
+
+
+def _build_support_handoff_summary(ctx: SupervisorRunContext, *, queue_name: str) -> str:
+    requester = "Visitante do bot"
+    if isinstance(ctx.actor, dict) and str(ctx.actor.get("full_name") or "").strip():
+        requester = str(ctx.actor.get("full_name")).strip()
+    excerpt = " ".join(str(ctx.request.message or "").split())
+    if len(excerpt) > 220:
+        excerpt = f"{excerpt[:219].rstrip()}..."
+    return f"{requester} solicitou atendimento humano para a fila {queue_name} pelo canal {ctx.request.channel.value}: {excerpt}"
+
+
+def _compose_support_handoff_answer(payload: dict[str, Any] | None, *, profile: dict[str, Any] | None, queue_name: str) -> str:
+    if not isinstance(payload, dict):
+        return _compose_human_handoff_answer(profile)
+    item = payload.get("item")
+    if not isinstance(item, dict):
+        return _compose_human_handoff_answer(profile)
+    ticket_code = str(item.get("ticket_code") or item.get("protocol_code") or item.get("linked_ticket_code") or "indisponivel").strip()
+    status = str(item.get("status") or "queued").strip()
+    created = bool(payload.get("created", False))
+    queue_label = str(item.get("queue_name") or queue_name or "atendimento").strip()
+    base = (
+        f"Encaminhei sua solicitacao para a fila de {queue_label}. "
+        if created
+        else f"Sua solicitacao humana ja estava registrada na fila de {queue_label}. "
+    )
+    answer = f"{base}Protocolo: {ticket_code}. Status atual: {status}."
+    whatsapp = _select_contact_channel(profile, label_contains=("secretaria", "atendimento comercial"), channel_equals=("whatsapp",))
+    if isinstance(whatsapp, dict) and str(whatsapp.get("value") or "").strip():
+        answer += f" Se preferir, voce tambem pode seguir pelo WhatsApp oficial {str(whatsapp.get('value')).strip()}."
+    return answer
+
+
 def _compose_public_attendance_hours_answer(profile: dict[str, Any] | None) -> str | None:
     shift_offers = (profile or {}).get("shift_offers")
     if not isinstance(shift_offers, list):
@@ -1686,6 +1806,31 @@ async def _create_institutional_request_payload(
                 "category": category,
                 "subject": ctx.request.message,
                 "details": ctx.request.message,
+            }
+        ),
+    )
+    return payload or {"created": False}
+
+
+async def _create_support_handoff_payload(
+    ctx: SupervisorRunContext,
+    *,
+    queue_name: str,
+    summary: str | None = None,
+) -> dict[str, Any]:
+    payload = await _http_post(
+        ctx.http_client,
+        base_url=ctx.settings.api_core_url,
+        path="/v1/internal/support/handoffs",
+        token=ctx.settings.internal_api_token,
+        payload=_strip_none(
+            {
+                "conversation_external_id": _effective_conversation_id(ctx.request),
+                "channel": ctx.request.channel.value,
+                "queue_name": queue_name,
+                "summary": summary or _build_support_handoff_summary(ctx, queue_name=queue_name),
+                "telegram_chat_id": ctx.request.telegram_chat_id,
+                "user_message": ctx.request.message,
             }
         ),
     )
@@ -2312,6 +2457,42 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
     memory = ctx.operational_memory or OperationalMemory()
     multi_domains = _effective_multi_intent_domains(memory, ctx.request.message)
 
+    if ctx.request.allow_handoff and _looks_like_human_handoff_request(ctx.request.message):
+        queue_name = _detect_support_handoff_queue(ctx)
+        payload = await _create_support_handoff_payload(
+            ctx,
+            queue_name=queue_name,
+            summary=_build_support_handoff_summary(ctx, queue_name=queue_name),
+        )
+        item = payload.get("item") if isinstance(payload, dict) else None
+        if isinstance(item, dict):
+            protocol = str(item.get("ticket_code") or item.get("protocol_code") or item.get("linked_ticket_code") or "indisponivel").strip()
+            status = str(item.get("status") or "queued").strip()
+            queue_label = str(item.get("queue_name") or queue_name or "atendimento").strip()
+            return SupervisorAnswerPayload(
+                message_text=_compose_support_handoff_answer(payload, profile=profile, queue_name=queue_label),
+                mode="handoff",
+                classification=MessageIntentClassification(
+                    domain="support",
+                    access_tier=_access_tier_for_domain("support", ctx.request.user.authenticated),
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:human_handoff",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="workflow_status",
+                    summary="Encaminhamento humano real com protocolo e fila operacional.",
+                    source_count=1,
+                    support_count=2,
+                    supports=[
+                        MessageEvidenceSupport(kind="workflow", label="Fila humana", detail=f"{queue_label} · {status}"),
+                        MessageEvidenceSupport(kind="workflow", label="Protocolo", detail=protocol),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("support"),
+                graph_path=["specialist_supervisor", "tool_first", "human_handoff"],
+                reason="specialist_supervisor_tool_first:human_handoff",
+            )
+
     if ctx.request.user.authenticated and len(multi_domains) >= 2 and "academic" in multi_domains and "finance" in multi_domains:
         target_name = (
             _student_hint_from_message(ctx.actor, ctx.request.message)
@@ -2574,8 +2755,26 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 reason="specialist_supervisor_tool_first:support_handoff",
             )
 
-    if any(term in normalized for term in {"esse atendimento", "status do atendimento", "como esta esse atendimento"}):
-        payload = await _workflow_status_payload(ctx, workflow_kind="institutional_request")
+    support_status_requested = any(
+        term in normalized
+        for term in {
+            "esse atendimento",
+            "status do atendimento",
+            "como esta esse atendimento",
+            "qual o status do protocolo",
+            "qual o status",
+            "status atual",
+            "meu protocolo",
+        }
+    )
+    support_context_active = (
+        memory.active_domain == "support"
+        or "support" in memory.active_domains
+        or preview_mode == "handoff"
+        or any(term in normalized for term in {"atendimento", "atendente", "fila", "humano", "secretaria", "financeiro"})
+    )
+    if support_status_requested and support_context_active:
+        payload = await _workflow_status_payload(ctx, workflow_kind="support_handoff")
         item = payload.get("item") if isinstance(payload, dict) else None
         if isinstance(item, dict):
             answer_text = _compose_support_status_answer(item)
@@ -3209,6 +3408,22 @@ async def fetch_workflow_status(
             }
         ),
     ) or {"found": False}
+
+
+@function_tool
+async def create_support_handoff(
+    context: RunContextWrapper[SupervisorRunContext],
+    queue_name: str | None = None,
+    summary: str | None = None,
+) -> dict[str, Any]:
+    """Open or reuse a real human-support handoff with protocol and queue."""
+    ctx = context.context
+    effective_queue = str(queue_name or "").strip() or _detect_support_handoff_queue(ctx)
+    return await _create_support_handoff_payload(
+        ctx,
+        queue_name=effective_queue,
+        summary=summary or _build_support_handoff_summary(ctx, queue_name=effective_queue),
+    )
 
 
 @function_tool
@@ -4137,11 +4352,12 @@ def _workflow_specialist(settings: Any, model: Any) -> Agent[SupervisorRunContex
     return Agent[SupervisorRunContext](
         name="Workflow Specialist",
         model=model,
-        tools=[fetch_workflow_status, create_visit_booking, update_visit_booking, create_institutional_request, update_institutional_request],
+        tools=[fetch_workflow_status, create_support_handoff, create_visit_booking, update_visit_booking, create_institutional_request, update_institutional_request],
         model_settings=_tool_model_settings(settings),
         instructions=(
             "Responda sobre visitas, protocolos, remarcacoes, cancelamentos e solicitacoes institucionais. "
             "Use tools antes de responder. "
+            "Quando o usuario pedir atendimento humano, atendente, secretaria, financeiro, coordenacao ou direcao, prefira create_support_handoff. "
             + ("Retorne SpecialistResult." if structured else _specialist_result_contract())
         ),
         output_type=SpecialistResult if structured else None,

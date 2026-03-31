@@ -18,6 +18,8 @@
     "compose_template": "summary",
     "combinable_with": [],
     "memory_topics": ["retrieval_planning"],
+    "handoff_enabled": false,
+    "handoff_queue": null,
     "activation_flag": true
   },
   {
@@ -39,6 +41,8 @@
     "compose_template": "paragraph",
     "combinable_with": ["workflow_specialist", "document_specialist"],
     "memory_topics": ["institution", "curriculum", "contact_channels", "pricing"],
+    "handoff_enabled": true,
+    "handoff_queue": "secretaria",
     "activation_flag": true
   },
   {
@@ -60,6 +64,8 @@
     "compose_template": "bullet",
     "combinable_with": ["finance_specialist", "workflow_specialist"],
     "memory_topics": ["academic", "grades", "attendance", "grade_requirement", "academic_policy"],
+    "handoff_enabled": true,
+    "handoff_queue": "coordenacao",
     "activation_flag": true
   },
   {
@@ -81,6 +87,8 @@
     "compose_template": "bullet",
     "combinable_with": ["academic_specialist", "workflow_specialist"],
     "memory_topics": ["finance", "financial_summary", "pricing"],
+    "handoff_enabled": true,
+    "handoff_queue": "financeiro",
     "activation_flag": true
   },
   {
@@ -102,6 +110,8 @@
     "compose_template": "paragraph",
     "combinable_with": ["institution_specialist", "academic_specialist", "finance_specialist"],
     "memory_topics": ["support", "workflow", "protocol"],
+    "handoff_enabled": true,
+    "handoff_queue": "atendimento",
     "activation_flag": true
   },
   {
@@ -123,6 +133,8 @@
     "compose_template": "summary",
     "combinable_with": ["institution_specialist"],
     "memory_topics": ["documents", "policy_docs"],
+    "handoff_enabled": true,
+    "handoff_queue": "secretaria",
     "activation_flag": true
   },
   {
@@ -144,6 +156,8 @@
     "compose_template": "summary",
     "combinable_with": [],
     "memory_topics": ["judge"],
+    "handoff_enabled": false,
+    "handoff_queue": null,
     "activation_flag": true
   }
 ]

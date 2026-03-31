@@ -1,0 +1,32 @@
+[
+  {
+    "prompt": "quero falar com um atendente humano",
+    "slice": "support",
+    "category": "human_handoff",
+    "thread_id": "specialist_phase6_handoff_status",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Protocolo:", "Status atual:", "fila de atendimento"],
+    "forbidden_keywords": ["estes sao os canais mais diretos", "estes são os canais mais diretos"]
+  },
+  {
+    "prompt": "qual o status do protocolo?",
+    "slice": "support",
+    "category": "human_handoff_status",
+    "thread_id": "specialist_phase6_handoff_status",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Protocolo:", "status", "Fila:"],
+    "forbidden_keywords": ["Ainda nao encontrei", "Ainda não encontrei"]
+  },
+  {
+    "prompt": "quero falar com o financeiro",
+    "slice": "support",
+    "category": "finance_handoff",
+    "thread_id": "specialist_phase6_finance_handoff",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["financeiro", "Protocolo:", "Status atual:"],
+    "forbidden_keywords": ["estes sao os canais mais diretos", "estes são os canais mais diretos"]
+  }
+]

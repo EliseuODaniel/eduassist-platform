@@ -1,0 +1,443 @@
+{
+  "generated_at": "2026-03-31T04:12:36.044318+00:00",
+  "dataset": "tests/evals/datasets/specialist_supervisor_phase6_regressions.json",
+  "run_prefix": "debug:five-path:20260331T041232Z",
+  "summary": {
+    "by_stack": {
+      "langgraph": {
+        "count": 3,
+        "ok": 3,
+        "keyword_pass": 3,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 195.3
+      },
+      "crewai": {
+        "count": 3,
+        "ok": 3,
+        "keyword_pass": 3,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 306.8
+      },
+      "python_functions": {
+        "count": 3,
+        "ok": 3,
+        "keyword_pass": 3,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 190.5
+      },
+      "llamaindex": {
+        "count": 3,
+        "ok": 3,
+        "keyword_pass": 3,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 183.0
+      },
+      "specialist_supervisor": {
+        "count": 3,
+        "ok": 3,
+        "keyword_pass": 3,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 174.1
+      }
+    },
+    "by_slice": {
+      "support": {
+        "count": 3,
+        "langgraph": {
+          "ok": 3,
+          "keyword_pass": 3,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 195.3
+        },
+        "crewai": {
+          "ok": 3,
+          "keyword_pass": 3,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 306.8
+        },
+        "python_functions": {
+          "ok": 3,
+          "keyword_pass": 3,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 190.5
+        },
+        "llamaindex": {
+          "ok": 3,
+          "keyword_pass": 3,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 183.0
+        },
+        "specialist_supervisor": {
+          "ok": 3,
+          "keyword_pass": 3,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 174.1
+        }
+      }
+    },
+    "error_types": {
+      "langgraph": {},
+      "crewai": {},
+      "python_functions": {},
+      "llamaindex": {},
+      "specialist_supervisor": {}
+    }
+  },
+  "results": [
+    {
+      "prompt": "quero falar com um atendente humano",
+      "slice": "support",
+      "category": "human_handoff",
+      "thread_id": "specialist_phase6_handoff_status",
+      "turn_index": 1,
+      "note": "",
+      "run_prefix": "debug:five-path:20260331T041232Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 229.0,
+        "mode": "handoff",
+        "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "support_slice",
+          "handoff"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de atendimento. Protocolo: ATD-20260331-B5E30DEE. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 292.0,
+        "mode": "structured_tool",
+        "reason": "support_handoff_created",
+        "graph_path": [
+          "flow_router",
+          "operation_result",
+          "deterministic_support"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de atendimento. Protocolo: ATD-20260331-2A0B43D1. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 209.3,
+        "mode": "handoff",
+        "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "handoff",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de atendimento. Protocolo: ATD-20260331-EBABDFC1. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 188.4,
+        "mode": "handoff",
+        "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "handoff",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de atendimento. Protocolo: ATD-20260331-996232B9. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 210.7,
+        "mode": "handoff",
+        "reason": "specialist_supervisor_tool_first:human_handoff",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "human_handoff"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de atendimento. Protocolo: ATD-20260331-2985CA83. Status atual: queued. Se preferir, voce tambem pode seguir pelo WhatsApp oficial (11) 97500-2040.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "qual o status do protocolo?",
+      "slice": "support",
+      "category": "human_handoff_status",
+      "thread_id": "specialist_phase6_handoff_status",
+      "turn_index": 2,
+      "note": "",
+      "run_prefix": "debug:five-path:20260331T041232Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 195.8,
+        "mode": "structured_tool",
+        "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "support_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Status do atendimento: ele segue em fila na fila de atendimento. Protocolo: ATD-20260331-B5E30DEE. Resumo: Atendimento institucional. Se quiser, eu tambem posso te orientar sobre o proximo setor ou resumir o que ja foi registrado.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 262.3,
+        "mode": "structured_tool",
+        "reason": "workflow_status_lookup",
+        "graph_path": [
+          "flow_router",
+          "operation_result",
+          "deterministic_workflow"
+        ],
+        "answer_text": "Sua solicitacao segue em fila com a area de atendimento. - Protocolo: ATD-20260331-2A0B43D1 - Ticket operacional: ATD-20260331-2A0B43D1 - Status atual: queued Proximo passo: a equipe responsavel recebe essa atualizacao e segue o retorno pelo fluxo institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 193.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Status do atendimento: ele segue em fila na fila de atendimento. Protocolo: ATD-20260331-EBABDFC1. Resumo: Atendimento institucional. Se quiser, eu tambem posso te orientar sobre o proximo setor ou resumir o que ja foi registrado.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 196.4,
+        "mode": "structured_tool",
+        "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Status do atendimento: ele segue em fila na fila de atendimento. Protocolo: ATD-20260331-996232B9. Resumo: Atendimento institucional. Se quiser, eu tambem posso te orientar sobre o proximo setor ou resumir o que ja foi registrado.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 151.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:support_status",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "support_status"
+        ],
+        "answer_text": "O atendimento sobre Atendimento institucional esta com status queued. Protocolo: ATD-20260331-2985CA83. Fila: atendimento. Ticket operacional: ATD-20260331-2985CA83.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "quero falar com o financeiro",
+      "slice": "support",
+      "category": "finance_handoff",
+      "thread_id": "specialist_phase6_finance_handoff",
+      "turn_index": 1,
+      "note": "",
+      "run_prefix": "debug:five-path:20260331T041232Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 161.1,
+        "mode": "handoff",
+        "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "support_slice",
+          "handoff"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-E1A03812. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 366.1,
+        "mode": "structured_tool",
+        "reason": "support_handoff_created",
+        "graph_path": [
+          "flow_router",
+          "operation_result",
+          "deterministic_support"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-B80BF087. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 169.1,
+        "mode": "handoff",
+        "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "handoff",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-E3DB44D1. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 164.2,
+        "mode": "handoff",
+        "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "handoff",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-D8A8858E. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 160.2,
+        "mode": "handoff",
+        "reason": "specialist_supervisor_tool_first:human_handoff",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "human_handoff"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-C21AF98B. Status atual: queued. Se preferir, voce tambem pode seguir pelo WhatsApp oficial (11) 97500-2040.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    }
+  ]
+}

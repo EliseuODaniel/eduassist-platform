@@ -130,6 +130,8 @@ class SpecialistSpec(BaseModel):
     compose_template: Literal["paragraph", "bullet", "summary"] = "paragraph"
     combinable_with: list[SpecialistId] = Field(default_factory=list)
     memory_topics: list[str] = Field(default_factory=list)
+    handoff_enabled: bool = False
+    handoff_queue: str | None = None
     activation_flag: bool = True
 
 
