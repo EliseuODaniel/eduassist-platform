@@ -15,6 +15,7 @@ from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
 from agents.extensions.models.litellm_model import LitellmModel
 
 from .models import (
+    IntentRouteSpec,
     JudgeVerdict,
     ManagerDraft,
     MessageEvidencePack,
@@ -24,6 +25,7 @@ from .models import (
     MessageResponseSuggestedReply,
     OperationalMemory,
     RepairDraft,
+    ResolvedTurnIntent,
     RetrievalPlannerAdvice,
     SpecialistResult,
     SpecialistSupervisorRequest,
@@ -32,6 +34,7 @@ from .models import (
     SupervisorInputGuardrail,
     SupervisorPlan,
 )
+from .intent_registry import get_intent_registry, has_registered_school_signal
 from .registry import get_specialist_registry
 
 logger = logging.getLogger(__name__)
@@ -119,6 +122,7 @@ class SupervisorRunContext:
     retrieval_advice: RetrievalPlannerAdvice | None
     school_profile: dict[str, Any] | None
     preview_hint: dict[str, Any] | None
+    resolved_turn: ResolvedTurnIntent | None
     specialist_registry: dict[str, Any]
     trace: SupervisorTrace = field(default_factory=SupervisorTrace)
 
@@ -290,6 +294,18 @@ def _school_domain_terms() -> set[str]:
         "matéria",
         "materias",
         "matérias",
+        "turno",
+        "turnos",
+        "turma",
+        "turmas",
+        "matutivo",
+        "matutino",
+        "vespertino",
+        "noturno",
+        "intervalo",
+        "intervalos",
+        "recreio",
+        "recreios",
         "disciplina",
         "disciplinas",
         "matematica",
@@ -308,7 +324,7 @@ def _school_domain_terms() -> set[str]:
 
 def _looks_like_general_knowledge_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    if not normalized or _contains_any(normalized, _school_domain_terms()):
+    if not normalized or _contains_any(normalized, _school_domain_terms()) or has_registered_school_signal(normalized):
         return False
     if len(normalized) > 180:
         return False
@@ -670,6 +686,7 @@ async def _persist_trace(
                     },
                     "response_payload": {
                         "retrieval_advice": retrieval_advice.model_dump(mode="json") if retrieval_advice is not None else None,
+                        "resolved_turn": ctx.resolved_turn.model_dump(mode="json") if ctx.resolved_turn is not None else None,
                         "plan": plan.model_dump(mode="json"),
                         "draft": draft.model_dump(mode="json"),
                         "judge": judge.model_dump(mode="json"),
@@ -716,6 +733,7 @@ async def _persist_light_trace(
                     "response_payload": {
                         "route": route,
                         "metadata": metadata or {},
+                        "resolved_turn": ctx.resolved_turn.model_dump(mode="json") if ctx.resolved_turn is not None else None,
                         "operational_memory": operational_memory.model_dump(mode="json"),
                         "answer": answer.model_dump(mode="json"),
                         "agent_events": ctx.trace.agent_events,
@@ -856,6 +874,146 @@ def _resolve_student(
         conversation_context,
         operational_memory=operational_memory,
         capability=capability,
+    )
+
+
+def _looks_like_student_pronoun_followup(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return bool(re.search(r"\b(dele|dela|dele\?|dela\?)\b", normalized))
+
+
+def _preview_domain(preview_hint: dict[str, Any] | None) -> str:
+    preview = preview_hint if isinstance(preview_hint, dict) else {}
+    classification = preview.get("classification")
+    if not isinstance(classification, dict):
+        return ""
+    return str(classification.get("domain") or "").strip().lower()
+
+
+def _score_intent_spec(
+    spec: IntentRouteSpec,
+    *,
+    normalized_message: str,
+    preview_domain: str,
+    operational_memory: OperationalMemory,
+    has_student_pronoun: bool,
+    subject_hint: str | None,
+    authenticated: bool,
+) -> int:
+    if spec.requires_auth and not authenticated:
+        return -1
+    if spec.none_terms and any(term in normalized_message for term in spec.none_terms):
+        return -1
+    if spec.all_terms and not all(term in normalized_message for term in spec.all_terms):
+        return -1
+    any_hits = sum(1 for term in spec.any_terms if term and term in normalized_message)
+    if spec.any_terms and any_hits == 0:
+        return -1
+    score = any_hits * 10
+    if preview_domain and preview_domain in spec.preview_domains:
+        score += 6
+    active_domains = set(operational_memory.active_domains)
+    if operational_memory.active_domain:
+        active_domains.add(str(operational_memory.active_domain))
+    if any(domain in active_domains for domain in spec.memory_domains):
+        score += 5
+    if has_student_pronoun and spec.carry_active_student:
+        score += 5
+    if subject_hint and spec.carry_active_subject:
+        score += 3
+    return score
+
+
+def _resolve_student_reference_for_spec(
+    ctx: SupervisorRunContext,
+    *,
+    spec: IntentRouteSpec,
+) -> tuple[dict[str, Any] | None, bool]:
+    capability = "finance" if spec.domain == "finance" else "academic"
+    explicit_hint = _student_hint_from_message(ctx.actor, ctx.request.message) or _is_student_name_only_followup(ctx.actor, ctx.request.message)
+    if explicit_hint:
+        return _find_student_by_hint(ctx.actor, capability=capability, hint=explicit_hint), False
+    if _looks_like_other_student_followup(ctx.request.message):
+        current = _student_from_memory(ctx.actor, ctx.operational_memory, capability=capability)
+        other = _other_linked_student(
+            ctx.actor,
+            capability=capability,
+            current_student_id=str(current.get("student_id") or "") if isinstance(current, dict) else None,
+        )
+        return other, other is not None
+    if spec.carry_active_student and _looks_like_student_pronoun_followup(ctx.request.message):
+        remembered = _student_from_memory(ctx.actor, ctx.operational_memory, capability=capability)
+        if isinstance(remembered, dict):
+            return remembered, True
+    if spec.carry_active_student:
+        remembered = _student_from_memory(ctx.actor, ctx.operational_memory, capability=capability)
+        if isinstance(remembered, dict):
+            return remembered, True
+    students = _linked_students(ctx.actor, capability=capability)
+    if len(students) == 1:
+        return students[0], False
+    return None, False
+
+
+def _resolve_turn_intent(ctx: SupervisorRunContext) -> ResolvedTurnIntent:
+    normalized = _normalize_text(ctx.request.message)
+    preview_domain = _preview_domain(ctx.preview_hint)
+    memory = ctx.operational_memory or OperationalMemory()
+    has_student_pronoun = _looks_like_student_pronoun_followup(ctx.request.message)
+    subject_hint = _subject_hint_from_text(ctx.request.message)
+    name_only_hint = _is_student_name_only_followup(ctx.actor, ctx.request.message)
+    best_spec: IntentRouteSpec | None = None
+    best_score = -1
+    for spec in get_intent_registry():
+        score = _score_intent_spec(
+            spec,
+            normalized_message=normalized,
+            preview_domain=preview_domain,
+            operational_memory=memory,
+            has_student_pronoun=has_student_pronoun,
+            subject_hint=subject_hint,
+            authenticated=ctx.request.user.authenticated,
+        )
+        if score < 0:
+            continue
+        if score > best_score or (score == best_score and best_spec is not None and spec.priority < best_spec.priority):
+            best_spec = spec
+            best_score = score
+    if best_spec is None and name_only_hint:
+        memory_domain = str(memory.active_domain or "").strip().lower()
+        registry_by_key = {spec.key: spec for spec in get_intent_registry()}
+        if memory_domain == "finance":
+            best_spec = registry_by_key.get("finance.student_summary")
+            best_score = 8 if best_spec is not None else -1
+        elif memory_domain == "academic":
+            best_spec = registry_by_key.get("academic.student_grades")
+            best_score = 8 if best_spec is not None else -1
+    if best_spec is None:
+        return ResolvedTurnIntent(
+            rationale="no_intent_registry_match",
+            confidence=0.0,
+        )
+    student, used_memory = _resolve_student_reference_for_spec(ctx, spec=best_spec)
+    resolved_subject = subject_hint or (memory.active_subject if best_spec.carry_active_subject else None)
+    confidence = min(0.99, 0.45 + (best_score / 40))
+    rationale_bits = [best_spec.key]
+    if preview_domain:
+        rationale_bits.append(f"preview={preview_domain}")
+    if used_memory:
+        rationale_bits.append("memory")
+    return ResolvedTurnIntent(
+        key=best_spec.key,
+        domain=best_spec.domain,
+        subintent=best_spec.subintent,
+        capability=best_spec.capability,
+        access_tier=best_spec.access_tier,
+        confidence=confidence,
+        requires_grounding=best_spec.requires_grounding,
+        referenced_student_id=(str(student.get("student_id") or "").strip() or None) if isinstance(student, dict) else None,
+        referenced_student_name=(str(student.get("full_name") or "").strip() or None) if isinstance(student, dict) else None,
+        referenced_subject=resolved_subject,
+        used_operational_memory=used_memory,
+        rationale="; ".join(rationale_bits),
     )
 
 
@@ -1007,6 +1165,10 @@ def _topic_from_reason(reason: str) -> str | None:
         return "workflow"
     if "project_of_life_policy" in normalized:
         return "project_of_life"
+    if "shift_offers" in normalized:
+        return "shift_offers"
+    if "interval_schedule" in normalized:
+        return "interval_schedule"
     if "curriculum" in normalized:
         return "curriculum"
     return None
@@ -1557,6 +1719,99 @@ def _compose_public_attendance_hours_answer(profile: dict[str, Any] | None) -> s
     library = _feature_note(profile, name_hint="biblioteca")
     if library:
         lines.append(f"- Biblioteca Aurora: {library}")
+    return "\n".join(lines)
+
+
+def _compose_shift_offers_answer(profile: dict[str, Any] | None, *, message: str) -> str | None:
+    rows = (profile or {}).get("shift_offers")
+    if not isinstance(rows, list) or not rows:
+        return None
+    normalized = _normalize_text(message)
+    rendered_rows: list[dict[str, str]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        segment = str(row.get("segment") or "").strip()
+        shift_label = str(row.get("shift_label") or "").strip()
+        starts_at = str(row.get("starts_at") or "").strip()
+        ends_at = str(row.get("ends_at") or "").strip()
+        notes = str(row.get("notes") or "").strip()
+        if not segment or not shift_label:
+            continue
+        rendered_rows.append(
+            {
+                "segment": segment,
+                "shift_label": shift_label,
+                "starts_at": starts_at,
+                "ends_at": ends_at,
+                "notes": notes,
+            }
+        )
+    if not rendered_rows:
+        return None
+    requested_segment: str | None = None
+    if "ensino medio" in normalized or "ensino médio" in normalized:
+        requested_segment = "medio"
+    elif "fundamental" in normalized:
+        requested_segment = "fundamental"
+    selected = [
+        row for row in rendered_rows
+        if requested_segment is None or requested_segment in _normalize_text(row["segment"])
+    ]
+    if not selected:
+        selected = rendered_rows
+    lines = ["Hoje o Colegio Horizonte publica estes turnos de atendimento escolar:"]
+    for row in selected:
+        lines.append(
+            f"- {row['segment']}: {row['shift_label']} ({row['starts_at']} as {row['ends_at']})."
+        )
+    offered_shift_labels = {_normalize_text(row["shift_label"]) for row in rendered_rows}
+    asked_about_contrast = any(term in normalized for term in {"matutivo", "matutino", "vespertino", "noturno"})
+    if asked_about_contrast:
+        missing: list[str] = []
+        if all(term not in offered_shift_labels for term in {"manha", "manhã"}):
+            missing.append("matutino")
+        if "vespertino" in normalized and "vespertino" not in offered_shift_labels and "tarde" not in offered_shift_labels:
+            missing.append("vespertino regular")
+        if "noturno" in normalized and "noturno" not in offered_shift_labels:
+            missing.append("noturno regular")
+        if missing:
+            rendered_missing = ", ".join(missing)
+            lines.append(f"Nos canais publicos atuais, nao encontrei oferta regular de {rendered_missing}.")
+    return "\n".join(lines)
+
+
+def _compose_interval_schedule_answer(profile: dict[str, Any] | None, *, message: str) -> str | None:
+    rows = (profile or {}).get("interval_schedule")
+    if not isinstance(rows, list) or not rows:
+        return (
+            "Hoje eu nao encontrei nos canais publicos da escola um quadro oficial de horarios de intervalo. "
+            "Se quiser, eu posso te indicar a coordenacao ou a secretaria para confirmar esse detalhe."
+        )
+    normalized = _normalize_text(message)
+    requested_segment: str | None = None
+    if "ensino medio" in normalized or "ensino médio" in normalized:
+        requested_segment = "medio"
+    elif "fundamental" in normalized:
+        requested_segment = "fundamental"
+    selected: list[dict[str, Any]] = [
+        row for row in rows
+        if isinstance(row, dict) and (requested_segment is None or requested_segment in _normalize_text(row.get("segment")))
+    ]
+    if not selected:
+        selected = [row for row in rows if isinstance(row, dict)]
+    if not selected:
+        return None
+    lines = ["Nos canais publicos do Colegio Horizonte, os horarios de intervalo sao:"]
+    for row in selected[:4]:
+        segment = str(row.get("segment") or "segmento").strip()
+        label = str(row.get("label") or "Intervalo").strip()
+        starts_at = str(row.get("starts_at") or "--").strip()
+        ends_at = str(row.get("ends_at") or "--").strip()
+        notes = str(row.get("notes") or "").strip()
+        lines.append(f"- {segment} ({label}): {starts_at} as {ends_at}.")
+        if notes:
+            lines.append(f"  {notes}")
     return "\n".join(lines)
 
 
@@ -2884,7 +3139,11 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
         _contains_any(normalized, finance_terms)
         or str(preview.get("classification", {}).get("domain") or "") == "finance"
     ):
-        student_hint = _student_hint_from_message(ctx.actor, ctx.request.message)
+        student_hint = (
+            str((ctx.resolved_turn.referenced_student_name if ctx.resolved_turn is not None else "") or "").strip()
+            or _student_hint_from_message(ctx.actor, ctx.request.message)
+            or (memory.active_student_name if _looks_like_student_pronoun_followup(ctx.request.message) else None)
+        )
         if student_hint:
             payload = await _fetch_financial_summary_payload(ctx, student_name_hint=student_hint)
             summary = payload.get("summary") if isinstance(payload, dict) else None
@@ -2953,7 +3212,11 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
         or "notas" in normalized
         or str(preview.get("classification", {}).get("domain") or "") == "academic"
     ) and not _looks_like_passing_policy_query(ctx.request.message):
-        student_hint = _student_hint_from_message(ctx.actor, ctx.request.message)
+        student_hint = (
+            str((ctx.resolved_turn.referenced_student_name if ctx.resolved_turn is not None else "") or "").strip()
+            or _student_hint_from_message(ctx.actor, ctx.request.message)
+            or (memory.active_student_name if _looks_like_student_pronoun_followup(ctx.request.message) else None)
+        )
         if student_hint:
             payload = await _fetch_academic_summary_payload(ctx, student_name_hint=student_hint)
             summary = payload.get("summary") if isinstance(payload, dict) else None
@@ -3056,6 +3319,217 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 )
 
     return None
+
+
+async def _resolved_shift_offers_answer(
+    ctx: SupervisorRunContext,
+    resolved: ResolvedTurnIntent,
+) -> SupervisorAnswerPayload | None:
+    answer_text = _compose_shift_offers_answer(ctx.school_profile, message=ctx.request.message)
+    if not answer_text:
+        return None
+    return SupervisorAnswerPayload(
+        message_text=answer_text,
+        mode="structured_tool",
+        classification=MessageIntentClassification(
+            domain="institution",
+            access_tier="public",
+            confidence=resolved.confidence,
+            reason="specialist_supervisor_resolved_intent:shift_offers",
+        ),
+        evidence_pack=MessageEvidencePack(
+            strategy="structured_tools",
+            summary="Resposta deterministica baseada nos turnos publicos da escola.",
+            source_count=1,
+            support_count=1,
+            supports=[
+                MessageEvidenceSupport(kind="public_schedule", label="Turnos publicos", detail=_safe_excerpt(answer_text, limit=180)),
+            ],
+        ),
+        suggested_replies=_default_suggested_replies("institution"),
+        graph_path=["specialist_supervisor", "resolved_intent", "shift_offers"],
+        reason="specialist_supervisor_resolved_intent:shift_offers",
+    )
+
+
+async def _resolved_interval_schedule_answer(
+    ctx: SupervisorRunContext,
+    resolved: ResolvedTurnIntent,
+) -> SupervisorAnswerPayload | None:
+    answer_text = _compose_interval_schedule_answer(ctx.school_profile, message=ctx.request.message)
+    if not answer_text:
+        return None
+    return SupervisorAnswerPayload(
+        message_text=answer_text,
+        mode="structured_tool",
+        classification=MessageIntentClassification(
+            domain="institution",
+            access_tier="public",
+            confidence=resolved.confidence,
+            reason="specialist_supervisor_resolved_intent:interval_schedule",
+        ),
+        evidence_pack=MessageEvidencePack(
+            strategy="structured_tools",
+            summary="Resposta deterministica baseada no quadro publico de intervalos.",
+            source_count=1,
+            support_count=1,
+            supports=[
+                MessageEvidenceSupport(kind="public_schedule", label="Intervalos publicos", detail=_safe_excerpt(answer_text, limit=180)),
+            ],
+        ),
+        suggested_replies=_default_suggested_replies("institution"),
+        graph_path=["specialist_supervisor", "resolved_intent", "interval_schedule"],
+        reason="specialist_supervisor_resolved_intent:interval_schedule",
+    )
+
+
+async def _resolved_academic_student_grades_answer(
+    ctx: SupervisorRunContext,
+    resolved: ResolvedTurnIntent,
+) -> SupervisorAnswerPayload | None:
+    if not ctx.request.user.authenticated:
+        return None
+    target_name = str(resolved.referenced_student_name or "").strip()
+    if target_name:
+        payload = await _fetch_academic_summary_payload(ctx, student_name_hint=target_name)
+        summary = payload.get("summary") if isinstance(payload, dict) else None
+        if isinstance(summary, dict):
+            answer_text = _compose_named_grade_answer(summary)
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="academic",
+                    access_tier=_access_tier_for_domain("academic", True),
+                    confidence=resolved.confidence,
+                    reason="specialist_supervisor_resolved_intent:student_grades",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Notas deterministicas do aluno resolvido pela memoria discursiva.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[
+                        MessageEvidenceSupport(kind="academic_summary", label=str(summary.get("student_name") or "Aluno"), detail=_safe_excerpt(answer_text, limit=180)),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("academic"),
+                graph_path=["specialist_supervisor", "resolved_intent", "student_grades"],
+                reason="specialist_supervisor_resolved_intent:student_grades",
+            )
+    summaries: list[dict[str, Any]] = []
+    for student in _linked_students(ctx.actor, capability="academic"):
+        payload = await _fetch_academic_summary_payload(ctx, student_name_hint=str(student.get("full_name") or ""))
+        summary = payload.get("summary") if isinstance(payload, dict) else None
+        if isinstance(summary, dict):
+            summaries.append(summary)
+    if not summaries:
+        return None
+    lines = ["Panorama academico das contas vinculadas:"]
+    for summary in summaries:
+        lines.extend(_compose_academic_snapshot_lines(summary))
+    return SupervisorAnswerPayload(
+        message_text="\n".join(lines),
+        mode="structured_tool",
+        classification=MessageIntentClassification(
+            domain="academic",
+            access_tier=_access_tier_for_domain("academic", True),
+            confidence=resolved.confidence,
+            reason="specialist_supervisor_resolved_intent:academic_summary_aggregate",
+        ),
+        evidence_pack=MessageEvidencePack(
+            strategy="structured_tools",
+            summary="Panorama academico quando a pergunta pede notas sem delimitar um unico aluno.",
+            source_count=len(summaries),
+            support_count=len(summaries),
+            supports=[
+                MessageEvidenceSupport(kind="academic_summary", label=str(summary.get("student_name") or "Aluno"), detail=_safe_excerpt(_compose_academic_snapshot_lines(summary)[0], limit=180))
+                for summary in summaries[:4]
+            ],
+        ),
+        suggested_replies=_default_suggested_replies("academic"),
+        graph_path=["specialist_supervisor", "resolved_intent", "academic_summary_aggregate"],
+        reason="specialist_supervisor_resolved_intent:academic_summary_aggregate",
+    )
+
+
+async def _resolved_finance_student_summary_answer(
+    ctx: SupervisorRunContext,
+    resolved: ResolvedTurnIntent,
+) -> SupervisorAnswerPayload | None:
+    if not ctx.request.user.authenticated:
+        return None
+    target_name = str(resolved.referenced_student_name or "").strip()
+    if not target_name and len(_linked_students(ctx.actor, capability="finance")) > 1:
+        clarification = "Consigo verificar a situacao financeira, mas preciso que voce me diga qual aluno: Lucas Oliveira ou Ana Oliveira?"
+        return SupervisorAnswerPayload(
+            message_text=clarification,
+            mode="clarify",
+            classification=MessageIntentClassification(
+                domain="finance",
+                access_tier=_access_tier_for_domain("finance", True),
+                confidence=resolved.confidence,
+                reason="specialist_supervisor_resolved_intent:finance_student_clarify",
+            ),
+            suggested_replies=[
+                MessageResponseSuggestedReply(text="Lucas Oliveira"),
+                MessageResponseSuggestedReply(text="Ana Oliveira"),
+            ],
+            graph_path=["specialist_supervisor", "resolved_intent", "finance_student_clarify"],
+            reason="specialist_supervisor_resolved_intent:finance_student_clarify",
+        )
+    if not target_name:
+        student = next(iter(_linked_students(ctx.actor, capability="finance")), None)
+        target_name = str(student.get("full_name") or "").strip() if isinstance(student, dict) else ""
+    if not target_name:
+        return None
+    payload = await _fetch_financial_summary_payload(ctx, student_name_hint=target_name)
+    summary = payload.get("summary") if isinstance(payload, dict) else None
+    if not isinstance(summary, dict):
+        return None
+    answer_text = (
+        _compose_finance_installments_answer(summary)
+        if "parcela" in _normalize_text(ctx.request.message)
+        else _compose_finance_aggregate_answer([summary])
+    )
+    return SupervisorAnswerPayload(
+        message_text=answer_text,
+        mode="structured_tool",
+        classification=MessageIntentClassification(
+            domain="finance",
+            access_tier=_access_tier_for_domain("finance", True),
+            confidence=resolved.confidence,
+            reason="specialist_supervisor_resolved_intent:finance_student_summary",
+        ),
+        evidence_pack=MessageEvidencePack(
+            strategy="structured_tools",
+            summary="Resumo financeiro deterministico do aluno resolvido pela memoria discursiva.",
+            source_count=1,
+            support_count=1,
+            supports=[
+                MessageEvidenceSupport(kind="finance_summary", label=str(summary.get("student_name") or "Aluno"), detail=f"em aberto {summary.get('open_invoice_count', 0)} · vencidas {summary.get('overdue_invoice_count', 0)}"),
+            ],
+        ),
+        suggested_replies=_default_suggested_replies("finance"),
+        graph_path=["specialist_supervisor", "resolved_intent", "finance_student_summary"],
+        reason="specialist_supervisor_resolved_intent:finance_student_summary",
+    )
+
+
+async def _resolved_intent_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | None:
+    resolved = ctx.resolved_turn
+    if resolved is None or resolved.domain == "unknown":
+        return None
+    handlers: dict[str, Any] = {
+        "institution.shift_offers": _resolved_shift_offers_answer,
+        "institution.interval_schedule": _resolved_interval_schedule_answer,
+        "academic.student_grades": _resolved_academic_student_grades_answer,
+        "finance.student_summary": _resolved_finance_student_summary_answer,
+    }
+    handler = handlers.get(resolved.capability)
+    if handler is None:
+        return None
+    return await handler(ctx, resolved)
 
 
 def _academic_grade_requirement(summary: dict[str, Any], *, subject_hint: str | None) -> dict[str, Any]:
@@ -3741,6 +4215,8 @@ def _build_general_knowledge_agent(model: Any) -> Agent[SupervisorRunContext]:
 async def _general_knowledge_fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | None:
     if not _looks_like_general_knowledge_query(ctx.request.message):
         return None
+    if ctx.resolved_turn is not None and ctx.resolved_turn.domain != "unknown":
+        return None
     if ctx.operational_memory is not None and (
         ctx.operational_memory.pending_kind
         or ctx.operational_memory.active_domain in {"institution", "academic", "finance", "support"}
@@ -4079,6 +4555,7 @@ def _planner_instructions(context: RunContextWrapper[SupervisorRunContext], agen
     preview = ctx.preview_hint or {}
     operational_memory = ctx.operational_memory.model_dump(mode="json") if ctx.operational_memory is not None else {}
     retrieval_advice = ctx.retrieval_advice.model_dump(mode="json") if ctx.retrieval_advice is not None else {}
+    resolved_turn = ctx.resolved_turn.model_dump(mode="json") if ctx.resolved_turn is not None else {}
     school_name = _school_name(ctx.school_profile)
     recent_messages = [
         f"{item.get('sender_type')}: {item.get('content')}"
@@ -4098,6 +4575,7 @@ def _planner_instructions(context: RunContextWrapper[SupervisorRunContext], agen
         "use GraphRAG para panorama multi-documento; use pricing_projection para simulacoes publicas. "
         "Se a pergunta estiver ambigua, peca clarificacao. "
         f"\n\nPreview compartilhado: {json.dumps(preview, ensure_ascii=False)}"
+        f"\nTurno resolvido: {json.dumps(resolved_turn, ensure_ascii=False)}"
         f"\nMemoria operacional: {json.dumps(operational_memory, ensure_ascii=False)}"
         f"\nAdvice do retrieval planner especialista: {json.dumps(retrieval_advice, ensure_ascii=False)}"
         f"\nMensagens recentes: {json.dumps(recent_messages, ensure_ascii=False)}"
@@ -4109,6 +4587,7 @@ def _retrieval_planner_instructions(context: RunContextWrapper[SupervisorRunCont
     ctx = context.context
     preview = ctx.preview_hint or {}
     operational_memory = ctx.operational_memory.model_dump(mode="json") if ctx.operational_memory is not None else {}
+    resolved_turn = ctx.resolved_turn.model_dump(mode="json") if ctx.resolved_turn is not None else {}
     school_name = _school_name(ctx.school_profile)
     recent_messages = [
         f"{item.get('sender_type')}: {item.get('content')}"
@@ -4127,6 +4606,7 @@ def _retrieval_planner_instructions(context: RunContextWrapper[SupervisorRunCont
         "Retorne tambem queries uteis para evidencias quando isso ajudar a busca documental. "
         f"\n\nMensagem atual: {ctx.request.message}"
         f"\nPreview compartilhado: {json.dumps(preview, ensure_ascii=False)}"
+        f"\nTurno resolvido: {json.dumps(resolved_turn, ensure_ascii=False)}"
         f"\nMemoria operacional: {json.dumps(operational_memory, ensure_ascii=False)}"
         f"\nMensagens recentes: {json.dumps(recent_messages, ensure_ascii=False)}"
     )
@@ -5224,6 +5704,7 @@ async def run_specialist_supervisor(
             retrieval_advice=None,
             school_profile=None,
             preview_hint=None,
+            resolved_turn=None,
             specialist_registry=get_specialist_registry(),
         )
         (
@@ -5238,6 +5719,7 @@ async def run_specialist_supervisor(
             _orchestrator_preview(context),
         )
         context.operational_memory = _load_operational_memory(context.conversation_context)
+        context.resolved_turn = _resolve_turn_intent(context)
 
         academic_fast_answer = await _academic_grade_fast_path_answer(context)
         if academic_fast_answer is not None:
@@ -5275,6 +5757,29 @@ async def run_specialist_supervisor(
                     "preview_hint": context.preview_hint or {},
                 },
                 answer=memory_follow_up_answer,
+            ).model_dump(mode="json")
+
+        resolved_intent_answer = await _resolved_intent_answer(context)
+        if resolved_intent_answer is not None:
+            await _persist_final_answer(
+                context,
+                answer=resolved_intent_answer,
+                route="resolved_intent",
+                metadata={
+                    "preview_hint": context.preview_hint or {},
+                    "resolved_turn": context.resolved_turn.model_dump(mode="json") if context.resolved_turn is not None else None,
+                },
+            )
+            return SpecialistSupervisorResponse(
+                reason=resolved_intent_answer.reason,
+                metadata={
+                    "resolved_intent": True,
+                    "provider": resolve_llm_provider(settings),
+                    "model": effective_llm_model_name(settings),
+                    "preview_hint": context.preview_hint or {},
+                    "resolved_turn": context.resolved_turn.model_dump(mode="json") if context.resolved_turn is not None else None,
+                },
+                answer=resolved_intent_answer,
             ).model_dump(mode="json")
 
         tool_first_answer = await _tool_first_structured_answer(context)

@@ -23,6 +23,7 @@ from api_core.contracts import (
     PublicDocumentSubmissionPolicy,
     PublicFeatureAvailability,
     PublicHighlightEntry,
+    PublicIntervalWindow,
     PublicKpiEntry,
     PublicLeadershipMember,
     PublicOrgDirectory,
@@ -589,6 +590,29 @@ def get_public_school_profile(session: Session) -> PublicSchoolProfile | None:
                 starts_at='07:00',
                 ends_at='17:30',
                 notes='Inclui estudo orientado, almoco, oficinas, esportes e acompanhamento no contraturno.',
+            ),
+        ],
+        interval_schedule=[
+            PublicIntervalWindow(
+                segment='Ensino Fundamental II',
+                label='Intervalo da manha',
+                starts_at='09:35',
+                ends_at='09:55',
+                notes='Janela publica de recreio e lanche do turno regular da manha.',
+            ),
+            PublicIntervalWindow(
+                segment='Ensino Medio',
+                label='Intervalo da manha',
+                starts_at='09:40',
+                ends_at='10:00',
+                notes='Janela publica de intervalo do turno regular da manha.',
+            ),
+            PublicIntervalWindow(
+                segment='Integral opcional',
+                label='Pausa de almoco e convivio',
+                starts_at='12:50',
+                ends_at='13:40',
+                notes='Os estudantes do integral fazem pausa maior para almoco e retorno ao contraturno.',
             ),
         ],
         tuition_reference=[

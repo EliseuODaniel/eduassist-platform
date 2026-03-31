@@ -362,6 +362,14 @@ class PublicDocumentSubmissionPolicy(BaseModel):
     notes: str | None = None
 
 
+class PublicIntervalWindow(BaseModel):
+    segment: str
+    label: str
+    starts_at: str
+    ends_at: str
+    notes: str | None = None
+
+
 class PublicPassingPolicy(BaseModel):
     passing_average: Decimal
     reference_scale: str = '0-10'
@@ -401,6 +409,7 @@ class PublicSchoolProfile(BaseModel):
     confessional_status: str
     segments: list[str] = Field(default_factory=list)
     shift_offers: list[PublicShiftOffer] = Field(default_factory=list)
+    interval_schedule: list[PublicIntervalWindow] = Field(default_factory=list)
     tuition_reference: list[PublicTuitionReference] = Field(default_factory=list)
     contact_channels: list[PublicContactChannel] = Field(default_factory=list)
     feature_inventory: list[PublicFeatureAvailability] = Field(default_factory=list)

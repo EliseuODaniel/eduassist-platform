@@ -1,0 +1,52 @@
+[
+  {
+    "prompt": "como posso verificar minha situação financeira?",
+    "slice": "protected",
+    "category": "resolved_turn_memory",
+    "thread_id": "specialist_root_pronoun_followup",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "forbidden_keywords": []
+  },
+  {
+    "prompt": "de lucas oliveira",
+    "slice": "protected",
+    "category": "resolved_turn_memory",
+    "thread_id": "specialist_root_pronoun_followup",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Lucas Oliveira"],
+    "forbidden_keywords": []
+  },
+  {
+    "prompt": "e quais as notas dele?",
+    "slice": "protected",
+    "category": "resolved_turn_memory",
+    "thread_id": "specialist_root_pronoun_followup",
+    "turn_index": 3,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Notas de Lucas Oliveira"],
+    "forbidden_keywords": ["Panorama academico", "Ana Oliveira"]
+  },
+  {
+    "prompt": "a escola tem quais turmas? ensino matutivo, vespertino ou noturno?",
+    "slice": "public",
+    "category": "resolved_turn_institution",
+    "thread_id": "specialist_root_shift_offers",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["Ensino Fundamental II", "Ensino Medio", "Manha"],
+    "forbidden_keywords": ["Panorama academico", "Lucas Oliveira", "Ana Oliveira"]
+  },
+  {
+    "prompt": "quais os horarios de intervalo?",
+    "slice": "public",
+    "category": "resolved_turn_institution",
+    "thread_id": "specialist_root_interval_schedule",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["intervalo", "09:35", "09:40"],
+    "forbidden_keywords": ["ainda nao consegui sustentar", "Panorama academico"]
+  }
+]

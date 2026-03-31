@@ -158,6 +158,40 @@ class OperationalMemory(BaseModel):
     last_reason: str | None = None
 
 
+class IntentRouteSpec(BaseModel):
+    key: str
+    domain: str
+    subintent: str
+    capability: str
+    access_tier: str = "public"
+    priority: int = 100
+    requires_auth: bool = False
+    requires_grounding: bool = True
+    any_terms: list[str] = Field(default_factory=list)
+    all_terms: list[str] = Field(default_factory=list)
+    none_terms: list[str] = Field(default_factory=list)
+    preview_domains: list[str] = Field(default_factory=list)
+    memory_domains: list[str] = Field(default_factory=list)
+    carry_active_student: bool = False
+    carry_active_subject: bool = False
+    examples: list[str] = Field(default_factory=list)
+
+
+class ResolvedTurnIntent(BaseModel):
+    key: str = "unknown"
+    domain: str = "unknown"
+    subintent: str = "unknown"
+    capability: str = "unknown"
+    access_tier: str = "public"
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    requires_grounding: bool = False
+    referenced_student_id: str | None = None
+    referenced_student_name: str | None = None
+    referenced_subject: str | None = None
+    used_operational_memory: bool = False
+    rationale: str = ""
+
+
 class SupervisorPlan(BaseModel):
     request_kind: PlannerRequestKind
     primary_domain: str
