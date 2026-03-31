@@ -855,6 +855,22 @@ def _merge_llamaindex_native_public_decisions(
     return llm_decision
 
 
+def _should_trust_llamaindex_native_deterministic_answer(
+    *,
+    native_decision: LlamaIndexNativePublicDecision | None,
+    selected_tool_names: tuple[str, ...],
+) -> bool:
+    if native_decision is None:
+        return False
+    if native_decision.answer_mode not in {'profile', 'unpublished'}:
+        return False
+    deterministic_tools = {'public_profile', 'pricing_projection'}
+    effective_tools = {tool_name for tool_name in selected_tool_names if tool_name != 'llamaindex_selector_router'}
+    if not effective_tools:
+        return False
+    return effective_tools.issubset(deterministic_tools)
+
+
 def _normalize_llamaindex_native_public_decision(
     decision: LlamaIndexNativePublicDecision | None,
 ) -> LlamaIndexNativePublicDecision | None:
@@ -1949,6 +1965,18 @@ async def maybe_execute_llamaindex_native_plan(
         public_plan=public_plan,
         slot_memory=verification_slot_memory,
     )
+    if (
+        not verification.valid
+        and _should_trust_llamaindex_native_deterministic_answer(
+            native_decision=native_public_decision,
+            selected_tool_names=selected_tool_names,
+        )
+    ):
+        verification = rt.AnswerVerificationResult(
+            valid=True,
+            reason='llamaindex_native_deterministic_answer',
+        )
+        semantic_judge_used = False
     if not verification.valid:
         return None
 
