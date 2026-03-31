@@ -1,0 +1,210 @@
+[
+  {
+    "case_id": "regulations_vs_assessment_policy",
+    "query": "Compare o manual de regulamentos gerais com a politica de avaliacao, recuperacao e promocao, destacando como cada documento atua no acompanhamento do aluno ao longo do ano.",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "regulamentos gerais",
+      "avaliacao",
+      "recuperacao",
+      "promocao",
+      "frequencia",
+      "convivencia"
+    ]
+  },
+  {
+    "case_id": "calendar_assessment_and_admissions",
+    "query": "Cruze calendario letivo, agenda de avaliacoes e manual de matricula para explicar a jornada de uma familia nova do ingresso ao primeiro bimestre.",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "matricula",
+      "inicio das aulas",
+      "primeiro bimestre",
+      "agenda de avaliacoes",
+      "familia",
+      "documentos"
+    ]
+  },
+  {
+    "case_id": "secretaria_portal_credentials",
+    "query": "Sintetize tudo o que os documentos publicos dizem sobre secretaria, envio de documentos, portal, aplicativo, login, senha e seguranca das credenciais.",
+    "methods": ["basic", "local", "global", "drift"],
+    "review_focus": [
+      "secretaria",
+      "portal",
+      "aplicativo",
+      "credenciais",
+      "senha",
+      "envio de documentos"
+    ]
+  },
+  {
+    "case_id": "health_second_call_and_authorizations",
+    "query": "Relacione protocolo de saude, segunda chamada por motivo de saude e saidas pedagogicas para explicar quando a familia precisa justificar, autorizar ou comunicar a escola.",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "saude",
+      "segunda chamada",
+      "justificativa",
+      "autorizacao",
+      "saida pedagogica",
+      "familia"
+    ]
+  },
+  {
+    "case_id": "library_labs_and_digital_resources",
+    "query": "Compare o manual da biblioteca, dos laboratorios e dos recursos digitais com a politica de uso do portal e do aplicativo, destacando direitos, cuidados e responsabilidades do aluno.",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "biblioteca",
+      "laboratorios",
+      "recursos digitais",
+      "portal",
+      "aplicativo",
+      "responsabilidades"
+    ]
+  },
+  {
+    "case_id": "bolsas_mensalidades_and_rematricula",
+    "query": "Explique como bolsas, descontos, mensalidades, rematricula, transferencia e cancelamento se relacionam do ponto de vista financeiro e administrativo.",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "bolsas",
+      "descontos",
+      "mensalidades",
+      "rematricula",
+      "transferencia",
+      "cancelamento"
+    ]
+  },
+  {
+    "case_id": "family_first_month_survival_guide",
+    "query": "Se voce fosse escrever um guia de sobrevivencia do primeiro mes para uma familia nova, que regras, prazos, canais e cuidados reuniria a partir do corpus publico?",
+    "methods": ["basic", "local", "global", "drift"],
+    "review_focus": [
+      "primeiro mes",
+      "regras",
+      "prazos",
+      "canais",
+      "familia",
+      "rotina escolar"
+    ]
+  },
+  {
+    "case_id": "inclusion_safety_and_school_life",
+    "query": "Cruze inclusao, acessibilidade, seguranca, apoio escolar e vida escolar para explicar como a escola descreve acolhimento, permanencia e suporte ao estudante.",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "inclusao",
+      "acessibilidade",
+      "seguranca",
+      "apoio",
+      "vida escolar",
+      "acolhimento"
+    ]
+  },
+  {
+    "case_id": "integral_extracurricular_and_routine",
+    "query": "Compare periodo integral, estudo orientado, atividades extracurriculares e rotina escolar para mostrar como a escola organiza tempo, apoio e participacao do aluno.",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "periodo integral",
+      "estudo orientado",
+      "atividades extracurriculares",
+      "rotina escolar",
+      "apoio",
+      "participacao"
+    ]
+  },
+  {
+    "case_id": "institutional_identity_and_differentiators",
+    "query": "Relacione apresentacao institucional, proposta pedagogica, indicadores e diferenciais para resumir a identidade educacional do colegio.",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "apresentacao institucional",
+      "proposta pedagogica",
+      "indicadores",
+      "diferenciais",
+      "identidade",
+      "colegio"
+    ]
+  },
+  {
+    "case_id": "family_support_channels_map",
+    "query": "Mapeie os canais e servicos citados no corpus publico e explique quando uma familia deve procurar secretaria, orientacao, financeiro, portal ou visita presencial.",
+    "methods": ["basic", "local", "global", "drift"],
+    "review_focus": [
+      "secretaria",
+      "orientacao",
+      "financeiro",
+      "portal",
+      "visita",
+      "familia"
+    ]
+  },
+  {
+    "case_id": "attendance_health_and_assessment_rules",
+    "query": "Compare as regras de frequencia, faltas, justificativas e segunda chamada espalhadas entre regulamentos, avaliacao e protocolo de saude.",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "frequencia",
+      "faltas",
+      "justificativas",
+      "segunda chamada",
+      "avaliacao",
+      "saude"
+    ]
+  },
+  {
+    "case_id": "transport_food_uniform_routine",
+    "query": "Cruze transporte, alimentacao, uniforme, rotina e servicos escolares para explicar o dia a dia pratico do aluno fora da sala de aula.",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "transporte",
+      "alimentacao",
+      "uniforme",
+      "rotina",
+      "servicos escolares",
+      "dia a dia"
+    ]
+  },
+  {
+    "case_id": "authorizations_events_and_family_responsibility",
+    "query": "Compare visitas, eventos, saidas pedagogicas e protocolos de autorizacao para explicar quando a escola depende de acao explicita da familia.",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "visitas",
+      "eventos",
+      "saidas pedagogicas",
+      "autorizacao",
+      "familia",
+      "responsabilidade"
+    ]
+  },
+  {
+    "case_id": "digital_service_security_journey",
+    "query": "Explique de ponta a ponta como a escola descreve atendimento digital, autenticacao, protecao de dados, uso do Telegram e encaminhamento para canais adequados.",
+    "methods": ["basic", "local", "global", "drift"],
+    "review_focus": [
+      "atendimento digital",
+      "autenticacao",
+      "protecao de dados",
+      "telegram",
+      "portal",
+      "encaminhamento"
+    ]
+  },
+  {
+    "case_id": "admissions_vs_rematricula_vs_transfer",
+    "query": "Compare admissao inicial, rematricula e transferencia e destaque onde o corpus indica semelhanas, diferencas, prazos e documentos exigidos.",
+    "methods": ["basic", "local", "global"],
+    "review_focus": [
+      "admissao",
+      "rematricula",
+      "transferencia",
+      "prazos",
+      "documentos",
+      "diferencas"
+    ]
+  }
+]

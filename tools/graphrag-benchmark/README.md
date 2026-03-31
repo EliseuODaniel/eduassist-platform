@@ -22,6 +22,12 @@ Comandos principais:
 - `make graphrag-benchmark-run`
 - `make graphrag-benchmark-run-smoke`
 
+Datasets uteis:
+
+- baseline compacto: `tools/graphrag-benchmark/datasets/public_corpus_smoke.json`
+- comparativo padrao: `tools/graphrag-benchmark/datasets/public_corpus_queries.json`
+- comparativo estendido: `tools/graphrag-benchmark/datasets/public_corpus_extended_queries.json`
+
 Fluxo recomendado com provider remoto:
 
 1. `make graphrag-benchmark-bootstrap`

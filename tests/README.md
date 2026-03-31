@@ -44,6 +44,14 @@ Estado atual:
   - handoff humano
   - resistencia basica a prompt disclosure
   - retrieval search com verificação de hits documentais
+- `tests/evals/datasets/system_question_bank.md` consolida um banco mestre de perguntas para estressar:
+  - fatos canonicos estruturados
+  - retrieval hibrido
+  - `GraphRAG`
+  - autenticacao, policy e escopo
+  - dados protegidos academicos, financeiros e administrativos
+  - fluxo docente
+  - workflows, handoff, casos adversariais e perguntas externas com fallback seguro
 
 Comandos uteis:
 

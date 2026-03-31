@@ -157,6 +157,90 @@ KEYCLOAK_BINDINGS = [
         'username': 'murilo.bastos',
         'email': 'murilo.bastos@mock.eduassist.local',
     },
+    {
+        'external_code': 'USR-ADMIN-001',
+        'subject': '120d83cd-c3e5-511b-b826-4d4b5722ad69',
+        'username': 'leonardo.pires',
+        'email': 'leonardo.pires@mock.eduassist.local',
+    },
+    {
+        'external_code': 'USR-FIN-002',
+        'subject': '290dd0e5-34eb-5517-8481-efb019f843fd',
+        'username': 'vinicius.prado',
+        'email': 'vinicius.prado@mock.eduassist.local',
+    },
+    {
+        'external_code': 'USR-STAFF-002',
+        'subject': 'c6af06db-01a7-51c7-9acf-73cd35388b9f',
+        'username': 'priscila.almeida',
+        'email': 'priscila.almeida@mock.eduassist.local',
+    },
+    {
+        'external_code': 'USR-STAFF-003',
+        'subject': '315f85c3-7f35-54ff-8c6e-0b58c99a5ee0',
+        'username': 'renato.barros',
+        'email': 'renato.barros@mock.eduassist.local',
+    },
+    {
+        'external_code': 'USR-GUARD-101',
+        'subject': '9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b1101',
+        'username': 'camila.duarte',
+        'email': 'camila.duarte.family@mock.eduassist.local',
+    },
+    {
+        'external_code': 'USR-GUARD-102',
+        'subject': '9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b1102',
+        'username': 'renata.lima',
+        'email': 'renata.lima.family@mock.eduassist.local',
+    },
+    {
+        'external_code': 'USR-GUARD-103',
+        'subject': '9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b1103',
+        'username': 'diego.moreira',
+        'email': 'diego.moreira.family@mock.eduassist.local',
+    },
+    {
+        'external_code': 'USR-GUARD-104',
+        'subject': '9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b1104',
+        'username': 'teresa.almeida',
+        'email': 'teresa.almeida.family@mock.eduassist.local',
+    },
+    {
+        'external_code': 'USR-GUARD-105',
+        'subject': '9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b1105',
+        'username': 'fabio.martins',
+        'email': 'fabio.martins.family@mock.eduassist.local',
+    },
+    {
+        'external_code': 'USR-GUARD-201',
+        'subject': '7d24fb1c-791e-5701-a359-1b79dcd90835',
+        'username': 'helena.nunes.family',
+        'email': 'helena.nunes.family@mock.eduassist.local',
+    },
+    {
+        'external_code': 'USR-GUARD-202',
+        'subject': '0c0e443b-0a09-5a51-bd57-4d98c640b029',
+        'username': 'marcos.nunes.family',
+        'email': 'marcos.nunes.family@mock.eduassist.local',
+    },
+    {
+        'external_code': 'USR-GUARD-203',
+        'subject': 'fa0fd3af-ff41-50fa-a816-d79951bdec9f',
+        'username': 'rosa.teixeira.family',
+        'email': 'rosa.teixeira.family@mock.eduassist.local',
+    },
+    {
+        'external_code': 'USR-GUARD-204',
+        'subject': '313510db-c15f-5485-89de-94bf9155b772',
+        'username': 'paula.moreira.family',
+        'email': 'paula.moreira.family@mock.eduassist.local',
+    },
+    {
+        'external_code': 'USR-GUARD-205',
+        'subject': '0ebcf078-2dd4-5650-b2d7-3ed384dd3813',
+        'username': 'fabio.campos.family',
+        'email': 'fabio.campos.family@mock.eduassist.local',
+    },
 ]
 
 
