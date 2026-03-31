@@ -5,7 +5,7 @@ from functools import lru_cache
 import secrets
 
 import httpx
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from eduassist_observability import configure_observability
@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     telegram_webhook_secret: str = 'change-me'
     api_core_url: str = 'http://api-core:8000'
     ai_orchestrator_url: str = 'http://ai-orchestrator:8000'
+    ai_orchestrator_timeout_seconds: float = 45.0
     internal_api_token: str = 'dev-internal-token'
     telegram_api_base_url: str = 'https://api.telegram.org'
 
@@ -285,7 +286,7 @@ async def _orchestrate_message(
         'user': user_context,
     }
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    async with httpx.AsyncClient(timeout=settings.ai_orchestrator_timeout_seconds) as client:
         response = await client.post(
             f'{settings.ai_orchestrator_url}/v1/messages/respond',
             headers={'X-Internal-Api-Token': settings.internal_api_token},
@@ -293,6 +294,48 @@ async def _orchestrate_message(
         )
     response.raise_for_status()
     return response.json()
+
+
+async def _process_telegram_text_message(
+    *,
+    chat_id: int,
+    text: str,
+    update_id: int | None,
+) -> None:
+    try:
+        orchestration = await _orchestrate_message(
+            chat_id=chat_id,
+            text=text,
+            update_id=update_id,
+        )
+        reply_text = str(orchestration.get('message_text', _default_help_message()))
+        reply_markup = _build_reply_markup(orchestration.get('suggested_replies'))
+        await _send_telegram_message(chat_id, reply_text, reply_markup=reply_markup)
+        visual_assets = orchestration.get('visual_assets', [])
+        if isinstance(visual_assets, list):
+            for asset in visual_assets:
+                if not isinstance(asset, dict):
+                    continue
+                if str(asset.get('mime_type', '')).lower() != 'image/png':
+                    continue
+                encoded = asset.get('base64_data')
+                if not isinstance(encoded, str) or not encoded:
+                    continue
+                try:
+                    image_bytes = base64.b64decode(encoded)
+                except Exception:
+                    continue
+                await _send_telegram_photo(
+                    chat_id,
+                    image_bytes,
+                    caption=str(asset.get('caption') or asset.get('title') or 'Visual institucional'),
+                )
+    except httpx.HTTPError:
+        fallback_text = (
+            'Nao consegui consultar a base da escola agora. '
+            'Tente novamente em instantes ou use o portal institucional.'
+        )
+        await _send_telegram_message(chat_id, fallback_text)
 
 
 def _command_to_orchestrator_text(text: str) -> str | None:
@@ -307,6 +350,7 @@ def _command_to_orchestrator_text(text: str) -> str | None:
 @app.post('/webhooks/telegram')
 async def telegram_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     x_telegram_bot_api_secret_token: str | None = Header(default=None),
 ) -> dict[str, object]:
     settings = get_settings()
@@ -348,55 +392,19 @@ async def telegram_webhook(
         if command_text is not None:
             text = command_text
 
-        try:
-            orchestration = await _orchestrate_message(
-                chat_id=chat_id,
-                text=text,
-                update_id=update_id if isinstance(update_id, int) else None,
-            )
-            reply_text = str(orchestration.get('message_text', _default_help_message()))
-            reply_markup = _build_reply_markup(orchestration.get('suggested_replies'))
-            await _send_telegram_message(chat_id, reply_text, reply_markup=reply_markup)
-            visual_assets = orchestration.get('visual_assets', [])
-            if isinstance(visual_assets, list):
-                for asset in visual_assets:
-                    if not isinstance(asset, dict):
-                        continue
-                    if str(asset.get('mime_type', '')).lower() != 'image/png':
-                        continue
-                    encoded = asset.get('base64_data')
-                    if not isinstance(encoded, str) or not encoded:
-                        continue
-                    try:
-                        image_bytes = base64.b64decode(encoded)
-                    except Exception:
-                        continue
-                    await _send_telegram_photo(
-                        chat_id,
-                        image_bytes,
-                        caption=str(asset.get('caption') or asset.get('title') or 'Visual institucional'),
-                    )
-            return {
-                'accepted': True,
-                'service': 'telegram-gateway',
-                'processed': 'orchestrated_message',
-                'reply': reply_text,
-                'reply_markup': reply_markup,
-                'orchestration': orchestration,
-            }
-        except httpx.HTTPError as exc:
-            fallback_text = (
-                'Nao consegui consultar a base da escola agora. '
-                'Tente novamente em instantes ou use o portal institucional.'
-            )
-            await _send_telegram_message(chat_id, fallback_text)
-            return {
-                'accepted': True,
-                'service': 'telegram-gateway',
-                'processed': 'orchestration_error',
-                'reply': fallback_text,
-                'detail': str(exc),
-            }
+        background_tasks.add_task(
+            _process_telegram_text_message,
+            chat_id=chat_id,
+            text=text,
+            update_id=update_id if isinstance(update_id, int) else None,
+        )
+        return {
+            'accepted': True,
+            'service': 'telegram-gateway',
+            'processed': 'orchestrated_message_enqueued',
+            'chat_id': chat_id,
+            'update_id': update_id,
+        }
 
     try:
         link_response = await _consume_link_code(message, challenge_code)
