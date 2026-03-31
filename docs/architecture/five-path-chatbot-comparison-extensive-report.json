@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-03-31T00:17:34.483066+00:00",
+  "generated_at": "2026-03-31T00:42:49.788791+00:00",
   "dataset": "tests/evals/datasets/five_path_extended_probe_cases.json",
-  "run_prefix": "debug:five-path:20260331T000816Z",
+  "run_prefix": "debug:five-path:20260331T002940Z",
   "summary": {
     "by_stack": {
       "langgraph": {
@@ -9,35 +9,35 @@
         "ok": 53,
         "keyword_pass": 42,
         "quality_avg": 93.6,
-        "avg_latency_ms": 211.2
+        "avg_latency_ms": 239.3
       },
       "crewai": {
         "count": 53,
-        "ok": 48,
+        "ok": 53,
         "keyword_pass": 10,
-        "quality_avg": 73.5,
-        "avg_latency_ms": 4322.0
+        "quality_avg": 80.3,
+        "avg_latency_ms": 4581.5
       },
       "python_functions": {
         "count": 53,
         "ok": 53,
         "keyword_pass": 39,
         "quality_avg": 92.6,
-        "avg_latency_ms": 174.5
+        "avg_latency_ms": 186.1
       },
       "llamaindex": {
         "count": 53,
         "ok": 53,
         "keyword_pass": 38,
         "quality_avg": 92.1,
-        "avg_latency_ms": 177.7
+        "avg_latency_ms": 191.1
       },
       "specialist_supervisor": {
         "count": 53,
-        "ok": 31,
-        "keyword_pass": 18,
-        "quality_avg": 52.2,
-        "avg_latency_ms": 5637.6
+        "ok": 48,
+        "keyword_pass": 19,
+        "quality_avg": 75.5,
+        "avg_latency_ms": 9693.6
       }
     },
     "by_slice": {
@@ -47,31 +47,31 @@
           "ok": 18,
           "keyword_pass": 11,
           "quality_avg": 85.6,
-          "avg_latency_ms": 161.3
+          "avg_latency_ms": 178.5
         },
         "crewai": {
-          "ok": 17,
+          "ok": 18,
           "keyword_pass": 4,
-          "quality_avg": 74.4,
-          "avg_latency_ms": 2813.8
+          "quality_avg": 78.9,
+          "avg_latency_ms": 2878.8
         },
         "python_functions": {
           "ok": 18,
           "keyword_pass": 11,
           "quality_avg": 86.1,
-          "avg_latency_ms": 159.1
+          "avg_latency_ms": 172.1
         },
         "llamaindex": {
           "ok": 18,
           "keyword_pass": 11,
           "quality_avg": 85.6,
-          "avg_latency_ms": 163.0
+          "avg_latency_ms": 177.8
         },
         "specialist_supervisor": {
-          "ok": 14,
+          "ok": 16,
           "keyword_pass": 5,
-          "quality_avg": 65.1,
-          "avg_latency_ms": 2971.7
+          "quality_avg": 71.9,
+          "avg_latency_ms": 4285.2
         }
       },
       "public": {
@@ -80,31 +80,31 @@
           "ok": 27,
           "keyword_pass": 23,
           "quality_avg": 97.0,
-          "avg_latency_ms": 260.9
+          "avg_latency_ms": 300.8
         },
         "crewai": {
-          "ok": 23,
+          "ok": 27,
           "keyword_pass": 3,
-          "quality_avg": 68.6,
-          "avg_latency_ms": 6081.7
+          "quality_avg": 79.1,
+          "avg_latency_ms": 6541.3
         },
         "python_functions": {
           "ok": 27,
           "keyword_pass": 23,
           "quality_avg": 97.0,
-          "avg_latency_ms": 195.1
+          "avg_latency_ms": 200.4
         },
         "llamaindex": {
           "ok": 27,
           "keyword_pass": 22,
           "quality_avg": 96.3,
-          "avg_latency_ms": 196.0
+          "avg_latency_ms": 209.1
         },
         "specialist_supervisor": {
-          "ok": 11,
-          "keyword_pass": 9,
-          "quality_avg": 38.4,
-          "avg_latency_ms": 8012.5
+          "ok": 25,
+          "keyword_pass": 10,
+          "quality_avg": 76.5,
+          "avg_latency_ms": 14428.3
         }
       },
       "support": {
@@ -113,31 +113,31 @@
           "ok": 6,
           "keyword_pass": 6,
           "quality_avg": 100.0,
-          "avg_latency_ms": 164.2
+          "avg_latency_ms": 172.1
         },
         "crewai": {
           "ok": 6,
           "keyword_pass": 1,
           "quality_avg": 83.3,
-          "avg_latency_ms": 2308.8
+          "avg_latency_ms": 2319.5
         },
         "python_functions": {
           "ok": 6,
           "keyword_pass": 3,
           "quality_avg": 90.0,
-          "avg_latency_ms": 144.7
+          "avg_latency_ms": 163.3
         },
         "llamaindex": {
           "ok": 6,
           "keyword_pass": 3,
           "quality_avg": 90.0,
-          "avg_latency_ms": 151.7
+          "avg_latency_ms": 163.2
         },
         "specialist_supervisor": {
-          "ok": 4,
+          "ok": 5,
           "keyword_pass": 2,
-          "quality_avg": 60.0,
-          "avg_latency_ms": 4789.2
+          "quality_avg": 73.3,
+          "avg_latency_ms": 7800.9
         }
       },
       "workflow": {
@@ -146,31 +146,31 @@
           "ok": 2,
           "keyword_pass": 2,
           "quality_avg": 100.0,
-          "avg_latency_ms": 131.2
+          "avg_latency_ms": 158.8
         },
         "crewai": {
           "ok": 2,
           "keyword_pass": 2,
           "quality_avg": 100.0,
-          "avg_latency_ms": 179.9
+          "avg_latency_ms": 232.9
         },
         "python_functions": {
           "ok": 2,
           "keyword_pass": 2,
           "quality_avg": 100.0,
-          "avg_latency_ms": 124.2
+          "avg_latency_ms": 185.9
         },
         "llamaindex": {
           "ok": 2,
           "keyword_pass": 2,
           "quality_avg": 100.0,
-          "avg_latency_ms": 141.4
+          "avg_latency_ms": 151.2
         },
         "specialist_supervisor": {
           "ok": 2,
           "keyword_pass": 2,
           "quality_avg": 100.0,
-          "avg_latency_ms": 114.6
+          "avg_latency_ms": 128.1
         }
       }
     },
@@ -181,11 +181,10 @@
         "repetitive_reply": 2
       },
       "crewai": {
-        "missing_expected_keyword": 38,
-        "unnecessary_clarification": 1,
-        "followup_context_drop": 5,
+        "missing_expected_keyword": 43,
+        "followup_context_drop": 6,
         "repetitive_reply": 1,
-        "request_failed": 5
+        "unnecessary_clarification": 2
       },
       "python_functions": {
         "missing_expected_keyword": 14,
@@ -198,10 +197,11 @@
         "repetitive_reply": 2
       },
       "specialist_supervisor": {
-        "request_failed": 22,
-        "missing_expected_keyword": 13,
-        "unnecessary_clarification": 4,
-        "followup_context_drop": 1
+        "missing_expected_keyword": 28,
+        "unnecessary_clarification": 10,
+        "request_failed": 5,
+        "followup_context_drop": 3,
+        "forbidden_entity_or_value": 1
       }
     }
   },
@@ -213,10 +213,10 @@
       "thread_id": "random_public_location",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 186.4,
+        "latency_ms": 243.0,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -239,7 +239,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11879.1,
+        "latency_ms": 11976.9,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -265,7 +265,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 130.3,
+        "latency_ms": 162.8,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -289,7 +289,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 140.9,
+        "latency_ms": 177.3,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -315,7 +315,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 71.2,
+        "latency_ms": 146.9,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_fast_path:district",
         "graph_path": [
@@ -341,10 +341,10 @@
       "thread_id": "random_public_curriculum",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 146.8,
+        "latency_ms": 166.4,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -367,7 +367,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 839.5,
+        "latency_ms": 1093.4,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -386,7 +386,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 128.9,
+        "latency_ms": 190.0,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -410,7 +410,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 131.4,
+        "latency_ms": 198.3,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -436,7 +436,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 62.9,
+        "latency_ms": 130.1,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_fast_path:bncc",
         "graph_path": [
@@ -462,10 +462,10 @@
       "thread_id": "random_public_documents",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 124.3,
+        "latency_ms": 154.1,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -488,7 +488,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 152.8,
+        "latency_ms": 210.6,
         "mode": "deny",
         "reason": "crewai_protected_auth_required",
         "graph_path": [
@@ -509,7 +509,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 94.7,
+        "latency_ms": 122.8,
         "mode": "structured_tool",
         "reason": "python_functions_native_contextual_public_answer",
         "graph_path": [
@@ -533,7 +533,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 116.9,
+        "latency_ms": 155.3,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -559,7 +559,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 65.3,
+        "latency_ms": 119.5,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:document_submission_policy",
         "graph_path": [
@@ -585,10 +585,10 @@
       "thread_id": "random_public_library",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 133.6,
+        "latency_ms": 142.2,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -611,9 +611,9 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11833.1,
+        "latency_ms": 12115.7,
         "mode": "structured_tool",
-        "reason": "crewai_public_flow_completed",
+        "reason": "crewai_public_flow_timeout",
         "graph_path": [
           "flow_state",
           "pydantic_output",
@@ -623,7 +623,7 @@
           "public_composition",
           "public_judging"
         ],
-        "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
+        "answer_text": "A Biblioteca Pública Municipal Professor Egydio Martello funciona de segunda a sexta-feira, das 8h às 17h.",
         "keyword_pass": false,
         "quality_score": 80,
         "error_types": [
@@ -637,7 +637,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 107.4,
+        "latency_ms": 105.2,
         "mode": "structured_tool",
         "reason": "python_functions_native_contextual_public_answer",
         "graph_path": [
@@ -661,7 +661,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 139.0,
+        "latency_ms": 158.5,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -687,7 +687,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 64.6,
+        "latency_ms": 114.0,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_fast_path:library_hours",
         "graph_path": [
@@ -713,10 +713,10 @@
       "thread_id": "random_public_timeline",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 146.5,
+        "latency_ms": 169.5,
         "mode": "structured_tool",
         "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
         "graph_path": [
@@ -739,7 +739,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 162.3,
+        "latency_ms": 194.5,
         "mode": "deny",
         "reason": "crewai_protected_auth_required",
         "graph_path": [
@@ -760,7 +760,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 129.6,
+        "latency_ms": 142.3,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:calendar",
         "graph_path": [
@@ -784,7 +784,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 127.5,
+        "latency_ms": 157.2,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -810,7 +810,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 69.2,
+        "latency_ms": 119.1,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:public_timeline",
         "graph_path": [
@@ -836,10 +836,10 @@
       "thread_id": "random_public_timeline",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 150.2,
+        "latency_ms": 169.6,
         "mode": "structured_tool",
         "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
         "graph_path": [
@@ -862,7 +862,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 691.2,
+        "latency_ms": 794.5,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -881,7 +881,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 102.1,
+        "latency_ms": 165.0,
         "mode": "structured_tool",
         "reason": "python_functions_native_contextual_public_answer",
         "graph_path": [
@@ -905,7 +905,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 144.1,
+        "latency_ms": 155.3,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -931,7 +931,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 74.7,
+        "latency_ms": 124.5,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:public_timeline",
         "graph_path": [
@@ -957,10 +957,10 @@
       "thread_id": "random_public_pricing",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 146.2,
+        "latency_ms": 147.8,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -983,7 +983,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 816.7,
+        "latency_ms": 911.6,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -1002,7 +1002,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 133.9,
+        "latency_ms": 160.2,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -1026,7 +1026,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 138.4,
+        "latency_ms": 149.8,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -1052,7 +1052,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 65.3,
+        "latency_ms": 116.1,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:public_pricing_reference",
         "graph_path": [
@@ -1078,10 +1078,10 @@
       "thread_id": "random_public_pricing",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 146.6,
+        "latency_ms": 159.0,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -1104,7 +1104,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 158.4,
+        "latency_ms": 192.6,
         "mode": "deny",
         "reason": "crewai_protected_auth_required",
         "graph_path": [
@@ -1125,7 +1125,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 112.9,
+        "latency_ms": 138.2,
         "mode": "structured_tool",
         "reason": "python_functions_native_pricing_projection",
         "graph_path": [
@@ -1149,7 +1149,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 129.6,
+        "latency_ms": 153.8,
         "mode": "structured_tool",
         "reason": "llamaindex_public_pricing_projection",
         "graph_path": [
@@ -1175,7 +1175,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 69.8,
+        "latency_ms": 125.6,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_fast_path:pricing_projection",
         "graph_path": [
@@ -1201,10 +1201,10 @@
       "thread_id": "random_protected_finance_academic",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 212.2,
+        "latency_ms": 351.5,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1227,7 +1227,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11871.5,
+        "latency_ms": 12151.9,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -1253,7 +1253,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 188.6,
+        "latency_ms": 215.2,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:finance",
         "graph_path": [
@@ -1277,7 +1277,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 188.3,
+        "latency_ms": 218.9,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1300,7 +1300,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 129.8,
+        "latency_ms": 202.5,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:financial_summary_aggregate",
         "graph_path": [
@@ -1326,10 +1326,10 @@
       "thread_id": "random_protected_finance_academic",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 119.9,
+        "latency_ms": 134.9,
         "mode": "structured_tool",
         "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
         "graph_path": [
@@ -1353,7 +1353,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 157.7,
+        "latency_ms": 202.0,
         "mode": "structured_tool",
         "reason": "protected_shadow_needs_student_clarification",
         "graph_path": [
@@ -1372,7 +1372,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 130.5,
+        "latency_ms": 147.8,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:academic",
         "graph_path": [
@@ -1396,7 +1396,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 139.6,
+        "latency_ms": 158.2,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1419,7 +1419,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 149.5,
+        "latency_ms": 211.9,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:academic_summary_aggregate",
         "graph_path": [
@@ -1445,10 +1445,10 @@
       "thread_id": "random_protected_finance_academic",
       "turn_index": 3,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 202.0,
+        "latency_ms": 195.0,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1471,7 +1471,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 396.0,
+        "latency_ms": 485.2,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -1492,7 +1492,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 173.1,
+        "latency_ms": 198.7,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:academic",
         "graph_path": [
@@ -1516,7 +1516,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 181.3,
+        "latency_ms": 197.5,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1539,7 +1539,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 100.1,
+        "latency_ms": 152.6,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:academic_summary",
         "graph_path": [
@@ -1565,10 +1565,10 @@
       "thread_id": "random_protected_finance_academic",
       "turn_index": 4,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 179.4,
+        "latency_ms": 195.1,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1591,7 +1591,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11680.7,
+        "latency_ms": 11869.1,
         "mode": "structured_tool",
         "reason": "crewai_protected_flow_timeout",
         "graph_path": [
@@ -1617,7 +1617,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 197.7,
+        "latency_ms": 209.5,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:academic",
         "graph_path": [
@@ -1641,7 +1641,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 172.1,
+        "latency_ms": 220.6,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -1664,7 +1664,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 107.1,
+        "latency_ms": 164.1,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_fast_path:academic_grade_requirement",
         "graph_path": [
@@ -1690,10 +1690,10 @@
       "thread_id": "random_protected_documents",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 149.8,
+        "latency_ms": 169.9,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1716,7 +1716,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 386.1,
+        "latency_ms": 457.8,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -1735,7 +1735,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 139.3,
+        "latency_ms": 159.2,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -1759,7 +1759,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 144.7,
+        "latency_ms": 164.9,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -1782,7 +1782,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 100.6,
+        "latency_ms": 140.1,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:administrative_status",
         "graph_path": [
@@ -1808,10 +1808,10 @@
       "thread_id": "random_support",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 131.7,
+        "latency_ms": 153.2,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -1822,7 +1822,7 @@
           "support_slice",
           "handoff"
         ],
-        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-038C8364. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-FC30BF96. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -1834,7 +1834,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 254.4,
+        "latency_ms": 255.0,
         "mode": "structured_tool",
         "reason": "support_handoff_created",
         "graph_path": [
@@ -1842,7 +1842,7 @@
           "operation_result",
           "deterministic_support"
         ],
-        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-55A27285. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
+        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-971103D4. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -1854,7 +1854,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 125.0,
+        "latency_ms": 173.8,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -1865,7 +1865,7 @@
           "handoff",
           "kernel:python_functions"
         ],
-        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-02A7185F. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-55DDCA1C. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -1877,7 +1877,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 131.5,
+        "latency_ms": 188.6,
         "mode": "handoff",
         "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
         "graph_path": [
@@ -1888,7 +1888,7 @@
           "handoff",
           "kernel:llamaindex"
         ],
-        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-9599B2E6. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-C7BC7E01. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -1900,7 +1900,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 87.3,
+        "latency_ms": 145.3,
         "mode": "handoff",
         "reason": "specialist_supervisor_tool_first:support_handoff",
         "graph_path": [
@@ -1908,7 +1908,7 @@
           "tool_first",
           "support_handoff"
         ],
-        "answer_text": "Acionei o financeiro para voce. Protocolo: REQ-20260331-A6C982. Fila responsavel: financeiro. Ticket operacional: ATD-20260331-FE40632C. Se quiser, eu tambem posso acompanhar o status deste atendimento.",
+        "answer_text": "Acionei o financeiro para voce. Protocolo: REQ-20260331-A52D6A. Fila responsavel: financeiro. Ticket operacional: ATD-20260331-0886BFBE. Se quiser, eu tambem posso acompanhar o status deste atendimento.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -1926,10 +1926,10 @@
       "thread_id": "random_support",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 132.9,
+        "latency_ms": 162.7,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -1940,7 +1940,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "Status do atendimento: ele segue em fila na fila de financeiro. Protocolo: ATD-20260331-038C8364. Resumo: Atendimento institucional. Se quiser, eu tambem posso te orientar sobre o proximo setor ou resumir o que ja foi registrado.",
+        "answer_text": "Status do atendimento: ele segue em fila na fila de financeiro. Protocolo: ATD-20260331-FC30BF96. Resumo: Atendimento institucional. Se quiser, eu tambem posso te orientar sobre o proximo setor ou resumir o que ja foi registrado.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -1952,7 +1952,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11911.2,
+        "latency_ms": 11946.9,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -1978,7 +1978,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 144.7,
+        "latency_ms": 163.4,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:support",
         "graph_path": [
@@ -1990,7 +1990,7 @@
           "python_functions:native_runtime",
           "kernel:python_functions"
         ],
-        "answer_text": "Status do atendimento: ele segue em fila na fila de financeiro. Protocolo: ATD-20260331-02A7185F. Resumo: Atendimento institucional. Se quiser, eu tambem posso te orientar sobre o proximo setor ou resumir o que ja foi registrado.",
+        "answer_text": "Status do atendimento: ele segue em fila na fila de financeiro. Protocolo: ATD-20260331-55DDCA1C. Resumo: Atendimento institucional. Se quiser, eu tambem posso te orientar sobre o proximo setor ou resumir o que ja foi registrado.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2002,7 +2002,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 142.0,
+        "latency_ms": 160.9,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2013,7 +2013,7 @@
           "structured_tool_call",
           "kernel:llamaindex"
         ],
-        "answer_text": "Status do atendimento: ele segue em fila na fila de financeiro. Protocolo: ATD-20260331-9599B2E6. Resumo: Atendimento institucional. Se quiser, eu tambem posso te orientar sobre o proximo setor ou resumir o que ja foi registrado.",
+        "answer_text": "Status do atendimento: ele segue em fila na fila de financeiro. Protocolo: ATD-20260331-C7BC7E01. Resumo: Atendimento institucional. Se quiser, eu tambem posso te orientar sobre o proximo setor ou resumir o que ja foi registrado.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2025,7 +2025,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 69.8,
+        "latency_ms": 114.9,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:support_status",
         "graph_path": [
@@ -2033,7 +2033,7 @@
           "tool_first",
           "support_status"
         ],
-        "answer_text": "O atendimento sobre quero falar com o financeiro esta com status queued. Protocolo: REQ-20260331-A6C982. Fila: financeiro. Ticket operacional: ATD-20260331-FE40632C.",
+        "answer_text": "O atendimento sobre quero falar com o financeiro esta com status queued. Protocolo: REQ-20260331-A52D6A. Fila: financeiro. Ticket operacional: ATD-20260331-0886BFBE.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2051,10 +2051,10 @@
       "thread_id": "random_workflow",
       "turn_index": 1,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 136.6,
+        "latency_ms": 157.5,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2065,7 +2065,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260331-FEC62F. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260331-B9DDE858. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260331-D6682E. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260331-B0AEB482. A equipe comercial valida a janela e retorna com a confirmacao.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2077,7 +2077,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 193.1,
+        "latency_ms": 253.9,
         "mode": "structured_tool",
         "reason": "workflow_visit_create",
         "graph_path": [
@@ -2085,7 +2085,7 @@
           "operation_result",
           "deterministic_workflow"
         ],
-        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260331-A6E4A3. Preferencia informada: 02/04/2026 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260331-E1098F2F. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260331-F6BD42. Preferencia informada: 02/04/2026 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260331-79FACCDD. A equipe comercial valida a janela e retorna com a confirmacao.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2097,7 +2097,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 127.9,
+        "latency_ms": 233.7,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:support",
         "graph_path": [
@@ -2109,7 +2109,7 @@
           "python_functions:native_runtime",
           "kernel:python_functions"
         ],
-        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260331-167873. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260331-B9EB1BFD. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260331-BCC07A. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260331-D51DDC8B. A equipe comercial valida a janela e retorna com a confirmacao.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2121,7 +2121,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 152.8,
+        "latency_ms": 152.9,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2132,7 +2132,7 @@
           "structured_tool_call",
           "kernel:llamaindex"
         ],
-        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260331-B7EF5A. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260331-E1D707CA. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260331-75421F. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: ATD-20260331-4BBED6E3. A equipe comercial valida a janela e retorna com a confirmacao.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2144,7 +2144,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 163.9,
+        "latency_ms": 140.4,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:visit_booking",
         "graph_path": [
@@ -2152,7 +2152,7 @@
           "tool_first",
           "visit_booking"
         ],
-        "answer_text": "Pedido de visita registrado. Protocolo: VIS-20260331-554FBB. Preferencia registrada: quinta a tarde. Ticket operacional: ATD-20260331-378FAB2F. Se quiser, eu tambem posso acompanhar o status ou remarcar a visita.",
+        "answer_text": "Pedido de visita registrado. Protocolo: VIS-20260331-FCF664. Preferencia registrada: quinta a tarde. Ticket operacional: ATD-20260331-34384E59. Se quiser, eu tambem posso acompanhar o status ou remarcar a visita.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2170,10 +2170,10 @@
       "thread_id": "random_workflow",
       "turn_index": 2,
       "note": "",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 125.9,
+        "latency_ms": 160.2,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2184,7 +2184,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "Consigo remarcar a visita por aqui. Protocolo: VIS-20260331-FEC62F. Ticket operacional: ATD-20260331-B9DDE858. Me diga pelo menos o novo dia ou a janela desejada, por exemplo: \"remarque para sexta de manha\" ou \"troque para 28/03 as 10h\".",
+        "answer_text": "Consigo remarcar a visita por aqui. Protocolo: VIS-20260331-D6682E. Ticket operacional: ATD-20260331-B0AEB482. Me diga pelo menos o novo dia ou a janela desejada, por exemplo: \"remarque para sexta de manha\" ou \"troque para 28/03 as 10h\".",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2196,7 +2196,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 166.8,
+        "latency_ms": 211.8,
         "mode": "structured_tool",
         "reason": "workflow_visit_reschedule_guidance",
         "graph_path": [
@@ -2204,7 +2204,7 @@
           "operation_result",
           "deterministic_workflow"
         ],
-        "answer_text": "Se voce precisar remarcar, me passe o protocolo VIS-20260331-A6E4A3 ou o novo horario desejado que eu sigo com essa atualizacao para a fila de admissoes.",
+        "answer_text": "Se voce precisar remarcar, me passe o protocolo VIS-20260331-F6BD42 ou o novo horario desejado que eu sigo com essa atualizacao para a fila de admissoes.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2216,7 +2216,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 120.5,
+        "latency_ms": 138.2,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:support",
         "graph_path": [
@@ -2228,7 +2228,7 @@
           "python_functions:native_runtime",
           "kernel:python_functions"
         ],
-        "answer_text": "Consigo remarcar a visita por aqui. Protocolo: VIS-20260331-167873. Ticket operacional: ATD-20260331-B9EB1BFD. Me diga pelo menos o novo dia ou a janela desejada, por exemplo: \"remarque para sexta de manha\" ou \"troque para 28/03 as 10h\".",
+        "answer_text": "Consigo remarcar a visita por aqui. Protocolo: VIS-20260331-BCC07A. Ticket operacional: ATD-20260331-D51DDC8B. Me diga pelo menos o novo dia ou a janela desejada, por exemplo: \"remarque para sexta de manha\" ou \"troque para 28/03 as 10h\".",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2240,7 +2240,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 130.1,
+        "latency_ms": 149.4,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -2251,7 +2251,7 @@
           "structured_tool_call",
           "kernel:llamaindex"
         ],
-        "answer_text": "Consigo remarcar a visita por aqui. Protocolo: VIS-20260331-B7EF5A. Ticket operacional: ATD-20260331-E1D707CA. Me diga pelo menos o novo dia ou a janela desejada, por exemplo: \"remarque para sexta de manha\" ou \"troque para 28/03 as 10h\".",
+        "answer_text": "Consigo remarcar a visita por aqui. Protocolo: VIS-20260331-75421F. Ticket operacional: ATD-20260331-4BBED6E3. Me diga pelo menos o novo dia ou a janela desejada, por exemplo: \"remarque para sexta de manha\" ou \"troque para 28/03 as 10h\".",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2263,7 +2263,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 65.2,
+        "latency_ms": 115.8,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:visit_reschedule_guidance",
         "graph_path": [
@@ -2271,7 +2271,7 @@
           "tool_first",
           "visit_reschedule_guidance"
         ],
-        "answer_text": "Para remarcar a visita, eu sigo pelo protocolo VIS-20260331-554FBB. A preferencia atual registrada e quinta a tarde. Me diga o novo dia ou janela desejada e eu atualizo o pedido. Ticket operacional: ATD-20260331-378FAB2F.",
+        "answer_text": "Para remarcar a visita, eu sigo pelo protocolo VIS-20260331-FCF664. A preferencia atual registrada e quinta a tarde. Me diga o novo dia ou janela desejada e eu atualizo o pedido. Ticket operacional: ATD-20260331-34384E59.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -2289,10 +2289,10 @@
       "thread_id": "eval:public-greeting-thread",
       "turn_index": 1,
       "note": "public_institutional_greeting",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 176.5,
+        "latency_ms": 178.0,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -2315,7 +2315,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 764.0,
+        "latency_ms": 898.5,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -2336,7 +2336,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 124.0,
+        "latency_ms": 146.3,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -2360,7 +2360,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 126.3,
+        "latency_ms": 147.8,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -2385,16 +2385,22 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12012.5,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 24012.2,
+        "mode": "structured_tool",
+        "reason": "A resposta do especialista institucional é completa e bem fundamentada. Ela se apresenta, descreve suas funcionalidades de forma clara e concisa, e oferece exemplos de como pode ajudar o usuário, o que é uma resposta apropriada para uma saudação inicial. Não há contradições ou falta de clareza.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "judge"
+        ],
+        "answer_text": "Olá! Eu sou um especialista institucional e minhas funcionalidades me permitem responder a uma variedade de perguntas usando as seguintes ferramentas:\n\n*   **`get_public_profile_bundle()`**: Permite-me obter o perfil público institucional completo, incluindo diretórios, cronograma e calendário. Isso é útil para perguntas gerais sobre a instituição.\n*   **`search_public_documents(query, category, top_k)`**: Com esta ferramenta, posso realizar buscas em documentos públicos com recuperação híbrida e citações. É ideal para encontrar informações específicas em documentos, como políticas, comunicados e relatórios.\n*   **`run_graph_rag_query(query)`**: Esta funcionalidade me permite executar consultas GraphRAG, que são úteis para obter uma visão mais profunda e comparativa de documentos, especialmente para perguntas que pedem um panorama ou comparação documental.\n*   **`project_public_pricing(quantity, segment_hint)`**: Utilizo esta ferramenta para projetar matrículas e mensalidades públicas, com base no perfil público da escola. É perfeita para simulações de matrícula ou para obter informações sobre custos.\n\nEm resumo, posso te ajudar a encontrar informações detalhadas sobre a instituição, pesquisar documentos públicos, comparar informações documentais e simular cenários de matrícula e mensalidade.",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 80,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -2410,10 +2416,10 @@
       "thread_id": "eval:public-identity-thread",
       "turn_index": 1,
       "note": "public_assistant_identity",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 142.9,
+        "latency_ms": 174.8,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -2436,9 +2442,9 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11972.7,
+        "latency_ms": 11993.2,
         "mode": "structured_tool",
-        "reason": "crewai_public_flow_timeout",
+        "reason": "crewai_public_flow_completed",
         "graph_path": [
           "flow_state",
           "pydantic_output",
@@ -2448,12 +2454,11 @@
           "public_composition",
           "public_judging"
         ],
-        "answer_text": "Para te ajudar melhor, sobre qual assunto você gostaria de falar?",
+        "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
         "keyword_pass": false,
-        "quality_score": 68,
+        "quality_score": 80,
         "error_types": [
-          "missing_expected_keyword",
-          "unnecessary_clarification"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -2463,7 +2468,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 130.3,
+        "latency_ms": 141.8,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -2487,7 +2492,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 184.3,
+        "latency_ms": 171.6,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -2512,16 +2517,23 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12013.0,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 13928.8,
+        "mode": "structured_tool",
+        "reason": "A resposta do manager draft é excelente. Ela se identifica corretamente como um modelo de linguagem e, de forma proativa, solicita ao usuário que especifique o assunto ou departamento para poder direcionar a ajuda. Isso é o mais adequado para uma pergunta tão genérica como 'com quem eu falo?'. Embora o plano indicasse o uso de um especialista institucional, a ausência de resultados do especialista é compreensível, pois a pergunta inicial não fornecia contexto suficiente para uma consulta específica. A resposta do manager draft lida com essa situação de forma eficaz, buscando a clarificação necessária.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "judge"
+        ],
+        "answer_text": "Você está falando comigo, um modelo de linguagem grande, treinado pelo Google. Para que eu possa te ajudar melhor, você poderia me dizer sobre qual assunto ou departamento você gostaria de falar? Assim, consigo te direcionar para a informação correta.",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 68,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword",
+          "unnecessary_clarification"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -2537,10 +2549,10 @@
       "thread_id": "eval:public-capabilities-thread",
       "turn_index": 1,
       "note": "public_assistant_capabilities",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 148.1,
+        "latency_ms": 173.0,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -2563,7 +2575,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11901.4,
+        "latency_ms": 11947.4,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -2589,7 +2601,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 126.9,
+        "latency_ms": 144.5,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -2613,7 +2625,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 128.6,
+        "latency_ms": 190.3,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -2638,16 +2650,22 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12013.3,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 14102.8,
+        "mode": "structured_tool",
+        "reason": "A resposta do especialista é completa e diretamente aborda a pergunta do usuário, listando as opções de assuntos que podem ser discutidos. Não há contradições e a informação é clara e bem estruturada. As sugestões de respostas são relevantes e úteis para o usuário continuar a interação.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "judge"
+        ],
+        "answer_text": "Comigo você pode discutir e obter informações sobre os seguintes assuntos:\n\n*   **Informações institucionais públicas**: Posso fornecer detalhes sobre o perfil público da instituição, diretórios, cronogramas e calendários.\n*   **Pesquisa em documentos públicos**: Posso buscar e apresentar informações de documentos públicos sobre diversos tópicos, com citações.\n*   **Visão geral e comparação de documentos**: Sou capaz de realizar consultas que exigem uma compreensão mais ampla ou comparações entre diferentes documentos.\n*   **Simulação de matrícula e mensalidades**: Posso projetar informações sobre matrículas e mensalidades, com base no perfil público da escola.\n\nEm resumo, posso ajudar com perguntas que envolvem informações públicas, dados institucionais e simulações de custo.",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 80,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -2663,10 +2681,10 @@
       "thread_id": "eval:service-routing-thread",
       "turn_index": 1,
       "note": "public_service_routing",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 130.2,
+        "latency_ms": 149.9,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -2689,7 +2707,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11906.6,
+        "latency_ms": 12053.8,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -2715,7 +2733,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 139.9,
+        "latency_ms": 148.9,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -2739,7 +2757,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 135.7,
+        "latency_ms": 166.5,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -2764,16 +2782,23 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12012.7,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 25106.4,
+        "mode": "clarify",
+        "reason": "O 'manager_draft' forneceu uma resposta que assume que o usuário está perguntando sobre boletos relacionados a alunos, exigindo o nome de um aluno. No entanto, o array 'specialist_results' está vazio, o que significa que essa suposição não está fundamentada em nenhuma saída de especialista. A pergunta do usuário é geral ('com quem eu falo sobre boletos?'). Portanto, é necessária uma clarificação para entender o contexto específico dos boletos antes de fornecer um contato preciso.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "finance_specialist",
+          "judge"
+        ],
+        "answer_text": "Para que eu possa te ajudar, você poderia me dizer a qual tipo de boleto você se refere? Por exemplo, boletos de mensalidade, boletos de compras, etc.",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 68,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword",
+          "unnecessary_clarification"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -2789,10 +2814,10 @@
       "thread_id": "eval:bullying-routing-thread",
       "turn_index": 1,
       "note": "public_bullying_routing",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 132.7,
+        "latency_ms": 163.0,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -2815,7 +2840,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11877.8,
+        "latency_ms": 11932.1,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -2841,7 +2866,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 124.4,
+        "latency_ms": 168.3,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -2865,7 +2890,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 132.4,
+        "latency_ms": 153.9,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -2890,16 +2915,23 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12012.9,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 33309.4,
+        "mode": "structured_tool",
+        "reason": "The manager's draft provides a comprehensive answer with specific contact details and institutional procedures for reporting bullying. However, the 'specialist_results' array is empty, meaning there are no specialist outputs to ground the information provided in the draft. According to the instructions, answers must be approved only if sustained by specialist results. Therefore, the answer cannot be approved.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "workflow_specialist",
+          "judge"
+        ],
+        "answer_text": "Para reportar um caso de bullying, você pode entrar em contato com a **Orientação Educacional** ou a **Secretaria** da instituição, que são os canais oficiais para essas questões. A instituição lida com casos de bullying através de seu programa de acompanhamento socioemocional e orientação educacional, oferecendo suporte, mediação escolar e apoio às famílias.\n\nOs canais oficiais para reportar casos de bullying são:\n\n*   **Orientação Educacional**:\n    *   E-mail: orientacao@colegiohorizonte.edu.br\n    *   Telefone: (11) 3333-4202\n    *   Você também pode entrar em contato via bot ou pela Secretaria.\n*   **Secretaria (Secretaria Geral)**:\n    *   E-mail: secretaria@colegiohorizonte.edu.br\n    *   Telefone: (11) 3333-4200\n*   **Direção (para solicitações formais)**:\n    *   E-mail: direcao@colegiohorizonte.edu.br\n    *   Você pode fazer a solicitação via bot, ouvidoria ou protocolo institucional.",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 80,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -2915,10 +2947,10 @@
       "thread_id": "eval:bullying-routing-thread",
       "turn_index": 2,
       "note": "public_bullying_routing_followup",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 138.9,
+        "latency_ms": 175.5,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -2943,7 +2975,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 845.0,
+        "latency_ms": 858.3,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -2964,7 +2996,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 133.2,
+        "latency_ms": 157.1,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -2990,7 +3022,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 144.6,
+        "latency_ms": 153.9,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -3017,16 +3049,22 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12011.2,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 21076.0,
+        "mode": "structured_tool",
+        "reason": "A resposta do especialista é direta, completa e fornece as informações de contato solicitadas pelo usuário de forma clara e concisa. Ela identifica o departamento mais adequado para a questão (Orientação Educacional) e oferece múltiplos canais de comunicação, além de sugerir boas perguntas de acompanhamento.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "judge"
+        ],
+        "answer_text": "Para reportar bullying, o contato mais adequado é a **Orientação Educacional**. Este departamento é responsável por questões de acompanhamento socioemocional, mediação escolar e apoio às famílias, sendo o canal mais direto para lidar com casos de convivência e bem-estar dos alunos.\n\nVocê pode entrar em contato com a Orientação Educacional pelos seguintes canais:\n\n*   **E-mail**: orientacao@colegiohorizonte.edu.br\n*   **Telefone**: (11) 3333-4202\n*   Você também pode entrar em contato via bot ou pela Secretaria.",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 80,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -3042,10 +3080,10 @@
       "thread_id": "eval:bullying-routing-thread",
       "turn_index": 3,
       "note": "public_bullying_phone_followup",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 271.9,
+        "latency_ms": 190.7,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -3068,7 +3106,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 912.0,
+        "latency_ms": 935.3,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -3091,7 +3129,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 163.1,
+        "latency_ms": 167.8,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -3115,7 +3153,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 163.9,
+        "latency_ms": 166.5,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -3141,24 +3179,24 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 5454.9,
-        "mode": "clarify",
-        "reason": "A solicitação do usuário 'e o telefone?' é ambígua. Com base no contexto recente sobre 'reporte de bullying' e no output do turno anterior que incluía 'navegação de atendimento e orientação de concierge', é provável que o usuário esteja buscando um telefone de contato institucional. É necessária uma clarificação para entender a finalidade específica do telefone desejado.",
+        "latency_ms": 12715.7,
+        "mode": "structured_tool",
+        "reason": "A resposta fornece diretamente o telefone da Orientação Educacional, que é a informação solicitada pelo usuário e está alinhada com o plano de resposta, que indica que esta informação foi o contato mais recomendado em interações anteriores. A resposta é completa e bem fundamentada.",
         "graph_path": [
           "specialist_supervisor",
-          "planner"
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "judge"
         ],
-        "answer_text": "Você gostaria do telefone para qual finalidade? Para reportar bullying, para contato geral com a instituição ou para outro assunto?",
-        "keyword_pass": false,
-        "quality_score": 68,
-        "error_types": [
-          "missing_expected_keyword",
-          "unnecessary_clarification"
-        ],
+        "answer_text": "O telefone da Orientação Educacional é **(11) 3333-4202**.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
         "quality_signals": {
           "repair_ack": null,
           "followup_adaptation": true,
-          "personalization": false
+          "personalization": true
         }
       }
     },
@@ -3169,10 +3207,10 @@
       "thread_id": "ext:public_faq_admissions",
       "turn_index": 1,
       "note": "public_faq_admissions",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 1985.3,
+        "latency_ms": 2973.1,
         "mode": "hybrid_retrieval",
         "reason": "retrieval hibrido e o caminho padrao para faq e documentos",
         "graph_path": [
@@ -3195,7 +3233,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 187.8,
+        "latency_ms": 183.1,
         "mode": "deny",
         "reason": "crewai_protected_auth_required",
         "graph_path": [
@@ -3216,7 +3254,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 902.1,
+        "latency_ms": 815.8,
         "mode": "hybrid_retrieval",
         "reason": "python_functions_native_public_retrieval",
         "graph_path": [
@@ -3240,7 +3278,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 1264.3,
+        "latency_ms": 1355.1,
         "mode": "hybrid_retrieval",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -3266,7 +3304,7 @@
       },
       "specialist_supervisor": {
         "status": 599,
-        "latency_ms": 12014.0,
+        "latency_ms": 45021.9,
         "mode": "error",
         "reason": "exception",
         "graph_path": [],
@@ -3290,10 +3328,10 @@
       "thread_id": "ext:public_phone_and_fax_multi_attribute",
       "turn_index": 1,
       "note": "public_phone_and_fax_multi_attribute",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 143.8,
+        "latency_ms": 135.0,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -3318,7 +3356,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 999.0,
+        "latency_ms": 979.2,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -3339,7 +3377,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 139.7,
+        "latency_ms": 125.2,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -3365,7 +3403,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 148.2,
+        "latency_ms": 140.7,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -3393,7 +3431,7 @@
       },
       "specialist_supervisor": {
         "status": 599,
-        "latency_ms": 12012.6,
+        "latency_ms": 45001.2,
         "mode": "error",
         "reason": "exception",
         "graph_path": [],
@@ -3417,10 +3455,10 @@
       "thread_id": "ext:public_school_website",
       "turn_index": 1,
       "note": "public_school_website",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 159.4,
+        "latency_ms": 143.4,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -3442,16 +3480,24 @@
         }
       },
       "crewai": {
-        "status": 599,
-        "latency_ms": 12000.5,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 12035.5,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_timeout",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "O site do Colégio Horizonte é colegiohorizonte.com.br.",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 80,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -3461,7 +3507,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 185.4,
+        "latency_ms": 201.9,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -3485,7 +3531,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 163.5,
+        "latency_ms": 154.1,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -3511,9 +3557,9 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 10921.3,
+        "latency_ms": 13234.2,
         "mode": "structured_tool",
-        "reason": "The manager's draft provides a specific website, but the 'specialist_results' array is empty. This indicates that the information was not retrieved or verified by any specialist, making the answer ungrounded. Therefore, the answer cannot be approved.",
+        "reason": "The manager draft provides a direct answer to the user's question about the college's website. However, the 'specialist_results' array is empty, meaning there is no output from the institution_specialist to ground the provided URL. Without this grounding, the answer cannot be approved as verified.",
         "graph_path": [
           "specialist_supervisor",
           "input_guardrail",
@@ -3539,10 +3585,10 @@
       "thread_id": "eval:calendar-event-thread",
       "turn_index": 1,
       "note": "public_parent_meeting_calendar_event",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 189.5,
+        "latency_ms": 186.4,
         "mode": "structured_tool",
         "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
         "graph_path": [
@@ -3567,9 +3613,9 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11911.3,
+        "latency_ms": 11862.6,
         "mode": "structured_tool",
-        "reason": "crewai_public_flow_completed",
+        "reason": "crewai_public_flow_timeout",
         "graph_path": [
           "flow_state",
           "pydantic_output",
@@ -3579,11 +3625,12 @@
           "public_composition",
           "public_judging"
         ],
-        "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
+        "answer_text": "Qual reunião de pais você gostaria de saber a data?",
         "keyword_pass": false,
-        "quality_score": 80,
+        "quality_score": 68,
         "error_types": [
-          "missing_expected_keyword"
+          "missing_expected_keyword",
+          "unnecessary_clarification"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -3593,7 +3640,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 152.9,
+        "latency_ms": 160.0,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:calendar",
         "graph_path": [
@@ -3619,7 +3666,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 161.3,
+        "latency_ms": 162.0,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -3646,16 +3693,22 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12012.7,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 20421.4,
+        "mode": "structured_tool",
+        "reason": "The manager_draft provides specific dates and times for parents' meetings, but the specialist_results array is empty. This indicates that the answer is not grounded in any specialist output, making it unverifiable and potentially incorrect. Therefore, the answer cannot be approved.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "judge"
+        ],
+        "answer_text": "Existem três reuniões de pais agendadas:\n\n*   **Reunião geral de pais e responsáveis**: Em 28 de março de 2026, às 12:00 (meio-dia). Será apresentado o planejamento do primeiro bimestre.\n*   **Reunião de responsáveis do 6º ao 9º ano**: Em 28 de março de 2026, às 22:00. Será feita a apresentação das rotinas do Ensino Fundamental II, canais oficiais e acompanhamento pedagógico.\n*   **Reunião de responsáveis do Ensino Médio**: Em 29 de março de 2026, às 22:00. Será apresentadas as rotinas do Ensino Médio, avaliação e apoio a vestibulares.",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 80,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -3671,10 +3724,10 @@
       "thread_id": "ext:public_director_name",
       "turn_index": 1,
       "note": "public_director_name",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 213.8,
+        "latency_ms": 165.1,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -3696,365 +3749,8 @@
         }
       },
       "crewai": {
-        "status": 599,
-        "latency_ms": 12013.0,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
-        "keyword_pass": false,
-        "quality_score": 0,
-        "error_types": [
-          "request_failed"
-        ],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": null,
-          "personalization": false
-        }
-      },
-      "python_functions": {
         "status": 200,
-        "latency_ms": 150.3,
-        "mode": "structured_tool",
-        "reason": "python_functions_native_structured:institution",
-        "graph_path": [
-          "classify_request",
-          "security_gate",
-          "route_request",
-          "select_slice",
-          "structured_tool_call",
-          "python_functions:native_runtime",
-          "kernel:python_functions"
-        ],
-        "answer_text": "Diretora geral: Helena Martins.",
-        "keyword_pass": true,
-        "quality_score": 100,
-        "error_types": [],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": null,
-          "personalization": true
-        }
-      },
-      "llamaindex": {
-        "status": 200,
-        "latency_ms": 162.3,
-        "mode": "structured_tool",
-        "reason": "llamaindex_public_profile",
-        "graph_path": [
-          "classify_request",
-          "security_gate",
-          "route_request",
-          "select_slice",
-          "structured_tool_call",
-          "llamaindex:workflow",
-          "llamaindex:llamaindex_public_profile",
-          "llamaindex:tool:public_profile",
-          "kernel:llamaindex"
-        ],
-        "answer_text": "Diretora geral: Helena Martins.",
-        "keyword_pass": true,
-        "quality_score": 100,
-        "error_types": [],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": null,
-          "personalization": true
-        }
-      },
-      "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12013.4,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
-        "keyword_pass": false,
-        "quality_score": 0,
-        "error_types": [
-          "request_failed"
-        ],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": null,
-          "personalization": false
-        }
-      }
-    },
-    {
-      "prompt": "qual o nome da diretora?",
-      "slice": "public",
-      "category": "institution",
-      "thread_id": "eval:leadership-followup-thread",
-      "turn_index": 1,
-      "note": "public_director_email_followup_seed",
-      "run_prefix": "debug:five-path:20260331T000816Z",
-      "langgraph": {
-        "status": 200,
-        "latency_ms": 235.0,
-        "mode": "structured_tool",
-        "reason": "fato institucional canonico deve vir de fonte estruturada",
-        "graph_path": [
-          "classify_request",
-          "security_gate",
-          "route_request",
-          "select_slice",
-          "public_slice",
-          "structured_tool_call"
-        ],
-        "answer_text": "Diretora geral: Helena Martins.",
-        "keyword_pass": true,
-        "quality_score": 100,
-        "error_types": [],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": null,
-          "personalization": true
-        }
-      },
-      "crewai": {
-        "status": 599,
-        "latency_ms": 12013.5,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
-        "keyword_pass": false,
-        "quality_score": 0,
-        "error_types": [
-          "request_failed"
-        ],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": null,
-          "personalization": false
-        }
-      },
-      "python_functions": {
-        "status": 200,
-        "latency_ms": 171.5,
-        "mode": "structured_tool",
-        "reason": "python_functions_native_structured:institution",
-        "graph_path": [
-          "classify_request",
-          "security_gate",
-          "route_request",
-          "select_slice",
-          "structured_tool_call",
-          "python_functions:native_runtime",
-          "kernel:python_functions"
-        ],
-        "answer_text": "Diretora geral: Helena Martins.",
-        "keyword_pass": true,
-        "quality_score": 100,
-        "error_types": [],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": null,
-          "personalization": true
-        }
-      },
-      "llamaindex": {
-        "status": 200,
-        "latency_ms": 168.4,
-        "mode": "structured_tool",
-        "reason": "llamaindex_public_profile",
-        "graph_path": [
-          "classify_request",
-          "security_gate",
-          "route_request",
-          "select_slice",
-          "structured_tool_call",
-          "llamaindex:workflow",
-          "llamaindex:llamaindex_public_profile",
-          "llamaindex:tool:public_profile",
-          "kernel:llamaindex"
-        ],
-        "answer_text": "Diretora geral: Helena Martins.",
-        "keyword_pass": true,
-        "quality_score": 100,
-        "error_types": [],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": null,
-          "personalization": true
-        }
-      },
-      "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12013.1,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
-        "keyword_pass": false,
-        "quality_score": 0,
-        "error_types": [
-          "request_failed"
-        ],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": null,
-          "personalization": false
-        }
-      }
-    },
-    {
-      "prompt": "e o email?",
-      "slice": "public",
-      "category": "institution",
-      "thread_id": "eval:leadership-followup-thread",
-      "turn_index": 2,
-      "note": "public_director_email_followup",
-      "run_prefix": "debug:five-path:20260331T000816Z",
-      "langgraph": {
-        "status": 200,
-        "latency_ms": 175.6,
-        "mode": "structured_tool",
-        "reason": "fato institucional canonico deve vir de fonte estruturada",
-        "graph_path": [
-          "classify_request",
-          "security_gate",
-          "route_request",
-          "select_slice",
-          "public_slice",
-          "structured_tool_call"
-        ],
-        "answer_text": "O email mais direto de Colegio Horizonte hoje e direcao@colegiohorizonte.edu.br, pela direcao.",
-        "keyword_pass": true,
-        "quality_score": 100,
-        "error_types": [],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": true,
-          "personalization": null
-        }
-      },
-      "crewai": {
-        "status": 200,
-        "latency_ms": 1028.8,
-        "mode": "structured_tool",
-        "reason": "crewai_public_fast_path",
-        "graph_path": [
-          "flow_router",
-          "deterministic_fast_path"
-        ],
-        "answer_text": "O nome desse espaco e Biblioteca Aurora.",
-        "keyword_pass": false,
-        "quality_score": 80,
-        "error_types": [
-          "missing_expected_keyword"
-        ],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": true,
-          "personalization": null
-        }
-      },
-      "python_functions": {
-        "status": 200,
-        "latency_ms": 164.6,
-        "mode": "structured_tool",
-        "reason": "python_functions_native_structured:institution",
-        "graph_path": [
-          "classify_request",
-          "security_gate",
-          "route_request",
-          "select_slice",
-          "structured_tool_call",
-          "python_functions:native_runtime",
-          "kernel:python_functions"
-        ],
-        "answer_text": "O email mais direto de Colegio Horizonte hoje e direcao@colegiohorizonte.edu.br, pela direcao.",
-        "keyword_pass": true,
-        "quality_score": 100,
-        "error_types": [],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": true,
-          "personalization": null
-        }
-      },
-      "llamaindex": {
-        "status": 200,
-        "latency_ms": 188.4,
-        "mode": "structured_tool",
-        "reason": "llamaindex_public_profile",
-        "graph_path": [
-          "classify_request",
-          "security_gate",
-          "route_request",
-          "select_slice",
-          "structured_tool_call",
-          "llamaindex:workflow",
-          "llamaindex:llamaindex_public_profile",
-          "llamaindex:tool:public_profile",
-          "kernel:llamaindex"
-        ],
-        "answer_text": "O email mais direto de Colegio Horizonte hoje e direcao@colegiohorizonte.edu.br, pela direcao.",
-        "keyword_pass": true,
-        "quality_score": 100,
-        "error_types": [],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": true,
-          "personalization": null
-        }
-      },
-      "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12013.4,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
-        "keyword_pass": false,
-        "quality_score": 0,
-        "error_types": [
-          "request_failed"
-        ],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": true,
-          "personalization": null
-        }
-      }
-    },
-    {
-      "prompt": "qual a media de aprovacao?",
-      "slice": "public",
-      "category": "institution",
-      "thread_id": "ext:public_approval_kpi",
-      "turn_index": 1,
-      "note": "public_approval_kpi",
-      "run_prefix": "debug:five-path:20260331T000816Z",
-      "langgraph": {
-        "status": 200,
-        "latency_ms": 154.8,
-        "mode": "structured_tool",
-        "reason": "fato institucional canonico deve vir de fonte estruturada",
-        "graph_path": [
-          "classify_request",
-          "security_gate",
-          "route_request",
-          "select_slice",
-          "public_slice",
-          "structured_tool_call"
-        ],
-        "answer_text": "Os indicadores publicos mais recentes de Colegio Horizonte sao:\n- Aprovacao global: 96.4% (ano letivo 2025)\n- Frequencia media: 97.1% (ano letivo 2025)\n- Familias que avaliaram o atendimento como bom ou excelente: 92.0% (pesquisa institucional 2025)",
-        "keyword_pass": true,
-        "quality_score": 100,
-        "error_types": [],
-        "quality_signals": {
-          "repair_ack": null,
-          "followup_adaptation": null,
-          "personalization": true
-        }
-      },
-      "crewai": {
-        "status": 200,
-        "latency_ms": 11998.8,
+        "latency_ms": 11986.9,
         "mode": "structured_tool",
         "reason": "crewai_public_flow_completed",
         "graph_path": [
@@ -4080,7 +3776,408 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 213.2,
+        "latency_ms": 141.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Diretora geral: Helena Martins.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 164.0,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Diretora geral: Helena Martins.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 11868.0,
+        "mode": "clarify",
+        "reason": "A resposta proposta pelo manager_draft ('A diretora geral é Helena Martins.') não pode ser aprovada porque não há resultados do especialista ('specialist_results' está vazio) para fundamentar a informação. Sem os resultados do especialista, não é possível verificar a veracidade da informação e garantir o grounding da resposta.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "judge"
+        ],
+        "answer_text": "Os resultados do especialista institucional não foram fornecidos. Por favor, forneça os resultados para que a resposta possa ser verificada e fundamentada.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        }
+      }
+    },
+    {
+      "prompt": "qual o nome da diretora?",
+      "slice": "public",
+      "category": "institution",
+      "thread_id": "eval:leadership-followup-thread",
+      "turn_index": 1,
+      "note": "public_director_email_followup_seed",
+      "run_prefix": "debug:five-path:20260331T002940Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 170.7,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Diretora geral: Helena Martins.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 12143.3,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_timeout",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "Não encontrei o nome do diretor da escola nas informações que tenho. Para obter essa informação, sugiro que entre em contato diretamente com a escola.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 150.4,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Diretora geral: Helena Martins.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 165.5,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Diretora geral: Helena Martins.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 12186.6,
+        "mode": "clarify",
+        "reason": "A resposta do rascunho do gerente afirma que a diretora geral é Helena Martins, mas não há resultados do especialista institucional para fundamentar essa informação. Sem o grounding, não é possível aprovar a resposta.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "judge"
+        ],
+        "answer_text": "Qual é o nome da diretora geral do Colégio Horizonte, de acordo com as informações institucionais?",
+        "keyword_pass": false,
+        "quality_score": 68,
+        "error_types": [
+          "missing_expected_keyword",
+          "unnecessary_clarification"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        }
+      }
+    },
+    {
+      "prompt": "e o email?",
+      "slice": "public",
+      "category": "institution",
+      "thread_id": "eval:leadership-followup-thread",
+      "turn_index": 2,
+      "note": "public_director_email_followup",
+      "run_prefix": "debug:five-path:20260331T002940Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 162.0,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "O email mais direto de Colegio Horizonte hoje e direcao@colegiohorizonte.edu.br, pela direcao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 12056.9,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_completed",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
+        "keyword_pass": false,
+        "quality_score": 55,
+        "error_types": [
+          "followup_context_drop",
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 146.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "O email mais direto de Colegio Horizonte hoje e direcao@colegiohorizonte.edu.br, pela direcao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 158.5,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "O email mais direto de Colegio Horizonte hoje e direcao@colegiohorizonte.edu.br, pela direcao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 15858.7,
+        "mode": "clarify",
+        "reason": "A resposta não pode ser aprovada porque os `specialist_results` estão vazios, o que significa que não há fundamentação para o endereço de e-mail fornecido no `manager_draft`. A informação precisa ser verificada pela saída do especialista.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "judge"
+        ],
+        "answer_text": "Os resultados dos especialistas não contêm o e-mail da diretora geral. Poderia fornecer essa informação?",
+        "keyword_pass": false,
+        "quality_score": 43,
+        "error_types": [
+          "followup_context_drop",
+          "missing_expected_keyword",
+          "unnecessary_clarification"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "qual a media de aprovacao?",
+      "slice": "public",
+      "category": "institution",
+      "thread_id": "ext:public_approval_kpi",
+      "turn_index": 1,
+      "note": "public_approval_kpi",
+      "run_prefix": "debug:five-path:20260331T002940Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 186.7,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Os indicadores publicos mais recentes de Colegio Horizonte sao:\n- Aprovacao global: 96.4% (ano letivo 2025)\n- Frequencia media: 97.1% (ano letivo 2025)\n- Familias que avaliaram o atendimento como bom ou excelente: 92.0% (pesquisa institucional 2025)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 12033.7,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_timeout",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "Não encontrei informações sobre a média de aprovação nos documentos fornecidos. Gostaria de saber sobre outro tópico?",
+        "keyword_pass": false,
+        "quality_score": 68,
+        "error_types": [
+          "missing_expected_keyword",
+          "unnecessary_clarification"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 140.5,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -4104,7 +4201,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 214.2,
+        "latency_ms": 207.6,
         "mode": "structured_tool",
         "reason": "llamaindex_public_pricing_projection",
         "graph_path": [
@@ -4131,16 +4228,22 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12007.8,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 17093.8,
+        "mode": "clarify",
+        "reason": "A resposta do manager_draft é apropriada, pois a pergunta do usuário 'qual a media de aprovacao?' é ambígua e requer mais contexto (aluno e disciplina) para ser respondida de forma significativa. A resposta proposta solicita essa clarificação de forma clara e concisa. O plano inicial estava incorreto ao indicar que não era necessária clarificação. Como se trata de uma pergunta de clarificação, não há grounding em resultados de especialistas neste momento, mas a completude da pergunta de clarificação é total.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "academic_specialist",
+          "judge"
+        ],
+        "answer_text": "Para te ajudar com a média de aprovação, preciso saber de qual aluno e de qual disciplina você gostaria de saber.",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 80,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -4156,10 +4259,10 @@
       "thread_id": "ext:public_negative_requirements_abstention",
       "turn_index": 1,
       "note": "public_negative_requirements_abstention",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 948.2,
+        "latency_ms": 936.6,
         "mode": "hybrid_retrieval",
         "reason": "retrieval hibrido e o caminho padrao para faq e documentos",
         "graph_path": [
@@ -4182,7 +4285,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 196.9,
+        "latency_ms": 202.9,
         "mode": "deny",
         "reason": "crewai_protected_auth_required",
         "graph_path": [
@@ -4203,7 +4306,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 846.2,
+        "latency_ms": 813.7,
         "mode": "hybrid_retrieval",
         "reason": "python_functions_native_public_retrieval",
         "graph_path": [
@@ -4229,7 +4332,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 229.1,
+        "latency_ms": 201.3,
         "mode": "hybrid_retrieval",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -4256,16 +4359,23 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12001.9,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 17606.3,
+        "mode": "clarify",
+        "reason": "O `institution_specialist` não retornou nenhuma informação sobre documentos de matrícula, sejam eles necessários ou não. Consequentemente, não é possível responder à pergunta do usuário sobre quais documentos *não* são necessários. A resposta revisada explica essa limitação e solicita ao usuário uma clarificação ou uma reformulação da pergunta para que a informação correta possa ser buscada.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "judge"
+        ],
+        "answer_text": "Você gostaria de saber quais documentos são necessários para a matrícula, ou poderia especificar a instituição e o curso para os quais você deseja se matricular?",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 68,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword",
+          "unnecessary_clarification"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -4281,10 +4391,10 @@
       "thread_id": "ext:public_confessional_gap",
       "turn_index": 1,
       "note": "public_confessional_gap",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 125.5,
+        "latency_ms": 133.6,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -4308,16 +4418,24 @@
         }
       },
       "crewai": {
-        "status": 599,
-        "latency_ms": 12003.6,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 11927.3,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_timeout",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "A Escola Municipal de Ensino Fundamental Professor Florestan Fernandes é uma instituição de ensino pública e laica.",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 80,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -4327,7 +4445,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 142.0,
+        "latency_ms": 140.9,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -4351,7 +4469,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 160.9,
+        "latency_ms": 162.8,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -4376,16 +4494,23 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12012.9,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 12463.8,
+        "mode": "clarify",
+        "reason": "A resposta do manager draft afirma que 'O Colégio Horizonte é uma escola laica', mas não há nenhum resultado do especialista (`specialist_results` está vazio) para fundamentar essa afirmação. Portanto, a resposta não pode ser aprovada por falta de grounding e completude.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "judge"
+        ],
+        "answer_text": "Não foi possível determinar se o Colégio Horizonte é uma escola confessional ou laica, pois as informações do especialista não foram fornecidas. Poderia fornecer os resultados do especialista para que eu possa responder à pergunta?",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 68,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword",
+          "unnecessary_clarification"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -4401,10 +4526,10 @@
       "thread_id": "eval:public-structure-after-greeting-thread",
       "turn_index": 1,
       "note": "public_structure_after_greeting_seed",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 213.5,
+        "latency_ms": 175.1,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -4427,7 +4552,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 1036.1,
+        "latency_ms": 860.2,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -4448,7 +4573,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 160.9,
+        "latency_ms": 139.5,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -4472,7 +4597,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 165.7,
+        "latency_ms": 146.8,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -4498,9 +4623,9 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 7227.2,
+        "latency_ms": 10009.0,
         "mode": "structured_tool",
-        "reason": "A resposta do gerente é apropriada e completa para uma saudação simples. Não há necessidade de revisão ou clarificação. As respostas sugeridas são relevantes para um contexto institucional.",
+        "reason": "A resposta do assistente é uma saudação apropriada e um convite para o usuário expressar sua necessidade, o que é o comportamento esperado para uma interação inicial. Não há necessidade de revisão ou clarificação.",
         "graph_path": [
           "specialist_supervisor",
           "input_guardrail",
@@ -4508,7 +4633,7 @@
           "institution_specialist",
           "judge"
         ],
-        "answer_text": "Bom dia! Como posso ajudar você hoje?",
+        "answer_text": "Bom dia! Como posso ajudar hoje?",
         "keyword_pass": false,
         "quality_score": 68,
         "error_types": [
@@ -4529,10 +4654,10 @@
       "thread_id": "eval:public-structure-after-greeting-thread",
       "turn_index": 2,
       "note": "public_structure_after_greeting_followup",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 178.4,
+        "latency_ms": 196.7,
         "mode": "structured_tool",
         "reason": "fato institucional canonico deve vir de fonte estruturada",
         "graph_path": [
@@ -4555,9 +4680,9 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 12103.7,
+        "latency_ms": 12235.7,
         "mode": "structured_tool",
-        "reason": "crewai_public_flow_completed",
+        "reason": "crewai_public_flow_timeout",
         "graph_path": [
           "flow_state",
           "pydantic_output",
@@ -4567,7 +4692,7 @@
           "public_composition",
           "public_judging"
         ],
-        "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
+        "answer_text": "A Escola da Vila oferece uma estrutura completa e acolhedora para o desenvolvimento dos alunos. Contamos com salas de aula equipadas e modernas, laboratórios de ciências, informática, física, química e biologia, além de uma vasta biblioteca com acervo digital e físico. Para atividades físicas, temos quadras poliesportivas, ginásio coberto, campo de futebol e piscina semiolímpica. A escola também dispõe de auditório, teatro, refeitório, cantina, espaços de convivência, áreas verdes, parque infantil e horta pedagógica.",
         "keyword_pass": false,
         "quality_score": 80,
         "error_types": [
@@ -4581,7 +4706,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 157.1,
+        "latency_ms": 174.7,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -4605,7 +4730,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 182.0,
+        "latency_ms": 170.4,
         "mode": "structured_tool",
         "reason": "llamaindex_public_profile",
         "graph_path": [
@@ -4630,16 +4755,22 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12013.4,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 23553.4,
+        "mode": "structured_tool",
+        "reason": "A resposta fornecida pelo `manager_draft` detalha a estrutura de uma escola, incluindo níveis de ensino, modelo pedagógico, componentes curriculares, períodos de aula, infraestrutura e equipe de liderança. No entanto, o array `specialist_results` está vazio, o que significa que nenhuma informação foi retornada pelo especialista. Consequentemente, a resposta não possui grounding e não pode ser aprovada, pois não há evidências de que as informações sejam precisas ou reais. A completude também é comprometida, pois uma resposta não fundamentada não pode ser considerada completa de forma confiável.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "judge"
+        ],
+        "answer_text": "Aqui está a estrutura do Colégio Horizonte:\n\n**Níveis de Ensino:**\n*   Ensino Fundamental II (do 6º ao 9º ano)\n*   Ensino Médio (da 1ª à 3ª série)\n\n**Modelo Pedagógico:**\nO colégio adota um projeto pedagógico laico, com foco em:\n*   Aprendizagem por projetos\n*   Cultura digital responsável\n*   Acompanhamento socioemocional\n*   Preparação acadêmica progressiva\n\n**Componentes Curriculares:**\nAlém das disciplinas tradicionais como Língua Portuguesa e produção textual, Matemática, Biologia, Física, Química, História, Geografia, Língua Inglesa e Educação Física, a escola oferece:\n*   Projeto de vida\n*   Trilhas eletivas e monitorias no contraturno\n\n**Períodos de Aula:**\n*   **Ensino Fundamental II:** Manhã (07:15 às 12:30), com oficinas, plantões, esportes e estudo orientado no contraturno em dias alternados.\n*   **Ensino Médio:** Manhã (07:15 às 12:50), com trilhas eletivas, monitorias e laboratórios no contraturno a partir das 14h00.\n*   **Período Integral Opcional (Fundamental II e Ensino Médio):** Das 07:00 às 17:30, incluindo estudo orientado, almoço, oficinas, esportes e acompanhamento.\n\n**Infraestrutura e Serviços:**\nA escola dispõe de:\n*   Biblioteca Aurora\n*   Laboratório de Ciências\n*   Espaço Maker (robótica, prototipagem e projetos interdisciplinares)\n*   Quadra Poliesportiva Coberta\n*   Cantina e almoço supervisionado\n*   Orientação educacional\n*   Oficinas de futsal, vôlei, dança e teatro no contraturno.\n\n**Equipe de Liderança:**\n*   **Diretora Geral:** Helena Martins (Governança escolar, cultura institucional e relacionamento com famílias)\n*   **Coordenador do Ensino Fundamental II:** Ricardo Paiva (Acompanhamento pedagógico, rotina escolar e projetos interdisciplinares do 6º ao 9º ano)\n*   **Coordenadora do Ensino Médio:** Luciana Ferraz (Trilhas acadêmicas, monitorias, projeto de vida e preparação para vestibulares)",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 55,
         "error_types": [
-          "request_failed"
+          "forbidden_entity_or_value"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -4655,10 +4786,10 @@
       "thread_id": "eval:guardian-access-scope-thread",
       "turn_index": 1,
       "note": "guardian_access_scope_query",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 106.7,
+        "latency_ms": 141.0,
         "mode": "structured_tool",
         "reason": "capacidade da conta autenticada e alunos vinculados exigem leitura protegida e minimizada",
         "graph_path": [
@@ -4681,7 +4812,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 179.4,
+        "latency_ms": 214.8,
         "mode": "structured_tool",
         "reason": "crewai_protected_identity_backstop",
         "graph_path": [
@@ -4700,7 +4831,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 105.2,
+        "latency_ms": 133.6,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -4724,7 +4855,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 114.1,
+        "latency_ms": 117.7,
         "mode": "structured_tool",
         "reason": "capacidade da conta autenticada e alunos vinculados exigem leitura protegida e minimizada",
         "graph_path": [
@@ -4746,16 +4877,19 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12012.3,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 19729.9,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_manager_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 80,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -4771,10 +4905,10 @@
       "thread_id": "eval:guardian-actor-identity-thread",
       "turn_index": 1,
       "note": "guardian_actor_identity_query",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 105.2,
+        "latency_ms": 153.8,
         "mode": "structured_tool",
         "reason": "identidade da conta autenticada exige leitura protegida e minimizada",
         "graph_path": [
@@ -4797,7 +4931,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 176.8,
+        "latency_ms": 282.9,
         "mode": "structured_tool",
         "reason": "crewai_protected_identity_backstop",
         "graph_path": [
@@ -4816,7 +4950,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 102.4,
+        "latency_ms": 144.8,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -4840,7 +4974,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 112.5,
+        "latency_ms": 134.7,
         "mode": "structured_tool",
         "reason": "identidade da conta autenticada exige leitura protegida e minimizada",
         "graph_path": [
@@ -4862,16 +4996,23 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12003.5,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 24461.8,
+        "mode": "clarify",
+        "reason": "A resposta do manager draft não está fundamentada em nenhum resultado do especialista, pois a lista 'specialist_results' está vazia. O plano indicava que o especialista institucional deveria ser capaz de obter o contexto de identidade do ator usando ferramentas estruturadas. Sem os resultados do especialista, não é possível verificar se a informação foi realmente inacessível ou se houve uma falha na execução ou retorno do especialista. Portanto, a resposta não pode ser aprovada e requer clarificação sobre a execução e os resultados do especialista.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "judge"
+        ],
+        "answer_text": "O especialista institucional foi executado? Se sim, qual foi o resultado da execução da ferramenta para obter o contexto de identidade do ator? Se não, por que não foi executado?",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 68,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword",
+          "unnecessary_clarification"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -4887,10 +5028,10 @@
       "thread_id": "eval:guardian-lucas-thread",
       "turn_index": 1,
       "note": "guardian_academic_student_summary",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 191.7,
+        "latency_ms": 194.3,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -4915,7 +5056,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 461.0,
+        "latency_ms": 474.7,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -4936,7 +5077,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 184.9,
+        "latency_ms": 220.2,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:academic",
         "graph_path": [
@@ -4962,7 +5103,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 213.1,
+        "latency_ms": 198.9,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -4987,7 +5128,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 145.7,
+        "latency_ms": 160.4,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:academic_summary",
         "graph_path": [
@@ -5015,10 +5156,10 @@
       "thread_id": "eval:guardian-lucas-thread",
       "turn_index": 2,
       "note": "guardian_academic_followup_same_student",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 141.5,
+        "latency_ms": 142.3,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -5044,7 +5185,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 488.4,
+        "latency_ms": 477.3,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -5066,7 +5207,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 136.2,
+        "latency_ms": 137.8,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:academic",
         "graph_path": [
@@ -5093,7 +5234,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 142.0,
+        "latency_ms": 144.8,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -5119,7 +5260,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 157.2,
+        "latency_ms": 226.7,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:academic_summary_aggregate",
         "graph_path": [
@@ -5148,10 +5289,10 @@
       "thread_id": "ext:guardian_finance_student_summary",
       "turn_index": 1,
       "note": "guardian_finance_student_summary",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 170.6,
+        "latency_ms": 183.8,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -5174,7 +5315,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 247.0,
+        "latency_ms": 276.9,
         "mode": "structured_tool",
         "reason": "support_handoff_created",
         "graph_path": [
@@ -5182,7 +5323,7 @@
           "operation_result",
           "deterministic_support"
         ],
-        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-34857610. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
+        "answer_text": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260331-403C68AD. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
         "keyword_pass": false,
         "quality_score": 80,
         "error_types": [
@@ -5196,7 +5337,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 181.0,
+        "latency_ms": 167.5,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:finance",
         "graph_path": [
@@ -5220,7 +5361,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 173.5,
+        "latency_ms": 174.6,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -5243,7 +5384,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 109.7,
+        "latency_ms": 149.9,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:financial_summary",
         "graph_path": [
@@ -5271,10 +5412,10 @@
       "thread_id": "eval:guardian-finance-status-thread",
       "turn_index": 1,
       "note": "guardian_finance_overdue_empty_state",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 238.6,
+        "latency_ms": 228.3,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -5296,16 +5437,24 @@
         }
       },
       "crewai": {
-        "status": 599,
-        "latency_ms": 12001.3,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 12085.3,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_completed",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 80,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -5315,7 +5464,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 208.0,
+        "latency_ms": 248.1,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:finance",
         "graph_path": [
@@ -5339,7 +5488,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 224.5,
+        "latency_ms": 268.0,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -5362,7 +5511,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 146.1,
+        "latency_ms": 220.9,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:financial_summary_aggregate",
         "graph_path": [
@@ -5390,10 +5539,10 @@
       "thread_id": "eval:guardian-finance-identifier-thread",
       "turn_index": 1,
       "note": "guardian_finance_identifier_seed",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 129.5,
+        "latency_ms": 121.5,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -5418,7 +5567,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 413.9,
+        "latency_ms": 459.6,
         "mode": "structured_tool",
         "reason": "crewai_protected_fast_path",
         "graph_path": [
@@ -5439,7 +5588,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 115.8,
+        "latency_ms": 118.5,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:finance",
         "graph_path": [
@@ -5465,7 +5614,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 119.0,
+        "latency_ms": 116.3,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -5490,7 +5639,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 103.8,
+        "latency_ms": 150.1,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:financial_summary",
         "graph_path": [
@@ -5518,10 +5667,10 @@
       "thread_id": "eval:guardian-finance-identifier-thread",
       "turn_index": 2,
       "note": "guardian_finance_invoice_identifier_followup",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 170.0,
+        "latency_ms": 172.7,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -5544,7 +5693,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 184.1,
+        "latency_ms": 208.1,
         "mode": "structured_tool",
         "reason": "protected_shadow_needs_student_clarification",
         "graph_path": [
@@ -5565,7 +5714,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 161.6,
+        "latency_ms": 166.6,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:finance",
         "graph_path": [
@@ -5589,7 +5738,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 169.4,
+        "latency_ms": 184.4,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -5612,7 +5761,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 141.6,
+        "latency_ms": 202.7,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:financial_summary_aggregate",
         "graph_path": [
@@ -5640,10 +5789,10 @@
       "thread_id": "eval:guardian-admin-finance-thread",
       "turn_index": 1,
       "note": "guardian_finance_and_documentation_combined",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 267.7,
+        "latency_ms": 322.5,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -5666,7 +5815,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 191.9,
+        "latency_ms": 259.6,
         "mode": "structured_tool",
         "reason": "protected_shadow_needs_student_clarification",
         "graph_path": [
@@ -5687,7 +5836,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 275.1,
+        "latency_ms": 274.4,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:finance",
         "graph_path": [
@@ -5711,7 +5860,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 337.6,
+        "latency_ms": 278.1,
         "mode": "structured_tool",
         "reason": "dados estruturados devem passar por service deterministico",
         "graph_path": [
@@ -5734,7 +5883,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 138.0,
+        "latency_ms": 188.3,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_tool_first:financial_summary_aggregate",
         "graph_path": [
@@ -5762,10 +5911,10 @@
       "thread_id": "eval:guardian-profile-update-thread",
       "turn_index": 1,
       "note": "guardian_profile_update_guidance",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 108.9,
+        "latency_ms": 113.2,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -5790,7 +5939,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 184.7,
+        "latency_ms": 193.5,
         "mode": "structured_tool",
         "reason": "crewai_protected_identity_backstop",
         "graph_path": [
@@ -5811,7 +5960,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 104.9,
+        "latency_ms": 102.8,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -5837,7 +5986,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 109.2,
+        "latency_ms": 112.1,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -5862,7 +6011,7 @@
       },
       "specialist_supervisor": {
         "status": 599,
-        "latency_ms": 12012.6,
+        "latency_ms": 17833.2,
         "mode": "error",
         "reason": "exception",
         "graph_path": [],
@@ -5886,10 +6035,10 @@
       "thread_id": "eval:guardian-profile-update-thread",
       "turn_index": 2,
       "note": "guardian_profile_update_phone_followup",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 147.4,
+        "latency_ms": 137.3,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -5915,7 +6064,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 167.6,
+        "latency_ms": 224.6,
         "mode": "structured_tool",
         "reason": "protected_shadow_unmatched_student_reference",
         "graph_path": [
@@ -5937,7 +6086,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 132.6,
+        "latency_ms": 161.1,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -5964,7 +6113,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 126.7,
+        "latency_ms": 236.4,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -5990,14 +6139,14 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 4175.7,
+        "latency_ms": 6024.0,
         "mode": "clarify",
-        "reason": "A pergunta do usuário \"e o telefone?\" é ambígua e não especifica qual telefone é necessário. É preciso pedir clarificação para entender se ele busca um contato geral da instituição, de um departamento específico ou outra informação.",
+        "reason": "A pergunta do usuário 'e o telefone?' é ambígua no contexto da conversa anterior sobre alteração de e-mail e contato com o suporte. É necessário esclarecer se o usuário deseja alterar seu próprio número de telefone no cadastro ou obter um número de contato da instituição/suporte.",
         "graph_path": [
           "specialist_supervisor",
           "planner"
         ],
-        "answer_text": "De qual telefone você precisa? Você se refere a um departamento específico, contato geral da instituição ou outra coisa?",
+        "answer_text": "Você gostaria de saber como alterar o seu número de telefone no cadastro, ou qual é o telefone de contato da instituição/suporte?",
         "keyword_pass": false,
         "quality_score": 68,
         "error_types": [
@@ -6018,10 +6167,10 @@
       "thread_id": "eval:guardian-profile-update-thread",
       "turn_index": 3,
       "note": "guardian_profile_update_documents_followup",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 121.9,
+        "latency_ms": 123.7,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -6048,7 +6197,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 195.2,
+        "latency_ms": 222.0,
         "mode": "structured_tool",
         "reason": "protected_shadow_needs_student_clarification",
         "graph_path": [
@@ -6070,7 +6219,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 138.2,
+        "latency_ms": 132.5,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:institution",
         "graph_path": [
@@ -6098,7 +6247,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 123.6,
+        "latency_ms": 132.0,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -6124,16 +6273,21 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 4933.4,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 3696.5,
+        "mode": "clarify",
+        "reason": "A pergunta sobre 'documentos' é ambígua e segue uma conversa sobre alteração de dados cadastrais (e-mail e telefone). É necessário pedir clarificação para entender o contexto e a intenção do usuário.",
+        "graph_path": [
+          "specialist_supervisor",
+          "planner"
+        ],
+        "answer_text": "Você poderia especificar a sua pergunta sobre documentos? Você gostaria de saber quais documentos são necessários para algo, como alterar documentos no seu cadastro, ou onde encontrar algum tipo de documento?",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 43,
         "error_types": [
-          "request_failed"
+          "followup_context_drop",
+          "missing_expected_keyword",
+          "unnecessary_clarification"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -6149,10 +6303,10 @@
       "thread_id": "eval:guardian-profile-update-thread",
       "turn_index": 4,
       "note": "guardian_profile_update_next_step_followup",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 139.6,
+        "latency_ms": 131.9,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -6179,7 +6333,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 11264.8,
+        "latency_ms": 11273.8,
         "mode": "structured_tool",
         "reason": "crewai_protected_flow_timeout",
         "graph_path": [
@@ -6206,7 +6360,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 187.8,
+        "latency_ms": 159.4,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:support",
         "graph_path": [
@@ -6233,7 +6387,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 143.0,
+        "latency_ms": 142.3,
         "mode": "structured_tool",
         "reason": "status administrativo autenticado exige service deterministico",
         "graph_path": [
@@ -6259,20 +6413,16 @@
         }
       },
       "specialist_supervisor": {
-        "status": 200,
-        "latency_ms": 6824.3,
-        "mode": "clarify",
-        "reason": "A pergunta do usuário 'e o proximo passo?' é ambígua e não fornece contexto suficiente para determinar a intenção. Com base nas interações anteriores, o usuário pode estar se referindo a um processo de visita, protocolo ou documentos. É necessário pedir clarificação para direcionar a solicitação ao especialista correto.",
-        "graph_path": [
-          "specialist_supervisor",
-          "planner"
-        ],
-        "answer_text": "Você se refere ao próximo passo de qual processo ou solicitação? Por exemplo, uma visita, um protocolo, ou algo relacionado aos documentos que mencionamos antes?",
+        "status": 599,
+        "latency_ms": 3217.9,
+        "mode": "error",
+        "reason": "exception",
+        "graph_path": [],
+        "answer_text": "",
         "keyword_pass": false,
-        "quality_score": 68,
+        "quality_score": 0,
         "error_types": [
-          "missing_expected_keyword",
-          "unnecessary_clarification"
+          "request_failed"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -6288,10 +6438,10 @@
       "thread_id": "eval:request-thread",
       "turn_index": 1,
       "note": "support_institutional_request_workflow",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 182.7,
+        "latency_ms": 183.4,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -6302,7 +6452,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "Solicitacao institucional registrada para direcao. Protocolo: REQ-20260331-CDD9B3. Assunto: quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca. Fila responsavel: direcao. Ticket operacional: ATD-20260331-1A7ABE1C. A equipe faz a triagem inicial e segue o retorno pelo fluxo institucional.",
+        "answer_text": "Solicitacao institucional registrada para direcao. Protocolo: REQ-20260331-FA5E1D. Assunto: quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca. Fila responsavel: direcao. Ticket operacional: ATD-20260331-12B64D22. A equipe faz a triagem inicial e segue o retorno pelo fluxo institucional.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -6314,7 +6464,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 238.7,
+        "latency_ms": 254.1,
         "mode": "structured_tool",
         "reason": "support_handoff_created",
         "graph_path": [
@@ -6322,7 +6472,7 @@
           "operation_result",
           "deterministic_support"
         ],
-        "answer_text": "Encaminhei sua solicitacao para a fila de direcao. Protocolo: ATD-20260331-CBAB1AC7. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
+        "answer_text": "Encaminhei sua solicitacao para a fila de direcao. Protocolo: ATD-20260331-59609311. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
         "keyword_pass": false,
         "quality_score": 80,
         "error_types": [
@@ -6336,7 +6486,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 108.8,
+        "latency_ms": 105.4,
         "mode": "structured_tool",
         "reason": "python_functions_native_contextual_public_answer",
         "graph_path": [
@@ -6362,7 +6512,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 117.5,
+        "latency_ms": 114.9,
         "mode": "structured_tool",
         "reason": "contextual_public_direct_answer",
         "graph_path": [
@@ -6387,7 +6537,7 @@
       },
       "specialist_supervisor": {
         "status": 200,
-        "latency_ms": 89.9,
+        "latency_ms": 114.4,
         "mode": "structured_tool",
         "reason": "specialist_supervisor_fast_path:library_hours",
         "graph_path": [
@@ -6415,10 +6565,10 @@
       "thread_id": "eval:request-thread",
       "turn_index": 2,
       "note": "support_institutional_request_update",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 191.7,
+        "latency_ms": 169.3,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -6429,7 +6579,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "Complemento registrado na fila de direcao. Protocolo: REQ-20260331-CDD9B3. Ticket operacional: ATD-20260331-1A7ABE1C. Novo complemento: preciso de resposta ainda esta semana. A equipe responsavel recebe essa atualizacao no mesmo fluxo do pedido.",
+        "answer_text": "Complemento registrado na fila de direcao. Protocolo: REQ-20260331-FA5E1D. Ticket operacional: ATD-20260331-12B64D22. Novo complemento: preciso de resposta ainda esta semana. A equipe responsavel recebe essa atualizacao no mesmo fluxo do pedido.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -6441,7 +6591,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 1088.0,
+        "latency_ms": 952.3,
         "mode": "structured_tool",
         "reason": "crewai_public_fast_path",
         "graph_path": [
@@ -6462,7 +6612,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 159.6,
+        "latency_ms": 183.1,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:support",
         "graph_path": [
@@ -6488,7 +6638,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 175.3,
+        "latency_ms": 183.6,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -6512,16 +6662,22 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 12013.1,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 22026.9,
+        "mode": "clarify",
+        "reason": "O rascunho do gerente identifica corretamente a necessidade do código do protocolo para atualizar um pedido existente com urgência. Este é um passo necessário antes que o especialista em workflow possa ser invocado para realizar a atualização. Embora nenhum resultado do especialista seja fornecido ainda, a solicitação do protocolo é implicitamente fundamentada pela natureza da tarefa (atualizar um pedido existente via ferramentas estruturadas) e pelo especialista identificado no plano. A resposta não está completa, pois o pedido ainda não foi atendido, mas é um passo intermediário válido e necessário. A flag `needs_clarification` é definida como `true` porque o sistema requer dados específicos (código do protocolo) do usuário para prosseguir, apesar do `plan` indicar `requires_clarification: false` para a intenção inicial da mensagem do usuário.",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "workflow_specialist",
+          "judge"
+        ],
+        "answer_text": "Para que eu possa complementar seu pedido com a urgência de uma resposta ainda esta semana, por favor, me informe o código do protocolo da sua solicitação existente.",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 80,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -6537,10 +6693,10 @@
       "thread_id": "eval:request-thread",
       "turn_index": 3,
       "note": "support_workflow_status_followup",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 170.9,
+        "latency_ms": 196.6,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -6551,7 +6707,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "Sua solicitacao institucional segue em fila na fila de direcao. Protocolo: REQ-20260331-CDD9B3. Assunto: quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca. Area responsavel: direcao. Ticket operacional: ATD-20260331-1A7ABE1C. Ultima movimentacao registrada: 31/03/2026 as 00:17. Proximo passo: a equipe responsavel analisa o contexto e devolve o retorno pelo fluxo institucional.",
+        "answer_text": "Sua solicitacao institucional segue em fila na fila de direcao. Protocolo: REQ-20260331-FA5E1D. Assunto: quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca. Area responsavel: direcao. Ticket operacional: ATD-20260331-12B64D22. Ultima movimentacao registrada: 31/03/2026 as 00:42. Proximo passo: a equipe responsavel analisa o contexto e devolve o retorno pelo fluxo institucional.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -6563,7 +6719,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 185.1,
+        "latency_ms": 215.6,
         "mode": "structured_tool",
         "reason": "workflow_status_lookup",
         "graph_path": [
@@ -6571,7 +6727,7 @@
           "operation_result",
           "deterministic_workflow"
         ],
-        "answer_text": "Sua solicitacao segue em fila com a area de direcao. - Protocolo: ATD-20260331-CBAB1AC7 - Ticket operacional: ATD-20260331-CBAB1AC7 - Status atual: queued Proximo passo: a equipe responsavel recebe essa atualizacao e segue o retorno pelo fluxo institucional.",
+        "answer_text": "Sua solicitacao segue em fila com a area de direcao. - Protocolo: ATD-20260331-59609311 - Ticket operacional: ATD-20260331-59609311 - Status atual: queued Proximo passo: a equipe responsavel recebe essa atualizacao e segue o retorno pelo fluxo institucional.",
         "keyword_pass": false,
         "quality_score": 80,
         "error_types": [
@@ -6585,7 +6741,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 152.0,
+        "latency_ms": 187.5,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:support",
         "graph_path": [
@@ -6609,7 +6765,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 176.1,
+        "latency_ms": 167.8,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -6631,16 +6787,19 @@
         }
       },
       "specialist_supervisor": {
-        "status": 599,
-        "latency_ms": 11359.5,
-        "mode": "error",
-        "reason": "exception",
-        "graph_path": [],
-        "answer_text": "",
+        "status": 200,
+        "latency_ms": 3125.7,
+        "mode": "clarify",
+        "reason": "O usuário está solicitando o status de um protocolo, mas não forneceu o código do protocolo. O especialista em workflow é o mais adequado para lidar com protocolos, mas precisa do código para prosseguir. Portanto, é necessário pedir uma clarificação.",
+        "graph_path": [
+          "specialist_supervisor",
+          "planner"
+        ],
+        "answer_text": "Por favor, me informe o código do protocolo para que eu possa verificar o status.",
         "keyword_pass": false,
-        "quality_score": 0,
+        "quality_score": 80,
         "error_types": [
-          "request_failed"
+          "missing_expected_keyword"
         ],
         "quality_signals": {
           "repair_ack": null,
@@ -6656,10 +6815,10 @@
       "thread_id": "eval:request-thread",
       "turn_index": 4,
       "note": "support_workflow_summary_followup",
-      "run_prefix": "debug:five-path:20260331T000816Z",
+      "run_prefix": "debug:five-path:20260331T002940Z",
       "langgraph": {
         "status": 200,
-        "latency_ms": 175.2,
+        "latency_ms": 167.6,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -6670,7 +6829,7 @@
           "support_slice",
           "structured_tool_call"
         ],
-        "answer_text": "Resumo da sua solicitacao institucional:. Assunto: quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca. Area responsavel: direcao. Detalhes registrados: quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca\n\nComplemento registrado: preciso de resposta ainda esta semana. Protocolo: REQ-20260331-CDD9B3. Ticket operacional: ATD-20260331-1A7ABE1C. Status atual: em fila. Se quiser, eu tambem posso te dizer o prazo estimado ou quem responde por essa fila.",
+        "answer_text": "Resumo da sua solicitacao institucional:. Assunto: quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca. Area responsavel: direcao. Detalhes registrados: quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca\n\nComplemento registrado: preciso de resposta ainda esta semana. Protocolo: REQ-20260331-FA5E1D. Ticket operacional: ATD-20260331-12B64D22. Status atual: em fila. Se quiser, eu tambem posso te dizer o prazo estimado ou quem responde por essa fila.",
         "keyword_pass": true,
         "quality_score": 100,
         "error_types": [],
@@ -6682,7 +6841,7 @@
       },
       "crewai": {
         "status": 200,
-        "latency_ms": 175.3,
+        "latency_ms": 293.4,
         "mode": "structured_tool",
         "reason": "workflow_summary_lookup",
         "graph_path": [
@@ -6690,7 +6849,7 @@
           "operation_result",
           "deterministic_workflow"
         ],
-        "answer_text": "Seu pedido de visita segue em fila com a fila de direcao. - Protocolo: ATD-20260331-CBAB1AC7 - Ticket operacional: ATD-20260331-CBAB1AC7 - Preferencia registrada: janela a confirmar Proximo passo: a equipe comercial valida a janela e retorna com a confirmacao.",
+        "answer_text": "Seu pedido de visita segue em fila com a fila de direcao. - Protocolo: ATD-20260331-59609311 - Ticket operacional: ATD-20260331-59609311 - Preferencia registrada: janela a confirmar Proximo passo: a equipe comercial valida a janela e retorna com a confirmacao.",
         "keyword_pass": false,
         "quality_score": 80,
         "error_types": [
@@ -6704,7 +6863,7 @@
       },
       "python_functions": {
         "status": 200,
-        "latency_ms": 178.3,
+        "latency_ms": 166.4,
         "mode": "structured_tool",
         "reason": "python_functions_native_structured:support",
         "graph_path": [
@@ -6730,7 +6889,7 @@
       },
       "llamaindex": {
         "status": 200,
-        "latency_ms": 167.6,
+        "latency_ms": 163.7,
         "mode": "structured_tool",
         "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
         "graph_path": [
@@ -6754,19 +6913,16 @@
         }
       },
       "specialist_supervisor": {
-        "status": 200,
-        "latency_ms": 5115.4,
-        "mode": "clarify",
-        "reason": "specialist_supervisor_strict_safe_fallback",
-        "graph_path": [
-          "specialist_supervisor",
-          "safe_fallback"
-        ],
-        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "status": 599,
+        "latency_ms": 21278.2,
+        "mode": "error",
+        "reason": "exception",
+        "graph_path": [],
+        "answer_text": "",
         "keyword_pass": false,
-        "quality_score": 80,
+        "quality_score": 0,
         "error_types": [
-          "missing_expected_keyword"
+          "request_failed"
         ],
         "quality_signals": {
           "repair_ack": null,

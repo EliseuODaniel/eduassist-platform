@@ -1,0 +1,213 @@
+{
+  "generated_at": "2026-03-31T00:43:26.045231+00:00",
+  "action": "activated",
+  "base_url": "http://127.0.0.1:8002",
+  "stack": "specialist_supervisor",
+  "ttl_seconds": 1800,
+  "slices": [
+    "workflow"
+  ],
+  "telegram_chat_allowlist": [
+    "1649845499"
+  ],
+  "conversation_allowlist": [],
+  "runtime_before": {
+    "service": "ai-orchestrator",
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "resolvedPrimaryStackSource": "orchestrator_engine",
+    "runtimePrimaryStackOverride": null,
+    "runtimePrimaryStackOverrideReason": null,
+    "runtimePrimaryStackOverrideOperator": null,
+    "runtimePrimaryStackOverrideUpdatedAt": null,
+    "runtimeTargetedStackOverride": null,
+    "runtimeTargetedStackOverrideReason": null,
+    "runtimeTargetedStackOverrideOperator": null,
+    "runtimeTargetedStackOverrideUpdatedAt": null,
+    "runtimeTargetedStackOverrideTtlSeconds": null,
+    "runtimeTargetedStackOverrideExpiresAt": null,
+    "runtimeTargetedStackOverrideSlices": [],
+    "runtimeTargetedStackOverrideTelegramChatAllowlist": [],
+    "runtimeTargetedStackOverrideConversationAllowlist": [],
+    "strictFrameworkIsolationEnabled": false,
+    "supportedPrimaryStacks": [
+      "crewai",
+      "langgraph",
+      "llamaindex",
+      "python_functions",
+      "shadow",
+      "specialist_supervisor"
+    ]
+  },
+  "targeted_before": {
+    "service": "ai-orchestrator",
+    "targetedOverride": {
+      "value": null,
+      "reason": null,
+      "operator": null,
+      "updated_at": null,
+      "ttl_seconds": null,
+      "expires_at": null,
+      "slices": [],
+      "telegram_chat_allowlist": [],
+      "conversation_allowlist": []
+    },
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "resolvedPrimaryStackSource": "orchestrator_engine",
+    "runtimePrimaryStackOverride": null,
+    "runtimePrimaryStackOverrideReason": null,
+    "runtimePrimaryStackOverrideOperator": null,
+    "runtimePrimaryStackOverrideUpdatedAt": null,
+    "runtimeTargetedStackOverride": null,
+    "runtimeTargetedStackOverrideReason": null,
+    "runtimeTargetedStackOverrideOperator": null,
+    "runtimeTargetedStackOverrideUpdatedAt": null,
+    "runtimeTargetedStackOverrideTtlSeconds": null,
+    "runtimeTargetedStackOverrideExpiresAt": null,
+    "runtimeTargetedStackOverrideSlices": [],
+    "runtimeTargetedStackOverrideTelegramChatAllowlist": [],
+    "runtimeTargetedStackOverrideConversationAllowlist": [],
+    "strictFrameworkIsolationEnabled": false,
+    "supportedPrimaryStacks": [
+      "crewai",
+      "langgraph",
+      "llamaindex",
+      "python_functions",
+      "shadow",
+      "specialist_supervisor"
+    ]
+  },
+  "runtime_after": {
+    "service": "ai-orchestrator",
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "resolvedPrimaryStackSource": "orchestrator_engine",
+    "runtimePrimaryStackOverride": null,
+    "runtimePrimaryStackOverrideReason": null,
+    "runtimePrimaryStackOverrideOperator": null,
+    "runtimePrimaryStackOverrideUpdatedAt": null,
+    "runtimeTargetedStackOverride": "specialist_supervisor",
+    "runtimeTargetedStackOverrideReason": "specialist_supervisor_workflow_targeted_canary",
+    "runtimeTargetedStackOverrideOperator": "codex",
+    "runtimeTargetedStackOverrideUpdatedAt": "2026-03-31T00:43:26.040589+00:00",
+    "runtimeTargetedStackOverrideTtlSeconds": 1800,
+    "runtimeTargetedStackOverrideExpiresAt": "2026-03-31T01:13:26.040589+00:00",
+    "runtimeTargetedStackOverrideSlices": [
+      "workflow"
+    ],
+    "runtimeTargetedStackOverrideTelegramChatAllowlist": [
+      "1649845499"
+    ],
+    "runtimeTargetedStackOverrideConversationAllowlist": [],
+    "strictFrameworkIsolationEnabled": false,
+    "supportedPrimaryStacks": [
+      "crewai",
+      "langgraph",
+      "llamaindex",
+      "python_functions",
+      "shadow",
+      "specialist_supervisor"
+    ]
+  },
+  "targeted_after": {
+    "service": "ai-orchestrator",
+    "targetedOverride": {
+      "value": "specialist_supervisor",
+      "reason": "specialist_supervisor_workflow_targeted_canary",
+      "operator": "codex",
+      "updated_at": "2026-03-31T00:43:26.040589+00:00",
+      "ttl_seconds": 1800,
+      "expires_at": "2026-03-31T01:13:26.040589+00:00",
+      "slices": [
+        "workflow"
+      ],
+      "telegram_chat_allowlist": [
+        "1649845499"
+      ],
+      "conversation_allowlist": []
+    },
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "resolvedPrimaryStackSource": "orchestrator_engine",
+    "runtimePrimaryStackOverride": null,
+    "runtimePrimaryStackOverrideReason": null,
+    "runtimePrimaryStackOverrideOperator": null,
+    "runtimePrimaryStackOverrideUpdatedAt": null,
+    "runtimeTargetedStackOverride": "specialist_supervisor",
+    "runtimeTargetedStackOverrideReason": "specialist_supervisor_workflow_targeted_canary",
+    "runtimeTargetedStackOverrideOperator": "codex",
+    "runtimeTargetedStackOverrideUpdatedAt": "2026-03-31T00:43:26.040589+00:00",
+    "runtimeTargetedStackOverrideTtlSeconds": 1800,
+    "runtimeTargetedStackOverrideExpiresAt": "2026-03-31T01:13:26.040589+00:00",
+    "runtimeTargetedStackOverrideSlices": [
+      "workflow"
+    ],
+    "runtimeTargetedStackOverrideTelegramChatAllowlist": [
+      "1649845499"
+    ],
+    "runtimeTargetedStackOverrideConversationAllowlist": [],
+    "strictFrameworkIsolationEnabled": false,
+    "supportedPrimaryStacks": [
+      "crewai",
+      "langgraph",
+      "llamaindex",
+      "python_functions",
+      "shadow",
+      "specialist_supervisor"
+    ]
+  },
+  "response": {
+    "service": "ai-orchestrator",
+    "action": "updated",
+    "targetedOverride": {
+      "value": "specialist_supervisor",
+      "reason": "specialist_supervisor_workflow_targeted_canary",
+      "operator": "codex",
+      "updated_at": "2026-03-31T00:43:26.040589+00:00",
+      "ttl_seconds": 1800,
+      "expires_at": "2026-03-31T01:13:26.040589+00:00",
+      "slices": [
+        "workflow"
+      ],
+      "telegram_chat_allowlist": [
+        "1649845499"
+      ],
+      "conversation_allowlist": []
+    },
+    "orchestratorEngine": "langgraph",
+    "primaryStackFeatureFlag": "",
+    "resolvedPrimaryStack": "langgraph",
+    "resolvedPrimaryStackSource": "orchestrator_engine",
+    "runtimePrimaryStackOverride": null,
+    "runtimePrimaryStackOverrideReason": null,
+    "runtimePrimaryStackOverrideOperator": null,
+    "runtimePrimaryStackOverrideUpdatedAt": null,
+    "runtimeTargetedStackOverride": "specialist_supervisor",
+    "runtimeTargetedStackOverrideReason": "specialist_supervisor_workflow_targeted_canary",
+    "runtimeTargetedStackOverrideOperator": "codex",
+    "runtimeTargetedStackOverrideUpdatedAt": "2026-03-31T00:43:26.040589+00:00",
+    "runtimeTargetedStackOverrideTtlSeconds": 1800,
+    "runtimeTargetedStackOverrideExpiresAt": "2026-03-31T01:13:26.040589+00:00",
+    "runtimeTargetedStackOverrideSlices": [
+      "workflow"
+    ],
+    "runtimeTargetedStackOverrideTelegramChatAllowlist": [
+      "1649845499"
+    ],
+    "runtimeTargetedStackOverrideConversationAllowlist": [],
+    "strictFrameworkIsolationEnabled": false,
+    "supportedPrimaryStacks": [
+      "crewai",
+      "langgraph",
+      "llamaindex",
+      "python_functions",
+      "shadow",
+      "specialist_supervisor"
+    ]
+  }
+}
