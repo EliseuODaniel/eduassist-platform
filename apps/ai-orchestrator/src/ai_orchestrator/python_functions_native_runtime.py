@@ -29,9 +29,9 @@ def _should_use_python_functions_native_path(plan: KernelPlan) -> bool:
         return True
     if preview.classification.access_tier is not AccessTier.public:
         return False
-    if preview.classification.domain not in {QueryDomain.institution, QueryDomain.calendar}:
+    if preview.classification.domain not in {QueryDomain.institution, QueryDomain.calendar, QueryDomain.unknown}:
         return False
-    return preview.mode is OrchestrationMode.hybrid_retrieval
+    return preview.mode in {OrchestrationMode.hybrid_retrieval, OrchestrationMode.clarify}
 
 
 async def maybe_execute_python_functions_native_plan(

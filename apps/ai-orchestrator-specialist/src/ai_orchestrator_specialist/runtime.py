@@ -1392,6 +1392,96 @@ def _compose_named_subject_grade_answer(summary: dict[str, Any], *, subject_hint
     )
 
 
+def _linked_student_names(actor: dict[str, Any] | None, *, capability: str) -> list[str]:
+    names: list[str] = []
+    for student in _linked_students(actor, capability=capability):
+        name = str(student.get("full_name") or "").strip()
+        if name:
+            names.append(name)
+    return names
+
+
+def _build_academic_student_selection_clarify(
+    ctx: SupervisorRunContext,
+    *,
+    reason: str,
+    graph_path: list[str],
+    confidence: float = 0.97,
+) -> SupervisorAnswerPayload:
+    names = _linked_student_names(ctx.actor, capability="academic")
+    if len(names) >= 2:
+        student_list = " ou ".join(names[:2])
+        message_text = f"Consigo consultar isso, mas preciso que voce confirme qual aluno: {student_list}?"
+    else:
+        message_text = "Consigo consultar isso, mas preciso que voce confirme qual aluno."
+    return SupervisorAnswerPayload(
+        message_text=message_text,
+        mode="clarify",
+        classification=MessageIntentClassification(
+            domain="academic",
+            access_tier=_access_tier_for_domain("academic", True),
+            confidence=confidence,
+            reason=reason,
+        ),
+        evidence_pack=MessageEvidencePack(
+            strategy="structured_tools",
+            summary="Clarificacao necessaria para fixar o aluno correto antes da consulta academica.",
+            source_count=1,
+            support_count=1,
+            supports=[
+                MessageEvidenceSupport(
+                    kind="student_context",
+                    label="Alunos vinculados",
+                    detail=", ".join(names[:4]) or "Aluno nao resolvido",
+                )
+            ],
+        ),
+        suggested_replies=[MessageResponseSuggestedReply(text=name) for name in names[:2]] or _default_suggested_replies("academic"),
+        graph_path=graph_path,
+        reason=reason,
+    )
+
+
+def _resolved_academic_target_name(
+    ctx: SupervisorRunContext,
+    *,
+    resolved: ResolvedTurnIntent | None = None,
+) -> str | None:
+    memory = ctx.operational_memory or OperationalMemory()
+    if resolved is not None and str(resolved.referenced_student_name or "").strip():
+        return str(resolved.referenced_student_name or "").strip()
+    explicit_hint = (
+        _student_hint_from_message(ctx.actor, ctx.request.message)
+        or _is_student_name_only_followup(ctx.actor, ctx.request.message)
+    )
+    if explicit_hint:
+        return explicit_hint
+    if str(memory.active_student_name or "").strip() and (
+        _looks_like_student_pronoun_followup(ctx.request.message)
+        or _looks_like_subject_followup(ctx.request.message)
+        or bool(_subject_hint_from_text(ctx.request.message))
+    ):
+        return str(memory.active_student_name or "").strip()
+    return None
+
+
+def _needs_specific_academic_student_clarification(
+    ctx: SupervisorRunContext,
+    *,
+    target_name: str | None,
+    subject_hint: str | None,
+) -> bool:
+    if target_name:
+        return False
+    if len(_linked_students(ctx.actor, capability="academic")) < 2:
+        return False
+    return (
+        bool(subject_hint)
+        or _looks_like_student_pronoun_followup(ctx.request.message)
+        or _looks_like_subject_followup(ctx.request.message)
+    )
+
+
 def _compose_academic_finance_combo_answer(*, academic_summary: dict[str, Any], finance_summary: dict[str, Any]) -> str:
     student_name = str(academic_summary.get("student_name") or finance_summary.get("student_name") or "Aluno").strip()
     lines = [f"Resumo combinado de {student_name}:"]
@@ -3269,18 +3359,20 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
         or "notas" in normalized
         or str(preview.get("classification", {}).get("domain") or "") == "academic"
     ) and not _looks_like_passing_policy_query(ctx.request.message):
-        student_hint = (
-            str((ctx.resolved_turn.referenced_student_name if ctx.resolved_turn is not None else "") or "").strip()
-            or _student_hint_from_message(ctx.actor, ctx.request.message)
-            or (memory.active_student_name if _looks_like_student_pronoun_followup(ctx.request.message) else None)
+        subject_hint = _subject_hint_from_text(ctx.request.message) or (
+            memory.active_subject if _looks_like_subject_followup(ctx.request.message) else None
         )
+        student_hint = _resolved_academic_target_name(ctx, resolved=ctx.resolved_turn)
+        if _needs_specific_academic_student_clarification(ctx, target_name=student_hint, subject_hint=subject_hint):
+            return _build_academic_student_selection_clarify(
+                ctx,
+                reason="specialist_supervisor_tool_first:academic_student_clarify",
+                graph_path=["specialist_supervisor", "tool_first", "academic_student_clarify"],
+            )
         if student_hint:
             payload = await _fetch_academic_summary_payload(ctx, student_name_hint=student_hint)
             summary = payload.get("summary") if isinstance(payload, dict) else None
             if isinstance(summary, dict):
-                subject_hint = _subject_hint_from_text(ctx.request.message) or (
-                    memory.active_subject if _looks_like_subject_followup(ctx.request.message) else None
-                )
                 answer_text = _compose_named_subject_grade_answer(summary, subject_hint=subject_hint) or _compose_named_grade_answer(summary)
                 return SupervisorAnswerPayload(
                     message_text=answer_text,
@@ -3450,12 +3542,22 @@ async def _resolved_academic_student_grades_answer(
 ) -> SupervisorAnswerPayload | None:
     if not ctx.request.user.authenticated:
         return None
-    target_name = str(resolved.referenced_student_name or "").strip()
+    memory = ctx.operational_memory or OperationalMemory()
+    subject_hint = str(resolved.referenced_subject or "").strip() or (
+        memory.active_subject if _looks_like_subject_followup(ctx.request.message) else None
+    )
+    target_name = _resolved_academic_target_name(ctx, resolved=resolved)
+    if _needs_specific_academic_student_clarification(ctx, target_name=target_name, subject_hint=subject_hint):
+        return _build_academic_student_selection_clarify(
+            ctx,
+            reason="specialist_supervisor_resolved_intent:student_grades_clarify",
+            graph_path=["specialist_supervisor", "resolved_intent", "student_grades_clarify"],
+            confidence=resolved.confidence,
+        )
     if target_name:
         payload = await _fetch_academic_summary_payload(ctx, student_name_hint=target_name)
         summary = payload.get("summary") if isinstance(payload, dict) else None
         if isinstance(summary, dict):
-            subject_hint = str(resolved.referenced_subject or "").strip() or None
             answer_text = _compose_named_subject_grade_answer(summary, subject_hint=subject_hint) or _compose_named_grade_answer(summary)
             support_label = str(summary.get("student_name") or "Aluno")
             support_detail = _safe_excerpt(answer_text, limit=180)
@@ -4082,6 +4184,7 @@ async def _operational_memory_follow_up_answer(ctx: SupervisorRunContext) -> Sup
         return None
     student_hint = _is_student_name_only_followup(ctx.actor, ctx.request.message)
     multi_domains = _effective_multi_intent_domains(memory, ctx.request.message)
+    subject_hint = _subject_hint_from_text(ctx.request.message) or memory.active_subject
 
     if len(multi_domains) >= 2 and "academic" in multi_domains and "finance" in multi_domains:
         target_name = student_hint or _student_hint_from_message(ctx.actor, ctx.request.message) or memory.active_student_name
@@ -4102,6 +4205,46 @@ async def _operational_memory_follow_up_answer(ctx: SupervisorRunContext) -> Sup
 
     if ctx.operational_memory is None:
         return None
+
+    if (
+        memory.active_student_name
+        and memory.active_domain in {"academic", "finance"}
+        and (subject_hint or _looks_like_subject_followup(ctx.request.message))
+    ):
+        payload = await _fetch_academic_summary_payload(ctx, student_name_hint=memory.active_student_name)
+        student = payload.get("student") if isinstance(payload, dict) else None
+        summary = payload.get("summary") if isinstance(payload, dict) else None
+        if isinstance(student, dict) and isinstance(summary, dict):
+            if memory.active_topic == "grade_requirement":
+                return _build_grade_requirement_answer(student=student, summary=summary, subject_hint=subject_hint)
+            answer_text = _compose_named_subject_grade_answer(summary, subject_hint=subject_hint)
+            if answer_text:
+                return SupervisorAnswerPayload(
+                    message_text=answer_text,
+                    mode="structured_tool",
+                    classification=MessageIntentClassification(
+                        domain="academic",
+                        access_tier="authenticated",
+                        confidence=0.98,
+                        reason="specialist_supervisor_memory:subject_followup",
+                    ),
+                    evidence_pack=MessageEvidencePack(
+                        strategy="structured_tools",
+                        summary="Follow-up academico deterministico preservando aluno e disciplina ativos.",
+                        source_count=1,
+                        support_count=1,
+                        supports=[
+                            MessageEvidenceSupport(
+                                kind="academic_summary",
+                                label=str(summary.get("student_name") or "Aluno"),
+                                detail=_safe_excerpt(answer_text, limit=180),
+                            )
+                        ],
+                    ),
+                    suggested_replies=_default_suggested_replies("academic"),
+                    graph_path=["specialist_supervisor", "operational_memory", "subject_followup"],
+                    reason="specialist_supervisor_memory:subject_followup",
+                )
 
     if _looks_like_other_student_followup(ctx.request.message):
         if memory.active_domain == "academic" and memory.active_student_id:

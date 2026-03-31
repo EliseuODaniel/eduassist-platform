@@ -97,6 +97,42 @@ def _message_requests_finance_domain(message: str) -> bool:
     return any(rt._message_matches_term(normalized, term) for term in finance_terms)
 
 
+def _message_mentions_library_entity(message: str) -> bool:
+    normalized = rt._normalize_text(message)
+    return any(
+        rt._message_matches_term(normalized, term)
+        for term in {'biblioteca', 'library', 'acervo', 'biblioteca aurora'}
+    )
+
+
+def _message_switches_public_entity_away_from_library(message: str) -> bool:
+    normalized = rt._normalize_text(message)
+    non_library_terms = {
+        'diretor',
+        'diretora',
+        'direcao',
+        'direção',
+        'diretoria',
+        'alunos',
+        'salas',
+        'turno',
+        'turnos',
+        'turma',
+        'turmas',
+        'cantina',
+        'cardapio',
+        'cardápio',
+        'bolsa',
+        'idade minima',
+        'idade mínima',
+        'mensalidade',
+        'quadra',
+        'professores',
+        'secretaria',
+    }
+    return any(rt._message_matches_term(normalized, term) for term in non_library_terms)
+
+
 def _maybe_explicit_domain_override_plan(
     *,
     request: MessageResponseRequest,
@@ -169,20 +205,27 @@ async def _maybe_contextual_public_direct_answer(
     normalized_analysis = rt._normalize_text(analysis_message)
     recent_context_lines = [rt._normalize_text(content) for _, content in rt._recent_message_lines(conversation_context)]
     recent_context_mentions_library = any('biblioteca' in content or 'biblioteca aurora' in content for content in recent_context_lines)
-    current_message_mentions_library = any(rt._message_matches_term(normalized_analysis, term) for term in {'biblioteca', 'library'})
+    current_message_mentions_library = _message_mentions_library_entity(request.message)
     current_message_mentions_leadership = any(
         rt._message_matches_term(normalized_request, term)
         for term in {'diretora', 'diretor', 'direcao', 'direção', 'diretoria'}
     )
-    library_followup_terms = {
+    library_name_followup_terms = {
         'como ela se chama',
         'como se chama',
+        'qual o nome dela',
+        'nome dela',
+        'nome da biblioteca',
+        'qual o nome da biblioteca',
+    }
+    library_hours_followup_terms = {
         'ate que horas funciona',
         'até que horas funciona',
         'horario',
         'horário',
         'funciona',
     }
+    library_followup_referents = {'ela', 'dela', 'biblioteca', 'da biblioteca'}
 
     wants_document_path = rt._is_public_document_submission_query(analysis_message) or (
         any(
@@ -219,7 +262,14 @@ async def _maybe_contextual_public_direct_answer(
                 recent_context_mentions_library
                 and rt._is_follow_up_query(request.message)
                 and not current_message_mentions_leadership
-                and any(rt._message_matches_term(normalized_request, term) for term in library_followup_terms)
+                and not _message_switches_public_entity_away_from_library(request.message)
+                and (
+                    (
+                        any(rt._message_matches_term(normalized_request, term) for term in library_name_followup_terms)
+                        and any(rt._message_matches_term(normalized_request, term) for term in library_followup_referents)
+                    )
+                    or any(rt._message_matches_term(normalized_request, term) for term in library_hours_followup_terms)
+                )
             )
         )
     )
@@ -281,6 +331,14 @@ def _maybe_public_unpublished_direct_answer(
     ):
         return (
             'Hoje os canais publicos do Colegio Horizonte nao informam o total de alunos matriculados. '
+            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
+        )
+    if any(
+        rt._message_matches_term(normalized_message, term)
+        for term in {'quantos professores', 'quantidade de professores', 'numero de professores', 'número de professores'}
+    ):
+        return (
+            'Hoje os canais publicos do Colegio Horizonte nao informam a quantidade total de professores. '
             'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
         )
     if any(
