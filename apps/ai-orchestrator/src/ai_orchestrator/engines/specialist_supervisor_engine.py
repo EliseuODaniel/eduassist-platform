@@ -76,7 +76,8 @@ class SpecialistSupervisorEngine(ResponseEngine):
         pilot_url = str(getattr(settings, "specialist_supervisor_pilot_url", "") or "").strip()
         if not pilot_url:
             return None
-        async with httpx.AsyncClient(timeout=httpx.Timeout(45.0, connect=5.0)) as client:
+        timeout_seconds = float(getattr(settings, "specialist_supervisor_pilot_timeout_seconds", 75.0) or 75.0)
+        async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds, connect=5.0)) as client:
             response = await client.post(
                 f"{pilot_url.rstrip('/')}/v1/respond",
                 headers={

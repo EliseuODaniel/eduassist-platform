@@ -120,6 +120,12 @@ class SpecialistSpec(BaseModel):
     allowed_tools: list[str] = Field(default_factory=list)
     risk_level: str = "medium"
     max_context_budget: int = 6
+    execution_priority: int = 100
+    allow_parallel: bool = True
+    allow_precompute: bool = True
+    manager_policy: Literal["always", "prefer_direct"] = "always"
+    preferred_categories: list[str] = Field(default_factory=list)
+    latency_tier: Literal["low", "medium", "high"] = "medium"
     activation_flag: bool = True
 
 

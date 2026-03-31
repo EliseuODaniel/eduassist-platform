@@ -3632,6 +3632,28 @@ def _fallback_specialists_for_domain(domain: str, retrieval_backend: str) -> tup
     return ["institution_specialist"], "direct_answer"
 
 
+def _preferred_direct_specialist_for_category(
+    ctx: SupervisorRunContext,
+    *,
+    primary_domain: str,
+    preferred_category: str | None,
+) -> str | None:
+    category = str(preferred_category or "").strip().lower()
+    if not category:
+        return None
+    for specialist_id, spec in ctx.specialist_registry.items():
+        if specialist_id not in EXECUTION_SPECIALISTS:
+            continue
+        if primary_domain not in getattr(spec, "supported_domains", []):
+            continue
+        if getattr(spec, "manager_policy", "always") != "prefer_direct":
+            continue
+        preferred_categories = [str(item).strip().lower() for item in getattr(spec, "preferred_categories", [])]
+        if category in preferred_categories:
+            return specialist_id
+    return None
+
+
 def _normalize_retrieval_advice(
     ctx: SupervisorRunContext,
     advice: RetrievalPlannerAdvice,
@@ -3663,6 +3685,21 @@ def _normalize_retrieval_advice(
     evidence_queries = [str(item).strip() for item in advice.evidence_queries if str(item).strip()]
     if not evidence_queries:
         evidence_queries = [ctx.request.message]
+    direct_specialist = _preferred_direct_specialist_for_category(
+        ctx,
+        primary_domain=primary_domain,
+        preferred_category=advice.preferred_category,
+    )
+    if (
+        direct_specialist is not None
+        and primary_domain in {"institution", "academic", "finance", "support"}
+        and strategy in {"direct_answer", "document_search", "hybrid_retrieval", "structured_tools"}
+        and len(specialists) >= 1
+    ):
+        specialists = [direct_specialist]
+        strategy = "structured_tools" if primary_domain in {"academic", "finance", "support", "institution"} else strategy
+    if len(specialists) == 1 and len(detected_multi_domains) <= 1:
+        secondary_domains = []
     return advice.model_copy(
         update={
             "primary_domain": primary_domain,
@@ -3874,6 +3911,20 @@ def _build_execution_specialists(settings: Any, model: Any) -> dict[str, Agent[S
     }
 
 
+def _specialist_spec(ctx: SupervisorRunContext, specialist_id: str) -> Any | None:
+    return ctx.specialist_registry.get(specialist_id)
+
+
+def _sorted_specialist_ids(ctx: SupervisorRunContext, specialist_ids: list[str]) -> list[str]:
+    return sorted(
+        [item for item in specialist_ids if item in EXECUTION_SPECIALISTS],
+        key=lambda item: (
+            int(getattr(_specialist_spec(ctx, item), "execution_priority", 100)),
+            item,
+        ),
+    )
+
+
 def _specialist_execution_prompt(
     ctx: SupervisorRunContext,
     *,
@@ -3919,30 +3970,39 @@ async def _execute_planned_specialists(
     *,
     plan: SupervisorPlan,
 ) -> list[SpecialistResult]:
-    specialist_ids = [item for item in plan.specialists if item in EXECUTION_SPECIALISTS]
+    specialist_ids = _sorted_specialist_ids(ctx, list(plan.specialists))
     if not specialist_ids:
-        return []
-    if plan.retrieval_strategy not in {"structured_tools", "hybrid_retrieval", "graph_rag", "document_search", "workflow_status", "pricing_projection"} and not specialist_ids:
         return []
     model = _agent_model(ctx.settings)
     specialists = _build_execution_specialists(ctx.settings, model)
-    tasks = [
-        _run_specialist_agent(
-            ctx,
-            specialist_id=specialist_id,
-            plan=plan,
-            specialists=specialists,
-        )
-        for specialist_id in specialist_ids[:3]
-    ]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
     normalized: dict[str, SpecialistResult] = {}
-    for item in results:
-        if isinstance(item, Exception):
-            logger.exception("specialist_supervisor_specialist_execution_failed", exc_info=item)
+    batch: list[str] = []
+    for specialist_id in specialist_ids[:3]:
+        spec = _specialist_spec(ctx, specialist_id)
+        if spec is not None and not bool(getattr(spec, "allow_precompute", True)):
             continue
-        if isinstance(item, SpecialistResult):
-            normalized[item.specialist_id] = item
+        batch.append(specialist_id)
+        allow_parallel = bool(getattr(spec, "allow_parallel", True)) if spec is not None else True
+        is_last = specialist_id == specialist_ids[:3][-1]
+        if allow_parallel and not is_last:
+            continue
+        tasks = [
+            _run_specialist_agent(
+                ctx,
+                specialist_id=item,
+                plan=plan,
+                specialists=specialists,
+            )
+            for item in batch
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for item in results:
+            if isinstance(item, Exception):
+                logger.exception("specialist_supervisor_specialist_execution_failed", exc_info=item)
+                continue
+            if isinstance(item, SpecialistResult):
+                normalized[item.specialist_id] = item
+        batch = []
     return list(normalized.values())
 
 
@@ -4113,6 +4173,106 @@ def _merge_specialist_results(
     for item in traced_results:
         merged[item.specialist_id] = item
     return list(merged.values())
+
+
+def _result_looks_negative(result: SpecialistResult) -> bool:
+    normalized = _normalize_text(result.answer_text)
+    return any(
+        token in normalized
+        for token in {
+            "nao foi possivel encontrar",
+            "não foi possível encontrar",
+            "nao consegui encontrar",
+            "não consegui encontrar",
+            "nao encontrei",
+            "não encontrei",
+        }
+    )
+
+
+def _direct_compose_candidate(
+    ctx: SupervisorRunContext,
+    *,
+    plan: SupervisorPlan,
+    specialist_results: list[SpecialistResult],
+) -> SpecialistResult | None:
+    if not specialist_results:
+        return None
+    if plan.request_kind == "multi_domain":
+        return None
+    ordered = sorted(
+        specialist_results,
+        key=lambda item: (
+            _result_looks_negative(item),
+            -item.confidence,
+            int(getattr(_specialist_spec(ctx, item.specialist_id), "execution_priority", 100)),
+        ),
+    )
+    candidate = ordered[0]
+    spec = _specialist_spec(ctx, candidate.specialist_id)
+    if spec is None or getattr(spec, "manager_policy", "always") != "prefer_direct":
+        return None
+    if candidate.confidence < 0.7:
+        return None
+    return candidate
+
+
+def _build_direct_answer_from_specialist(
+    ctx: SupervisorRunContext,
+    *,
+    plan: SupervisorPlan,
+    result: SpecialistResult,
+) -> SupervisorAnswerPayload:
+    citations = result.citations[:6]
+    supports = [
+        MessageEvidenceSupport(
+            kind="specialist",
+            label=result.specialist_id,
+            detail=result.evidence_summary,
+            excerpt=_safe_excerpt(result.answer_text),
+        )
+    ]
+    for point in result.support_points[:2]:
+        supports.append(
+            MessageEvidenceSupport(
+                kind="support_point",
+                label=result.specialist_id,
+                excerpt=_safe_excerpt(point),
+            )
+        )
+    for citation in citations[:2]:
+        supports.append(
+            MessageEvidenceSupport(
+                kind="citation",
+                label=citation.document_title,
+                detail=f"{citation.version_label} · {citation.chunk_id}",
+                excerpt=_safe_excerpt(citation.excerpt),
+            )
+        )
+    return SupervisorAnswerPayload(
+        message_text=result.answer_text,
+        mode=_mode_from_strategy(plan.retrieval_strategy),
+        classification=MessageIntentClassification(
+            domain=plan.primary_domain,
+            access_tier=_access_tier_for_domain(plan.primary_domain, ctx.request.user.authenticated),
+            confidence=max(plan.confidence, result.confidence),
+            reason=f"specialist_supervisor_direct:{result.specialist_id}",
+        ),
+        retrieval_backend=_retrieval_backend_from_strategy(plan.retrieval_strategy),
+        selected_tools=result.tool_names,
+        citations=citations,
+        suggested_replies=_default_suggested_replies(plan.primary_domain),
+        evidence_pack=MessageEvidencePack(
+            strategy=plan.retrieval_strategy,
+            summary=f"Resposta direta a partir de {result.specialist_id} com grounding suficiente.",
+            source_count=len(citations) or 1,
+            support_count=len(supports),
+            supports=supports[:8],
+        ),
+        needs_authentication=not ctx.request.user.authenticated and plan.primary_domain in {"academic", "finance"},
+        graph_path=["specialist_supervisor", "retrieval_planner", "specialist_direct", result.specialist_id],
+        reason=f"specialist_supervisor_direct:{result.specialist_id}",
+    )
 
 
 def _aggregate_citations(results: list[SpecialistResult]) -> list[MessageResponseCitation]:
@@ -4296,11 +4456,54 @@ async def _run_input_guardrail(ctx: SupervisorRunContext) -> SupervisorInputGuar
     return result.final_output_as(SupervisorInputGuardrail, raise_if_incorrect_type=True)
 
 
+def _deterministic_plan_from_retrieval_advice(ctx: SupervisorRunContext) -> SupervisorPlan | None:
+    advice = ctx.retrieval_advice
+    if advice is None:
+        return None
+    specialists = [item for item in advice.recommended_specialists if item in EXECUTION_SPECIALISTS]
+    if not specialists and advice.retrieval_strategy not in {"clarify", "deny"}:
+        return None
+    normalized_plan = _normalize_plan_with_retrieval_advice(
+        ctx,
+        SupervisorPlan(
+            request_kind="multi_domain" if advice.secondary_domains else "simple",
+            primary_domain=advice.primary_domain,
+            secondary_domains=advice.secondary_domains,
+            specialists=specialists,
+            retrieval_strategy=advice.retrieval_strategy,
+            requires_clarification=advice.requires_clarification,
+            clarification_question=advice.clarification_question,
+            should_deny=advice.should_deny,
+            denial_reason=advice.denial_reason,
+            reasoning_summary=advice.rationale or "deterministic_plan_from_retrieval_advice",
+            confidence=advice.confidence,
+        ),
+        advice,
+    )
+    if normalized_plan.should_deny or normalized_plan.requires_clarification:
+        return normalized_plan
+    if normalized_plan.request_kind == "multi_domain":
+        return normalized_plan
+    if normalized_plan.specialists:
+        return normalized_plan
+    if normalized_plan.retrieval_strategy in {
+        "direct_answer",
+        "structured_tools",
+        "hybrid_retrieval",
+        "graph_rag",
+        "document_search",
+        "workflow_status",
+        "pricing_projection",
+    } and normalized_plan.confidence >= 0.8:
+        return normalized_plan
+    return None
+
+
 async def _run_planner(ctx: SupervisorRunContext) -> SupervisorPlan:
     agent = Agent[SupervisorRunContext](
         name="Retrieval Planner",
         model=_agent_model(ctx.settings),
-        model_settings=ModelSettings(temperature=0.0, verbosity="medium"),
+        model_settings=ModelSettings(temperature=0.0, verbosity="low"),
         instructions=_planner_instructions,
         output_type=SupervisorPlan,
     )
@@ -4749,8 +4952,19 @@ async def run_specialist_supervisor(
         except Exception:
             logger.exception("specialist_supervisor_retrieval_planner_uncaught")
 
+        plan = _deterministic_plan_from_retrieval_advice(context)
+        if plan is not None:
+            logger.info(
+                "specialist_supervisor_deterministic_plan",
+                extra={
+                    "primary_domain": plan.primary_domain,
+                    "specialists": list(plan.specialists),
+                    "strategy": plan.retrieval_strategy,
+                },
+            )
         try:
-            plan = await _run_planner(context)
+            if plan is None:
+                plan = await _run_planner(context)
         except Exception:
             logger.exception("specialist_supervisor_planner_uncaught")
             answer = _safe_supervisor_fallback_answer(context, reason="specialist_supervisor_planner_safe_fallback")
@@ -4823,6 +5037,32 @@ async def run_specialist_supervisor(
 
         try:
             precomputed_specialist_results = await _execute_planned_specialists(context, plan=plan)
+            direct_result = _direct_compose_candidate(
+                context,
+                plan=plan,
+                specialist_results=precomputed_specialist_results,
+            )
+            if direct_result is not None:
+                answer = _build_direct_answer_from_specialist(context, plan=plan, result=direct_result)
+                await _persist_final_answer(
+                    context,
+                    answer=answer,
+                    route="specialist_direct",
+                    metadata={
+                        "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
+                        "plan": plan.model_dump(mode="json"),
+                        "specialists_used": [item.specialist_id for item in precomputed_specialist_results],
+                    },
+                )
+                return SpecialistSupervisorResponse(
+                    reason=answer.reason,
+                    metadata={
+                        "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
+                        "plan": plan.model_dump(mode="json"),
+                        "specialists_used": [item.specialist_id for item in precomputed_specialist_results],
+                    },
+                    answer=answer,
+                ).model_dump(mode="json")
             draft = await _run_manager_with_specialists(
                 context,
                 plan=plan,
