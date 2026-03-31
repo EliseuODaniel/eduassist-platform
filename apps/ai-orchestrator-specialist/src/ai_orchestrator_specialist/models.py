@@ -129,6 +129,21 @@ class SupervisorInputGuardrail(BaseModel):
     safe_reply: str | None = None
 
 
+class OperationalMemory(BaseModel):
+    active_domain: str | None = None
+    active_student_id: str | None = None
+    active_student_name: str | None = None
+    alternate_student_id: str | None = None
+    alternate_student_name: str | None = None
+    active_subject: str | None = None
+    active_topic: str | None = None
+    pending_kind: str | None = None
+    pending_prompt: str | None = None
+    multi_intent_domains: list[str] = Field(default_factory=list)
+    last_route: str | None = None
+    last_reason: str | None = None
+
+
 class SupervisorPlan(BaseModel):
     request_kind: PlannerRequestKind
     primary_domain: str

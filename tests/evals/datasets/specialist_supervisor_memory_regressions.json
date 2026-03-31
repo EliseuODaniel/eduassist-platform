@@ -1,0 +1,52 @@
+[
+  {
+    "prompt": "ana, notas",
+    "slice": "protected",
+    "category": "academic_memory",
+    "thread_id": "specialist_memory_other_student_grades",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Notas de Ana Oliveira"],
+    "forbidden_keywords": ["Panorama academico das contas vinculadas", "Qual aluno"]
+  },
+  {
+    "prompt": "E do outro aluno?",
+    "slice": "protected",
+    "category": "academic_memory",
+    "thread_id": "specialist_memory_other_student_grades",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Notas de Lucas Oliveira"],
+    "forbidden_keywords": ["Conhecimento geral", "Qual aluno", "Panorama academico das contas vinculadas"]
+  },
+  {
+    "prompt": "quanto falta pra ana passar em física?",
+    "slice": "protected",
+    "category": "academic_memory",
+    "thread_id": "specialist_memory_other_student_requirement",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Ana Oliveira", "Física"],
+    "forbidden_keywords": ["Consigo calcular isso, mas preciso que voce confirme a disciplina exata."]
+  },
+  {
+    "prompt": "E do outro aluno?",
+    "slice": "protected",
+    "category": "academic_memory",
+    "thread_id": "specialist_memory_other_student_requirement",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Lucas Oliveira", "Física"],
+    "forbidden_keywords": ["Conhecimento geral", "Qual aluno", "Consigo calcular isso, mas preciso que voce confirme a disciplina exata."]
+  },
+  {
+    "prompt": "qual nota da ana e os boletos também",
+    "slice": "protected",
+    "category": "academic_finance_combo",
+    "thread_id": "specialist_memory_multi_intent",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Resumo combinado de Ana Oliveira", "Academico", "Financeiro"],
+    "forbidden_keywords": ["Panorama academico das contas vinculadas", "Resumo financeiro das contas vinculadas", "Qual aluno"]
+  }
+]
