@@ -532,8 +532,25 @@ def _llamaindex_llm_supports_function_calls(llm: Any | None) -> bool:
     return bool(getattr(metadata, 'is_function_calling_model', False))
 
 
+def _has_documentary_retrieval_cues(message: str) -> bool:
+    normalized = rt._normalize_text(message)
+    documentary_cues = (
+        'com base nos documentos',
+        'nos documentos publicos',
+        'nos documentos públicos',
+        'com citacoes',
+        'com citações',
+        'cite as fontes',
+        'cite os documentos',
+        'mostre as fontes',
+    )
+    return any(cue in normalized for cue in documentary_cues)
+
+
 def _should_use_llamaindex_function_agent(*, request: MessageResponseRequest, public_plan: Any) -> bool:
     normalized = rt._normalize_text(request.message)
+    if _has_documentary_retrieval_cues(request.message):
+        return False
     if _should_use_llamaindex_native_subquestions(request=request, public_plan=public_plan):
         return True
     if public_plan.conversation_act in {'comparative', 'curriculum', 'highlight', 'features', 'pricing'}:
@@ -549,8 +566,6 @@ def _should_use_llamaindex_function_agent(*, request: MessageResponseRequest, pu
         marker_hits = sum(1 for marker in multi_aspect_markers if marker in f' {normalized} ')
         if marker_hits >= 2 and len(normalized.split()) >= 12:
             return True
-    if public_plan.conversation_act in {'comparative', 'curriculum', 'highlight'} and len(normalized.split()) >= 8:
-        return True
     return normalized.count('?') >= 2
 
 
@@ -574,17 +589,7 @@ def _route_public_query_tool(
     if hints.domain_hint == 'public_pricing' and hints.is_hypothetical and hints.quantity_hint:
         return tools['pricing_projection']
     normalized = rt._normalize_text(request.message)
-    documentary_cues = (
-        'com base nos documentos',
-        'nos documentos publicos',
-        'nos documentos públicos',
-        'com citacoes',
-        'com citações',
-        'cite as fontes',
-        'cite os documentos',
-        'mostre as fontes',
-    )
-    if any(cue in normalized for cue in documentary_cues):
+    if _has_documentary_retrieval_cues(request.message):
         return tools['public_retrieval']
 
     direct_profile_acts = {
@@ -679,6 +684,8 @@ def _build_llamaindex_llm(*, settings: Any) -> Any | None:
 
 def _should_use_llamaindex_native_subquestions(*, request: MessageResponseRequest, public_plan: Any) -> bool:
     normalized = rt._normalize_text(request.message)
+    if _has_documentary_retrieval_cues(request.message):
+        return False
     multi_part_markers = (
         '?',
         ' alem disso ',
@@ -712,14 +719,14 @@ async def _maybe_execute_llamaindex_subquestion_plan(
         use_async=True,
         structured_answer_filtering=True,
     )
-    query_engine = SubQuestionQueryEngine.from_defaults(
-        query_engine_tools=list(tools.values()),
-        llm=llm,
-        response_synthesizer=response_synthesizer,
-        use_async=True,
-        verbose=False,
-    )
     try:
+        query_engine = SubQuestionQueryEngine.from_defaults(
+            query_engine_tools=list(tools.values()),
+            llm=llm,
+            response_synthesizer=response_synthesizer,
+            use_async=True,
+            verbose=False,
+        )
         response = await _await_with_llamaindex_timeout(query_engine.aquery(analysis_message), settings=settings)
     except Exception:
         return None
@@ -1145,10 +1152,20 @@ async def maybe_execute_llamaindex_native_plan(
     citations: list[MessageResponseCitation] = []
     retrieval_backend = RetrievalBackend.none
     execution_reason = 'llamaindex_native_public_router'
+    documentary_direct_retrieval = _has_documentary_retrieval_cues(request.message)
 
     agent_workflow_result = None
     function_agent_result = None
-    if (
+    if documentary_direct_retrieval:
+        selected_tool_names = ('public_retrieval',)
+        try:
+            tool_response = await _await_with_llamaindex_timeout(
+                tools['public_retrieval'].query_engine.aquery(analysis_message),
+                settings=settings,
+            )
+        except Exception:
+            return None
+    elif (
         effective_path_profile.prefer_native_llamaindex_function_agent
         and _should_use_llamaindex_function_agent(request=request, public_plan=public_plan)
     ):
@@ -1175,7 +1192,9 @@ async def maybe_execute_llamaindex_native_plan(
             tools=tools,
             settings=settings,
         )
-    if function_agent_result is not None:
+    if documentary_direct_retrieval:
+        execution_reason = 'llamaindex_public_direct_retrieval'
+    elif function_agent_result is not None:
         answer_text, selected_tool_names, function_agent_citations, execution_reason = function_agent_result
         citations = list(function_agent_citations)
         retrieval_backend = RetrievalBackend.qdrant_hybrid if citations else RetrievalBackend.none
