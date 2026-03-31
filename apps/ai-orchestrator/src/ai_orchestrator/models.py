@@ -115,6 +115,7 @@ class RuntimeCapabilities(BaseModel):
     python_functions_available: bool
     llamaindex_workflow_available: bool
     specialist_supervisor_available: bool = False
+    telegram_debug_trace_footer_enabled: bool = False
     experimental_stack_readiness: dict[str, dict[str, object]] = Field(default_factory=dict)
     available_modes: list[OrchestrationMode]
     retrieval_backends: list[RetrievalBackend]
@@ -246,3 +247,4 @@ class MessageResponse(BaseModel):
     graph_path: list[str] = Field(default_factory=list)
     risk_flags: list[str] = Field(default_factory=list)
     reason: str
+    debug_trace: dict[str, Any] | None = None

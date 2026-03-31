@@ -5,6 +5,7 @@ import json
 import logging
 import secrets
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
@@ -100,6 +101,7 @@ class Settings(BaseSettings):
     graph_rag_local_embedding_api_key: str = 'ollama'
     orchestrator_engine: str = 'langgraph'
     feature_flag_primary_orchestration_stack: str | None = None
+    feature_flag_telegram_debug_trace_footer_enabled: bool = False
     crewai_pilot_url: str | None = None
     specialist_supervisor_pilot_url: str | None = None
     specialist_supervisor_pilot_timeout_seconds: float = 75.0
@@ -225,6 +227,168 @@ def _load_report_json(path: Path) -> dict[str, object] | None:
     except Exception:
         return None
     return payload if isinstance(payload, dict) else None
+
+
+def _dedupe_debug_items(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for raw in values:
+        normalized = str(raw or '').strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        ordered.append(normalized)
+    return ordered
+
+
+def _truncate_debug_list(values: list[str], *, limit: int = 6) -> str:
+    if not values:
+        return 'none'
+    if len(values) <= limit:
+        return ', '.join(values)
+    hidden = len(values) - limit
+    return f"{', '.join(values[:limit])}, +{hidden} more"
+
+
+def _debug_agents_for_response(*, response: MessageResponse, stack_name: str) -> list[str]:
+    candidates: list[str] = []
+    for node in response.graph_path:
+        token = str(node or '').strip()
+        lowered = token.lower()
+        if any(
+            keyword in lowered
+            for keyword in (
+                'specialist',
+                'planner',
+                'manager',
+                'judge',
+                'composer',
+                'critic',
+                'router',
+                'supervisor',
+            )
+        ):
+            candidates.append(token)
+    if not candidates:
+        candidates.append(stack_name)
+    return _dedupe_debug_items(candidates)
+
+
+def _debug_resources_for_response(response: MessageResponse) -> list[str]:
+    resources: list[str] = []
+    resources.extend(f'tool:{tool}' for tool in response.selected_tools)
+    if response.evidence_pack is not None:
+        for support in response.evidence_pack.supports:
+            label = str(support.label or support.kind or 'support').strip()
+            kind = str(support.kind or 'support').strip()
+            resources.append(f'support:{kind}:{label}')
+    for citation in response.citations:
+        title = str(citation.document_title or '').strip()
+        if title:
+            resources.append(f'doc:{title}')
+    return _dedupe_debug_items(resources)
+
+
+def _build_debug_trace(
+    *,
+    request: MessageResponseRequest,
+    response: MessageResponse,
+    bundle: Any,
+) -> dict[str, Any]:
+    stack_name = str(getattr(getattr(bundle, 'primary', None), 'name', '') or 'unknown')
+    bundle_mode = str(getattr(bundle, 'mode', '') or stack_name)
+    raw_path_nodes = [str(item).strip() for item in (response.graph_path or []) if str(item).strip()]
+    path_nodes = list(raw_path_nodes)
+    if stack_name == 'langgraph':
+        classify_indexes = [index for index, item in enumerate(path_nodes) if item == 'classify_request']
+        if len(classify_indexes) > 1:
+            path_nodes = path_nodes[classify_indexes[-1]:]
+    if not path_nodes or path_nodes[0] != stack_name:
+        path_nodes = [stack_name, *path_nodes]
+    agents = _debug_agents_for_response(response=response, stack_name=stack_name)
+    resources = _debug_resources_for_response(response)
+    evidence_pack = response.evidence_pack
+    retrieval: dict[str, Any] = {
+        'backend': response.retrieval_backend.value,
+        'strategy': evidence_pack.strategy if evidence_pack is not None else 'none',
+        'source_count': evidence_pack.source_count if evidence_pack is not None else 0,
+        'support_count': evidence_pack.support_count if evidence_pack is not None else 0,
+        'citation_count': len(response.citations),
+    }
+    trace: dict[str, Any] = {
+        'channel': request.channel.value,
+        'stack': stack_name,
+        'bundle_mode': bundle_mode,
+        'path': path_nodes,
+        'raw_path': raw_path_nodes,
+        'agents': agents,
+        'resources': resources,
+        'selected_tools': list(response.selected_tools),
+        'retrieval': retrieval,
+        'reason': response.reason,
+    }
+    if isinstance(getattr(bundle, 'experiment', None), dict):
+        trace['experiment'] = dict(bundle.experiment)
+    return trace
+
+
+def _format_telegram_debug_footer(trace: dict[str, Any]) -> str:
+    path = [str(item).strip() for item in trace.get('path', []) if str(item).strip()]
+    agents = [str(item).strip() for item in trace.get('agents', []) if str(item).strip()]
+    resources = [str(item).strip() for item in trace.get('resources', []) if str(item).strip()]
+    retrieval = trace.get('retrieval') if isinstance(trace.get('retrieval'), dict) else {}
+    retrieval_parts = [
+        f"backend={str(retrieval.get('backend') or 'none')}",
+        f"strategy={str(retrieval.get('strategy') or 'none')}",
+        f"sources={int(retrieval.get('source_count') or 0)}",
+        f"supports={int(retrieval.get('support_count') or 0)}",
+        f"citations={int(retrieval.get('citation_count') or 0)}",
+    ]
+    lines = [
+        '',
+        '[debug]',
+        f"stack: {trace.get('stack') or 'unknown'}",
+        f"bundle: {trace.get('bundle_mode') or 'unknown'}",
+        f"path: {' > '.join(path) if path else 'none'}",
+        f"agents: {_truncate_debug_list(agents)}",
+        f"resources: {_truncate_debug_list(resources)}",
+        f"retrieval: {', '.join(retrieval_parts)}",
+        f"reason: {str(trace.get('reason') or 'none')}",
+    ]
+    return '\n'.join(lines)
+
+
+def _append_telegram_debug_footer(text: str, footer: str) -> str:
+    combined = f'{text}{footer}'
+    max_length = 4096
+    if len(combined) <= max_length:
+        return combined
+    overflow = len(combined) - max_length
+    available_footer = max(0, len(footer) - overflow - len('\n[debug truncated]'))
+    if available_footer <= 0:
+        return text
+    return f"{text}{footer[:available_footer]}\n[debug truncated]"
+
+
+def _attach_telegram_debug_trace(
+    *,
+    request: MessageResponseRequest,
+    response: MessageResponse,
+    bundle: Any,
+    settings: Settings,
+) -> MessageResponse:
+    if request.channel != ConversationChannel.telegram:
+        return response
+    if not settings.feature_flag_telegram_debug_trace_footer_enabled:
+        return response
+    trace = _build_debug_trace(request=request, response=response, bundle=bundle)
+    footer = _format_telegram_debug_footer(trace)
+    return response.model_copy(
+        update={
+            'message_text': _append_telegram_debug_footer(response.message_text, footer),
+            'debug_trace': trace,
+        }
+    )
 
 
 def _experimental_stack_readiness(settings: Settings) -> dict[str, dict[str, object]]:
@@ -563,6 +727,7 @@ async def status() -> dict[str, object]:
             'specialist-supervisor-engine',
         ],
         'supportedEngines': sorted(SUPPORTED_PRIMARY_STACKS),
+        'telegramDebugTraceFooterEnabled': settings.feature_flag_telegram_debug_trace_footer_enabled,
         'graphRagEnabled': settings.graph_rag_enabled,
         'graphRagWorkspaceReady': graph_rag_workspace_ready(settings.graph_rag_workspace),
         'strictFrameworkIsolationEnabled': settings.strict_framework_isolation_enabled,
@@ -731,6 +896,7 @@ async def capabilities() -> RuntimeCapabilities:
         python_functions_available=True,
         llamaindex_workflow_available=LLAMAINDEX_WORKFLOW_AVAILABLE,
         specialist_supervisor_available=bool(settings.specialist_supervisor_pilot_url),
+        telegram_debug_trace_footer_enabled=settings.feature_flag_telegram_debug_trace_footer_enabled,
         experimental_stack_readiness=experimental_stack_readiness,
         available_modes=[
             OrchestrationMode.hybrid_retrieval,
@@ -833,7 +999,12 @@ async def message_response(
             primary_engine_mode=bundle.mode,
             shadow_result=shadow_result,
         )
-    return response
+    return _attach_telegram_debug_trace(
+        request=request,
+        response=response,
+        bundle=bundle,
+        settings=settings,
+    )
 
 
 @app.get('/v1/tools')
