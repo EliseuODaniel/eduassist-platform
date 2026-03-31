@@ -294,6 +294,30 @@ def _maybe_public_unpublished_direct_answer(
             'Hoje os canais publicos do Colegio Horizonte nao informam a quantidade total de livros da Biblioteca Aurora. '
             'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
         )
+    if any(
+        rt._message_matches_term(normalized_message, term)
+        for term in {'quantas salas', 'quantidade de salas', 'numero de salas', 'número de salas'}
+    ):
+        return (
+            'Hoje os canais publicos do Colegio Horizonte nao informam a quantidade total de salas de aula. '
+            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
+        )
+    if any(
+        rt._message_matches_term(normalized_message, term)
+        for term in {'idade minima', 'idade mínima', 'idade para estudar', 'idade para matricular'}
+    ):
+        return (
+            'Hoje os canais publicos do Colegio Horizonte nao publicam uma idade minima exata para ingresso. '
+            'O que aparece oficialmente sao os segmentos atendidos e o enquadramento por serie; para confirmar idade e adequacao, o canal certo e admissions.'
+        )
+    if any(
+        rt._message_matches_term(normalized_message, term)
+        for term in {'cardapio', 'cardápio'}
+    ) and rt._message_matches_term(normalized_message, 'cantina'):
+        return (
+            'Hoje os canais publicos do Colegio Horizonte confirmam que ha cantina e almoco supervisionado, '
+            'mas nao publicam um cardapio detalhado. Para esse detalhe, o melhor caminho e a secretaria ou o canal comercial.'
+        )
     return None
 
 

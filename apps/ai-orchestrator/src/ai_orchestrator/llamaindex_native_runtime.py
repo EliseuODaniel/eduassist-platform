@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
@@ -20,8 +21,9 @@ from llama_index.core.schema import NodeWithScore, QueryBundle, TextNode
 from llama_index.core.selectors import EmbeddingSingleSelector, PydanticSingleSelector
 from llama_index.core.tools import FunctionTool, QueryEngineTool
 from llama_index.core.memory import Memory
+from llama_index.core.prompts import PromptTemplate
 from llama_index.core.vector_stores.types import FilterOperator, MetadataFilter, MetadataFilters, MetadataInfo, VectorStoreInfo
-from pydantic import PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr
 from qdrant_client import AsyncQdrantClient, QdrantClient
 
 from . import runtime as rt
@@ -30,8 +32,10 @@ from .evidence_pack import build_retrieval_evidence_pack, build_structured_tool_
 from .entity_resolution import resolve_entity_hints
 from .kernel_runtime import _maybe_hypothetical_public_pricing_answer
 from .llm_provider import _google_model_candidates
+from .llamaindex_public_intent_registry import LLAMAINDEX_PUBLIC_INTENT_RULES, LlamaIndexPublicIntentRule
 from .models import (
     AccessTier,
+    IntentClassification,
     MessageEvidencePack,
     MessageResponse,
     MessageResponseCitation,
@@ -76,6 +80,89 @@ class LlamaIndexPublicExecution:
     retrieval_backend: RetrievalBackend
     reason: str
     graph_path: tuple[str, ...]
+
+
+class LlamaIndexNativePublicDecision(BaseModel):
+    conversation_act: str = Field(default='canonical_fact')
+    answer_mode: str = Field(default='profile')
+    required_tools: list[str] = Field(default_factory=list)
+    secondary_acts: list[str] = Field(default_factory=list)
+    requested_attribute: str | None = None
+    requested_channel: str | None = None
+    focus_hint: str | None = None
+    unpublished_key: str | None = None
+    use_conversation_context: bool = False
+
+
+_LLAMAINDEX_NATIVE_PUBLIC_ROUTER_PROMPT = PromptTemplate(
+    """
+Voce e um roteador semantico para perguntas publicas de uma escola.
+Sua tarefa e produzir uma decisao estruturada para o runtime.
+
+Escolha `conversation_act` usando um dos valores:
+- greeting
+- utility_date
+- auth_guidance
+- access_scope
+- assistant_identity
+- capabilities
+- service_routing
+- document_submission
+- careers
+- teacher_directory
+- leadership
+- contacts
+- web_presence
+- social_presence
+- comparative
+- pricing
+- schedule
+- operating_hours
+- curriculum
+- features
+- highlight
+- visit
+- location
+- confessional
+- kpi
+- segments
+- school_name
+- timeline
+- calendar_events
+- canonical_fact
+
+Escolha `answer_mode` usando um dos valores:
+- profile: a pergunta e clara e pode ser respondida com fatos publicos estruturados, diretorios ou politicas publicadas.
+- documentary: a pergunta e aberta, explicativa, comparativa ou pede sintese melhor respondida por retrieval documental com citacoes.
+- pricing: a pergunta trata de valores, bolsas, descontos, matricula ou simulacoes publicas.
+- unpublished: a pergunta e clara e publica, mas o detalhe exato pedido nao aparece nos dados publicados.
+- clarify: use somente se a pergunta estiver realmente ambigua e sem informacao minima para responder ou marcar como unpublished.
+
+Regras obrigatorias:
+- Prefira `unpublished` a `clarify` quando a pergunta for clara, mas o dado nao estiver publicado.
+- Prefira `documentary` para "me explique", "por que escolher", "quais os diferenciais", "proposta pedagogica", "com base nos documentos", comparacoes abertas e perguntas que pedem argumento institucional.
+- Use `pricing` para bolsa, desconto, mensalidade, taxa de matricula e simulacao comercial publica.
+- Se a pergunta pedir contagens ou detalhes exatos nao publicados, use `unpublished`.
+- Se a pergunta pedir idade minima e esse dado nao estiver explicitamente publicado, use `unpublished` com `unpublished_key="minimum_age"`.
+- Se a pergunta pedir quantidade de salas de aula e isso nao estiver explicitamente publicado, use `unpublished` com `unpublished_key="classroom_count"`.
+- Se a pergunta pedir total de alunos, use `unpublished` com `unpublished_key="total_students"`.
+- Se a pergunta pedir total de livros, use `unpublished` com `unpublished_key="library_book_count"`.
+- Se a pergunta pedir cardapio da cantina e esse dado nao estiver publicado, use `unpublished` com `unpublished_key="cafeteria_menu"`.
+- `clarify` deve ser raro.
+
+Mensagem do usuario:
+{message}
+
+Preview atual:
+{preview_summary}
+
+Contexto recente:
+{conversation_context}
+
+Resumo curado do que esta publicado:
+{profile_summary}
+""".strip()
+)
 
 
 class FastembedSelectorEmbedding(BaseEmbedding):
@@ -211,6 +298,13 @@ class PublicProfileQueryEngine(CustomQueryEngine):
         if resolved_plan is None or rule_plan.conversation_act != 'canonical_fact':
             resolved_plan = rule_plan
         preview = self.preview.model_copy(deep=True)
+        preview.mode = OrchestrationMode.structured_tool
+        preview.reason = 'llamaindex_public_profile'
+        preview.classification = _public_classification_for_act(
+            resolved_plan.conversation_act,
+            'roteamento nativo do llamaindex para fato publico estruturado',
+        )
+        preview.needs_authentication = False
         preview.selected_tools = list(resolved_plan.required_tools)
         answer = await rt._compose_structured_tool_answer(
             settings=self.settings,
@@ -290,6 +384,13 @@ class PublicPricingProjectionQueryEngine(CustomQueryEngine):
 
     async def acustom_query(self, query_str: str) -> Response:
         preview = self.preview.model_copy(deep=True)
+        preview.mode = OrchestrationMode.structured_tool
+        preview.reason = 'llamaindex_public_pricing_projection'
+        preview.classification = _public_classification_for_act(
+            'pricing',
+            'roteamento nativo do llamaindex para precificacao publica',
+        )
+        preview.needs_authentication = False
         direct_pricing_answer = self._direct_pricing_answer(query_str)
         if direct_pricing_answer:
             answer, pricing_plan = direct_pricing_answer
@@ -471,9 +572,13 @@ def _should_use_llamaindex_native_public_router(plan: KernelPlan) -> bool:
     preview = plan.preview
     if preview.classification.access_tier is not AccessTier.public:
         return False
-    if preview.classification.domain not in {QueryDomain.institution, QueryDomain.calendar}:
+    if preview.classification.domain not in {QueryDomain.institution, QueryDomain.calendar, QueryDomain.unknown}:
         return False
-    return preview.mode in {OrchestrationMode.structured_tool, OrchestrationMode.hybrid_retrieval}
+    return preview.mode in {
+        OrchestrationMode.structured_tool,
+        OrchestrationMode.hybrid_retrieval,
+        OrchestrationMode.clarify,
+    }
 
 
 def _tool_descriptions(plan: Any) -> dict[str, str]:
@@ -525,6 +630,457 @@ def _extract_response_citations(response: Response) -> tuple[MessageResponseCita
         except Exception:
             continue
     return tuple(citations)
+
+
+def _llamaindex_native_fetch_profile_for_act(conversation_act: str) -> bool:
+    return conversation_act not in {
+        'greeting',
+        'utility_date',
+        'auth_guidance',
+        'access_scope',
+        'assistant_identity',
+        'capabilities',
+        'service_routing',
+    }
+
+
+def _public_classification_for_act(conversation_act: str, reason: str) -> IntentClassification:
+    domain = QueryDomain.calendar if conversation_act in {'timeline', 'calendar_events'} else QueryDomain.institution
+    return IntentClassification(
+        domain=domain,
+        access_tier=AccessTier.public,
+        confidence=0.9,
+        reason=reason,
+    )
+
+
+def _native_public_profile_summary(profile: dict[str, Any]) -> str:
+    leadership = [
+        {
+            'title': str(item.get('title', '')).strip(),
+            'name': str(item.get('name', '')).strip(),
+        }
+        for item in (profile.get('leadership_team') or [])
+        if isinstance(item, dict)
+    ][:4]
+    facilities = [
+        {
+            'label': str(item.get('label', '')).strip(),
+            'available': bool(item.get('available')),
+        }
+        for item in (profile.get('feature_inventory') or [])
+        if isinstance(item, dict)
+    ][:12]
+    highlights = [
+        str(item.get('title', '')).strip()
+        for item in (profile.get('highlights') or [])
+        if isinstance(item, dict) and str(item.get('title', '')).strip()
+    ][:8]
+    services = [
+        str(item.get('title', '')).strip()
+        for item in (profile.get('service_catalog') or [])
+        if isinstance(item, dict) and str(item.get('title', '')).strip()
+    ][:8]
+    summary = {
+        'school_name': str(profile.get('school_name', '')).strip(),
+        'segments': list(profile.get('segments') or []),
+        'shift_offers': [
+            {
+                'segment': str(item.get('segment', '')).strip(),
+                'shift_label': str(item.get('shift_label', '')).strip(),
+                'starts_at': str(item.get('starts_at', '')).strip(),
+                'ends_at': str(item.get('ends_at', '')).strip(),
+            }
+            for item in (profile.get('shift_offers') or [])
+            if isinstance(item, dict)
+        ][:6],
+        'interval_schedule': [
+            {
+                'segment': str(item.get('segment', '')).strip(),
+                'label': str(item.get('label', '')).strip(),
+                'starts_at': str(item.get('starts_at', '')).strip(),
+                'ends_at': str(item.get('ends_at', '')).strip(),
+            }
+            for item in (profile.get('interval_schedule') or [])
+            if isinstance(item, dict)
+        ][:6],
+        'leadership': leadership,
+        'facilities_and_activities': facilities,
+        'highlights': highlights,
+        'services': services,
+        'admissions_highlights': list(profile.get('admissions_highlights') or []),
+        'admissions_required_documents': list(profile.get('admissions_required_documents') or []),
+        'academic_policy_available': bool(profile.get('academic_policy')),
+        'published_gaps': {
+            'minimum_age': False,
+            'classroom_count': False,
+            'total_students': False,
+            'library_book_count': False,
+            'cafeteria_menu': False,
+        },
+    }
+    return json.dumps(summary, ensure_ascii=False, sort_keys=True)
+
+
+def _recent_public_context_summary(conversation_context: dict[str, Any] | None) -> str:
+    if not isinstance(conversation_context, dict):
+        return 'sem contexto recente relevante'
+    lines = [
+        f'{sender_type}: {content}'
+        for sender_type, content in rt._recent_message_lines(conversation_context)[-4:]
+    ]
+    if not lines:
+        return 'sem contexto recente relevante'
+    return '\n'.join(lines)
+
+
+def _llamaindex_public_rule_matches(*, rule: LlamaIndexPublicIntentRule, normalized_message: str) -> bool:
+    if rule.none_of and any(term in normalized_message for term in rule.none_of):
+        return False
+    if rule.all_of and not all(term in normalized_message for term in rule.all_of):
+        return False
+    if rule.any_of and not any(term in normalized_message for term in rule.any_of):
+        return False
+    return bool(rule.any_of or rule.all_of)
+
+
+def _heuristic_llamaindex_native_public_decision(
+    *,
+    message: str,
+    conversation_context: dict[str, Any] | None,
+) -> LlamaIndexNativePublicDecision | None:
+    normalized_message = rt._normalize_text(message)
+    recent_context = _recent_public_context_summary(conversation_context)
+    recent_normalized = rt._normalize_text(recent_context)
+    matched_rule: LlamaIndexPublicIntentRule | None = None
+    for rule in LLAMAINDEX_PUBLIC_INTENT_RULES:
+        if _llamaindex_public_rule_matches(rule=rule, normalized_message=normalized_message):
+            matched_rule = rule
+            break
+        if rule.use_conversation_context and rt._is_follow_up_query(message):
+            if _llamaindex_public_rule_matches(rule=rule, normalized_message=recent_normalized):
+                matched_rule = rule
+                break
+    if matched_rule is None:
+        return None
+    return LlamaIndexNativePublicDecision(
+        conversation_act=matched_rule.conversation_act,
+        answer_mode=matched_rule.answer_mode,
+        required_tools=list(matched_rule.required_tools),
+        secondary_acts=list(matched_rule.secondary_acts),
+        requested_attribute=matched_rule.requested_attribute,
+        requested_channel=matched_rule.requested_channel,
+        focus_hint=matched_rule.focus_hint,
+        unpublished_key=matched_rule.unpublished_key,
+        use_conversation_context=matched_rule.use_conversation_context,
+    )
+
+
+def _build_llamaindex_analysis_query(
+    *,
+    original_message: str,
+    analysis_message: str,
+    native_decision: LlamaIndexNativePublicDecision | None,
+    public_plan: Any,
+) -> str:
+    parts = [analysis_message]
+    requested_attribute = None
+    requested_channel = None
+    focus_hint = None
+    answer_mode = None
+    if native_decision is not None:
+        requested_attribute = native_decision.requested_attribute
+        requested_channel = native_decision.requested_channel
+        focus_hint = native_decision.focus_hint
+        answer_mode = native_decision.answer_mode
+    if requested_attribute is None:
+        requested_attribute = getattr(public_plan, 'requested_attribute', None)
+    if requested_channel is None:
+        requested_channel = getattr(public_plan, 'requested_channel', None)
+    if focus_hint is None:
+        focus_hint = getattr(public_plan, 'focus_hint', None)
+    if focus_hint:
+        parts.append(f'Foco da resposta: {focus_hint}.')
+    if requested_attribute:
+        parts.append(f'Atributo principal pedido: {requested_attribute}.')
+    if requested_channel:
+        parts.append(f'Canal de referencia caso o dado nao esteja publicado: {requested_channel}.')
+    if answer_mode == 'documentary':
+        parts.append(
+            'Use evidencias documentais publicas do Colegio Horizonte e priorize grounding com citacoes quando disponiveis.'
+        )
+    elif answer_mode == 'profile':
+        parts.append('Prefira fatos publicos estruturados e canonicos da escola.')
+    elif answer_mode == 'unpublished':
+        parts.append(
+            'Se o dado especifico nao estiver publicado, diga explicitamente que a pergunta e valida, mas o dado nao esta publicado oficialmente.'
+        )
+    normalized_original = rt._normalize_text(original_message)
+    normalized_analysis = rt._normalize_text(analysis_message)
+    if normalized_original and normalized_original not in normalized_analysis:
+        parts.append(f'Pergunta original do usuario: {original_message}')
+    return '\n'.join(part for part in parts if part).strip()
+
+
+def _build_llamaindex_retrieval_query(
+    *,
+    original_message: str,
+    native_decision: LlamaIndexNativePublicDecision | None,
+    public_plan: Any,
+) -> str:
+    focus_hint = None
+    requested_attribute = None
+    if native_decision is not None:
+        focus_hint = native_decision.focus_hint
+        requested_attribute = native_decision.requested_attribute
+    if focus_hint is None:
+        focus_hint = getattr(public_plan, 'focus_hint', None)
+    if requested_attribute is None:
+        requested_attribute = getattr(public_plan, 'requested_attribute', None)
+    fragments = [original_message.strip()]
+    if requested_attribute:
+        fragments.append(str(requested_attribute).replace('_', ' ').strip())
+    if focus_hint:
+        fragments.append(str(focus_hint).strip())
+    return ' | '.join(fragment for fragment in fragments if fragment).strip()
+
+
+def _merge_llamaindex_native_public_decisions(
+    *,
+    llm_decision: LlamaIndexNativePublicDecision | None,
+    heuristic_decision: LlamaIndexNativePublicDecision | None,
+) -> LlamaIndexNativePublicDecision | None:
+    if heuristic_decision is not None:
+        return heuristic_decision
+    return llm_decision
+
+
+def _normalize_llamaindex_native_public_decision(
+    decision: LlamaIndexNativePublicDecision | None,
+) -> LlamaIndexNativePublicDecision | None:
+    if decision is None:
+        return None
+    allowed_acts = set(rt.PUBLIC_SEMANTIC_ACTS)
+    allowed_tools = set(rt.PUBLIC_SEMANTIC_TOOLS)
+    allowed_modes = {'profile', 'documentary', 'pricing', 'unpublished', 'clarify'}
+    conversation_act = str(decision.conversation_act or 'canonical_fact').strip()
+    if conversation_act not in allowed_acts:
+        conversation_act = 'canonical_fact'
+    answer_mode = str(decision.answer_mode or 'profile').strip()
+    if answer_mode not in allowed_modes:
+        answer_mode = 'profile'
+    required_tools = [
+        tool_name
+        for tool_name in decision.required_tools
+        if isinstance(tool_name, str) and tool_name in allowed_tools
+    ]
+    secondary_acts = [
+        act
+        for act in decision.secondary_acts
+        if isinstance(act, str) and act in allowed_acts and act != conversation_act
+    ][:2]
+    requested_attribute = str(decision.requested_attribute or '').strip() or None
+    requested_channel = str(decision.requested_channel or '').strip() or None
+    focus_hint = str(decision.focus_hint or '').strip() or None
+    unpublished_key = str(decision.unpublished_key or '').strip() or None
+    if answer_mode == 'pricing':
+        conversation_act = 'pricing'
+    if answer_mode == 'documentary' and conversation_act == 'canonical_fact':
+        conversation_act = 'highlight'
+    return LlamaIndexNativePublicDecision(
+        conversation_act=conversation_act,
+        answer_mode=answer_mode,
+        required_tools=required_tools,
+        secondary_acts=secondary_acts,
+        requested_attribute=requested_attribute,
+        requested_channel=requested_channel,
+        focus_hint=focus_hint,
+        unpublished_key=unpublished_key,
+        use_conversation_context=bool(decision.use_conversation_context),
+    )
+
+
+async def _resolve_llamaindex_native_public_decision(
+    *,
+    llm: Any | None,
+    settings: Any,
+    message: str,
+    preview: Any,
+    school_profile: dict[str, Any],
+    conversation_context: dict[str, Any] | None,
+) -> LlamaIndexNativePublicDecision | None:
+    if llm is None:
+        return None
+    try:
+        decision = await _await_with_llamaindex_timeout(
+            llm.astructured_predict(
+                LlamaIndexNativePublicDecision,
+                _LLAMAINDEX_NATIVE_PUBLIC_ROUTER_PROMPT,
+                message=message,
+                preview_summary=json.dumps(
+                    {
+                        'mode': str(getattr(preview, 'mode', '')),
+                        'domain': str(getattr(getattr(preview, 'classification', None), 'domain', '')),
+                        'access_tier': str(getattr(getattr(preview, 'classification', None), 'access_tier', '')),
+                        'selected_tools': list(getattr(preview, 'selected_tools', []) or []),
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                conversation_context=_recent_public_context_summary(conversation_context),
+                profile_summary=_native_public_profile_summary(school_profile),
+            ),
+            settings=settings,
+        )
+    except Exception:
+        return None
+    return _normalize_llamaindex_native_public_decision(decision)
+
+
+def _should_run_llamaindex_native_public_resolver(
+    *,
+    request: MessageResponseRequest,
+    plan: KernelPlan,
+) -> bool:
+    preview = plan.preview
+    if preview.classification.access_tier is not AccessTier.public:
+        return False
+    if preview.classification.domain not in {QueryDomain.institution, QueryDomain.calendar, QueryDomain.unknown}:
+        return False
+    return True
+
+
+def _looks_like_llamaindex_value_prop_query(message: str) -> bool:
+    normalized = rt._normalize_text(message)
+    value_markers = (
+        'por que deveria',
+        'porque deveria',
+        'por que escolher',
+        'porque escolher',
+        'vale a pena',
+        'diferenciais',
+        'meus filhos nesse colegio',
+        'meus filhos nessa escola',
+    )
+    school_markers = ('colegio', 'colégio', 'escola', 'filhos')
+    return any(marker in normalized for marker in value_markers) and any(
+        marker in normalized for marker in school_markers
+    )
+
+
+def _native_public_plan_from_decision(
+    *,
+    message: str,
+    decision: LlamaIndexNativePublicDecision,
+    conversation_context: dict[str, Any] | None,
+    school_profile: dict[str, Any] | None,
+) -> Any:
+    semantic_plan = rt.PublicInstitutionPlan(
+        conversation_act=decision.conversation_act,
+        required_tools=tuple(decision.required_tools),
+        fetch_profile=_llamaindex_native_fetch_profile_for_act(decision.conversation_act),
+        secondary_acts=tuple(decision.secondary_acts),
+        requested_attribute=decision.requested_attribute,
+        requested_channel=decision.requested_channel,
+        focus_hint=decision.focus_hint,
+        semantic_source='llamaindex_native',
+        use_conversation_context=decision.use_conversation_context,
+    )
+    return rt._build_public_institution_plan(
+        message,
+        list(semantic_plan.required_tools),
+        semantic_plan=semantic_plan,
+        conversation_context=conversation_context,
+        school_profile=school_profile,
+    )
+
+
+def _native_llamaindex_public_unpublished_answer(
+    *,
+    decision: LlamaIndexNativePublicDecision | None,
+    message: str,
+    school_profile: dict[str, Any],
+) -> str | None:
+    normalized = rt._normalize_text(message)
+    school_reference = str(school_profile.get('school_name', 'Colegio Horizonte')).strip() or 'Colegio Horizonte'
+    unpublished_key = str(getattr(decision, 'unpublished_key', '') or '').strip()
+    recognized_unpublished_keys = {
+        'classroom_count',
+        'minimum_age',
+        'total_students',
+        'library_book_count',
+        'cafeteria_menu',
+    }
+    if unpublished_key not in recognized_unpublished_keys:
+        unpublished_key = ''
+    if not unpublished_key:
+        if any(rt._message_matches_term(normalized, term) for term in {'quantas salas', 'quantidade de salas', 'numero de salas', 'número de salas'}):
+            unpublished_key = 'classroom_count'
+        elif any(rt._message_matches_term(normalized, term) for term in {'idade minima', 'idade mínima', 'idade para estudar', 'idade para matricular'}):
+            unpublished_key = 'minimum_age'
+        elif any(rt._message_matches_term(normalized, term) for term in {'quantos alunos', 'quantidade de alunos', 'numero de alunos', 'número de alunos'}):
+            unpublished_key = 'total_students'
+        elif any(rt._message_matches_term(normalized, term) for term in {'quantos livros', 'quantidade de livros', 'numero de livros', 'número de livros'}) and any(
+            rt._message_matches_term(normalized, term) for term in {'biblioteca', 'livros', 'acervo'}
+        ):
+            unpublished_key = 'library_book_count'
+        elif any(rt._message_matches_term(normalized, term) for term in {'cardapio', 'cardápio'}) and rt._message_matches_term(normalized, 'cantina'):
+            unpublished_key = 'cafeteria_menu'
+    if unpublished_key == 'classroom_count':
+        return (
+            f'Hoje os canais publicos de {school_reference} nao informam a quantidade total de salas de aula. '
+            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
+        )
+    if unpublished_key == 'minimum_age':
+        return (
+            f'Hoje os canais publicos de {school_reference} nao publicam uma idade minima exata para ingresso. '
+            'O que aparece oficialmente sao os segmentos atendidos e o enquadramento por serie; para confirmar idade e adequacao de ingresso, o canal certo e admissions.'
+        )
+    if unpublished_key == 'total_students':
+        return (
+            f'Hoje os canais publicos de {school_reference} nao informam o total de alunos matriculados. '
+            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
+        )
+    if unpublished_key == 'library_book_count':
+        return (
+            f'Hoje os canais publicos de {school_reference} nao informam a quantidade total de livros da biblioteca. '
+            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
+        )
+    if unpublished_key == 'cafeteria_menu':
+        return (
+            f'Hoje os canais publicos de {school_reference} confirmam que ha cantina e almoco supervisionado, '
+            'mas nao publicam um cardapio detalhado. Para esse detalhe, o melhor caminho e a secretaria ou o canal comercial.'
+        )
+    return None
+
+
+def _should_force_llamaindex_documentary_retrieval(
+    *,
+    message: str,
+    public_plan: Any,
+    native_decision: LlamaIndexNativePublicDecision | None,
+) -> bool:
+    if _has_documentary_retrieval_cues(message):
+        return True
+    if native_decision is not None and native_decision.answer_mode == 'documentary':
+        return True
+    normalized = rt._normalize_text(message)
+    if public_plan.conversation_act not in {'highlight', 'comparative', 'curriculum', 'confessional'}:
+        return False
+    return any(
+        marker in normalized
+        for marker in (
+            'por que ',
+            'porque ',
+            'me explique',
+            'explique',
+            'diferenciais',
+            'vale a pena',
+            'proposta pedagogica',
+            'proposta pedagógica',
+            'com base',
+        )
+    )
 
 
 def _llamaindex_llm_supports_function_calls(llm: Any | None) -> bool:
@@ -621,6 +1177,8 @@ def _route_public_query_tool(
         'auth_guidance',
         'access_scope',
         'utility_date',
+        'kpi',
+        'canonical_fact',
     }
     if plan.conversation_act in direct_profile_acts:
         return tools['public_profile']
@@ -1089,6 +1647,26 @@ async def maybe_execute_llamaindex_native_plan(
     if not isinstance(school_profile, dict):
         return None
 
+    llamaindex_llm = _build_llamaindex_llm(settings=settings)
+    llm_native_public_decision = None
+    if _should_run_llamaindex_native_public_resolver(request=request, plan=plan):
+        llm_native_public_decision = await _resolve_llamaindex_native_public_decision(
+            llm=llamaindex_llm,
+            settings=settings,
+            message=request.message,
+            preview=plan.preview,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+        )
+    heuristic_public_decision = _heuristic_llamaindex_native_public_decision(
+        message=request.message,
+        conversation_context=conversation_context,
+    )
+    native_public_decision = _merge_llamaindex_native_public_decisions(
+        llm_decision=llm_native_public_decision,
+        heuristic_decision=heuristic_public_decision,
+    )
+
     public_plan = await rt._resolve_public_institution_plan(
         settings=settings,
         message=request.message,
@@ -1096,11 +1674,59 @@ async def maybe_execute_llamaindex_native_plan(
         conversation_context=conversation_context,
         school_profile=school_profile,
     )
+    if native_public_decision is not None:
+        public_plan = _native_public_plan_from_decision(
+            message=request.message,
+            decision=native_public_decision,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
+    elif _looks_like_llamaindex_value_prop_query(request.message):
+        native_public_decision = LlamaIndexNativePublicDecision(
+            conversation_act='highlight',
+            answer_mode='documentary',
+            required_tools=['get_public_school_profile'],
+            use_conversation_context=True,
+        )
+        public_plan = _native_public_plan_from_decision(
+            message=request.message,
+            decision=native_public_decision,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
     preview = plan.preview.model_copy(deep=True)
     preview.selected_tools = list(public_plan.required_tools)
+    if (
+        preview.mode is OrchestrationMode.clarify
+        and native_public_decision is not None
+        and native_public_decision.answer_mode != 'clarify'
+    ):
+        preview.mode = OrchestrationMode.structured_tool
+        preview.reason = 'llamaindex_native_public_resolver'
+    if native_public_decision is not None and native_public_decision.answer_mode != 'clarify':
+        preview.classification = _public_classification_for_act(
+            public_plan.conversation_act,
+            'roteamento publico nativo do llamaindex resolveu a pergunta sem clarificacao',
+        )
+        preview.needs_authentication = False
+    effective_analysis_message = _build_llamaindex_analysis_query(
+        original_message=request.message,
+        analysis_message=analysis_message,
+        native_decision=native_public_decision,
+        public_plan=public_plan,
+    )
+    effective_retrieval_query = _build_llamaindex_retrieval_query(
+        original_message=request.message,
+        native_decision=native_public_decision,
+        public_plan=public_plan,
+    )
 
     descriptions = _tool_descriptions(public_plan)
-    llamaindex_llm = _build_llamaindex_llm(settings=settings)
+    native_public_unpublished_answer = _native_llamaindex_public_unpublished_answer(
+        decision=native_public_decision,
+        message=request.message,
+        school_profile=school_profile,
+    )
     retrieval_query_engine, citation_retriever = _build_public_retrieval_query_engine(
         settings=settings,
         preview=preview,
@@ -1152,15 +1778,40 @@ async def maybe_execute_llamaindex_native_plan(
     citations: list[MessageResponseCitation] = []
     retrieval_backend = RetrievalBackend.none
     execution_reason = 'llamaindex_native_public_router'
-    documentary_direct_retrieval = _has_documentary_retrieval_cues(request.message)
+    documentary_direct_retrieval = _should_force_llamaindex_documentary_retrieval(
+        message=request.message,
+        public_plan=public_plan,
+        native_decision=native_public_decision,
+    )
 
     agent_workflow_result = None
     function_agent_result = None
-    if documentary_direct_retrieval:
+    if native_public_unpublished_answer:
+        preview.mode = OrchestrationMode.structured_tool
+        preview.reason = 'llamaindex_public_unpublished_fact'
+        preview.classification = _public_classification_for_act(
+            public_plan.conversation_act,
+            'a pergunta e publica e valida, mas o dado especifico nao esta publicado',
+        )
+        preview.needs_authentication = False
+        preview.selected_tools = list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile']))
+        answer_text = native_public_unpublished_answer
+        selected_tool_names = ('public_profile',)
+        execution_reason = 'llamaindex_public_unpublished_fact'
+    elif native_public_decision is not None and native_public_decision.answer_mode == 'profile':
+        selected_tool_names = ('public_profile',)
+        try:
+            tool_response = await _await_with_llamaindex_timeout(
+                tools['public_profile'].query_engine.aquery(effective_analysis_message),
+                settings=settings,
+            )
+        except Exception:
+            return None
+    elif documentary_direct_retrieval:
         selected_tool_names = ('public_retrieval',)
         try:
             tool_response = await _await_with_llamaindex_timeout(
-                tools['public_retrieval'].query_engine.aquery(analysis_message),
+                tools['public_retrieval'].query_engine.aquery(effective_retrieval_query),
                 settings=settings,
             )
         except Exception:
@@ -1170,7 +1821,7 @@ async def maybe_execute_llamaindex_native_plan(
         and _should_use_llamaindex_function_agent(request=request, public_plan=public_plan)
     ):
         agent_workflow_result = await _maybe_execute_llamaindex_agent_workflow(
-            analysis_message=analysis_message,
+            analysis_message=effective_analysis_message,
             conversation_context=conversation_context,
             llm=llamaindex_llm,
             tools=tools,
@@ -1186,59 +1837,64 @@ async def maybe_execute_llamaindex_native_plan(
         and _should_use_llamaindex_function_agent(request=request, public_plan=public_plan)
     ):
         function_agent_result = await _maybe_execute_llamaindex_function_agent(
-            analysis_message=analysis_message,
+            analysis_message=effective_analysis_message,
             original_message=request.message,
             llm=llamaindex_llm,
             tools=tools,
             settings=settings,
         )
-    if documentary_direct_retrieval:
+    if native_public_unpublished_answer:
+        retrieval_backend = RetrievalBackend.none
+    elif documentary_direct_retrieval:
         execution_reason = 'llamaindex_public_direct_retrieval'
     elif function_agent_result is not None:
         answer_text, selected_tool_names, function_agent_citations, execution_reason = function_agent_result
         citations = list(function_agent_citations)
         retrieval_backend = RetrievalBackend.qdrant_hybrid if citations else RetrievalBackend.none
-    elif effective_path_profile.prefer_native_llamaindex_subquestions and _should_use_llamaindex_native_subquestions(
-        request=request,
-        public_plan=public_plan,
-    ):
-        subquestion_result = await _maybe_execute_llamaindex_subquestion_plan(
-            analysis_message=analysis_message,
-            tools=tools,
-            llm=llamaindex_llm,
-            settings=settings,
-        )
-    if subquestion_result is not None:
-        tool_response, selected_tool_name = subquestion_result
-        selected_tool_names = (selected_tool_name,)
-        execution_reason = 'llamaindex_subquestion_query_engine'
-    elif effective_path_profile.prefer_native_llamaindex_selector and llamaindex_llm is not None:
-        router_result = await _maybe_execute_llamaindex_router_query_engine(
-            analysis_message=analysis_message,
-            tools=tools,
-            llm=llamaindex_llm,
-            settings=settings,
-        )
-        if router_result is not None:
-            tool_response, selected_tool_names = router_result
-            execution_reason = 'llamaindex_router_query_engine'
-    else:
-        selected_tool = _route_public_query_tool(
+    elif tool_response is None:
+        if effective_path_profile.prefer_native_llamaindex_subquestions and _should_use_llamaindex_native_subquestions(
             request=request,
-            plan=public_plan,
-            tools=tools,
-            embedding_model=settings.document_embedding_model,
-            llm=llamaindex_llm if effective_path_profile.prefer_native_llamaindex_selector else None,
-        )
-        selected_tool_name = selected_tool.metadata.name
-        selected_tool_names = (selected_tool_name,)
-        try:
-            tool_response = await _await_with_llamaindex_timeout(
-                selected_tool.query_engine.aquery(analysis_message),
+            public_plan=public_plan,
+        ):
+            subquestion_result = await _maybe_execute_llamaindex_subquestion_plan(
+                analysis_message=effective_analysis_message,
+                tools=tools,
+                llm=llamaindex_llm,
                 settings=settings,
             )
-        except Exception:
-            return None
+        if subquestion_result is not None:
+            tool_response, selected_tool_name = subquestion_result
+            selected_tool_names = (selected_tool_name,)
+            execution_reason = 'llamaindex_subquestion_query_engine'
+        elif effective_path_profile.prefer_native_llamaindex_selector and llamaindex_llm is not None:
+            router_result = await _maybe_execute_llamaindex_router_query_engine(
+                analysis_message=effective_analysis_message,
+                tools=tools,
+                llm=llamaindex_llm,
+                settings=settings,
+            )
+            if router_result is not None:
+                tool_response, selected_tool_names = router_result
+                execution_reason = 'llamaindex_router_query_engine'
+        else:
+            selected_tool = _route_public_query_tool(
+                request=request,
+                plan=public_plan,
+                tools=tools,
+                embedding_model=settings.document_embedding_model,
+                llm=llamaindex_llm if effective_path_profile.prefer_native_llamaindex_selector else None,
+            )
+            selected_tool_name = selected_tool.metadata.name
+            selected_tool_names = (selected_tool_name,)
+            try:
+                tool_response = await _await_with_llamaindex_timeout(
+                    selected_tool.query_engine.aquery(
+                        effective_retrieval_query if selected_tool_name == 'public_retrieval' else effective_analysis_message
+                    ),
+                    settings=settings,
+                )
+            except Exception:
+                return None
     if tool_response is not None:
         answer_text = str(getattr(tool_response, 'response', '') or str(tool_response)).strip()
         citations = list(_extract_response_citations(tool_response))
@@ -1252,6 +1908,26 @@ async def maybe_execute_llamaindex_native_plan(
             retrieval_backend = RetrievalBackend.qdrant_hybrid
             if execution_reason in {'llamaindex_native_public_router', 'llamaindex_router_query_engine'}:
                 execution_reason = 'llamaindex_public_citation_query_engine'
+    low_confidence_documentary_answer = (
+        answer_text.startswith('Ainda nao encontrei evidencia publica suficiente')
+        and public_plan.conversation_act in {'highlight', 'pricing', 'comparative', 'curriculum'}
+    )
+    if low_confidence_documentary_answer:
+        fallback_text = rt._compose_public_profile_answer(
+            school_profile,
+            request.message,
+            actor=actor,
+            original_message=request.message,
+            conversation_context=conversation_context,
+            semantic_plan=public_plan,
+        )
+        fallback_text = str(fallback_text or '').strip()
+        if fallback_text and not fallback_text.startswith('Ainda nao encontrei evidencia publica suficiente'):
+            answer_text = fallback_text
+            selected_tool_names = tuple(dict.fromkeys([*selected_tool_names, 'public_profile']))
+            citations = []
+            retrieval_backend = RetrievalBackend.none
+            execution_reason = 'llamaindex_public_retrieval_profile_fallback'
     if not answer_text:
         return None
 
