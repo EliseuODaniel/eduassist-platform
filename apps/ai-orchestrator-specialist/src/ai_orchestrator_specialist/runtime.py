@@ -163,6 +163,134 @@ def _safe_excerpt(value: str | None, *, limit: int = 220) -> str | None:
     return f"{text[: limit - 3].rstrip()}..."
 
 
+def _contains_any(text: str, terms: set[str] | tuple[str, ...]) -> bool:
+    normalized = _normalize_text(text)
+    return any(term in normalized for term in terms)
+
+
+def _school_name(profile: dict[str, Any] | None) -> str:
+    return str((profile or {}).get("school_name") or "Colegio Horizonte").strip() or "Colegio Horizonte"
+
+
+def _compose_assistant_identity_answer(profile: dict[str, Any] | None) -> str:
+    school_name = _school_name(profile)
+    return (
+        f"Voce esta falando com o EduAssist, o assistente institucional do {school_name}. "
+        "Eu consigo te orientar por aqui, consultar informacoes da escola e abrir solicitacoes com protocolo. "
+        "Se precisar, eu tambem te encaminho para secretaria, admissions, coordenacao, orientacao educacional, financeiro ou direcao."
+    )
+
+
+def _compose_auth_guidance_answer(profile: dict[str, Any] | None) -> str:
+    school_name = _school_name(profile)
+    return (
+        "Para consultas protegidas, como notas, faltas e financeiro, voce precisa vincular sua conta do Telegram "
+        f"ao portal do {school_name}. No portal autenticado, gere o codigo de vinculacao e depois envie aqui o comando "
+        "`/start link_<codigo>`. Depois disso, eu passo a consultar seus dados autorizados por este canal."
+    )
+
+
+def _is_assistant_identity_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(
+        term in normalized
+        for term in {
+            "com quem eu falo",
+            "pra quem eu falo",
+            "para quem eu falo",
+            "quem e voce",
+            "quem é voce",
+            "quem e você",
+            "quem é você",
+            "o que voce faz",
+            "o que você faz",
+        }
+    )
+
+
+def _is_auth_guidance_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(
+        term in normalized
+        for term in {
+            "como vinculo minha conta",
+            "como vincular minha conta",
+            "como eu vinculo minha conta",
+            "como faco para vincular",
+            "como faço para vincular",
+            "como conecto minha conta",
+            "como ativo minha conta",
+            "como acesso minhas notas",
+            "como vejo minhas notas",
+            "como consultar minhas notas",
+        }
+    )
+
+
+def _school_domain_terms() -> set[str]:
+    return {
+        "escola",
+        "colegio",
+        "colégio",
+        "eduassist",
+        "matricula",
+        "matrícula",
+        "mensalidade",
+        "biblioteca",
+        "bncc",
+        "visita",
+        "secretaria",
+        "financeiro",
+        "fatura",
+        "boleto",
+        "nota",
+        "notas",
+        "falta",
+        "faltas",
+        "lucas",
+        "ana",
+        "recepcao",
+        "recepção",
+        "admissions",
+        "documentacao",
+        "documentação",
+        "protocolo",
+        "atendimento",
+        "aulas",
+        "ano letivo",
+        "professor",
+        "professora",
+        "9o ano",
+        "ensino medio",
+        "ensino médio",
+        "agenda",
+    }
+
+
+def _looks_like_general_knowledge_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if not normalized or _contains_any(normalized, _school_domain_terms()):
+        return False
+    if len(normalized) > 180:
+        return False
+    if any(token in normalized for token in {"token", "prompt", "senha", "credencial", "api key"}):
+        return False
+    starters = (
+        "qual ",
+        "quais ",
+        "quantos ",
+        "quantas ",
+        "quem ",
+        "o que ",
+        "onde ",
+        "quando ",
+        "como ",
+        "por que ",
+        "porque ",
+    )
+    return normalized.endswith("?") or normalized.startswith(starters)
+
+
 def _effective_conversation_id(request: SpecialistSupervisorRequest) -> str:
     if request.conversation_id:
         return request.conversation_id
@@ -441,6 +569,61 @@ async def _persist_trace(
     )
 
 
+async def _persist_light_trace(
+    ctx: SupervisorRunContext,
+    *,
+    answer: SupervisorAnswerPayload,
+    route: str,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    actor_user_id = ctx.actor.get("user_id") if isinstance(ctx.actor, dict) else None
+    await _http_post(
+        ctx.http_client,
+        base_url=ctx.settings.api_core_url,
+        path="/v1/internal/conversations/tool-calls",
+        token=ctx.settings.internal_api_token,
+        payload={
+            "channel": ctx.request.channel.value,
+            "conversation_external_id": _effective_conversation_id(ctx.request),
+            "actor_user_id": actor_user_id,
+            "tool_calls": [
+                {
+                    "tool_name": "specialist_supervisor.trace",
+                    "status": "ok",
+                    "request_payload": {
+                        "message": ctx.request.message,
+                        "preview_hint": ctx.preview_hint or {},
+                        "route": route,
+                    },
+                    "response_payload": {
+                        "route": route,
+                        "metadata": metadata or {},
+                        "answer": answer.model_dump(mode="json"),
+                        "agent_events": ctx.trace.agent_events,
+                        "tool_events": ctx.trace.tool_events,
+                    },
+                }
+            ],
+        },
+    )
+
+
+async def _persist_final_answer(
+    ctx: SupervisorRunContext,
+    *,
+    answer: SupervisorAnswerPayload,
+    route: str,
+    metadata: dict[str, Any] | None = None,
+    trace_payload: tuple[SupervisorPlan, ManagerDraft, JudgeVerdict] | None = None,
+) -> None:
+    await _persist_conversation_turn(ctx, answer.message_text)
+    if trace_payload is not None:
+        plan, draft, judge = trace_payload
+        await _persist_trace(ctx, plan=plan, draft=draft, judge=judge, answer=answer)
+        return
+    await _persist_light_trace(ctx, answer=answer, route=route, metadata=metadata)
+
+
 def _linked_students(actor: dict[str, Any] | None, *, capability: str) -> list[dict[str, Any]]:
     linked = actor.get("linked_students") if isinstance(actor, dict) else None
     if not isinstance(linked, list):
@@ -681,6 +864,31 @@ def _compose_finance_aggregate_answer(summaries: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def _compose_finance_installments_answer(summary: dict[str, Any]) -> str:
+    student_name = str(summary.get("student_name") or "Aluno").strip()
+    invoices = summary.get("invoices")
+    if not isinstance(invoices, list):
+        invoices = []
+    unpaid_statuses = {"open", "overdue", "pending"}
+    unpaid = [item for item in invoices if isinstance(item, dict) and str(item.get("status") or "").strip().lower() in unpaid_statuses]
+    overdue = [item for item in unpaid if str(item.get("status") or "").strip().lower() == "overdue"]
+    if not unpaid:
+        return f"No recorte atual, nao encontrei parcelas em aberto ou vencidas para {student_name}."
+    next_invoice = sorted(
+        unpaid,
+        key=lambda item: str(item.get("due_date") or "9999-99-99"),
+    )[0]
+    next_due_date = str(next_invoice.get("due_date") or "--").strip()
+    next_amount = _format_brl(next_invoice.get("amount_due"))
+    total_unpaid = len(unpaid)
+    overdue_count = len(overdue)
+    message = f"No recorte atual, {student_name} tem {total_unpaid} parcela(s) em aberto."
+    if overdue_count:
+        message += f" Destas, {overdue_count} esta(o) vencida(s)."
+    message += f" A proxima referencia deste recorte vence em {next_due_date} no valor de {next_amount}."
+    return message
+
+
 def _compose_admin_status_answer(summary: dict[str, Any]) -> str:
     student_name = str(summary.get("student_name") or "Aluno").strip()
     overall_status = str(summary.get("overall_status") or "").strip().lower()
@@ -888,6 +1096,68 @@ def _hypothetical_children_quantity(message: str) -> int | None:
 def _fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | None:
     profile = ctx.school_profile if isinstance(ctx.school_profile, dict) else {}
     normalized = _normalize_text(ctx.request.message)
+
+    if _is_assistant_identity_query(ctx.request.message):
+        return SupervisorAnswerPayload(
+            message_text=_compose_assistant_identity_answer(profile),
+            mode="structured_tool",
+            classification=MessageIntentClassification(
+                domain="institution",
+                access_tier=_access_tier_for_domain("institution", ctx.request.user.authenticated),
+                confidence=0.99,
+                reason="specialist_supervisor_fast_path:assistant_identity",
+            ),
+            evidence_pack=MessageEvidencePack(
+                strategy="direct_answer",
+                summary="Identidade institucional do assistente com grounding no produto.",
+                source_count=1,
+                support_count=1,
+                supports=[
+                    MessageEvidenceSupport(
+                        kind="assistant_identity",
+                        label="EduAssist",
+                        detail=_school_name(profile),
+                    )
+                ],
+            ),
+            suggested_replies=_default_suggested_replies("institution"),
+            graph_path=["specialist_supervisor", "fast_path", "assistant_identity"],
+            reason="specialist_supervisor_fast_path:assistant_identity",
+        )
+
+    if _is_auth_guidance_query(ctx.request.message):
+        return SupervisorAnswerPayload(
+            message_text=_compose_auth_guidance_answer(profile),
+            mode="structured_tool",
+            classification=MessageIntentClassification(
+                domain="institution",
+                access_tier="public",
+                confidence=0.99,
+                reason="specialist_supervisor_fast_path:auth_guidance",
+            ),
+            evidence_pack=MessageEvidencePack(
+                strategy="direct_answer",
+                summary="Orientacao deterministica para vinculacao da conta no Telegram.",
+                source_count=1,
+                support_count=1,
+                supports=[
+                    MessageEvidenceSupport(
+                        kind="auth_guidance",
+                        label="Vinculacao Telegram",
+                        detail="Use `/start link_<codigo>` depois de gerar o codigo no portal autenticado.",
+                    )
+                ],
+            ),
+            suggested_replies=[
+                MessageResponseSuggestedReply(text="Quero vincular minha conta"),
+                MessageResponseSuggestedReply(text="O que consigo consultar aqui?"),
+                MessageResponseSuggestedReply(text="Como vejo minhas notas?"),
+                MessageResponseSuggestedReply(text="Como acompanho pagamentos?"),
+            ],
+            graph_path=["specialist_supervisor", "fast_path", "auth_guidance"],
+            reason="specialist_supervisor_fast_path:auth_guidance",
+        )
+
     if not profile:
         return None
 
@@ -1352,10 +1622,24 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 reason="specialist_supervisor_tool_first:visit_reschedule_guidance",
             )
 
+    finance_terms = {
+        "pagamento",
+        "pagamentos",
+        "financeiro",
+        "mensalidade",
+        "fatura",
+        "faturas",
+        "boleto",
+        "boletos",
+        "segunda via",
+        "vencimento",
+        "vencida",
+        "vencidas",
+        "parcela",
+        "parcelas",
+    }
     if ctx.request.user.authenticated and (
-        "pagamento" in normalized
-        or "pagamentos" in normalized
-        or "financeiro" in normalized
+        _contains_any(normalized, finance_terms)
         or str(preview.get("classification", {}).get("domain") or "") == "finance"
     ):
         student_hint = _student_hint_from_message(ctx.actor, ctx.request.message)
@@ -1363,8 +1647,12 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
             payload = await _fetch_financial_summary_payload(ctx, student_name_hint=student_hint)
             summary = payload.get("summary") if isinstance(payload, dict) else None
             if isinstance(summary, dict):
+                if "parcela" in normalized:
+                    message_text = _compose_finance_installments_answer(summary)
+                else:
+                    message_text = _compose_finance_aggregate_answer([summary])
                 return SupervisorAnswerPayload(
-                    message_text=_compose_finance_aggregate_answer([summary]),
+                    message_text=message_text,
                     mode="structured_tool",
                     classification=MessageIntentClassification(
                         domain="finance",
@@ -2086,6 +2374,63 @@ async def update_institutional_request(
     ) or {"error": "institutional_request_update_failed"}
 
 
+def _build_general_knowledge_agent(model: Any) -> Agent[SupervisorRunContext]:
+    return Agent[SupervisorRunContext](
+        name="General Knowledge Specialist",
+        model=model,
+        model_settings=ModelSettings(temperature=0.0, verbosity="low"),
+        instructions=(
+            "Responda em portugues do Brasil a perguntas simples e benignas de conhecimento geral. "
+            "Se a pergunta tiver uma resposta factual direta e amplamente estavel, responda de forma curta e objetiva. "
+            "Nao mencione detalhes internos do modelo nem do provedor. "
+            "Se a pergunta for insegura, especializada demais, juridica, medica ou incerta, diga brevemente que prefere nao responder fora do dominio."
+        ),
+    )
+
+
+async def _general_knowledge_fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | None:
+    if not _looks_like_general_knowledge_query(ctx.request.message):
+        return None
+    agent = _build_general_knowledge_agent(_agent_model(ctx.settings))
+    result = await Runner.run(
+        agent,
+        ctx.request.message,
+        context=ctx,
+        max_turns=3,
+        run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
+    )
+    final_output = getattr(result, "final_output", "")
+    answer_text = str(final_output or "").strip()
+    if not answer_text:
+        return None
+    return SupervisorAnswerPayload(
+        message_text=answer_text,
+        mode="structured_tool",
+        classification=MessageIntentClassification(
+            domain="unknown",
+            access_tier="public",
+            confidence=0.88,
+            reason="specialist_supervisor_fast_path:general_knowledge",
+        ),
+        evidence_pack=MessageEvidencePack(
+            strategy="direct_answer",
+            summary="Resposta curta para conhecimento geral benigno fora do dominio escolar.",
+            source_count=0,
+            support_count=1,
+            supports=[
+                MessageEvidenceSupport(
+                    kind="general_knowledge",
+                    label="Conhecimento geral",
+                    excerpt=_safe_excerpt(answer_text, limit=180),
+                )
+            ],
+        ),
+        suggested_replies=_default_suggested_replies("institution"),
+        graph_path=["specialist_supervisor", "fast_path", "general_knowledge"],
+        reason="specialist_supervisor_fast_path:general_knowledge",
+    )
+
+
 def _build_guardrail_agent(model: Any) -> Agent[SupervisorRunContext]:
     return Agent[SupervisorRunContext](
         name="Input Guardrail",
@@ -2240,6 +2585,7 @@ def _institution_specialist(settings: Any, model: Any) -> Agent[SupervisorRunCon
         instructions=(
             "Responda perguntas institucionais publicas com grounding. "
             "Use tools antes de responder. "
+            "Quando a pergunta for sobre identidade do assistente, apresente-se como EduAssist, o assistente institucional da escola, e nunca mencione provedor, modelo ou detalhes tecnicos internos. "
             "Se a pergunta pedir panorama ou comparacao documental, considere GraphRAG ou search_public_documents. "
             "Para simulacao de matricula/mensalidade, use project_public_pricing. "
             + ("Retorne SpecialistResult." if structured else _specialist_result_contract())
@@ -2276,6 +2622,8 @@ def _finance_specialist(settings: Any, model: Any) -> Agent[SupervisorRunContext
         instructions=(
             "Responda apenas sobre financeiro autorizado ou projecoes publicas de custo. "
             "Use tools antes de responder. "
+            "Se o usuario mencionar um aluno vinculado pelo nome, assuma esse foco e use fetch_financial_summary antes de pedir clarificacao. "
+            "Se a pergunta usar termos como parcela, boleto, fatura, vencimento ou segunda via, trate isso como pedido financeiro, nao como pergunta institucional genérica. "
             "Se o aluno estiver ambiguo, deixe isso claro. "
             + ("Retorne SpecialistResult." if structured else _specialist_result_contract())
         ),
@@ -2322,6 +2670,7 @@ def _manager_instructions(plan: SupervisorPlan) -> str:
         "Voce continua dono da resposta e deve chamar especialistas como tools sempre que isso for necessario. "
         "Baseie a resposta somente nas saidas dos especialistas. "
         "Nao invente fatos. "
+        "Nunca se descreva como modelo, LLM ou provedor tecnico; voce fala como EduAssist. "
         "Priorize os especialistas listados no plano, mas voce pode usar qualquer ferramenta especialista disponivel se isso for necessario para completar a resposta com grounding. "
         f"\nPlano do planner: {plan.model_dump_json(ensure_ascii=False)}"
     )
@@ -2748,7 +3097,12 @@ async def run_specialist_supervisor(
 
         academic_fast_answer = await _academic_grade_fast_path_answer(context)
         if academic_fast_answer is not None:
-            await _persist_conversation_turn(context, academic_fast_answer.message_text)
+            await _persist_final_answer(
+                context,
+                answer=academic_fast_answer,
+                route="academic_fast_path",
+                metadata={"preview_hint": context.preview_hint or {}},
+            )
             return SpecialistSupervisorResponse(
                 reason=academic_fast_answer.reason,
                 metadata={
@@ -2762,7 +3116,12 @@ async def run_specialist_supervisor(
 
         tool_first_answer = await _tool_first_structured_answer(context)
         if tool_first_answer is not None:
-            await _persist_conversation_turn(context, tool_first_answer.message_text)
+            await _persist_final_answer(
+                context,
+                answer=tool_first_answer,
+                route="tool_first",
+                metadata={"preview_hint": context.preview_hint or {}},
+            )
             return SpecialistSupervisorResponse(
                 reason=tool_first_answer.reason,
                 metadata={
@@ -2776,7 +3135,12 @@ async def run_specialist_supervisor(
 
         fast_answer = _fast_path_answer(context)
         if fast_answer is not None:
-            await _persist_conversation_turn(context, fast_answer.message_text)
+            await _persist_final_answer(
+                context,
+                answer=fast_answer,
+                route="fast_path",
+                metadata={"preview_hint": context.preview_hint or {}},
+            )
             return SpecialistSupervisorResponse(
                 reason=fast_answer.reason,
                 metadata={
@@ -2786,6 +3150,25 @@ async def run_specialist_supervisor(
                     "preview_hint": context.preview_hint or {},
                 },
                 answer=fast_answer,
+            ).model_dump(mode="json")
+
+        general_knowledge_answer = await _general_knowledge_fast_path_answer(context)
+        if general_knowledge_answer is not None:
+            await _persist_final_answer(
+                context,
+                answer=general_knowledge_answer,
+                route="general_knowledge_fast_path",
+                metadata={"preview_hint": context.preview_hint or {}},
+            )
+            return SpecialistSupervisorResponse(
+                reason=general_knowledge_answer.reason,
+                metadata={
+                    "fast_path": True,
+                    "provider": resolve_llm_provider(settings),
+                    "model": effective_llm_model_name(settings),
+                    "preview_hint": context.preview_hint or {},
+                },
+                answer=general_knowledge_answer,
             ).model_dump(mode="json")
 
         guardrail = await _run_input_guardrail(context)
@@ -2803,7 +3186,7 @@ async def run_specialist_supervisor(
                 graph_path=["specialist_supervisor", "input_guardrail"],
                 risk_flags=["input_guardrail_blocked"],
             )
-            await _persist_conversation_turn(context, answer.message_text)
+            await _persist_final_answer(context, answer=answer, route="input_guardrail")
             return SpecialistSupervisorResponse(reason=answer.reason, metadata={"blocked": True}, answer=answer).model_dump(mode="json")
 
         try:
@@ -2811,7 +3194,7 @@ async def run_specialist_supervisor(
         except Exception:
             logger.exception("specialist_supervisor_planner_uncaught")
             answer = _safe_supervisor_fallback_answer(context, reason="specialist_supervisor_planner_safe_fallback")
-            await _persist_conversation_turn(context, answer.message_text)
+            await _persist_final_answer(context, answer=answer, route="planner_safe_fallback")
             return SpecialistSupervisorResponse(reason=answer.reason, metadata={"fallback": True}, answer=answer).model_dump(mode="json")
         if plan.should_deny:
             answer = SupervisorAnswerPayload(
@@ -2827,7 +3210,12 @@ async def run_specialist_supervisor(
                 graph_path=["specialist_supervisor", "planner"],
                 risk_flags=["planner_denied"],
             )
-            await _persist_conversation_turn(context, answer.message_text)
+            await _persist_final_answer(
+                context,
+                answer=answer,
+                route="planner_denied",
+                metadata={"plan": plan.model_dump(mode="json")},
+            )
             return SpecialistSupervisorResponse(reason=answer.reason, metadata={"plan": plan.model_dump(mode="json")}, answer=answer).model_dump(mode="json")
 
         if plan.requires_clarification and plan.clarification_question:
@@ -2845,7 +3233,12 @@ async def run_specialist_supervisor(
                 suggested_replies=_default_suggested_replies(plan.primary_domain),
                 risk_flags=["clarification_required"],
             )
-            await _persist_conversation_turn(context, answer.message_text)
+            await _persist_final_answer(
+                context,
+                answer=answer,
+                route="planner_clarify",
+                metadata={"plan": plan.model_dump(mode="json")},
+            )
             return SpecialistSupervisorResponse(reason=answer.reason, metadata={"plan": plan.model_dump(mode="json")}, answer=answer).model_dump(mode="json")
 
         try:
@@ -2856,10 +3249,19 @@ async def run_specialist_supervisor(
         except Exception:
             logger.exception("specialist_supervisor_manager_or_judge_failed")
             answer = _safe_supervisor_fallback_answer(context, reason="specialist_supervisor_manager_safe_fallback")
-            await _persist_conversation_turn(context, answer.message_text)
+            await _persist_final_answer(
+                context,
+                answer=answer,
+                route="manager_safe_fallback",
+                metadata={"plan": plan.model_dump(mode="json"), "fallback": True},
+            )
             return SpecialistSupervisorResponse(reason=answer.reason, metadata={"plan": plan.model_dump(mode="json"), "fallback": True}, answer=answer).model_dump(mode="json")
-        await _persist_conversation_turn(context, answer.message_text)
-        await _persist_trace(context, plan=plan, draft=draft, judge=judge, answer=answer)
+        await _persist_final_answer(
+            context,
+            answer=answer,
+            route="manager_judge",
+            trace_payload=(plan, draft, judge),
+        )
         return SpecialistSupervisorResponse(
             reason=answer.reason,
             metadata={
