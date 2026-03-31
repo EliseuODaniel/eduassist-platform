@@ -69,29 +69,56 @@ async def maybe_execute_python_functions_native_plan(
     answer_verifier_fallback_used = False
     evidence_pack = None
 
-    contextual_public_answer = await _maybe_contextual_public_direct_answer(
-        request=request,
-        analysis_message=analysis_message,
-        preview=preview,
-        settings=settings,
-        school_profile=school_profile,
-        conversation_context=conversation_context,
-    )
-    unpublished_public_answer = _maybe_public_unpublished_direct_answer(
-        request=request,
-        preview=preview,
-    )
-    hypothetical_public_pricing_direct = _maybe_hypothetical_public_pricing_answer(
-        request=request,
-        plan=plan,
-        preview=preview,
-        school_profile=school_profile,
-        conversation_context=conversation_context,
-    )
+    teacher_scope_answer = None
+    if rt._is_teacher_scope_guidance_query(request.message, actor=actor):
+        teacher_scope_answer = rt._compose_teacher_access_scope_answer(
+            actor,
+            school_name=str(school_profile.get('school_name', 'Colegio Horizonte')),
+        )
+
+    contextual_public_answer = None
+    unpublished_public_answer = None
+    hypothetical_public_pricing_direct = None
+    if teacher_scope_answer is None:
+        contextual_public_answer = await _maybe_contextual_public_direct_answer(
+            request=request,
+            analysis_message=analysis_message,
+            preview=preview,
+            settings=settings,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+        )
+        unpublished_public_answer = _maybe_public_unpublished_direct_answer(
+            request=request,
+            preview=preview,
+        )
+        hypothetical_public_pricing_direct = _maybe_hypothetical_public_pricing_answer(
+            request=request,
+            plan=plan,
+            preview=preview,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+        )
 
     execution_reason = 'python_functions_native_public'
 
-    if contextual_public_answer:
+    if teacher_scope_answer:
+        message_text = teacher_scope_answer
+        deterministic_fallback_text = teacher_scope_answer
+        preview = preview.model_copy(
+            update={
+                'mode': OrchestrationMode.structured_tool,
+                'reason': 'python_functions_native_teacher_scope_guidance',
+                'selected_tools': list(dict.fromkeys([*preview.selected_tools, 'get_actor_identity_context'])),
+            }
+        )
+        execution_reason = 'python_functions_native_teacher_scope_guidance'
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=preview.selected_tools,
+            slice_name=plan.slice_name,
+            summary='Resposta deterministica sobre escopo docente e vinculacao da conta.',
+        )
+    elif contextual_public_answer:
         message_text = contextual_public_answer
         deterministic_fallback_text = contextual_public_answer
         preview = preview.model_copy(

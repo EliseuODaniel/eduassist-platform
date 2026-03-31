@@ -303,8 +303,44 @@ PUBLIC_CAREERS_TERMS = {
     'trabalhar',
     'trabalhe conosco',
     'dar aula',
-    'sou professor',
-    'sou professora',
+    'quero dar aula',
+    'quero trabalhar',
+    'vaga',
+    'vagas',
+    'curriculo',
+    'currículo',
+    'enviar curriculo',
+    'enviar currículo',
+    'processo seletivo',
+}
+TEACHER_INTERNAL_SCOPE_TERMS = {
+    'ja sou professor',
+    'já sou professor',
+    'ja sou professora',
+    'já sou professora',
+    'sou professor do colegio',
+    'sou professor do colégio',
+    'sou professora do colegio',
+    'sou professora do colégio',
+    'meus alunos',
+    'meus estudantes',
+    'minhas turmas',
+    'minhas disciplinas',
+    'portal docente',
+    'portal do professor',
+}
+TEACHER_SCOPE_GUIDANCE_TERMS = {
+    *TEACHER_INTERNAL_SCOPE_TERMS,
+    'situacao dos meus alunos',
+    'situação dos meus alunos',
+    'como verifico a situacao dos meus alunos',
+    'como verifico a situação dos meus alunos',
+    'como verifico meus alunos',
+}
+TEACHER_RECRUITMENT_TERMS = {
+    'trabalhar',
+    'trabalhe conosco',
+    'dar aula',
     'quero dar aula',
     'quero trabalhar',
     'vaga',
@@ -3066,9 +3102,32 @@ def _is_public_social_query(message: str) -> bool:
     return any(_message_matches_term(normalized, term) for term in PUBLIC_SOCIAL_TERMS)
 
 
+def _looks_like_teacher_internal_scope_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if any(_message_matches_term(normalized, term) for term in TEACHER_SCOPE_GUIDANCE_TERMS):
+        return True
+    if not any(_message_matches_term(normalized, term) for term in {'professor', 'professora', 'docente'}):
+        return False
+    if any(_message_matches_term(normalized, term) for term in {'meus alunos', 'minhas turmas', 'minhas disciplinas'}):
+        return True
+    return any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'ja sou',
+            'já sou',
+            'como verifico',
+            'como consulto',
+            'como vejo',
+            'como acesso',
+        }
+    )
+
+
 def _is_public_careers_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    return any(_message_matches_term(normalized, term) for term in PUBLIC_CAREERS_TERMS)
+    if _looks_like_teacher_internal_scope_query(message):
+        return False
+    return any(_message_matches_term(normalized, term) for term in TEACHER_RECRUITMENT_TERMS)
 
 
 def _is_public_web_query(message: str) -> bool:
@@ -3556,7 +3615,7 @@ def _service_matches_from_message(profile: dict[str, Any], message: str) -> list
         service_keys.append('suporte_digital')
     if any(
         _message_matches_term(normalized, term)
-        for term in {'trabalhar', 'vaga', 'curriculo', 'currículo', 'dar aula', 'professor', 'professora', 'processo seletivo'}
+        for term in TEACHER_RECRUITMENT_TERMS
     ):
         service_keys.append('carreiras_docentes')
     unique_keys: list[str] = []
@@ -5652,6 +5711,7 @@ def _handle_public_schedule(context: PublicProfileContext) -> str:
             requested_segment=requested_unpublished_segment,
             topic='horarios',
         )
+    grade_reference = _extract_grade_reference(context.source_message)
     relevant_rows = [
         row for row in context.shift_offers
         if isinstance(row, dict) and _public_segment_matches(str(row.get('segment')), context.segment)
@@ -5660,7 +5720,6 @@ def _handle_public_schedule(context: PublicProfileContext) -> str:
         relevant_rows = [row for row in context.shift_offers if isinstance(row, dict)]
     if len(relevant_rows) == 1:
         row = relevant_rows[0]
-        grade_reference = _extract_grade_reference(context.source_message)
         if grade_reference:
             return (
                 f'O {grade_reference} fica em {row.get("segment", "esse segmento")}. '
@@ -5672,6 +5731,22 @@ def _handle_public_schedule(context: PublicProfileContext) -> str:
             f"vao de {row.get('starts_at', '--:--')} a {row.get('ends_at', '--:--')}. "
             f"{str(row.get('notes', '')).strip()}"
         ).strip()
+    if grade_reference and context.segment:
+        lines = [
+            f'Hoje os canais publicos do {context.school_name} nao detalham o horario especifico do {grade_reference}.',
+            f'O recorte publicado para esse pedido fica em {context.segment}:',
+        ]
+        for row in relevant_rows:
+            lines.append(
+                '- {segment} ({shift_label}): {starts_at} as {ends_at}. {notes}'.format(
+                    segment=row.get('segment', 'Segmento'),
+                    shift_label=row.get('shift_label', 'turno'),
+                    starts_at=row.get('starts_at', '--:--'),
+                    ends_at=row.get('ends_at', '--:--'),
+                    notes=row.get('notes', '').strip(),
+                ).rstrip()
+            )
+        return '\n'.join(lines)
     lines = ['Turnos e horarios documentados:']
     for row in relevant_rows:
         lines.append(
@@ -7463,7 +7538,12 @@ def _apply_protected_domain_override(
     preview.graph_path = [*preview.graph_path, graph_marker]
 
 
-def _explicit_protected_domain_hint(message: str) -> QueryDomain | None:
+def _explicit_protected_domain_hint(
+    message: str,
+    *,
+    actor: dict[str, Any] | None = None,
+    conversation_context: dict[str, Any] | None = None,
+) -> QueryDomain | None:
     if _detect_academic_attribute_request(message) is not None or _detect_academic_focus_kind(message) is not None:
         return QueryDomain.academic
     if (
@@ -7475,18 +7555,53 @@ def _explicit_protected_domain_hint(message: str) -> QueryDomain | None:
         )
     ):
         return QueryDomain.finance
+    if not isinstance(actor, dict):
+        return None
+    linked_students = _linked_students(actor)
+    if not linked_students:
+        return None
+    normalized = _normalize_text(message)
+    recent_focus = _recent_trace_focus(conversation_context)
+    mentions_linked_student = bool(_matching_students_in_text(linked_students, message))
+    protected_follow_up = _is_follow_up_query(message) and recent_focus is not None
+    if (
+        any(
+            _message_matches_term(normalized, term)
+            for term in {
+                'financeiro',
+                'mensalidade',
+                'mensalidades',
+                'boleto',
+                'boletos',
+                'fatura',
+                'faturas',
+                'pagamento',
+                'pagamentos',
+                'contrato',
+            }
+        )
+        and not _is_public_pricing_navigation_query(message)
+        and (mentions_linked_student or protected_follow_up or str(recent_focus.get('kind', '') or '') in {'academic', 'finance'})
+    ):
+        return QueryDomain.finance
     return None
 
 
 def _apply_protected_domain_rescue(
     *,
     preview: Any,
+    actor: dict[str, Any] | None,
     message: str,
+    conversation_context: dict[str, Any] | None,
 ) -> bool:
     current_domain = getattr(getattr(preview, 'classification', None), 'domain', None)
-    if current_domain not in {QueryDomain.academic, QueryDomain.finance}:
+    if current_domain not in {QueryDomain.institution, QueryDomain.academic, QueryDomain.finance}:
         return False
-    target_domain = _explicit_protected_domain_hint(message)
+    target_domain = _explicit_protected_domain_hint(
+        message,
+        actor=actor,
+        conversation_context=conversation_context,
+    )
     if target_domain is None or target_domain is current_domain:
         return False
     _apply_protected_domain_override(
@@ -7496,6 +7611,37 @@ def _apply_protected_domain_rescue(
         reason='o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido',
         graph_marker='protected_domain_rescue',
     )
+    return True
+
+
+def _apply_teacher_role_rescue(
+    *,
+    preview: Any,
+    actor: dict[str, Any] | None,
+    message: str,
+) -> bool:
+    if not isinstance(actor, dict):
+        return False
+    if str(actor.get('role_code', '') or '').strip().lower() != 'teacher':
+        return False
+    if not _is_teacher_scope_guidance_query(message, actor=actor):
+        return False
+
+    preview.mode = OrchestrationMode.structured_tool
+    preview.classification = IntentClassification(
+        domain=QueryDomain.academic,
+        access_tier=AccessTier.authenticated,
+        confidence=0.92,
+        reason='mensagem indica autoatendimento docente e a conta atual tem perfil de professor',
+    )
+    preview.selected_tools = ['get_teacher_schedule']
+    preview.output_contract = 'grade docente e autoatendimento permitido ao professor'
+    preview.retrieval_backend = RetrievalBackend.none
+    preview.citations_required = False
+    preview.needs_authentication = False
+    preview.reason = 'teacher_role_rescue'
+    preview.graph_path = [*preview.graph_path, 'teacher_role_rescue']
+    preview.risk_flags = [flag for flag in preview.risk_flags if flag != 'sensitive_data_path']
     return True
 
 
@@ -9792,6 +9938,28 @@ def _compose_authenticated_access_scope_answer(
     )
 
 
+def _compose_teacher_access_scope_answer(
+    actor: dict[str, Any] | None,
+    *,
+    school_name: str = 'Colegio Horizonte',
+) -> str:
+    actor_name = str((actor or {}).get('full_name', 'Professor')).strip() or 'Professor'
+    role_code = str((actor or {}).get('role_code', '') or '').strip().lower()
+    if role_code == 'teacher':
+        return (
+            f'Voce esta falando aqui como {actor_name}, no perfil de professor do {school_name}. '
+            'No Telegram, nesta etapa eu consigo consultar sua grade docente, turmas e disciplinas. '
+            'A situacao individual dos alunos ainda nao esta liberada por este canal. '
+            'Se quiser, me pergunte "qual meu horario?", "quais sao minhas turmas?" ou "quais disciplinas eu ministro?".'
+        )
+    return (
+        f'Se voce ja e professor do {school_name}, o acesso docente depende da vinculacao da conta institucional correta no Telegram. '
+        'Nesta conta atual eu nao identifiquei um perfil docente ativo. '
+        'Quando a vinculacao de professor estiver correta, por aqui eu consigo consultar horario, turmas e disciplinas; '
+        'a situacao individual dos alunos continua fora do escopo deste canal nesta etapa.'
+    )
+
+
 def _compose_public_access_scope_answer(
     actor: dict[str, Any] | None,
     *,
@@ -10001,6 +10169,33 @@ def _is_access_scope_repair_query(
             'mas é meu filho',
             'esta matriculado como meu filho',
             'está matriculado como meu filho',
+        }
+    )
+
+
+def _is_teacher_scope_guidance_query(
+    message: str,
+    *,
+    actor: dict[str, Any] | None = None,
+) -> bool:
+    if _looks_like_teacher_internal_scope_query(message):
+        return True
+    if not isinstance(actor, dict):
+        return False
+    if str(actor.get('role_code', '') or '').strip().lower() != 'teacher':
+        return False
+    normalized = _normalize_text(message)
+    if _is_access_scope_query(message):
+        return True
+    return any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'meu horario',
+            'meu horário',
+            'minhas turmas',
+            'minhas disciplinas',
+            'grade docente',
+            'meus alunos',
         }
     )
 
@@ -11386,11 +11581,10 @@ async def _execute_teacher_protected_specialist(
 
     message = request.message
     normalized_message = _normalize_text(message)
+    if _is_teacher_scope_guidance_query(message, actor=actor) and not _contains_any(message, TEACHER_SCHEDULE_TERMS):
+        return _compose_teacher_access_scope_answer(actor)
     if not _contains_any(message, TEACHER_SCHEDULE_TERMS):
-        return (
-            'No Telegram, o fluxo protegido do professor nesta etapa cobre horario e turmas. '
-            'Pergunte por exemplo: "qual meu horario?" ou "quais sao minhas turmas?".'
-        )
+        return _compose_teacher_access_scope_answer(actor)
 
     payload, status_code = await _api_core_get(
         settings=settings,
@@ -11470,7 +11664,9 @@ async def _execute_protected_records_specialist(
             'Para enviar documentos hoje, use portal institucional, email da secretaria ou secretaria presencial.'
         )
     should_force_student_admin_path = (
-        requested_admin_attribute is not None
+        preview.classification.domain is QueryDomain.institution
+        and not any(_message_matches_term(normalized_message, term) for term in {'financeiro', 'boleto', 'boletos', 'fatura', 'faturas', 'mensalidade'})
+        and requested_admin_attribute is not None
         and _effective_finance_attribute_request(
             message,
             conversation_context=conversation_context,
@@ -12006,6 +12202,11 @@ async def _compose_structured_tool_answer(
     message = request.message
     if request.telegram_chat_id is not None and actor is None:
         actor = await _fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
+    if _is_teacher_scope_guidance_query(message, actor=actor):
+        return _compose_teacher_access_scope_answer(
+            actor,
+            school_name=str((school_profile or {}).get('school_name', 'Colegio Horizonte')),
+        )
     if school_profile is not None:
         fast_public_channel_answer = _try_public_channel_fast_answer(
             message=request.message,
@@ -13118,7 +13319,17 @@ async def generate_message_response(
                     }
                 )
 
-        if _apply_student_disambiguation_rescue(
+        if _apply_teacher_role_rescue(
+            preview=preview,
+            actor=actor,
+            message=request.message,
+        ):
+            set_span_attributes(
+                **{
+                    'eduassist.orchestration.teacher_role_rescue_applied': True,
+                }
+            )
+        elif _apply_student_disambiguation_rescue(
             preview=preview,
             actor=actor,
             message=request.message,
@@ -13132,7 +13343,9 @@ async def generate_message_response(
             )
         elif _apply_protected_domain_rescue(
             preview=preview,
+            actor=actor,
             message=request.message,
+            conversation_context=context_payload,
         ):
             set_span_attributes(
                 **{
