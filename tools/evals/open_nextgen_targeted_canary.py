@@ -12,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REPORT = REPO_ROOT / 'docs/architecture/nextgen-targeted-canary-activation-report.md'
 DEFAULT_JSON = REPO_ROOT / 'docs/architecture/nextgen-targeted-canary-activation-report.json'
 DEFAULT_ARTIFACT_JSON = REPO_ROOT / 'artifacts/nextgen-targeted-canary-activation-report.json'
-SUPPORTED_STACKS = ('python_functions', 'llamaindex')
+SUPPORTED_STACKS = ('python_functions', 'llamaindex', 'specialist_supervisor')
 
 
 def _http_json(

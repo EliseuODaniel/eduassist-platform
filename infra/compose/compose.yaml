@@ -278,6 +278,7 @@ services:
       LANGGRAPH_HITL_USER_TRAFFIC_ENABLED: ${LANGGRAPH_HITL_USER_TRAFFIC_ENABLED:-false}
       LANGGRAPH_HITL_USER_TRAFFIC_SLICES: ${LANGGRAPH_HITL_USER_TRAFFIC_SLICES:-support}
       CREWAI_PILOT_URL: ${CREWAI_PILOT_URL:-http://ai-orchestrator-crewai:8000}
+      SPECIALIST_SUPERVISOR_PILOT_URL: ${SPECIALIST_SUPERVISOR_PILOT_URL:-http://ai-orchestrator-specialist:8000}
       ORCHESTRATOR_EXPERIMENT_ENABLED: ${ORCHESTRATOR_EXPERIMENT_ENABLED:-false}
       ORCHESTRATOR_EXPERIMENT_PRIMARY_ENGINE: ${ORCHESTRATOR_EXPERIMENT_PRIMARY_ENGINE:-crewai}
       ORCHESTRATOR_EXPERIMENT_SLICES: ${ORCHESTRATOR_EXPERIMENT_SLICES:-}
@@ -333,6 +334,44 @@ services:
       CREWAI_HITL_USER_TRAFFIC_SLICES: ${CREWAI_HITL_USER_TRAFFIC_SLICES:-protected}
     ports:
       - '${AI_ORCHESTRATOR_CREWAI_PORT:-8004}:8000'
+    healthcheck:
+      test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  ai-orchestrator-specialist:
+    profiles: ['specialist-supervisor']
+    build:
+      context: ../..
+      dockerfile: apps/ai-orchestrator-specialist/Dockerfile
+      args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-ghcr.io/astral-sh/uv:python3.12-bookworm-slim}
+    container_name: eduassist-ai-orchestrator-specialist
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      PORT: 8000
+      LLM_PROVIDER: ${LLM_PROVIDER:-auto}
+      API_CORE_URL: ${API_CORE_URL:-http://api-core:8000}
+      ORCHESTRATOR_URL: ${ORCHESTRATOR_URL:-http://ai-orchestrator:8000}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-flash}
+      DATABASE_URL: ${SPECIALIST_SUPERVISOR_DATABASE_URL:-sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db}
+    ports:
+      - '${AI_ORCHESTRATOR_SPECIALIST_PORT:-8005}:8000'
+    volumes:
+      - specialist-supervisor-data:/workspace/.runtime
+    depends_on:
+      api-core:
+        condition: service_healthy
+      ai-orchestrator:
+        condition: service_healthy
     healthcheck:
       test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
       interval: 10s
@@ -471,3 +510,4 @@ volumes:
   loki-data:
   grafana-data:
   prometheus-data:
+  specialist-supervisor-data:

@@ -18,6 +18,7 @@ from .engines.crewai_engine import CrewAIEngine, infer_request_slice
 from .engines.llamaindex_workflow_engine import LlamaIndexWorkflowEngine
 from .engines.langgraph_engine import LangGraphEngine
 from .engines.python_functions_engine import PythonFunctionsEngine
+from .engines.specialist_supervisor_engine import SpecialistSupervisorEngine
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ _RUNTIME_TARGETED_STACK_OVERRIDE: dict[str, Any] = {
     'conversation_allowlist': [],
 }
 _RUNTIME_TARGETED_STACK_LOCK = Lock()
-SUPPORTED_PRIMARY_STACKS = {'langgraph', 'crewai', 'python_functions', 'llamaindex', 'shadow'}
+SUPPORTED_PRIMARY_STACKS = {'langgraph', 'crewai', 'python_functions', 'llamaindex', 'specialist_supervisor', 'shadow'}
 
 
 @dataclass(frozen=True)
@@ -873,6 +874,7 @@ def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBund
     crewai_engine = CrewAIEngine(fallback_engine=langgraph_engine)
     python_functions_engine = PythonFunctionsEngine()
     llamaindex_engine = LlamaIndexWorkflowEngine()
+    specialist_supervisor_engine = SpecialistSupervisorEngine()
     strict_mode = strict_framework_isolation_enabled(settings)
 
     if request is not None and not get_runtime_primary_stack_override().get('value'):
@@ -885,6 +887,12 @@ def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBund
                 return EngineBundle(mode=f"targeted:{targeted['slice']}:{targeted_stack}", primary=python_functions_engine, experiment=targeted)
             if targeted_stack == 'llamaindex':
                 return EngineBundle(mode=f"targeted:{targeted['slice']}:{targeted_stack}", primary=llamaindex_engine, experiment=targeted)
+            if targeted_stack == 'specialist_supervisor':
+                return EngineBundle(
+                    mode=f"targeted:{targeted['slice']}:{targeted_stack}",
+                    primary=specialist_supervisor_engine,
+                    experiment=targeted,
+                )
             return EngineBundle(mode=f"targeted:{targeted['slice']}:{targeted_stack}", primary=langgraph_engine, experiment=targeted)
 
     if request is not None and not strict_mode:
@@ -905,6 +913,13 @@ def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBund
                     shadow=None,
                     experiment=experiment,
                 )
+            if experiment_engine == 'specialist_supervisor':
+                return EngineBundle(
+                    mode=f"experiment:{experiment['slice']}:{experiment_engine}",
+                    primary=specialist_supervisor_engine,
+                    shadow=None,
+                    experiment=experiment,
+                )
             return EngineBundle(
                 mode=f"experiment:{experiment['slice']}:{experiment_engine}",
                 primary=crewai_engine,
@@ -918,6 +933,8 @@ def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBund
         return EngineBundle(mode='python_functions', primary=python_functions_engine)
     if mode == 'llamaindex':
         return EngineBundle(mode='llamaindex', primary=llamaindex_engine)
+    if mode == 'specialist_supervisor':
+        return EngineBundle(mode='specialist_supervisor', primary=specialist_supervisor_engine)
     if mode == 'shadow':
         if strict_mode:
             return EngineBundle(mode='langgraph', primary=langgraph_engine)

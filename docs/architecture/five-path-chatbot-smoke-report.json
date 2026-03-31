@@ -1,0 +1,394 @@
+{
+  "generated_at": "2026-03-30T23:45:09.721538+00:00",
+  "dataset": "/home/edann/projects/eduassist-platform/tests/evals/datasets/four_path_chatbot_smoke_cases.json",
+  "run_prefix": "debug:five-path-smoke:20260330T234505Z",
+  "stacks": {
+    "langgraph": {
+      "passed": 4,
+      "total": 4,
+      "avg_latency_ms": 193.2
+    },
+    "crewai": {
+      "passed": 4,
+      "total": 4,
+      "avg_latency_ms": 457.9
+    },
+    "python_functions": {
+      "passed": 4,
+      "total": 4,
+      "avg_latency_ms": 162.5
+    },
+    "llamaindex": {
+      "passed": 4,
+      "total": 4,
+      "avg_latency_ms": 161.3
+    },
+    "specialist_supervisor": {
+      "passed": 4,
+      "total": 4,
+      "avg_latency_ms": 102.6
+    }
+  },
+  "results": [
+    {
+      "case_id": "public_pedagogy",
+      "stack": "langgraph",
+      "passed": true,
+      "latency_ms": 300.1228849898325,
+      "mode": "structured_tool",
+      "access_tier": "public",
+      "reason": "fato institucional canonico deve vir de fonte estruturada",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "public_slice",
+        "structured_tool_call"
+      ],
+      "message_preview": "A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparaca",
+      "error": null
+    },
+    {
+      "case_id": "protected_docs",
+      "stack": "langgraph",
+      "passed": true,
+      "latency_ms": 167.62408400245477,
+      "mode": "structured_tool",
+      "access_tier": "authenticated",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call"
+      ],
+      "message_preview": "Situacao documental de Lucas Oliveira hoje: regular.\n- Identificacao escolar do aluno: regular. Codigo de matricula: MAT-2026-001\n- Responsavel vinculado: regular. Maria Oliveira\n-",
+      "error": null
+    },
+    {
+      "case_id": "support_finance",
+      "stack": "langgraph",
+      "passed": true,
+      "latency_ms": 139.76443400315475,
+      "mode": "handoff",
+      "access_tier": "public",
+      "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "support_slice",
+        "handoff"
+      ],
+      "message_preview": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260330-FBA7AC83. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+      "error": null
+    },
+    {
+      "case_id": "workflow_visit",
+      "stack": "langgraph",
+      "passed": true,
+      "latency_ms": 165.09567000321113,
+      "mode": "structured_tool",
+      "access_tier": "public",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "support_slice",
+        "structured_tool_call"
+      ],
+      "message_preview": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-4896A8. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: AT",
+      "error": null
+    },
+    {
+      "case_id": "public_pedagogy",
+      "stack": "crewai",
+      "passed": true,
+      "latency_ms": 962.7065879903967,
+      "mode": "structured_tool",
+      "access_tier": "public",
+      "reason": "crewai_public_fast_path",
+      "graph_path": [
+        "flow_router",
+        "deterministic_fast_path"
+      ],
+      "message_preview": "A proposta pedagogica publicada hoje combina aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e aprofundamento academico progressivo. No Ensino",
+      "error": null
+    },
+    {
+      "case_id": "protected_docs",
+      "stack": "crewai",
+      "passed": true,
+      "latency_ms": 432.7462880028179,
+      "mode": "structured_tool",
+      "access_tier": "authenticated",
+      "reason": "crewai_protected_fast_path",
+      "graph_path": [
+        "flow_router",
+        "deterministic_fast_path"
+      ],
+      "message_preview": "A situacao documental de Lucas Oliveira hoje esta regular e completa.",
+      "error": null
+    },
+    {
+      "case_id": "support_finance",
+      "stack": "crewai",
+      "passed": true,
+      "latency_ms": 220.74535000137985,
+      "mode": "structured_tool",
+      "access_tier": "public",
+      "reason": "support_handoff_created",
+      "graph_path": [
+        "flow_router",
+        "operation_result",
+        "deterministic_support"
+      ],
+      "message_preview": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260330-22870F94. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operaciona",
+      "error": null
+    },
+    {
+      "case_id": "workflow_visit",
+      "stack": "crewai",
+      "passed": true,
+      "latency_ms": 215.42772999964654,
+      "mode": "structured_tool",
+      "access_tier": "public",
+      "reason": "workflow_visit_create",
+      "graph_path": [
+        "flow_router",
+        "operation_result",
+        "deterministic_workflow"
+      ],
+      "message_preview": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-EA345E. Preferencia informada: 02/04/2026 - tarde. Fila responsavel: admissoes. Ticket operacional: AT",
+      "error": null
+    },
+    {
+      "case_id": "public_pedagogy",
+      "stack": "python_functions",
+      "passed": true,
+      "latency_ms": 138.6421839997638,
+      "mode": "structured_tool",
+      "access_tier": "public",
+      "reason": "python_functions_native_structured:institution",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "python_functions:native_runtime",
+        "kernel:python_functions"
+      ],
+      "message_preview": "A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparaca",
+      "error": null
+    },
+    {
+      "case_id": "protected_docs",
+      "stack": "python_functions",
+      "passed": true,
+      "latency_ms": 173.26304300513584,
+      "mode": "structured_tool",
+      "access_tier": "authenticated",
+      "reason": "python_functions_native_structured:institution",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "python_functions:native_runtime",
+        "kernel:python_functions"
+      ],
+      "message_preview": "Situacao documental de Lucas Oliveira hoje: regular.\n- Identificacao escolar do aluno: regular. Codigo de matricula: MAT-2026-001\n- Responsavel vinculado: regular. Maria Oliveira\n-",
+      "error": null
+    },
+    {
+      "case_id": "support_finance",
+      "stack": "python_functions",
+      "passed": true,
+      "latency_ms": 148.51153100607917,
+      "mode": "handoff",
+      "access_tier": "public",
+      "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "handoff",
+        "kernel:python_functions"
+      ],
+      "message_preview": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260330-445BAE39. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+      "error": null
+    },
+    {
+      "case_id": "workflow_visit",
+      "stack": "python_functions",
+      "passed": true,
+      "latency_ms": 189.73476999963168,
+      "mode": "structured_tool",
+      "access_tier": "public",
+      "reason": "python_functions_native_structured:support",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "python_functions:native_runtime",
+        "kernel:python_functions"
+      ],
+      "message_preview": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-C82EF4. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: AT",
+      "error": null
+    },
+    {
+      "case_id": "public_pedagogy",
+      "stack": "llamaindex",
+      "passed": true,
+      "latency_ms": 145.95319399086293,
+      "mode": "structured_tool",
+      "access_tier": "public",
+      "reason": "llamaindex_public_profile",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "llamaindex:workflow",
+        "llamaindex:llamaindex_public_profile",
+        "llamaindex:tool:public_profile",
+        "kernel:llamaindex"
+      ],
+      "message_preview": "A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparaca",
+      "error": null
+    },
+    {
+      "case_id": "protected_docs",
+      "stack": "llamaindex",
+      "passed": true,
+      "latency_ms": 171.49498900107574,
+      "mode": "structured_tool",
+      "access_tier": "authenticated",
+      "reason": "status administrativo autenticado exige service deterministico",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "message_preview": "Situacao documental de Lucas Oliveira hoje: regular.\n- Identificacao escolar do aluno: regular. Codigo de matricula: MAT-2026-001\n- Responsavel vinculado: regular. Maria Oliveira\n-",
+      "error": null
+    },
+    {
+      "case_id": "support_finance",
+      "stack": "llamaindex",
+      "passed": true,
+      "latency_ms": 145.90152699383907,
+      "mode": "handoff",
+      "access_tier": "public",
+      "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "handoff",
+        "kernel:llamaindex"
+      ],
+      "message_preview": "Encaminhei sua solicitacao para a fila de financeiro. Protocolo: ATD-20260330-6BC4D6CE. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+      "error": null
+    },
+    {
+      "case_id": "workflow_visit",
+      "stack": "llamaindex",
+      "passed": true,
+      "latency_ms": 181.6549909999594,
+      "mode": "structured_tool",
+      "access_tier": "public",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "message_preview": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260330-332EE4. Preferencia informada: 2026-04-02 - tarde. Fila responsavel: admissoes. Ticket operacional: AT",
+      "error": null
+    },
+    {
+      "case_id": "public_pedagogy",
+      "stack": "specialist_supervisor",
+      "passed": true,
+      "latency_ms": 80.43264198931865,
+      "mode": "structured_tool",
+      "access_tier": "public",
+      "reason": "specialist_supervisor_fast_path:pedagogical_proposal",
+      "graph_path": [
+        "specialist_supervisor",
+        "fast_path",
+        "pedagogical_proposal"
+      ],
+      "message_preview": "A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparaca",
+      "error": null
+    },
+    {
+      "case_id": "protected_docs",
+      "stack": "specialist_supervisor",
+      "passed": true,
+      "latency_ms": 118.90939000295475,
+      "mode": "structured_tool",
+      "access_tier": "authenticated",
+      "reason": "specialist_supervisor_tool_first:administrative_status",
+      "graph_path": [
+        "specialist_supervisor",
+        "tool_first",
+        "administrative_status"
+      ],
+      "message_preview": "Hoje a documentacao de Lucas Oliveira aparece como complete.",
+      "error": null
+    },
+    {
+      "case_id": "support_finance",
+      "stack": "specialist_supervisor",
+      "passed": true,
+      "latency_ms": 104.95165899919812,
+      "mode": "handoff",
+      "access_tier": "public",
+      "reason": "specialist_supervisor_tool_first:support_handoff",
+      "graph_path": [
+        "specialist_supervisor",
+        "tool_first",
+        "support_handoff"
+      ],
+      "message_preview": "Acionei o financeiro para voce. Protocolo: REQ-20260330-2419EB. Fila responsavel: financeiro. Ticket operacional: ATD-20260330-331B84CE. Se quiser, eu tambem posso acompanhar o sta",
+      "error": null
+    },
+    {
+      "case_id": "workflow_visit",
+      "stack": "specialist_supervisor",
+      "passed": true,
+      "latency_ms": 106.21180800080765,
+      "mode": "structured_tool",
+      "access_tier": "public",
+      "reason": "specialist_supervisor_tool_first:visit_booking",
+      "graph_path": [
+        "specialist_supervisor",
+        "tool_first",
+        "visit_booking"
+      ],
+      "message_preview": "Pedido de visita registrado. Protocolo: VIS-20260330-B306CC. Preferencia registrada: quinta a tarde. Ticket operacional: ATD-20260330-7EBF946C. Se quiser, eu tambem posso acompanha",
+      "error": null
+    }
+  ]
+}

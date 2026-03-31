@@ -1,0 +1,786 @@
+[
+  {
+    "prompt": "a escola fica em qual bairro de sao paulo?",
+    "slice": "public",
+    "category": "location",
+    "thread_id": "random_public_location",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [
+      "Vila Mariana",
+      "Sao Paulo"
+    ],
+    "forbidden_keywords": [
+      "nao encontrei"
+    ]
+  },
+  {
+    "prompt": "o ensino medio segue a bncc?",
+    "slice": "public",
+    "category": "curriculum",
+    "thread_id": "random_public_curriculum",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [
+      "BNCC",
+      "Ensino Medio"
+    ],
+    "forbidden_keywords": [
+      "nao encontrei"
+    ]
+  },
+  {
+    "prompt": "quais canais eu posso usar para mandar documentos?",
+    "slice": "public",
+    "category": "documents",
+    "thread_id": "random_public_documents",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [
+      "portal",
+      "email",
+      "secretaria"
+    ],
+    "forbidden_keywords": [
+      "fax"
+    ]
+  },
+  {
+    "prompt": "a biblioteca tem nome e horario ou e so marketing?",
+    "slice": "public",
+    "category": "library",
+    "thread_id": "random_public_library",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [
+      "Biblioteca Aurora",
+      "18h00"
+    ],
+    "forbidden_keywords": [
+      "nao encontrei"
+    ]
+  },
+  {
+    "prompt": "quando abre a matricula de 2026?",
+    "slice": "public",
+    "category": "calendar",
+    "thread_id": "random_public_timeline",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [
+      "2026",
+      "6 de outubro de 2025"
+    ],
+    "forbidden_keywords": [
+      "nao encontrei"
+    ]
+  },
+  {
+    "prompt": "e quando comecam as aulas?",
+    "slice": "public",
+    "category": "calendar",
+    "thread_id": "random_public_timeline",
+    "turn_index": 2,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [
+      "2 de fevereiro de 2026"
+    ],
+    "forbidden_keywords": [
+      "nao encontrei"
+    ]
+  },
+  {
+    "prompt": "qual a mensalidade do ensino medio?",
+    "slice": "public",
+    "category": "pricing",
+    "thread_id": "random_public_pricing",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [
+      "Ensino Medio",
+      "R$ 1.450,00"
+    ],
+    "forbidden_keywords": [
+      "nao encontrei"
+    ]
+  },
+  {
+    "prompt": "se eu matricular 3 filhos, quanto fica so a matricula?",
+    "slice": "public",
+    "category": "pricing",
+    "thread_id": "random_public_pricing",
+    "turn_index": 2,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [
+      "3",
+      "matricula",
+      "R$ 1.050,00"
+    ],
+    "forbidden_keywords": [
+      "alunos vinculados",
+      "nao encontrei"
+    ]
+  },
+  {
+    "prompt": "como estao meus pagamentos?",
+    "slice": "protected",
+    "category": "finance",
+    "thread_id": "random_protected_finance_academic",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "Resumo financeiro",
+      "Ana Oliveira"
+    ],
+    "forbidden_keywords": []
+  },
+  {
+    "prompt": "e as notas?",
+    "slice": "protected",
+    "category": "academic",
+    "thread_id": "random_protected_finance_academic",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "forbidden_keywords": [
+      "Resumo financeiro"
+    ]
+  },
+  {
+    "prompt": "ana, notas",
+    "slice": "protected",
+    "category": "academic",
+    "thread_id": "random_protected_finance_academic",
+    "turn_index": 3,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "Notas de Ana Oliveira",
+      "Fisica"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira"
+    ]
+  },
+  {
+    "prompt": "quanto falta pra ana passar em fisica?",
+    "slice": "protected",
+    "category": "academic",
+    "thread_id": "random_protected_finance_academic",
+    "turn_index": 4,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "Ana Oliveira",
+      "Fisica",
+      "6,4",
+      "0,6"
+    ],
+    "forbidden_keywords": [
+      "falta(s)",
+      "atraso"
+    ]
+  },
+  {
+    "prompt": "como esta a documentacao da ana?",
+    "slice": "protected",
+    "category": "administrative",
+    "thread_id": "random_protected_documents",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "Ana Oliveira",
+      "pendencias"
+    ],
+    "forbidden_keywords": [
+      "regular"
+    ]
+  },
+  {
+    "prompt": "quero falar com o financeiro",
+    "slice": "support",
+    "category": "support",
+    "thread_id": "random_support",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "financeiro"
+    ],
+    "forbidden_keywords": [
+      "nao consegui"
+    ]
+  },
+  {
+    "prompt": "como esta esse atendimento?",
+    "slice": "support",
+    "category": "support",
+    "thread_id": "random_support",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "status",
+      "atendimento"
+    ],
+    "forbidden_keywords": [
+      "nao encontrei protocolo recente"
+    ]
+  },
+  {
+    "prompt": "quero agendar uma visita na quinta a tarde",
+    "slice": "workflow",
+    "category": "workflow",
+    "thread_id": "random_workflow",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "visita",
+      "protocolo"
+    ],
+    "forbidden_keywords": [
+      "nao consegui"
+    ]
+  },
+  {
+    "prompt": "se eu precisar remarcar, como faco?",
+    "slice": "workflow",
+    "category": "workflow",
+    "thread_id": "random_workflow",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "remarcar",
+      "protocolo"
+    ],
+    "forbidden_keywords": [
+      "nao encontrei protocolo recente"
+    ]
+  },
+  {
+    "prompt": "ola",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "eval:public-greeting-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 777010,
+    "expected_keywords": [
+      "EduAssist",
+      "Colegio Horizonte"
+    ],
+    "forbidden_keywords": [
+      "Como posso ajudar?"
+    ],
+    "note": "public_institutional_greeting"
+  },
+  {
+    "prompt": "com quem eu falo?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "eval:public-identity-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 777011,
+    "expected_keywords": [
+      "EduAssist",
+      "secretaria",
+      "direcao"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_assistant_identity"
+  },
+  {
+    "prompt": "quais opcoes de assuntos eu tenho aqui?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "eval:public-capabilities-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 777012,
+    "expected_keywords": [
+      "matricula",
+      "secretaria",
+      "financeiro"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_assistant_capabilities"
+  },
+  {
+    "prompt": "com quem eu falo sobre boletos?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "eval:service-routing-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 777001,
+    "expected_keywords": [
+      "financeiro",
+      "prazo tipico"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_service_routing"
+  },
+  {
+    "prompt": "como reporto um bullying?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "eval:bullying-routing-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 777003,
+    "expected_keywords": [
+      "orientacao educacional",
+      "bot, orientacao educacional ou secretaria"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_bullying_routing"
+  },
+  {
+    "prompt": "mas com qual contato eu devo falar",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "eval:bullying-routing-thread",
+    "turn_index": 2,
+    "telegram_chat_id": 777003,
+    "expected_keywords": [
+      "Voce pode falar com",
+      "orientacao educacional",
+      "bot, orientacao educacional ou secretaria"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_bullying_routing_followup"
+  },
+  {
+    "prompt": "e o telefone?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "eval:bullying-routing-thread",
+    "turn_index": 3,
+    "telegram_chat_id": 777003,
+    "expected_keywords": [
+      "(11) 3333-4202"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_bullying_phone_followup"
+  },
+  {
+    "prompt": "quais documentos sao exigidos para matricula?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "ext:public_faq_admissions",
+    "turn_index": 1,
+    "telegram_chat_id": 777001,
+    "expected_keywords": [
+      "matricula",
+      "documento"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_faq_admissions"
+  },
+  {
+    "prompt": "qual o telefone e o fax?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "ext:public_phone_and_fax_multi_attribute",
+    "turn_index": 1,
+    "telegram_chat_id": 777001,
+    "expected_keywords": [
+      "(11) 3333-4200",
+      "nao publica numero de fax"
+    ],
+    "forbidden_keywords": [
+      "None"
+    ],
+    "note": "public_phone_and_fax_multi_attribute"
+  },
+  {
+    "prompt": "qual site do colegio?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "ext:public_school_website",
+    "turn_index": 1,
+    "telegram_chat_id": 777001,
+    "expected_keywords": [
+      "https://www.colegiohorizonte.edu.br"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_school_website"
+  },
+  {
+    "prompt": "quando e a reuniao de pais?",
+    "slice": "public",
+    "category": "calendar",
+    "thread_id": "eval:calendar-event-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 777001,
+    "expected_keywords": [
+      "Reuniao geral de pais",
+      "28/03/2026",
+      "Reuniao de responsaveis"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_parent_meeting_calendar_event"
+  },
+  {
+    "prompt": "qual o nome da diretora?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "ext:public_director_name",
+    "turn_index": 1,
+    "telegram_chat_id": 777001,
+    "expected_keywords": [
+      "Diretora geral",
+      "Helena Martins"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_director_name"
+  },
+  {
+    "prompt": "qual o nome da diretora?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "eval:leadership-followup-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 777005,
+    "expected_keywords": [
+      "Helena Martins"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_director_email_followup_seed"
+  },
+  {
+    "prompt": "e o email?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "eval:leadership-followup-thread",
+    "turn_index": 2,
+    "telegram_chat_id": 777005,
+    "expected_keywords": [
+      "direcao@colegiohorizonte.edu.br"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_director_email_followup"
+  },
+  {
+    "prompt": "qual a media de aprovacao?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "ext:public_approval_kpi",
+    "turn_index": 1,
+    "telegram_chat_id": 777001,
+    "expected_keywords": [
+      "Aprovacao global",
+      "96.4%"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_approval_kpi"
+  },
+  {
+    "prompt": "quais documentos nao preciso para a matricula?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "ext:public_negative_requirements_abstention",
+    "turn_index": 1,
+    "telegram_chat_id": 777001,
+    "expected_keywords": [
+      "nao e seguro afirmar",
+      "dispensaveis",
+      "documentos exigidos"
+    ],
+    "forbidden_keywords": [
+      "outros documentos nao sao necessarios"
+    ],
+    "note": "public_negative_requirements_abstention"
+  },
+  {
+    "prompt": "e uma escola confessional?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "ext:public_confessional_gap",
+    "turn_index": 1,
+    "telegram_chat_id": 777001,
+    "expected_keywords": [
+      "escola laica",
+      "nao confessional"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_confessional_gap"
+  },
+  {
+    "prompt": "bom dia",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "eval:public-structure-after-greeting-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 777056,
+    "expected_keywords": [
+      "EduAssist",
+      "Colegio Horizonte"
+    ],
+    "forbidden_keywords": [],
+    "note": "public_structure_after_greeting_seed"
+  },
+  {
+    "prompt": "qual a estrutura da escola?",
+    "slice": "public",
+    "category": "institution",
+    "thread_id": "eval:public-structure-after-greeting-thread",
+    "turn_index": 2,
+    "telegram_chat_id": 777056,
+    "expected_keywords": [
+      "estrutura",
+      "biblioteca",
+      "maker"
+    ],
+    "forbidden_keywords": [
+      "Helena Martins"
+    ],
+    "note": "public_structure_after_greeting_followup"
+  },
+  {
+    "prompt": "qual meu acesso? a que dados",
+    "slice": "protected",
+    "category": "institution",
+    "thread_id": "eval:guardian-access-scope-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira",
+      "notas",
+      "financeiro"
+    ],
+    "forbidden_keywords": [
+      "/start link_<codigo>"
+    ],
+    "note": "guardian_access_scope_query"
+  },
+  {
+    "prompt": "estou logado como?",
+    "slice": "protected",
+    "category": "institution",
+    "thread_id": "eval:guardian-actor-identity-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "Maria Oliveira",
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "forbidden_keywords": [],
+    "note": "guardian_actor_identity_query"
+  },
+  {
+    "prompt": "quero ver as notas do Lucas Oliveira",
+    "slice": "protected",
+    "category": "academic",
+    "thread_id": "eval:guardian-lucas-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "Resumo academico de Lucas Oliveira",
+      "Biologia",
+      "Frequencia"
+    ],
+    "forbidden_keywords": [],
+    "note": "guardian_academic_student_summary"
+  },
+  {
+    "prompt": "e a frequencia?",
+    "slice": "protected",
+    "category": "academic",
+    "thread_id": "eval:guardian-lucas-thread",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "Resumo academico de Lucas Oliveira",
+      "Frequencia"
+    ],
+    "forbidden_keywords": [],
+    "note": "guardian_academic_followup_same_student"
+  },
+  {
+    "prompt": "quero ver o financeiro da Ana Oliveira",
+    "slice": "protected",
+    "category": "finance",
+    "thread_id": "ext:guardian_finance_student_summary",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "Resumo financeiro de Ana Oliveira",
+      "Faturas em aberto"
+    ],
+    "forbidden_keywords": [],
+    "note": "guardian_finance_student_summary"
+  },
+  {
+    "prompt": "tenho boletos atrasados?",
+    "slice": "protected",
+    "category": "finance",
+    "thread_id": "eval:guardian-finance-status-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "Resumo financeiro",
+      "Hoje nao ha faturas vencidas"
+    ],
+    "forbidden_keywords": [],
+    "note": "guardian_finance_overdue_empty_state"
+  },
+  {
+    "prompt": "preciso da segunda via do boleto da Ana Oliveira",
+    "slice": "protected",
+    "category": "finance",
+    "thread_id": "eval:guardian-finance-identifier-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "Resumo financeiro de Ana Oliveira",
+      "segunda via"
+    ],
+    "forbidden_keywords": [],
+    "note": "guardian_finance_identifier_seed"
+  },
+  {
+    "prompt": "qual o numero do boleto?",
+    "slice": "protected",
+    "category": "finance",
+    "thread_id": "eval:guardian-finance-identifier-thread",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "4a935c4e-eafd-405e-8a54-007ae82f6698",
+      "segunda via"
+    ],
+    "forbidden_keywords": [],
+    "note": "guardian_finance_invoice_identifier_followup"
+  },
+  {
+    "prompt": "quero saber se estou com a documentacao atualizada e completa e se meus boletos estao pagos ou atrasados",
+    "slice": "protected",
+    "category": "finance",
+    "thread_id": "eval:guardian-admin-finance-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "Resumo financeiro",
+      "Cadastro e documentacao",
+      "Situacao administrativa"
+    ],
+    "forbidden_keywords": [],
+    "note": "guardian_finance_and_documentation_combined"
+  },
+  {
+    "prompt": "como altero o endereco de email no meu cadastro?",
+    "slice": "protected",
+    "category": "institution",
+    "thread_id": "eval:guardian-profile-update-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "email cadastral",
+      "secretaria escolar"
+    ],
+    "forbidden_keywords": [],
+    "note": "guardian_profile_update_guidance"
+  },
+  {
+    "prompt": "e o telefone?",
+    "slice": "protected",
+    "category": "institution",
+    "thread_id": "eval:guardian-profile-update-thread",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "telefone cadastral atual",
+      "+55 11 98888-1001"
+    ],
+    "forbidden_keywords": [],
+    "note": "guardian_profile_update_phone_followup"
+  },
+  {
+    "prompt": "e os documentos?",
+    "slice": "protected",
+    "category": "institution",
+    "thread_id": "eval:guardian-profile-update-thread",
+    "turn_index": 3,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "Situacao documental",
+      "Documentacao administrativa",
+      "com pendencias"
+    ],
+    "forbidden_keywords": [],
+    "note": "guardian_profile_update_documents_followup"
+  },
+  {
+    "prompt": "e o proximo passo?",
+    "slice": "protected",
+    "category": "institution",
+    "thread_id": "eval:guardian-profile-update-thread",
+    "turn_index": 4,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [
+      "proximo passo do seu cadastro",
+      "comprovante atualizado"
+    ],
+    "forbidden_keywords": [],
+    "note": "guardian_profile_update_next_step_followup"
+  },
+  {
+    "prompt": "quero protocolar uma solicitacao para a direcao sobre ampliacao do horario da biblioteca",
+    "slice": "support",
+    "category": "support",
+    "thread_id": "eval:request-thread",
+    "turn_index": 1,
+    "telegram_chat_id": 777001,
+    "expected_keywords": [
+      "Solicitacao institucional registrada",
+      "REQ-",
+      "direcao"
+    ],
+    "forbidden_keywords": [],
+    "note": "support_institutional_request_workflow"
+  },
+  {
+    "prompt": "quero complementar meu pedido dizendo que preciso de resposta ainda esta semana",
+    "slice": "support",
+    "category": "support",
+    "thread_id": "eval:request-thread",
+    "turn_index": 2,
+    "telegram_chat_id": 777001,
+    "expected_keywords": [
+      "Complemento registrado",
+      "REQ-",
+      "resposta ainda esta semana"
+    ],
+    "forbidden_keywords": [],
+    "note": "support_institutional_request_update"
+  },
+  {
+    "prompt": "qual o status do meu protocolo?",
+    "slice": "support",
+    "category": "support",
+    "thread_id": "eval:request-thread",
+    "turn_index": 3,
+    "telegram_chat_id": 777001,
+    "expected_keywords": [
+      "REQ-",
+      "fila",
+      "direcao"
+    ],
+    "forbidden_keywords": [],
+    "note": "support_workflow_status_followup"
+  },
+  {
+    "prompt": "resume meu pedido",
+    "slice": "support",
+    "category": "support",
+    "thread_id": "eval:request-thread",
+    "turn_index": 4,
+    "telegram_chat_id": 777001,
+    "expected_keywords": [
+      "Resumo da sua solicitacao institucional",
+      "direcao",
+      "REQ-",
+      "resposta ainda esta semana"
+    ],
+    "forbidden_keywords": [],
+    "note": "support_workflow_summary_followup"
+  }
+]

@@ -10,6 +10,7 @@ class PathExecutionProfile:
     name: str
     prefer_fast_public_path: bool = False
     use_contextual_replan: bool = True
+    prefer_specialist_supervisor: bool = False
     prefer_native_llamaindex_selector: bool = False
     prefer_native_llamaindex_subquestions: bool = False
     prefer_native_llamaindex_citation_engine: bool = False
@@ -47,6 +48,17 @@ _PROFILES: dict[str, PathExecutionProfile] = {
             'native_citation_engine:enabled',
             'native_function_agent:enabled',
             'native_qdrant_autoretriever:enabled',
+        ),
+    ),
+    'specialist_supervisor': PathExecutionProfile(
+        name='specialist_supervisor',
+        prefer_specialist_supervisor=True,
+        notes=(
+            'path_family:specialist_supervisor',
+            'manager_pattern:agents_as_tools',
+            'quality_first:enabled',
+            'judge_loop:enabled',
+            'session_memory:enabled',
         ),
     ),
     'shadow': PathExecutionProfile(

@@ -29,7 +29,7 @@ from .engine_selector import (
 )
 from .engines.llamaindex_workflow_engine import LLAMAINDEX_WORKFLOW_AVAILABLE
 from .graph import get_graph_blueprint, to_preview
-from .graph_rag_runtime import graph_rag_workspace_ready
+from .graph_rag_runtime import graph_rag_workspace_ready, run_graph_rag_query
 from .langgraph_runtime import (
     close_langgraph_runtime,
     get_langgraph_artifacts,
@@ -101,6 +101,7 @@ class Settings(BaseSettings):
     orchestrator_engine: str = 'langgraph'
     feature_flag_primary_orchestration_stack: str | None = None
     crewai_pilot_url: str | None = None
+    specialist_supervisor_pilot_url: str | None = None
     orchestrator_experiment_enabled: bool = False
     orchestrator_experiment_primary_engine: str = 'crewai'
     orchestrator_experiment_slices: str = ''
@@ -174,6 +175,10 @@ class RuntimeTargetedStackUpdateRequest(BaseModel):
     slices: list[str] = Field(default_factory=list)
     telegram_chat_allowlist: list[str] = Field(default_factory=list)
     conversation_allowlist: list[str] = Field(default_factory=list)
+
+
+class GraphRagQueryRequest(BaseModel):
+    query: str = Field(min_length=3, max_length=4000)
 
 
 def _normalized_hitl_slices(values: list[str] | None, *, fallback: str) -> list[str]:
@@ -468,6 +473,7 @@ async def meta(
         'environment': settings.app_env,
         **_runtime_primary_stack_payload(settings),
         'crewaiPilotConfigured': bool(settings.crewai_pilot_url),
+        'specialistSupervisorPilotConfigured': bool(settings.specialist_supervisor_pilot_url),
         'experimentEnabled': settings.orchestrator_experiment_enabled,
         'experimentPrimaryEngine': settings.orchestrator_experiment_primary_engine,
         'experimentSlices': settings.orchestrator_experiment_slices,
@@ -519,6 +525,7 @@ async def status() -> dict[str, object]:
         'ready': True,
         **_runtime_primary_stack_payload(settings),
         'crewaiPilotConfigured': bool(settings.crewai_pilot_url),
+        'specialistSupervisorPilotConfigured': bool(settings.specialist_supervisor_pilot_url),
         'experimentEnabled': settings.orchestrator_experiment_enabled,
         'experimentPrimaryEngine': settings.orchestrator_experiment_primary_engine,
         'experimentSlices': settings.orchestrator_experiment_slices,
@@ -552,6 +559,7 @@ async def status() -> dict[str, object]:
             'provider-abstraction',
             'python-functions-engine',
             'llamaindex-workflow-engine',
+            'specialist-supervisor-engine',
         ],
         'supportedEngines': sorted(SUPPORTED_PRIMARY_STACKS),
         'graphRagEnabled': settings.graph_rag_enabled,
@@ -721,6 +729,7 @@ async def capabilities() -> RuntimeCapabilities:
         supported_primary_stacks=sorted(SUPPORTED_PRIMARY_STACKS),
         python_functions_available=True,
         llamaindex_workflow_available=LLAMAINDEX_WORKFLOW_AVAILABLE,
+        specialist_supervisor_available=bool(settings.specialist_supervisor_pilot_url),
         experimental_stack_readiness=experimental_stack_readiness,
         available_modes=[
             OrchestrationMode.hybrid_retrieval,
@@ -780,6 +789,29 @@ async def retrieval_search(request: RetrievalSearchRequest) -> RetrievalSearchRe
         visibility=request.visibility,
         category=request.category,
     )
+
+
+@app.post('/v1/internal/graphrag/query')
+async def graph_rag_query(
+    request: GraphRagQueryRequest,
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    _require_internal_api_token(x_internal_api_token)
+    settings = get_settings()
+    result = await run_graph_rag_query(settings=settings, query=request.query)
+    if result is None:
+        return {
+            'service': 'ai-orchestrator',
+            'graphRagEnabled': settings.graph_rag_enabled,
+            'workspaceReady': graph_rag_workspace_ready(settings.graph_rag_workspace),
+            'result': None,
+        }
+    return {
+        'service': 'ai-orchestrator',
+        'graphRagEnabled': settings.graph_rag_enabled,
+        'workspaceReady': graph_rag_workspace_ready(settings.graph_rag_workspace),
+        'result': result,
+    }
 
 
 @app.post('/v1/messages/respond', response_model=MessageResponse)

@@ -1,0 +1,172 @@
+[
+  {
+    "prompt": "a escola fica em qual bairro de sao paulo?",
+    "slice": "public",
+    "category": "location",
+    "thread_id": "random_public_location",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["Vila Mariana", "Sao Paulo"],
+    "forbidden_keywords": ["nao encontrei"]
+  },
+  {
+    "prompt": "o ensino medio segue a bncc?",
+    "slice": "public",
+    "category": "curriculum",
+    "thread_id": "random_public_curriculum",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["BNCC", "Ensino Medio"],
+    "forbidden_keywords": ["nao encontrei"]
+  },
+  {
+    "prompt": "quais canais eu posso usar para mandar documentos?",
+    "slice": "public",
+    "category": "documents",
+    "thread_id": "random_public_documents",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["portal", "email", "secretaria"],
+    "forbidden_keywords": ["fax"]
+  },
+  {
+    "prompt": "a biblioteca tem nome e horario ou e so marketing?",
+    "slice": "public",
+    "category": "library",
+    "thread_id": "random_public_library",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["Biblioteca Aurora", "18h00"],
+    "forbidden_keywords": ["nao encontrei"]
+  },
+  {
+    "prompt": "quando abre a matricula de 2026?",
+    "slice": "public",
+    "category": "calendar",
+    "thread_id": "random_public_timeline",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["2026", "6 de outubro de 2025"],
+    "forbidden_keywords": ["nao encontrei"]
+  },
+  {
+    "prompt": "e quando comecam as aulas?",
+    "slice": "public",
+    "category": "calendar",
+    "thread_id": "random_public_timeline",
+    "turn_index": 2,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["2 de fevereiro de 2026"],
+    "forbidden_keywords": ["nao encontrei"]
+  },
+  {
+    "prompt": "qual a mensalidade do ensino medio?",
+    "slice": "public",
+    "category": "pricing",
+    "thread_id": "random_public_pricing",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["Ensino Medio", "R$ 1.450,00"],
+    "forbidden_keywords": ["nao encontrei"]
+  },
+  {
+    "prompt": "se eu matricular 3 filhos, quanto fica so a matricula?",
+    "slice": "public",
+    "category": "pricing",
+    "thread_id": "random_public_pricing",
+    "turn_index": 2,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["3", "matricula", "R$ 1.050,00"],
+    "forbidden_keywords": ["alunos vinculados", "nao encontrei"]
+  },
+  {
+    "prompt": "como estao meus pagamentos?",
+    "slice": "protected",
+    "category": "finance",
+    "thread_id": "random_protected_finance_academic",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Resumo financeiro", "Ana Oliveira"],
+    "forbidden_keywords": []
+  },
+  {
+    "prompt": "e as notas?",
+    "slice": "protected",
+    "category": "academic",
+    "thread_id": "random_protected_finance_academic",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "forbidden_keywords": ["Resumo financeiro"]
+  },
+  {
+    "prompt": "ana, notas",
+    "slice": "protected",
+    "category": "academic",
+    "thread_id": "random_protected_finance_academic",
+    "turn_index": 3,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Notas de Ana Oliveira", "Fisica"],
+    "forbidden_keywords": ["Lucas Oliveira"]
+  },
+  {
+    "prompt": "quanto falta pra ana passar em fisica?",
+    "slice": "protected",
+    "category": "academic",
+    "thread_id": "random_protected_finance_academic",
+    "turn_index": 4,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Ana Oliveira", "Fisica", "6,4", "0,6"],
+    "forbidden_keywords": ["falta(s)", "atraso"]
+  },
+  {
+    "prompt": "como esta a documentacao da ana?",
+    "slice": "protected",
+    "category": "administrative",
+    "thread_id": "random_protected_documents",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Ana Oliveira", "pendencias"],
+    "forbidden_keywords": ["regular"]
+  },
+  {
+    "prompt": "quero falar com o financeiro",
+    "slice": "support",
+    "category": "support",
+    "thread_id": "random_support",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["financeiro"],
+    "forbidden_keywords": ["nao consegui"]
+  },
+  {
+    "prompt": "como esta esse atendimento?",
+    "slice": "support",
+    "category": "support",
+    "thread_id": "random_support",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["status", "atendimento"],
+    "forbidden_keywords": ["nao encontrei protocolo recente"]
+  },
+  {
+    "prompt": "quero agendar uma visita na quinta a tarde",
+    "slice": "workflow",
+    "category": "workflow",
+    "thread_id": "random_workflow",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["visita", "protocolo"],
+    "forbidden_keywords": ["nao consegui"]
+  },
+  {
+    "prompt": "se eu precisar remarcar, como faco?",
+    "slice": "workflow",
+    "category": "workflow",
+    "thread_id": "random_workflow",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["remarcar", "protocolo"],
+    "forbidden_keywords": ["nao encontrei protocolo recente"]
+  }
+]
