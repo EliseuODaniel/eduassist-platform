@@ -569,6 +569,10 @@ def _pending_kind_from_answer(answer: SupervisorAnswerPayload) -> str | None:
     return None
 
 
+def _answer_specialists_from_graph_path(answer: SupervisorAnswerPayload) -> list[str]:
+    return [item for item in answer.graph_path if item in EXECUTION_SPECIALISTS]
+
+
 def _build_operational_memory(
     ctx: SupervisorRunContext,
     *,
@@ -578,7 +582,8 @@ def _build_operational_memory(
     previous = ctx.operational_memory.model_copy(deep=True) if ctx.operational_memory is not None else OperationalMemory()
     active_domain = str(answer.classification.domain or previous.active_domain or "").strip() or None
     active_topic = _topic_from_reason(answer.reason) or previous.active_topic
-    multi_domains = _detect_multi_intent_domains(ctx.request.message)
+    multi_domains = _effective_multi_intent_domains(previous, ctx.request.message)
+    active_domains = list(dict.fromkeys(multi_domains or previous.multi_intent_domains or ([active_domain] if active_domain else [])))
     subject_hint = _subject_hint_from_text(ctx.request.message) or previous.active_subject
     capability = "finance" if active_domain == "finance" else "academic"
     student_hint = _student_hint_from_message(ctx.actor, ctx.request.message) or _is_student_name_only_followup(ctx.actor, ctx.request.message)
@@ -598,6 +603,7 @@ def _build_operational_memory(
     return previous.model_copy(
         update={
             "active_domain": active_domain or previous.active_domain,
+            "active_domains": active_domains or previous.active_domains,
             "active_student_id": str(student.get("student_id") or "").strip() or previous.active_student_id if isinstance(student, dict) else previous.active_student_id,
             "active_student_name": str(student.get("full_name") or "").strip() or previous.active_student_name if isinstance(student, dict) else previous.active_student_name,
             "alternate_student_id": str(alternate_student.get("student_id") or "").strip() or previous.alternate_student_id if isinstance(alternate_student, dict) else previous.alternate_student_id,
@@ -607,6 +613,7 @@ def _build_operational_memory(
             "pending_kind": _pending_kind_from_answer(answer),
             "pending_prompt": answer.message_text if answer.mode == "clarify" else None,
             "multi_intent_domains": multi_domains or previous.multi_intent_domains,
+            "last_specialists": _answer_specialists_from_graph_path(answer) or previous.last_specialists,
             "last_route": route,
             "last_reason": answer.reason,
         }
@@ -1017,6 +1024,29 @@ def _detect_multi_intent_domains(message: str) -> list[str]:
     return domains
 
 
+def _effective_multi_intent_domains(memory: OperationalMemory | None, message: str) -> list[str]:
+    detected = _detect_multi_intent_domains(message)
+    normalized = _normalize_text(message)
+    if len(detected) >= 2:
+        return detected
+    if any(term in normalized for term in {"tambem", "também", "tambem?", "também?", "e os", "e as", "e o", "e a"}):
+        merged = list(
+            dict.fromkeys(
+                detected
+                + list(memory.multi_intent_domains if memory is not None else [])
+                + list(memory.active_domains if memory is not None else [])
+                + ([str(memory.active_domain)] if memory is not None and str(memory.active_domain or "").strip() else [])
+            )
+        )
+        if "academic" in merged and "finance" in merged:
+            return ["academic", "finance"]
+        if "support" in merged and "finance" in merged:
+            return ["support", "finance"]
+        if "support" in merged and "academic" in merged:
+            return ["academic", "support"]
+    return detected
+
+
 def _load_operational_memory(conversation_context: dict[str, Any] | None) -> OperationalMemory | None:
     tool_calls = _extract_recent_tool_calls(conversation_context)
     for item in reversed(tool_calls):
@@ -1165,6 +1195,42 @@ def _compose_academic_finance_combo_answer(*, academic_summary: dict[str, Any], 
                 f"- Proximo vencimento deste recorte: {next_invoice.get('due_date', '--')} no valor de {_format_brl(next_invoice.get('amount_due'))}"
             )
     return "\n".join(lines)
+
+
+def _build_academic_finance_combo_payload(
+    *,
+    academic_summary: dict[str, Any],
+    finance_summary: dict[str, Any],
+    reason: str,
+    graph_path: list[str],
+) -> SupervisorAnswerPayload:
+    student_name = str(academic_summary.get("student_name") or finance_summary.get("student_name") or "Aluno").strip()
+    return SupervisorAnswerPayload(
+        message_text=_compose_academic_finance_combo_answer(
+            academic_summary=academic_summary,
+            finance_summary=finance_summary,
+        ),
+        mode="structured_tool",
+        classification=MessageIntentClassification(
+            domain="academic",
+            access_tier="authenticated",
+            confidence=0.99,
+            reason=reason,
+        ),
+        evidence_pack=MessageEvidencePack(
+            strategy="structured_tools",
+            summary="Composicao deterministica de resumo academico e financeiro no mesmo turno.",
+            source_count=2,
+            support_count=2,
+            supports=[
+                MessageEvidenceSupport(kind="academic_summary", label=student_name, detail="Notas consolidadas do aluno."),
+                MessageEvidenceSupport(kind="finance_summary", label=student_name, detail="Resumo de boletos e vencimentos do aluno."),
+            ],
+        ),
+        suggested_replies=_merge_domain_suggested_replies(["academic", "finance"]) or _default_suggested_replies("academic"),
+        graph_path=graph_path,
+        reason=reason,
+    )
 
 
 def _compose_finance_aggregate_answer(summaries: list[dict[str, Any]]) -> str:
@@ -2243,6 +2309,29 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
     profile = ctx.school_profile if isinstance(ctx.school_profile, dict) else {}
     preview = ctx.preview_hint if isinstance(ctx.preview_hint, dict) else {}
     preview_mode = str(preview.get("mode") or "").strip()
+    memory = ctx.operational_memory or OperationalMemory()
+    multi_domains = _effective_multi_intent_domains(memory, ctx.request.message)
+
+    if ctx.request.user.authenticated and len(multi_domains) >= 2 and "academic" in multi_domains and "finance" in multi_domains:
+        target_name = (
+            _student_hint_from_message(ctx.actor, ctx.request.message)
+            or _is_student_name_only_followup(ctx.actor, ctx.request.message)
+            or memory.active_student_name
+        )
+        if target_name:
+            academic_payload, finance_payload = await asyncio.gather(
+                _fetch_academic_summary_payload(ctx, student_name_hint=target_name),
+                _fetch_financial_summary_payload(ctx, student_name_hint=target_name),
+            )
+            academic_summary = academic_payload.get("summary") if isinstance(academic_payload, dict) else None
+            finance_summary = finance_payload.get("summary") if isinstance(finance_payload, dict) else None
+            if isinstance(academic_summary, dict) and isinstance(finance_summary, dict):
+                return _build_academic_finance_combo_payload(
+                    academic_summary=academic_summary,
+                    finance_summary=finance_summary,
+                    reason="specialist_supervisor_tool_first:academic_finance_combo",
+                    graph_path=["specialist_supervisor", "tool_first", "academic_finance_combo"],
+                )
 
     if profile and _looks_like_project_of_life_query(ctx.request.message):
         answer_text = _compose_project_of_life_answer(profile)
@@ -3239,7 +3328,7 @@ async def _operational_memory_follow_up_answer(ctx: SupervisorRunContext) -> Sup
     if not ctx.request.user.authenticated:
         return None
     student_hint = _is_student_name_only_followup(ctx.actor, ctx.request.message)
-    multi_domains = _detect_multi_intent_domains(ctx.request.message)
+    multi_domains = _effective_multi_intent_domains(memory, ctx.request.message)
 
     if len(multi_domains) >= 2 and "academic" in multi_domains and "finance" in multi_domains:
         target_name = student_hint or _student_hint_from_message(ctx.actor, ctx.request.message) or memory.active_student_name
@@ -3251,32 +3340,11 @@ async def _operational_memory_follow_up_answer(ctx: SupervisorRunContext) -> Sup
             academic_summary = academic_payload.get("summary") if isinstance(academic_payload, dict) else None
             finance_summary = finance_payload.get("summary") if isinstance(finance_payload, dict) else None
             if isinstance(academic_summary, dict) and isinstance(finance_summary, dict):
-                student_name = str(academic_summary.get("student_name") or finance_summary.get("student_name") or target_name).strip()
-                return SupervisorAnswerPayload(
-                    message_text=_compose_academic_finance_combo_answer(
-                        academic_summary=academic_summary,
-                        finance_summary=finance_summary,
-                    ),
-                    mode="structured_tool",
-                    classification=MessageIntentClassification(
-                        domain="academic",
-                        access_tier="authenticated",
-                        confidence=0.99,
-                        reason="specialist_supervisor_memory:academic_finance_combo",
-                    ),
-                    evidence_pack=MessageEvidencePack(
-                        strategy="structured_tools",
-                        summary="Composicao deterministica de resumo academico e financeiro no mesmo turno.",
-                        source_count=2,
-                        support_count=2,
-                        supports=[
-                            MessageEvidenceSupport(kind="academic_summary", label=student_name, detail="Notas consolidadas do aluno."),
-                            MessageEvidenceSupport(kind="finance_summary", label=student_name, detail="Resumo de boletos e vencimentos do aluno."),
-                        ],
-                    ),
-                    suggested_replies=_default_suggested_replies("academic"),
-                    graph_path=["specialist_supervisor", "operational_memory", "academic_finance_combo"],
+                return _build_academic_finance_combo_payload(
+                    academic_summary=academic_summary,
+                    finance_summary=finance_summary,
                     reason="specialist_supervisor_memory:academic_finance_combo",
+                    graph_path=["specialist_supervisor", "operational_memory", "academic_finance_combo"],
                 )
 
     if ctx.operational_memory is None:
@@ -3673,7 +3741,7 @@ def _normalize_retrieval_advice(
         strategy = "structured_tools"
     primary_domain = str(advice.primary_domain or preview_domain).strip().lower() or preview_domain
     secondary_domains = [item for item in advice.secondary_domains if item and item != primary_domain]
-    detected_multi_domains = _detect_multi_intent_domains(ctx.request.message)
+    detected_multi_domains = _effective_multi_intent_domains(ctx.operational_memory, ctx.request.message)
     if "academic" in detected_multi_domains and "finance" in detected_multi_domains:
         for domain in ("academic", "finance"):
             if domain != primary_domain and domain not in secondary_domains:
@@ -4116,6 +4184,8 @@ def _judge_instructions() -> str:
         "Voce e o judge final da resposta. "
         "Verifique grounding, completude, contradicoes e se faltou clarificacao. "
         "Aprove apenas respostas sustentadas pelos resultados dos especialistas. "
+        "Quando o pedido tiver mais de um dominio, confirme explicitamente que todos os dominios pedidos foram cobertos. "
+        "Nao aprove respostas que deixem um dos blocos sem resposta ou que derrubem um dominio pedido para o outro. "
         "Se necessario, proponha uma resposta revisada ou uma pergunta de clarificacao. "
         "Se a resposta estiver proxima do ideal, mas incompleta ou arriscada, explique os problemas de forma acionavel para um repair loop curto."
     )
@@ -4215,6 +4285,124 @@ def _direct_compose_candidate(
     if candidate.confidence < 0.7:
         return None
     return candidate
+
+
+def _specialist_compose_label(ctx: SupervisorRunContext, specialist_id: str) -> str:
+    spec = _specialist_spec(ctx, specialist_id)
+    label = str(getattr(spec, "compose_label", "") or "").strip()
+    if label:
+        return label
+    return str(getattr(spec, "name", specialist_id) or specialist_id).strip()
+
+
+def _supports_multi_specialist_compose(ctx: SupervisorRunContext, specialist_results: list[SpecialistResult]) -> bool:
+    if len(specialist_results) < 2:
+        return False
+    specialist_ids = [item.specialist_id for item in specialist_results]
+    for result in specialist_results:
+        spec = _specialist_spec(ctx, result.specialist_id)
+        if spec is None:
+            return False
+        if getattr(spec, "manager_policy", "always") != "prefer_direct":
+            return False
+        combinable_with = set(getattr(spec, "combinable_with", []) or [])
+        if not set(item for item in specialist_ids if item != result.specialist_id).issubset(combinable_with):
+            return False
+        if result.confidence < 0.7 or _result_looks_negative(result):
+            return False
+    return True
+
+
+def _compose_specialist_block(ctx: SupervisorRunContext, result: SpecialistResult) -> str:
+    spec = _specialist_spec(ctx, result.specialist_id)
+    template = str(getattr(spec, "compose_template", "paragraph") or "paragraph").strip().lower()
+    label = _specialist_compose_label(ctx, result.specialist_id)
+    text = str(result.answer_text or "").strip()
+    if template == "bullet":
+        lines = [f"{label}:"]
+        body_lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if body_lines:
+            for line in body_lines:
+                if line.startswith("- "):
+                    lines.append(line)
+                else:
+                    lines.append(f"- {line}")
+        else:
+            lines.append(f"- {text}")
+        return "\n".join(lines)
+    if template == "summary":
+        return f"{label}: {text}"
+    return f"{label}: {text}"
+
+
+def _merge_domain_suggested_replies(domains: list[str]) -> list[MessageResponseSuggestedReply]:
+    merged: list[MessageResponseSuggestedReply] = []
+    seen: set[str] = set()
+    for domain in domains:
+        for item in _default_suggested_replies(domain):
+            text = str(item.text).strip()
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            merged.append(item)
+            if len(merged) >= 4:
+                return merged
+    return merged[:4]
+
+
+def _build_multi_specialist_answer_from_results(
+    ctx: SupervisorRunContext,
+    *,
+    plan: SupervisorPlan,
+    specialist_results: list[SpecialistResult],
+) -> SupervisorAnswerPayload | None:
+    if plan.request_kind != "multi_domain":
+        return None
+    if not _supports_multi_specialist_compose(ctx, specialist_results):
+        return None
+    ordered = sorted(
+        specialist_results,
+        key=lambda item: int(getattr(_specialist_spec(ctx, item.specialist_id), "execution_priority", 100)),
+    )
+    blocks = [_compose_specialist_block(ctx, item) for item in ordered]
+    message_text = "\n\n".join(block for block in blocks if block.strip())
+    if not message_text.strip():
+        return None
+    composed_domains = [plan.primary_domain, *plan.secondary_domains]
+    supports: list[MessageEvidenceSupport] = []
+    for item in ordered:
+        supports.append(
+            MessageEvidenceSupport(
+                kind="specialist",
+                label=item.specialist_id,
+                detail=item.evidence_summary,
+                excerpt=_safe_excerpt(item.answer_text),
+            )
+        )
+    return SupervisorAnswerPayload(
+        message_text=message_text,
+        mode=_mode_from_strategy(plan.retrieval_strategy),
+        classification=MessageIntentClassification(
+            domain=plan.primary_domain,
+            access_tier=_access_tier_for_domain(plan.primary_domain, ctx.request.user.authenticated),
+            confidence=max([plan.confidence, *[item.confidence for item in ordered]]),
+            reason=f"specialist_supervisor_multi_direct:{'+'.join(item.specialist_id for item in ordered)}",
+        ),
+        retrieval_backend=_retrieval_backend_from_strategy(plan.retrieval_strategy),
+        selected_tools=sorted({tool for item in ordered for tool in item.tool_names}),
+        citations=_aggregate_citations(ordered),
+        suggested_replies=_merge_domain_suggested_replies(composed_domains) or _default_suggested_replies(plan.primary_domain),
+        evidence_pack=MessageEvidencePack(
+            strategy=plan.retrieval_strategy,
+            summary=f"Resposta composta diretamente a partir de {len(ordered)} especialistas grounded.",
+            source_count=max(1, len(ordered)),
+            support_count=len(supports),
+            supports=supports[:8],
+        ),
+        needs_authentication=not ctx.request.user.authenticated and any(domain in {"academic", "finance"} for domain in composed_domains),
+        graph_path=["specialist_supervisor", "retrieval_planner", "multi_specialist_direct", *[item.specialist_id for item in ordered]],
+        reason=f"specialist_supervisor_multi_direct:{'+'.join(item.specialist_id for item in ordered)}",
+    )
 
 
 def _build_direct_answer_from_specialist(
@@ -4610,6 +4798,7 @@ async def _run_judge(
             "user_message": ctx.request.message,
             "retrieval_advice": ctx.retrieval_advice.model_dump(mode="json") if ctx.retrieval_advice is not None else {},
             "plan": plan.model_dump(mode="json"),
+            "operational_memory": ctx.operational_memory.model_dump(mode="json") if ctx.operational_memory is not None else {},
             "manager_draft": draft.model_dump(mode="json"),
             "specialist_results": [item.model_dump(mode="json") for item in specialist_results],
         },
@@ -5037,6 +5226,31 @@ async def run_specialist_supervisor(
 
         try:
             precomputed_specialist_results = await _execute_planned_specialists(context, plan=plan)
+            multi_direct_answer = _build_multi_specialist_answer_from_results(
+                context,
+                plan=plan,
+                specialist_results=precomputed_specialist_results,
+            )
+            if multi_direct_answer is not None:
+                await _persist_final_answer(
+                    context,
+                    answer=multi_direct_answer,
+                    route="multi_specialist_direct",
+                    metadata={
+                        "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
+                        "plan": plan.model_dump(mode="json"),
+                        "specialists_used": [item.specialist_id for item in precomputed_specialist_results],
+                    },
+                )
+                return SpecialistSupervisorResponse(
+                    reason=multi_direct_answer.reason,
+                    metadata={
+                        "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
+                        "plan": plan.model_dump(mode="json"),
+                        "specialists_used": [item.specialist_id for item in precomputed_specialist_results],
+                    },
+                    answer=multi_direct_answer,
+                ).model_dump(mode="json")
             direct_result = _direct_compose_candidate(
                 context,
                 plan=plan,

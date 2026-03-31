@@ -126,6 +126,10 @@ class SpecialistSpec(BaseModel):
     manager_policy: Literal["always", "prefer_direct"] = "always"
     preferred_categories: list[str] = Field(default_factory=list)
     latency_tier: Literal["low", "medium", "high"] = "medium"
+    compose_label: str | None = None
+    compose_template: Literal["paragraph", "bullet", "summary"] = "paragraph"
+    combinable_with: list[SpecialistId] = Field(default_factory=list)
+    memory_topics: list[str] = Field(default_factory=list)
     activation_flag: bool = True
 
 
@@ -137,6 +141,7 @@ class SupervisorInputGuardrail(BaseModel):
 
 class OperationalMemory(BaseModel):
     active_domain: str | None = None
+    active_domains: list[str] = Field(default_factory=list)
     active_student_id: str | None = None
     active_student_name: str | None = None
     alternate_student_id: str | None = None
@@ -146,6 +151,7 @@ class OperationalMemory(BaseModel):
     pending_kind: str | None = None
     pending_prompt: str | None = None
     multi_intent_domains: list[str] = Field(default_factory=list)
+    last_specialists: list[str] = Field(default_factory=list)
     last_route: str | None = None
     last_reason: str | None = None
 
