@@ -23,6 +23,51 @@ def _strict_safe_response_text(*, request: Any) -> str:
     )
 
 
+def _normalize_query_domain(value: Any) -> QueryDomain:
+    raw = str(value or "").strip().lower()
+    if raw == "workflow":
+        return QueryDomain.support
+    try:
+        return QueryDomain(raw)
+    except Exception:
+        return QueryDomain.unknown
+
+
+def _normalize_access_tier(value: Any) -> AccessTier:
+    raw = str(value or "").strip().lower()
+    try:
+        return AccessTier(raw)
+    except Exception:
+        return AccessTier.public
+
+
+def _normalize_mode(value: Any) -> OrchestrationMode:
+    raw = str(value or "").strip().lower()
+    try:
+        return OrchestrationMode(raw)
+    except Exception:
+        return OrchestrationMode.clarify
+
+
+def _normalize_retrieval_backend(value: Any) -> RetrievalBackend:
+    raw = str(value or "").strip().lower()
+    try:
+        return RetrievalBackend(raw)
+    except Exception:
+        return RetrievalBackend.none
+
+
+def _normalize_remote_answer(answer: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(answer)
+    classification = dict(normalized.get("classification") or {})
+    classification["domain"] = _normalize_query_domain(classification.get("domain")).value
+    classification["access_tier"] = _normalize_access_tier(classification.get("access_tier")).value
+    normalized["classification"] = classification
+    normalized["mode"] = _normalize_mode(normalized.get("mode")).value
+    normalized["retrieval_backend"] = _normalize_retrieval_backend(normalized.get("retrieval_backend")).value
+    return normalized
+
+
 class SpecialistSupervisorEngine(ResponseEngine):
     name = "specialist_supervisor"
     ready = False
@@ -64,7 +109,7 @@ class SpecialistSupervisorEngine(ResponseEngine):
 
         answer = payload.get("answer") if isinstance(payload, dict) and isinstance(payload.get("answer"), dict) else None
         if isinstance(answer, dict):
-            return MessageResponse.model_validate(answer)
+            return MessageResponse.model_validate(_normalize_remote_answer(answer))
 
         if strict_isolation:
             return MessageResponse(

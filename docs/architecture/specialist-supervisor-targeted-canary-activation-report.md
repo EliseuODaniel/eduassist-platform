@@ -1,6 +1,6 @@
 # Next-Gen Targeted Canary Activation Report
 
-Date: 2026-03-31T00:43:26.045231+00:00
+Date: 2026-03-31T00:56:19.880069+00:00
 
 Base URL: `http://127.0.0.1:8002`
 
@@ -17,7 +17,7 @@ Action: `activated`
 
 - Stack: `specialist_supervisor`
 - TTL seconds: `1800`
-- Expires at: `2026-03-31T01:13:26.040589+00:00`
+- Expires at: `2026-03-31T01:26:19.876368+00:00`
 - Slices: `workflow`
 - Telegram chat allowlist: `1649845499`
 - Conversation allowlist: `none`
