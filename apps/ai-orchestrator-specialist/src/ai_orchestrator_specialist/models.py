@@ -158,6 +158,23 @@ class SupervisorPlan(BaseModel):
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
+class RetrievalPlannerAdvice(BaseModel):
+    normalized_query: str
+    primary_domain: str
+    secondary_domains: list[str] = Field(default_factory=list)
+    retrieval_strategy: RetrievalStrategy = "direct_answer"
+    recommended_specialists: list[SpecialistId] = Field(default_factory=list)
+    preferred_category: str | None = None
+    evidence_queries: list[str] = Field(default_factory=list)
+    requires_grounding: bool = False
+    requires_clarification: bool = False
+    clarification_question: str | None = None
+    should_deny: bool = False
+    denial_reason: str | None = None
+    rationale: str = ""
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+
+
 class SpecialistResult(BaseModel):
     specialist_id: SpecialistId
     answer_text: str
@@ -174,6 +191,15 @@ class ManagerDraft(BaseModel):
     specialists_used: list[SpecialistId] = Field(default_factory=list)
     citations: list[MessageResponseCitation] = Field(default_factory=list)
     suggested_replies: list[str] = Field(default_factory=list)
+
+
+class RepairDraft(BaseModel):
+    answer_text: str
+    answer_summary: str
+    specialists_used: list[SpecialistId] = Field(default_factory=list)
+    citations: list[MessageResponseCitation] = Field(default_factory=list)
+    suggested_replies: list[str] = Field(default_factory=list)
+    repair_notes: list[str] = Field(default_factory=list)
 
 
 class JudgeVerdict(BaseModel):

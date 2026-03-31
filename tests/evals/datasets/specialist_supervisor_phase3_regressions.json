@@ -1,0 +1,52 @@
+[
+  {
+    "prompt": "Me explique a proposta pedagógica da escola e os diferenciais do ensino médio",
+    "slice": "public",
+    "category": "institution_retrieval_planning",
+    "thread_id": "specialist_phase3_public_proposal",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["Colégio Horizonte"],
+    "forbidden_keywords": ["Qual é o nome da escola?"]
+  },
+  {
+    "prompt": "se eu faltar mais que metade das aulas, o que acontece?",
+    "slice": "public",
+    "category": "attendance_policy",
+    "thread_id": "specialist_phase3_attendance",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["75,0%", "aprovação por frequência"],
+    "forbidden_keywords": ["2 de fevereiro de 2026", "Qual é o nome da escola?"]
+  },
+  {
+    "prompt": "quanto falta pra ana passar em física?",
+    "slice": "protected",
+    "category": "academic_memory",
+    "thread_id": "specialist_phase3_other_student_requirement",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Ana Oliveira", "Física"],
+    "forbidden_keywords": ["Consigo calcular isso, mas preciso que voce confirme a disciplina exata."]
+  },
+  {
+    "prompt": "E do outro aluno?",
+    "slice": "protected",
+    "category": "academic_memory",
+    "thread_id": "specialist_phase3_other_student_requirement",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Lucas Oliveira", "Física"],
+    "forbidden_keywords": ["Qual aluno", "Conhecimento geral"]
+  },
+  {
+    "prompt": "qual nota da ana e os boletos também",
+    "slice": "protected",
+    "category": "academic_finance_combo",
+    "thread_id": "specialist_phase3_multi_intent",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Resumo combinado de Ana Oliveira", "Academico", "Financeiro"],
+    "forbidden_keywords": ["Resumo financeiro das contas vinculadas", "Panorama academico das contas vinculadas", "Qual aluno"]
+  }
+]

@@ -23,6 +23,8 @@ from .models import (
     MessageResponseCitation,
     MessageResponseSuggestedReply,
     OperationalMemory,
+    RepairDraft,
+    RetrievalPlannerAdvice,
     SpecialistResult,
     SpecialistSupervisorRequest,
     SpecialistSupervisorResponse,
@@ -114,6 +116,7 @@ class SupervisorRunContext:
     actor: dict[str, Any] | None
     conversation_context: dict[str, Any] | None
     operational_memory: OperationalMemory | None
+    retrieval_advice: RetrievalPlannerAdvice | None
     school_profile: dict[str, Any] | None
     preview_hint: dict[str, Any] | None
     specialist_registry: dict[str, Any]
@@ -632,11 +635,13 @@ async def _persist_conversation_turn(ctx: SupervisorRunContext, assistant_messag
 async def _persist_trace(
     ctx: SupervisorRunContext,
     *,
+    retrieval_advice: RetrievalPlannerAdvice | None,
     plan: SupervisorPlan,
     draft: ManagerDraft,
     judge: JudgeVerdict,
     answer: SupervisorAnswerPayload,
     operational_memory: OperationalMemory,
+    repair_payload: tuple[RepairDraft, JudgeVerdict] | None = None,
 ) -> None:
     actor_user_id = ctx.actor.get("user_id") if isinstance(ctx.actor, dict) else None
     await _http_post(
@@ -657,9 +662,12 @@ async def _persist_trace(
                         "preview_hint": ctx.preview_hint or {},
                     },
                     "response_payload": {
+                        "retrieval_advice": retrieval_advice.model_dump(mode="json") if retrieval_advice is not None else None,
                         "plan": plan.model_dump(mode="json"),
                         "draft": draft.model_dump(mode="json"),
                         "judge": judge.model_dump(mode="json"),
+                        "repair": repair_payload[0].model_dump(mode="json") if repair_payload is not None else None,
+                        "repair_judge": repair_payload[1].model_dump(mode="json") if repair_payload is not None else None,
                         "answer": answer.model_dump(mode="json"),
                         "operational_memory": operational_memory.model_dump(mode="json"),
                         "agent_events": ctx.trace.agent_events,
@@ -719,6 +727,7 @@ async def _persist_final_answer(
     route: str,
     metadata: dict[str, Any] | None = None,
     trace_payload: tuple[SupervisorPlan, ManagerDraft, JudgeVerdict] | None = None,
+    repair_payload: tuple[RepairDraft, JudgeVerdict] | None = None,
 ) -> None:
     operational_memory = _build_operational_memory(ctx, answer=answer, route=route)
     ctx.operational_memory = operational_memory
@@ -727,11 +736,13 @@ async def _persist_final_answer(
         plan, draft, judge = trace_payload
         await _persist_trace(
             ctx,
+            retrieval_advice=ctx.retrieval_advice,
             plan=plan,
             draft=draft,
             judge=judge,
             answer=answer,
             operational_memory=operational_memory,
+            repair_payload=repair_payload,
         )
         return
     await _persist_light_trace(
@@ -3598,10 +3609,157 @@ def _manager_result_contract() -> str:
     )
 
 
+def _repair_result_contract() -> str:
+    return (
+        'Retorne JSON valido com as chaves: '
+        '"answer_text", "answer_summary", "specialists_used", "citations", "suggested_replies", "repair_notes".'
+    )
+
+
+def _fallback_specialists_for_domain(domain: str, retrieval_backend: str) -> tuple[list[str], str]:
+    normalized_domain = str(domain or "institution").strip().lower() or "institution"
+    normalized_backend = str(retrieval_backend or "none").strip().lower()
+    if normalized_domain == "academic":
+        return ["academic_specialist"], "structured_tools"
+    if normalized_domain == "finance":
+        return ["finance_specialist"], "structured_tools"
+    if normalized_domain in {"support", "workflow"}:
+        return ["workflow_specialist"], "structured_tools"
+    if normalized_backend == "graph_rag":
+        return ["document_specialist"], "graph_rag"
+    if normalized_backend == "qdrant_hybrid":
+        return ["document_specialist"], "hybrid_retrieval"
+    return ["institution_specialist"], "direct_answer"
+
+
+def _normalize_retrieval_advice(
+    ctx: SupervisorRunContext,
+    advice: RetrievalPlannerAdvice,
+) -> RetrievalPlannerAdvice:
+    preview = ctx.preview_hint or {}
+    preview_classification = preview.get("classification") if isinstance(preview, dict) else {}
+    preview_domain = str(preview_classification.get("domain") or "institution").strip().lower() or "institution"
+    preview_backend = str(preview.get("retrieval_backend") or "none").strip().lower()
+    default_specialists, default_strategy = _fallback_specialists_for_domain(preview_domain, preview_backend)
+    specialists = [item for item in advice.recommended_specialists if item in EXECUTION_SPECIALISTS]
+    if not specialists and advice.retrieval_strategy not in {"clarify", "deny"}:
+        specialists = default_specialists
+    strategy = advice.retrieval_strategy
+    if strategy == "direct_answer" and advice.requires_grounding:
+        strategy = default_strategy
+    if advice.primary_domain in {"academic", "finance", "support", "workflow"} and strategy == "direct_answer":
+        strategy = "structured_tools"
+    primary_domain = str(advice.primary_domain or preview_domain).strip().lower() or preview_domain
+    secondary_domains = [item for item in advice.secondary_domains if item and item != primary_domain]
+    detected_multi_domains = _detect_multi_intent_domains(ctx.request.message)
+    if "academic" in detected_multi_domains and "finance" in detected_multi_domains:
+        for domain in ("academic", "finance"):
+            if domain != primary_domain and domain not in secondary_domains:
+                secondary_domains.append(domain)
+        for specialist_id in ("academic_specialist", "finance_specialist"):
+            if specialist_id not in specialists:
+                specialists.append(specialist_id)
+        strategy = "structured_tools"
+    evidence_queries = [str(item).strip() for item in advice.evidence_queries if str(item).strip()]
+    if not evidence_queries:
+        evidence_queries = [ctx.request.message]
+    return advice.model_copy(
+        update={
+            "primary_domain": primary_domain,
+            "secondary_domains": secondary_domains,
+            "retrieval_strategy": strategy,
+            "recommended_specialists": specialists,
+            "evidence_queries": evidence_queries[:3],
+            "requires_grounding": advice.requires_grounding or strategy in {"structured_tools", "hybrid_retrieval", "graph_rag", "document_search", "workflow_status", "pricing_projection"},
+        }
+    )
+
+
+def _normalize_plan_with_retrieval_advice(
+    ctx: SupervisorRunContext,
+    plan: SupervisorPlan,
+    retrieval_advice: RetrievalPlannerAdvice | None,
+) -> SupervisorPlan:
+    preview = ctx.preview_hint or {}
+    preview_classification = preview.get("classification") if isinstance(preview, dict) else {}
+    preview_domain = str(preview_classification.get("domain") or "institution").strip().lower() or "institution"
+    preview_backend = str(preview.get("retrieval_backend") or "none").strip().lower()
+    fallback_specialists, fallback_strategy = _fallback_specialists_for_domain(preview_domain, preview_backend)
+    primary_domain = str(plan.primary_domain or preview_domain).strip().lower() or preview_domain
+    retrieval_strategy = plan.retrieval_strategy
+    specialists = [item for item in plan.specialists if item in EXECUTION_SPECIALISTS]
+    secondary_domains = [item for item in plan.secondary_domains if item and item != primary_domain]
+    confidence = plan.confidence
+    reasoning_summary = plan.reasoning_summary
+    requires_clarification = plan.requires_clarification
+    clarification_question = plan.clarification_question
+    should_deny = plan.should_deny
+    denial_reason = plan.denial_reason
+    request_kind = plan.request_kind
+    if retrieval_advice is not None:
+        primary_domain = retrieval_advice.primary_domain or primary_domain
+        for item in retrieval_advice.secondary_domains:
+            if item and item != primary_domain and item not in secondary_domains:
+                secondary_domains.append(item)
+        if retrieval_advice.recommended_specialists:
+            for item in retrieval_advice.recommended_specialists:
+                if item in EXECUTION_SPECIALISTS and item not in specialists:
+                    specialists.append(item)
+        if retrieval_advice.retrieval_strategy != "direct_answer" or retrieval_advice.requires_grounding:
+            retrieval_strategy = retrieval_advice.retrieval_strategy
+        if retrieval_advice.requires_clarification:
+            requires_clarification = True
+            clarification_question = retrieval_advice.clarification_question or clarification_question
+        if retrieval_advice.should_deny:
+            should_deny = True
+            denial_reason = retrieval_advice.denial_reason or denial_reason
+        if retrieval_advice.secondary_domains:
+            request_kind = "multi_domain" if len(retrieval_advice.secondary_domains) >= 1 else request_kind
+        confidence = max(confidence, retrieval_advice.confidence)
+        reasoning_summary = retrieval_advice.rationale or reasoning_summary
+    if not specialists and retrieval_strategy not in {"clarify", "deny"}:
+        specialists = fallback_specialists
+    if primary_domain in {"academic", "finance"} and retrieval_strategy == "direct_answer":
+        retrieval_strategy = "structured_tools"
+    if "academic" in secondary_domains and "finance" in secondary_domains:
+        request_kind = "multi_domain"
+        retrieval_strategy = "structured_tools"
+        for item in ("academic_specialist", "finance_specialist"):
+            if item not in specialists:
+                specialists.append(item)
+    if primary_domain == "finance" and "academic" in secondary_domains:
+        request_kind = "multi_domain"
+        retrieval_strategy = "structured_tools"
+        if "academic_specialist" not in specialists:
+            specialists.append("academic_specialist")
+    if primary_domain == "academic" and "finance" in secondary_domains:
+        request_kind = "multi_domain"
+        retrieval_strategy = "structured_tools"
+        if "finance_specialist" not in specialists:
+            specialists.append("finance_specialist")
+    return plan.model_copy(
+        update={
+            "request_kind": request_kind,
+            "primary_domain": primary_domain,
+            "secondary_domains": secondary_domains,
+            "specialists": specialists,
+            "retrieval_strategy": retrieval_strategy if not should_deny else "deny",
+            "requires_clarification": requires_clarification,
+            "clarification_question": clarification_question,
+            "should_deny": should_deny,
+            "denial_reason": denial_reason,
+            "reasoning_summary": reasoning_summary,
+            "confidence": confidence,
+        }
+    )
+
+
 def _planner_instructions(context: RunContextWrapper[SupervisorRunContext], agent: Agent[SupervisorRunContext]) -> str:
     ctx = context.context
     preview = ctx.preview_hint or {}
     operational_memory = ctx.operational_memory.model_dump(mode="json") if ctx.operational_memory is not None else {}
+    retrieval_advice = ctx.retrieval_advice.model_dump(mode="json") if ctx.retrieval_advice is not None else {}
+    school_name = _school_name(ctx.school_profile)
     recent_messages = [
         f"{item.get('sender_type')}: {item.get('content')}"
         for item in (ctx.conversation_context or {}).get("recent_messages", [])
@@ -3615,14 +3773,83 @@ def _planner_instructions(context: RunContextWrapper[SupervisorRunContext], agen
     return (
         "Voce e o retrieval planner do caminho quality-first. "
         "Escolha a menor combinacao de especialistas que maximize qualidade e grounding. "
+        f"O chatbot ja esta no contexto do {school_name}; nao peca o nome da escola quando a pergunta for sobre a propria instituicao atual. "
         "Prefira structured tools para dados transacionais; use hybrid retrieval para documentos; "
         "use GraphRAG para panorama multi-documento; use pricing_projection para simulacoes publicas. "
         "Se a pergunta estiver ambigua, peca clarificacao. "
         f"\n\nPreview compartilhado: {json.dumps(preview, ensure_ascii=False)}"
         f"\nMemoria operacional: {json.dumps(operational_memory, ensure_ascii=False)}"
+        f"\nAdvice do retrieval planner especialista: {json.dumps(retrieval_advice, ensure_ascii=False)}"
         f"\nMensagens recentes: {json.dumps(recent_messages, ensure_ascii=False)}"
         f"\nEspecialistas disponiveis:\n" + "\n".join(registry_lines)
     )
+
+
+def _retrieval_planner_instructions(context: RunContextWrapper[SupervisorRunContext], agent: Agent[SupervisorRunContext]) -> str:
+    ctx = context.context
+    preview = ctx.preview_hint or {}
+    operational_memory = ctx.operational_memory.model_dump(mode="json") if ctx.operational_memory is not None else {}
+    school_name = _school_name(ctx.school_profile)
+    recent_messages = [
+        f"{item.get('sender_type')}: {item.get('content')}"
+        for item in (ctx.conversation_context or {}).get("recent_messages", [])
+        if isinstance(item, dict)
+    ][:6]
+    return (
+        "Voce e o Retrieval Planner Specialist do caminho quality-first. "
+        "Sua funcao e decidir a melhor estrategia de evidencia antes da composicao final. "
+        f"O chatbot ja esta operando no contexto do {school_name}; nao peca o nome da escola quando a pergunta for sobre a instituicao atual. "
+        "Escolha entre direct_answer, structured_tools, hybrid_retrieval, graph_rag, document_search, pricing_projection, workflow_status, clarify ou deny. "
+        "Perguntas escolares, institucionais, academicas, financeiras, de suporte ou workflow normalmente exigem grounding. "
+        "Nao trate perguntas da escola como conhecimento geral quando houver sinal de dominio escolar. "
+        "Se a mensagem combinar dois dominios, como notas e boletos, marque academic e finance juntos e recomende ambos os especialistas. "
+        "Quando a pergunta pedir regra institucional, frequencia, BNCC, projeto de vida, aprovacao ou recuperacao, preserve grounding forte e favoreca get_public_profile_bundle/fetch_academic_policy ou especialistas apropriados. "
+        "Retorne tambem queries uteis para evidencias quando isso ajudar a busca documental. "
+        f"\n\nMensagem atual: {ctx.request.message}"
+        f"\nPreview compartilhado: {json.dumps(preview, ensure_ascii=False)}"
+        f"\nMemoria operacional: {json.dumps(operational_memory, ensure_ascii=False)}"
+        f"\nMensagens recentes: {json.dumps(recent_messages, ensure_ascii=False)}"
+    )
+
+
+async def _run_retrieval_planner_specialist(ctx: SupervisorRunContext) -> RetrievalPlannerAdvice:
+    agent = Agent[SupervisorRunContext](
+        name="Retrieval Planner Specialist",
+        model=_agent_model(ctx.settings),
+        model_settings=ModelSettings(temperature=0.0, verbosity="medium"),
+        instructions=_retrieval_planner_instructions,
+        output_type=RetrievalPlannerAdvice,
+    )
+    try:
+        result = await Runner.run(
+            agent,
+            f"Mensagem do usuario: {ctx.request.message}",
+            context=ctx,
+            max_turns=4,
+            run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
+        )
+        advice = result.final_output_as(RetrievalPlannerAdvice, raise_if_incorrect_type=True)
+    except Exception:
+        logger.exception("specialist_supervisor_retrieval_planner_failed")
+        preview = ctx.preview_hint or {}
+        classification = preview.get("classification") if isinstance(preview, dict) else {}
+        domain = str(classification.get("domain") or "institution").strip().lower() or "institution"
+        retrieval_backend = str(preview.get("retrieval_backend") or "none").strip().lower()
+        specialists, strategy = _fallback_specialists_for_domain(domain, retrieval_backend)
+        advice = RetrievalPlannerAdvice(
+            normalized_query=ctx.request.message.strip(),
+            primary_domain=domain,
+            retrieval_strategy=strategy,
+            recommended_specialists=specialists,
+            preferred_category=None,
+            evidence_queries=[ctx.request.message.strip()],
+            requires_grounding=strategy != "direct_answer",
+            rationale="retrieval_planner_fallback_from_preview_hint",
+            confidence=0.35,
+        )
+    normalized = _normalize_retrieval_advice(ctx, advice)
+    ctx.retrieval_advice = normalized
+    return normalized
 
 
 def _specialist_output_extractor() -> Any:
@@ -3635,6 +3862,88 @@ def _specialist_output_extractor() -> Any:
             return final_output if isinstance(final_output, str) else json.dumps(final_output, ensure_ascii=False)
 
     return _extract
+
+
+def _build_execution_specialists(settings: Any, model: Any) -> dict[str, Agent[SupervisorRunContext]]:
+    return {
+        "institution_specialist": _institution_specialist(settings, model),
+        "academic_specialist": _academic_specialist(settings, model),
+        "finance_specialist": _finance_specialist(settings, model),
+        "workflow_specialist": _workflow_specialist(settings, model),
+        "document_specialist": _document_specialist(settings, model),
+    }
+
+
+def _specialist_execution_prompt(
+    ctx: SupervisorRunContext,
+    *,
+    specialist_id: str,
+    plan: SupervisorPlan,
+) -> str:
+    return (
+        f"Especialista alvo: {specialist_id}\n"
+        f"Mensagem do usuario: {ctx.request.message}\n\n"
+        f"Advice do retrieval planner: {json.dumps(ctx.retrieval_advice.model_dump(mode='json') if ctx.retrieval_advice is not None else {}, ensure_ascii=False)}\n\n"
+        f"Plano atual: {plan.model_dump_json(ensure_ascii=False)}\n\n"
+        f"Memoria operacional: {json.dumps(ctx.operational_memory.model_dump(mode='json') if ctx.operational_memory is not None else {}, ensure_ascii=False)}\n\n"
+        "Use suas tools e devolva um SpecialistResult grounded."
+    )
+
+
+async def _run_specialist_agent(
+    ctx: SupervisorRunContext,
+    *,
+    specialist_id: str,
+    plan: SupervisorPlan,
+    specialists: dict[str, Agent[SupervisorRunContext]],
+) -> SpecialistResult | None:
+    agent = specialists.get(specialist_id)
+    if agent is None:
+        return None
+    result = await Runner.run(
+        agent,
+        _specialist_execution_prompt(ctx, specialist_id=specialist_id, plan=plan),
+        context=ctx,
+        max_turns=6,
+        hooks=SupervisorHooks(),
+        run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
+    )
+    specialist_result = _parse_result_model(result, SpecialistResult)
+    if specialist_result.specialist_id != specialist_id:
+        specialist_result = specialist_result.model_copy(update={"specialist_id": specialist_id})
+    return specialist_result
+
+
+async def _execute_planned_specialists(
+    ctx: SupervisorRunContext,
+    *,
+    plan: SupervisorPlan,
+) -> list[SpecialistResult]:
+    specialist_ids = [item for item in plan.specialists if item in EXECUTION_SPECIALISTS]
+    if not specialist_ids:
+        return []
+    if plan.retrieval_strategy not in {"structured_tools", "hybrid_retrieval", "graph_rag", "document_search", "workflow_status", "pricing_projection"} and not specialist_ids:
+        return []
+    model = _agent_model(ctx.settings)
+    specialists = _build_execution_specialists(ctx.settings, model)
+    tasks = [
+        _run_specialist_agent(
+            ctx,
+            specialist_id=specialist_id,
+            plan=plan,
+            specialists=specialists,
+        )
+        for specialist_id in specialist_ids[:3]
+    ]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    normalized: dict[str, SpecialistResult] = {}
+    for item in results:
+        if isinstance(item, Exception):
+            logger.exception("specialist_supervisor_specialist_execution_failed", exc_info=item)
+            continue
+        if isinstance(item, SpecialistResult):
+            normalized[item.specialist_id] = item
+    return list(normalized.values())
 
 
 def _institution_specialist(settings: Any, model: Any) -> Agent[SupervisorRunContext]:
@@ -3736,6 +4045,7 @@ def _manager_instructions(plan: SupervisorPlan) -> str:
         "Nao invente fatos. "
         "Nunca se descreva como modelo, LLM ou provedor tecnico; voce fala como EduAssist. "
         "Quando houver memoria operacional ativa, preserve aluno, disciplina e topico salvo quando o follow-up for curto e compativel. "
+        "Quando houver advice do retrieval planner especialista, trate esse advice como plano de evidencia preferencial. "
         "Priorize os especialistas listados no plano, mas voce pode usar qualquer ferramenta especialista disponivel se isso for necessario para completar a resposta com grounding. "
         f"\nPlano do planner: {plan.model_dump_json(ensure_ascii=False)}"
     )
@@ -3746,7 +4056,19 @@ def _judge_instructions() -> str:
         "Voce e o judge final da resposta. "
         "Verifique grounding, completude, contradicoes e se faltou clarificacao. "
         "Aprove apenas respostas sustentadas pelos resultados dos especialistas. "
-        "Se necessario, proponha uma resposta revisada ou uma pergunta de clarificacao."
+        "Se necessario, proponha uma resposta revisada ou uma pergunta de clarificacao. "
+        "Se a resposta estiver proxima do ideal, mas incompleta ou arriscada, explique os problemas de forma acionavel para um repair loop curto."
+    )
+
+
+def _repair_instructions() -> str:
+    return (
+        "Voce e o Repair Specialist do caminho quality-first. "
+        "Recebera a mensagem do usuario, o plano, o draft atual, o feedback do judge e os specialist_results. "
+        "Reescreva a resposta usando somente fatos contidos nos specialist_results. "
+        "Nao invente nada, nao mencione modelo nem provedor, e preserve a voz do EduAssist. "
+        "Se faltar evidência para uma parte do pedido, responda apenas o que estiver grounded e registre nas repair_notes o que ficou incompleto. "
+        "Priorize respostas compostas quando houver multi-intent, mantendo cada bloco claro e grounded."
     )
 
 
@@ -3779,6 +4101,18 @@ def _parse_specialist_results(trace: SupervisorTrace) -> list[SpecialistResult]:
     for item in items:
         deduped[item.specialist_id] = item
     return list(deduped.values())
+
+
+def _merge_specialist_results(
+    precomputed_results: list[SpecialistResult],
+    traced_results: list[SpecialistResult],
+) -> list[SpecialistResult]:
+    merged: dict[str, SpecialistResult] = {}
+    for item in precomputed_results:
+        merged[item.specialist_id] = item
+    for item in traced_results:
+        merged[item.specialist_id] = item
+    return list(merged.values())
 
 
 def _aggregate_citations(results: list[SpecialistResult]) -> list[MessageResponseCitation]:
@@ -3923,6 +4257,17 @@ def _build_judge_agent(model: Any) -> Agent[SupervisorRunContext]:
     )
 
 
+def _build_repair_agent(settings: Any, model: Any) -> Agent[SupervisorRunContext]:
+    structured = _supports_tool_json_outputs(settings)
+    return Agent[SupervisorRunContext](
+        name="Repair Specialist",
+        model=model,
+        model_settings=ModelSettings(temperature=0.0, verbosity="low"),
+        instructions=_repair_instructions() + ("\n" + _repair_result_contract() if not structured else ""),
+        output_type=RepairDraft if structured else None,
+    )
+
+
 async def _run_input_guardrail(ctx: SupervisorRunContext) -> SupervisorInputGuardrail:
     normalized = _normalize_text(ctx.request.message)
     if (
@@ -3970,53 +4315,47 @@ async def _run_planner(ctx: SupervisorRunContext) -> SupervisorPlan:
         plan = result.final_output_as(SupervisorPlan, raise_if_incorrect_type=True)
     except Exception:
         logger.exception("specialist_supervisor_planner_failed")
-        preview = ctx.preview_hint or {}
-        classification = preview.get("classification") if isinstance(preview, dict) else {}
-        domain = str(classification.get("domain") or "institution").strip().lower() or "institution"
-        retrieval_backend = str(preview.get("retrieval_backend") or "none").strip().lower()
-        if domain == "academic":
-            specialists = ["academic_specialist"]
-            strategy = "structured_tools"
-        elif domain == "finance":
-            specialists = ["finance_specialist"]
-            strategy = "structured_tools"
-        elif domain in {"support", "workflow"}:
-            specialists = ["workflow_specialist"]
-            strategy = "structured_tools"
-        elif retrieval_backend == "graph_rag":
-            specialists = ["document_specialist"]
-            strategy = "graph_rag"
-        elif retrieval_backend == "qdrant_hybrid":
-            specialists = ["document_specialist"]
-            strategy = "hybrid_retrieval"
+        advice = ctx.retrieval_advice
+        if advice is not None:
+            specialists = [item for item in advice.recommended_specialists if item in EXECUTION_SPECIALISTS]
+            strategy = advice.retrieval_strategy
+            domain = advice.primary_domain
         else:
-            specialists = ["institution_specialist"]
-            strategy = "direct_answer"
+            preview = ctx.preview_hint or {}
+            classification = preview.get("classification") if isinstance(preview, dict) else {}
+            domain = str(classification.get("domain") or "institution").strip().lower() or "institution"
+            retrieval_backend = str(preview.get("retrieval_backend") or "none").strip().lower()
+            specialists, strategy = _fallback_specialists_for_domain(domain, retrieval_backend)
         plan = SupervisorPlan(
-            request_kind="simple",
+            request_kind="multi_domain" if advice is not None and advice.secondary_domains else "simple",
             primary_domain=domain,
+            secondary_domains=advice.secondary_domains if advice is not None else [],
             specialists=specialists,
             retrieval_strategy=strategy,
-            reasoning_summary="planner_fallback_from_preview_hint",
-            confidence=0.35,
+            requires_clarification=bool(advice.requires_clarification) if advice is not None else False,
+            clarification_question=advice.clarification_question if advice is not None else None,
+            should_deny=bool(advice.should_deny) if advice is not None else False,
+            denial_reason=advice.denial_reason if advice is not None else None,
+            reasoning_summary=advice.rationale if advice is not None and advice.rationale else "planner_fallback_from_preview_hint",
+            confidence=advice.confidence if advice is not None else 0.35,
         )
-    filtered_specialists = [item for item in plan.specialists if item in EXECUTION_SPECIALISTS]
-    if not filtered_specialists and plan.retrieval_strategy not in {"clarify", "deny"}:
-        default_specialist = "workflow_specialist" if plan.primary_domain == "support" else "institution_specialist"
-        filtered_specialists = [default_specialist]
-    plan = plan.model_copy(update={"specialists": filtered_specialists})
-    return plan
+    return _normalize_plan_with_retrieval_advice(ctx, plan, ctx.retrieval_advice)
 
 
 async def _run_manager(ctx: SupervisorRunContext, *, plan: SupervisorPlan) -> ManagerDraft:
     model = _agent_model(ctx.settings)
-    specialists = {
-        "institution_specialist": _institution_specialist(ctx.settings, model),
-        "academic_specialist": _academic_specialist(ctx.settings, model),
-        "finance_specialist": _finance_specialist(ctx.settings, model),
-        "workflow_specialist": _workflow_specialist(ctx.settings, model),
-        "document_specialist": _document_specialist(ctx.settings, model),
-    }
+    specialists = _build_execution_specialists(ctx.settings, model)
+    return await _run_manager_with_specialists(ctx, plan=plan, specialists=specialists)
+
+
+async def _run_manager_with_specialists(
+    ctx: SupervisorRunContext,
+    *,
+    plan: SupervisorPlan,
+    specialists: dict[str, Agent[SupervisorRunContext]],
+    precomputed_specialist_results: list[SpecialistResult] | None = None,
+) -> ManagerDraft:
+    model = _agent_model(ctx.settings)
     specialist_tools = []
     for specialist_id in EXECUTION_SPECIALISTS:
         agent = specialists.get(specialist_id)
@@ -4038,7 +4377,9 @@ async def _run_manager(ctx: SupervisorRunContext, *, plan: SupervisorPlan) -> Ma
     prompt = (
         "Usuario:\n"
         f"{ctx.request.message}\n\n"
+        f"Advice do retrieval planner:\n{json.dumps(ctx.retrieval_advice.model_dump(mode='json') if ctx.retrieval_advice is not None else {}, ensure_ascii=False)}\n\n"
         f"Memoria operacional:\n{json.dumps(ctx.operational_memory.model_dump(mode='json') if ctx.operational_memory is not None else {}, ensure_ascii=False)}\n\n"
+        f"Specialist results preexecutados:\n{json.dumps([item.model_dump(mode='json') for item in (precomputed_specialist_results or [])], ensure_ascii=False)}\n\n"
         "Use os especialistas como tools e entregue a melhor resposta grounded possivel."
     )
     result = await Runner.run(
@@ -4064,6 +4405,7 @@ async def _run_judge(
     prompt = json.dumps(
         {
             "user_message": ctx.request.message,
+            "retrieval_advice": ctx.retrieval_advice.model_dump(mode="json") if ctx.retrieval_advice is not None else {},
             "plan": plan.model_dump(mode="json"),
             "manager_draft": draft.model_dump(mode="json"),
             "specialist_results": [item.model_dump(mode="json") for item in specialist_results],
@@ -4078,6 +4420,55 @@ async def _run_judge(
         run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
     )
     return result.final_output_as(JudgeVerdict, raise_if_incorrect_type=True)
+
+
+async def _run_repair_loop(
+    ctx: SupervisorRunContext,
+    *,
+    plan: SupervisorPlan,
+    draft: ManagerDraft,
+    judge: JudgeVerdict,
+    specialist_results: list[SpecialistResult],
+) -> tuple[ManagerDraft, JudgeVerdict, RepairDraft] | None:
+    if not specialist_results:
+        return None
+    repair_needed = (not judge.approved) or bool(judge.issues)
+    if not repair_needed or judge.needs_clarification:
+        return None
+    repair_agent = _build_repair_agent(ctx.settings, _agent_model(ctx.settings))
+    prompt = json.dumps(
+        {
+            "user_message": ctx.request.message,
+            "retrieval_advice": ctx.retrieval_advice.model_dump(mode="json") if ctx.retrieval_advice is not None else {},
+            "plan": plan.model_dump(mode="json"),
+            "manager_draft": draft.model_dump(mode="json"),
+            "judge_feedback": judge.model_dump(mode="json"),
+            "specialist_results": [item.model_dump(mode="json") for item in specialist_results],
+        },
+        ensure_ascii=False,
+    )
+    result = await Runner.run(
+        repair_agent,
+        prompt,
+        context=ctx,
+        max_turns=4,
+        run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
+    )
+    repair = _parse_result_model(result, RepairDraft)
+    repaired_draft = ManagerDraft(
+        answer_text=repair.answer_text,
+        answer_summary=repair.answer_summary,
+        specialists_used=repair.specialists_used or draft.specialists_used,
+        citations=repair.citations or draft.citations,
+        suggested_replies=repair.suggested_replies or draft.suggested_replies,
+    )
+    repaired_judge = await _run_judge(
+        ctx,
+        plan=plan,
+        draft=repaired_draft,
+        specialist_results=specialist_results,
+    )
+    return repaired_draft, repaired_judge, repair
 
 
 def _build_answer_payload(
@@ -4222,6 +4613,7 @@ async def run_specialist_supervisor(
             actor=None,
             conversation_context=None,
             operational_memory=None,
+            retrieval_advice=None,
             school_profile=None,
             preview_hint=None,
             specialist_registry=get_specialist_registry(),
@@ -4353,6 +4745,11 @@ async def run_specialist_supervisor(
             return SpecialistSupervisorResponse(reason=answer.reason, metadata={"blocked": True}, answer=answer).model_dump(mode="json")
 
         try:
+            await _run_retrieval_planner_specialist(context)
+        except Exception:
+            logger.exception("specialist_supervisor_retrieval_planner_uncaught")
+
+        try:
             plan = await _run_planner(context)
         except Exception:
             logger.exception("specialist_supervisor_planner_uncaught")
@@ -4377,9 +4774,19 @@ async def run_specialist_supervisor(
                 context,
                 answer=answer,
                 route="planner_denied",
-                metadata={"plan": plan.model_dump(mode="json")},
+                metadata={
+                    "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
+                    "plan": plan.model_dump(mode="json"),
+                },
             )
-            return SpecialistSupervisorResponse(reason=answer.reason, metadata={"plan": plan.model_dump(mode="json")}, answer=answer).model_dump(mode="json")
+            return SpecialistSupervisorResponse(
+                reason=answer.reason,
+                metadata={
+                    "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
+                    "plan": plan.model_dump(mode="json"),
+                },
+                answer=answer,
+            ).model_dump(mode="json")
 
         if plan.requires_clarification and plan.clarification_question:
             answer = SupervisorAnswerPayload(
@@ -4400,14 +4807,44 @@ async def run_specialist_supervisor(
                 context,
                 answer=answer,
                 route="planner_clarify",
-                metadata={"plan": plan.model_dump(mode="json")},
+                metadata={
+                    "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
+                    "plan": plan.model_dump(mode="json"),
+                },
             )
-            return SpecialistSupervisorResponse(reason=answer.reason, metadata={"plan": plan.model_dump(mode="json")}, answer=answer).model_dump(mode="json")
+            return SpecialistSupervisorResponse(
+                reason=answer.reason,
+                metadata={
+                    "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
+                    "plan": plan.model_dump(mode="json"),
+                },
+                answer=answer,
+            ).model_dump(mode="json")
 
         try:
-            draft = await _run_manager(context, plan=plan)
-            specialist_results = _parse_specialist_results(context.trace)
+            precomputed_specialist_results = await _execute_planned_specialists(context, plan=plan)
+            draft = await _run_manager_with_specialists(
+                context,
+                plan=plan,
+                specialists=_build_execution_specialists(context.settings, _agent_model(context.settings)),
+                precomputed_specialist_results=precomputed_specialist_results,
+            )
+            specialist_results = _merge_specialist_results(
+                precomputed_specialist_results,
+                _parse_specialist_results(context.trace),
+            )
             judge = await _run_judge(context, plan=plan, draft=draft, specialist_results=specialist_results)
+            repair_payload: tuple[RepairDraft, JudgeVerdict] | None = None
+            repaired = await _run_repair_loop(
+                context,
+                plan=plan,
+                draft=draft,
+                judge=judge,
+                specialist_results=specialist_results,
+            )
+            if repaired is not None:
+                draft, judge, repair = repaired
+                repair_payload = (repair, judge)
             gated_answer = _grounding_gate_answer(context, plan=plan, judge=judge, specialist_results=specialist_results)
             answer = gated_answer or _build_answer_payload(context, plan=plan, draft=draft, judge=judge, specialist_results=specialist_results)
         except Exception:
@@ -4425,10 +4862,12 @@ async def run_specialist_supervisor(
             answer=answer,
             route="manager_judge",
             trace_payload=(plan, draft, judge),
+            repair_payload=repair_payload,
         )
         return SpecialistSupervisorResponse(
             reason=answer.reason,
             metadata={
+                "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
                 "plan": plan.model_dump(mode="json"),
                 "judge": judge.model_dump(mode="json"),
                 "specialists_used": [item.specialist_id for item in specialist_results],
