@@ -23,6 +23,7 @@ if str(AI_ORCHESTRATOR_SRC) not in sys.path:
 SPECIALIST_SUPERVISOR_SRC = REPO_ROOT / 'apps/ai-orchestrator-specialist/src'
 if str(SPECIALIST_SUPERVISOR_SRC) not in sys.path:
     sys.path.insert(0, str(SPECIALIST_SUPERVISOR_SRC))
+SPECIALIST_SOURCE_RUNNER = REPO_ROOT / 'tools/evals/run_specialist_supervisor_source.py'
 
 from ai_orchestrator.engine_selector import build_engine_bundle
 from ai_orchestrator.main import Settings
@@ -44,6 +45,29 @@ DEFAULT_JSON_REPORT = REPO_ROOT / 'docs/architecture/five-path-chatbot-compariso
 STACKS = ('langgraph', 'crewai', 'python_functions', 'llamaindex', 'specialist_supervisor')
 
 
+def _normalize_local_service_url(value: str, *, kind: str) -> str:
+    normalized = str(value or '').strip()
+    if not normalized:
+        defaults = {
+            'api_core': 'http://127.0.0.1:8001',
+            'ai_orchestrator': 'http://127.0.0.1:8002',
+            'crewai_pilot': 'http://127.0.0.1:8004',
+            'specialist_pilot': 'http://127.0.0.1:8005',
+        }
+        return defaults[kind]
+    replacements = {
+        'http://api-core:8000': 'http://127.0.0.1:8001',
+        'http://ai-orchestrator:8000': 'http://127.0.0.1:8002',
+        'http://ai-orchestrator-crewai:8000': 'http://127.0.0.1:8004',
+        'http://ai-orchestrator-specialist:8000': 'http://127.0.0.1:8005',
+        'http://localhost:8000': {
+            'crewai_pilot': 'http://127.0.0.1:8004',
+            'specialist_pilot': 'http://127.0.0.1:8005',
+        }.get(kind, normalized),
+    }
+    return replacements.get(normalized, normalized)
+
+
 def _specialist_benchmark_mode() -> str:
     return str(os.getenv('SPECIALIST_SUPERVISOR_BENCHMARK_MODE', 'pilot') or 'pilot').strip().lower()
 
@@ -62,10 +86,13 @@ def _exception_reason(*, stack: str, exc: Exception) -> str:
 def _benchmark_context() -> dict[str, Any]:
     return {
         'specialist_supervisor_benchmark_mode': _specialist_benchmark_mode(),
-        'api_core_url': os.getenv('API_CORE_URL', 'http://127.0.0.1:8001'),
-        'ai_orchestrator_url': os.getenv('AI_ORCHESTRATOR_URL', 'http://127.0.0.1:8002'),
-        'crewai_pilot_url': os.getenv('CREWAI_PILOT_URL', 'http://127.0.0.1:8004'),
-        'specialist_supervisor_pilot_url': os.getenv('SPECIALIST_SUPERVISOR_PILOT_URL', 'http://127.0.0.1:8005'),
+        'api_core_url': _normalize_local_service_url(os.getenv('API_CORE_URL', ''), kind='api_core'),
+        'ai_orchestrator_url': _normalize_local_service_url(os.getenv('AI_ORCHESTRATOR_URL', ''), kind='ai_orchestrator'),
+        'crewai_pilot_url': _normalize_local_service_url(os.getenv('CREWAI_PILOT_URL', ''), kind='crewai_pilot'),
+        'specialist_supervisor_pilot_url': _normalize_local_service_url(
+            os.getenv('SPECIALIST_SUPERVISOR_PILOT_URL', ''),
+            kind='specialist_pilot',
+        ),
         'env_loaded': True,
     }
 
@@ -85,11 +112,14 @@ def _build_settings(*, stack: str) -> Settings:
         strict_framework_isolation_enabled=True,
         orchestrator_experiment_enabled=False,
         langgraph_checkpointer_enabled=False,
-        api_core_url=os.getenv('API_CORE_URL', 'http://127.0.0.1:8001'),
+        api_core_url=_normalize_local_service_url(os.getenv('API_CORE_URL', ''), kind='api_core'),
         qdrant_url=os.getenv('QDRANT_URL', 'http://127.0.0.1:6333'),
         database_url=os.getenv('DATABASE_URL', 'postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist'),
-        crewai_pilot_url=os.getenv('CREWAI_PILOT_URL', 'http://127.0.0.1:8004'),
-        specialist_supervisor_pilot_url=os.getenv('SPECIALIST_SUPERVISOR_PILOT_URL', 'http://127.0.0.1:8005'),
+        crewai_pilot_url=_normalize_local_service_url(os.getenv('CREWAI_PILOT_URL', ''), kind='crewai_pilot'),
+        specialist_supervisor_pilot_url=_normalize_local_service_url(
+            os.getenv('SPECIALIST_SUPERVISOR_PILOT_URL', ''),
+            kind='specialist_pilot',
+        ),
     )
 
 
@@ -111,32 +141,42 @@ def _user_for_slice(entry: dict[str, Any]) -> UserContext:
 
 async def _run_turn(*, stack: str, entry: dict[str, Any], timeout_seconds: float) -> dict[str, Any]:
     if stack == 'specialist_supervisor' and _specialist_benchmark_mode() == 'source':
-        from ai_orchestrator_specialist.main import Settings as SpecialistSettings
-        from ai_orchestrator_specialist.models import SpecialistSupervisorRequest
-        from ai_orchestrator_specialist.runtime import run_specialist_supervisor
-
-        request = SpecialistSupervisorRequest(
-            message=str(entry['prompt']),
-            conversation_id=f"{entry.get('run_prefix') or 'debug:five-path'}:{entry.get('thread_id') or 'single'}:{stack}",
-            telegram_chat_id=entry.get('telegram_chat_id'),
-            channel='telegram',
-            user=_user_for_slice(entry).model_dump(mode='json'),
-            allow_graph_rag=True,
-            allow_handoff=True,
-        )
-        settings = SpecialistSettings(
-            api_core_url=os.getenv('API_CORE_URL', 'http://127.0.0.1:8001'),
-            orchestrator_url=os.getenv('AI_ORCHESTRATOR_URL', 'http://127.0.0.1:8002'),
-            internal_api_token=os.getenv('INTERNAL_API_TOKEN', 'dev-internal-token'),
-            openai_api_key=os.getenv('OPENAI_API_KEY'),
-            google_api_key=os.getenv('GOOGLE_API_KEY'),
-        )
+        payload = {
+            'request': {
+                'message': str(entry['prompt']),
+                'conversation_id': f"{entry.get('run_prefix') or 'debug:five-path'}:{entry.get('thread_id') or 'single'}:{stack}",
+                'telegram_chat_id': entry.get('telegram_chat_id'),
+                'channel': 'telegram',
+                'user': _user_for_slice(entry).model_dump(mode='json'),
+                'allow_graph_rag': True,
+                'allow_handoff': True,
+            },
+            'api_core_url': _normalize_local_service_url(os.getenv('API_CORE_URL', ''), kind='api_core'),
+            'orchestrator_url': _normalize_local_service_url(os.getenv('AI_ORCHESTRATOR_URL', ''), kind='ai_orchestrator'),
+            'internal_api_token': os.getenv('INTERNAL_API_TOKEN', 'dev-internal-token'),
+            'openai_api_key': os.getenv('OPENAI_API_KEY'),
+            'google_api_key': os.getenv('GOOGLE_API_KEY'),
+        }
         started = perf_counter()
         try:
-            payload = await asyncio.wait_for(
-                run_specialist_supervisor(request=request, settings=settings),
+            process = await asyncio.create_subprocess_exec(
+                'uv',
+                'run',
+                '--project',
+                str(REPO_ROOT / 'apps/ai-orchestrator-specialist'),
+                'python',
+                str(SPECIALIST_SOURCE_RUNNER),
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(json.dumps(payload, ensure_ascii=False).encode('utf-8')),
                 timeout=timeout_seconds,
             )
+            if process.returncode != 0:
+                raise RuntimeError((stderr or stdout).decode('utf-8', errors='replace').strip() or 'specialist_source_runner_failed')
+            payload = json.loads(stdout.decode('utf-8'))
             answer = payload.get('answer') if isinstance(payload, dict) and isinstance(payload.get('answer'), dict) else {}
             latency_ms = round((perf_counter() - started) * 1000, 1)
             return {
@@ -148,6 +188,9 @@ async def _run_turn(*, stack: str, entry: dict[str, Any], timeout_seconds: float
                 'graph_path': list(answer.get('graph_path') or []),
             }
         except Exception as exc:
+            if 'process' in locals() and process.returncode is None:
+                process.kill()
+                await process.communicate()
             latency_ms = round((perf_counter() - started) * 1000, 1)
             return {
                 'status': 599,
@@ -206,6 +249,8 @@ def _render_markdown(payload: dict[str, Any], *, stacks: tuple[str, ...]) -> str
     lines.append(f"Dataset: `{payload['dataset']}`")
     lines.append('')
     lines.append(f"Run prefix: `{payload.get('run_prefix', '')}`")
+    lines.append('')
+    lines.append(f"Stack execution mode: `{payload.get('stack_execution_mode', 'sequential')}`")
     lines.append('')
     benchmark_context = payload.get('benchmark_context') if isinstance(payload.get('benchmark_context'), dict) else {}
     if benchmark_context:
@@ -271,6 +316,7 @@ async def _run_all(
     *,
     timeout_seconds: float,
     stacks: tuple[str, ...],
+    parallel_stacks: bool,
 ) -> dict[str, Any]:
     run_prefix = f"debug:five-path:{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
     previous_answers: dict[str, dict[str, str]] = {stack: {} for stack in stacks}
@@ -287,8 +333,30 @@ async def _run_all(
             'note': entry.get('note') or '',
             'run_prefix': run_prefix,
         }
+        if parallel_stacks:
+            raw_by_stack = {
+                stack: result
+                for stack, result in zip(
+                    stacks,
+                    await asyncio.gather(
+                        *[
+                            _run_turn(stack=stack, entry=entry_with_run_prefix, timeout_seconds=timeout_seconds)
+                            for stack in stacks
+                        ]
+                    ),
+                    strict=True,
+                )
+            }
+        else:
+            raw_by_stack = {}
+            for stack in stacks:
+                raw_by_stack[stack] = await _run_turn(
+                    stack=stack,
+                    entry=entry_with_run_prefix,
+                    timeout_seconds=timeout_seconds,
+                )
         for stack in stacks:
-            raw = await _run_turn(stack=stack, entry=entry_with_run_prefix, timeout_seconds=timeout_seconds)
+            raw = raw_by_stack[stack]
             answer_text = _extract_answer_text(raw['body'])
             thread_key = str(entry.get('thread_id') or '')
             previous_answer = previous_answers[stack].get(thread_key, '') if thread_key else ''
@@ -366,6 +434,7 @@ async def _run_all(
         'dataset': str(DEFAULT_PROMPTS),
         'run_prefix': run_prefix,
         'benchmark_context': _benchmark_context(),
+        'stack_execution_mode': 'parallel' if parallel_stacks else 'sequential',
         'summary': {
             'by_stack': summary_by_stack,
             'by_slice': summary_by_slice,
@@ -382,6 +451,11 @@ def main() -> int:
     parser.add_argument('--json-report', type=Path, default=DEFAULT_JSON_REPORT)
     parser.add_argument('--timeout-seconds', type=float, default=45.0)
     parser.add_argument(
+        '--parallel-stacks',
+        action='store_true',
+        help='Executa todos os caminhos em paralelo por prompt. O padrao sequencial evita contencao e produz benchmark mais justo.',
+    )
+    parser.add_argument(
         '--stacks',
         nargs='+',
         choices=STACKS,
@@ -397,6 +471,7 @@ def main() -> int:
             entries,
             timeout_seconds=max(1.0, float(args.timeout_seconds)),
             stacks=selected_stacks,
+            parallel_stacks=bool(args.parallel_stacks),
         )
     )
     payload['dataset'] = str(args.dataset)

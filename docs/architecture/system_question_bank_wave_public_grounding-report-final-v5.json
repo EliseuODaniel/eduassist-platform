@@ -1,0 +1,3013 @@
+{
+  "generated_at": "2026-04-01T18:37:10.356950+00:00",
+  "dataset": "/home/edann/projects/eduassist-platform/tests/evals/datasets/system_question_bank_wave_public_grounding.json",
+  "run_prefix": "debug:five-path:20260401T183125Z",
+  "benchmark_context": {
+    "specialist_supervisor_benchmark_mode": "source",
+    "api_core_url": "http://127.0.0.1:8001",
+    "ai_orchestrator_url": "http://127.0.0.1:8002",
+    "crewai_pilot_url": "http://127.0.0.1:8004",
+    "specialist_supervisor_pilot_url": "http://127.0.0.1:8005",
+    "env_loaded": true
+  },
+  "stack_execution_mode": "sequential",
+  "summary": {
+    "by_stack": {
+      "langgraph": {
+        "count": 24,
+        "ok": 24,
+        "keyword_pass": 24,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 2271.2
+      },
+      "crewai": {
+        "count": 24,
+        "ok": 24,
+        "keyword_pass": 24,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 5777.9
+      },
+      "python_functions": {
+        "count": 24,
+        "ok": 24,
+        "keyword_pass": 24,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 112.1
+      },
+      "llamaindex": {
+        "count": 24,
+        "ok": 24,
+        "keyword_pass": 24,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 3637.5
+      },
+      "specialist_supervisor": {
+        "count": 24,
+        "ok": 24,
+        "keyword_pass": 24,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 2529.8
+      }
+    },
+    "by_slice": {
+      "public": {
+        "count": 24,
+        "langgraph": {
+          "ok": 24,
+          "keyword_pass": 24,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 2271.2
+        },
+        "crewai": {
+          "ok": 24,
+          "keyword_pass": 24,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 5777.9
+        },
+        "python_functions": {
+          "ok": 24,
+          "keyword_pass": 24,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 112.1
+        },
+        "llamaindex": {
+          "ok": 24,
+          "keyword_pass": 24,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 3637.5
+        },
+        "specialist_supervisor": {
+          "ok": 24,
+          "keyword_pass": 24,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 2529.8
+        }
+      }
+    },
+    "error_types": {
+      "langgraph": {},
+      "crewai": {},
+      "python_functions": {},
+      "llamaindex": {},
+      "specialist_supervisor": {}
+    }
+  },
+  "results": [
+    {
+      "prompt": "Qual e o endereco completo da escola, o telefone principal e o melhor canal para falar com a secretaria hoje?",
+      "slice": "public",
+      "category": "publico_estruturado_institucional",
+      "thread_id": "system_bank:publico_estruturado_institucional:Q001",
+      "turn_index": 1,
+      "note": "Q001|profile=anonimo|difficulty=facil|form=direta|sources=profile,service_dir|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 296.0,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "O endereco publicado de Colegio Horizonte hoje e Rua das Acacias, 1450, Vila Mariana, Sao Paulo, SP, CEP 04567-120. O telefone principal hoje e (11) 3333-4200. O canal mais direto para falar com a secretaria hoje e o WhatsApp (11) 97500-2041.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 173.1,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Endereco: Rua das Acacias, 1450, Vila Mariana, Sao Paulo/SP, CEP 04567-120 O telefone principal hoje e (11) 3333-4200. O melhor canal para a secretaria hoje e (11) 97500-2040.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 101.4,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "O endereco publicado de Colegio Horizonte hoje e Rua das Acacias, 1450, Vila Mariana, Sao Paulo, SP, CEP 04567-120. O telefone principal hoje e (11) 3333-4200. O canal mais direto para falar com a secretaria hoje e o WhatsApp (11) 97500-2041.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 106.6,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "O endereco publicado de Colegio Horizonte hoje e Rua das Acacias, 1450, Vila Mariana, Sao Paulo, SP, CEP 04567-120. O telefone principal hoje e (11) 3333-4200. O canal mais direto para falar com a secretaria hoje e o WhatsApp (11) 97500-2041.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2000.6,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:contact_bundle",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "contact_bundle"
+        ],
+        "answer_text": "O endereco completo da escola hoje e Rua das Acacias, 1450, Vila Mariana, Sao Paulo, SP, CEP 04567-120. O telefone principal e (11) 3333-4200. O melhor canal para a secretaria hoje e o WhatsApp (11) 97500-2041.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Essa escola tem biblioteca de verdade ou so fala que tem? Qual e o nome e o horario?",
+      "slice": "public",
+      "category": "publico_estruturado_institucional",
+      "thread_id": "system_bank:publico_estruturado_institucional:Q002",
+      "turn_index": 1,
+      "note": "Q002|profile=anonimo|difficulty=facil|form=direta|sources=profile|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 5381.3,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Que bom que você perguntou! Sim, temos uma biblioteca de verdade, a Biblioteca Aurora, e ela está aberta de segunda a sexta-feira, das 7h30 às 18h00, para atender a todos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 163.4,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Sim. Biblioteca Aurora: biblioteca   Biblioteca Aurora   service   True   Atendimento ao publico de segunda a sexta, das 7h30 as 18h00..",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 135.2,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "O horario de Biblioteca Aurora hoje funciona assim: Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.\n\nTurnos e horarios documentados:\n- Ensino Fundamental II (Manha): 07:15 as 12:30. Oficinas, plantoes, esportes e estudo orientado no contraturno em dias alternados.\n- Ensino Medio (Manha): 07:15 as 12:50. Trilhas eletivas, monitorias e laboratorios no contraturno a partir das 14h00.\n- Fundamental II e Ensino Medio (Integral opcional): 07:00 as 17:30. Inclui estudo orientado, almoco, oficinas, esportes e acompanhamento no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 31945.9,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "O horario de Biblioteca Aurora hoje funciona assim: Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.\n\nTurnos e horarios documentados:\n- Ensino Fundamental II (Manha): 07:15 as 12:30. Oficinas, plantoes, esportes e estudo orientado no contraturno em dias alternados.\n- Ensino Medio (Manha): 07:15 as 12:50. Trilhas eletivas, monitorias e laboratorios no contraturno a partir das 14h00.\n- Fundamental II e Ensino Medio (Integral opcional): 07:00 as 17:30. Inclui estudo orientado, almoco, oficinas, esportes e acompanhamento no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1965.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:library_hours",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "library_hours"
+        ],
+        "answer_text": "A biblioteca se chama Biblioteca Aurora e funciona Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quem responde por direcao, orientacao educacional e atendimento comercial?",
+      "slice": "public",
+      "category": "publico_estruturado_institucional",
+      "thread_id": "system_bank:publico_estruturado_institucional:Q003",
+      "turn_index": 1,
+      "note": "Q003|profile=anonimo|difficulty=media|form=direta|sources=org_dir,service_dir|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 143.5,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Diretora geral: Helena Martins. Canal institucional: direcao@colegiohorizonte.edu.br.\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 167.3,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Direcao geral: Helena Martins.\nPara bolsa, desconto e matricula, o melhor canal hoje e Atendimento comercial / Admissoes. Admissoes (telefone): (11) 3333-4201\nPara bullying, convivencia e apoio escolar, o canal indicado e a orientacao educacional. Orientacao educacional (telefone): (11) 3333-4202",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 89.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Diretora geral: Helena Martins. Canal institucional: direcao@colegiohorizonte.edu.br.\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 92.3,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Diretora geral: Helena Martins. Canal institucional: direcao@colegiohorizonte.edu.br.\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1913.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:service_routing",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "service_routing"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Diretora geral: Helena Martins. Canal institucional: direcao@colegiohorizonte.edu.br.\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.\n- Direcao: bot, ouvidoria ou protocolo institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Se eu fosse uma familia nova e tivesse so 30 segundos, o que voce me diria sobre essa escola?",
+      "slice": "public",
+      "category": "publico_estruturado_institucional",
+      "thread_id": "system_bank:publico_estruturado_institucional:Q004",
+      "turn_index": 1,
+      "note": "Q004|profile=anonimo|difficulty=media|form=criativa|sources=profile,service_dir|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 107.0,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Se eu tivesse 30 segundos para resumir Colegio Horizonte, eu diria isto: Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Os diferenciais publicados com mais clareza hoje passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em aprendizagem por projetos, acompanhamento mais proximo, estudo orientado e contraturno com referencias claras para familias.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 168.6,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Se eu tivesse 30 segundos para resumir esta escola, eu diria isto: ela combina aprendizagem por projetos, acompanhamento mais proximo e trilhas academicas no contraturno. No que esta publicado aqui, os diferenciais mais claros passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo. Colegio Horizonte em Sao Paulo/SP. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 107.2,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Se eu tivesse 30 segundos para resumir Colegio Horizonte, eu diria isto: Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Os diferenciais publicados com mais clareza hoje passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em aprendizagem por projetos, acompanhamento mais proximo, estudo orientado e contraturno com referencias claras para familias.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 107.4,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Se eu tivesse 30 segundos para resumir Colegio Horizonte, eu diria isto: Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Os diferenciais publicados com mais clareza hoje passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em aprendizagem por projetos, acompanhamento mais proximo, estudo orientado e contraturno com referencias claras para familias.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1911.2,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:public_pitch",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "public_pitch"
+        ],
+        "answer_text": "Se eu tivesse 30 segundos para resumir esta escola, eu diria isto: ela combina aprendizagem por projetos, acompanhamento mais proximo e trilhas academicas no contraturno. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. No Ensino Medio, isso aparece junto de A escola segue a BNCC e o curriculo do Ensino Medio articulado com projeto de vida, producao textual, cultura digital e aprofundamento academico progressivo.. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e uma rotina pedagogica mais explicita no dia a dia.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "O colegio divulga nomes e contatos diretos de professores por disciplina?",
+      "slice": "public",
+      "category": "publico_estruturado_institucional",
+      "thread_id": "system_bank:publico_estruturado_institucional:Q005",
+      "turn_index": 1,
+      "note": "Q005|profile=anonimo|difficulty=media|form=direta|sources=profile,org_dir|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 118.3,
+        "mode": "deny",
+        "reason": "a consulta exige autenticacao ou vinculo antes de qualquer acesso",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "deny"
+        ],
+        "answer_text": "Aqui e o Colegio Horizonte. Se voce esta procurando o Divulga Nomes E Contatos, eu nao tenho acesso ao atendimento dessa outra instituicao. Se quiser, sigo te ajudando com o Colegio Horizonte por aqui.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 180.9,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Hoje a escola divulga atividades e espacos complementares como Biblioteca Aurora, Espaco Maker, futsal, volei escolar. Se quiser, eu tambem posso detalhar Biblioteca Aurora, Laboratorio de Ciencias, Espaco Maker, Quadra Poliesportiva Coberta.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 119.0,
+        "mode": "deny",
+        "reason": "a consulta exige autenticacao ou vinculo antes de qualquer acesso",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "deny",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 112.4,
+        "mode": "deny",
+        "reason": "a consulta exige autenticacao ou vinculo antes de qualquer acesso",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "deny",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 15556.5,
+        "mode": "deny",
+        "reason": "A pergunta se refere a uma regra institucional sobre a divulgação de informações sensíveis (contatos de professores). Conforme a prévia compartilhada, este tipo de consulta é classificado como domínio protegido e requer autenticação ou vínculo antes de qualquer acesso, resultando em uma negação segura. Mesmo a política sobre a divulgação pode ser restrita a usuários autenticados.",
+        "graph_path": [
+          "specialist_supervisor",
+          "planner"
+        ],
+        "answer_text": "A consulta sobre a divulgação de contatos diretos de professores é considerada sensível e exige autenticação ou um vínculo comprovado com a instituição para acesso à política ou à informação.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Em qual bairro de Sao Paulo a escola fica e quais sao os principais referenciais de acesso?",
+      "slice": "public",
+      "category": "publico_estruturado_institucional",
+      "thread_id": "system_bank:publico_estruturado_institucional:Q006",
+      "turn_index": 1,
+      "note": "Q006|profile=anonimo|difficulty=facil|form=direta|sources=profile|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 5574.0,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "O Colégio Horizonte está localizado na Rua das Acácias, 1450, no bairro da Vila Mariana, em São Paulo. É um local de fácil acesso, próximo a importantes vias e estações de metrô.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 17783.4,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_completed",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "A informação sobre o endereço da escola não está disponível nos documentos que consultei. Para obter essa informação, sugiro que você verifique o site oficial da escola ou entre em contato diretamente com eles.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 140.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Colegio Horizonte fica em Rua das Acacias, 1450, Vila Mariana, Sao Paulo, SP, CEP 04567-120.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 18822.6,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Colegio Horizonte fica em Rua das Acacias, 1450, Vila Mariana, Sao Paulo, SP, CEP 04567-120.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1969.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:district",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "district"
+        ],
+        "answer_text": "A escola fica no bairro Vila Mariana, Sao Paulo/SP.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Com quem eu falo sobre bolsa, com quem eu falo sobre boletos e com quem eu falo sobre bullying?",
+      "slice": "public",
+      "category": "publico_estruturado_institucional",
+      "thread_id": "system_bank:publico_estruturado_institucional:Q007",
+      "turn_index": 1,
+      "note": "Q007|profile=anonimo|difficulty=media|form=direta|sources=service_dir|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 108.6,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Financeiro: bot, financeiro, portal autenticado ou email institucional.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 166.7,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Para bolsa, desconto e matricula, o melhor canal hoje e Atendimento comercial / Admissoes. Admissoes (telefone): (11) 3333-4201\nPara boletos, vencimentos e contratos, o melhor canal hoje e o financeiro. Financeiro (telefone): (11) 3333-4203\nPara bullying, convivencia e apoio escolar, o canal indicado e a orientacao educacional. Orientacao educacional (telefone): (11) 3333-4202",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 106.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Financeiro: bot, financeiro, portal autenticado ou email institucional.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 111.6,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Financeiro: bot, financeiro, portal autenticado ou email institucional.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1967.2,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:service_routing",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "service_routing"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Financeiro: bot, financeiro, portal autenticado ou email institucional.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Qual a diferenca entre falar com secretaria, coordenacao e orientacao educacional?",
+      "slice": "public",
+      "category": "publico_estruturado_institucional",
+      "thread_id": "system_bank:publico_estruturado_institucional:Q008",
+      "turn_index": 1,
+      "note": "Q008|profile=anonimo|difficulty=media|form=comparativa|sources=profile,org_dir,service_dir|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 103.2,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Orientacao educacional: bot, orientacao educacional ou secretaria.\n- Secretaria: bot, secretaria presencial, email institucional ou portal.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 16337.9,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_completed",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "A Secretaria de Educação é responsável por planejar, organizar, dirigir, coordenar, executar, controlar e avaliar as ações setoriais de educação do Município. Ela também formula e implementa a política educacional municipal, seguindo as diretrizes nacionais, e promove a gestão do sistema municipal de ensino para garantir o acesso, a permanência e o sucesso dos alunos na escola.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 101.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Orientacao educacional: bot, orientacao educacional ou secretaria.\n- Secretaria: bot, secretaria presencial, email institucional ou portal.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 90.7,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Orientacao educacional: bot, orientacao educacional ou secretaria.\n- Secretaria: bot, secretaria presencial, email institucional ou portal.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1941.8,
+        "mode": "handoff",
+        "reason": "specialist_supervisor_tool_first:human_handoff",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "human_handoff"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de coordenacao. Protocolo: ATD-20260401-8E9A6A89. Status atual: queued. Se preferir, voce tambem pode seguir pelo WhatsApp oficial (11) 97500-2040.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quando abre a matricula de 2026 e quando comecam as aulas?",
+      "slice": "public",
+      "category": "timeline_e_calendario_publico",
+      "thread_id": "system_bank:timeline_e_calendario_publico:Q009",
+      "turn_index": 1,
+      "note": "Q009|profile=anonimo|difficulty=facil|form=direta|sources=timeline|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 5621.2,
+        "mode": "structured_tool",
+        "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Olá! As matrículas para 2026 no Colégio Horizonte abriram em 6 de outubro de 2025, com pré-cadastro e visita orientada. As aulas para o Ensino Fundamental II e Ensino Médio começam em 2 de fevereiro de 2026, e a semana de acolhimento para o 6º ano e 1ª série será de 2 a 6 de fevereiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 165.6,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos. | 2025-10-06 | familias interessadas | O atendimento comercial segue enquanto houver vagas por segmento.\nAs aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026. | 2026-02-02 | alunos e familias | A semana de acolhimento do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 99.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos. O atendimento comercial segue enquanto houver vagas por segmento.\nAs aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026. A semana de acolhimento do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 93.2,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje a base publica de Colegio Horizonte nao traz um marco institucional estruturado para essa data.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1918.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:public_timeline_bundle",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "public_timeline_bundle"
+        ],
+        "answer_text": "O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos. O atendimento comercial segue enquanto houver vagas por segmento.\nAs aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026. A semana de acolhimento do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quais sao os principais eventos publicos desta semana para familias e responsaveis?",
+      "slice": "public",
+      "category": "timeline_e_calendario_publico",
+      "thread_id": "system_bank:timeline_e_calendario_publico:Q010",
+      "turn_index": 1,
+      "note": "Q010|profile=anonimo|difficulty=media|form=direta|sources=calendar|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1848.5,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify"
+        ],
+        "answer_text": "Olá! No momento, não tenho informações sobre eventos públicos específicos para famílias e responsáveis nesta semana.\n\nPara ficar por dentro da nossa programação, sugiro que consulte o calendário oficial da escola, que é sempre atualizado com os eventos mais recentes. Você pode acessá-lo pelo nosso portal ou entrar em contato com a Secretaria Escolar para mais detalhes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 20221.9,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_completed",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 145.2,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 16067.0,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje a base publica de eventos de Colegio Horizonte nao trouxe agenda estruturada para esse pedido.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1987.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:calendar_week",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "public_calendar"
+        ],
+        "answer_text": "Os principais eventos publicos para familias e responsaveis nesta base sao:\n- Reuniao geral de pais e responsaveis (28/03/2026) · publico: public. Apresentacao do planejamento do primeiro bimestre.\n- Reuniao de responsaveis do 6o ao 9o ano (28/03/2026) · publico: public. Apresentacao das rotinas do Fundamental II, canais oficiais e acompanhamento pedagógico.\n- Reuniao de responsaveis do Ensino Medio (29/03/2026) · publico: public. Apresentacao das rotinas do Ensino Medio, avaliacao e apoio a vestibulares.\n- Visita guiada para familias interessadas (06/04/2026) · publico: public. Apresentacao institucional do Fundamental II e Ensino Medio com tour pelos espacos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Monte uma linha do tempo do primeiro bimestre com datas que importam para pais e alunos.",
+      "slice": "public",
+      "category": "timeline_e_calendario_publico",
+      "thread_id": "system_bank:timeline_e_calendario_publico:Q011",
+      "turn_index": 1,
+      "note": "Q011|profile=anonimo|difficulty=media|form=comparativa|sources=timeline,calendar|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 111.4,
+        "mode": "deny",
+        "reason": "a consulta exige autenticacao ou vinculo antes de qualquer acesso",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "deny"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 20221.2,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_timeout",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "O ano letivo de 2024 começa em 5 de fevereiro para a Educação Infantil e Ensino Fundamental I. Já para o Ensino Fundamental II e Ensino Médio, as aulas iniciam em 6 de fevereiro. O recesso de meio de ano será de 15 a 26 de julho, e o término do ano letivo está previsto para 13 de dezembro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 111.5,
+        "mode": "deny",
+        "reason": "a consulta exige autenticacao ou vinculo antes de qualquer acesso",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "deny",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 110.5,
+        "mode": "deny",
+        "reason": "a consulta exige autenticacao ou vinculo antes de qualquer acesso",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "deny",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1953.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:first_bimester_timeline",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "public_calendar"
+        ],
+        "answer_text": "Linha do tempo publica do primeiro bimestre:\n- O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos.\n- As aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026.\n- A cerimonia interna de conclusao do Ensino Fundamental II esta prevista para 12 de dezembro de 2026, no fim da tarde, apos o encerramento do ano letivo.\n- Inicio do ano letivo Fundamental II e Ensino Medio (02/02/2026) · publico: public. Recepcao das turmas com orientacoes iniciais, entrega de horarios e apresentacao da equipe.\n- Reuniao geral de pais e responsaveis (28/03/2026) · publico: public. Apresentacao do planejamento do primeiro bimestre.\n- Reuniao de responsaveis do 6o ao 9o ano (28/03/2026) · publico: public. Apresentacao das rotinas do Fundamental II, canais oficiais e acompanhamento pedagógico.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quando acontecem reunioes de pais, simulados e semanas de prova no ano letivo?",
+      "slice": "public",
+      "category": "timeline_e_calendario_publico",
+      "thread_id": "system_bank:timeline_e_calendario_publico:Q012",
+      "turn_index": 1,
+      "note": "Q012|profile=anonimo|difficulty=media|form=direta|sources=calendar|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 5489.5,
+        "mode": "structured_tool",
+        "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "As aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026. A semana de acolhimento do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 160.7,
+        "mode": "deny",
+        "reason": "crewai_protected_auth_required",
+        "graph_path": [
+          "flow_router",
+          "auth_required_deterministic"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 96.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "As aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026. A semana de acolhimento do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 90.3,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje a base publica de Colegio Horizonte nao traz um marco institucional estruturado para essa data.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2000.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:eval_calendar",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "public_calendar"
+        ],
+        "answer_text": "No calendario publico atual, estes sao os marcos mais relevantes para reunioes, simulados e semanas de prova:\n- Reuniao geral de pais e responsaveis (28/03/2026) · publico: public. Apresentacao do planejamento do primeiro bimestre.\n- Reuniao de responsaveis do 6o ao 9o ano (28/03/2026) · publico: public. Apresentacao das rotinas do Fundamental II, canais oficiais e acompanhamento pedagógico.\n- Reuniao de responsaveis do Ensino Medio (29/03/2026) · publico: public. Apresentacao das rotinas do Ensino Medio, avaliacao e apoio a vestibulares.\n- Plantao pedagogico do primeiro bimestre (11/04/2026) · publico: public. Atendimento com professores para esclarecimento de notas e frequencia.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "O que acontece antes da confirmacao da vaga e o que acontece depois do inicio das aulas?",
+      "slice": "public",
+      "category": "timeline_e_calendario_publico",
+      "thread_id": "system_bank:timeline_e_calendario_publico:Q013",
+      "turn_index": 1,
+      "note": "Q013|profile=anonimo|difficulty=dificil|form=ambigua|sources=timeline,calendar|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 5842.1,
+        "mode": "structured_tool",
+        "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Que bom que você está se informando sobre o processo! Antes da confirmação da vaga, nosso ciclo de matrículas para 2026 começou em 6 de outubro de 2025, com pré-cadastro, visita orientada opcional e triagem de documentos. Nosso atendimento comercial continua enquanto houver vagas.\n\nApós o início das aulas, que para o Ensino Fundamental II e Ensino Médio será em 2 de fevereiro de 2026, teremos uma semana especial de acolhimento para o 6º ano e a 1ª série, de 2 a 6 de fevereiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 164.6,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "As aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 106.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Antes da confirmacao da vaga: O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos. O atendimento comercial segue enquanto houver vagas por segmento. Depois do inicio das aulas: As aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026. A semana de acolhimento do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 98.6,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje a base publica de Colegio Horizonte nao traz um marco institucional estruturado para essa data.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2012.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:public_timeline",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "public_timeline"
+        ],
+        "answer_text": "As aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026. A semana de acolhimento do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Se eu quiser planejar uma viagem sem atrapalhar a vida escolar, quais marcos do calendario eu deveria observar?",
+      "slice": "public",
+      "category": "timeline_e_calendario_publico",
+      "thread_id": "system_bank:timeline_e_calendario_publico:Q014",
+      "turn_index": 1,
+      "note": "Q014|profile=anonimo|difficulty=media|form=criativa|sources=calendar,timeline|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 3336.4,
+        "mode": "structured_tool",
+        "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Que ótima iniciativa planejar com antecedência! Para que sua viagem não atrapalhe os estudos, sugiro que você observe as seguintes datas importantes do nosso calendário: o início das aulas em 2 de fevereiro de 2026 e a cerimônia de conclusão do Ensino Fundamental II em 12 de dezembro de 2026. O ciclo de matrículas para 2026 também começou em 6 de outubro de 2025.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 20227.8,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_completed",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 112.6,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Para planejar uma viagem sem atrapalhar a vida escolar, vale observar estes marcos publicos antes de fechar datas:\n- O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos.\n- As aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026.\n- A cerimonia interna de conclusao do Ensino Fundamental II esta prevista para 12 de dezembro de 2026, no fim da tarde, apos o encerramento do ano letivo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 105.8,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje a base publica de Colegio Horizonte nao traz um marco institucional estruturado para essa data.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2162.2,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:travel_planning",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "public_calendar"
+        ],
+        "answer_text": "Para planejar uma viagem sem atrapalhar a vida escolar, vale observar estes marcos publicos antes de fechar datas:\n- O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos.\n- As aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026.\n- A cerimonia interna de conclusao do Ensino Fundamental II esta prevista para 12 de dezembro de 2026, no fim da tarde, apos o encerramento do ano letivo.\n- Reuniao geral de pais e responsaveis (28/03/2026) · publico: public. Apresentacao do planejamento do primeiro bimestre.\n- Reuniao de responsaveis do 6o ao 9o ano (28/03/2026) · publico: public. Apresentacao das rotinas do Fundamental II, canais oficiais e acompanhamento pedagógico.\n- Reuniao de responsaveis do Ensino Medio (29/03/2026) · publico: public. Apresentacao das rotinas do Ensino Medio, avaliacao e apoio a vestibulares.\n- Visita guiada para familias interessadas (06/04/2026) · publico: public. Apresentacao institucional do Fundamental II e Ensino Medio com tour pelos espacos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quais eventos do calendario sao realmente publicos e quais dependem de autenticacao ou contexto interno?",
+      "slice": "public",
+      "category": "timeline_e_calendario_publico",
+      "thread_id": "system_bank:timeline_e_calendario_publico:Q015",
+      "turn_index": 1,
+      "note": "Q015|profile=anonimo|difficulty=facil|form=direta|sources=calendar|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 5425.7,
+        "mode": "structured_tool",
+        "reason": "planejamento semantico publico encontrou um ato estruturado mais adequado ao turno",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "hybrid_retrieval"
+        ],
+        "answer_text": "Olá! No nosso calendário público, você sempre encontrará os marcos institucionais gerais e os eventos coletivos da escola. Já os detalhes individuais de cada aluno, convites específicos, protocolos e informações financeiras são acessíveis apenas com autenticação, para garantir a segurança e privacidade. Fique tranquila, sempre que houver alguma atualização importante, avisaremos pelos nossos canais oficiais e no portal.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 20230.7,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_completed",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 100.7,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "No calendario publico, o que costuma ficar aberto para familias sao marcos institucionais gerais e eventos coletivos. O que depende de autenticacao ou contexto interno sao detalhes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos. Sempre que houver ajuste relevante no calendario de avaliacao, a escola atualiza o portal e reforca a comunicacao pelos canais oficiais. O ambiente digital amplia o atendimento, mas nao substitui todos os processos formais.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 90.8,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "No calendario publico, o que costuma ficar aberto para familias sao marcos institucionais gerais e eventos coletivos. O que depende de autenticacao ou contexto interno sao detalhes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos. Sempre que houver ajuste relevante no calendario de avaliacao, a escola atualiza o portal e reforca a comunicacao pelos canais oficiais. O ambiente digital amplia o atendimento, mas nao substitui todos os processos formais.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1932.7,
+        "mode": "deny",
+        "reason": "specialist_supervisor_tool_first:restricted_document_denied",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "restricted_document_denied"
+        ],
+        "answer_text": "Nao posso compartilhar procedimentos, protocolos, manuais ou playbooks internos da escola. Se voce precisa de orientacao oficial, eu posso explicar a politica publica correspondente ou abrir um handoff.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Resuma o ano escolar em tres fases: admissao, rotina academica e fechamento.",
+      "slice": "public",
+      "category": "timeline_e_calendario_publico",
+      "thread_id": "system_bank:timeline_e_calendario_publico:Q016",
+      "turn_index": 1,
+      "note": "Q016|profile=anonimo|difficulty=dificil|form=multi-fonte|sources=timeline,calendar,public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 6139.0,
+        "mode": "structured_tool",
+        "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Que bom que você se interessa pelo nosso calendário! O ano escolar no Colégio Horizonte se organiza assim: a admissão para 2026 começou em 6 de outubro de 2025, com pré-cadastro e visita. As aulas do Ensino Fundamental II e Médio iniciam em 2 de fevereiro de 2026, e a cerimônia de conclusão do Fundamental II será em 12 de dezembro de 2026.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 20210.2,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_completed",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 99.2,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Admissao: O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos.\nRotina academica: As aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026.\nFechamento: A cerimonia interna de conclusao do Ensino Fundamental II esta prevista para 12 de dezembro de 2026, no fim da tarde, apos o encerramento do ano letivo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 92.8,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje a base publica de Colegio Horizonte nao traz um marco institucional estruturado para essa data.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1932.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:year_three_phases",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "public_calendar"
+        ],
+        "answer_text": "Admissao: O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos.\nRotina academica: As aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026. Eventos publicos ao longo do ano incluem Inicio do ano letivo Fundamental II e Ensino Medio (02/02/2026) · publico: public. Recepcao das turmas com orientacoes iniciais, entrega de horarios e apresentacao da equipe; Reuniao geral de pais e responsaveis (28/03/2026) · publico: public. Apresentacao do planejamento do primeiro bimestre.\nFechamento: A cerimonia interna de conclusao do Ensino Fundamental II esta prevista para 12 de dezembro de 2026, no fim da tarde, apos o encerramento do ano letivo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quais documentos sao exigidos para matricula no ensino medio?",
+      "slice": "public",
+      "category": "retrieval_hibrido_sobre_documentos_publicos",
+      "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q017",
+      "turn_index": 1,
+      "note": "Q017|profile=anonimo|difficulty=facil|form=direta|sources=public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 123.3,
+        "mode": "structured_tool",
+        "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call",
+          "protected_domain_rescue"
+        ],
+        "answer_text": "Hoje os documentos exigidos para a matricula publicados pela escola sao:\n- Formulario cadastral preenchido\n- Documento de identificacao do aluno\n- CPF do aluno, quando houver\n- Historico escolar\n- Comprovante de residencia atualizado\n- Documento de identificacao do responsavel legal\nSe quiser, eu tambem posso explicar as etapas da matricula ou como funciona o envio inicial desses documentos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 438.4,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Hoje os documentos exigidos para a matricula publicados pela escola sao:\n- Formulario cadastral preenchido\n- Documento de identificacao do aluno\n- CPF do aluno, quando houver\n- Historico escolar\n- Comprovante de residencia atualizado\n- Documento de identificacao do responsavel legal",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 164.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje os documentos exigidos para a matricula publicados pela escola sao:\n- Formulario cadastral preenchido\n- Documento de identificacao do aluno\n- CPF do aluno, quando houver\n- Historico escolar\n- Comprovante de residencia atualizado\n- Documento de identificacao do responsavel legal\nSe quiser, eu tambem posso explicar as etapas da matricula ou como funciona o envio inicial desses documentos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 123.1,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje os documentos exigidos para a matricula publicados pela escola sao:\n- Formulario cadastral preenchido\n- Documento de identificacao do aluno\n- CPF do aluno, quando houver\n- Historico escolar\n- Comprovante de residencia atualizado\n- Documento de identificacao do responsavel legal\nSe quiser, eu tambem posso explicar as etapas da matricula ou como funciona o envio inicial desses documentos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1936.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:admissions_documents",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "admissions_documents"
+        ],
+        "answer_text": "Hoje os documentos exigidos para matricula publicados pela escola sao:\n- Formulario cadastral preenchido\n- Documento de identificacao do aluno\n- CPF do aluno, quando houver\n- Historico escolar\n- Comprovante de residencia atualizado\n- Documento de identificacao do responsavel legal",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Como funciona a politica de avaliacao, recuperacao e promocao da escola?",
+      "slice": "public",
+      "category": "retrieval_hibrido_sobre_documentos_publicos",
+      "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q018",
+      "turn_index": 1,
+      "note": "Q018|profile=anonimo|difficulty=media|form=direta|sources=public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 105.5,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "No Colegio Horizonte, a referencia publica de aprovacao e media 7,0/10. Quando a media fica abaixo da referencia, a escola combina monitorias, plantoes e orientacoes de recuperacao conforme o calendario pedagogico. A referencia publica de aprovacao usada nas orientacoes do colegio e 7,0, com fechamento final sempre acompanhado pela equipe pedagogica no periodo letivo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 519.8,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "A referencia publica de aprovacao hoje e media 7.0 na escala 0-10. Quando a media fica abaixo da referencia, a escola combina monitorias, plantoes e orientacoes de recuperacao conforme o calendario pedagogico.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 126.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "No Colegio Horizonte, a referencia publica de aprovacao e media 7,0/10. Quando a media fica abaixo da referencia, a escola combina monitorias, plantoes e orientacoes de recuperacao conforme o calendario pedagogico. A referencia publica de aprovacao usada nas orientacoes do colegio e 7,0, com fechamento final sempre acompanhado pela equipe pedagogica no periodo letivo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 128.1,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "No Colegio Horizonte, a referencia publica de aprovacao e media 7,0/10. Quando a media fica abaixo da referencia, a escola combina monitorias, plantoes e orientacoes de recuperacao conforme o calendario pedagogico. A referencia publica de aprovacao usada nas orientacoes do colegio e 7,0, com fechamento final sempre acompanhado pela equipe pedagogica no periodo letivo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1929.6,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:academic_policy_overview",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "academic_policy_overview"
+        ],
+        "answer_text": "O processo avaliativo combina instrumentos formativos e somativos, como atividades em aula, projetos, producoes textuais, simulados e provas bimestrais. Resultados parciais sao apresentados ao estudante e a familia por meio do portal academico, reunioes e devolutivas pedagogicas. Quando houver desempenho abaixo do esperado, a escola pode oferecer recuperacao paralela, atividades orientadas, monitoria, estudo dirigido ou avaliacao substitutiva, conforme o componente e o periodo do ano. Pedidos de segunda chamada exigem justificativa no prazo orientado pela escola. Na referencia publica atual, a escola trabalha com media 7,0/10 e frequencia minima de 75,0% por componente. A promocao considera desempenho global, trajetoria do estudante, recuperacao realizada e frequencia.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quais sao as regras gerais de convivencia, frequencia e pontualidade?",
+      "slice": "public",
+      "category": "retrieval_hibrido_sobre_documentos_publicos",
+      "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q019",
+      "turn_index": 1,
+      "note": "Q019|profile=anonimo|difficulty=media|form=direta|sources=public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 109.1,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "No Colegio Horizonte, a referencia publica minima de frequencia e 75,0% por componente. Se a frequencia de um componente cair abaixo de 75%, o estudante entra em alerta academico e a coordenacao pode acionar a familia. A permanencia abaixo desse limite pode comprometer a aprovacao por frequencia. A escola acompanha justificativas, recorrencia e necessidade de plano de recomposicao junto a familia e ao estudante.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 175.5,
+        "mode": "deny",
+        "reason": "crewai_protected_auth_required",
+        "graph_path": [
+          "flow_router",
+          "auth_required_deterministic"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 107.7,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "No Colegio Horizonte, a referencia publica minima de frequencia e 75,0% por componente. Se a frequencia de um componente cair abaixo de 75%, o estudante entra em alerta academico e a coordenacao pode acionar a familia. A permanencia abaixo desse limite pode comprometer a aprovacao por frequencia. A escola acompanha justificativas, recorrencia e necessidade de plano de recomposicao junto a familia e ao estudante.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 112.2,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "No Colegio Horizonte, a referencia publica minima de frequencia e 75,0% por componente. Se a frequencia de um componente cair abaixo de 75%, o estudante entra em alerta academico e a coordenacao pode acionar a familia. A permanencia abaixo desse limite pode comprometer a aprovacao por frequencia. A escola acompanha justificativas, recorrencia e necessidade de plano de recomposicao junto a familia e ao estudante.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1996.8,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:conduct_frequency_punctuality",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "conduct_frequency_punctuality"
+        ],
+        "answer_text": "O estudante deve comparecer pontualmente as atividades letivas e cumprir a frequencia minima definida pela escola e pela legislacao aplicavel. A convivencia escolar deve observar respeito mutuo, cuidado com o patrimonio e linguagem adequada. Faltas em dias de avaliacao seguem a politica especifica de segunda chamada e recuperacao. A politica publica de frequencia reforca presenca minima de 75,0% por componente e alerta academico quando a recorrencia de faltas compromete a aprovacao. Se a frequencia de um componente cair abaixo de 75%, o estudante entra em alerta academico e a coordenacao pode acionar a familia.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Como funciona o uso da biblioteca, dos laboratorios e dos recursos digitais?",
+      "slice": "public",
+      "category": "retrieval_hibrido_sobre_documentos_publicos",
+      "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q020",
+      "turn_index": 1,
+      "note": "Q020|profile=anonimo|difficulty=media|form=direta|sources=public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 6115.6,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Sim. O Colegio Horizonte tem a Biblioteca Aurora. Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 187.5,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Sim. Biblioteca Aurora: biblioteca   Biblioteca Aurora   service   True   Atendimento ao publico de segunda a sexta, das 7h30 as 18h00..",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 108.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "A biblioteca se chama Biblioteca Aurora e funciona de segunda a sexta, das 7h30 as 18h00.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 18351.9,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Sim. O Colegio Horizonte tem a Biblioteca Aurora. Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1974.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:library_hours",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "library_hours"
+        ],
+        "answer_text": "A biblioteca se chama Biblioteca Aurora e funciona Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quais os prazos e canais para secretaria receber documentos, declaracoes e atualizacoes cadastrais?",
+      "slice": "public",
+      "category": "retrieval_hibrido_sobre_documentos_publicos",
+      "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q021",
+      "turn_index": 1,
+      "note": "Q021|profile=anonimo|difficulty=media|form=direta|sources=public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 117.4,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Sim. O envio inicial de documentos pode ser feito por canal digital.\nHoje os canais mais diretos publicados para isso sao:\n- portal institucional\n- email da secretaria\n- secretaria presencial\nPrazo esperado da secretaria: retorno em ate 2 dias uteis.\nNo processo de matricula, o envio inicial pode ser digital. A validacao final continua com a secretaria.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 135.4,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Hoje a secretaria recebe documentos, declaracoes e atualizacoes cadastrais pelo portal institucional, pelo email da secretaria e pela secretaria presencial. Prazo esperado da secretaria: retorno em ate 2 dias uteis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 108.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Sim. O envio inicial de documentos pode ser feito por canal digital.\nHoje os canais mais diretos publicados para isso sao:\n- portal institucional\n- email da secretaria\n- secretaria presencial\nPrazo esperado da secretaria: retorno em ate 2 dias uteis.\nNo processo de matricula, o envio inicial pode ser digital. A validacao final continua com a secretaria.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 106.8,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Sim. O envio inicial de documentos pode ser feito por canal digital.\nHoje os canais mais diretos publicados para isso sao:\n- portal institucional\n- email da secretaria\n- secretaria presencial\nPrazo esperado da secretaria: retorno em ate 2 dias uteis.\nNo processo de matricula, o envio inicial pode ser digital. A validacao final continua com a secretaria.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1939.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:document_submission_policy",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "document_submission_policy"
+        ],
+        "answer_text": "Voce pode mandar documentos pelo portal institucional, pelo email da secretaria ou levar na secretaria presencial para conferencia final. Prazo esperado da secretaria: retorno em ate 2 dias uteis. No processo de matricula, o envio inicial pode ser digital. A validacao final continua com a secretaria. O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "O que a escola orienta sobre portal, aplicativo, senha, login e seguranca das credenciais?",
+      "slice": "public",
+      "category": "retrieval_hibrido_sobre_documentos_publicos",
+      "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q022",
+      "turn_index": 1,
+      "note": "Q022|profile=anonimo|difficulty=media|form=multi-fonte|sources=public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 105.7,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Aqui e o Colegio Horizonte. Se voce esta procurando o Orienta Sobre Portal, eu nao tenho acesso ao atendimento dessa outra instituicao. Se quiser, sigo te ajudando com o Colegio Horizonte por aqui.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 141.1,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo: Secretaria recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas. Portal institucional centraliza protocolo e envio digital inicial de documentos. Credenciais significam login e senha do portal; se voce perder o acesso, o melhor caminho e a secretaria ou o suporte digital. Documentos podem ser enviados pelo portal institucional, pelo email da secretaria ou pela secretaria presencial.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 105.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo:\n- Secretaria: recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas.\n- Portal institucional: centraliza protocolo e envio digital inicial de documentos.\n- Credenciais: login e senha do portal continuam sendo a base de acesso; se precisar recuperar acesso, o melhor caminho e a secretaria ou o suporte digital.\n- Documentos: o envio inicial pode ser feito por portal institucional, email da secretaria ou secretaria presencial.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 142.2,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo:\n- Secretaria: recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas.\n- Portal institucional: centraliza protocolo e envio digital inicial de documentos.\n- Credenciais: login e senha do portal continuam sendo a base de acesso; se precisar recuperar acesso, o melhor caminho e a secretaria ou o suporte digital.\n- Documentos: o envio inicial pode ser feito por portal institucional, email da secretaria ou secretaria presencial.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1952.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:service_credentials_bundle",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "service_credentials_bundle"
+        ],
+        "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo:\n- Secretaria: recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas.\n- Portal institucional: centraliza protocolo e envio digital inicial de documentos.\n- Credenciais: login e senha do portal continuam sendo a base de acesso; se voce perder o acesso, o melhor caminho e a secretaria ou o suporte digital.\n- Documentos: o envio inicial pode ser feito por portal institucional, email da secretaria ou secretaria presencial.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Como funcionam bolsas, descontos e regras de rematricula, transferencia e cancelamento?",
+      "slice": "public",
+      "category": "retrieval_hibrido_sobre_documentos_publicos",
+      "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q023",
+      "turn_index": 1,
+      "note": "Q023|profile=anonimo|difficulty=media|form=direta|sources=public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 127.1,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "O edital disciplina pedidos de bolsa social, desconto institucional, politica para irmaos e condicoes de manutencao do beneficio no ano letivo de 2026. Pedidos devem ser feitos dentro da janela informada pela escola, com envio de documentacao socioeconomica e demais comprovantes solicitados no regulamento especifico. A concessao de bolsas e descontos depende de analise documental, criterios internos, disponibilidade orcamentaria e validacao administrativa. Beneficios podem depender de cumprimento das condicoes previstas, como adimplencia, atualizacao cadastral e apresentacao tempestiva de documentos complementares quando solicitados. A rematricula para estudantes ja vinculados ao Colegio Horizonte ocorre em janela administrativa propria, divulgada no portal e reforcada pelos canais oficiais. Pedidos de transferencia para ingresso durante o ano letivo dependem de vaga, analise academica, conferencia documental e alinhamento com a serie pretendida. Quando a familia deseja transferir o aluno para outra instituicao, a solicitacao deve ser formalizada junto a secretaria. Pedidos de cancelamento devem ser apresentados pelo responsavel legal por canal oficial e podem exigir confirmacao adicional da secretaria ou do financeiro. Declaracoes simples costumam ser liberadas em ate dois dias uteis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 164.0,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "A mensalidade de referencia para Ensino Fundamental II e R$ 1280.00, com taxa de matricula de R$ 350.00.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 101.7,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "O edital disciplina pedidos de bolsa social, desconto institucional, politica para irmaos e condicoes de manutencao do beneficio no ano letivo de 2026. Pedidos devem ser feitos dentro da janela informada pela escola, com envio de documentacao socioeconomica e demais comprovantes solicitados no regulamento especifico. A concessao de bolsas e descontos depende de analise documental, criterios internos, disponibilidade orcamentaria e validacao administrativa. Beneficios podem depender de cumprimento das condicoes previstas, como adimplencia, atualizacao cadastral e apresentacao tempestiva de documentos complementares quando solicitados. A rematricula para estudantes ja vinculados ao Colegio Horizonte ocorre em janela administrativa propria, divulgada no portal e reforcada pelos canais oficiais. Pedidos de transferencia para ingresso durante o ano letivo dependem de vaga, analise academica, conferencia documental e alinhamento com a serie pretendida. Quando a familia deseja transferir o aluno para outra instituicao, a solicitacao deve ser formalizada junto a secretaria. Pedidos de cancelamento devem ser apresentados pelo responsavel legal por canal oficial e podem exigir confirmacao adicional da secretaria ou do financeiro. Declaracoes simples costumam ser liberadas em ate dois dias uteis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 100.0,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "O edital disciplina pedidos de bolsa social, desconto institucional, politica para irmaos e condicoes de manutencao do beneficio no ano letivo de 2026. Pedidos devem ser feitos dentro da janela informada pela escola, com envio de documentacao socioeconomica e demais comprovantes solicitados no regulamento especifico. A concessao de bolsas e descontos depende de analise documental, criterios internos, disponibilidade orcamentaria e validacao administrativa. Beneficios podem depender de cumprimento das condicoes previstas, como adimplencia, atualizacao cadastral e apresentacao tempestiva de documentos complementares quando solicitados. A rematricula para estudantes ja vinculados ao Colegio Horizonte ocorre em janela administrativa propria, divulgada no portal e reforcada pelos canais oficiais. Pedidos de transferencia para ingresso durante o ano letivo dependem de vaga, analise academica, conferencia documental e alinhamento com a serie pretendida. Quando a familia deseja transferir o aluno para outra instituicao, a solicitacao deve ser formalizada junto a secretaria. Pedidos de cancelamento devem ser apresentados pelo responsavel legal por canal oficial e podem exigir confirmacao adicional da secretaria ou do financeiro. Declaracoes simples costumam ser liberadas em ate dois dias uteis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1930.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:bolsas_and_processes",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "bolsas_and_processes"
+        ],
+        "answer_text": "O edital disciplina pedidos de bolsa social, desconto institucional, politica para irmaos e condicoes de manutencao do beneficio no ano letivo de 2026. Pedidos devem ser feitos dentro da janela informada pela escola, com envio de documentacao socioeconomica e demais comprovantes solicitados no regulamento especifico. A concessao de bolsas e descontos depende de analise documental, criterios internos, disponibilidade orcamentaria e validacao administrativa. Beneficios podem depender de cumprimento das condicoes previstas, como adimplencia, atualizacao cadastral e apresentacao tempestiva de documentos complementares quando solicitados. A rematricula para estudantes ja vinculados ao Colegio Horizonte ocorre em janela administrativa propria, divulgada no portal e reforcada pelos canais oficiais. Pedidos de transferencia para ingresso durante o ano letivo dependem de vaga, analise academica, conferencia documental e alinhamento com a serie pretendida. Quando a familia deseja transferir o aluno para outra instituicao, a solicitacao deve ser formalizada junto a secretaria. Pedidos de cancelamento devem ser apresentados pelo responsavel legal por canal oficial e podem exigir confirmacao adicional da secretaria ou do financeiro. Declaracoes simples costumam ser liberadas em ate dois dias uteis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Se eu faltar por motivo de saude e perder uma prova, onde a escola explica o que devo fazer?",
+      "slice": "public",
+      "category": "retrieval_hibrido_sobre_documentos_publicos",
+      "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q024",
+      "turn_index": 1,
+      "note": "Q024|profile=anonimo|difficulty=dificil|form=ambigua|sources=public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T183125Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 2060.6,
+        "mode": "structured_tool",
+        "reason": "planejamento semantico publico encontrou um ato estruturado mais adequado ao turno",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "hybrid_retrieval"
+        ],
+        "answer_text": "Aqui e o Colegio Horizonte. Se voce esta procurando o Explica Que Devo, eu nao tenho acesso ao atendimento dessa outra instituicao. Se quiser, sigo te ajudando com o Colegio Horizonte por aqui.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 164.9,
+        "mode": "deny",
+        "reason": "crewai_protected_auth_required",
+        "graph_path": [
+          "flow_router",
+          "auth_required_deterministic"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 96.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Atestados medicos e justificativas formais podem ser usados para apoiar analise de ausencia, segunda chamada ou adaptacao temporaria de rotina. Pedidos de segunda chamada exigem justificativa no prazo orientado pela escola.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 96.7,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Atestados medicos e justificativas formais podem ser usados para apoiar analise de ausencia, segunda chamada ou adaptacao temporaria de rotina. Pedidos de segunda chamada exigem justificativa no prazo orientado pela escola.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1930.1,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:health_second_call",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "health_second_call"
+        ],
+        "answer_text": "Atestados medicos e justificativas formais podem ser usados para apoiar analise de ausencia, segunda chamada ou adaptacao temporaria de rotina. Pedidos de segunda chamada exigem justificativa no prazo orientado pela escola.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    }
+  ],
+  "stacks": [
+    "langgraph",
+    "crewai",
+    "python_functions",
+    "llamaindex",
+    "specialist_supervisor"
+  ]
+}
