@@ -37,6 +37,12 @@ from .graph import to_preview
 from .crewai_trace import build_crewai_trace_sections
 from .specialist_trace import build_specialist_trace_sections
 from .entity_resolution import resolve_entity_hints
+from .evidence_pack import (
+    build_direct_answer_evidence_pack,
+    build_known_unknown_evidence_pack,
+    build_retrieval_evidence_pack,
+    build_structured_tool_evidence_pack,
+)
 from .langgraph_runtime import (
     get_langgraph_artifacts,
     get_orchestration_state_snapshot,
@@ -47,6 +53,8 @@ from .models import (
     AccessTier,
     CalendarEventCard,
     IntentClassification,
+    MessageEvidencePack,
+    MessageEvidenceSupport,
     MessageResponse,
     MessageResponseCitation,
     MessageResponseRequest,
@@ -61,6 +69,7 @@ from .models import (
     UserRole,
 )
 from .public_agentic_engine import build_public_evidence_bundle
+from .public_known_unknowns import detect_public_known_unknown_key
 from .public_doc_knowledge import (
     compose_public_bolsas_and_processes,
     compose_public_calendar_visibility,
@@ -14194,6 +14203,203 @@ def _compose_deterministic_answer(
     return '\n'.join(sections)
 
 
+def _school_name_from_profile(profile: dict[str, Any] | None) -> str:
+    return str((profile or {}).get('school_name', 'Colegio Horizonte')).strip() or 'Colegio Horizonte'
+
+
+def _looks_like_known_unknown_answer(message_text: str) -> bool:
+    normalized = _normalize_text(message_text)
+    return any(
+        marker in normalized
+        for marker in (
+            'nao esta publicado',
+            'nao estao publicados',
+            'nao publicam',
+            'nao informam',
+            'nao divulga',
+            'nao divulgam',
+        )
+    )
+
+
+def _build_runtime_public_supports(
+    *,
+    request_message: str,
+    school_profile: dict[str, Any] | None,
+    actor: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None,
+    public_plan: PublicInstitutionPlan | None,
+    selected_tools: list[str],
+) -> list[MessageEvidenceSupport]:
+    if not isinstance(school_profile, dict) or not school_profile:
+        return []
+    school_name = _school_name_from_profile(school_profile)
+    supports: list[MessageEvidenceSupport] = [
+        MessageEvidenceSupport(
+            kind='scope',
+            label='public_school_profile',
+            detail=f'Perfil institucional publico de {school_name}.',
+        )
+    ]
+    primary_act = public_plan.conversation_act if public_plan is not None else None
+    secondary_acts = public_plan.secondary_acts if public_plan is not None else ()
+    focus_hint = public_plan.focus_hint if public_plan is not None else None
+    if not primary_act:
+        context = _build_public_profile_context(
+            school_profile,
+            request_message,
+            actor=actor,
+            original_message=request_message,
+            conversation_context=conversation_context,
+            semantic_plan=public_plan,
+        )
+        primary_act = _resolve_public_profile_act(context)
+    if primary_act:
+        bundle = build_public_evidence_bundle(
+            school_profile,
+            primary_act=primary_act,
+            secondary_acts=secondary_acts,
+            request_message=request_message,
+            focus_hint=focus_hint,
+        )
+        if bundle is not None:
+            for fact in bundle.facts[:4]:
+                supports.append(
+                    MessageEvidenceSupport(
+                        kind='profile_fact',
+                        label=fact.key,
+                        excerpt=fact.text,
+                    )
+                )
+    for tool_name in selected_tools[:2]:
+        supports.append(
+            MessageEvidenceSupport(
+                kind='tool',
+                label=tool_name,
+                detail='Structured public source checked before composing the answer.',
+            )
+        )
+    return supports[:6]
+
+
+def _build_runtime_evidence_pack(
+    *,
+    request_message: str,
+    message_text: str,
+    preview: OrchestrationPreview,
+    selected_tools: list[str],
+    citations: list[MessageResponseCitation],
+    school_profile: dict[str, Any] | None,
+    actor: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None,
+    public_plan: PublicInstitutionPlan | None,
+    retrieval_backend: RetrievalBackend,
+) -> MessageEvidencePack | None:
+    normalized_tools = list(dict.fromkeys(tool_name for tool_name in selected_tools if tool_name))
+    if citations:
+        return build_retrieval_evidence_pack(
+            citations=citations,
+            selected_tools=normalized_tools,
+            retrieval_backend=retrieval_backend,
+        )
+
+    known_unknown_key = None
+    if (
+        preview.classification.access_tier is AccessTier.public
+        and preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar}
+        and _looks_like_known_unknown_answer(message_text)
+    ):
+        known_unknown_key = detect_public_known_unknown_key(request_message)
+    if known_unknown_key:
+        return build_known_unknown_evidence_pack(
+            requested_key=known_unknown_key,
+            selected_tools=normalized_tools,
+            school_name=_school_name_from_profile(school_profile),
+        )
+
+    public_supports = []
+    if (
+        preview.classification.access_tier is AccessTier.public
+        and preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar}
+    ):
+        public_supports = _build_runtime_public_supports(
+            request_message=request_message,
+            school_profile=school_profile,
+            actor=actor,
+            conversation_context=conversation_context,
+            public_plan=public_plan,
+            selected_tools=normalized_tools,
+        )
+    if public_supports:
+        return build_direct_answer_evidence_pack(
+            strategy='direct_answer',
+            summary='Resposta grounded no perfil publico e nas politicas institucionais publicadas.',
+            supports=public_supports,
+        )
+
+    if normalized_tools:
+        return build_structured_tool_evidence_pack(
+            selected_tools=normalized_tools,
+            slice_name=preview.classification.domain.value,
+        )
+
+    fallback_supports: list[MessageEvidenceSupport] = []
+    if preview.mode is OrchestrationMode.deny:
+        fallback_supports.append(
+            MessageEvidenceSupport(
+                kind='guardrail',
+                label='access_control',
+                detail='A resposta foi bloqueada por regras de autenticacao ou acesso.',
+            )
+        )
+    elif preview.mode is OrchestrationMode.clarify:
+        fallback_supports.append(
+            MessageEvidenceSupport(
+                kind='clarify',
+                label='needs_clarification',
+                detail='O turno precisa de clarificacao antes de executar uma resposta grounded.',
+            )
+        )
+    elif preview.mode is OrchestrationMode.graph_rag:
+        fallback_supports.append(
+            MessageEvidenceSupport(
+                kind='tool',
+                label='graph_rag',
+                detail='Resposta sintetizada pela trilha GraphRAG.',
+            )
+        )
+    else:
+        fallback_supports.append(
+            MessageEvidenceSupport(
+                kind='deterministic',
+                label='direct_answer',
+                detail='Resposta emitida pelo caminho deterministico compartilhado.',
+            )
+        )
+    return build_direct_answer_evidence_pack(
+        strategy=preview.mode.value,
+        summary='Resposta grounded pelo fluxo compartilhado de orquestracao.',
+        supports=fallback_supports,
+    )
+
+
+def _build_runtime_risk_flags(
+    *,
+    request_message: str,
+    message_text: str,
+    preview: OrchestrationPreview,
+) -> list[str]:
+    risk_flags = list(getattr(preview, 'risk_flags', []) or [])
+    if (
+        preview.classification.access_tier is AccessTier.public
+        and preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar}
+        and detect_public_known_unknown_key(request_message)
+        and _looks_like_known_unknown_answer(message_text)
+    ):
+        risk_flags.append('valid_but_unpublished')
+    return canonicalize_risk_flags(risk_flags)
+
+
 def _should_run_response_critic(*, preview: Any, request: MessageResponseRequest) -> bool:
     if preview.needs_authentication:
         return False
@@ -14801,19 +15007,37 @@ async def generate_message_response(
                     user_message=request.message,
                     assistant_message=message_text,
                 )
+                selected_tools = list(preview.selected_tools)
+                evidence_pack = _build_runtime_evidence_pack(
+                    request_message=request.message,
+                    message_text=message_text,
+                    preview=preview,
+                    selected_tools=selected_tools,
+                    citations=[],
+                    school_profile=school_profile,
+                    actor=actor,
+                    conversation_context=context_payload,
+                    public_plan=public_plan,
+                    retrieval_backend=preview.retrieval_backend,
+                )
                 return MessageResponse(
                     message_text=message_text,
                     mode=preview.mode,
                     classification=preview.classification,
                     reason=preview.reason,
-                    selected_tools=preview.selected_tools,
+                    selected_tools=selected_tools,
                     graph_path=preview.graph_path,
                     retrieval_backend=preview.retrieval_backend,
                     needs_authentication=preview.needs_authentication,
                     citations=[],
                     calendar_events=[],
                     visual_assets=[],
-                    risk_flags=preview.risk_flags,
+                    evidence_pack=evidence_pack,
+                    risk_flags=_build_runtime_risk_flags(
+                        request_message=request.message,
+                        message_text=message_text,
+                        preview=preview,
+                    ),
                     suggested_replies=suggested_replies,
                 )
             preview = to_preview(state)
@@ -15023,19 +15247,37 @@ async def generate_message_response(
                 user_message=request.message,
                 assistant_message=message_text,
             )
+            selected_tools = list(preview.selected_tools)
+            evidence_pack = _build_runtime_evidence_pack(
+                request_message=request.message,
+                message_text=message_text,
+                preview=preview,
+                selected_tools=selected_tools,
+                citations=[],
+                school_profile=school_profile,
+                actor=actor,
+                conversation_context=context_payload,
+                public_plan=public_plan,
+                retrieval_backend=preview.retrieval_backend,
+            )
             return MessageResponse(
                 message_text=message_text,
                 mode=preview.mode,
                 classification=preview.classification,
                 reason=preview.reason,
-                selected_tools=preview.selected_tools,
+                selected_tools=selected_tools,
                 graph_path=preview.graph_path,
                 retrieval_backend=preview.retrieval_backend,
                 needs_authentication=preview.needs_authentication,
                 citations=[],
                 calendar_events=[],
                 visual_assets=[],
-                risk_flags=preview.risk_flags,
+                evidence_pack=evidence_pack,
+                risk_flags=_build_runtime_risk_flags(
+                    request_message=request.message,
+                    message_text=message_text,
+                    preview=preview,
+                ),
                 suggested_replies=suggested_replies,
             )
 
@@ -15098,19 +15340,37 @@ async def generate_message_response(
                 user_message=request.message,
                 assistant_message=message_text,
             )
+            selected_tools = list(preview.selected_tools)
+            evidence_pack = _build_runtime_evidence_pack(
+                request_message=request.message,
+                message_text=message_text,
+                preview=preview,
+                selected_tools=selected_tools,
+                citations=[],
+                school_profile=school_profile,
+                actor=actor,
+                conversation_context=context_payload,
+                public_plan=public_plan,
+                retrieval_backend=preview.retrieval_backend,
+            )
             return MessageResponse(
                 message_text=message_text,
                 mode=preview.mode,
                 classification=preview.classification,
                 reason=preview.reason,
-                selected_tools=preview.selected_tools,
+                selected_tools=selected_tools,
                 graph_path=preview.graph_path,
                 retrieval_backend=preview.retrieval_backend,
                 needs_authentication=preview.needs_authentication,
                 citations=[],
                 calendar_events=[],
                 visual_assets=[],
-                risk_flags=preview.risk_flags,
+                evidence_pack=evidence_pack,
+                risk_flags=_build_runtime_risk_flags(
+                    request_message=request.message,
+                    message_text=message_text,
+                    preview=preview,
+                ),
                 suggested_replies=suggested_replies,
             )
 
@@ -15611,18 +15871,39 @@ async def generate_message_response(
                 ).required_tools
             if 'get_public_school_profile' not in selected_tools:
                 selected_tools = [*selected_tools, 'get_public_school_profile']
+        selected_tools = list(selected_tools)
+        retrieval_backend = preview.retrieval_backend
+        if preview.mode is OrchestrationMode.hybrid_retrieval:
+            retrieval_backend = RetrievalBackend.qdrant_hybrid
+        evidence_pack = _build_runtime_evidence_pack(
+            request_message=request.message,
+            message_text=message_text,
+            preview=preview,
+            selected_tools=selected_tools,
+            citations=citations,
+            school_profile=school_profile,
+            actor=actor,
+            conversation_context=context_payload,
+            public_plan=public_plan,
+            retrieval_backend=retrieval_backend,
+        )
         return MessageResponse(
             message_text=message_text,
             mode=preview.mode,
             classification=preview.classification,
-            retrieval_backend=preview.retrieval_backend,
+            retrieval_backend=retrieval_backend,
             selected_tools=selected_tools,
             citations=citations,
             visual_assets=visual_assets,
             suggested_replies=suggested_replies,
             calendar_events=calendar_events,
+            evidence_pack=evidence_pack,
             needs_authentication=preview.needs_authentication,
             graph_path=preview.graph_path,
-            risk_flags=preview.risk_flags,
+            risk_flags=_build_runtime_risk_flags(
+                request_message=request.message,
+                message_text=message_text,
+                preview=preview,
+            ),
             reason=preview.reason,
         )
