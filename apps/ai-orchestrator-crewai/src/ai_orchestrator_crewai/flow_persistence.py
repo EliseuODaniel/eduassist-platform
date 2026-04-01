@@ -10,7 +10,7 @@ except Exception:  # pragma: no cover - defensive import
     SQLiteFlowPersistence = None  # type: ignore[assignment]
 
 
-DEFAULT_FLOW_STATE_DIR = '/workspace/artifacts/crewai-flow-state'
+DEFAULT_FLOW_STATE_DIR = str(Path(__file__).resolve().parents[4] / 'artifacts' / 'crewai-flow-state')
 
 
 def _flow_state_root() -> Path:

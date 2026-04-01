@@ -27,6 +27,11 @@ Datasets uteis:
 - baseline compacto: `tools/graphrag-benchmark/datasets/public_corpus_smoke.json`
 - comparativo padrao: `tools/graphrag-benchmark/datasets/public_corpus_queries.json`
 - comparativo estendido: `tools/graphrag-benchmark/datasets/public_corpus_extended_queries.json`
+- banco mestre humano de referencia cruzada: `tests/evals/datasets/system_question_bank.md`
+
+Observacao:
+
+- o dataset `public_corpus_extended_queries.json` cobre a fatia `GraphRAG` mais pesada do banco mestre e foi pensado para validar perguntas multi-documento, comparativas e de sintese global antes de qualquer promocao de runtime.
 
 Fluxo recomendado com provider remoto:
 

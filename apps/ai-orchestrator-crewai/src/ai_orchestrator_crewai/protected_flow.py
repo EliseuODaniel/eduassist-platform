@@ -39,6 +39,7 @@ from .protected_pilot import (
     ProtectedPilotAnswer,
     ProtectedPilotJudge,
     ProtectedPilotPlan,
+    _aggregate_admin_finance_backstop,
     _augment_protected_message_with_state,
     _auth_required_backstop,
     _build_llm,
@@ -58,6 +59,7 @@ from .protected_pilot import (
     _serialize_docs,
     _student_backstop,
     _student_focus_backstop,
+    _teacher_schedule_backstop,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,6 +71,7 @@ class ProtectedFlowState(BaseModel):
     conversation_id: str | None = None
     telegram_chat_id: int | None = None
     channel: str = 'telegram'
+    user_context: dict[str, Any] | None = None
     normalized_message: str = ''
     effective_message: str = ''
     routing_label: str = 'prepare'
@@ -242,6 +245,29 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             self.state.reason = 'missing_telegram_chat_id'
             return self.state.routing_label
 
+        teacher_fast_path = await _teacher_schedule_backstop(
+            settings=self.settings,
+            telegram_chat_id=self.state.telegram_chat_id,
+            message=self.state.message,
+            user_context=self.state.user_context,
+        )
+        if isinstance(teacher_fast_path, str) and teacher_fast_path.strip():
+            self.state.plan = ProtectedPilotPlan(
+                intent='teacher_scope',
+                domain='academic',
+                attribute='teacher_schedule',
+                relevant_sources=['teacher.schedule'],
+            )
+            self.state.answer = ProtectedPilotAnswer(
+                answer_text=teacher_fast_path,
+                citations=['teacher.schedule'],
+            )
+            self.state.judge = ProtectedPilotJudge(valid=True, reason='teacher_scope_handled_deterministically', revision_needed=False)
+            self.state.active_domain = 'academic'
+            self.state.active_attribute = 'teacher_schedule'
+            self.state.routing_label = 'fast_path'
+            self.state.reason = 'crewai_protected_teacher_scope'
+            return self.state.routing_label
         self._actor_context = await _load_actor_context(self.settings, self.state.telegram_chat_id)
         self._actor = self._actor_context.get('actor') if isinstance(self._actor_context, dict) else None
         if not isinstance(self._actor, dict) or not self._actor:
@@ -278,6 +304,34 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
             self.state.routing_label = 'identity_backstop'
             self.state.reason = 'crewai_protected_identity_backstop'
             return self.state.routing_label
+
+        aggregate_plan = _infer_fast_path_plan(self.state.message, self._student)
+        if (
+            isinstance(aggregate_plan, ProtectedPilotPlan)
+            and aggregate_plan.intent == 'student_admin_finance'
+            and self._student is None
+        ):
+            aggregate_answer = await _aggregate_admin_finance_backstop(
+                settings=self.settings,
+                actor=self._actor,
+                telegram_chat_id=self.state.telegram_chat_id,
+            )
+            if isinstance(aggregate_answer, str) and aggregate_answer.strip():
+                self.state.plan = aggregate_plan
+                self.state.answer = ProtectedPilotAnswer(
+                    answer_text=aggregate_answer,
+                    citations=['identity.actor'],
+                )
+                self.state.judge = ProtectedPilotJudge(
+                    valid=True,
+                    reason='guardian_admin_finance_handled_deterministically',
+                    revision_needed=False,
+                )
+                self.state.active_domain = aggregate_plan.domain
+                self.state.active_attribute = aggregate_plan.attribute
+                self.state.routing_label = 'fast_path'
+                self.state.reason = 'crewai_protected_guardian_admin_finance'
+                return self.state.routing_label
 
         student_focus_answer = _student_focus_backstop(self.state.message, self._student)
         if _is_explicit_student_selection_message(self.state.message, self.state.resolved_student_name) and student_focus_answer:
@@ -690,7 +744,7 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
                             'evidence_bundle': evidence_bundle,
                         },
                     ),
-                    timeout=11.0,
+                    timeout=float(getattr(self.settings, 'crewai_flow_timeout_seconds', 20.0) or 20.0),
                 )
             except asyncio.TimeoutError:
                 kickoff_failed_reason = 'crewai_protected_flow_timeout'

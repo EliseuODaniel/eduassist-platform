@@ -19,6 +19,8 @@ from seed_school_expansion import (
     ensure_invoice,
     ensure_payment,
     ensure_student,
+    ensure_subject,
+    ensure_teacher,
     ensure_telegram_account,
     ensure_telegram_link,
     ensure_user,
@@ -77,6 +79,49 @@ BENCHMARK_GUARDIANS = [
         'cpf_masked': '***.222.205-**',
         'subject': '0ebcf078-2dd4-5650-b2d7-3ed384dd3813',
         'username': 'fabio.campos.family',
+    },
+]
+
+BENCHMARK_TEACHER = {
+    'external_code': 'USR-TEACH-008',
+    'full_name': 'Fernando Azevedo',
+    'email': 'fernando.azevedo@mock.eduassist.local',
+    'phone': '+55 11 96666-3008',
+    'employee_code': 'DOC-008',
+    'department': 'Humanidades',
+    'subject': '9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b3208',
+    'username': 'fernando.azevedo',
+    'telegram_user_id': 7714501,
+    'telegram_chat_id': 1649845501,
+}
+
+BENCHMARK_INTERNAL_USERS = [
+    {
+        'external_code': 'USR-FIN-002',
+        'role_code': 'finance',
+        'full_name': 'Vinicius Prado',
+        'email': 'vinicius.prado@mock.eduassist.local',
+        'phone': '+55 11 95555-4002',
+        'subject': '290dd0e5-34eb-5517-8481-efb019f843fd',
+        'username': 'vinicius.prado',
+    },
+    {
+        'external_code': 'USR-STAFF-002',
+        'role_code': 'staff',
+        'full_name': 'Priscila Almeida',
+        'email': 'priscila.almeida@mock.eduassist.local',
+        'phone': '+55 11 95555-4012',
+        'subject': 'c6af06db-01a7-51c7-9acf-73cd35388b9f',
+        'username': 'priscila.almeida',
+    },
+    {
+        'external_code': 'USR-STAFF-003',
+        'role_code': 'staff',
+        'full_name': 'Renato Barros',
+        'email': 'renato.barros@mock.eduassist.local',
+        'phone': '+55 11 95555-4013',
+        'subject': '315f85c3-7f35-54ff-8c6e-0b58c99a5ee0',
+        'username': 'renato.barros',
     },
 ]
 
@@ -283,6 +328,93 @@ def _teacher_map(session) -> dict[str, Teacher]:
             .where(User.external_code.in_(teacher_codes))
         ).all()
     }
+
+
+def _ensure_benchmark_teacher(session, *, unit_id) -> tuple[User, Teacher]:
+    payload = BENCHMARK_TEACHER
+    user = ensure_user(
+        session,
+        external_code=payload['external_code'],
+        role_code='teacher',
+        full_name=payload['full_name'],
+        email=payload['email'],
+        phone=payload['phone'],
+        is_staff=True,
+    )
+    teacher = ensure_teacher(
+        session,
+        user=user,
+        school_unit_id=unit_id,
+        employee_code=payload['employee_code'],
+        department=payload['department'],
+    )
+    deep.ensure_federated_identity(
+        session,
+        user_id=user.id,
+        provider=deep.KEYCLOAK_PROVIDER,
+        subject=payload['subject'],
+        username=payload['username'],
+        email=payload['email'],
+    )
+    telegram_account = ensure_telegram_account(
+        session,
+        telegram_user_id=payload['telegram_user_id'],
+        telegram_chat_id=payload['telegram_chat_id'],
+        username=payload['username'],
+        first_name=payload['full_name'].split()[0],
+        last_name=payload['full_name'].split()[-1],
+    )
+    ensure_telegram_link(session, user_id=user.id, telegram_account_id=telegram_account.id)
+    return user, teacher
+
+
+def _ensure_benchmark_teacher_schedule(session, *, classes: dict[str, Class], subjects: dict[str, Subject], teacher: Teacher) -> None:
+    philosophy = subjects.get('FIL')
+    if philosophy is None:
+        philosophy = ensure_subject(
+            session,
+            code='FIL',
+            name='Filosofia',
+            area='Humanidades',
+            weekly_hours=Decimal('2.0'),
+        )
+        subjects['FIL'] = philosophy
+
+    for class_code in ('1EM-B', '2EM-A', '3EM-A'):
+        class_ = classes.get(class_code)
+        if class_ is None:
+            continue
+        deep.ensure_assignment(
+            session,
+            teacher_id=teacher.id,
+            class_id=class_.id,
+            subject_id=philosophy.id,
+            academic_year=ACADEMIC_YEAR,
+        )
+
+
+def _ensure_benchmark_internal_users(session) -> dict[str, User]:
+    users: dict[str, User] = {}
+    for payload in BENCHMARK_INTERNAL_USERS:
+        user = ensure_user(
+            session,
+            external_code=payload['external_code'],
+            role_code=payload['role_code'],
+            full_name=payload['full_name'],
+            email=payload['email'],
+            phone=payload['phone'],
+            is_staff=True,
+        )
+        deep.ensure_federated_identity(
+            session,
+            user_id=user.id,
+            provider=deep.KEYCLOAK_PROVIDER,
+            subject=payload['subject'],
+            username=payload['username'],
+            email=payload['email'],
+        )
+        users[payload['external_code']] = user
+    return users
 
 
 def _assignment_for(session, *, class_id, subject_id, subject_code: str, teacher_map: dict[str, Teacher]) -> TeacherAssignment:
@@ -677,11 +809,11 @@ def main() -> None:
 
         marker = session.scalar(select(User).where(User.external_code == 'USR-GUARD-201'))
         if marker is not None:
-            print('benchmark scenarios seed already present; skipping')
-            return
+            print('benchmark scenarios seed already present; applying incremental benchmark sync')
 
         users: dict[str, User] = {}
         guardians_by_code = {}
+        users.update(_ensure_benchmark_internal_users(session))
 
         for payload in BENCHMARK_GUARDIANS:
             user = ensure_user(
@@ -720,9 +852,12 @@ def main() -> None:
         subjects = {
             subject.code: subject
             for subject in session.execute(
-                select(Subject).where(Subject.code.in_({'MAT', 'POR', 'CIE', 'ING', 'HIS'}))
+                select(Subject).where(Subject.code.in_({'MAT', 'POR', 'CIE', 'ING', 'HIS', 'FIL'}))
             ).scalars().all()
         }
+        benchmark_teacher_user, benchmark_teacher = _ensure_benchmark_teacher(session, unit_id=unit.id)
+        users[benchmark_teacher_user.external_code] = benchmark_teacher_user
+        _ensure_benchmark_teacher_schedule(session, classes=classes, subjects=subjects, teacher=benchmark_teacher)
         teacher_map = _teacher_map(session)
 
         students_by_code = {}

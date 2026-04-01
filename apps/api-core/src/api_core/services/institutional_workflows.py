@@ -18,6 +18,7 @@ from api_core.contracts import (
     WorkflowStatusEntry,
 )
 from api_core.db.models import Conversation, Handoff, InstitutionalRequest, Message, VisitBooking
+from api_core.services.domain import get_public_school_profile
 from api_core.services.support import build_ticket_code, create_support_handoff
 
 
@@ -93,6 +94,42 @@ def _build_visit_summary(
         f'{requester} solicitou visita institucional para {segment}. '
         f'Preferencia: {slot}. Participantes previstos: {max(attendee_count, 1)}.'
     )
+
+
+def _canonical_visit_window(
+    session: Session,
+    *,
+    preferred_date: date | None,
+    preferred_window: str | None,
+) -> str | None:
+    normalized_window = str(preferred_window or '').strip().lower()
+    if not normalized_window or normalized_window not in {'manha', 'tarde', 'noite'}:
+        return preferred_window
+    if preferred_date is None:
+        return preferred_window
+    profile = get_public_school_profile(session)
+    if profile is None:
+        return preferred_window
+    weekday_labels = {
+        0: 'segunda-feira',
+        1: 'terca-feira',
+        2: 'quarta-feira',
+        3: 'quinta-feira',
+        4: 'sexta-feira',
+        5: 'sabado',
+        6: 'domingo',
+    }
+    target_weekday = weekday_labels.get(preferred_date.weekday())
+    if not target_weekday:
+        return preferred_window
+    for offer in profile.visit_offers:
+        if offer.day_label.strip().lower() != target_weekday:
+            continue
+        start_hour = int(offer.start_time.split(':', 1)[0])
+        bucket = 'manha' if start_hour < 12 else 'tarde' if start_hour < 18 else 'noite'
+        if bucket == normalized_window:
+            return offer.start_time
+    return preferred_window
 
 
 def _queue_for_target_area(target_area: str) -> str:
@@ -302,7 +339,11 @@ def update_visit_booking(
     if preferred_date is not None:
         booking.preferred_date = preferred_date
     if preferred_window:
-        booking.preferred_window = preferred_window
+        booking.preferred_window = _canonical_visit_window(
+            session,
+            preferred_date=booking.preferred_date,
+            preferred_window=preferred_window,
+        )
     slot_label_parts: list[str] = []
     if booking.preferred_date is not None:
         slot_label_parts.append(booking.preferred_date.strftime('%d/%m/%Y'))

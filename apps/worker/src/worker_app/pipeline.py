@@ -59,6 +59,7 @@ class DocumentPipeline:
 
     def sync_demo_corpus(self) -> dict[str, int | str]:
         documents = self._load_corpus_documents(Path(self.settings.document_corpus_dir))
+        documents.extend(self._load_restricted_catalog_documents())
         self._ensure_minio_bucket()
         indexed = self._replace_document_catalog(documents)
         published_collection = self._publish_qdrant_index(indexed)
@@ -87,6 +88,98 @@ class DocumentPipeline:
                     effective_from=date.fromisoformat(str(metadata['effective_from'])),
                     labels={str(key): [str(item) for item in value] for key, value in dict(metadata.get('labels', {})).items()},
                     raw_content=raw_body,
+                    normalized_markdown=normalized_markdown,
+                )
+            )
+        return documents
+
+    def _load_restricted_catalog_documents(self) -> list[CorpusDocument]:
+        documents: list[CorpusDocument] = []
+        grouped_chunks: dict[tuple[str, str], dict[str, object]] = {}
+        query = """
+            with latest_versions as (
+              select distinct on (dv.document_id)
+                dv.id,
+                dv.document_id,
+                dv.version_label,
+                dv.effective_from,
+                dv.storage_path
+              from documents.document_versions dv
+              order by dv.document_id, dv.effective_from desc nulls last, dv.created_at desc
+            )
+            select
+              d.id::text as document_id,
+              d.title,
+              ds.slug as document_set_slug,
+              ds.title as document_set_title,
+              d.category,
+              d.audience,
+              d.visibility,
+              lv.version_label,
+              lv.effective_from,
+              lv.storage_path,
+              dc.chunk_index,
+              dc.text_content,
+              dc.contextual_summary
+            from documents.documents d
+            join documents.document_sets ds on ds.id = d.document_set_id
+            join latest_versions lv on lv.document_id = d.id
+            join documents.document_chunks dc on dc.document_version_id = lv.id
+            where d.visibility <> 'public'
+            order by d.id, dc.chunk_index
+        """
+        with psycopg.connect(self.settings.database_url, row_factory=dict_row) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                for row in cursor.fetchall():
+                    key = (str(row['document_id']), str(row['version_label']))
+                    bucket = grouped_chunks.setdefault(
+                        key,
+                        {
+                            'title': str(row['title']),
+                            'document_set_slug': str(row['document_set_slug']),
+                            'document_set_title': str(row['document_set_title']),
+                            'category': str(row['category']),
+                            'audience': str(row['audience']),
+                            'visibility': str(row['visibility']),
+                            'version_label': str(row['version_label']),
+                            'effective_from': row['effective_from'],
+                            'storage_path': str(row['storage_path']),
+                            'chunks': [],
+                        },
+                    )
+                    bucket['chunks'].append(
+                        {
+                            'chunk_index': int(row['chunk_index']),
+                            'text_content': str(row['text_content']),
+                            'contextual_summary': str(row['contextual_summary'] or row['title']),
+                        }
+                    )
+        for bucket in grouped_chunks.values():
+            ordered_chunks = sorted(bucket['chunks'], key=lambda item: int(item['chunk_index']))
+            labels = {
+                'document': [str(bucket['title'])],
+                'category': [str(bucket['category'])],
+                'audience': [str(bucket['audience'])],
+            }
+            normalized_markdown = '\n\n'.join(
+                f"## {item['contextual_summary']}\n\n{item['text_content']}".strip()
+                for item in ordered_chunks
+            )
+            virtual_source = Path(str(bucket['storage_path']) or f"/virtual/{bucket['document_set_slug']}/{bucket['title']}.md")
+            documents.append(
+                CorpusDocument(
+                    source_path=virtual_source,
+                    document_set_slug=str(bucket['document_set_slug']),
+                    document_set_title=str(bucket['document_set_title']),
+                    title=str(bucket['title']),
+                    category=str(bucket['category']),
+                    audience=str(bucket['audience']),
+                    visibility=str(bucket['visibility']),
+                    version_label=str(bucket['version_label']),
+                    effective_from=bucket['effective_from'],
+                    labels=labels,
+                    raw_content=normalized_markdown,
                     normalized_markdown=normalized_markdown,
                 )
             )
@@ -374,7 +467,10 @@ class DocumentPipeline:
         return records
 
     def _upload_source_document(self, document: CorpusDocument) -> str:
-        body_bytes = document.source_path.read_bytes()
+        if document.source_path.exists():
+            body_bytes = document.source_path.read_bytes()
+        else:
+            body_bytes = document.normalized_markdown.encode('utf-8')
         object_path = (
             f'corpus/{document.visibility}/{document.document_set_slug}/'
             f'{self._slugify(document.title)}/{document.version_label}.md'

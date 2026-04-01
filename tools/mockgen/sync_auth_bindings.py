@@ -152,6 +152,12 @@ KEYCLOAK_BINDINGS = [
         'email': 'luana.ferraz@mock.eduassist.local',
     },
     {
+        'external_code': 'USR-TEACH-008',
+        'subject': '9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b3208',
+        'username': 'fernando.azevedo',
+        'email': 'fernando.azevedo@mock.eduassist.local',
+    },
+    {
         'external_code': 'USR-COORD-001',
         'subject': '9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b5201',
         'username': 'murilo.bastos',

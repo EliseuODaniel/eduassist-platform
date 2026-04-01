@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Iterable
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,8 +25,16 @@ def parse_csv(value: str | Iterable[str]) -> list[str]:
     return [item.strip() for item in items if item.strip()]
 
 
+_ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / '.env'
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(case_sensitive=False)
+    model_config = SettingsConfigDict(
+        case_sensitive=False,
+        env_file=('/workspace/.env', str(_ROOT_ENV_FILE), '.env'),
+        env_ignore_empty=True,
+        extra='ignore',
+    )
 
     app_env: str = 'development'
     log_level: str = 'INFO'

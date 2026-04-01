@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, timedelta
 from time import perf_counter
 from typing import Any
 
@@ -45,9 +46,12 @@ class WorkflowFlowState(BaseModel):
     normalized_message: str = ''
     routing_label: str = 'prepare'
     reason: str = ''
+    user_context: dict[str, Any] | None = None
     protocol_code: str | None = None
     current_item: dict[str, Any] | None = None
     current_type: str = ''
+    message_preferred_window: str | None = None
+    message_preferred_date_iso: str | None = None
     preferred_window: str | None = None
     preferred_date_iso: str | None = None
     active_protocol_code: str | None = None
@@ -87,8 +91,17 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         if not self.state.protocol_code and self.state.active_protocol_code:
             self.state.protocol_code = self.state.active_protocol_code
         preferred_date = _extract_preferred_date(self.state.message)
-        self.state.preferred_date_iso = preferred_date.isoformat() if preferred_date else None
-        self.state.preferred_window = _extract_preferred_window(self.state.message)
+        self.state.message_preferred_date_iso = preferred_date.isoformat() if preferred_date else None
+        self.state.message_preferred_window = _extract_preferred_window(self.state.message)
+        relative_next_week = _contains_any(self.state.message, {'semana que vem', 'proxima semana', 'próxima semana'})
+        if relative_next_week and not self.state.message_preferred_date_iso and self.state.active_preferred_date_iso:
+            try:
+                shifted = date.fromisoformat(self.state.active_preferred_date_iso) + timedelta(days=7)
+                self.state.message_preferred_date_iso = shifted.isoformat()
+            except ValueError:
+                pass
+        self.state.preferred_date_iso = self.state.message_preferred_date_iso
+        self.state.preferred_window = self.state.message_preferred_window
         if not self.state.preferred_date_iso and self.state.active_preferred_date_iso:
             self.state.preferred_date_iso = self.state.active_preferred_date_iso
         if not self.state.preferred_window and self.state.active_preferred_window:
@@ -130,7 +143,10 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         visit_terms = {'visita', 'tour', 'conhecer a escola'}
         request_terms = {'direcao', 'direção', 'protocolo', 'protocolar', 'solicitacao', 'solicitação', 'pedido'}
 
-        if _contains_any(normalized, visit_terms) and _contains_any(normalized, {'cancelar', 'desmarcar'}):
+        if (
+            (_contains_any(normalized, visit_terms) or self.state.current_type == 'visit_booking')
+            and _contains_any(normalized, {'cancelar', 'cancela', 'desmarcar', 'desmarca'})
+        ):
             self.state.routing_label = 'visit_cancel'
             self.state.reason = 'workflow_visit_cancel'
             return self.state.routing_label
@@ -146,6 +162,32 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
             self.state.routing_label = 'visit_reschedule'
             self.state.reason = 'workflow_visit_reschedule'
             return self.state.routing_label
+
+        if self.state.current_type == 'visit_booking':
+            has_schedule_hint = bool(self.state.message_preferred_date_iso or self.state.message_preferred_window) or _contains_any(
+                normalized,
+                {
+                    'segunda',
+                    'terca',
+                    'terça',
+                    'quarta',
+                    'quinta',
+                    'sexta',
+                    'sabado',
+                    'sábado',
+                    'manha',
+                    'manhã',
+                    'tarde',
+                    'noite',
+                    'semana que vem',
+                    'proxima semana',
+                    'próxima semana',
+                },
+            )
+            if has_schedule_hint:
+                self.state.routing_label = 'visit_reschedule'
+                self.state.reason = 'workflow_visit_reschedule'
+                return self.state.routing_label
 
         if _contains_any(normalized, visit_terms) and _contains_any(normalized, {'agendar', 'marcar', 'quero'}) and 'visita' in normalized:
             self.state.routing_label = 'visit_create'
@@ -275,7 +317,12 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
         self.state.active_workflow_type = 'visit_booking'
         return await self._finalize_workflow_answer(
-            answer_text=_visit_action_response(item, action='cancel'),
+            answer_text=_visit_action_response(
+                item,
+                action='cancel',
+                preferred_date_override=self.state.active_preferred_date_iso,
+                preferred_window_override=self.state.active_preferred_window,
+            ),
             reason='workflow_visit_cancel',
             extra={'workflow_type': 'visit'},
         )
@@ -302,7 +349,12 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         self.state.active_preferred_date_iso = str(item.get('preferred_date') or self.state.preferred_date_iso or '').strip() or self.state.active_preferred_date_iso
         self.state.active_preferred_window = str(item.get('preferred_window') or self.state.preferred_window or '').strip() or self.state.active_preferred_window
         return await self._finalize_workflow_answer(
-            answer_text=_visit_action_response(item, action='reschedule'),
+            answer_text=_visit_action_response(
+                item,
+                action='reschedule',
+                preferred_date_override=self.state.preferred_date_iso or self.state.active_preferred_date_iso,
+                preferred_window_override=self.state.preferred_window or self.state.active_preferred_window,
+            ),
             reason='workflow_visit_reschedule',
             extra={'workflow_type': 'visit'},
         )
@@ -343,7 +395,11 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         self.state.active_preferred_date_iso = str(item.get('preferred_date') or self.state.preferred_date_iso or '').strip() or self.state.active_preferred_date_iso
         self.state.active_preferred_window = str(item.get('preferred_window') or self.state.preferred_window or '').strip() or self.state.active_preferred_window
         return await self._finalize_workflow_answer(
-            answer_text=_visit_create_response(item),
+            answer_text=_visit_create_response(
+                item,
+                preferred_date_override=self.state.preferred_date_iso,
+                preferred_window_override=self.state.preferred_window,
+            ),
             reason='workflow_visit_create',
             extra={'workflow_type': 'visit'},
         )
@@ -366,7 +422,15 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         item = self.state.current_item or {}
         self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
         self.state.active_workflow_type = self.state.current_type or self.state.active_workflow_type
-        text = _visit_protocol_response(item) if self.state.current_type == 'visit_booking' else _request_protocol_response(item)
+        text = (
+            _visit_protocol_response(
+                item,
+                preferred_date_override=self.state.active_preferred_date_iso,
+                preferred_window_override=self.state.active_preferred_window,
+            )
+            if self.state.current_type == 'visit_booking'
+            else _request_protocol_response(item)
+        )
         return await self._finalize_workflow_answer(
             answer_text=text,
             reason='workflow_protocol_lookup',
@@ -378,7 +442,15 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         item = self.state.current_item or {}
         self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
         self.state.active_workflow_type = self.state.current_type or self.state.active_workflow_type
-        text = _request_summary_response(item) if self.state.current_type == 'institutional_request' else _visit_status_response(item)
+        text = (
+            _request_summary_response(item)
+            if self.state.current_type == 'institutional_request'
+            else _visit_status_response(
+                item,
+                preferred_date_override=self.state.active_preferred_date_iso,
+                preferred_window_override=self.state.active_preferred_window,
+            )
+        )
         return await self._finalize_workflow_answer(
             answer_text=text,
             reason='workflow_summary_lookup',
@@ -390,7 +462,15 @@ class WorkflowShadowFlow(Flow[WorkflowFlowState]):
         item = self.state.current_item or {}
         self.state.active_protocol_code = str(item.get('protocol_code') or '').strip() or self.state.active_protocol_code
         self.state.active_workflow_type = self.state.current_type or self.state.active_workflow_type
-        text = _visit_status_response(item) if self.state.current_type == 'visit_booking' else _request_status_response(item)
+        text = (
+            _visit_status_response(
+                item,
+                preferred_date_override=self.state.active_preferred_date_iso,
+                preferred_window_override=self.state.active_preferred_window,
+            )
+            if self.state.current_type == 'visit_booking'
+            else _request_status_response(item)
+        )
         return await self._finalize_workflow_answer(
             answer_text=text,
             reason='workflow_status_lookup',

@@ -65,6 +65,65 @@ def _render_date(value: str | None) -> str | None:
         return value
 
 
+def _weekday_label_for_iso_date(value: str | None) -> str | None:
+    if not value:
+        return None
+    try:
+        weekday = datetime.fromisoformat(value).date().weekday()
+    except ValueError:
+        return None
+    labels = {
+        0: 'segunda-feira',
+        1: 'terca-feira',
+        2: 'quarta-feira',
+        3: 'quinta-feira',
+        4: 'sexta-feira',
+        5: 'sabado',
+        6: 'domingo',
+    }
+    return labels.get(weekday)
+
+
+def _render_visit_preference(
+    item: dict[str, Any],
+    *,
+    preferred_date_override: str | None = None,
+    preferred_window_override: str | None = None,
+) -> str:
+    preferred_date_value = str(preferred_date_override or item.get('preferred_date') or '').strip() or None
+    preferred_date = _render_date(preferred_date_value)
+    preferred_window = str(preferred_window_override or '').strip()
+    slot_label = str(item.get('slot_label') or '').strip()
+    canonical_window = str(item.get('preferred_window') or '').strip()
+    if not preferred_window:
+        preferred_window = canonical_window
+
+    weekday_label = _weekday_label_for_iso_date(preferred_date_value)
+    display_label = slot_label
+    if weekday_label and preferred_window:
+        display_label = f'{weekday_label} - {preferred_window}'
+        if slot_label:
+            display_label += f' ({slot_label})'
+    elif weekday_label:
+        display_label = weekday_label if not slot_label else f'{weekday_label} ({slot_label})'
+    elif preferred_date and preferred_window and preferred_window != canonical_window:
+        display_label = f'{preferred_date} - {preferred_window}'
+        if slot_label:
+            display_label += f' ({slot_label})'
+    elif preferred_date and preferred_window:
+        display_label = ' - '.join(part for part in [preferred_date, preferred_window] if part)
+    elif preferred_date and slot_label:
+        display_label = f'{preferred_date} ({slot_label})'
+    elif preferred_date:
+        display_label = preferred_date
+    elif preferred_window and slot_label and preferred_window != canonical_window:
+        display_label = f'{preferred_window} ({slot_label})'
+    elif preferred_window:
+        display_label = preferred_window
+
+    return display_label or 'janela a confirmar'
+
+
 async def _internal_get(settings: Any, path: str, *, params: dict[str, Any]) -> dict[str, Any]:
     base_url = str(getattr(settings, 'api_core_url', 'http://api-core:8000')).rstrip('/')
     async with httpx.AsyncClient(timeout=20.0) as client:
@@ -111,10 +170,17 @@ async def _get_workflow_status(
     return await _internal_get(settings, '/v1/internal/workflows/status', params=params)
 
 
-def _visit_create_response(item: dict[str, Any]) -> str:
-    preferred_date = _render_date(item.get('preferred_date'))
-    preferred_window = str(item.get('preferred_window') or '').strip()
-    preference = ' - '.join(part for part in [preferred_date, preferred_window] if part) or 'janela a confirmar'
+def _visit_create_response(
+    item: dict[str, Any],
+    *,
+    preferred_date_override: str | None = None,
+    preferred_window_override: str | None = None,
+) -> str:
+    preference = _render_visit_preference(
+        item,
+        preferred_date_override=preferred_date_override,
+        preferred_window_override=preferred_window_override,
+    )
     return (
         'Pedido de visita registrado para o Colegio Horizonte. '
         f"Protocolo: {item.get('protocol_code')}. "
@@ -125,10 +191,17 @@ def _visit_create_response(item: dict[str, Any]) -> str:
     )
 
 
-def _visit_status_response(item: dict[str, Any]) -> str:
-    preferred_date = _render_date(item.get('preferred_date'))
-    preferred_window = str(item.get('preferred_window') or '').strip()
-    preference = ' - '.join(part for part in [preferred_date, preferred_window] if part) or 'janela a confirmar'
+def _visit_status_response(
+    item: dict[str, Any],
+    *,
+    preferred_date_override: str | None = None,
+    preferred_window_override: str | None = None,
+) -> str:
+    preference = _render_visit_preference(
+        item,
+        preferred_date_override=preferred_date_override,
+        preferred_window_override=preferred_window_override,
+    )
     return (
         f"Seu pedido de visita segue em fila com a fila de {item.get('queue_name')}. "
         f"- Protocolo: {item.get('protocol_code')} "
@@ -138,10 +211,17 @@ def _visit_status_response(item: dict[str, Any]) -> str:
     )
 
 
-def _visit_protocol_response(item: dict[str, Any]) -> str:
-    preferred_date = _render_date(item.get('preferred_date'))
-    preferred_window = str(item.get('preferred_window') or '').strip()
-    preference = ' - '.join(part for part in [preferred_date, preferred_window] if part) or 'janela a confirmar'
+def _visit_protocol_response(
+    item: dict[str, Any],
+    *,
+    preferred_date_override: str | None = None,
+    preferred_window_override: str | None = None,
+) -> str:
+    preference = _render_visit_preference(
+        item,
+        preferred_date_override=preferred_date_override,
+        preferred_window_override=preferred_window_override,
+    )
     return (
         f"O protocolo da sua visita e {item.get('protocol_code')}. "
         f"- Ticket operacional: {item.get('linked_ticket_code')} "
@@ -150,7 +230,13 @@ def _visit_protocol_response(item: dict[str, Any]) -> str:
     )
 
 
-def _visit_action_response(item: dict[str, Any], *, action: str) -> str:
+def _visit_action_response(
+    item: dict[str, Any],
+    *,
+    action: str,
+    preferred_date_override: str | None = None,
+    preferred_window_override: str | None = None,
+) -> str:
     if action == 'cancel':
         return (
             f"Visita cancelada no fluxo de {item.get('queue_name')}. "
@@ -158,9 +244,11 @@ def _visit_action_response(item: dict[str, Any], *, action: str) -> str:
             f"- Ticket operacional: {item.get('linked_ticket_code')} "
             'Se quiser, eu tambem posso registrar um novo pedido de visita quando voce preferir.'
         )
-    preferred_date = _render_date(item.get('preferred_date'))
-    preferred_window = str(item.get('preferred_window') or '').strip()
-    preference = ' - '.join(part for part in [preferred_date, preferred_window] if part) or 'janela a confirmar'
+    preference = _render_visit_preference(
+        item,
+        preferred_date_override=preferred_date_override,
+        preferred_window_override=preferred_window_override,
+    )
     return (
         f"Pedido de visita atualizado com a fila de {item.get('queue_name')}. "
         f"- Protocolo: {item.get('protocol_code')} "
@@ -229,6 +317,7 @@ async def run_workflow_crewai_pilot(
     conversation_id: str | None,
     telegram_chat_id: int | None,
     channel: str,
+    user_context: dict[str, Any] | None,
     settings: Any,
 ) -> dict[str, Any]:
     from .workflow_flow import WorkflowShadowFlow
@@ -251,6 +340,7 @@ async def run_workflow_crewai_pilot(
                 ),
                 'telegram_chat_id': telegram_chat_id,
                 'channel': channel,
+                'user_context': user_context,
             }
         )
     if isinstance(result, dict):

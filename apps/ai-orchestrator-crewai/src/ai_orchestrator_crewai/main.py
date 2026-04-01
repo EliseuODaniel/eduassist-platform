@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 import secrets
 
 from fastapi import FastAPI, Header, HTTPException
@@ -21,8 +22,16 @@ except Exception:  # pragma: no cover - defensive import
     crewai = None
 
 
+_ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / '.env'
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(case_sensitive=False)
+    model_config = SettingsConfigDict(
+        case_sensitive=False,
+        env_file=('/workspace/.env', str(_ROOT_ENV_FILE), '.env'),
+        env_ignore_empty=True,
+        extra='ignore',
+    )
 
     app_env: str = 'development'
     log_level: str = 'INFO'
@@ -39,6 +48,9 @@ class Settings(BaseSettings):
     crewai_hitl_default_slices: str = 'protected'
     crewai_hitl_user_traffic_enabled: bool = False
     crewai_hitl_user_traffic_slices: str = 'protected'
+    crewai_llm_timeout_seconds: float = 15.0
+    crewai_flow_timeout_seconds: float = 20.0
+    crewai_public_resource_cache_ttl_seconds: float = 120.0
 
 
 @lru_cache
@@ -63,6 +75,7 @@ class ShadowPilotRequest(BaseModel):
     conversation_id: str | None = None
     telegram_chat_id: int | None = None
     channel: str = 'telegram'
+    user: dict[str, object] | None = None
 
 
 class ShadowPilotResponse(BaseModel):
@@ -157,6 +170,7 @@ async def shadow_public(
         conversation_id=request.conversation_id,
         telegram_chat_id=request.telegram_chat_id,
         channel=request.channel,
+        user_context=request.user,
         settings=settings,
     )
     return ShadowPilotResponse(**result)
@@ -174,6 +188,7 @@ async def shadow_protected(
         conversation_id=request.conversation_id,
         telegram_chat_id=request.telegram_chat_id,
         channel=request.channel,
+        user_context=request.user,
         settings=settings,
     )
     return ShadowPilotResponse(**result)
@@ -191,6 +206,7 @@ async def start_protected_hitl_review(
         conversation_id=request.conversation_id,
         telegram_chat_id=request.telegram_chat_id,
         channel=request.channel,
+        user_context=request.user,
         settings=settings,
         force_hitl=True,
         hitl_target_slices=['protected'],
@@ -309,6 +325,7 @@ async def shadow_workflow(
         conversation_id=request.conversation_id,
         telegram_chat_id=request.telegram_chat_id,
         channel=request.channel,
+        user_context=request.user,
         settings=settings,
     )
     return ShadowPilotResponse(**result)

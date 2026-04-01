@@ -98,7 +98,7 @@ def _build_llm(settings: Any) -> Any:
         api_key=api_key,
         temperature=0.1,
         max_tokens=500,
-        timeout=10.0,
+        timeout=float(getattr(settings, 'crewai_llm_timeout_seconds', 15.0) or 15.0),
         max_retries=1,
     )
 
@@ -341,6 +341,8 @@ def _extract_unmatched_student_reference(actor: dict[str, Any], message: str) ->
         'notas', 'nota', 'matricula', 'frequencia', 'faltas', 'provas', 'prova', 'documentacao',
         'documentos', 'situacao', 'status', 'como', 'estao', 'esta', 'está', 'estao', 'e',
         'proxima', 'proximo', 'data', 'pagamento', 'vencimento',
+        'exatamente', 'escopo', 'academico', 'financeiro', 'dois', 'cada', 'posso', 'acessar',
+        'dados', 'consigo', 'ver', 'ambos', 'filhos',
     }
     for pattern in (
         r'\be\s+do\s+([a-z0-9]+)\b',
@@ -435,6 +437,11 @@ def _is_identity_scope_query(message: str) -> bool:
     if (
         'consigo ver' in normalized
         or 'o que exatamente' in normalized
+        or 'qual e exatamente o meu escopo' in normalized
+        or 'qual é exatamente o meu escopo' in normalized
+        or 'quais dados eu consigo acessar' in normalized
+        or 'quais dados dos meus alunos eu consigo acessar' in normalized
+        or 'quais dados dos meus dois alunos eu consigo acessar' in normalized
         or 'altero meu cadastro' in normalized
         or 'alterar meu cadastro' in normalized
         or 'dados cadastrais' in normalized
@@ -513,7 +520,7 @@ def _build_protected_docs(evidence: dict[str, Any]) -> list[EvidenceDoc]:
         elif attendance_records:
             absent = sum(1 for item in attendance_records if isinstance(item, dict) and item.get('status') == 'absent')
             late = sum(1 for item in attendance_records if isinstance(item, dict) and item.get('status') == 'late')
-            attendance_overview = f'{len(attendance_records)} registro(s), {absent} falta(s), {late} atraso(s)'
+            attendance_overview = f'{len(attendance_records)} registros, {absent} faltas, {late} atrasos'
         add(
             'academic.overview',
             'academic',
@@ -669,13 +676,27 @@ def _identity_backstop(actor: dict[str, Any], message: str) -> str | None:
         'pagamento',
         'mensalidade',
     }
-    if 'consigo ver' in normalized_message or 'o que exatamente' in normalized_message:
+    if (
+        'consigo ver' in normalized_message
+        or 'o que exatamente' in normalized_message
+        or 'qual e exatamente o meu escopo' in normalized_message
+        or 'qual é exatamente o meu escopo' in normalized_message
+        or 'quais dados eu consigo acessar' in normalized_message
+        or 'quais dados dos meus alunos eu consigo acessar' in normalized_message
+        or 'quais dados dos meus dois alunos eu consigo acessar' in normalized_message
+    ):
         names = ', '.join(str(item.get('full_name', '')) for item in linked)
+        scope_lines = []
+        for item in linked:
+            student_name = str(item.get('full_name') or 'Aluno').strip() or 'Aluno'
+            scope_lines.append(f'- {student_name}: academico, financeiro')
         return (
             f"Voce esta autenticado aqui como {actor.get('full_name', 'responsavel')}. "
             f"Sua conta esta vinculada a {names}. "
-            'Hoje eu consigo consultar exatamente: notas, frequencia, avaliacoes, documentacao e financeiro desses alunos. '
-            'Se quiser, ja posso abrir um desses assuntos agora.'
+            'Hoje eu consigo consultar exatamente: notas, frequencia, avaliacoes, documentacao e financeiro desses alunos.\n'
+            'Escopo atual:\n'
+            + '\n'.join(scope_lines)
+            + '\nSe quiser, ja posso abrir um desses assuntos agora.'
         )
     if any(term in terms for term in {'logado', 'acesso'}):
         names = ', '.join(str(item.get('full_name', '')) for item in linked)
@@ -700,11 +721,162 @@ def _identity_backstop(actor: dict[str, Any], message: str) -> str | None:
     return None
 
 
+def _is_teacher_scope_query(message: str, user_context: dict[str, Any] | None = None) -> bool:
+    normalized = _normalize_text(message)
+    role = _normalize_text(str((user_context or {}).get('role', '') or ''))
+    authenticated = bool((user_context or {}).get('authenticated'))
+    if role != 'teacher' and not authenticated:
+        return False
+    if any(term in normalized for term in {'professor', 'professora', 'docente'}):
+        return True
+    high_confidence_terms = {
+        'grade docente',
+        'minhas turmas',
+        'minhas disciplinas',
+        'meus alunos',
+        'ensino medio',
+        'ensino médio',
+        'rotina docente',
+    }
+    if any(
+        term in normalized
+        for term in high_confidence_terms
+    ):
+        return True
+    if role == 'teacher':
+        teacher_markers = {
+            'quais turmas',
+            'quais disciplinas',
+            'grade completa',
+            'alocacao',
+            'alocação',
+            'classes',
+            'horarios de aula',
+            'horários de aula',
+            'rotina',
+        }
+        return any(term in normalized for term in teacher_markers)
+    return False
+
+
+def _teacher_assignments(summary: dict[str, Any]) -> list[dict[str, str]]:
+    assignments = summary.get('assignments') if isinstance(summary, dict) else None
+    if not isinstance(assignments, list):
+        return []
+    normalized: list[dict[str, str]] = []
+    for item in assignments:
+        if not isinstance(item, dict):
+            continue
+        normalized.append(
+            {
+                'class_name': str(item.get('class_name') or '').strip(),
+                'subject_name': str(item.get('subject_name') or '').strip(),
+                'academic_year': str(item.get('academic_year') or '').strip(),
+            }
+        )
+    return [item for item in normalized if item['class_name'] or item['subject_name']]
+
+
+def _render_teacher_schedule_summary(summary: dict[str, Any], message: str) -> str | None:
+    teacher_name = str(summary.get('teacher_name') or 'Professor').strip() or 'Professor'
+    assignments = _teacher_assignments(summary)
+    if not assignments:
+        return None
+    normalized = _normalize_text(message)
+    if 'ensino medio' in normalized or 'ensino médio' in normalized:
+        filtered = [
+            item
+            for item in assignments
+            if 'medio' in _normalize_text(item['class_name']) or 'serie' in _normalize_text(item['class_name'])
+        ]
+        assignments = filtered or assignments
+    if 'disciplin' in normalized and 'turm' not in normalized:
+        subjects = sorted({item['subject_name'] for item in assignments if item['subject_name']})
+        if subjects:
+            return f"Disciplinas de {teacher_name}: " + ', '.join(subjects) + "."
+    if 'turm' in normalized and 'disciplin' not in normalized:
+        classes = sorted({item['class_name'] for item in assignments if item['class_name']})
+        if classes:
+            return f"Turmas de {teacher_name}: " + ', '.join(classes) + "."
+    lines = [f"Grade docente de {teacher_name}:"]
+    for item in assignments:
+        class_name = item['class_name'] or 'Turma'
+        subject_name = item['subject_name'] or 'Disciplina'
+        year = item['academic_year']
+        suffix = f" ({year})" if year else ""
+        lines.append(f"- {subject_name} em {class_name}{suffix}.")
+    return '\n'.join(lines)
+
+
+async def _teacher_schedule_backstop(
+    *,
+    settings: Any,
+    telegram_chat_id: int | None,
+    message: str,
+    user_context: dict[str, Any] | None = None,
+) -> str | None:
+    if telegram_chat_id is None or not _is_teacher_scope_query(message, user_context):
+        return None
+    try:
+        payload = await _api_get(settings, f'/v1/teachers/me/schedule?telegram_chat_id={telegram_chat_id}')
+    except Exception:
+        payload = {}
+    summary = payload.get('summary') if isinstance(payload, dict) else None
+    if isinstance(summary, dict):
+        rendered = _render_teacher_schedule_summary(summary, message)
+        if rendered:
+            return rendered
+    if bool((user_context or {}).get('authenticated')) and _normalize_text(str((user_context or {}).get('role', '') or '')) == 'teacher':
+        return (
+            'Sua conta esta em escopo docente. Eu consigo te orientar sobre grade docente, turmas, disciplinas, calendario e canais internos. '
+            'Se a sua grade ainda nao apareceu aqui, vale confirmar o vinculo institucional do Telegram com a secretaria digital.'
+        )
+    return None
+
+
 def _auth_required_backstop() -> str:
     return (
         'Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. '
         'Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot.'
     )
+
+
+async def _aggregate_admin_finance_backstop(
+    *,
+    settings: Any,
+    actor: dict[str, Any],
+    telegram_chat_id: int,
+) -> str | None:
+    linked_students = [item for item in actor.get('linked_students', []) if isinstance(item, dict)]
+    if not linked_students:
+        return None
+
+    async def _fetch_pair(student: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        student_id = str(student.get('student_id', '')).strip()
+        if not student_id:
+            return None, None
+        admin, financial = await asyncio.gather(
+            _api_get(settings, f'/v1/students/{student_id}/administrative-status?telegram_chat_id={telegram_chat_id}'),
+            _api_get(settings, f'/v1/students/{student_id}/financial-summary?telegram_chat_id={telegram_chat_id}'),
+        )
+        return (
+            admin.get('summary') if isinstance(admin, dict) else None,
+            financial.get('summary') if isinstance(financial, dict) else None,
+        )
+
+    pairs = await asyncio.gather(*(_fetch_pair(student) for student in linked_students))
+    lines: list[str] = []
+    for student, (admin_summary, financial_summary) in zip(linked_students, pairs, strict=True):
+        student_name = str(student.get('full_name') or 'Aluno').strip() or 'Aluno'
+        overall_status = _humanize_admin_status((admin_summary or {}).get('overall_status'))
+        open_invoice_count = int((financial_summary or {}).get('open_invoice_count', 0) or 0)
+        overdue_invoice_count = int((financial_summary or {}).get('overdue_invoice_count', 0) or 0)
+        lines.append(
+            f'- {student_name}: documentacao {overall_status}; financeiro com {open_invoice_count} fatura(s) em aberto e {overdue_invoice_count} vencida(s).'
+        )
+    if not lines:
+        return None
+    return 'Panorama combinado de documentacao e financeiro das contas vinculadas:\n' + '\n'.join(lines)
 
 
 def _humanize_admin_status(raw_status: Any) -> str:
@@ -724,6 +896,17 @@ def _infer_fast_path_plan(message: str, student: dict[str, Any] | None) -> Prote
     student_name = str(student.get('full_name', '')).strip() if isinstance(student, dict) else None
     student_id = str(student.get('student_id', '')).strip() if isinstance(student, dict) else None
 
+    if any(term in terms for term in {'documentacao', 'documentos'}) and any(
+        term in terms for term in {'financeiro', 'pagamento', 'mensalidade', 'boleto', 'vencimento', 'bloqueando', 'bloqueio'}
+    ):
+        return ProtectedPilotPlan(
+            intent='student_admin_finance',
+            student_name=student_name or None,
+            student_id=student_id or None,
+            domain='finance',
+            attribute='admin_finance',
+            relevant_sources=['admin.overview', 'financial.overview'],
+        )
     if any(term in terms for term in {'notas', 'nota'}):
         return ProtectedPilotPlan(
             intent='student_grades',
@@ -812,6 +995,18 @@ def _student_backstop(message: str, student: dict[str, Any] | None, evidence: di
         return None
     terms = _query_terms(message)
     name = str(student.get('full_name', 'o aluno'))
+    if any(term in terms for term in {'documentacao', 'documentos'}) and any(
+        term in terms for term in {'financeiro', 'pagamento', 'mensalidade', 'boleto', 'vencimento', 'bloqueando', 'bloqueio'}
+    ):
+        admin_summary = (evidence.get('admin', {}).get('summary', {}) or {})
+        financial_summary = (evidence.get('financial', {}).get('summary', {}) or {})
+        overall_status = _humanize_admin_status(admin_summary.get('overall_status'))
+        open_invoice_count = financial_summary.get('open_invoice_count', 0)
+        overdue_invoice_count = financial_summary.get('overdue_invoice_count', 0)
+        return (
+            f'A documentacao de {name} hoje esta {overall_status}. '
+            f'No financeiro, ha {open_invoice_count} fatura(s) em aberto e {overdue_invoice_count} vencida(s).'
+        )
     if any(term in terms for term in {'notas', 'nota'}):
         grades = (evidence.get('academic', {}).get('summary', {}) or {}).get('grades', []) or []
         top: list[dict[str, Any]] = []
@@ -840,10 +1035,10 @@ def _student_backstop(message: str, student: dict[str, Any] | None, evidence: di
             total = len(records)
             present = sum(1 for item in records if isinstance(item, dict) and item.get('status') == 'present')
             return (
-                f'Na frequencia de {name}, eu encontrei {total} registro(s) neste recorte: '
-                f'{present} presenca(s), {absent} falta(s) e {late} atraso(s).'
+                f'Na frequencia de {name}, eu encontrei {total} registros neste recorte: '
+                f'{present} presencas, {absent} faltas e {late} atrasos.'
             )
-        return f"{name} tem {absent} falta(s) e {late} registro(s) de atraso neste recorte."
+        return f"{name} tem {absent} faltas e {late} registros de atraso neste recorte."
     if any(term in terms for term in {'provas', 'prova', 'avaliacoes'}):
         assessments = (evidence.get('assessments', {}).get('summary', {}) or {}).get('assessments', []) or []
         first = next((item for item in assessments if isinstance(item, dict)), None)
@@ -902,7 +1097,7 @@ def _student_backstop(message: str, student: dict[str, Any] | None, evidence: di
                 )
             return f"No momento, nao vejo fatura em aberto para {name} neste recorte."
         return (
-            f"No financeiro de {name}, a mensalidade de referencia e {summary.get('monthly_amount')} "
+            f"Resumo financeiro de {name}: a mensalidade de referencia e {summary.get('monthly_amount')} "
             f"e ha {summary.get('open_invoice_count')} fatura(s) em aberto, sendo {summary.get('overdue_invoice_count')} vencida(s)."
         )
     if 'matricula' in terms:
@@ -936,6 +1131,7 @@ async def run_protected_crewai_pilot(
     conversation_id: str | None,
     telegram_chat_id: int | None,
     channel: str,
+    user_context: dict[str, Any] | None,
     settings: Any,
     force_hitl: bool = False,
     hitl_target_slices: list[str] | None = None,
@@ -949,6 +1145,47 @@ async def run_protected_crewai_pilot(
     ]
     hitl_enabled = bool(force_hitl or getattr(settings, 'crewai_hitl_user_traffic_enabled', False))
     target_slices = list(hitl_target_slices or configured_hitl_slices or ['protected'])
+
+    teacher_fast_path = await _teacher_schedule_backstop(
+        settings=settings,
+        telegram_chat_id=telegram_chat_id,
+        message=message,
+        user_context=user_context,
+    )
+    if isinstance(teacher_fast_path, str) and teacher_fast_path.strip():
+        plan = ProtectedPilotPlan(
+            intent='teacher_scope',
+            domain='academic',
+            attribute='teacher_schedule',
+            relevant_sources=['teacher.schedule'],
+        )
+        answer = ProtectedPilotAnswer(
+            answer_text=teacher_fast_path,
+            citations=['teacher.schedule'],
+        )
+        judge = ProtectedPilotJudge(valid=True, reason='teacher_scope_handled_preflow', revision_needed=False)
+        return {
+            'engine_name': 'crewai',
+            'executed': True,
+            'reason': 'crewai_protected_teacher_scope_preflow',
+            'metadata': {
+                'slice_name': 'protected',
+                'conversation_id': conversation_id or (f'telegram:{telegram_chat_id}' if telegram_chat_id is not None else None),
+                'message': message,
+                'crewai_installed': crewai_pkg is not None,
+                'crewai_version': getattr(crewai_pkg, '__version__', None),
+                'agent_roles': [],
+                'task_names': [],
+                'plan': plan.model_dump(mode='json'),
+                'answer': answer.model_dump(mode='json'),
+                'judge': judge.model_dump(mode='json'),
+                'evidence_sources': ['teacher.schedule'],
+                'deterministic_backstop_used': True,
+                'validation_stack': ['preflow', 'teacher_scope_backstop'],
+                'pending_review': False,
+                'review_required': False,
+            },
+        }
 
     flow = ProtectedShadowFlow(settings=settings)
     with suppress_crewai_tracing_messages():
@@ -964,6 +1201,7 @@ async def run_protected_crewai_pilot(
                 'conversation_id': conversation_id,
                 'telegram_chat_id': telegram_chat_id,
                 'channel': channel,
+                'user_context': user_context,
                 'hitl_enabled': hitl_enabled,
                 'hitl_target_slices': target_slices,
             }

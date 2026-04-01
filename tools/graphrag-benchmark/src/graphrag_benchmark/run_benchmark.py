@@ -29,6 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--internal-api-token', default=os.getenv('SMOKE_INTERNAL_API_TOKEN', 'dev-internal-token'))
     parser.add_argument('--public-chat-id', type=int, default=777001)
     parser.add_argument('--response-type', default='List of 3-7 bullet points')
+    parser.add_argument('--baseline-timeout-seconds', type=float, default=float(os.getenv('GRAPHRAG_BENCHMARK_BASELINE_TIMEOUT_SECONDS', '90')))
     parser.add_argument('--skip-graphrag', action='store_true')
     return parser.parse_args()
 
@@ -37,23 +38,24 @@ def _normalize_text(value: str) -> str:
     return ''.join(char.lower() for char in value if char.isalnum() or char.isspace())
 
 
-def _request_json(*, url: str, payload: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
+def _request_json(*, url: str, payload: dict[str, Any], headers: dict[str, str], timeout_seconds: float) -> dict[str, Any]:
     request = Request(
         url,
         data=json.dumps(payload).encode('utf-8'),
         headers={'Content-Type': 'application/json', **headers},
         method='POST',
     )
-    with urlopen(request, timeout=30.0) as response:
+    with urlopen(request, timeout=timeout_seconds) as response:
         return json.loads(response.read().decode('utf-8'))
 
 
-def _run_baseline(*, baseline_url: str, token: str, chat_id: int, query: str) -> dict[str, Any]:
+def _run_baseline(*, baseline_url: str, token: str, chat_id: int, query: str, timeout_seconds: float) -> dict[str, Any]:
     started_at = monotonic()
     payload = _request_json(
         url=f'{baseline_url}/v1/messages/respond',
         payload={'message': query, 'telegram_chat_id': chat_id},
         headers={'X-Internal-Api-Token': token},
+        timeout_seconds=timeout_seconds,
     )
     duration_ms = round((monotonic() - started_at) * 1000, 2)
     return {
@@ -183,6 +185,7 @@ def main() -> int:
             token=args.internal_api_token,
             chat_id=args.public_chat_id,
             query=query,
+            timeout_seconds=args.baseline_timeout_seconds,
         )
         case_result: dict[str, Any] = {
             'case_id': case['case_id'],

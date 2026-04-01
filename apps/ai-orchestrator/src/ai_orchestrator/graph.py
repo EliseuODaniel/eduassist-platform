@@ -318,7 +318,6 @@ PERSONAL_ADMIN_TERMS = {
 }
 SUPPORT_TERMS = {'humano', 'atendente', 'suporte', 'protocolo', 'chamado'}
 SUPPORT_PHRASES = {
-    'falar com',
     'atendimento humano',
     'ajuda humana',
     'me transfira',
@@ -522,7 +521,49 @@ PROTOCOL_CODE_PATTERN = re.compile(
     r'\b(?:VIS|REQ)-\d{8}-[A-Z0-9]{6}\b|\bATD-\d{8}-[A-Z0-9]{8}\b',
     re.IGNORECASE,
 )
-GRAPH_RAG_TERMS = {'visao geral', 'compare', 'comparar', 'tendencias', 'corpus', 'relacione'}
+GRAPH_RAG_TERMS = {
+    'visao geral',
+    'compare',
+    'comparar',
+    'comparacao',
+    'comparação',
+    'comparativo',
+    'tendencias',
+    'corpus',
+    'relacione',
+    'sintetize',
+    'pilares',
+    'ponto de vista',
+    'quando cruzamos',
+    'de ponta a ponta',
+    'o que muda',
+}
+GRAPH_RAG_DOCUMENT_TERMS = {
+    'calendario',
+    'calendário',
+    'agenda',
+    'manual',
+    'regulamentos',
+    'politica',
+    'política',
+    'proposta pedagogica',
+    'proposta pedagógica',
+    'portal',
+    'credenciais',
+    'documentos',
+    'rematricula',
+    'rematrícula',
+    'transferencia',
+    'transferência',
+    'cancelamento',
+    'avaliacao',
+    'avaliação',
+    'recuperacao',
+    'recuperação',
+    'vida escolar',
+    'inclusao',
+    'inclusão',
+}
 TEACHER_SELF_SERVICE_TERMS = {'horario', 'agenda', 'turma', 'turmas', 'disciplina', 'disciplinas', 'materia', 'materias'}
 PUBLIC_SERVICE_TERMS = {
     'biblioteca',
@@ -784,6 +825,12 @@ PUBLIC_SCHOOL_PROFILE_TERMS = {
     'teatro',
     'robotica',
     'robótica',
+    '30 segundos',
+    '30s',
+    'familia nova',
+    'família nova',
+    'por que escolher',
+    'por que deveria',
 }
 
 
@@ -830,6 +877,40 @@ def _is_public_curriculum_query(message: str) -> bool:
             'currículo',
         }
     )
+
+
+def _is_public_policy_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    explicit_terms = {
+        'politica de avaliacao',
+        'política de avaliação',
+        'avaliacao, recuperacao e promocao',
+        'avaliação, recuperação e promoção',
+        'media de aprovacao',
+        'média de aprovação',
+        'nota de aprovacao',
+        'nota de aprovação',
+        'projeto de vida',
+        'frequencia minima',
+        'frequência mínima',
+        '75%',
+    }
+    if any(_message_matches_term(lowered, term) for term in explicit_terms):
+        return True
+    if any(
+        _message_matches_term(lowered, term)
+        for term in {'avaliacao', 'avaliação', 'recuperacao', 'recuperação', 'promocao', 'promoção', 'aprovacao', 'aprovação'}
+    ):
+        return any(
+            _message_matches_term(lowered, term)
+            for term in {'politica', 'política', 'como funciona', 'regra', 'regras', 'funciona'}
+        )
+    if any(_message_matches_term(lowered, term) for term in {'falta', 'faltas', 'frequencia', 'frequência'}):
+        return any(
+            _message_matches_term(lowered, term)
+            for term in {'politica', 'política', 'regra', 'regras', '75%', 'minima', 'mínima', 'o que acontece'}
+        )
+    return False
 
 
 def _is_public_operating_hours_query(message: str) -> bool:
@@ -1038,6 +1119,12 @@ def _is_authenticated_personal_finance_query(message: str, *, authenticated: boo
 
 def _is_public_timeline_query(message: str) -> bool:
     lowered = _normalize_text(message)
+    if (
+        any(_message_matches_term(lowered, term) for term in {'antes da confirmacao da vaga', 'antes da confirmação da vaga', 'depois do inicio das aulas', 'depois do início das aulas'})
+        or ('viagem' in lowered and any(_message_matches_term(lowered, term) for term in {'calendario', 'calendário', 'marcos', 'vida escolar'}))
+        or ('tres fases' in lowered and all(term in lowered for term in {'admiss', 'rotina', 'fechamento'}))
+    ):
+        return True
     asks_timing = any(
         _message_matches_term(lowered, term)
         for term in {
@@ -1142,6 +1229,11 @@ def _is_public_navigation_query(message: str) -> bool:
         'como falar com',
         'como reporto',
         'como denunciar',
+        'quem responde por',
+        'qual a diferenca entre falar com',
+        'qual a diferença entre falar com',
+        'diferenca entre secretaria',
+        'diferença entre secretaria',
         'pra quem eu falo',
         'para quem eu falo',
         'quem cuida',
@@ -1176,9 +1268,130 @@ def _is_public_staff_directory_query(message: str) -> bool:
     )
 
 
+def _is_cross_document_public_query(message: str) -> bool:
+    if (
+        _is_public_policy_compare_query(message)
+        or _is_public_family_new_calendar_enrollment_query(message)
+        or _is_public_service_credentials_bundle_query(message)
+        or _is_public_permanence_family_query(message)
+        or _is_public_first_month_risks_query(message)
+        or _is_public_process_compare_query(message)
+    ):
+        return False
+    lowered = _normalize_text(message)
+    has_synthesis_signal = any(_message_matches_term(lowered, term) for term in GRAPH_RAG_TERMS) or any(
+        phrase in lowered
+        for phrase in (
+            'o que uma familia precisa entender',
+            'o que uma família precisa entender',
+            'uma unica explicacao coerente',
+            'uma única explicação coerente',
+            'temas atravessam varios documentos',
+            'temas atravessam vários documentos',
+            'guia de sobrevivencia do primeiro mes',
+            'guia de sobrevivência do primeiro mês',
+        )
+    )
+    if not has_synthesis_signal:
+        return False
+    return any(_message_matches_term(lowered, term) for term in GRAPH_RAG_DOCUMENT_TERMS)
+
+
+def _is_public_policy_compare_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    mentions_compare = any(
+        _message_matches_term(lowered, term)
+        for term in {'compare', 'comparar', 'comparacao', 'comparação', 'como os dois se complementam'}
+    )
+    mentions_general_rules = any(
+        _message_matches_term(lowered, term)
+        for term in {'manual de regulamentos gerais', 'regulamentos gerais', 'manual geral'}
+    )
+    mentions_eval_policy = any(
+        _message_matches_term(lowered, term)
+        for term in {'politica de avaliacao', 'política de avaliação', 'avaliacao e promocao', 'avaliação e promoção'}
+    )
+    return mentions_compare and mentions_general_rules and mentions_eval_policy
+
+
+def _is_public_family_new_calendar_enrollment_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    if not any(
+        _message_matches_term(lowered, term)
+        for term in {'compare', 'comparar', 'comparacao', 'comparação', 'do ponto de vista'}
+    ):
+        return False
+    required_groups = (
+        {'calendario letivo', 'calendário letivo', 'calendario', 'calendário'},
+        {'agenda de avaliacoes', 'agenda de avaliações', 'avaliacoes', 'avaliações', 'simulados'},
+        {'manual de matricula', 'manual de matrícula', 'matricula', 'matrícula', 'ingresso'},
+    )
+    if not all(any(_message_matches_term(lowered, term) for term in group) for group in required_groups):
+        return False
+    return any(
+        _message_matches_term(lowered, term)
+        for term in {'familia nova', 'família nova', 'aluno novo', 'responsavel novo', 'responsável novo'}
+    )
+
+
+def _is_public_service_credentials_bundle_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    if (
+        'credenciais' not in lowered
+        and 'credencial' not in lowered
+        and 'login' not in lowered
+        and 'senha' not in lowered
+        and 'aplicativo' not in lowered
+        and 'app' not in lowered
+    ):
+        return False
+    return any(
+        _message_matches_term(lowered, term)
+        for term in {'secretaria', 'portal', 'aplicativo', 'app', 'documentos', 'documentacao', 'documentação', 'cadastro'}
+    )
+
+
+def _is_public_permanence_family_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return 'permanencia escolar' in lowered and any(
+        _message_matches_term(lowered, term)
+        for term in {'acompanhamento da familia', 'acompanhamento da família', 'responsaveis', 'responsáveis'}
+    )
+
+
+def _is_public_first_month_risks_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return 'primeiro mes' in lowered and any(
+        _message_matches_term(lowered, term)
+        for term in {'riscos', 'esquecido', 'prazo', 'prazos'}
+    )
+
+
+def _is_public_process_compare_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return any(_message_matches_term(lowered, term) for term in {'rematricula', 'rematrícula'}) and any(
+        _message_matches_term(lowered, term) for term in {'transferencia', 'transferência', 'cancelamento'}
+    ) and any(
+        _message_matches_term(lowered, term) for term in {'compare', 'comparar', 'destacando', 'o que muda'}
+    )
+
+
+def _is_known_public_doc_bundle_query(message: str) -> bool:
+    return (
+        _is_public_policy_compare_query(message)
+        or _is_public_family_new_calendar_enrollment_query(message)
+        or _is_public_service_credentials_bundle_query(message)
+        or _is_public_permanence_family_query(message)
+        or _is_public_first_month_risks_query(message)
+        or _is_public_process_compare_query(message)
+    )
+
+
 def _is_public_school_profile_request(message: str) -> bool:
     lowered = _normalize_text(message)
     if _is_public_timeline_query(lowered):
+        return False
+    if _is_cross_document_public_query(lowered):
         return False
     return (
         _is_public_pricing_query(lowered)
@@ -1190,6 +1403,13 @@ def _is_public_school_profile_request(message: str) -> bool:
         or _is_public_document_submission_query(lowered)
         or _is_public_web_presence_query(lowered)
         or _is_public_curriculum_query(lowered)
+        or _is_public_policy_query(lowered)
+        or _is_public_policy_compare_query(lowered)
+        or _is_public_family_new_calendar_enrollment_query(lowered)
+        or _is_public_service_credentials_bundle_query(lowered)
+        or _is_public_permanence_family_query(lowered)
+        or _is_public_first_month_risks_query(lowered)
+        or _is_public_process_compare_query(lowered)
         or _is_public_operating_hours_query(lowered)
         or _is_public_location_query(lowered)
         or _is_public_contact_phrase_query(lowered)
@@ -1224,6 +1444,14 @@ def _is_public_document_submission_query(message: str) -> bool:
         'posso mandar documentos por fax',
         'posso mandar por telegrama',
         'posso enviar por telegrama',
+        'prazos e canais da secretaria',
+        'prazo da secretaria para documentos',
+        'prazos para secretaria receber documentos',
+        'canais da secretaria para documentos',
+        'declaracoes e atualizacoes cadastrais',
+        'declarações e atualizações cadastrais',
+        'atualizacoes cadastrais',
+        'atualizações cadastrais',
     }
     if any(_message_matches_term(lowered, term) for term in explicit_terms):
         return True
@@ -1505,6 +1733,13 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
             confidence=0.84,
             reason='mensagem pede um fato publico canonico, um dado operacional ou uma referencia institucional estruturada',
         )
+    elif _is_public_policy_query(message):
+        classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.86,
+            reason='mensagem pede regra institucional publica, politica escolar ou criterio pedagogico divulgado',
+        )
     elif _is_public_attribute_followup_query(message):
         classification = IntentClassification(
             domain=QueryDomain.institution,
@@ -1575,6 +1810,15 @@ def route_request(state: OrchestrationState, runtime: GraphRuntimeConfig) -> Orc
     request = state['request']
     classification = state['classification']
     message = request.message.lower()
+    support_public_rescue = (
+        classification.domain is QueryDomain.support
+        and (
+            _is_public_school_profile_request(message)
+            or _is_public_navigation_query(message)
+            or _is_public_timeline_query(message)
+            or _is_public_calendar_event_query(message)
+        )
+    )
 
     if classification.domain is QueryDomain.unknown:
         route = OrchestrationMode.clarify.value
@@ -1582,6 +1826,9 @@ def route_request(state: OrchestrationState, runtime: GraphRuntimeConfig) -> Orc
     elif state.get('needs_authentication'):
         route = OrchestrationMode.deny.value
         reason = 'a consulta exige autenticacao ou vinculo antes de qualquer acesso'
+    elif support_public_rescue:
+        route = OrchestrationMode.structured_tool.value
+        reason = 'consulta publica de navegacao e canais foi resgatada do dominio support'
     elif classification.domain is QueryDomain.support and _is_structured_support_workflow_request(message):
         route = OrchestrationMode.structured_tool.value
         reason = 'a solicitacao pode ser executada por workflow estruturado com protocolo'
@@ -1620,16 +1867,24 @@ def route_request(state: OrchestrationState, runtime: GraphRuntimeConfig) -> Orc
     ):
         route = OrchestrationMode.structured_tool.value
         reason = 'capacidade da conta autenticada e alunos vinculados exigem leitura protegida e minimizada'
-    elif classification.domain is QueryDomain.institution and (
-        _is_public_school_profile_request(message)
-        or _is_public_navigation_query(message)
-        or _is_public_document_submission_query(message)
-        or _is_public_attribute_followup_query(message)
-        or _is_public_utility_query(message)
+    elif (
+        _is_known_public_doc_bundle_query(message)
+        or (
+            classification.domain is QueryDomain.institution
+            and (
+                _is_public_school_profile_request(message)
+                or _is_public_navigation_query(message)
+                or _is_public_document_submission_query(message)
+                or _is_public_attribute_followup_query(message)
+                or _is_public_utility_query(message)
+            )
+        )
     ):
         route = OrchestrationMode.structured_tool.value
         reason = 'fato institucional canonico deve vir de fonte estruturada'
-    elif runtime['graph_rag_enabled'] and request.allow_graph_rag and _contains_any(message, GRAPH_RAG_TERMS):
+    elif runtime['graph_rag_enabled'] and request.allow_graph_rag and (
+        _contains_any(message, GRAPH_RAG_TERMS) or _is_cross_document_public_query(message)
+    ):
         route = OrchestrationMode.graph_rag.value
         reason = 'a pergunta pede visao global ou conexoes multi-documento'
     else:
@@ -1646,11 +1901,25 @@ def route_request(state: OrchestrationState, runtime: GraphRuntimeConfig) -> Orc
 def select_slice(state: OrchestrationState) -> OrchestrationState:
     route = state['route']
     classification = state['classification']
+    request = state['request']
+    normalized_message = _normalize_text(request.message)
+    support_public_rescue = (
+        classification.domain is QueryDomain.support
+        and route == OrchestrationMode.structured_tool.value
+        and (
+            _is_public_school_profile_request(normalized_message)
+            or _is_public_navigation_query(normalized_message)
+            or _is_public_timeline_query(normalized_message)
+            or _is_public_calendar_event_query(normalized_message)
+        )
+    )
 
     if route == OrchestrationMode.deny.value:
         slice_name = 'deny'
     elif route == OrchestrationMode.clarify.value:
         slice_name = 'clarify'
+    elif support_public_rescue:
+        slice_name = 'public'
     elif classification.domain is QueryDomain.support:
         slice_name = 'support'
     elif classification.domain in {QueryDomain.academic, QueryDomain.finance} or classification.access_tier in {

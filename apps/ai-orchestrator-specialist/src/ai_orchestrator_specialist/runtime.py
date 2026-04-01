@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 import json
 import logging
 import os
 import re
+from time import monotonic
 from typing import Any
 
 import httpx
@@ -35,6 +37,17 @@ from .models import (
     SupervisorPlan,
 )
 from .intent_registry import get_intent_registry, has_registered_school_signal
+from .public_doc_knowledge import (
+    compose_public_academic_policy_overview,
+    compose_public_bolsas_and_processes,
+    compose_public_conduct_frequency_punctuality,
+    compose_public_family_new_calendar_assessment_enrollment,
+    compose_public_first_month_risks,
+    compose_public_health_authorizations_bridge,
+    compose_public_health_second_call,
+    compose_public_permanence_and_family_support,
+    compose_public_process_compare,
+)
 from .registry import get_specialist_registry
 
 logger = logging.getLogger(__name__)
@@ -46,6 +59,7 @@ EXECUTION_SPECIALISTS = {
     "workflow_specialist",
     "document_specialist",
 }
+_PUBLIC_RESOURCE_CACHE: dict[str, dict[str, Any]] = {}
 
 
 def resolve_llm_provider(settings: Any) -> str:
@@ -159,6 +173,52 @@ def _normalize_text(value: str | None) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip().lower())
 
 
+_INTERNAL_DOC_STOPWORDS = {
+    "a",
+    "as",
+    "o",
+    "os",
+    "ao",
+    "aos",
+    "da",
+    "das",
+    "de",
+    "do",
+    "dos",
+    "e",
+    "em",
+    "na",
+    "nas",
+    "no",
+    "nos",
+    "para",
+    "por",
+    "que",
+    "qual",
+    "quais",
+    "como",
+    "com",
+    "uma",
+    "um",
+    "mais",
+    "alem",
+    "além",
+    "texto",
+    "publico",
+    "público",
+    "interna",
+    "interna?",
+    "interno",
+    "internos",
+    "orientacao",
+    "orientação",
+    "procedimento",
+    "protocolo",
+    "manual",
+    "playbook",
+}
+
+
 def _strip_none(payload: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in payload.items() if value is not None}
 
@@ -175,6 +235,111 @@ def _safe_excerpt(value: str | None, *, limit: int = 220) -> str | None:
 def _contains_any(text: str, terms: set[str] | tuple[str, ...]) -> bool:
     normalized = _normalize_text(text)
     return any(term in normalized for term in terms)
+
+
+def _can_read_restricted_documents(user: UserContext) -> bool:
+    scopes = {str(item).strip().lower() for item in user.scopes}
+    return user.authenticated and ("documents:private:read" in scopes or user.role in {"staff", "teacher"})
+
+
+def _looks_like_internal_document_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    strong_terms = (
+        "interno",
+        "interna",
+        "internos",
+        "procedimento interno",
+        "protocolo interno",
+        "manual interno",
+        "playbook interno",
+        "por dentro",
+    )
+    return any(term in normalized for term in strong_terms)
+
+
+def _internal_doc_query_tokens(message: str) -> list[str]:
+    tokens = re.findall(r"[a-z0-9]+", _normalize_text(message))
+    return [token for token in tokens if len(token) >= 4 and token not in _INTERNAL_DOC_STOPWORDS]
+
+
+def _internal_doc_hit_overlap(query: str, hit: dict[str, Any]) -> int:
+    haystack = _normalize_text(
+        f"{hit.get('document_title') or ''} {hit.get('contextual_summary') or ''} {hit.get('text_excerpt') or ''}"
+    )
+    return sum(1 for token in set(_internal_doc_query_tokens(query)) if token in haystack)
+
+
+def _select_relevant_internal_doc_hits(query: str, hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    scored: list[tuple[int, dict[str, Any]]] = []
+    for hit in hits:
+        overlap = _internal_doc_hit_overlap(query, hit)
+        if overlap >= 2:
+            scored.append((overlap, hit))
+    scored.sort(key=lambda item: item[0], reverse=True)
+    return [hit for _, hit in scored[:3]]
+
+
+def _citation_from_retrieval_hit(hit: dict[str, Any]) -> MessageResponseCitation | None:
+    document_title = str(hit.get("document_title") or "").strip()
+    chunk_id = str(hit.get("chunk_id") or "").strip()
+    storage_path = str(hit.get("storage_path") or "").strip()
+    if not document_title or not chunk_id:
+        return None
+    return MessageResponseCitation(
+        document_title=document_title,
+        version_label=str(hit.get("version_label") or "atual"),
+        storage_path=storage_path or "inline",
+        chunk_id=chunk_id,
+        excerpt=str(hit.get("text_excerpt") or hit.get("contextual_summary") or "").strip() or "evidencia restrita",
+    )
+
+
+def _internal_doc_domain_hint(message: str) -> str:
+    normalized = _normalize_text(message)
+    if any(term in normalized for term in ("financeiro", "quitacao", "quitação", "negociacao", "negociação", "pagamento")):
+        return "finance"
+    if any(term in normalized for term in ("professor", "segunda chamada", "saude", "saúde", "frequencia", "frequência")):
+        return "academic"
+    if any(term in normalized for term in ("transferencia", "transferência", "secretaria", "documento")):
+        return "workflow"
+    return "institution"
+
+
+def _compose_internal_doc_grounded_answer(query: str, hits: list[dict[str, Any]]) -> str:
+    primary = hits[0]
+    primary_title = str(primary.get("document_title") or "documento interno").strip()
+    primary_excerpt = str(primary.get("text_excerpt") or primary.get("contextual_summary") or "").strip()
+    lines = [f"Nos documentos internos consultados, a orientacao mais relevante aparece em {primary_title}:"]
+    if primary_excerpt:
+        lines.append(primary_excerpt)
+    seen_titles = {primary_title}
+    for hit in hits[1:]:
+        title = str(hit.get("document_title") or "").strip()
+        excerpt = str(hit.get("text_excerpt") or hit.get("contextual_summary") or "").strip()
+        if not excerpt:
+            continue
+        label = title if title and title not in seen_titles else "Complemento interno"
+        lines.append(f"{label}: {excerpt}")
+        if title:
+            seen_titles.add(title)
+    return "\n".join(lines)
+
+
+def _compose_internal_doc_no_match_answer(message: str, profile: dict[str, Any] | None) -> str:
+    if _looks_like_health_second_call_query(message):
+        public_answer = compose_public_health_second_call()
+        if public_answer:
+            return (
+                "Consultei os documentos internos disponiveis e nao encontrei uma orientacao adicional especifica "
+                "sobre segunda chamada por motivo de saude alem do que ja aparece no material publico.\n\n"
+                f"{public_answer}"
+            )
+    school_name = _school_name(profile)
+    return (
+        f"Consultei os documentos internos disponiveis do {school_name}, mas nao encontrei uma orientacao restrita "
+        "especifica para esse pedido. Se quiser, eu posso te orientar pelo material publico correspondente ou abrir "
+        "um handoff para validacao humana."
+    )
 
 
 def _is_simple_greeting(message: str) -> bool:
@@ -215,12 +380,14 @@ def _compose_auth_guidance_answer(profile: dict[str, Any] | None) -> str:
 
 def _is_assistant_identity_query(message: str) -> bool:
     normalized = _normalize_text(message)
+    normalized_simple = normalized.strip(" ?!.")
+    if normalized_simple in {"com quem eu falo", "pra quem eu falo", "para quem eu falo"}:
+        return True
+    if _looks_like_service_routing_query(message):
+        return False
     return any(
         term in normalized
         for term in {
-            "com quem eu falo",
-            "pra quem eu falo",
-            "para quem eu falo",
             "quem e voce",
             "quem é voce",
             "quem e você",
@@ -239,6 +406,12 @@ def _is_auth_guidance_query(message: str) -> bool:
             "como vinculo minha conta",
             "como vincular minha conta",
             "como eu vinculo minha conta",
+            "como eu vinculo meu telegram",
+            "como vinculo meu telegram",
+            "como vinculo o telegram",
+            "telegram a minha conta",
+            "telegram a minha conta da escola",
+            "vincular telegram",
             "como faco para vincular",
             "como faço para vincular",
             "como conecto minha conta",
@@ -413,29 +586,37 @@ async def _http_post(
 async def _fetch_actor_context(ctx: SupervisorRunContext) -> dict[str, Any] | None:
     if ctx.request.telegram_chat_id is None:
         return None
-    payload = await _http_get(
-        ctx.http_client,
-        base_url=ctx.settings.api_core_url,
-        path="/v1/internal/identity/context",
-        token=ctx.settings.internal_api_token,
-        params={"telegram_chat_id": ctx.request.telegram_chat_id},
-    )
+    try:
+        payload = await _http_get(
+            ctx.http_client,
+            base_url=ctx.settings.api_core_url,
+            path="/v1/internal/identity/context",
+            token=ctx.settings.internal_api_token,
+            params={"telegram_chat_id": ctx.request.telegram_chat_id},
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("specialist_supervisor_actor_context_unavailable", extra={"error": str(exc)})
+        return None
     actor = payload.get("actor") if isinstance(payload, dict) else None
     return actor if isinstance(actor, dict) else None
 
 
 async def _fetch_conversation_context(ctx: SupervisorRunContext) -> dict[str, Any] | None:
-    payload = await _http_get(
-        ctx.http_client,
-        base_url=ctx.settings.api_core_url,
-        path="/v1/internal/conversations/context",
-        token=ctx.settings.internal_api_token,
-        params={
-            "conversation_external_id": _effective_conversation_id(ctx.request),
-            "channel": ctx.request.channel.value,
-            "limit": 8,
-        },
-    )
+    try:
+        payload = await _http_get(
+            ctx.http_client,
+            base_url=ctx.settings.api_core_url,
+            path="/v1/internal/conversations/context",
+            token=ctx.settings.internal_api_token,
+            params={
+                "conversation_external_id": _effective_conversation_id(ctx.request),
+                "channel": ctx.request.channel.value,
+                "limit": 8,
+            },
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("specialist_supervisor_conversation_context_unavailable", extra={"error": str(exc)})
+        return None
     return payload if isinstance(payload, dict) else None
 
 
@@ -509,6 +690,18 @@ async def _fetch_financial_summary_payload(
 
 
 async def _fetch_public_payload(ctx: SupervisorRunContext, path: str, key: str) -> Any:
+    cache_key = f"{path}:{key}"
+    cached = _PUBLIC_RESOURCE_CACHE.get(cache_key)
+    if isinstance(cached, dict):
+        expires_at = float(cached.get("expires_at", 0.0) or 0.0)
+        if expires_at > monotonic():
+            value = cached.get("value")
+            if isinstance(value, dict):
+                return dict(value)
+            if isinstance(value, list):
+                return [dict(item) if isinstance(item, dict) else item for item in value]
+            return value
+        _PUBLIC_RESOURCE_CACHE.pop(cache_key, None)
     payload = await _http_get(
         ctx.http_client,
         base_url=ctx.settings.api_core_url,
@@ -517,21 +710,35 @@ async def _fetch_public_payload(ctx: SupervisorRunContext, path: str, key: str) 
     )
     if not isinstance(payload, dict):
         return None
-    return payload.get(key)
+    value = payload.get(key)
+    _PUBLIC_RESOURCE_CACHE[cache_key] = {
+        "value": value,
+        "expires_at": monotonic() + float(getattr(ctx.settings, "public_resource_cache_ttl_seconds", 120.0) or 120.0),
+    }
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, list):
+        return [dict(item) if isinstance(item, dict) else item for item in value]
+    return value
 
 
 async def _orchestrator_preview(ctx: SupervisorRunContext) -> dict[str, Any] | None:
-    response = await ctx.http_client.post(
-        f"{ctx.settings.orchestrator_url.rstrip('/')}/v1/orchestrate/preview",
-        json={
-            "message": ctx.request.message,
-            "conversation_id": _effective_conversation_id(ctx.request),
-            "user": ctx.request.user.model_dump(mode="json"),
-            "allow_graph_rag": ctx.request.allow_graph_rag,
-            "allow_handoff": ctx.request.allow_handoff,
-        },
-    )
-    response.raise_for_status()
+    try:
+        response = await ctx.http_client.post(
+            f"{ctx.settings.orchestrator_url.rstrip('/')}/v1/orchestrate/preview",
+            timeout=httpx.Timeout(1.5, connect=0.5),
+            json={
+                "message": ctx.request.message,
+                "conversation_id": _effective_conversation_id(ctx.request),
+                "user": ctx.request.user.model_dump(mode="json"),
+                "allow_graph_rag": ctx.request.allow_graph_rag,
+                "allow_handoff": ctx.request.allow_handoff,
+            },
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        logger.warning("specialist_orchestrator_preview_unavailable: %s", exc)
+        return None
     payload = response.json()
     if not isinstance(payload, dict):
         return None
@@ -547,30 +754,48 @@ async def _orchestrator_retrieval_search(
     category: str | None = None,
     top_k: int = 4,
 ) -> dict[str, Any] | None:
-    return await _http_post(
-        ctx.http_client,
-        base_url=ctx.settings.orchestrator_url,
-        path="/v1/retrieval/search",
-        token=ctx.settings.internal_api_token,
-        payload=_strip_none(
-            {
-                "query": query,
-                "top_k": top_k,
-                "visibility": visibility,
-                "category": category,
-            }
-        ),
-    )
+    try:
+        response = await ctx.http_client.post(
+            f"{ctx.settings.orchestrator_url.rstrip('/')}/v1/retrieval/search",
+            timeout=httpx.Timeout(4.0, connect=1.0),
+            headers={
+                "X-Internal-Api-Token": ctx.settings.internal_api_token,
+                "Content-Type": "application/json",
+            },
+            json=_strip_none(
+                {
+                    "query": query,
+                    "top_k": top_k,
+                    "visibility": visibility,
+                    "category": category,
+                }
+            ),
+        )
+        response.raise_for_status()
+        body = response.json()
+        return body if isinstance(body, dict) else None
+    except httpx.HTTPError as exc:
+        logger.warning("specialist_orchestrator_retrieval_unavailable: %s", exc)
+        return None
 
 
 async def _orchestrator_graph_rag_query(ctx: SupervisorRunContext, *, query: str) -> dict[str, Any] | None:
-    return await _http_post(
-        ctx.http_client,
-        base_url=ctx.settings.orchestrator_url,
-        path="/v1/internal/graphrag/query",
-        token=ctx.settings.internal_api_token,
-        payload={"query": query},
-    )
+    try:
+        response = await ctx.http_client.post(
+            f"{ctx.settings.orchestrator_url.rstrip('/')}/v1/internal/graphrag/query",
+            timeout=httpx.Timeout(8.0, connect=1.0),
+            headers={
+                "X-Internal-Api-Token": ctx.settings.internal_api_token,
+                "Content-Type": "application/json",
+            },
+            json={"query": query},
+        )
+        response.raise_for_status()
+        body = response.json()
+        return body if isinstance(body, dict) else None
+    except httpx.HTTPError as exc:
+        logger.warning("specialist_orchestrator_graphrag_unavailable: %s", exc)
+        return None
 
 
 def _pending_kind_from_answer(answer: SupervisorAnswerPayload) -> str | None:
@@ -638,21 +863,24 @@ def _build_operational_memory(
 
 async def _persist_conversation_turn(ctx: SupervisorRunContext, assistant_message: str) -> None:
     actor_user_id = ctx.actor.get("user_id") if isinstance(ctx.actor, dict) else None
-    await _http_post(
-        ctx.http_client,
-        base_url=ctx.settings.api_core_url,
-        path="/v1/internal/conversations/messages",
-        token=ctx.settings.internal_api_token,
-        payload={
-            "channel": ctx.request.channel.value,
-            "conversation_external_id": _effective_conversation_id(ctx.request),
-            "actor_user_id": actor_user_id,
-            "messages": [
-                {"sender_type": "user", "content": ctx.request.message},
-                {"sender_type": "assistant", "content": assistant_message},
-            ],
-        },
-    )
+    try:
+        await _http_post(
+            ctx.http_client,
+            base_url=ctx.settings.api_core_url,
+            path="/v1/internal/conversations/messages",
+            token=ctx.settings.internal_api_token,
+            payload={
+                "channel": ctx.request.channel.value,
+                "conversation_external_id": _effective_conversation_id(ctx.request),
+                "actor_user_id": actor_user_id,
+                "messages": [
+                    {"sender_type": "user", "content": ctx.request.message},
+                    {"sender_type": "assistant", "content": assistant_message},
+                ],
+            },
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("specialist_supervisor_persist_turn_failed", extra={"error": str(exc)})
 
 
 async def _persist_trace(
@@ -667,40 +895,43 @@ async def _persist_trace(
     repair_payload: tuple[RepairDraft, JudgeVerdict] | None = None,
 ) -> None:
     actor_user_id = ctx.actor.get("user_id") if isinstance(ctx.actor, dict) else None
-    await _http_post(
-        ctx.http_client,
-        base_url=ctx.settings.api_core_url,
-        path="/v1/internal/conversations/tool-calls",
-        token=ctx.settings.internal_api_token,
-        payload={
-            "channel": ctx.request.channel.value,
-            "conversation_external_id": _effective_conversation_id(ctx.request),
-            "actor_user_id": actor_user_id,
-            "tool_calls": [
-                {
-                    "tool_name": "specialist_supervisor.trace",
-                    "status": "ok",
-                    "request_payload": {
-                        "message": ctx.request.message,
-                        "preview_hint": ctx.preview_hint or {},
-                    },
-                    "response_payload": {
-                        "retrieval_advice": retrieval_advice.model_dump(mode="json") if retrieval_advice is not None else None,
-                        "resolved_turn": ctx.resolved_turn.model_dump(mode="json") if ctx.resolved_turn is not None else None,
-                        "plan": plan.model_dump(mode="json"),
-                        "draft": draft.model_dump(mode="json"),
-                        "judge": judge.model_dump(mode="json"),
-                        "repair": repair_payload[0].model_dump(mode="json") if repair_payload is not None else None,
-                        "repair_judge": repair_payload[1].model_dump(mode="json") if repair_payload is not None else None,
-                        "answer": answer.model_dump(mode="json"),
-                        "operational_memory": operational_memory.model_dump(mode="json"),
-                        "agent_events": ctx.trace.agent_events,
-                        "tool_events": ctx.trace.tool_events,
-                    },
-                }
-            ],
-        },
-    )
+    try:
+        await _http_post(
+            ctx.http_client,
+            base_url=ctx.settings.api_core_url,
+            path="/v1/internal/conversations/tool-calls",
+            token=ctx.settings.internal_api_token,
+            payload={
+                "channel": ctx.request.channel.value,
+                "conversation_external_id": _effective_conversation_id(ctx.request),
+                "actor_user_id": actor_user_id,
+                "tool_calls": [
+                    {
+                        "tool_name": "specialist_supervisor.trace",
+                        "status": "ok",
+                        "request_payload": {
+                            "message": ctx.request.message,
+                            "preview_hint": ctx.preview_hint or {},
+                        },
+                        "response_payload": {
+                            "retrieval_advice": retrieval_advice.model_dump(mode="json") if retrieval_advice is not None else None,
+                            "resolved_turn": ctx.resolved_turn.model_dump(mode="json") if ctx.resolved_turn is not None else None,
+                            "plan": plan.model_dump(mode="json"),
+                            "draft": draft.model_dump(mode="json"),
+                            "judge": judge.model_dump(mode="json"),
+                            "repair": repair_payload[0].model_dump(mode="json") if repair_payload is not None else None,
+                            "repair_judge": repair_payload[1].model_dump(mode="json") if repair_payload is not None else None,
+                            "answer": answer.model_dump(mode="json"),
+                            "operational_memory": operational_memory.model_dump(mode="json"),
+                            "agent_events": ctx.trace.agent_events,
+                            "tool_events": ctx.trace.tool_events,
+                        },
+                    }
+                ],
+            },
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("specialist_supervisor_persist_trace_failed", extra={"error": str(exc)})
 
 
 async def _persist_light_trace(
@@ -712,37 +943,40 @@ async def _persist_light_trace(
     operational_memory: OperationalMemory,
 ) -> None:
     actor_user_id = ctx.actor.get("user_id") if isinstance(ctx.actor, dict) else None
-    await _http_post(
-        ctx.http_client,
-        base_url=ctx.settings.api_core_url,
-        path="/v1/internal/conversations/tool-calls",
-        token=ctx.settings.internal_api_token,
-        payload={
-            "channel": ctx.request.channel.value,
-            "conversation_external_id": _effective_conversation_id(ctx.request),
-            "actor_user_id": actor_user_id,
-            "tool_calls": [
-                {
-                    "tool_name": "specialist_supervisor.trace",
-                    "status": "ok",
-                    "request_payload": {
-                        "message": ctx.request.message,
-                        "preview_hint": ctx.preview_hint or {},
-                        "route": route,
-                    },
-                    "response_payload": {
-                        "route": route,
-                        "metadata": metadata or {},
-                        "resolved_turn": ctx.resolved_turn.model_dump(mode="json") if ctx.resolved_turn is not None else None,
-                        "operational_memory": operational_memory.model_dump(mode="json"),
-                        "answer": answer.model_dump(mode="json"),
-                        "agent_events": ctx.trace.agent_events,
-                        "tool_events": ctx.trace.tool_events,
-                    },
-                }
-            ],
-        },
-    )
+    try:
+        await _http_post(
+            ctx.http_client,
+            base_url=ctx.settings.api_core_url,
+            path="/v1/internal/conversations/tool-calls",
+            token=ctx.settings.internal_api_token,
+            payload={
+                "channel": ctx.request.channel.value,
+                "conversation_external_id": _effective_conversation_id(ctx.request),
+                "actor_user_id": actor_user_id,
+                "tool_calls": [
+                    {
+                        "tool_name": "specialist_supervisor.trace",
+                        "status": "ok",
+                        "request_payload": {
+                            "message": ctx.request.message,
+                            "preview_hint": ctx.preview_hint or {},
+                            "route": route,
+                        },
+                        "response_payload": {
+                            "route": route,
+                            "metadata": metadata or {},
+                            "resolved_turn": ctx.resolved_turn.model_dump(mode="json") if ctx.resolved_turn is not None else None,
+                            "operational_memory": operational_memory.model_dump(mode="json"),
+                            "answer": answer.model_dump(mode="json"),
+                            "agent_events": ctx.trace.agent_events,
+                            "tool_events": ctx.trace.tool_events,
+                        },
+                    }
+                ],
+            },
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("specialist_supervisor_persist_light_trace_failed", extra={"error": str(exc)})
 
 
 async def _persist_final_answer(
@@ -900,6 +1134,12 @@ def _preview_domain(preview_hint: dict[str, Any] | None) -> str:
     if not isinstance(classification, dict):
         return ""
     return str(classification.get("domain") or "").strip().lower()
+
+
+def _preview_classification_dict(preview_hint: dict[str, Any] | None) -> dict[str, Any]:
+    preview = preview_hint if isinstance(preview_hint, dict) else {}
+    classification = preview.get("classification")
+    return classification if isinstance(classification, dict) else {}
 
 
 def _score_intent_spec(
@@ -1302,7 +1542,11 @@ def _find_student_by_hint(actor: dict[str, Any] | None, *, capability: str, hint
     )
 
 
-def _subject_grade_snapshot(summary: dict[str, Any], *, preferred_subjects: tuple[str, ...] = ("Fisica", "Matematica", "Portugues")) -> list[tuple[str, Decimal]]:
+def _subject_grade_snapshot(
+    summary: dict[str, Any],
+    *,
+    preferred_subjects: tuple[str, ...] = ("Historia", "Fisica", "Matematica", "Portugues"),
+) -> list[tuple[str, Decimal]]:
     grades = summary.get("grades")
     if not isinstance(grades, list):
         return []
@@ -1389,6 +1633,41 @@ def _compose_named_subject_grade_answer(summary: dict[str, Any], *, subject_hint
     return (
         f"A media parcial de {student_name} em {resolved_subject_name or subject_hint or 'a disciplina'} "
         f"e {str(average).replace('.', ',')}."
+    )
+
+
+def _compose_named_attendance_answer(summary: dict[str, Any], *, subject_hint: str | None = None) -> str | None:
+    attendance = summary.get("attendance")
+    if not isinstance(attendance, list):
+        return None
+    subject_code, subject_name = _subject_code_from_hint(summary, subject_hint)
+    present_total = 0
+    late_total = 0
+    absent_total = 0
+    absent_minutes_total = 0
+    resolved_subject_name = subject_name
+    for row in attendance:
+        if not isinstance(row, dict):
+            continue
+        row_subject_code = str(row.get("subject_code") or "").strip()
+        row_subject_name = str(row.get("subject_name") or "").strip()
+        if subject_code and row_subject_code != subject_code:
+            continue
+        if not subject_code and subject_name and _normalize_text(row_subject_name) != _normalize_text(subject_name):
+            continue
+        present_total += int(row.get("present_count") or 0)
+        late_total += int(row.get("late_count") or 0)
+        absent_total += int(row.get("absent_count") or 0)
+        absent_minutes_total += int(row.get("absent_minutes") or 0)
+        if row_subject_name:
+            resolved_subject_name = row_subject_name
+    if present_total == late_total == absent_total == absent_minutes_total == 0:
+        return None
+    student_name = str(summary.get("student_name") or "Aluno").strip()
+    scope_label = f" em {resolved_subject_name}" if resolved_subject_name else ""
+    return (
+        f"Na frequencia de {student_name}{scope_label}, eu encontrei {absent_total} faltas, "
+        f"{late_total} atraso(s) e {present_total} presenca(s) neste recorte."
     )
 
 
@@ -1730,8 +2009,787 @@ def _compose_human_handoff_answer(profile: dict[str, Any] | None) -> str:
     return "\n".join(parts)
 
 
+def _looks_like_access_scope_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    terms = {
+        "qual meu acesso",
+        "qual e o meu escopo",
+        "qual é o meu escopo",
+        "meu escopo",
+        "escopo da minha conta",
+        "que dados eu posso ver",
+        "que dados posso ver",
+        "o que eu consigo ver",
+        "o que consigo ver",
+        "o que posso consultar aqui",
+        "qual e exatamente o meu escopo",
+        "qual é exatamente o meu escopo",
+        "academico, financeiro",
+        "acadêmico, financeiro",
+        "academico, financeiro ou os dois",
+        "acadêmico, financeiro ou os dois",
+        "academico e financeiro",
+        "acadêmico e financeiro",
+        "quais dados eu consigo acessar",
+        "quais dados consigo acessar",
+        "quais dados dos meus alunos eu consigo acessar",
+        "quais dados dos meus dois alunos eu consigo acessar",
+        "quais dados dos meus filhos eu consigo acessar",
+    }
+    return any(term in normalized for term in terms)
+
+
+def _looks_like_admin_finance_combo_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    admin_terms = {
+        "documentacao",
+        "documentação",
+        "documental",
+        "administrativo",
+        "administrativa",
+        "cadastro",
+        "regular",
+        "regularidade",
+        "pendencia",
+        "pendência",
+    }
+    finance_terms = {
+        "financeiro",
+        "bloque",
+        "bloqueando atendimento",
+        "boleto",
+        "boletos",
+        "mensalidade",
+        "mensalidades",
+        "fatura",
+        "faturas",
+    }
+    return any(term in normalized for term in admin_terms) and any(term in normalized for term in finance_terms)
+
+
+def _compose_authenticated_scope_answer(actor: dict[str, Any] | None) -> str:
+    academic_students = _linked_students(actor, capability="academic")
+    finance_students = _linked_students(actor, capability="finance")
+    merged: dict[str, dict[str, Any]] = {}
+    academic_ids = {str(student.get("student_id") or "").strip() for student in academic_students}
+    finance_ids = {str(student.get("student_id") or "").strip() for student in finance_students}
+    for student in [*academic_students, *finance_students]:
+        student_id = str(student.get("student_id") or "").strip()
+        if student_id:
+            merged[student_id] = student
+    if not merged:
+        return (
+            "Para consultas protegidas, como notas, faltas e financeiro, voce precisa vincular sua conta do Telegram ao portal da escola. "
+            "No portal autenticado, gere o codigo de vinculacao e depois envie aqui o comando `/start link_<codigo>`."
+    )
+    names = [str(item.get("full_name") or "Aluno").strip() for item in merged.values()]
+    rendered_names = ", ".join(names[:-1]) + f" e {names[-1]}" if len(names) > 1 else names[0]
+    scope_lines: list[str] = []
+    for student_id, student in merged.items():
+        student_name = str(student.get("full_name") or "Aluno").strip() or "Aluno"
+        scopes: list[str] = []
+        if student_id in academic_ids:
+            scopes.append("academico")
+        if student_id in finance_ids:
+            scopes.append("financeiro")
+        if scopes:
+            scope_lines.append(f"- {student_name}: {', '.join(scopes)}")
+    scope_block = f" Escopo atual:\n{'\n'.join(scope_lines)}" if scope_lines else ""
+    return (
+        f"Voce ja esta autenticado por aqui e sua conta esta vinculada a {rendered_names}. "
+        "Neste canal eu consigo consultar academico e financeiro dos alunos vinculados dentro das permissoes da conta. "
+        f"{scope_block}"
+        'Se quiser, me diga algo como "notas do Lucas", "faltas da Ana" ou "financeiro da Ana".'
+    )
+
+
+def _teacher_session_active(ctx: SupervisorRunContext) -> bool:
+    actor_role = str((ctx.actor or {}).get("role_code", "") or "").strip().lower()
+    return actor_role == "teacher" or (
+        ctx.request.user.authenticated and str(ctx.request.user.role or "").strip().lower() == "teacher"
+    )
+
+
+def _looks_like_teacher_scope_query(message: str, recent_user_messages: list[str]) -> bool:
+    normalized = _normalize_text(message)
+    direct_terms = {
+        "ja sou professor",
+        "já sou professor",
+        "ja sou professora",
+        "já sou professora",
+        "meu horario",
+        "meu horário",
+        "meus horarios",
+        "meus horários",
+        "meu horario de aula",
+        "meu horário de aula",
+        "minhas turmas",
+        "minhas disciplinas",
+        "meus alunos",
+        "grade docente",
+        "minha grade docente",
+        "minha grade",
+        "quais turmas eu tenho",
+        "quais turmas eu atendo",
+        "quais disciplinas eu tenho",
+        "quais disciplinas eu atendo",
+        "quais turmas e disciplinas eu tenho",
+        "quais turmas e disciplinas eu atendo",
+        "rotina docente",
+    }
+    if any(term in normalized for term in direct_terms):
+        return True
+    teacher_thread_active = any(_looks_like_teacher_scope_query(item, []) for item in recent_user_messages[-4:])
+    if not teacher_thread_active:
+        return False
+    return any(
+        term in normalized
+        for term in {
+            "ensino medio",
+            "ensino médio",
+            "medio",
+            "médio",
+            "fundamental",
+            "turmas",
+            "disciplinas",
+            "classes",
+            "grade",
+        }
+    )
+
+
+def _compose_teacher_access_scope_answer(actor: dict[str, Any] | None, *, school_name: str) -> str:
+    actor_name = str((actor or {}).get("full_name", "Professor")).strip() or "Professor"
+    role_code = str((actor or {}).get("role_code", "") or "").strip().lower()
+    if role_code == "teacher":
+        return (
+            f"Voce esta falando aqui como {actor_name}, no perfil de professor do {school_name}. "
+            "Neste canal eu consigo consultar sua grade docente, turmas e disciplinas. "
+            "A situacao individual dos alunos ainda nao fica exposta por aqui. "
+            'Se quiser, me pergunte "qual meu horario?", "quais sao minhas turmas?" ou "quais disciplinas eu ministro?".'
+        )
+    return (
+        f"Se voce ja e professor do {school_name}, o acesso docente depende da vinculacao da conta institucional correta no Telegram. "
+        "Nesta conta atual eu nao identifiquei um perfil docente ativo. "
+        "Quando a vinculacao de professor estiver correta, por aqui eu consigo consultar horario, turmas e disciplinas."
+    )
+
+
+def _segment_filter_for_teacher_message(message: str) -> str | None:
+    normalized = _normalize_text(message)
+    if any(term in normalized for term in {"ensino medio", "ensino médio", "medio", "médio"}):
+        return "medio"
+    if "fundamental" in normalized or any(token in normalized for token in {"6o", "7o", "8o", "9o"}):
+        return "fundamental"
+    return None
+
+
+def _assignment_matches_segment(assignment: dict[str, Any], segment_filter: str | None) -> bool:
+    if not segment_filter:
+        return True
+    class_name = _normalize_text(str(assignment.get("class_name", "") or ""))
+    if segment_filter == "medio":
+        return any(
+            token in class_name
+            for token in {"medio", "médio", "1a serie", "2a serie", "3a serie", "1a série", "2a série", "3a série", "1em", "2em", "3em"}
+        )
+    return any(
+        token in class_name for token in {"fundamental", "6o", "7o", "8o", "9o", "6 ano", "7 ano", "8 ano", "9 ano"}
+    )
+
+
+def _render_teacher_schedule_answer(summary: dict[str, Any], *, message: str) -> str:
+    teacher_name = str(summary.get("teacher_name", "Professor")).strip() or "Professor"
+    assignments = summary.get("assignments") if isinstance(summary.get("assignments"), list) else []
+    filtered = [item for item in assignments if isinstance(item, dict) and _assignment_matches_segment(item, _segment_filter_for_teacher_message(message))]
+    normalized = _normalize_text(message)
+    if ("so do ensino medio" in normalized or "só do ensino médio" in normalized) and assignments:
+        return "Sim, sua grade atual fica concentrada no Ensino Medio." if len(filtered) == len(assignments) else "Nao. Sua grade atual nao e so do Ensino Medio."
+    if ("so do fundamental" in normalized or "só do fundamental" in normalized) and assignments:
+        return "Sim, sua grade atual fica concentrada no Ensino Fundamental II." if len(filtered) == len(assignments) else "Nao. Sua grade atual nao e so do Ensino Fundamental II."
+    if "disciplin" in normalized and "turma" not in normalized and "classe" not in normalized:
+        seen: set[str] = set()
+        lines: list[str] = []
+        for item in filtered:
+            subject_name = str(item.get("subject_name", "Disciplina")).strip()
+            if subject_name and subject_name not in seen:
+                seen.add(subject_name)
+                lines.append(f"- {subject_name}")
+        return "\n".join([f"Disciplinas de {teacher_name}:", *(lines or ["- Nenhuma disciplina encontrada."])])
+    if ("turma" in normalized or "classe" in normalized) and "disciplin" not in normalized:
+        seen: set[str] = set()
+        lines: list[str] = []
+        for item in filtered:
+            class_name = str(item.get("class_name", "Turma")).strip()
+            if class_name and class_name not in seen:
+                seen.add(class_name)
+                lines.append(f"- {class_name}")
+        return "\n".join([f"Turmas de {teacher_name}:", *(lines or ["- Nenhuma turma encontrada."])])
+    lines = [
+        "- {class_name} - {subject_name} ({academic_year})".format(
+            class_name=item.get("class_name", "Turma"),
+            subject_name=item.get("subject_name", "Disciplina"),
+            academic_year=item.get("academic_year", "---"),
+        )
+        for item in filtered[:8]
+    ]
+    return "\n".join([f"Grade docente de {teacher_name}:", *(lines or ["- Nenhuma alocacao docente encontrada."])])
+
+
+def _looks_like_teacher_summary_request(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(
+        term in normalized
+        for term in {
+            "rotina docente",
+            "resuma minha rotina docente",
+            "resumo enxuto",
+            "alocacao",
+            "alocação",
+            "reuniao pedagogica",
+            "reunião pedagógica",
+        }
+    )
+
+
+def _compose_teacher_summary_answer(summary: dict[str, Any], *, profile: dict[str, Any] | None, message: str) -> str:
+    teacher_name = str(summary.get("teacher_name", "Professor")).strip() or "Professor"
+    assignments = summary.get("assignments") if isinstance(summary.get("assignments"), list) else []
+    filtered = [item for item in assignments if isinstance(item, dict) and _assignment_matches_segment(item, _segment_filter_for_teacher_message(message))]
+    classes = []
+    subjects = []
+    seen_classes: set[str] = set()
+    seen_subjects: set[str] = set()
+    for item in filtered:
+        class_name = str(item.get("class_name", "") or "").strip()
+        subject_name = str(item.get("subject_name", "") or "").strip()
+        if class_name and class_name not in seen_classes:
+            seen_classes.add(class_name)
+            classes.append(class_name)
+        if subject_name and subject_name not in seen_subjects:
+            seen_subjects.add(subject_name)
+            subjects.append(subject_name)
+    public_events = (profile or {}).get("public_calendar_events") if isinstance(profile, dict) else None
+    event_titles: list[str] = []
+    if isinstance(public_events, list):
+        for item in public_events:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("title", "") or "").strip()
+            if title and title not in event_titles:
+                event_titles.append(title)
+    parts = [
+        f"Resumo docente de {teacher_name}: {len(classes)} turma(s) e {len(subjects)} disciplina(s) ativas nesta base."
+    ]
+    if subjects:
+        parts.append("Disciplinas: " + ", ".join(subjects[:4]) + ".")
+    if classes:
+        parts.append("Turmas: " + ", ".join(classes[:4]) + ".")
+    if event_titles:
+        parts.append("No calendario publico, vale acompanhar marcos como " + ", ".join(event_titles[:2]) + ".")
+    parts.append("Para comunicacao escolar geral, a secretaria e o canal institucional mais seguro; para alinhamentos pedagogicos, siga com coordenacao e orientacao conforme o assunto.")
+    return " ".join(part for part in parts if part).strip()
+
+
+def _compose_support_process_boundary_answer() -> str:
+    return (
+        "Hoje eu trato esses tres fluxos de forma diferente: protocolo registra uma solicitacao institucional rastreavel; "
+        "chamado costuma ser o ticket operacional associado ao atendimento; e handoff humano e o encaminhamento real para uma fila ou equipe, "
+        "normalmente com protocolo e status para acompanhamento."
+    )
+
+
+async def _teacher_scope_fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | None:
+    recent_user_messages = _normalized_recent_user_messages(ctx.conversation_context)
+    if not _teacher_session_active(ctx):
+        return None
+    if not _looks_like_teacher_scope_query(ctx.request.message, recent_user_messages):
+        return None
+    school_name = _school_name(ctx.school_profile if isinstance(ctx.school_profile, dict) else {})
+    actor_role = str((ctx.actor or {}).get("role_code", "") or "").strip().lower()
+    if actor_role != "teacher" or ctx.request.telegram_chat_id is None:
+        answer_text = _compose_teacher_access_scope_answer(ctx.actor, school_name=school_name)
+        return SupervisorAnswerPayload(
+            message_text=answer_text,
+            mode="structured_tool",
+            classification=MessageIntentClassification(
+                domain="academic",
+                access_tier="authenticated",
+                confidence=0.94,
+                reason="specialist_supervisor_fast_path:teacher_scope_guidance",
+            ),
+            evidence_pack=MessageEvidencePack(
+                strategy="structured_tools",
+                summary="Escopo docente protegido orientado por identidade de professor na sessao atual.",
+                source_count=1,
+                support_count=1,
+                supports=[MessageEvidenceSupport(kind="teacher_scope", label="Escopo docente", detail="grade, turmas e disciplinas")],
+            ),
+            suggested_replies=_default_suggested_replies("academic"),
+            graph_path=["specialist_supervisor", "fast_path", "teacher_scope_guidance"],
+            reason="specialist_supervisor_fast_path:teacher_scope_guidance",
+        )
+    try:
+        payload = await _http_get(
+            ctx.http_client,
+            base_url=ctx.settings.api_core_url,
+            path="/v1/teachers/me/schedule",
+            token=ctx.settings.internal_api_token,
+            params={"telegram_chat_id": ctx.request.telegram_chat_id},
+        )
+    except httpx.HTTPError:
+        payload = None
+    summary = payload.get("summary") if isinstance(payload, dict) else None
+    if not isinstance(summary, dict):
+        return None
+    if _looks_like_teacher_summary_request(ctx.request.message):
+        answer_text = _compose_teacher_summary_answer(
+            summary,
+            profile=ctx.school_profile if isinstance(ctx.school_profile, dict) else None,
+            message=ctx.request.message,
+        )
+    else:
+        answer_text = _render_teacher_schedule_answer(summary, message=ctx.request.message)
+    return SupervisorAnswerPayload(
+        message_text=answer_text,
+        mode="structured_tool",
+        classification=MessageIntentClassification(
+            domain="academic",
+            access_tier="authenticated",
+            confidence=0.97,
+            reason="specialist_supervisor_fast_path:teacher_schedule",
+        ),
+        evidence_pack=MessageEvidencePack(
+            strategy="structured_tools",
+            summary="Grade docente lida do servico protegido de agenda do professor.",
+            source_count=1,
+            support_count=1,
+            supports=[MessageEvidenceSupport(kind="teacher_schedule", label="Grade docente", detail=_safe_excerpt(answer_text, limit=180))],
+        ),
+        suggested_replies=_default_suggested_replies("academic"),
+        graph_path=["specialist_supervisor", "fast_path", "teacher_schedule"],
+        reason="specialist_supervisor_fast_path:teacher_schedule",
+    )
+
+
+def _looks_like_service_routing_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(
+        term in normalized
+        for term in {
+            "com quem eu falo sobre",
+            "quem responde por",
+            "qual setor",
+            "qual area",
+            "qual área",
+            "como falo com",
+            "como falar com",
+            "por qual canal",
+        }
+    )
+
+
+def _compose_service_routing_fast_answer(profile: dict[str, Any] | None, message: str) -> str | None:
+    catalog = (profile or {}).get("service_catalog")
+    if not isinstance(catalog, list):
+        return None
+    index = {
+        str(item.get("service_key") or "").strip(): item
+        for item in catalog
+        if isinstance(item, dict) and str(item.get("service_key") or "").strip()
+    }
+    normalized = _normalize_text(message)
+    requested: list[tuple[str, str]] = []
+    if any(term in normalized for term in {"bolsa", "desconto", "matricula", "matrícula", "atendimento comercial", "admissoes", "admissao"}):
+        requested.append(("atendimento_admissoes", "Atendimento comercial / Admissoes"))
+    if any(term in normalized for term in {"boleto", "boletos", "financeiro", "fatura", "mensalidade"}):
+        requested.append(("financeiro_escolar", "Financeiro"))
+    if any(term in normalized for term in {"bullying", "orientacao", "orientação", "socioemocional", "convivencia", "convivência"}):
+        requested.append(("orientacao_educacional", "Orientacao educacional"))
+    if any(term in normalized for term in {"direcao", "direção", "diretora", "diretor"}):
+        requested.append(("solicitacao_direcao", "Direcao"))
+    if not requested:
+        return None
+    lines: list[str] = []
+    if any(term in normalized for term in {"direcao", "direção", "diretora", "diretor"}):
+        leadership = (profile or {}).get("leadership_team")
+        if isinstance(leadership, list):
+            first = next((item for item in leadership if isinstance(item, dict)), None)
+            if isinstance(first, dict):
+                title = str(first.get("title") or "Direcao geral").strip()
+                name = str(first.get("name") or "").strip()
+                channel = str(first.get("contact_channel") or "").strip()
+                if name and channel:
+                    lines.append(f"- {title}: {name}. Canal institucional: {channel}.")
+                elif name:
+                    lines.append(f"- {title}: {name}.")
+    for service_key, label in requested:
+        item = index.get(service_key)
+        if not isinstance(item, dict):
+            continue
+        request_channel = str(item.get("request_channel") or "canal institucional").strip()
+        lines.append(f"- {label}: {request_channel}.")
+    if not lines:
+        return None
+    return "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n" + "\n".join(lines)
+
+
+def _compose_contact_bundle_answer(profile: dict[str, Any] | None) -> str | None:
+    if not isinstance(profile, dict):
+        return None
+    address_line = str(profile.get("address_line") or "").strip()
+    district = str(profile.get("district") or "").strip()
+    city = str(profile.get("city") or "").strip()
+    state = str(profile.get("state") or "").strip()
+    postal_code = str(profile.get("postal_code") or "").strip()
+    phone = _select_contact_channel(profile, label_contains=("secretaria",), channel_equals=("telefone",))
+    secretaria_whatsapp = _select_contact_channel(profile, label_contains=("secretaria",), channel_equals=("whatsapp",))
+    secretaria_email = _select_contact_channel(profile, label_contains=("secretaria",), channel_equals=("email",))
+    if not address_line and not phone and not secretaria_whatsapp and not secretaria_email:
+        return None
+    locality = ", ".join(part for part in [address_line, district, city, state] if part)
+    if locality and postal_code:
+        locality = f"{locality}, CEP {postal_code}"
+    parts: list[str] = []
+    if locality:
+        parts.append(f"O endereco completo da escola hoje e {locality}.")
+    if phone:
+        parts.append(f"O telefone principal e {phone.get('value')}.")
+    if secretaria_whatsapp:
+        parts.append(f"O melhor canal para a secretaria hoje e o WhatsApp {secretaria_whatsapp.get('value')}.")
+    elif secretaria_email:
+        parts.append(f"O melhor canal para a secretaria hoje e o email {secretaria_email.get('value')}.")
+    return " ".join(parts) if parts else None
+
+
+def _compose_timeline_bundle_answer(profile: dict[str, Any] | None, message: str) -> str | None:
+    entries = (profile or {}).get("public_timeline")
+    if not isinstance(entries, list):
+        return None
+    normalized = _normalize_text(message)
+    wants_enrollment = "matricula" in normalized or "matrícula" in normalized
+    wants_classes = any(term in normalized for term in {"comecam as aulas", "começam as aulas", "inicio das aulas", "início das aulas", "ano letivo"})
+    if not (wants_enrollment and wants_classes):
+        return None
+    lines: list[str] = []
+    for topic in ("admissions_opening", "school_year_start"):
+        item = _timeline_entry(entries, topic_fragment=topic)
+        if not isinstance(item, dict):
+            continue
+        summary = str(item.get("summary") or "").strip()
+        notes = str(item.get("notes") or "").strip()
+        line = f"{summary} {notes}".strip()
+        if line:
+            lines.append(line)
+    return "\n".join(lines) if lines else None
+
+
+def _looks_like_policy_compare_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return (
+        any(term in normalized for term in {"compare", "comparar", "comparacao", "comparação"})
+        and any(term in normalized for term in {"regulamentos gerais", "manual geral", "manual de regulamentos"})
+        and any(term in normalized for term in {"politica de avaliacao", "política de avaliação", "avaliacao e promocao"})
+    )
+
+
+def _looks_like_family_new_calendar_enrollment_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if not any(term in normalized for term in {"compare", "comparar", "comparacao", "comparação", "do ponto de vista"}):
+        return False
+    groups = (
+        {"calendario letivo", "calendário letivo", "calendario", "calendário"},
+        {"agenda de avaliacoes", "agenda de avaliações", "avaliacoes", "avaliações", "simulados"},
+        {"manual de matricula", "manual de matrícula", "matricula", "matrícula", "ingresso"},
+    )
+    return all(any(term in normalized for term in group) for group in groups) and any(
+        term in normalized for term in {"familia nova", "família nova", "aluno novo", "responsavel novo", "responsável novo"}
+    )
+
+
+def _compose_policy_compare_answer(profile: dict[str, Any] | None) -> str | None:
+    policy = (profile or {}).get("academic_policy")
+    if not isinstance(policy, dict):
+        return None
+    attendance = policy.get("attendance_policy")
+    passing = policy.get("passing_policy")
+    minimum = ""
+    average = ""
+    if isinstance(attendance, dict):
+        minimum = str(attendance.get("minimum_attendance_percent") or "").strip().replace(".", ",")
+    if isinstance(passing, dict):
+        average = str(passing.get("passing_average") or "").strip().replace(".", ",")
+    attendance_line = (
+        f"O manual de regulamentos gerais organiza convivencia, frequencia e rotina, com referencia minima de {minimum}% de presenca por componente."
+        if minimum
+        else "O manual de regulamentos gerais organiza convivencia, frequencia e rotina escolar."
+    )
+    passing_line = (
+        f"Ja a politica de avaliacao detalha aprovacao, media {average}, recuperacao, monitorias e criterios de promocao."
+        if average
+        else "Ja a politica de avaliacao detalha aprovacao, recuperacao, monitorias e criterios de promocao."
+    )
+    closing = (
+        "Os dois se complementam porque a frequencia e os combinados gerais sustentam a rotina, "
+        "enquanto a politica academica mostra como a escola trata recuperacao e aprovacao quando a meta nao e atingida."
+    )
+    return " ".join((attendance_line, passing_line, closing))
+
+
+def _looks_like_service_credentials_bundle_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    has_credentials = any(term in normalized for term in {"credenciais", "credencial", "login", "senha"})
+    has_service_anchor = any(term in normalized for term in {"secretaria", "portal", "documentos", "documentacao", "documentação"})
+    return has_credentials and has_service_anchor
+
+
+def _compose_service_credentials_bundle_answer(profile: dict[str, Any] | None) -> str:
+    warning = ""
+    document_policy = (profile or {}).get("document_submission_policy")
+    if isinstance(document_policy, dict):
+        warning = str(document_policy.get("warning") or "").strip()
+    lines = [
+        "Hoje a familia precisa entender quatro frentes publicas deste fluxo:",
+        "- Secretaria: recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas.",
+        "- Portal institucional: centraliza protocolo e envio digital inicial de documentos.",
+        "- Credenciais: login e senha do portal continuam sendo a base de acesso; se voce perder o acesso, o melhor caminho e a secretaria ou o suporte digital.",
+        "- Documentos: o envio inicial pode ser feito por portal institucional, email da secretaria ou secretaria presencial.",
+    ]
+    if warning:
+        lines.append(warning)
+    return "\n".join(lines)
+
+
+def _extract_requested_visit_date_iso(message: str) -> str | None:
+    normalized = _normalize_text(message)
+    explicit_match = re.search(r"\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b", normalized)
+    if explicit_match:
+        day = int(explicit_match.group(1))
+        month = int(explicit_match.group(2))
+        year_raw = explicit_match.group(3)
+        year = date.today().year if year_raw is None else int(year_raw)
+        if year < 100:
+            year += 2000
+        try:
+            return date(year, month, day).isoformat()
+        except ValueError:
+            return None
+    weekday_map = {
+        "segunda": 0,
+        "terca": 1,
+        "terça": 1,
+        "quarta": 2,
+        "quinta": 3,
+        "sexta": 4,
+        "sabado": 5,
+        "sábado": 5,
+    }
+    today = date.today()
+    for label, weekday in weekday_map.items():
+        if label not in normalized:
+            continue
+        offset = (weekday - today.weekday()) % 7
+        if offset == 0:
+            offset = 7
+        return (today + timedelta(days=offset)).isoformat()
+    return None
+
+
+def _extract_requested_visit_window(profile: dict[str, Any] | None, message: str) -> str | None:
+    normalized = _normalize_text(message)
+    time_match = re.search(r"\b(\d{1,2})(?:[:h](\d{2}))\b", normalized)
+    if time_match:
+        hour = int(time_match.group(1))
+        minute = int(time_match.group(2) or 0)
+        return f"{hour:02d}:{minute:02d}"
+    offers = (profile or {}).get("visit_offers")
+    if isinstance(offers, list):
+        for item in offers:
+            if not isinstance(item, dict):
+                continue
+            day_label = _normalize_text(item.get("day_label"))
+            if "quinta" in normalized and "quinta" not in day_label:
+                continue
+            if "terca" in normalized and "terça" not in day_label and "terca" not in day_label:
+                continue
+            if "tarde" in normalized and any(term in day_label for term in {"quinta", "tarde"}):
+                start_time = str(item.get("start_time") or "").strip()
+                if start_time:
+                    return start_time
+            if "manha" in normalized and any(term in day_label for term in {"terça", "terca", "manha"}):
+                start_time = str(item.get("start_time") or "").strip()
+                if start_time:
+                    return start_time
+    if "manha" in normalized:
+        return "09:00"
+    if "tarde" in normalized:
+        return "14:30"
+    if "noite" in normalized:
+        return "18:30"
+    return None
+
+
+def _weekday_label_from_iso(value: str | None) -> str | None:
+    if not value:
+        return None
+    try:
+        resolved = date.fromisoformat(value)
+    except ValueError:
+        return None
+    labels = [
+        "segunda-feira",
+        "terca-feira",
+        "quarta-feira",
+        "quinta-feira",
+        "sexta-feira",
+        "sabado",
+        "domingo",
+    ]
+    return labels[resolved.weekday()]
+
+
+def _compose_public_pitch_answer(profile: dict[str, Any] | None) -> str | None:
+    pedagogical = _compose_public_pedagogical_answer(profile or {})
+    if not pedagogical:
+        return None
+    return (
+        "Se eu tivesse 30 segundos para resumir esta escola, eu diria isto: "
+        "ela combina aprendizagem por projetos, acompanhamento mais proximo e trilhas academicas no contraturno. "
+        f"{pedagogical}"
+    )
+
+
+def _looks_like_cross_document_public_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    has_synthesis_signal = any(
+        term in normalized
+        for term in {
+            "compare",
+            "comparar",
+            "comparacao",
+            "comparação",
+            "comparativo",
+            "sintetize",
+            "relacione",
+            "pilares",
+            "ponto de vista",
+            "quando cruzamos",
+            "de ponta a ponta",
+            "o que muda",
+            "destacando",
+        }
+    ) or any(
+        phrase in normalized
+        for phrase in {
+            "o que uma familia precisa entender",
+            "o que uma família precisa entender",
+            "uma unica explicacao coerente",
+            "uma única explicação coerente",
+            "guia de sobrevivencia do primeiro mes",
+            "guia de sobrevivência do primeiro mês",
+        }
+    )
+    if not has_synthesis_signal:
+        return False
+    return any(
+        term in normalized
+        for term in {
+            "calendario",
+            "calendário",
+            "agenda",
+            "manual",
+            "regulamentos",
+            "politica",
+            "política",
+            "proposta pedagogica",
+            "proposta pedagógica",
+            "portal",
+            "credenciais",
+            "documentos",
+            "rematricula",
+            "rematrícula",
+            "transferencia",
+            "transferência",
+            "cancelamento",
+            "avaliacao",
+            "avaliação",
+            "recuperacao",
+            "recuperação",
+            "vida escolar",
+            "inclusao",
+            "inclusão",
+        }
+    )
+
+
+def _looks_like_third_party_student_data_request(message: str) -> bool:
+    normalized = _normalize_text(message)
+    relationship_terms = {
+        "vizinha",
+        "vizinho",
+        "colega",
+        "amigo",
+        "amiga",
+        "sobrinho",
+        "sobrinha",
+        "afilhado",
+        "afilhada",
+        "filho da minha",
+        "filha da minha",
+        "filho do meu",
+        "filha do meu",
+        "outra familia",
+        "outra família",
+        "outra pessoa",
+        "outro aluno",
+        "outra aluna",
+    }
+    if not any(term in normalized for term in relationship_terms):
+        return False
+    return any(
+        term in normalized
+        for term in {
+            "nota",
+            "notas",
+            "falta",
+            "faltas",
+            "financeiro",
+            "mensalidade",
+            "boleto",
+            "boletos",
+            "fatura",
+            "faturas",
+            "documentacao",
+            "documentação",
+            "historico",
+            "histórico",
+        }
+    )
+
+
+def _build_third_party_student_data_denial() -> SupervisorAnswerPayload:
+    return SupervisorAnswerPayload(
+        message_text=(
+            "Nao posso expor notas, faltas, financeiro ou documentacao de um aluno que nao esteja vinculado a esta conta. "
+            "Se voce for o responsavel autorizado, vincule a conta correta ou informe um aluno vinculado desta sessao."
+        ),
+        mode="deny",
+        classification=MessageIntentClassification(
+            domain="academic",
+            access_tier="authenticated",
+            confidence=1.0,
+            reason="specialist_supervisor_third_party_student_data_denied",
+        ),
+        graph_path=["specialist_supervisor", "guardrail", "third_party_student_data"],
+        risk_flags=["privacy_guardrail"],
+        reason="specialist_supervisor_third_party_student_data_denied",
+    )
+
+
 def _looks_like_human_handoff_request(message: str) -> bool:
     normalized = _normalize_text(message)
+    if "bloqueando atendimento" in normalized or "bloqueia atendimento" in normalized:
+        return False
     queue_signals = (
         "financeir",
         "secretari",
@@ -1779,7 +2837,7 @@ def _looks_like_human_handoff_request(message: str) -> bool:
     if any(marker in normalized for marker in direct_markers):
         return True
     if any(signal in normalized for signal in queue_signals) and any(
-        marker in normalized for marker in ("quero", "preciso", "falar", "atendimento", "encaminha", "encaminhe", "abre")
+        marker in normalized for marker in ("quero", "preciso", "falar", "encaminha", "encaminhe")
     ):
         return True
     return False
@@ -2108,6 +3166,233 @@ def _compose_passing_policy_answer(profile: dict[str, Any] | None, *, authentica
     return answer
 
 
+def _looks_like_calendar_week_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return "desta semana" in normalized and any(term in normalized for term in {"eventos", "familias", "responsaveis", "responsáveis"})
+
+
+def _looks_like_first_bimester_timeline_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return "primeiro bimestre" in normalized and any(term in normalized for term in {"linha do tempo", "datas", "importam"})
+
+
+def _looks_like_eval_calendar_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(term in normalized for term in {"reunioes de pais", "reuniões de pais", "simulados", "semanas de prova", "semana de prova"})
+
+
+def _looks_like_travel_planning_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return "viagem" in normalized and any(term in normalized for term in {"calendario", "calendário", "vida escolar", "marcos"})
+
+
+def _looks_like_year_three_phases_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return "tres fases" in normalized and all(term in normalized for term in {"admiss", "rotina", "fechamento"})
+
+
+def _looks_like_enrollment_documents_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(term in normalized for term in {"documentos exigidos", "documentos sao exigidos", "documentos são exigidos"}) and "matricula" in normalized
+
+
+def _looks_like_public_academic_policy_overview_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(term in normalized for term in {"politica de avaliacao", "política de avaliação", "recuperacao", "promoção", "promocao"}) and "escola" in normalized
+
+
+def _looks_like_conduct_frequency_punctuality_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(term in normalized for term in {"convivencia", "convivência", "frequencia", "frequência", "pontualidade"})
+
+
+def _looks_like_bolsas_and_processes_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(term in normalized for term in {"bolsas", "descontos"}) and any(
+        term in normalized for term in {"rematricula", "rematrícula", "transferencia", "transferência", "cancelamento"}
+    )
+
+
+def _looks_like_health_second_call_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(term in normalized for term in {"saude", "saúde", "atestado", "motivo de saude", "motivo de saúde"}) and any(
+        term in normalized for term in {"perder uma prova", "perdi uma prova", "segunda chamada"}
+    )
+
+
+def _looks_like_permanence_family_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return "permanencia escolar" in normalized and "acompanhamento da familia" in normalized
+
+
+def _looks_like_health_authorization_bridge_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return all(
+        term in normalized
+        for term in {"saude", "medicacao", "segunda chamada", "saidas pedagogicas", "autorizacoes"}
+    )
+
+
+def _looks_like_first_month_risks_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return "primeiro mes" in normalized and any(term in normalized for term in {"riscos", "esquecido", "prazo"})
+
+
+def _looks_like_process_compare_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(term in normalized for term in {"rematricula", "rematrícula"}) and any(
+        term in normalized for term in {"transferencia", "transferência", "cancelamento"}
+    ) and any(term in normalized for term in {"compare", "destacando", "o que muda"})
+
+
+def _looks_like_public_graph_rag_query(message: str) -> bool:
+    return any(
+        detector(message)
+        for detector in (
+            _looks_like_permanence_family_query,
+            _looks_like_health_authorization_bridge_query,
+            _looks_like_first_month_risks_query,
+            _looks_like_process_compare_query,
+        )
+    )
+
+
+def _parse_public_datetime(value: Any) -> datetime | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    normalized = raw.replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+
+
+def _format_public_date(value: Any) -> str:
+    parsed = _parse_public_datetime(value)
+    if parsed is None:
+        raw = str(value or "").strip()
+        return raw or "--"
+    return parsed.strftime("%d/%m/%Y")
+
+
+def _calendar_event_search_blob(item: dict[str, Any]) -> str:
+    return _normalize_text(
+        " ".join(
+            str(item.get(key) or "")
+            for key in ("title", "description", "category", "audience")
+        )
+    )
+
+
+def _render_calendar_event_lines(events: list[dict[str, Any]], *, limit: int = 5) -> list[str]:
+    rendered: list[str] = []
+    for item in events[:limit]:
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or "Evento publico").strip()
+        starts_at = _format_public_date(item.get("starts_at"))
+        audience = str(item.get("audience") or "").strip()
+        description = str(item.get("description") or "").strip()
+        suffix = f" · publico: {audience}" if audience else ""
+        line = f"- {title} ({starts_at}){suffix}."
+        if description:
+            line += f" {description}"
+        rendered.append(line.strip())
+    return rendered
+
+
+def _compose_calendar_week_answer(events: list[dict[str, Any]]) -> str | None:
+    if not events:
+        return None
+    family_events = [
+        item
+        for item in events
+        if isinstance(item, dict)
+        and any(term in _calendar_event_search_blob(item) for term in {"familias", "famílias", "responsaveis", "responsáveis", "pais"})
+    ]
+    chosen = family_events or [item for item in events if isinstance(item, dict)]
+    lines = _render_calendar_event_lines(chosen, limit=4)
+    if not lines:
+        return None
+    return "Os principais eventos publicos para familias e responsaveis nesta base sao:\n" + "\n".join(lines)
+
+
+def _compose_first_bimester_answer(entries: list[dict[str, Any]], events: list[dict[str, Any]]) -> str | None:
+    lines: list[str] = []
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        summary = str(item.get("summary") or "").strip()
+        if summary:
+            lines.append(f"- {summary}")
+    first_term_events = [
+        item
+        for item in events
+        if isinstance(item, dict)
+        and (parsed := _parse_public_datetime(item.get("starts_at"))) is not None
+        and parsed.date() <= date(2026, 4, 30)
+    ]
+    lines.extend(_render_calendar_event_lines(first_term_events, limit=4))
+    if not lines:
+        return None
+    return "Linha do tempo publica do primeiro bimestre:\n" + "\n".join(lines[:6])
+
+
+def _compose_eval_calendar_answer(events: list[dict[str, Any]]) -> str | None:
+    matching = [
+        item
+        for item in events
+        if isinstance(item, dict)
+        and any(term in _calendar_event_search_blob(item) for term in {"reuniao", "reunião", "simulado", "prova", "plantao", "plantão"})
+    ]
+    lines = _render_calendar_event_lines(matching or events, limit=6)
+    if not lines:
+        return None
+    return "No calendario publico atual, estes sao os marcos mais relevantes para reunioes, simulados e semanas de prova:\n" + "\n".join(lines)
+
+
+def _compose_travel_planning_answer(entries: list[dict[str, Any]], events: list[dict[str, Any]]) -> str | None:
+    milestones: list[str] = []
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        summary = str(item.get("summary") or "").strip()
+        if summary:
+            milestones.append(f"- {summary}")
+    relevant_events = [
+        item
+        for item in events
+        if isinstance(item, dict)
+        and any(term in _calendar_event_search_blob(item) for term in {"reuniao", "reunião", "simulado", "prova", "familias", "famílias", "responsaveis", "responsáveis"})
+    ]
+    milestones.extend(_render_calendar_event_lines(relevant_events, limit=5))
+    if not milestones:
+        return None
+    return (
+        "Para planejar uma viagem sem atrapalhar a vida escolar, vale observar estes marcos publicos antes de fechar datas:\n"
+        + "\n".join(milestones[:7])
+    )
+
+
+def _compose_year_three_phases_answer(entries: list[dict[str, Any]], events: list[dict[str, Any]]) -> str | None:
+    admissions = next((item for item in entries if isinstance(item, dict) and "matricula" in _normalize_text(item.get("title"))), None)
+    school_year = next((item for item in entries if isinstance(item, dict) and "aulas" in _normalize_text(item.get("summary"))), None)
+    closure = next((item for item in entries if isinstance(item, dict) and "formatura" in _normalize_text(item.get("title"))), None)
+    routine_events = _render_calendar_event_lines([item for item in events if isinstance(item, dict)], limit=3)
+    parts: list[str] = []
+    if isinstance(admissions, dict):
+        parts.append(f"Admissao: {str(admissions.get('summary') or '').strip()}")
+    if isinstance(school_year, dict):
+        routine = str(school_year.get("summary") or "").strip()
+        if routine_events:
+            routine += " Eventos publicos ao longo do ano incluem " + "; ".join(line.removeprefix("- ").rstrip(".") for line in routine_events[:2]) + "."
+        parts.append(f"Rotina academica: {routine}")
+    if isinstance(closure, dict):
+        parts.append(f"Fechamento: {str(closure.get('summary') or '').strip()}")
+    return "\n".join(parts) if parts else None
+
+
 def _recent_subject_from_context(
     summary: dict[str, Any],
     conversation_context: dict[str, Any] | None,
@@ -2161,6 +3446,37 @@ def _compose_admin_status_answer(summary: dict[str, Any]) -> str:
             lines.append(next_step)
         return " ".join(lines)
     return f"Hoje a documentacao de {student_name} aparece como {overall_status or 'regular'}."
+
+
+def _compose_actor_admin_status_answer(summary: dict[str, Any]) -> str:
+    status_labels = {
+        "complete": "regular",
+        "completed": "regular",
+        "pending": "com pendencias",
+        "review": "em revisao",
+        "incomplete": "incompleto",
+        "missing": "com pendencias",
+    }
+    overall_status = status_labels.get(str(summary.get("overall_status") or "").strip().lower(), "em analise")
+    lines = [f"Situacao administrativa do seu cadastro hoje: {overall_status}."]
+    checklist = summary.get("checklist")
+    if isinstance(checklist, list):
+        lines.append("Situacao documental do seu cadastro hoje:")
+        for item in checklist:
+            if not isinstance(item, dict):
+                continue
+            label = str(item.get("label") or "Item").strip() or "Item"
+            raw_status = str(item.get("status") or "").strip().lower()
+            status = status_labels.get(raw_status, raw_status or "em analise")
+            notes = str(item.get("notes") or "").strip()
+            line = f"- {label}: {status}"
+            if notes:
+                line += f". {notes}"
+            lines.append(line)
+    next_step = str(summary.get("next_step") or "").strip()
+    if next_step:
+        lines.append(f"Proximo passo: {next_step}")
+    return "\n".join(lines)
 
 
 async def _create_visit_booking_payload(ctx: SupervisorRunContext) -> dict[str, Any]:
@@ -2396,34 +3712,6 @@ def _fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | No
             reason="specialist_supervisor_fast_path:greeting",
         )
 
-    if _is_assistant_identity_query(ctx.request.message):
-        return SupervisorAnswerPayload(
-            message_text=_compose_assistant_identity_answer(profile),
-            mode="structured_tool",
-            classification=MessageIntentClassification(
-                domain="institution",
-                access_tier=_access_tier_for_domain("institution", ctx.request.user.authenticated),
-                confidence=0.99,
-                reason="specialist_supervisor_fast_path:assistant_identity",
-            ),
-            evidence_pack=MessageEvidencePack(
-                strategy="direct_answer",
-                summary="Identidade institucional do assistente com grounding no produto.",
-                source_count=1,
-                support_count=1,
-                supports=[
-                    MessageEvidenceSupport(
-                        kind="assistant_identity",
-                        label="EduAssist",
-                        detail=_school_name(profile),
-                    )
-                ],
-            ),
-            suggested_replies=_default_suggested_replies("institution"),
-            graph_path=["specialist_supervisor", "fast_path", "assistant_identity"],
-            reason="specialist_supervisor_fast_path:assistant_identity",
-        )
-
     if _is_auth_guidance_query(ctx.request.message):
         return SupervisorAnswerPayload(
             message_text=_compose_auth_guidance_answer(profile),
@@ -2455,6 +3743,171 @@ def _fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | No
             ],
             graph_path=["specialist_supervisor", "fast_path", "auth_guidance"],
             reason="specialist_supervisor_fast_path:auth_guidance",
+        )
+
+    if (
+        _linked_students(ctx.actor, capability="academic")
+        or _linked_students(ctx.actor, capability="finance")
+    ) and _looks_like_access_scope_query(ctx.request.message):
+        return SupervisorAnswerPayload(
+            message_text=_compose_authenticated_scope_answer(ctx.actor),
+            mode="structured_tool",
+            classification=MessageIntentClassification(
+                domain="institution",
+                access_tier="authenticated",
+                confidence=0.99,
+                reason="specialist_supervisor_fast_path:access_scope",
+            ),
+            evidence_pack=MessageEvidencePack(
+                strategy="direct_answer",
+                summary="Escopo autenticado da conta com alunos vinculados.",
+                source_count=1,
+                support_count=1,
+                supports=[MessageEvidenceSupport(kind="account_scope", label="Conta vinculada", detail="academico e financeiro conforme permissao")],
+            ),
+            suggested_replies=_default_suggested_replies("institution"),
+            graph_path=["specialist_supervisor", "fast_path", "access_scope"],
+            reason="specialist_supervisor_fast_path:access_scope",
+        )
+
+    if _looks_like_service_routing_query(ctx.request.message) and profile:
+        routing_answer = _compose_service_routing_fast_answer(profile, ctx.request.message)
+        if routing_answer:
+            return SupervisorAnswerPayload(
+                message_text=routing_answer,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_fast_path:service_routing",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Roteamento publico deterministico por setor institucional.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[MessageEvidenceSupport(kind="service_routing", label="Setores", detail="admissoes, financeiro, orientacao educacional e direcao")],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "fast_path", "service_routing"],
+                reason="specialist_supervisor_fast_path:service_routing",
+            )
+
+    if profile and _looks_like_service_credentials_bundle_query(ctx.request.message):
+        return SupervisorAnswerPayload(
+            message_text=_compose_service_credentials_bundle_answer(profile),
+            mode="structured_tool",
+            classification=MessageIntentClassification(
+                domain="institution",
+                access_tier="public",
+                confidence=0.99,
+                reason="specialist_supervisor_fast_path:service_credentials_bundle",
+            ),
+            evidence_pack=MessageEvidencePack(
+                strategy="direct_answer",
+                summary="Resumo publico deterministico sobre secretaria, portal, credenciais e documentos.",
+                source_count=1,
+                support_count=1,
+                supports=[
+                    MessageEvidenceSupport(
+                        kind="service_overview",
+                        label="Secretaria e portal",
+                        detail="secretaria, portal institucional, credenciais e documentos",
+                    )
+                ],
+            ),
+            suggested_replies=_default_suggested_replies("institution"),
+            graph_path=["specialist_supervisor", "fast_path", "service_credentials_bundle"],
+            reason="specialist_supervisor_fast_path:service_credentials_bundle",
+        )
+
+    if profile and _looks_like_policy_compare_query(ctx.request.message):
+        compare_answer = _compose_policy_compare_answer(profile)
+        if compare_answer:
+            return SupervisorAnswerPayload(
+                message_text=compare_answer,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_fast_path:policy_compare",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Comparacao deterministica entre regulamentos gerais e politica de avaliacao.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[
+                        MessageEvidenceSupport(
+                            kind="policy",
+                            label="Frequencia, aprovacao e recuperacao",
+                            detail="manual de regulamentos + academic_policy",
+                        )
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "fast_path", "policy_compare"],
+                reason="specialist_supervisor_fast_path:policy_compare",
+            )
+
+    if profile and _looks_like_family_new_calendar_enrollment_query(ctx.request.message):
+        family_new_answer = compose_public_family_new_calendar_assessment_enrollment()
+        if family_new_answer:
+            return SupervisorAnswerPayload(
+                message_text=family_new_answer,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_fast_path:family_new_calendar_enrollment",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Sintese deterministica para familia nova cruzando calendario, agenda de avaliacoes e matricula.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[
+                        MessageEvidenceSupport(
+                            kind="calendar_enrollment",
+                            label="Calendario + agenda + matricula",
+                            detail="calendario letivo, agenda de avaliacoes e manual de matricula",
+                        )
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "fast_path", "family_new_calendar_enrollment"],
+                reason="specialist_supervisor_fast_path:family_new_calendar_enrollment",
+            )
+
+    if _is_assistant_identity_query(ctx.request.message):
+        return SupervisorAnswerPayload(
+            message_text=_compose_assistant_identity_answer(profile),
+            mode="structured_tool",
+            classification=MessageIntentClassification(
+                domain="institution",
+                access_tier=_access_tier_for_domain("institution", ctx.request.user.authenticated),
+                confidence=0.99,
+                reason="specialist_supervisor_fast_path:assistant_identity",
+            ),
+            evidence_pack=MessageEvidencePack(
+                strategy="direct_answer",
+                summary="Identidade institucional do assistente com grounding no produto.",
+                source_count=1,
+                support_count=1,
+                supports=[
+                    MessageEvidenceSupport(
+                        kind="assistant_identity",
+                        label="EduAssist",
+                        detail=_school_name(profile),
+                    )
+                ],
+            ),
+            suggested_replies=_default_suggested_replies("institution"),
+            graph_path=["specialist_supervisor", "fast_path", "assistant_identity"],
+            reason="specialist_supervisor_fast_path:assistant_identity",
         )
 
     if (
@@ -2508,6 +3961,266 @@ def _fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | No
 
     if not profile:
         return None
+
+    if any(term in normalized for term in {"endereco completo", "telefone principal", "melhor canal"}) and "secretaria" in normalized:
+        contact_bundle = _compose_contact_bundle_answer(profile)
+        if contact_bundle:
+            return SupervisorAnswerPayload(
+                message_text=contact_bundle,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_fast_path:contact_bundle",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Endereco, telefone principal e melhor canal da secretaria.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[MessageEvidenceSupport(kind="contact", label="Secretaria", detail=_safe_excerpt(contact_bundle, limit=180))],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "fast_path", "contact_bundle"],
+                reason="specialist_supervisor_fast_path:contact_bundle",
+            )
+
+    if (
+        not _looks_like_cross_document_public_query(ctx.request.message)
+        and any(term in normalized for term in {"30 segundos", "30s", "familia nova", "família nova", "por que deveria", "por que escolher"})
+    ):
+        pitch_answer = _compose_public_pitch_answer(profile)
+        if pitch_answer:
+            return SupervisorAnswerPayload(
+                message_text=pitch_answer,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_fast_path:public_pitch",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Pitch institucional curto grounded no perfil publico.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[MessageEvidenceSupport(kind="highlight", label="Pitch institucional", detail=_safe_excerpt(pitch_answer, limit=180))],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "fast_path", "public_pitch"],
+            reason="specialist_supervisor_fast_path:public_pitch",
+        )
+
+    if not ctx.request.user.authenticated and _looks_like_bolsas_and_processes_query(ctx.request.message):
+        answer_text = compose_public_bolsas_and_processes(profile)
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_fast_path:bolsas_and_processes",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Resposta documental deterministica sobre bolsas, rematricula, transferencia e cancelamento.",
+                    source_count=2,
+                    support_count=2,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Edital de Bolsas e Descontos 2026", detail="data/corpus/public/edital-bolsas-e-descontos-2026.md"),
+                        MessageEvidenceSupport(kind="document", label="Rematricula, Transferencia e Cancelamento 2026", detail="data/corpus/public/rematricula-transferencia-e-cancelamento-2026.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "fast_path", "bolsas_and_processes"],
+                reason="specialist_supervisor_fast_path:bolsas_and_processes",
+            )
+
+    if not ctx.request.user.authenticated and _looks_like_health_second_call_query(ctx.request.message):
+        answer_text = compose_public_health_second_call()
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="academic",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_fast_path:health_second_call",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Resposta documental deterministica para saude, atestado e segunda chamada.",
+                    source_count=2,
+                    support_count=2,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Protocolo de Saude, Medicacao e Emergencias", detail="data/corpus/public/protocolo-saude-medicacao-e-emergencias.md"),
+                        MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("academic"),
+                graph_path=["specialist_supervisor", "fast_path", "health_second_call"],
+                reason="specialist_supervisor_fast_path:health_second_call",
+            )
+
+    if not ctx.request.user.authenticated and _looks_like_permanence_family_query(ctx.request.message):
+        answer_text = compose_public_permanence_and_family_support(profile)
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_fast_path:permanence_family_support",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Resposta documental deterministica sobre permanencia escolar e acompanhamento da familia.",
+                    source_count=3,
+                    support_count=3,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Orientacao, Apoio e Vida Escolar", detail="data/corpus/public/orientacao-apoio-e-vida-escolar.md"),
+                        MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
+                        MessageEvidenceSupport(kind="policy", label="Projeto de vida", detail="academic_policy.project_of_life_summary"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "fast_path", "permanence_family_support"],
+                reason="specialist_supervisor_fast_path:permanence_family_support",
+            )
+
+    if not ctx.request.user.authenticated and _looks_like_health_authorization_bridge_query(ctx.request.message):
+        answer_text = compose_public_health_authorizations_bridge()
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_fast_path:health_authorizations_bridge",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Resposta documental deterministica cruzando saude, segunda chamada e autorizacoes.",
+                    source_count=3,
+                    support_count=3,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Protocolo de Saude, Medicacao e Emergencias", detail="data/corpus/public/protocolo-saude-medicacao-e-emergencias.md"),
+                        MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
+                        MessageEvidenceSupport(kind="document", label="Saidas Pedagogicas, Eventos e Autorizacoes", detail="data/corpus/public/saidas-pedagogicas-eventos-e-autorizacoes.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "fast_path", "health_authorizations_bridge"],
+                reason="specialist_supervisor_fast_path:health_authorizations_bridge",
+            )
+
+    if not ctx.request.user.authenticated and _looks_like_first_month_risks_query(ctx.request.message):
+        answer_text = compose_public_first_month_risks(profile)
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_fast_path:first_month_risks",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Resposta documental deterministica para riscos operacionais do primeiro mes.",
+                    source_count=3,
+                    support_count=3,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Secretaria, Documentacao e Prazos", detail="data/corpus/public/secretaria-documentacao-e-prazos.md"),
+                        MessageEvidenceSupport(kind="document", label="Politica de Uso do Portal, Aplicativo e Credenciais", detail="data/corpus/public/politica-uso-do-portal-aplicativo-e-credenciais.md"),
+                        MessageEvidenceSupport(kind="document", label="Manual de Regulamentos Gerais", detail="data/corpus/public/manual-regulamentos-gerais.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "fast_path", "first_month_risks"],
+                reason="specialist_supervisor_fast_path:first_month_risks",
+            )
+
+    if not ctx.request.user.authenticated and _looks_like_process_compare_query(ctx.request.message):
+        answer_text = compose_public_process_compare()
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_fast_path:process_compare",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Resposta documental deterministica para rematricula, transferencia e cancelamento.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Rematricula, Transferencia e Cancelamento 2026", detail="data/corpus/public/rematricula-transferencia-e-cancelamento-2026.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "fast_path", "process_compare"],
+                reason="specialist_supervisor_fast_path:process_compare",
+            )
+
+    combined_timeline = _compose_timeline_bundle_answer(profile, ctx.request.message)
+    if combined_timeline:
+        return SupervisorAnswerPayload(
+            message_text=combined_timeline,
+            mode="structured_tool",
+            classification=MessageIntentClassification(
+                domain="calendar",
+                access_tier="public",
+                confidence=0.99,
+                reason="specialist_supervisor_fast_path:timeline_bundle",
+            ),
+            evidence_pack=MessageEvidencePack(
+                strategy="direct_answer",
+                summary="Resumo deterministico de matricula e inicio das aulas.",
+                source_count=1,
+                support_count=1,
+                supports=[MessageEvidenceSupport(kind="timeline", label="Linha do tempo publica", detail=_safe_excerpt(combined_timeline, limit=180))],
+            ),
+            suggested_replies=_default_suggested_replies("institution"),
+            graph_path=["specialist_supervisor", "fast_path", "timeline_bundle"],
+            reason="specialist_supervisor_fast_path:timeline_bundle",
+        )
+
+    if all(term in normalized for term in {"protocolo", "chamado", "handoff"}):
+        return SupervisorAnswerPayload(
+            message_text=_compose_support_process_boundary_answer(),
+            mode="structured_tool",
+            classification=MessageIntentClassification(
+                domain="support",
+                access_tier=_access_tier_for_domain("support", ctx.request.user.authenticated),
+                confidence=0.98,
+                reason="specialist_supervisor_fast_path:support_process_boundary",
+            ),
+            evidence_pack=MessageEvidencePack(
+                strategy="direct_answer",
+                summary="Explicacao deterministica dos fluxos de protocolo, chamado e handoff humano.",
+                source_count=1,
+                support_count=1,
+                supports=[MessageEvidenceSupport(kind="workflow", label="Fluxos operacionais", detail="protocolo, chamado e handoff humano")],
+            ),
+            suggested_replies=_default_suggested_replies("support"),
+            graph_path=["specialist_supervisor", "fast_path", "support_process_boundary"],
+            reason="specialist_supervisor_fast_path:support_process_boundary",
+        )
 
     if any(term in normalized for term in {"atendente humano", "atendimento humano", "falar com humano", "falar com um humano"}):
         return SupervisorAnswerPayload(
@@ -2895,6 +4608,460 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 reason="specialist_supervisor_tool_first:human_handoff",
             )
 
+    if _looks_like_internal_document_query(ctx.request.message):
+        authorized_for_restricted = _can_read_restricted_documents(ctx.request.user)
+        domain_hint = _internal_doc_domain_hint(ctx.request.message)
+        if not authorized_for_restricted:
+            public_bridge = ""
+            if _looks_like_health_second_call_query(ctx.request.message):
+                public_answer = compose_public_health_second_call()
+                if public_answer:
+                    public_bridge = f"\n\nPosso, no entanto, te orientar pelo material publico:\n{public_answer}"
+            return SupervisorAnswerPayload(
+                message_text=(
+                    "Nao posso compartilhar procedimentos, protocolos, manuais ou playbooks internos da escola. "
+                    "Se voce precisa de orientacao oficial, eu posso explicar a politica publica correspondente ou abrir um handoff."
+                ) + public_bridge,
+                mode="deny",
+                classification=MessageIntentClassification(
+                    domain=domain_hint,
+                    access_tier=_access_tier_for_domain(domain_hint, ctx.request.user.authenticated),
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:restricted_document_denied",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="deny",
+                    summary="Pedido de acesso a documento restrito negado por politica de acesso.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[
+                        MessageEvidenceSupport(kind="policy", label="Documento restrito", detail="Acesso limitado a staff e perfis autorizados"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies(domain_hint),
+                graph_path=["specialist_supervisor", "tool_first", "restricted_document_denied"],
+                reason="specialist_supervisor_tool_first:restricted_document_denied",
+            )
+
+        retrieval_payload = await _orchestrator_retrieval_search(
+            ctx,
+            query=ctx.request.message,
+            visibility="restricted",
+            category="private_docs",
+            top_k=5,
+        )
+        hits = retrieval_payload.get("hits") if isinstance(retrieval_payload, dict) else []
+        normalized_hits = hits if isinstance(hits, list) else []
+        relevant_hits = _select_relevant_internal_doc_hits(ctx.request.message, normalized_hits)
+        if relevant_hits:
+            citations = [
+                citation
+                for hit in relevant_hits
+                if (citation := _citation_from_retrieval_hit(hit)) is not None
+            ][:4]
+            supports = [
+                MessageEvidenceSupport(
+                    kind="citation",
+                    label=citation.document_title,
+                    detail=f"{citation.version_label} · {citation.chunk_id}",
+                    excerpt=_safe_excerpt(citation.excerpt),
+                )
+                for citation in citations[:3]
+            ]
+            return SupervisorAnswerPayload(
+                message_text=_compose_internal_doc_grounded_answer(ctx.request.message, relevant_hits),
+                mode="hybrid_retrieval",
+                classification=MessageIntentClassification(
+                    domain=domain_hint,
+                    access_tier=_access_tier_for_domain(domain_hint, ctx.request.user.authenticated),
+                    confidence=0.94,
+                    reason="specialist_supervisor_tool_first:restricted_document_search",
+                ),
+                retrieval_backend="qdrant_hybrid",
+                citations=citations,
+                evidence_pack=MessageEvidencePack(
+                    strategy="document_search",
+                    summary="Resposta grounded diretamente em documentos restritos recuperados do acervo interno.",
+                    source_count=len(citations) or 1,
+                    support_count=len(supports),
+                    supports=supports,
+                ),
+                suggested_replies=_default_suggested_replies(domain_hint),
+                graph_path=["specialist_supervisor", "tool_first", "restricted_document_search"],
+                reason="specialist_supervisor_tool_first:restricted_document_search",
+            )
+
+        return SupervisorAnswerPayload(
+            message_text=_compose_internal_doc_no_match_answer(ctx.request.message, profile),
+            mode="hybrid_retrieval",
+            classification=MessageIntentClassification(
+                domain=domain_hint,
+                access_tier=_access_tier_for_domain(domain_hint, ctx.request.user.authenticated),
+                confidence=0.82,
+                reason="specialist_supervisor_tool_first:restricted_document_no_match",
+            ),
+            retrieval_backend="qdrant_hybrid",
+            evidence_pack=MessageEvidencePack(
+                strategy="document_search",
+                summary="Busca em documentos restritos sem encontrar evidencias suficientemente especificas para ampliar a resposta.",
+                source_count=1 if normalized_hits else 0,
+                support_count=1,
+                supports=[
+                    MessageEvidenceSupport(kind="retrieval", label="Documentos restritos", detail="Busca executada sem match especifico suficiente"),
+                ],
+            ),
+            suggested_replies=_default_suggested_replies(domain_hint),
+            graph_path=["specialist_supervisor", "tool_first", "restricted_document_no_match"],
+            reason="specialist_supervisor_tool_first:restricted_document_no_match",
+        )
+
+    if not ctx.request.user.authenticated and (
+        _looks_like_calendar_week_query(ctx.request.message)
+        or _looks_like_first_bimester_timeline_query(ctx.request.message)
+        or _looks_like_eval_calendar_query(ctx.request.message)
+        or _looks_like_travel_planning_query(ctx.request.message)
+        or _looks_like_year_three_phases_query(ctx.request.message)
+    ):
+        timeline_payload, calendar_payload = await asyncio.gather(
+            _fetch_public_payload(ctx, "/v1/public/timeline", "timeline"),
+            _http_get(
+                ctx.http_client,
+                base_url=ctx.settings.api_core_url,
+                path="/v1/calendar/public",
+                token=ctx.settings.internal_api_token,
+                params={"date_from": "2026-01-01", "date_to": "2026-12-31", "limit": 20},
+            ),
+        )
+        entries = timeline_payload.get("entries") if isinstance(timeline_payload, dict) else []
+        events = calendar_payload.get("events") if isinstance(calendar_payload, dict) else []
+        answer_text = None
+        reason = "specialist_supervisor_tool_first:public_calendar"
+        summary = "Resposta deterministica baseada na timeline publica e no calendario publico."
+        support_label = "Calendario publico"
+        if _looks_like_calendar_week_query(ctx.request.message):
+            answer_text = _compose_calendar_week_answer(events if isinstance(events, list) else [])
+            reason = "specialist_supervisor_tool_first:calendar_week"
+            support_label = "Eventos publicos para familias"
+        elif _looks_like_first_bimester_timeline_query(ctx.request.message):
+            answer_text = _compose_first_bimester_answer(entries if isinstance(entries, list) else [], events if isinstance(events, list) else [])
+            reason = "specialist_supervisor_tool_first:first_bimester_timeline"
+            support_label = "Primeiro bimestre"
+        elif _looks_like_eval_calendar_query(ctx.request.message):
+            answer_text = _compose_eval_calendar_answer(events if isinstance(events, list) else [])
+            reason = "specialist_supervisor_tool_first:eval_calendar"
+            support_label = "Reunioes, simulados e provas"
+        elif _looks_like_travel_planning_query(ctx.request.message):
+            answer_text = _compose_travel_planning_answer(entries if isinstance(entries, list) else [], events if isinstance(events, list) else [])
+            reason = "specialist_supervisor_tool_first:travel_planning"
+            support_label = "Marcos de calendario"
+        elif _looks_like_year_three_phases_query(ctx.request.message):
+            answer_text = _compose_year_three_phases_answer(entries if isinstance(entries, list) else [], events if isinstance(events, list) else [])
+            reason = "specialist_supervisor_tool_first:year_three_phases"
+            support_label = "Fases do ano escolar"
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="calendar",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason=reason,
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary=summary,
+                    source_count=2,
+                    support_count=2,
+                    supports=[
+                        MessageEvidenceSupport(kind="timeline", label="Timeline publica", detail="v1/public/timeline"),
+                        MessageEvidenceSupport(kind="calendar", label=support_label, detail="v1/calendar/public"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "tool_first", "public_calendar"],
+                reason=reason,
+            )
+
+    if not ctx.request.user.authenticated and _looks_like_enrollment_documents_query(ctx.request.message):
+        admissions_docs = profile.get("admissions_required_documents") if isinstance(profile, dict) else None
+        if isinstance(admissions_docs, list) and admissions_docs:
+            lines = ["Hoje os documentos exigidos para matricula publicados pela escola sao:"]
+            lines.extend(f"- {str(item).strip()}" for item in admissions_docs if str(item).strip())
+            answer_text = "\n".join(lines)
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:admissions_documents",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Resposta deterministica baseada na lista publica de documentos de matricula.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[
+                        MessageEvidenceSupport(kind="profile", label="Documentos de matricula", detail="admissions_required_documents"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "tool_first", "admissions_documents"],
+                reason="specialist_supervisor_tool_first:admissions_documents",
+            )
+
+    if not ctx.request.user.authenticated and _looks_like_public_academic_policy_overview_query(ctx.request.message):
+        answer_text = compose_public_academic_policy_overview(profile)
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="academic",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:academic_policy_overview",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Resposta deterministica combinando politica academica publica e corpus documental versionado.",
+                    source_count=2,
+                    support_count=2,
+                    supports=[
+                        MessageEvidenceSupport(kind="policy", label="Academic policy", detail="academic_policy"),
+                        MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("academic"),
+                graph_path=["specialist_supervisor", "tool_first", "academic_policy_overview"],
+                reason="specialist_supervisor_tool_first:academic_policy_overview",
+            )
+
+    if not ctx.request.user.authenticated and _looks_like_conduct_frequency_punctuality_query(ctx.request.message):
+        answer_text = compose_public_conduct_frequency_punctuality(profile)
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="academic",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:conduct_frequency_punctuality",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Resposta deterministica baseada no manual de regulamentos e na politica publica de frequencia.",
+                    source_count=2,
+                    support_count=2,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Manual de Regulamentos Gerais", detail="data/corpus/public/manual-regulamentos-gerais.md"),
+                        MessageEvidenceSupport(kind="policy", label="Politica de frequencia", detail="academic_policy.attendance_policy"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("academic"),
+                graph_path=["specialist_supervisor", "tool_first", "conduct_frequency_punctuality"],
+                reason="specialist_supervisor_tool_first:conduct_frequency_punctuality",
+            )
+
+    if not ctx.request.user.authenticated and _looks_like_bolsas_and_processes_query(ctx.request.message):
+        answer_text = compose_public_bolsas_and_processes(profile)
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:bolsas_and_processes",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Resposta deterministica combinando edital de bolsas e documento de rematricula/transferencia/cancelamento.",
+                    source_count=2,
+                    support_count=2,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Edital de Bolsas e Descontos 2026", detail="data/corpus/public/edital-bolsas-e-descontos-2026.md"),
+                        MessageEvidenceSupport(kind="document", label="Rematricula, Transferencia e Cancelamento 2026", detail="data/corpus/public/rematricula-transferencia-e-cancelamento-2026.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "tool_first", "bolsas_and_processes"],
+                reason="specialist_supervisor_tool_first:bolsas_and_processes",
+            )
+
+    if not ctx.request.user.authenticated and _looks_like_health_second_call_query(ctx.request.message):
+        answer_text = compose_public_health_second_call()
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="academic",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:health_second_call",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Resposta deterministica combinando protocolo de saude e politica de segunda chamada.",
+                    source_count=2,
+                    support_count=2,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Protocolo de Saude, Medicacao e Emergencias", detail="data/corpus/public/protocolo-saude-medicacao-e-emergencias.md"),
+                        MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("academic"),
+                graph_path=["specialist_supervisor", "tool_first", "health_second_call"],
+                reason="specialist_supervisor_tool_first:health_second_call",
+            )
+
+    if not ctx.request.user.authenticated and _looks_like_permanence_family_query(ctx.request.message):
+        answer_text = compose_public_permanence_and_family_support(profile)
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:permanence_family_support",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Resposta deterministica baseada em apoio ao estudante, comunicacao com familias e politica publica de frequencia.",
+                    source_count=3,
+                    support_count=3,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Orientacao, Apoio e Vida Escolar", detail="data/corpus/public/orientacao-apoio-e-vida-escolar.md"),
+                        MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
+                        MessageEvidenceSupport(kind="policy", label="Projeto de vida", detail="academic_policy.project_of_life_summary"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "tool_first", "permanence_family_support"],
+                reason="specialist_supervisor_tool_first:permanence_family_support",
+            )
+
+    if not ctx.request.user.authenticated and _looks_like_health_authorization_bridge_query(ctx.request.message):
+        answer_text = compose_public_health_authorizations_bridge()
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:health_authorizations_bridge",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Resposta deterministica cruzando saude, segunda chamada e autorizacoes de saida.",
+                    source_count=3,
+                    support_count=3,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Protocolo de Saude, Medicacao e Emergencias", detail="data/corpus/public/protocolo-saude-medicacao-e-emergencias.md"),
+                        MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
+                        MessageEvidenceSupport(kind="document", label="Saidas Pedagogicas, Eventos e Autorizacoes", detail="data/corpus/public/saidas-pedagogicas-eventos-e-autorizacoes.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "tool_first", "health_authorizations_bridge"],
+                reason="specialist_supervisor_tool_first:health_authorizations_bridge",
+            )
+
+    if not ctx.request.user.authenticated and _looks_like_first_month_risks_query(ctx.request.message):
+        answer_text = compose_public_first_month_risks(profile)
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:first_month_risks",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Resposta deterministica baseada em secretaria, credenciais, vinculacao e frequencia.",
+                    source_count=3,
+                    support_count=3,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Secretaria, Documentacao e Prazos", detail="data/corpus/public/secretaria-documentacao-e-prazos.md"),
+                        MessageEvidenceSupport(kind="document", label="Politica de Uso do Portal, Aplicativo e Credenciais", detail="data/corpus/public/politica-uso-do-portal-aplicativo-e-credenciais.md"),
+                        MessageEvidenceSupport(kind="document", label="Manual de Regulamentos Gerais", detail="data/corpus/public/manual-regulamentos-gerais.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "tool_first", "first_month_risks"],
+                reason="specialist_supervisor_tool_first:first_month_risks",
+            )
+
+    if not ctx.request.user.authenticated and _looks_like_process_compare_query(ctx.request.message):
+        answer_text = compose_public_process_compare()
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:process_compare",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Resposta deterministica baseada no documento publico de rematricula, transferencia e cancelamento.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Rematricula, Transferencia e Cancelamento 2026", detail="data/corpus/public/rematricula-transferencia-e-cancelamento-2026.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "tool_first", "process_compare"],
+                reason="specialist_supervisor_tool_first:process_compare",
+            )
+
+    if not ctx.request.user.authenticated and ctx.request.allow_graph_rag and _looks_like_public_graph_rag_query(ctx.request.message):
+        graph_rag_payload = await _orchestrator_graph_rag_query(ctx, query=ctx.request.message)
+        result = graph_rag_payload.get("result") if isinstance(graph_rag_payload, dict) else None
+        if isinstance(result, dict) and str(result.get("text") or "").strip():
+            requested_method = str(result.get("requested_method") or result.get("method") or "global").strip()
+            attempted_methods = result.get("attempted_methods")
+            attempt_detail = ", ".join(str(item).strip() for item in attempted_methods if str(item).strip()) if isinstance(attempted_methods, list) else requested_method
+            return SupervisorAnswerPayload(
+                message_text=str(result.get("text") or "").strip(),
+                mode="graph_rag",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.96,
+                    reason="specialist_supervisor_tool_first:graph_rag",
+                ),
+                retrieval_backend="graph_rag",
+                evidence_pack=MessageEvidencePack(
+                    strategy="graph_rag",
+                    summary="Resposta direta via GraphRAG compartilhado, sem loop manager/judge.",
+                    source_count=1,
+                    support_count=2,
+                    supports=[
+                        MessageEvidenceSupport(kind="graph_rag", label="Metodo", detail=str(result.get("method") or requested_method)),
+                        MessageEvidenceSupport(kind="graph_rag", label="Tentativas", detail=attempt_detail),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "tool_first", "graph_rag"],
+                reason="specialist_supervisor_tool_first:graph_rag",
+            )
+
     if ctx.request.user.authenticated and len(multi_domains) >= 2 and "academic" in multi_domains and "finance" in multi_domains:
         target_name = (
             _student_hint_from_message(ctx.actor, ctx.request.message)
@@ -2998,18 +5165,33 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
         "mandar documentos" in normalized
         or "enviar documentos" in normalized
         or ("canais" in normalized and "documentos" in normalized)
+        or ("prazos" in normalized and "secretaria" in normalized and ("documentos" in normalized or "declaracoes" in normalized or "atualizacoes cadastrais" in normalized))
     ):
         policy = profile.get("document_submission_policy")
         if isinstance(policy, dict):
             channels = policy.get("accepted_channels") if isinstance(policy.get("accepted_channels"), list) else []
-            rendered_channels = ", ".join(str(item) for item in channels if str(item).strip())
+            rendered_channels = ", ".join(str(item).strip() for item in channels if str(item).strip())
             warning = str(policy.get("warning") or "").strip()
             notes = str(policy.get("notes") or "").strip()
+            service_catalog = (profile or {}).get("service_catalog")
+            secretaria_eta = ""
+            if isinstance(service_catalog, list):
+                secretaria_entry = next(
+                    (
+                        item
+                        for item in service_catalog
+                        if isinstance(item, dict) and str(item.get("service_key") or "").strip() == "secretaria_escolar"
+                    ),
+                    None,
+                )
+                if isinstance(secretaria_entry, dict):
+                    secretaria_eta = str(secretaria_entry.get("typical_eta") or "").strip()
             return SupervisorAnswerPayload(
                 message_text=(
                     "Voce pode mandar documentos pelo portal institucional, pelo email da secretaria "
                     "ou levar na secretaria presencial para conferencia final. "
-                    f"{notes} {warning}"
+                    + (f"Prazo esperado da secretaria: {secretaria_eta}. " if secretaria_eta else "")
+                    + f"{notes} {warning}"
                 ).strip(),
                 mode="structured_tool",
                 classification=MessageIntentClassification(
@@ -3053,6 +5235,30 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
         timeline_payload = await _fetch_public_payload(ctx, "/v1/public/timeline", "timeline")
         entries = timeline_payload.get("entries") if isinstance(timeline_payload, dict) else None
         if isinstance(entries, list):
+            combined_answer = _compose_timeline_bundle_answer({"public_timeline": entries}, ctx.request.message)
+            if combined_answer:
+                return SupervisorAnswerPayload(
+                    message_text=combined_answer,
+                    mode="structured_tool",
+                    classification=MessageIntentClassification(
+                        domain="calendar",
+                        access_tier="public",
+                        confidence=0.99,
+                        reason="specialist_supervisor_tool_first:public_timeline_bundle",
+                    ),
+                    evidence_pack=MessageEvidencePack(
+                        strategy="structured_tools",
+                        summary="Resposta deterministica combinando matricula e inicio das aulas.",
+                        source_count=1,
+                        support_count=2,
+                        supports=[
+                            MessageEvidenceSupport(kind="timeline", label="Linha do tempo publica", detail=_safe_excerpt(combined_answer)),
+                        ],
+                    ),
+                    suggested_replies=_default_suggested_replies("institution"),
+                    graph_path=["specialist_supervisor", "tool_first", "public_timeline_bundle"],
+                    reason="specialist_supervisor_tool_first:public_timeline_bundle",
+                )
             if any(term in normalized for term in {"matricula", "matrícula"}):
                 item = _timeline_entry(entries, topic_fragment="admissions_opening")
             else:
@@ -3203,6 +5409,67 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 reason="specialist_supervisor_tool_first:support_status",
             )
 
+    visit_followup_hint = any(
+        term in normalized for term in {"pode ser", "quinta", "terça", "terca", "quarta", "sexta", "sabado", "sábado", "manha", "tarde", "noite"}
+    )
+    if visit_followup_hint:
+        payload = await _workflow_status_payload(ctx, workflow_kind="visit_booking")
+        item = payload.get("item") if isinstance(payload, dict) else None
+        if isinstance(item, dict):
+            preferred_date = _extract_requested_visit_date_iso(ctx.request.message)
+            preferred_window = _extract_requested_visit_window(profile, ctx.request.message)
+            if preferred_date or preferred_window:
+                updated = await _http_post(
+                    ctx.http_client,
+                    base_url=ctx.settings.api_core_url,
+                    path="/v1/internal/workflows/visit-bookings/actions",
+                    token=ctx.settings.internal_api_token,
+                    payload=_strip_none(
+                        {
+                            "conversation_external_id": _effective_conversation_id(ctx.request),
+                            "channel": ctx.request.channel.value,
+                            "telegram_chat_id": ctx.request.telegram_chat_id,
+                            "protocol_code": str(item.get("protocol_code") or "").strip() or None,
+                            "action": "reschedule",
+                            "preferred_date": preferred_date,
+                            "preferred_window": preferred_window,
+                            "notes": ctx.request.message,
+                        }
+                    ),
+                )
+                updated_item = updated.get("item") if isinstance(updated, dict) else None
+                if isinstance(updated_item, dict):
+                    protocol = str(updated_item.get("protocol_code") or item.get("protocol_code") or "indisponivel").strip()
+                    weekday_label = _weekday_label_from_iso(preferred_date) or "quinta-feira"
+                    window_label = preferred_window or str(updated_item.get("preferred_window") or "14:30")
+                    answer_text = (
+                        f"Pedido de visita atualizado. Protocolo: {protocol}. "
+                        f"Nova preferencia: {weekday_label}, {window_label}. "
+                        "Admissions valida a nova janela e retorna com a confirmacao."
+                    )
+                    return SupervisorAnswerPayload(
+                        message_text=answer_text,
+                        mode="structured_tool",
+                        classification=MessageIntentClassification(
+                            domain="support",
+                            access_tier=_access_tier_for_domain("support", ctx.request.user.authenticated),
+                            confidence=0.99,
+                            reason="specialist_supervisor_tool_first:visit_reschedule",
+                        ),
+                        evidence_pack=MessageEvidencePack(
+                            strategy="workflow_status",
+                            summary="Atualizacao deterministica da visita a partir do contexto recente.",
+                            source_count=1,
+                            support_count=1,
+                            supports=[
+                                MessageEvidenceSupport(kind="workflow", label="Visita atualizada", detail=f"protocolo {protocol} · {weekday_label}, {window_label}"),
+                            ],
+                        ),
+                        suggested_replies=_default_suggested_replies("support"),
+                        graph_path=["specialist_supervisor", "tool_first", "visit_reschedule"],
+                        reason="specialist_supervisor_tool_first:visit_reschedule",
+                    )
+
     if "visita" in normalized and any(term in normalized for term in {"agendar", "marcar"}):
         payload = await _create_visit_booking_payload(ctx)
         item = payload.get("item") if isinstance(payload, dict) else None
@@ -3282,7 +5549,7 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
         "parcela",
         "parcelas",
     }
-    if ctx.request.user.authenticated and (
+    if ctx.request.user.authenticated and not _looks_like_admin_finance_combo_query(ctx.request.message) and (
         _contains_any(normalized, finance_terms)
         or str(preview.get("classification", {}).get("domain") or "") == "finance"
     ):
@@ -3428,6 +5695,94 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 suggested_replies=_default_suggested_replies("academic"),
                 graph_path=["specialist_supervisor", "tool_first", "academic_summary_aggregate"],
                 reason="specialist_supervisor_tool_first:academic_summary_aggregate",
+            )
+
+    if ctx.request.user.authenticated and "documentacao" in normalized and any(
+        term in normalized for term in {"financeiro", "bloque", "boleto", "mensalidade", "fatura"}
+    ):
+        admin_lines: list[str] = []
+        actor_admin_payload = await _http_get(
+            ctx.http_client,
+            base_url=ctx.settings.api_core_url,
+            path="/v1/actors/me/administrative-status",
+            token=ctx.settings.internal_api_token,
+            params={"telegram_chat_id": ctx.request.telegram_chat_id},
+        )
+        actor_admin_summary = actor_admin_payload.get("summary") if isinstance(actor_admin_payload, dict) else None
+        if isinstance(actor_admin_summary, dict):
+            admin_lines = [line for line in _compose_actor_admin_status_answer(actor_admin_summary).splitlines() if line.strip()]
+        if not admin_lines:
+            admin_student = _recent_student_from_context_with_memory(
+                ctx.actor,
+                ctx.conversation_context,
+                operational_memory=ctx.operational_memory,
+            )
+            if isinstance(admin_student, dict):
+                payload = await _http_get(
+                    ctx.http_client,
+                    base_url=ctx.settings.api_core_url,
+                    path=f"/v1/students/{admin_student['student_id']}/administrative-status",
+                    token=ctx.settings.internal_api_token,
+                    params={"telegram_chat_id": ctx.request.telegram_chat_id},
+                )
+                summary = payload.get("summary") if isinstance(payload, dict) else None
+                if isinstance(summary, dict):
+                    admin_lines = [line for line in _compose_admin_status_answer(summary).splitlines() if line.strip()]
+
+        finance_summaries: list[dict[str, Any]] = []
+        for student in _linked_students(ctx.actor, capability="finance"):
+            payload = await _http_get(
+                ctx.http_client,
+                base_url=ctx.settings.api_core_url,
+                path=f"/v1/students/{student['student_id']}/financial-summary",
+                token=ctx.settings.internal_api_token,
+                params={"telegram_chat_id": ctx.request.telegram_chat_id},
+            )
+            summary = payload.get("summary") if isinstance(payload, dict) else None
+            if isinstance(summary, dict):
+                finance_summaries.append(summary)
+
+        if admin_lines or finance_summaries:
+            lines: list[str] = []
+            if admin_lines:
+                lines.extend(admin_lines)
+            if finance_summaries:
+                if lines:
+                    lines.append("")
+                lines.append("Financeiro:")
+                for summary in finance_summaries:
+                    student_name = str(summary.get("student_name") or "Aluno").strip()
+                    open_count = int(summary.get("open_invoice_count", 0) or 0)
+                    overdue_count = int(summary.get("overdue_invoice_count", 0) or 0)
+                    lines.append(f"- {student_name}: {open_count} fatura(s) em aberto e {overdue_count} vencida(s).")
+                if all(
+                    int(summary.get("open_invoice_count", 0) or 0) == 0 and int(summary.get("overdue_invoice_count", 0) or 0) == 0
+                    for summary in finance_summaries
+                ):
+                    lines.append("No momento, eu nao encontrei bloqueio financeiro de atendimento nas contas vinculadas.")
+            answer_text = "\n".join(lines)
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="finance",
+                    access_tier=_access_tier_for_domain("finance", True),
+                    confidence=0.98,
+                    reason="specialist_supervisor_tool_first:admin_finance_overview",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Panorama combinado de documentacao e financeiro das contas vinculadas.",
+                    source_count=max(1, len(finance_summaries)),
+                    support_count=max(1, len(finance_summaries)),
+                    supports=[
+                        MessageEvidenceSupport(kind="administrative_status", label="Documentacao", detail="status administrativo consolidado"),
+                        MessageEvidenceSupport(kind="finance_summary", label="Financeiro", detail="contas vinculadas agregadas"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("finance"),
+                graph_path=["specialist_supervisor", "tool_first", "admin_finance_overview"],
+                reason="specialist_supervisor_tool_first:admin_finance_overview",
             )
 
     if ctx.request.user.authenticated and "documentacao" in normalized:
@@ -3619,6 +5974,57 @@ async def _resolved_academic_student_grades_answer(
     )
 
 
+async def _resolved_academic_attendance_summary_answer(
+    ctx: SupervisorRunContext,
+    resolved: ResolvedTurnIntent,
+) -> SupervisorAnswerPayload | None:
+    if not ctx.request.user.authenticated:
+        return None
+    memory = ctx.operational_memory or OperationalMemory()
+    subject_hint = str(resolved.referenced_subject or "").strip() or (
+        memory.active_subject if _looks_like_subject_followup(ctx.request.message) else None
+    )
+    target_name = _resolved_academic_target_name(ctx, resolved=resolved)
+    if _needs_specific_academic_student_clarification(ctx, target_name=target_name, subject_hint=subject_hint):
+        return _build_academic_student_selection_clarify(
+            ctx,
+            reason="specialist_supervisor_resolved_intent:attendance_clarify",
+            graph_path=["specialist_supervisor", "resolved_intent", "attendance_clarify"],
+            confidence=resolved.confidence,
+        )
+    if not target_name:
+        return None
+    payload = await _fetch_academic_summary_payload(ctx, student_name_hint=target_name)
+    summary = payload.get("summary") if isinstance(payload, dict) else None
+    if not isinstance(summary, dict):
+        return None
+    answer_text = _compose_named_attendance_answer(summary, subject_hint=subject_hint)
+    if not answer_text:
+        return None
+    return SupervisorAnswerPayload(
+        message_text=answer_text,
+        mode="structured_tool",
+        classification=MessageIntentClassification(
+            domain="academic",
+            access_tier=_access_tier_for_domain("academic", True),
+            confidence=resolved.confidence,
+            reason="specialist_supervisor_resolved_intent:attendance_summary",
+        ),
+        evidence_pack=MessageEvidencePack(
+            strategy="structured_tools",
+            summary="Frequencia deterministica do aluno resolvido pela memoria discursiva.",
+            source_count=1,
+            support_count=1,
+            supports=[
+                MessageEvidenceSupport(kind="academic_summary", label=str(summary.get("student_name") or "Aluno"), detail=_safe_excerpt(answer_text, limit=180)),
+            ],
+        ),
+        suggested_replies=_default_suggested_replies("academic"),
+        graph_path=["specialist_supervisor", "resolved_intent", "attendance_summary"],
+        reason="specialist_supervisor_resolved_intent:attendance_summary",
+    )
+
+
 async def _resolved_finance_student_summary_answer(
     ctx: SupervisorRunContext,
     resolved: ResolvedTurnIntent,
@@ -3686,10 +6092,16 @@ async def _resolved_intent_answer(ctx: SupervisorRunContext) -> SupervisorAnswer
     resolved = ctx.resolved_turn
     if resolved is None or resolved.domain == "unknown":
         return None
+    normalized_message = _normalize_text(ctx.request.message)
+    if ctx.request.user.authenticated and "documentacao" in normalized_message and any(
+        term in normalized_message for term in {"financeiro", "bloque", "boleto", "mensalidade", "fatura"}
+    ):
+        return None
     handlers: dict[str, Any] = {
         "institution.shift_offers": _resolved_shift_offers_answer,
         "institution.interval_schedule": _resolved_interval_schedule_answer,
         "academic.student_grades": _resolved_academic_student_grades_answer,
+        "academic.attendance_summary": _resolved_academic_attendance_summary_answer,
         "finance.student_summary": _resolved_finance_student_summary_answer,
     }
     handler = handlers.get(resolved.capability)
@@ -3911,8 +6323,17 @@ async def search_private_documents(
     ctx = context.context
     if not ctx.request.user.authenticated:
         return {"query": query, "total_hits": 0, "hits": [], "note": "not_authenticated"}
-    visibility = "public" if audience in {None, "", "public"} else "public"
-    payload = await _orchestrator_retrieval_search(ctx, query=query, visibility=visibility, top_k=top_k)
+    scopes = {str(item).strip().lower() for item in ctx.request.user.scopes}
+    normalized_audience = str(audience or "").strip().lower()
+    can_read_private = "documents:private:read" in scopes or ctx.request.user.role in {"staff", "teacher"}
+    visibility = "restricted" if can_read_private and normalized_audience != "public" else "public"
+    payload = await _orchestrator_retrieval_search(
+        ctx,
+        query=query,
+        visibility=visibility,
+        category=None,
+        top_k=top_k,
+    )
     return payload or {"query": query, "total_hits": 0, "hits": []}
 
 
@@ -4536,6 +6957,38 @@ def _normalize_result_payload(payload: Any) -> Any:
     if not isinstance(payload, dict):
         return payload
     normalized = dict(payload)
+    confidence = normalized.get("confidence")
+    if isinstance(confidence, str):
+        confidence_token = confidence.strip().lower()
+        confidence_map = {
+            "very_high": 0.98,
+            "high": 0.9,
+            "medium": 0.7,
+            "low": 0.45,
+            "very_low": 0.2,
+        }
+        if confidence_token in confidence_map:
+            normalized["confidence"] = confidence_map[confidence_token]
+    for text_key in ("answer_text", "answer_summary", "evidence_summary", "denial_reason", "clarification_question"):
+        if normalized.get(text_key) is None:
+            normalized[text_key] = ""
+    for list_key in (
+        "tool_names",
+        "support_points",
+        "citations",
+        "specialists_used",
+        "suggested_replies",
+        "repair_notes",
+        "secondary_domains",
+        "recommended_specialists",
+        "evidence_queries",
+        "issues",
+    ):
+        if normalized.get(list_key) is None:
+            normalized[list_key] = []
+        elif isinstance(normalized.get(list_key), str):
+            text_value = str(normalized.get(list_key) or "").strip()
+            normalized[list_key] = [text_value] if text_value else []
     citations = normalized.get("citations")
     if isinstance(citations, list):
         normalized["citations"] = [
@@ -4555,7 +7008,37 @@ def _parse_result_model(result: Any, model_cls: type[Any]) -> Any:
     if isinstance(payload, model_cls):
         return payload
     if isinstance(payload, str):
-        payload = json.loads(_json_block(payload))
+        try:
+            payload = json.loads(_json_block(payload))
+        except Exception:
+            text = str(payload).strip()
+            if model_cls is ManagerDraft:
+                return ManagerDraft(
+                    answer_text=text or "Nao consegui consolidar a resposta premium agora.",
+                    answer_summary=(text or "fallback_manager_plain_text")[:240],
+                    specialists_used=[],
+                    citations=[],
+                    suggested_replies=[],
+                )
+            if model_cls is RepairDraft:
+                return RepairDraft(
+                    answer_text=text or "Nao consegui reparar a resposta premium agora.",
+                    answer_summary=(text or "fallback_repair_plain_text")[:240],
+                    specialists_used=[],
+                    citations=[],
+                    suggested_replies=[],
+                    repair_notes=["fallback_plain_text_parse"],
+                )
+            if model_cls is SpecialistResult:
+                return SpecialistResult(
+                    specialist_id="institution_specialist",
+                    answer_text=text or "Nao consegui estruturar a resposta do especialista.",
+                    evidence_summary="fallback_plain_text_parse",
+                    tool_names=[],
+                    support_points=[],
+                    citations=[],
+                    confidence=0.4,
+                )
     payload = _normalize_result_payload(payload)
     return model_cls.model_validate(payload)
 
@@ -4625,7 +7108,7 @@ def _normalize_retrieval_advice(
     advice: RetrievalPlannerAdvice,
 ) -> RetrievalPlannerAdvice:
     preview = ctx.preview_hint or {}
-    preview_classification = preview.get("classification") if isinstance(preview, dict) else {}
+    preview_classification = _preview_classification_dict(ctx.preview_hint)
     preview_domain = str(preview_classification.get("domain") or "institution").strip().lower() or "institution"
     preview_backend = str(preview.get("retrieval_backend") or "none").strip().lower()
     default_specialists, default_strategy = _fallback_specialists_for_domain(preview_domain, preview_backend)
@@ -4684,7 +7167,7 @@ def _normalize_plan_with_retrieval_advice(
     retrieval_advice: RetrievalPlannerAdvice | None,
 ) -> SupervisorPlan:
     preview = ctx.preview_hint or {}
-    preview_classification = preview.get("classification") if isinstance(preview, dict) else {}
+    preview_classification = _preview_classification_dict(ctx.preview_hint)
     preview_domain = str(preview_classification.get("domain") or "institution").strip().lower() or "institution"
     preview_backend = str(preview.get("retrieval_backend") or "none").strip().lower()
     fallback_specialists, fallback_strategy = _fallback_specialists_for_domain(preview_domain, preview_backend)
@@ -4839,7 +7322,7 @@ async def _run_retrieval_planner_specialist(ctx: SupervisorRunContext) -> Retrie
     except Exception:
         logger.exception("specialist_supervisor_retrieval_planner_failed")
         preview = ctx.preview_hint or {}
-        classification = preview.get("classification") if isinstance(preview, dict) else {}
+        classification = _preview_classification_dict(ctx.preview_hint)
         domain = str(classification.get("domain") or "institution").strip().lower() or "institution"
         retrieval_backend = str(preview.get("retrieval_backend") or "none").strip().lower()
         specialists, strategy = _fallback_specialists_for_domain(domain, retrieval_backend)
@@ -5458,7 +7941,7 @@ def _access_tier_for_domain(domain: str, authenticated: bool) -> str:
 
 def _safe_supervisor_fallback_answer(ctx: SupervisorRunContext, *, reason: str) -> SupervisorAnswerPayload:
     preview = ctx.preview_hint or {}
-    classification = preview.get("classification") if isinstance(preview, dict) else {}
+    classification = _preview_classification_dict(ctx.preview_hint)
     domain = str(classification.get("domain") or "institution").strip().lower() or "institution"
     if ctx.request.user.authenticated:
         message_text = (
@@ -5616,7 +8099,7 @@ async def _run_planner(ctx: SupervisorRunContext) -> SupervisorPlan:
             domain = advice.primary_domain
         else:
             preview = ctx.preview_hint or {}
-            classification = preview.get("classification") if isinstance(preview, dict) else {}
+            classification = _preview_classification_dict(ctx.preview_hint)
             domain = str(classification.get("domain") or "institution").strip().lower() or "institution"
             retrieval_backend = str(preview.get("retrieval_backend") or "none").strip().lower()
             specialists, strategy = _fallback_specialists_for_domain(domain, retrieval_backend)
@@ -5663,11 +8146,15 @@ async def _run_manager_with_specialists(
             )
         )
     manager = _build_manager_agent(settings=ctx.settings, model=model, plan=plan, specialist_tools=specialist_tools)
-    session = SQLAlchemySession.from_url(
-        _effective_conversation_id(ctx.request),
-        url=_sqlalchemy_url(ctx.settings.database_url),
-        create_tables=True,
-    )
+    try:
+        session = SQLAlchemySession.from_url(
+            _effective_conversation_id(ctx.request),
+            url=_sqlalchemy_url(getattr(ctx.settings, "agent_memory_url", ctx.settings.database_url)),
+            create_tables=False,
+        )
+    except Exception as exc:
+        logger.warning("specialist_session_memory_unavailable: %s", exc)
+        session = None
     prompt = (
         "Usuario:\n"
         f"{ctx.request.message}\n\n"
@@ -5676,15 +8163,29 @@ async def _run_manager_with_specialists(
         f"Specialist results preexecutados:\n{json.dumps([item.model_dump(mode='json') for item in (precomputed_specialist_results or [])], ensure_ascii=False)}\n\n"
         "Use os especialistas como tools e entregue a melhor resposta grounded possivel."
     )
-    result = await Runner.run(
-        manager,
-        prompt,
-        context=ctx,
-        max_turns=8,
-        hooks=SupervisorHooks(),
-        session=session,
-        run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
-    )
+    try:
+        result = await Runner.run(
+            manager,
+            prompt,
+            context=ctx,
+            max_turns=8,
+            hooks=SupervisorHooks(),
+            session=session,
+            run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
+        )
+    except Exception as exc:
+        if session is None:
+            raise
+        logger.warning("specialist_session_memory_runtime_unavailable: %s", exc)
+        result = await Runner.run(
+            manager,
+            prompt,
+            context=ctx,
+            max_turns=8,
+            hooks=SupervisorHooks(),
+            session=None,
+            run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
+        )
     return _parse_result_model(result, ManagerDraft)
 
 
@@ -5779,6 +8280,7 @@ def _build_answer_payload(
         if judge.needs_clarification and judge.clarification_question
         else judge.revised_answer_text or draft.answer_text
     )
+    stable_reason = f"specialist_supervisor_manager_judge:{plan.primary_domain}:{plan.retrieval_strategy}"
     mode = "clarify" if judge.needs_clarification else _mode_from_strategy(plan.retrieval_strategy)
     citations = _aggregate_citations(specialist_results)
     suggested = judge.recommended_replies or draft.suggested_replies
@@ -5794,7 +8296,7 @@ def _build_answer_payload(
             domain=plan.primary_domain,
             access_tier=_access_tier_for_domain(plan.primary_domain, ctx.request.user.authenticated),
             confidence=max(plan.confidence, judge.grounding_score),
-            reason=judge.rationale or plan.reasoning_summary,
+            reason=stable_reason,
         ),
         retrieval_backend=_retrieval_backend_from_strategy(plan.retrieval_strategy),
         selected_tools=sorted({tool for item in specialist_results for tool in item.tool_names}),
@@ -5804,7 +8306,7 @@ def _build_answer_payload(
         needs_authentication=not ctx.request.user.authenticated and plan.primary_domain in {"academic", "finance"},
         graph_path=graph_path,
         risk_flags=risk_flags,
-        reason=judge.rationale or plan.reasoning_summary,
+        reason=stable_reason,
     )
 
 
@@ -5879,27 +8381,6 @@ async def run_specialist_supervisor(
     request: SpecialistSupervisorRequest,
     settings: Any,
 ) -> dict[str, Any]:
-    if resolve_llm_provider(settings) == "unconfigured":
-        answer = SupervisorAnswerPayload(
-            message_text="O caminho specialist_supervisor ainda nao esta com um provider LLM configurado neste ambiente.",
-            mode="clarify",
-            classification=MessageIntentClassification(
-                domain="institution",
-                access_tier="public",
-                confidence=1.0,
-                reason="specialist_supervisor_llm_unconfigured",
-            ),
-            suggested_replies=_default_suggested_replies("institution"),
-            graph_path=["specialist_supervisor", "bootstrap"],
-            risk_flags=["llm_unconfigured"],
-            reason="specialist_supervisor_llm_unconfigured",
-        )
-        return SpecialistSupervisorResponse(
-            reason=answer.reason,
-            metadata={"provider": resolve_llm_provider(settings), "model": effective_llm_model_name(settings)},
-            answer=answer,
-        ).model_dump(mode="json")
-
     async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0)) as client:
         context = SupervisorRunContext(
             request=request,
@@ -5928,6 +8409,25 @@ async def run_specialist_supervisor(
         context.operational_memory = _load_operational_memory(context.conversation_context)
         context.resolved_turn = _resolve_turn_intent(context)
 
+        teacher_fast_answer = await _teacher_scope_fast_path_answer(context)
+        if teacher_fast_answer is not None:
+            await _persist_final_answer(
+                context,
+                answer=teacher_fast_answer,
+                route="teacher_fast_path",
+                metadata={"preview_hint": context.preview_hint or {}},
+            )
+            return SpecialistSupervisorResponse(
+                reason=teacher_fast_answer.reason,
+                metadata={
+                    "teacher_fast_path": True,
+                    "provider": resolve_llm_provider(settings),
+                    "model": effective_llm_model_name(settings),
+                    "preview_hint": context.preview_hint or {},
+                },
+                answer=teacher_fast_answer,
+            ).model_dump(mode="json")
+
         academic_fast_answer = await _academic_grade_fast_path_answer(context)
         if academic_fast_answer is not None:
             await _persist_final_answer(
@@ -5945,6 +8445,25 @@ async def run_specialist_supervisor(
                     "preview_hint": context.preview_hint or {},
                 },
                 answer=academic_fast_answer,
+            ).model_dump(mode="json")
+
+        if context.request.user.authenticated and _looks_like_third_party_student_data_request(context.request.message):
+            answer = _build_third_party_student_data_denial()
+            await _persist_final_answer(
+                context,
+                answer=answer,
+                route="third_party_student_data_guardrail",
+                metadata={"preview_hint": context.preview_hint or {}},
+            )
+            return SpecialistSupervisorResponse(
+                reason=answer.reason,
+                metadata={
+                    "guardrail": True,
+                    "provider": resolve_llm_provider(settings),
+                    "model": effective_llm_model_name(settings),
+                    "preview_hint": context.preview_hint or {},
+                },
+                answer=answer,
             ).model_dump(mode="json")
 
         memory_follow_up_answer = await _operational_memory_follow_up_answer(context)
@@ -5965,6 +8484,45 @@ async def run_specialist_supervisor(
                 },
                 answer=memory_follow_up_answer,
             ).model_dump(mode="json")
+
+        fast_answer = _fast_path_answer(context)
+        if fast_answer is not None:
+            await _persist_final_answer(
+                context,
+                answer=fast_answer,
+                route="fast_path",
+                metadata={"preview_hint": context.preview_hint or {}},
+            )
+            return SpecialistSupervisorResponse(
+                reason=fast_answer.reason,
+                metadata={
+                    "fast_path": True,
+                    "provider": resolve_llm_provider(settings),
+                    "model": effective_llm_model_name(settings),
+                    "preview_hint": context.preview_hint or {},
+                },
+                answer=fast_answer,
+            ).model_dump(mode="json")
+
+        if _looks_like_internal_document_query(context.request.message):
+            internal_tool_answer = await _tool_first_structured_answer(context)
+            if internal_tool_answer is not None:
+                await _persist_final_answer(
+                    context,
+                    answer=internal_tool_answer,
+                    route="tool_first",
+                    metadata={"preview_hint": context.preview_hint or {}},
+                )
+                return SpecialistSupervisorResponse(
+                    reason=internal_tool_answer.reason,
+                    metadata={
+                        "tool_first": True,
+                        "provider": resolve_llm_provider(settings),
+                        "model": effective_llm_model_name(settings),
+                        "preview_hint": context.preview_hint or {},
+                    },
+                    answer=internal_tool_answer,
+                ).model_dump(mode="json")
 
         resolved_intent_answer = await _resolved_intent_answer(context)
         if resolved_intent_answer is not None:
@@ -6008,25 +8566,6 @@ async def run_specialist_supervisor(
                 answer=tool_first_answer,
             ).model_dump(mode="json")
 
-        fast_answer = _fast_path_answer(context)
-        if fast_answer is not None:
-            await _persist_final_answer(
-                context,
-                answer=fast_answer,
-                route="fast_path",
-                metadata={"preview_hint": context.preview_hint or {}},
-            )
-            return SpecialistSupervisorResponse(
-                reason=fast_answer.reason,
-                metadata={
-                    "fast_path": True,
-                    "provider": resolve_llm_provider(settings),
-                    "model": effective_llm_model_name(settings),
-                    "preview_hint": context.preview_hint or {},
-                },
-                answer=fast_answer,
-            ).model_dump(mode="json")
-
         general_knowledge_answer = await _general_knowledge_fast_path_answer(context)
         if general_knowledge_answer is not None:
             await _persist_final_answer(
@@ -6044,6 +8583,28 @@ async def run_specialist_supervisor(
                     "preview_hint": context.preview_hint or {},
                 },
                 answer=general_knowledge_answer,
+            ).model_dump(mode="json")
+
+        if resolve_llm_provider(settings) == "unconfigured":
+            answer = SupervisorAnswerPayload(
+                message_text="O caminho specialist_supervisor ainda nao esta com um provider LLM configurado neste ambiente.",
+                mode="clarify",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=1.0,
+                    reason="specialist_supervisor_llm_unconfigured",
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "bootstrap"],
+                risk_flags=["llm_unconfigured"],
+                reason="specialist_supervisor_llm_unconfigured",
+            )
+            await _persist_final_answer(context, answer=answer, route="bootstrap_unconfigured")
+            return SpecialistSupervisorResponse(
+                reason=answer.reason,
+                metadata={"provider": resolve_llm_provider(settings), "model": effective_llm_model_name(settings)},
+                answer=answer,
             ).model_dump(mode="json")
 
         guardrail = await _run_input_guardrail(context)

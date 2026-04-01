@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -52,15 +53,18 @@ def _build_settings(*, stack: str) -> Settings:
         strict_framework_isolation_enabled=True,
         orchestrator_experiment_enabled=False,
         langgraph_checkpointer_enabled=False,
-        api_core_url='http://127.0.0.1:8001',
-        qdrant_url='http://127.0.0.1:6333',
-        database_url='postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist',
-        crewai_pilot_url='http://127.0.0.1:8004',
-        specialist_supervisor_pilot_url='http://127.0.0.1:8005',
+        api_core_url=os.getenv('API_CORE_URL', 'http://127.0.0.1:8001'),
+        qdrant_url=os.getenv('QDRANT_URL', 'http://127.0.0.1:6333'),
+        database_url=os.getenv('DATABASE_URL', 'postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist'),
+        crewai_pilot_url=os.getenv('CREWAI_PILOT_URL', 'http://127.0.0.1:8004'),
+        specialist_supervisor_pilot_url=os.getenv('SPECIALIST_SUPERVISOR_PILOT_URL', 'http://127.0.0.1:8005'),
     )
 
 
 def _user_for_slice(entry: dict[str, Any]) -> UserContext:
+    explicit_user = entry.get('user')
+    if isinstance(explicit_user, dict) and explicit_user:
+        return UserContext.model_validate(explicit_user)
     slice_name = str(entry.get('slice') or 'public')
     chat_id = entry.get('telegram_chat_id')
     if slice_name in {'protected', 'support', 'workflow'} or str(chat_id) == '1649845499':
@@ -115,7 +119,7 @@ async def _run_turn(*, stack: str, entry: dict[str, Any], timeout_seconds: float
         }
 
 
-def _render_markdown(payload: dict[str, Any]) -> str:
+def _render_markdown(payload: dict[str, Any], *, stacks: tuple[str, ...]) -> str:
     lines = ['# Five-Path Chatbot Comparison Report', '']
     lines.append(f"Date: {payload['generated_at']}")
     lines.append('')
@@ -127,7 +131,8 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     lines.append('')
     lines.append('| Stack | OK | Keyword pass | Quality | Avg latency |')
     lines.append('| --- | --- | --- | --- | --- |')
-    for stack, bucket in payload['summary']['by_stack'].items():
+    for stack in stacks:
+        bucket = payload['summary']['by_stack'][stack]
         lines.append(
             f"| `{stack}` | `{bucket['ok']}/{bucket['count']}` | `{bucket['keyword_pass']}/{bucket['count']}` | `{bucket['quality_avg']}` | `{bucket['avg_latency_ms']} ms` |"
         )
@@ -136,7 +141,7 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     lines.append('')
     for slice_name, bucket in payload['summary']['by_slice'].items():
         lines.append(f"- `{slice_name}`")
-        for stack in STACKS:
+        for stack in stacks:
             stack_bucket = bucket.get(stack) or {}
             lines.append(
                 f"  - `{stack}`: ok {stack_bucket.get('ok', 0)}/{bucket['count']}, "
@@ -146,7 +151,8 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     lines.append('')
     lines.append('## Error Types')
     lines.append('')
-    for stack, bucket in payload['summary']['error_types'].items():
+    for stack in stacks:
+        bucket = payload['summary']['error_types'][stack]
         items = ', '.join(f'{name}={count}' for name, count in sorted(bucket.items()))
         lines.append(f"- `{stack}`: {items or 'nenhum'}")
     lines.append('')
@@ -158,7 +164,7 @@ def _render_markdown(payload: dict[str, Any]) -> str:
         lines.append(f"- Slice: `{result['slice']}`")
         if result.get('thread_id'):
             lines.append(f"- Thread: `{result['thread_id']}` turn `{result['turn_index']}`")
-        for stack in STACKS:
+        for stack in stacks:
             item = result[stack]
             lines.append(
                 f"- `{stack}`: status {item['status']}, latency {item['latency_ms']}ms, keyword pass `{item['keyword_pass']}`, quality `{item['quality_score']}`, reason `{item['reason']}`"
@@ -170,9 +176,14 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     return '\n'.join(lines).replace('\n  - ', '\n  - ')
 
 
-async def _run_all(entries: list[dict[str, Any]], *, timeout_seconds: float) -> dict[str, Any]:
+async def _run_all(
+    entries: list[dict[str, Any]],
+    *,
+    timeout_seconds: float,
+    stacks: tuple[str, ...],
+) -> dict[str, Any]:
     run_prefix = f"debug:five-path:{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
-    previous_answers: dict[str, dict[str, str]] = {stack: {} for stack in STACKS}
+    previous_answers: dict[str, dict[str, str]] = {stack: {} for stack in stacks}
     results: list[dict[str, Any]] = []
 
     for entry in entries:
@@ -186,7 +197,7 @@ async def _run_all(entries: list[dict[str, Any]], *, timeout_seconds: float) -> 
             'note': entry.get('note') or '',
             'run_prefix': run_prefix,
         }
-        for stack in STACKS:
+        for stack in stacks:
             raw = await _run_turn(stack=stack, entry=entry_with_run_prefix, timeout_seconds=timeout_seconds)
             answer_text = _extract_answer_text(raw['body'])
             thread_key = str(entry.get('thread_id') or '')
@@ -234,8 +245,8 @@ async def _run_all(entries: list[dict[str, Any]], *, timeout_seconds: float) -> 
 
     summary_by_stack: dict[str, Any] = {}
     summary_by_slice: dict[str, Any] = {}
-    summary_error_types: dict[str, dict[str, int]] = {stack: {} for stack in STACKS}
-    for stack in STACKS:
+    summary_error_types: dict[str, dict[str, int]] = {stack: {} for stack in stacks}
+    for stack in stacks:
         subset = [row[stack] for row in results]
         summary_by_stack[stack] = {
             'count': len(subset),
@@ -251,7 +262,7 @@ async def _run_all(entries: list[dict[str, Any]], *, timeout_seconds: float) -> 
     for slice_name in slices:
         rows = [row for row in results if row['slice'] == slice_name]
         summary_by_slice[slice_name] = {'count': len(rows)}
-        for stack in STACKS:
+        for stack in stacks:
             subset = [row[stack] for row in rows]
             summary_by_slice[slice_name][stack] = {
                 'ok': sum(1 for item in subset if item['status'] == 200),
@@ -279,13 +290,28 @@ def main() -> int:
     parser.add_argument('--report', type=Path, default=DEFAULT_REPORT)
     parser.add_argument('--json-report', type=Path, default=DEFAULT_JSON_REPORT)
     parser.add_argument('--timeout-seconds', type=float, default=45.0)
+    parser.add_argument(
+        '--stacks',
+        nargs='+',
+        choices=STACKS,
+        default=list(STACKS),
+        help='Subconjunto de stacks a comparar.',
+    )
     args = parser.parse_args()
 
     entries = _load_prompts(str(args.dataset))
-    payload = asyncio.run(_run_all(entries, timeout_seconds=max(1.0, float(args.timeout_seconds))))
+    selected_stacks = tuple(dict.fromkeys(args.stacks))
+    payload = asyncio.run(
+        _run_all(
+            entries,
+            timeout_seconds=max(1.0, float(args.timeout_seconds)),
+            stacks=selected_stacks,
+        )
+    )
     payload['dataset'] = str(args.dataset)
+    payload['stacks'] = list(selected_stacks)
     args.json_report.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    args.report.write_text(_render_markdown(payload) + '\n', encoding='utf-8')
+    args.report.write_text(_render_markdown(payload, stacks=selected_stacks) + '\n', encoding='utf-8')
     print(args.report)
     print(args.json_report)
     return 0

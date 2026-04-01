@@ -62,6 +62,23 @@
     "examples": ["Quanto falta para passar?", "Qual nota preciso tirar para aprovação?"]
   },
   {
+    "key": "academic.attendance_summary",
+    "domain": "academic",
+    "subintent": "attendance_summary",
+    "capability": "academic.attendance_summary",
+    "access_tier": "protected",
+    "priority": 18,
+    "requires_auth": true,
+    "requires_grounding": true,
+    "any_terms": ["frequencia", "frequência", "faltas", "presenca", "presença", "atrasos"],
+    "none_terms": ["aprovacao", "aprovação", "passar", "quanto falta", "nota", "notas", "boletim"],
+    "preview_domains": ["academic"],
+    "memory_domains": ["academic"],
+    "carry_active_student": true,
+    "carry_active_subject": true,
+    "examples": ["E a frequencia?", "Quero ver as faltas do Lucas"]
+  },
+  {
     "key": "finance.student_summary",
     "domain": "finance",
     "subintent": "student_summary",

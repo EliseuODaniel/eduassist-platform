@@ -36,6 +36,7 @@ from .public_pilot import (
     _answer_conflicts_with_backstop,
     _build_evidence_docs,
     _build_llm,
+    _direct_contact_bundle_fast_answer,
     _deterministic_backstop,
     _direct_contact_fast_answer,
     _direct_capabilities_fast_answer,
@@ -45,6 +46,7 @@ from .public_pilot import (
     _fetch_public_evidence,
     _infer_public_followup_slots,
     _is_public_fast_path_query,
+    _needs_shared_retrieval,
     _query_terms,
     _rank_evidence_docs,
     _select_primary_doc,
@@ -108,9 +110,16 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             self.state.reason = 'crewai_dependency_unavailable'
             return self.state.routing_label
 
+        early_fast_path_answer = _deterministic_backstop(self.state.effective_message, None, [])
+        if isinstance(early_fast_path_answer, str) and early_fast_path_answer.strip():
+            self.state.fast_path_answer = early_fast_path_answer
+            self.state.routing_label = 'fast_path'
+            self.state.reason = 'crewai_public_fast_path'
+            return self.state.routing_label
+
         evidence = await _fetch_public_evidence(
             self.settings,
-            retrieval_query=ranking_message,
+            retrieval_query=ranking_message if _needs_shared_retrieval(ranking_message) else None,
         )
         self._evidence_docs = _build_evidence_docs(evidence)
         self._shortlisted_docs = _rank_evidence_docs(ranking_message, self._evidence_docs)
@@ -124,6 +133,8 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             )
             or _direct_greeting_fast_answer(self.state.effective_message)
             or _direct_capabilities_fast_answer(self.state.effective_message)
+            or _direct_contact_bundle_fast_answer(self.state.effective_message, self._evidence_docs)
+            or _direct_contact_bundle_fast_answer(self.state.effective_message, self._shortlisted_docs)
             or _direct_contact_fast_answer(self.state.effective_message, self._evidence_docs)
             or _direct_contact_fast_answer(self.state.effective_message, self._shortlisted_docs)
             or _direct_feature_fast_answer(self.state.effective_message, self._evidence_docs)
@@ -131,7 +142,7 @@ class PublicShadowFlow(Flow[PublicFlowState]):
             or _deterministic_backstop(self.state.effective_message, None, self._evidence_docs)
             or _deterministic_backstop(self.state.effective_message, None, self._shortlisted_docs)
         )
-        if isinstance(fast_path_answer, str) and fast_path_answer.strip() and _is_public_fast_path_query(self.state.effective_message):
+        if isinstance(fast_path_answer, str) and fast_path_answer.strip():
             self.state.fast_path_answer = fast_path_answer
             self.state.routing_label = 'fast_path'
             self.state.reason = 'crewai_public_fast_path'
@@ -359,7 +370,7 @@ class PublicShadowFlow(Flow[PublicFlowState]):
                             'evidence_bundle': evidence_bundle,
                         },
                     ),
-                    timeout=11.0,
+                    timeout=float(getattr(self.settings, 'crewai_flow_timeout_seconds', 20.0) or 20.0),
                 )
             except asyncio.TimeoutError:
                 kickoff_failed_reason = 'crewai_public_flow_timeout'

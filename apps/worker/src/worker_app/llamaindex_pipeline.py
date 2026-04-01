@@ -56,6 +56,7 @@ class LlamaIndexDocumentPipeline:
         storage_dir.mkdir(parents=True, exist_ok=True)
 
         documents = self.base_pipeline._load_corpus_documents(corpus_root)
+        documents.extend(self.base_pipeline._load_restricted_catalog_documents())
         self.base_pipeline._ensure_minio_bucket()
         llamaindex_documents = [self._build_llamaindex_document(document, corpus_root=corpus_root) for document in documents]
 
@@ -132,7 +133,10 @@ class LlamaIndexDocumentPipeline:
 
     def _build_llamaindex_document(self, document: CorpusDocument, *, corpus_root: Path) -> Document:
         storage_path = self.base_pipeline._upload_source_document(document)
-        relative_source_path = str(document.source_path.relative_to(corpus_root))
+        try:
+            relative_source_path = str(document.source_path.relative_to(corpus_root))
+        except ValueError:
+            relative_source_path = str(document.source_path)
         checksum = self.base_pipeline._slugify(relative_source_path)
         ref_doc_id = f'{document.document_set_slug}:{document.version_label}:{checksum}'
         metadata = {

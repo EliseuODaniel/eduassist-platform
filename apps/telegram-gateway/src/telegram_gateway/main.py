@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 from functools import lru_cache
+import logging
+from pathlib import Path
 import secrets
 
 import httpx
@@ -11,8 +13,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from eduassist_observability import configure_observability
 
 
+_ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / '.env'
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(case_sensitive=False)
+    model_config = SettingsConfigDict(
+        case_sensitive=False,
+        env_file=('/workspace/.env', str(_ROOT_ENV_FILE), '.env'),
+        env_ignore_empty=True,
+        extra='ignore',
+    )
 
     app_env: str = 'development'
     log_level: str = 'INFO'
@@ -51,6 +61,8 @@ configure_observability(
     app=app,
     excluded_urls='/healthz,/meta',
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _require_internal_api_token(x_internal_api_token: str | None) -> None:
@@ -106,10 +118,10 @@ async def _send_telegram_message(
     text: str,
     *,
     reply_markup: dict[str, object] | None = None,
-) -> None:
+) -> bool:
     settings = get_settings()
     if not settings.telegram_bot_token:
-        return
+        return False
 
     payload: dict[str, object] = {'chat_id': chat_id, 'text': text}
     if reply_markup:
@@ -117,12 +129,28 @@ async def _send_telegram_message(
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post(
+            response = await client.post(
                 f'{settings.telegram_api_base_url}/bot{settings.telegram_bot_token}/sendMessage',
                 json=payload,
             )
-    except Exception:
-        return
+        response.raise_for_status()
+        body = response.json()
+        if not body.get('ok', False):
+            logger.warning(
+                'telegram_send_message_not_ok chat_id=%s body=%s',
+                chat_id,
+                body,
+            )
+            return False
+        return True
+    except Exception as exc:
+        logger.exception(
+            'telegram_send_message_failed chat_id=%s has_reply_markup=%s error=%s',
+            chat_id,
+            reply_markup is not None,
+            exc,
+        )
+        return False
 
 
 async def _send_telegram_photo(chat_id: int, image_bytes: bytes, *, caption: str | None = None) -> None:
@@ -136,11 +164,12 @@ async def _send_telegram_photo(chat_id: int, image_bytes: bytes, *, caption: str
 
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
-            await client.post(
+            response = await client.post(
                 f'{settings.telegram_api_base_url}/bot{settings.telegram_bot_token}/sendPhoto',
                 data=data,
                 files={'photo': ('eduassist-visual.png', image_bytes, 'image/png')},
             )
+        response.raise_for_status()
     except Exception:
         return
 
@@ -310,7 +339,19 @@ async def _process_telegram_text_message(
         )
         reply_text = str(orchestration.get('message_text', _default_help_message()))
         reply_markup = _build_reply_markup(orchestration.get('suggested_replies'))
-        await _send_telegram_message(chat_id, reply_text, reply_markup=reply_markup)
+        sent = await _send_telegram_message(chat_id, reply_text, reply_markup=reply_markup)
+        if not sent and reply_markup is not None:
+            logger.warning(
+                'telegram_send_retry_without_markup chat_id=%s',
+                chat_id,
+            )
+            sent = await _send_telegram_message(chat_id, reply_text, reply_markup=None)
+        if not sent:
+            logger.error(
+                'telegram_send_message_exhausted chat_id=%s update_id=%s',
+                chat_id,
+                update_id,
+            )
         visual_assets = orchestration.get('visual_assets', [])
         if isinstance(visual_assets, list):
             for asset in visual_assets:

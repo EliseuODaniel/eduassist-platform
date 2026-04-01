@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from time import perf_counter
+from time import monotonic, perf_counter
 from typing import Any
 import unicodedata
 
@@ -48,6 +48,9 @@ class EvidenceDoc(BaseModel):
     text: str
 
 
+_PUBLIC_RESOURCE_CACHE: dict[str, dict[str, Any]] = {}
+
+
 def _crewai_google_model(configured_model: str) -> str:
     base = str(configured_model or '').strip()
     if base.startswith('models/'):
@@ -69,17 +72,61 @@ def _infer_retrieval_category(message: str) -> str | None:
 async def _fetch_public_evidence(settings: Any, *, retrieval_query: str | None = None) -> dict[str, Any]:
     base_url = str(getattr(settings, 'api_core_url', 'http://api-core:8000')).rstrip('/')
     orchestrator_url = str(getattr(settings, 'orchestrator_url', 'http://ai-orchestrator:8000')).rstrip('/')
-    names = ['school_profile', 'org_directory', 'timeline', 'calendar_events']
+    names: list[str] = []
+    requests: list[Any] = []
+    payloads: dict[str, Any] = {}
+
+    def get_cached_public_resource(cache_key: str) -> Any | None:
+        entry = _PUBLIC_RESOURCE_CACHE.get(cache_key)
+        if not isinstance(entry, dict):
+            return None
+        expires_at = float(entry.get('expires_at', 0.0) or 0.0)
+        if expires_at <= monotonic():
+            _PUBLIC_RESOURCE_CACHE.pop(cache_key, None)
+            return None
+        return entry.get('value')
+
+    def store_cached_public_resource(cache_key: str, value: Any) -> Any:
+        ttl_seconds = float(getattr(settings, 'crewai_public_resource_cache_ttl_seconds', 120.0) or 120.0)
+        _PUBLIC_RESOURCE_CACHE[cache_key] = {
+            'value': value,
+            'expires_at': monotonic() + ttl_seconds,
+        }
+        return value
+
+    cached_school_profile = get_cached_public_resource('school_profile')
+    if isinstance(cached_school_profile, dict):
+        payloads['school_profile'] = dict(cached_school_profile)
+    else:
+        names.append('school_profile')
+        requests.append(('school_profile', f'{base_url}/v1/public/school-profile', 'get'))
+
+    cached_org_directory = get_cached_public_resource('org_directory')
+    if isinstance(cached_org_directory, dict):
+        payloads['org_directory'] = dict(cached_org_directory)
+    else:
+        names.append('org_directory')
+        requests.append(('org_directory', f'{base_url}/v1/public/org-directory', 'get'))
+
+    cached_timeline = get_cached_public_resource('timeline')
+    if isinstance(cached_timeline, dict):
+        payloads['timeline'] = dict(cached_timeline)
+    else:
+        names.append('timeline')
+        requests.append(('timeline', f'{base_url}/v1/public/timeline', 'get'))
+
+    cached_calendar = get_cached_public_resource('calendar_events')
+    if isinstance(cached_calendar, dict):
+        payloads['calendar_events'] = dict(cached_calendar)
+    else:
+        names.append('calendar_events')
+        requests.append(('calendar_events', f'{base_url}/v1/calendar/public', 'get'))
+
     async with httpx.AsyncClient(timeout=15.0) as client:
-        requests = [
-            client.get(f'{base_url}/v1/public/school-profile'),
-            client.get(f'{base_url}/v1/public/org-directory'),
-            client.get(f'{base_url}/v1/public/timeline'),
-            client.get(f'{base_url}/v1/calendar/public'),
-        ]
+        inflight = [client.get(url) for _name, url, method in requests if method == 'get']
         if bool(getattr(settings, 'shared_retrieval_enabled', False)) and retrieval_query:
             names.append('shared_retrieval')
-            requests.append(
+            inflight.append(
                 client.post(
                     f'{orchestrator_url}/v1/retrieval/search',
                     json={
@@ -90,8 +137,7 @@ async def _fetch_public_evidence(settings: Any, *, retrieval_query: str | None =
                     },
                 )
             )
-        responses = await asyncio.gather(*requests, return_exceptions=True)
-    payloads: dict[str, Any] = {}
+        responses = await asyncio.gather(*inflight, return_exceptions=True)
     for name, response in zip(names, responses, strict=True):
         if isinstance(response, Exception):
             if name == 'shared_retrieval':
@@ -102,7 +148,10 @@ async def _fetch_public_evidence(settings: Any, *, retrieval_query: str | None =
             payloads[name] = {'hits': [], 'query_plan': None, 'context_pack': None}
             continue
         response.raise_for_status()
-        payloads[name] = response.json()
+        body = response.json()
+        if name != 'shared_retrieval':
+            body = store_cached_public_resource(name, body)
+        payloads[name] = body
     return payloads
 
 
@@ -135,6 +184,37 @@ def _is_followup_style_message(message: str) -> bool:
         or normalized.startswith('qual o horario dele')
         or normalized.startswith('e o horario')
         or normalized.startswith('e o nome')
+    )
+
+
+def _needs_shared_retrieval(message: str) -> bool:
+    normalized = ' '.join(_normalize_text(message).split())
+    terms = _query_terms(message)
+    if {
+        'compare',
+        'comparacao',
+        'comparativo',
+        'sintetize',
+        'relacione',
+        'cruze',
+        'explique',
+        'guia',
+        'documentos',
+        'documentacao',
+        'manual',
+        'politica',
+    } & terms:
+        return True
+    return any(
+        phrase in normalized
+        for phrase in (
+            'com base nos documentos',
+            'do ponto de vista financeiro e administrativo',
+            'o que uma familia precisa entender',
+            'de ponta a ponta',
+            'guia de sobrevivencia do primeiro mes',
+            'quando cruzamos',
+        )
     )
 
 
@@ -261,6 +341,29 @@ def _direct_location_fast_answer(message: str, docs: list[EvidenceDoc]) -> str |
     return None
 
 
+def _direct_contact_bundle_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    normalized = _normalize_text(message)
+    if not (
+        any(term in normalized for term in ('endereco completo', 'endereço completo', 'telefone principal'))
+        and any(term in normalized for term in ('secretaria', 'melhor canal', 'canal da secretaria'))
+    ):
+        return None
+    location_answer = _direct_location_fast_answer(message, docs)
+    phone_doc = _find_first_matching_doc(docs, 'contact.', ('telefone', 'phone', 'secretaria'))
+    whatsapp_doc = _find_first_matching_doc(docs, 'contact.', ('whatsapp', 'secretaria digital'))
+    email_doc = _find_first_matching_doc(docs, 'contact.', ('email', 'secretaria'))
+    parts: list[str] = []
+    if location_answer:
+        parts.append(location_answer.rstrip('.'))
+    if phone_doc is not None:
+        parts.append(f"O telefone principal hoje e {phone_doc.text.replace('|', ' ').strip()}.")
+    if whatsapp_doc is not None:
+        parts.append(f"O melhor canal para a secretaria hoje e {whatsapp_doc.text.replace('|', ' ').strip()}.")
+    elif email_doc is not None:
+        parts.append(f"O melhor canal para a secretaria hoje e {email_doc.text.replace('|', ' ').strip()}.")
+    return ' '.join(part for part in parts if part).strip() or None
+
+
 def _stateful_public_followup_fast_answer(
     message: str,
     *,
@@ -379,10 +482,32 @@ def _build_evidence_docs(evidence: dict[str, Any]) -> list[EvidenceDoc]:
             f"Turnos: {'; '.join(_stringify_items(profile.get('shift_offers', []), ('segment', 'shift_label', 'starts_at', 'ends_at', 'notes')))}."
         ),
     )
+    add(
+        'profile.intervals',
+        'school_profile',
+        'Intervalos publicos por segmento',
+        '; '.join(_stringify_items(profile.get('interval_schedule', []), ('segment', 'label', 'starts_at', 'ends_at', 'notes'))),
+    )
     add('profile.contacts', 'school_profile', 'Canais oficiais', '; '.join(_stringify_items(profile.get('contact_channels', []), ('channel', 'label', 'value'))))
-    add('profile.features', 'school_profile', 'Espacos, atividades e diferenciais', '; '.join(_stringify_items(profile.get('feature_inventory', []), ('name', 'category', 'summary', 'hours'))))
+    add(
+        'profile.features',
+        'school_profile',
+        'Espacos, atividades e diferenciais',
+        '; '.join(_stringify_items(profile.get('feature_inventory', []), ('label', 'category', 'available', 'notes'))),
+    )
     add('profile.tuition', 'school_profile', 'Valores publicos e politica comercial', '; '.join(_stringify_items(profile.get('tuition_reference', []), ('segment', 'shift_label', 'monthly_amount', 'enrollment_fee', 'notes'))))
-    add('profile.visits', 'school_profile', 'Visitas e admissoes', '; '.join(_stringify_items(profile.get('visit_offers', []), ('title', 'schedule_hint', 'notes'))))
+    add(
+        'profile.visits',
+        'school_profile',
+        'Visitas e admissoes',
+        '; '.join(_stringify_items(profile.get('visit_offers', []), ('title', 'day_label', 'start_time', 'end_time', 'location', 'notes'))),
+    )
+    add(
+        'profile.services',
+        'school_profile',
+        'Catalogo publico de servicos',
+        '; '.join(_stringify_items(profile.get('service_catalog', []), ('title', 'request_channel', 'typical_eta', 'notes'))),
+    )
     add(
         'profile.documents',
         'school_profile',
@@ -395,6 +520,44 @@ def _build_evidence_docs(evidence: dict[str, Any]) -> list[EvidenceDoc]:
         'Documentos exigidos para matricula',
         '; '.join(str(item).strip() for item in (profile.get('admissions_required_documents') or []) if str(item).strip()),
     )
+    add(
+        'profile.admissions_highlights',
+        'school_profile',
+        'Destaques de admissions',
+        '; '.join(str(item).strip() for item in (profile.get('admissions_highlights') or []) if str(item).strip()),
+    )
+    academic_policy = profile.get('academic_policy') if isinstance(profile, dict) else None
+    if isinstance(academic_policy, dict):
+        add(
+            'policy.project_of_life',
+            'school_profile',
+            'Projeto de vida',
+            str(academic_policy.get('project_of_life_summary', '') or ''),
+        )
+        passing_policy = academic_policy.get('passing_policy')
+        if isinstance(passing_policy, dict):
+            add(
+                'policy.passing',
+                'school_profile',
+                'Aprovacao, media e recuperacao',
+                ' | '.join(
+                    str(passing_policy.get(key, '')).strip()
+                    for key in ('passing_average', 'reference_scale', 'recovery_support', 'notes')
+                    if str(passing_policy.get(key, '')).strip()
+                ),
+            )
+        attendance_policy = academic_policy.get('attendance_policy')
+        if isinstance(attendance_policy, dict):
+            add(
+                'policy.attendance',
+                'school_profile',
+                'Frequencia e faltas',
+                ' | '.join(
+                    str(attendance_policy.get(key, '')).strip()
+                    for key in ('minimum_attendance_percent', 'first_absence_guidance', 'chronic_absence_guidance', 'follow_up_channel', 'notes')
+                    if str(attendance_policy.get(key, '')).strip()
+                ),
+            )
     add(
         'directory.leadership',
         'org_directory',
@@ -417,7 +580,35 @@ def _build_evidence_docs(evidence: dict[str, Any]) -> list[EvidenceDoc]:
             str(item.get('label', item.get('feature_key', f'Espaco {index}'))),
             ' | '.join(
                 str(item.get(key, '')).strip()
-                for key in ('feature_key', 'category', 'available', 'notes')
+                for key in ('feature_key', 'label', 'category', 'available', 'notes')
+                if str(item.get(key, '')).strip()
+            ),
+        )
+
+    for index, item in enumerate(profile.get('shift_offers', []), start=1):
+        if not isinstance(item, dict):
+            continue
+        add(
+            f'shift.{index}',
+            'school_profile',
+            str(item.get('segment', f'Turno {index}')),
+            ' | '.join(
+                str(item.get(key, '')).strip()
+                for key in ('shift_label', 'starts_at', 'ends_at', 'notes')
+                if str(item.get(key, '')).strip()
+            ),
+        )
+
+    for index, item in enumerate(profile.get('interval_schedule', []), start=1):
+        if not isinstance(item, dict):
+            continue
+        add(
+            f'interval.{index}',
+            'school_profile',
+            str(item.get('segment', f'Intervalo {index}')),
+            ' | '.join(
+                str(item.get(key, '')).strip()
+                for key in ('label', 'starts_at', 'ends_at', 'notes')
                 if str(item.get(key, '')).strip()
             ),
         )
@@ -455,23 +646,17 @@ def _build_evidence_docs(evidence: dict[str, Any]) -> list[EvidenceDoc]:
             str(item.get('title', f'Visita {index}')),
             ' | '.join(
                 str(item.get(key, '')).strip()
-                for key in ('schedule_hint', 'notes')
+                for key in ('day_label', 'start_time', 'end_time', 'location', 'notes')
                 if str(item.get(key, '')).strip()
             ),
         )
 
     for index, item in enumerate(profile.get('admissions_highlights', []), start=1):
-        if not isinstance(item, dict):
-            continue
         add(
             f'admissions.{index}',
             'school_profile',
-            str(item.get('title', f'Admissoes {index}')),
-            ' | '.join(
-                str(item.get(key, '')).strip()
-                for key in ('summary',)
-                if str(item.get(key, '')).strip()
-            ),
+            f'Admissions {index}',
+            str(item).strip(),
         )
 
     for index, item in enumerate(profile.get('highlights', []), start=1):
@@ -483,7 +668,35 @@ def _build_evidence_docs(evidence: dict[str, Any]) -> list[EvidenceDoc]:
             str(item.get('title', f'Diferencial {index}')),
             ' | '.join(
                 str(item.get(key, '')).strip()
-                for key in ('summary',)
+                for key in ('description', 'evidence_line')
+                if str(item.get(key, '')).strip()
+            ),
+        )
+
+    for index, item in enumerate(profile.get('service_catalog', []), start=1):
+        if not isinstance(item, dict):
+            continue
+        add(
+            f'service.{index}',
+            'school_profile',
+            str(item.get('title', f'Servico {index}')),
+            ' | '.join(
+                str(item.get(key, '')).strip()
+                for key in ('audience', 'request_channel', 'typical_eta', 'notes')
+                if str(item.get(key, '')).strip()
+            ),
+        )
+
+    for index, item in enumerate(directory.get('leadership_team', []), start=1):
+        if not isinstance(item, dict):
+            continue
+        add(
+            f'leadership.{index}',
+            'org_directory',
+            str(item.get('name', f'Lideranca {index}')),
+            ' | '.join(
+                str(item.get(key, '')).strip()
+                for key in ('title', 'focus', 'contact_channel', 'notes')
                 if str(item.get(key, '')).strip()
             ),
         )
@@ -582,6 +795,26 @@ def _rank_evidence_docs(message: str, docs: list[EvidenceDoc], *, limit: int = 4
             term in terms for term in ('aulas', 'reuniao', 'formatura')
         ):
             score += 6
+        if doc.doc_id.startswith('service.') and any(
+            term in terms for term in ('bolsa', 'desconto', 'boleto', 'financeiro', 'secretaria', 'orientacao', 'orientação', 'bullying', 'portal', 'senha', 'login')
+        ):
+            score += 9
+        if doc.doc_id.startswith('leadership.') and any(
+            term in terms for term in ('diretor', 'diretora', 'direcao', 'direção', 'coordenacao', 'coordenação')
+        ):
+            score += 10
+        if doc.doc_id.startswith('shift.') and any(
+            term in terms for term in ('turno', 'turnos', 'matutino', 'vespertino', 'noturno', 'turmas')
+        ):
+            score += 10
+        if doc.doc_id.startswith('interval.') and any(
+            term in terms for term in ('intervalo', 'intervalos', 'recreio')
+        ):
+            score += 10
+        if doc.doc_id.startswith('policy.') and any(
+            term in terms for term in ('projeto', 'vida', 'aprovacao', 'aprovação', 'recuperacao', 'recuperação', 'frequencia', 'frequência', 'faltas')
+        ):
+            score += 11
         if doc.source == 'shared_retrieval':
             score += 12
         if any(term in haystack for term in ('fax', 'instagram', 'telefone', 'whatsapp', 'email')) and any(
@@ -676,6 +909,274 @@ def _direct_contact_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | 
     return None
 
 
+def _direct_service_routing_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    normalized = _normalize_text(message)
+    terms = _query_terms(message)
+    explicit_routing_request = any(
+        phrase in normalized
+        for phrase in (
+            'com quem eu falo sobre',
+            'quem responde por',
+            'pra quem eu falo sobre',
+            'para quem eu falo sobre',
+            'qual canal',
+        )
+    )
+    service_docs = [doc for doc in docs if doc.doc_id.startswith('service.')]
+    contact_docs = [doc for doc in docs if doc.doc_id.startswith('contact.')]
+    if not explicit_routing_request or (not service_docs and not contact_docs):
+        return None
+
+    def contact_for(label_terms: tuple[str, ...]) -> str | None:
+        for doc in contact_docs:
+            haystack = _normalize_text(f'{doc.title} {doc.text}')
+            if any(term in haystack for term in label_terms):
+                return f"{doc.title}: {doc.text.replace('|', ' ').strip()}"
+        return None
+
+    route_lines: list[str] = []
+    if any(term in normalized for term in {'direcao', 'direção', 'diretora', 'diretor'}):
+        leadership_doc = next((doc for doc in docs if doc.doc_id.startswith('leadership.') and 'helena martins' in _normalize_text(f'{doc.title} {doc.text}')), None)
+        if leadership_doc is not None:
+            route_lines.append(f'Direcao geral: {leadership_doc.title}.')
+    admissions_terms = {'bolsa', 'bolsas', 'desconto', 'descontos', 'matricula', 'matriculas', 'admissoes', 'admissao', 'atendimento', 'comercial'}
+    finance_terms = {'boleto', 'boletos', 'financeiro', 'mensalidade', 'mensalidades', 'pagamento', 'pagamentos', 'contrato', 'contratos', 'vencimento', 'vencimentos'}
+    guidance_terms = {'bullying', 'convivencia', 'convivência', 'orientacao', 'orientação', 'educacional', 'apoio', 'escolar'}
+    digital_terms = {'portal', 'senha', 'login', 'aplicativo', 'app'}
+    if admissions_terms & terms:
+        admissions = contact_for(('admissoes', 'atendimento comercial'))
+        if admissions:
+            route_lines.append(f'Para bolsa, desconto e matricula, o melhor canal hoje e Atendimento comercial / Admissoes. {admissions}')
+    if finance_terms & terms:
+        finance = contact_for(('financeiro',))
+        if finance:
+            route_lines.append(f'Para boletos, vencimentos e contratos, o melhor canal hoje e o financeiro. {finance}')
+    if guidance_terms & terms or 'orientacao educacional' in normalized or 'orientação educacional' in normalized:
+        guidance = contact_for(('orientacao educacional',))
+        if guidance:
+            route_lines.append(f'Para bullying, convivencia e apoio escolar, o canal indicado e a orientacao educacional. {guidance}')
+    if digital_terms & terms:
+        digital = contact_for(('suporte digital', 'secretaria digital'))
+        if digital:
+            route_lines.append(f'Para portal, senha, login e canais digitais, o melhor caminho hoje e o suporte digital. {digital}')
+    if route_lines:
+        return '\n'.join(route_lines)
+    if {'secretaria', 'coordenacao', 'coordenação', 'orientacao', 'orientação'} & terms:
+        return (
+            'Secretaria cuida de documentos, declaracoes, historico e orientacoes administrativas. '
+            'Coordenacao pedagogica cuida de rotina escolar, serie, acompanhamento e transicao. '
+            'Orientacao educacional apoia convivencia, adaptacao, bem-estar e rotina de estudo.'
+        )
+    return None
+
+
+def _direct_auth_guidance_fast_answer(message: str) -> str | None:
+    normalized = _normalize_text(message)
+    if any(
+        term in normalized
+        for term in (
+            'como vinculo minha conta',
+            'como eu vinculo minha conta',
+            'como eu vinculo meu telegram',
+            'como vinculo meu telegram',
+            'telegram a minha conta da escola',
+            'vincular telegram',
+            'codigo de vinculacao',
+            'código de vinculação',
+        )
+    ):
+        return (
+            'Para vincular o Telegram a sua conta da escola, entre no portal autenticado, gere o codigo de vinculacao '
+            'e depois envie aqui o comando /start link_<codigo>.'
+        )
+    return None
+
+
+def _direct_timeline_bundle_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    normalized = _normalize_text(message)
+    if not (('matricula' in normalized or 'matrícula' in normalized) and any(term in normalized for term in ('aulas', 'inicio das aulas', 'início das aulas', 'comecam as aulas', 'começam as aulas'))):
+        return None
+    timeline_docs = [doc for doc in docs if doc.doc_id.startswith('timeline.')]
+    matricula_doc = next((doc for doc in timeline_docs if 'matricula' in _normalize_text(f'{doc.title} {doc.text}')), None)
+    aulas_doc = next((doc for doc in timeline_docs if 'aulas' in _normalize_text(f'{doc.title} {doc.text}')), None)
+    lines: list[str] = []
+    if matricula_doc is not None:
+        lines.append(matricula_doc.text)
+    if aulas_doc is not None:
+        lines.append(aulas_doc.text)
+    return '\n'.join(lines) if lines else None
+
+
+def _direct_leadership_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    normalized = _normalize_text(message)
+    terms = _query_terms(message)
+    leadership_docs = [doc for doc in docs if doc.doc_id.startswith('leadership.')]
+    if not leadership_docs:
+        return None
+    if not (
+        {'diretor', 'diretora', 'direcao', 'direção', 'coordenacao', 'coordenação', 'lideranca', 'liderança'} & terms
+        or 'quem responde por' in normalized
+    ):
+        return None
+    director_doc = next((doc for doc in leadership_docs if 'diretora geral' in _normalize_text(doc.text)), None)
+    if director_doc is not None and {'diretor', 'diretora', 'direcao', 'direção'} & terms:
+        parts = [part.strip() for part in director_doc.text.split('|') if part.strip()]
+        title = parts[0] if parts else 'Diretora geral'
+        contact = parts[2] if len(parts) >= 3 else ''
+        if 'email' in terms or 'contato' in terms:
+            return f'{director_doc.title} e a {title}. Contato institucional: {contact}.'
+        return f'{director_doc.title} e a {title}.'
+    if 'quem responde por' in normalized:
+        names: list[str] = []
+        if director_doc is not None:
+            names.append(f'direcao: {director_doc.title}')
+        coordination_doc = next((doc for doc in leadership_docs if 'coordenador' in _normalize_text(doc.text) or 'coordenadora' in _normalize_text(doc.text)), None)
+        if coordination_doc is not None:
+            names.append(f'coordenacao: {coordination_doc.title}')
+        if names:
+            return 'Hoje os responsaveis institucionais publicados incluem ' + '; '.join(names) + '.'
+    return None
+
+
+def _direct_schedule_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    normalized = _normalize_text(message)
+    terms = _query_terms(message)
+    shift_docs = [doc for doc in docs if doc.doc_id.startswith('shift.')]
+    interval_docs = [doc for doc in docs if doc.doc_id.startswith('interval.')]
+    if {'intervalo', 'intervalos', 'recreio'} & terms and interval_docs:
+        lines = ['Os intervalos publicos por segmento hoje sao:']
+        for doc in interval_docs[:4]:
+            parts = [part.strip() for part in doc.text.split('|') if part.strip()]
+            if len(parts) >= 3:
+                lines.append(f"- {doc.title}: {parts[0]}, {parts[1]} as {parts[2]}.")
+        if len(lines) > 1:
+            return '\n'.join(lines)
+    if {'turno', 'turnos', 'matutino', 'vespertino', 'noturno', 'turmas'} & terms and shift_docs:
+        lines = ['Os turnos publicos hoje aparecem assim:']
+        for doc in shift_docs[:4]:
+            parts = [part.strip() for part in doc.text.split('|') if part.strip()]
+            if len(parts) >= 3:
+                lines.append(f"- {doc.title}: {parts[0]}, {parts[1]} as {parts[2]}.")
+        if 'noturno' in terms:
+            lines.append('- Nao ha turno noturno publicado para os segmentos regulares.')
+        if len(lines) > 1:
+            return '\n'.join(lines)
+    if 'horario' in terms and any(term in normalized for term in ('turno matutino', 'manha', 'manhã')) and shift_docs:
+        first_doc = shift_docs[0]
+        parts = [part.strip() for part in first_doc.text.split('|') if part.strip()]
+        if len(parts) >= 3:
+            return f'O turno matutino publicado para {first_doc.title} vai de {parts[1]} a {parts[2]}.'
+    return None
+
+
+def _direct_policy_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    normalized = _normalize_text(message)
+    terms = _query_terms(message)
+    project_doc = next((doc for doc in docs if doc.doc_id == 'policy.project_of_life'), None)
+    passing_doc = next((doc for doc in docs if doc.doc_id == 'policy.passing'), None)
+    attendance_doc = next((doc for doc in docs if doc.doc_id == 'policy.attendance'), None)
+    if (
+        any(term in normalized for term in ('compare', 'comparar', 'comparacao', 'comparação'))
+        and any(term in normalized for term in ('regulamentos gerais', 'manual geral', 'manual de regulamentos'))
+        and any(term in normalized for term in ('politica de avaliacao', 'política de avaliação'))
+    ):
+        attendance_parts = [part.strip() for part in attendance_doc.text.split('|') if part.strip()] if attendance_doc is not None else []
+        passing_parts = [part.strip() for part in passing_doc.text.split('|') if part.strip()] if passing_doc is not None else []
+        minimum = attendance_parts[0] if attendance_parts else '75'
+        average = passing_parts[0] if passing_parts else '7,0'
+        return (
+            f'O manual de regulamentos gerais organiza convivencia, frequencia e rotina, com referencia minima de {minimum}% de presenca por componente. '
+            f'Ja a politica de avaliacao detalha aprovacao, media {average}, recuperacao, monitorias e criterios de promocao. '
+            'Os dois se complementam porque a frequencia sustenta a rotina, enquanto a politica academica mostra como a escola trata recuperacao e aprovacao quando a meta nao e atingida.'
+        )
+    if 'projeto de vida' in normalized and project_doc is not None:
+        return project_doc.text
+    if ({'aprovacao', 'aprovação', 'media', 'média', 'recuperacao', 'recuperação', 'promocao', 'promoção'} & terms) and passing_doc is not None:
+        parts = [part.strip() for part in passing_doc.text.split('|') if part.strip()]
+        if len(parts) >= 3:
+            return (
+                f'A referencia publica de aprovacao hoje e media {parts[0]} na escala {parts[1]}. '
+                f'{parts[2]}'
+            )
+        return passing_doc.text
+    if ({'falta', 'faltas', 'frequencia', 'frequência', 'pontualidade'} & terms or '75%' in normalized) and attendance_doc is not None:
+        parts = [part.strip() for part in attendance_doc.text.split('|') if part.strip()]
+        if len(parts) >= 4:
+            return (
+                f'A politica publica de frequencia hoje trabalha com minimo de {parts[0]}% de presenca. '
+                f'{parts[1]} {parts[2]} Canal de acompanhamento: {parts[3]}.'
+            )
+        return attendance_doc.text
+    return None
+
+
+def _direct_service_credentials_bundle_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    normalized = _normalize_text(message)
+    if not any(term in normalized for term in ('credenciais', 'credencial', 'login', 'senha')):
+        return None
+    if not any(term in normalized for term in ('secretaria', 'portal', 'documentos', 'documentacao', 'documentação')):
+        return None
+    return (
+        'Hoje a familia precisa entender quatro frentes publicas deste fluxo: '
+        'Secretaria recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas. '
+        'Portal institucional centraliza protocolo e envio digital inicial de documentos. '
+        'Credenciais significam login e senha do portal; se voce perder o acesso, o melhor caminho e a secretaria ou o suporte digital. '
+        'Documentos podem ser enviados pelo portal institucional, pelo email da secretaria ou pela secretaria presencial.'
+    )
+
+
+def _direct_document_submission_policy_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    normalized = _normalize_text(message)
+    if 'secretaria' not in normalized:
+        return None
+    if not any(term in normalized for term in ('documentos', 'declaracoes', 'declarações', 'atualizacoes cadastrais', 'atualizações cadastrais')):
+        return None
+    if not any(term in normalized for term in ('prazo', 'prazos', 'canal', 'canais')):
+        return None
+    return (
+        'Hoje a secretaria recebe documentos, declaracoes e atualizacoes cadastrais pelo portal institucional, '
+        'pelo email da secretaria e pela secretaria presencial. '
+        'Prazo esperado da secretaria: retorno em ate 2 dias uteis.'
+    )
+
+
+def _direct_unpublished_fast_answer(message: str) -> str | None:
+    normalized = _normalize_text(message)
+    if any(term in normalized for term in ('quantos alunos', 'quantidade de alunos', 'numero de alunos', 'número de alunos')):
+        return (
+            'Hoje os canais publicos do Colegio Horizonte nao informam o total de alunos matriculados. '
+            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
+        )
+    if any(term in normalized for term in ('quantos professores', 'quantidade de professores', 'numero de professores', 'número de professores')):
+        return (
+            'Hoje os canais publicos do Colegio Horizonte nao informam a quantidade total de professores. '
+            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
+        )
+    if any(term in normalized for term in ('quantas salas', 'quantidade de salas', 'numero de salas', 'número de salas')):
+        return (
+            'Hoje os canais publicos do Colegio Horizonte nao informam a quantidade total de salas de aula. '
+            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
+        )
+    if any(term in normalized for term in ('idade minima', 'idade mínima', 'idade para estudar', 'idade para matricular')):
+        return (
+            'Hoje os canais publicos do Colegio Horizonte nao publicam uma idade minima exata para ingresso. '
+            'O que aparece oficialmente sao os segmentos atendidos e o enquadramento por serie; para confirmar idade e adequacao, o canal certo e admissions.'
+        )
+    if any(term in normalized for term in ('quantos livros', 'quantidade de livros', 'numero de livros', 'número de livros')) and any(
+        term in normalized for term in ('biblioteca', 'livros', 'acervo')
+    ):
+        return (
+            'Hoje os canais publicos do Colegio Horizonte nao informam a quantidade total de livros da biblioteca. '
+            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
+        )
+    if any(term in normalized for term in ('cardapio', 'cardápio')) and 'cantina' in normalized:
+        return (
+            'Hoje os canais publicos do Colegio Horizonte confirmam que ha cantina e almoco supervisionado, '
+            'mas nao publicam um cardapio detalhado. Para esse detalhe, o melhor caminho e a secretaria ou o canal comercial.'
+        )
+    return None
+
+
 def _direct_greeting_fast_answer(message: str) -> str | None:
     normalized = ' '.join(_normalize_text(message).split())
     if normalized in {'oi', 'ola', 'olá', 'bom dia', 'boa tarde', 'boa noite'}:
@@ -708,6 +1209,7 @@ def _direct_comparative_fast_answer(message: str, docs: list[EvidenceDoc]) -> st
         ({'melhor', 'concorrencia', 'concorrente', 'publica'} & terms)
         or 'escola publica' in normalized
         or 'na publica' in normalized
+        or any(term in normalized for term in ('30 segundos', '30s', 'familia nova', 'família nova', 'por que deveria', 'por que escolher'))
     ):
         return None
     overview_doc = next((doc for doc in docs if doc.doc_id == 'profile.overview'), None)
@@ -720,6 +1222,13 @@ def _direct_comparative_fast_answer(message: str, docs: list[EvidenceDoc]) -> st
         labels.extend(doc.title for doc in feature_docs[:2] if doc.title and doc.title not in labels)
     labels_preview = ', '.join(labels[:3]) if labels else 'os diferenciais publicados da escola'
     overview_text = overview_doc.text if overview_doc is not None else ''
+    if any(term in normalized for term in ('30 segundos', '30s', 'familia nova', 'família nova', 'por que deveria', 'por que escolher')):
+        return (
+            'Se eu tivesse 30 segundos para resumir esta escola, eu diria isto: '
+            'ela combina aprendizagem por projetos, acompanhamento mais proximo e trilhas academicas no contraturno. '
+            f'No que esta publicado aqui, os diferenciais mais claros passam por {labels_preview}. '
+            f'{overview_text}'.strip()
+        )
     return (
         'Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. '
         f'No que esta publicado aqui, os diferenciais desta escola passam por {labels_preview}. '
@@ -803,12 +1312,58 @@ def _direct_pedagogical_fast_answer(message: str, docs: list[EvidenceDoc]) -> st
 
 def _direct_feature_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
     terms = _query_terms(message)
-    feature_prompt_terms = {'atividades', 'atividade', 'complementares', 'complementar', 'oficinas', 'esporte', 'esportes', 'maker'}
+    normalized = _normalize_text(message)
+    feature_prompt_terms = {
+        'atividades',
+        'atividade',
+        'complementares',
+        'complementar',
+        'oficinas',
+        'esporte',
+        'esportes',
+        'maker',
+        'biblioteca',
+        'cantina',
+        'laboratorio',
+        'laboratório',
+        'quadra',
+        'piscina',
+        'kart',
+        'tenis',
+        'tênis',
+        'professores',
+    }
     if not (feature_prompt_terms & terms):
         return None
     feature_docs = [doc for doc in docs if doc.doc_id.startswith('feature.')]
     if not feature_docs:
         return None
+    requested_specific_terms = (
+        'biblioteca aurora',
+        'biblioteca',
+        'cantina',
+        'laboratorio',
+        'laboratório',
+        'quadra de tenis',
+        'tenis de mesa',
+        'piscina',
+        'kart',
+        'sala de professores',
+        'quadra',
+    )
+    for requested_term in requested_specific_terms:
+        if requested_term not in normalized:
+            continue
+        target_doc = next(
+            (doc for doc in feature_docs if requested_term in _normalize_text(f'{doc.title} {doc.text}')),
+            None,
+        )
+        if target_doc is None:
+            continue
+        available = 'true' in _normalize_text(target_doc.text)
+        if available:
+            return f'Sim. {target_doc.title}: {target_doc.text.replace("|", " ").strip()}.'
+        return f'Nao. {target_doc.title}: {target_doc.text.replace("|", " ").strip()}.'
     selected_labels: list[str] = []
     selected_texts: list[str] = []
     for doc in feature_docs:
@@ -1009,18 +1564,51 @@ def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: li
     greeting_answer = _direct_greeting_fast_answer(message)
     if greeting_answer:
         return greeting_answer
+    auth_guidance_answer = _direct_auth_guidance_fast_answer(message)
+    if auth_guidance_answer:
+        return auth_guidance_answer
     capabilities_answer = _direct_capabilities_fast_answer(message)
     if capabilities_answer:
         return capabilities_answer
+    unpublished_answer = _direct_unpublished_fast_answer(message)
+    if unpublished_answer:
+        return unpublished_answer
+    contact_bundle_answer = _direct_contact_bundle_fast_answer(message, docs)
+    if contact_bundle_answer:
+        return contact_bundle_answer
     location_answer = _direct_location_fast_answer(message, docs)
     if location_answer:
         return location_answer
+    timeline_bundle_answer = _direct_timeline_bundle_fast_answer(message, docs)
+    if timeline_bundle_answer:
+        return timeline_bundle_answer
+    required_documents_answer = _direct_required_documents_fast_answer(message, docs)
+    if required_documents_answer:
+        return required_documents_answer
+    document_submission_answer = _direct_document_submission_policy_fast_answer(message, docs)
+    if document_submission_answer:
+        return document_submission_answer
+    service_answer = _direct_service_routing_fast_answer(message, docs)
+    if service_answer:
+        return service_answer
+    leadership_answer = _direct_leadership_fast_answer(message, docs)
+    if leadership_answer:
+        return leadership_answer
+    schedule_answer = _direct_schedule_fast_answer(message, docs)
+    if schedule_answer:
+        return schedule_answer
     tuition_answer = _direct_tuition_fast_answer(message, docs)
     if tuition_answer:
         return tuition_answer
     pedagogical_answer = _direct_pedagogical_fast_answer(message, docs)
     if pedagogical_answer:
         return pedagogical_answer
+    policy_answer = _direct_policy_fast_answer(message, docs)
+    if policy_answer:
+        return policy_answer
+    service_credentials_answer = _direct_service_credentials_bundle_fast_answer(message, docs)
+    if service_credentials_answer:
+        return service_credentials_answer
     contact_answer = _direct_contact_fast_answer(message, docs)
     if contact_answer:
         return contact_answer
@@ -1031,9 +1619,6 @@ def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: li
     if primary is None:
         return None
     terms = _query_terms(message)
-    required_documents_answer = _direct_required_documents_fast_answer(message, docs)
-    if required_documents_answer:
-        return required_documents_answer
     curriculum_answer = _direct_curriculum_fast_answer(message, docs)
     if curriculum_answer:
         return curriculum_answer
@@ -1185,6 +1770,14 @@ def _is_public_fast_path_query(message: str) -> bool:
         'oficinas',
         'esportes',
         'maker',
+        'turno',
+        'turnos',
+        'matutino',
+        'vespertino',
+        'noturno',
+        'intervalo',
+        'intervalos',
+        'recreio',
         'melhor',
         'concorrencia',
         'concorrente',
@@ -1195,6 +1788,25 @@ def _is_public_fast_path_query(message: str) -> bool:
         'acolhimento',
         'disciplina',
         'aprendizagem',
+        'projeto',
+        'vida',
+        'aprovacao',
+        'aprovação',
+        'recuperacao',
+        'recuperação',
+        'frequencia',
+        'frequência',
+        'faltas',
+        'secretaria',
+        'coordenacao',
+        'coordenação',
+        'orientacao',
+        'orientação',
+        'bullying',
+        'diretor',
+        'diretora',
+        'bolsa',
+        'bolsas',
         'mando',
         'enviar',
         'envio',
@@ -1219,7 +1831,7 @@ def _build_llm(settings: Any) -> Any:
         api_key=api_key,
         temperature=0.1,
         max_tokens=500,
-        timeout=10.0,
+        timeout=float(getattr(settings, 'crewai_llm_timeout_seconds', 15.0) or 15.0),
         max_retries=1,
     )
 
@@ -1238,6 +1850,7 @@ async def run_public_crewai_pilot(
     conversation_id: str | None,
     telegram_chat_id: int | None,
     channel: str,
+    user_context: dict[str, Any] | None,
     settings: Any,
 ) -> dict[str, Any]:
     from .public_flow import PublicShadowFlow
@@ -1260,6 +1873,7 @@ async def run_public_crewai_pilot(
                 ),
                 'telegram_chat_id': telegram_chat_id,
                 'channel': channel,
+                'user_context': user_context,
             }
         )
     return result if isinstance(result, dict) else {

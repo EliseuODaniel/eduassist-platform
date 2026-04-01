@@ -13,6 +13,7 @@ from .kernel_runtime import (
 from .llm_provider import compose_with_provider
 from .models import (
     AccessTier,
+    IntentClassification,
     MessageResponse,
     MessageResponseCitation,
     OrchestrationMode,
@@ -27,11 +28,17 @@ def _should_use_python_functions_native_path(plan: KernelPlan) -> bool:
     preview = plan.preview
     if preview.mode is OrchestrationMode.structured_tool:
         return True
-    if preview.classification.access_tier is not AccessTier.public:
+    if preview.classification.access_tier is AccessTier.public:
+        if preview.classification.domain not in {QueryDomain.institution, QueryDomain.calendar, QueryDomain.unknown}:
+            return False
+        return preview.mode in {OrchestrationMode.hybrid_retrieval, OrchestrationMode.clarify}
+    if preview.mode is not OrchestrationMode.clarify:
         return False
-    if preview.classification.domain not in {QueryDomain.institution, QueryDomain.calendar, QueryDomain.unknown}:
-        return False
-    return preview.mode in {OrchestrationMode.hybrid_retrieval, OrchestrationMode.clarify}
+    return preview.classification.domain in {
+        QueryDomain.institution,
+        QueryDomain.academic,
+        QueryDomain.unknown,
+    }
 
 
 async def maybe_execute_python_functions_native_plan(
@@ -70,16 +77,44 @@ async def maybe_execute_python_functions_native_plan(
     evidence_pack = None
 
     teacher_scope_answer = None
-    if rt._is_teacher_scope_guidance_query(request.message, actor=actor):
+    teacher_schedule_answer = None
+    authenticated_account_scope_answer = None
+    has_authenticated_actor = bool(actor and rt._linked_students(actor))
+    actor_role = str((actor or {}).get('role_code', '') or '').strip().lower()
+    teacher_authenticated = actor_role == 'teacher' or (
+        getattr(request.user, 'authenticated', False)
+        and getattr(getattr(request.user, 'role', None), 'value', '') == 'teacher'
+    )
+    should_fetch_teacher_schedule = rt._should_fetch_teacher_schedule(
+        request.message,
+        actor=actor,
+        user=request.user,
+        conversation_context=conversation_context,
+    )
+    if rt._is_teacher_scope_guidance_query(request.message, actor=actor, user=request.user, conversation_context=conversation_context) and not should_fetch_teacher_schedule:
         teacher_scope_answer = rt._compose_teacher_access_scope_answer(
             actor,
             school_name=str(school_profile.get('school_name', 'Colegio Horizonte')),
         )
+    elif teacher_authenticated and should_fetch_teacher_schedule:
+        teacher_schedule_answer = await rt._execute_teacher_protected_specialist(
+            settings=settings,
+            request=request,
+            actor=actor or {},
+            conversation_context=conversation_context,
+        )
+    elif has_authenticated_actor and rt._is_access_scope_query(request.message):
+        authenticated_account_scope_answer = rt._compose_authenticated_access_scope_answer(
+            actor,
+            school_name=str(school_profile.get('school_name', 'Colegio Horizonte')),
+        )
+    elif has_authenticated_actor and rt._is_actor_identity_query(request.message):
+        authenticated_account_scope_answer = rt._compose_actor_identity_answer(actor)
 
     contextual_public_answer = None
     unpublished_public_answer = None
     hypothetical_public_pricing_direct = None
-    if teacher_scope_answer is None:
+    if teacher_scope_answer is None and authenticated_account_scope_answer is None:
         contextual_public_answer = await _maybe_contextual_public_direct_answer(
             request=request,
             analysis_message=analysis_message,
@@ -117,6 +152,45 @@ async def maybe_execute_python_functions_native_plan(
             selected_tools=preview.selected_tools,
             slice_name=plan.slice_name,
             summary='Resposta deterministica sobre escopo docente e vinculacao da conta.',
+        )
+    elif teacher_schedule_answer:
+        message_text = teacher_schedule_answer
+        deterministic_fallback_text = teacher_schedule_answer
+        preview = preview.model_copy(
+            update={
+                'mode': OrchestrationMode.structured_tool,
+                'classification': IntentClassification(
+                    domain=QueryDomain.academic,
+                    access_tier=AccessTier.authenticated,
+                    confidence=0.99,
+                    reason='consulta protegida de turmas, disciplinas e grade docente atendida pelo runtime nativo python_functions',
+                ),
+                'reason': 'python_functions_native_teacher_schedule',
+                'selected_tools': list(dict.fromkeys([*preview.selected_tools, 'get_teacher_schedule'])),
+                'needs_authentication': True,
+            }
+        )
+        execution_reason = 'python_functions_native_teacher_schedule'
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=preview.selected_tools,
+            slice_name=plan.slice_name,
+            summary='Resposta deterministica grounded em service protegido de grade docente.',
+        )
+    elif authenticated_account_scope_answer:
+        message_text = authenticated_account_scope_answer
+        deterministic_fallback_text = authenticated_account_scope_answer
+        preview = preview.model_copy(
+            update={
+                'mode': OrchestrationMode.structured_tool,
+                'reason': 'python_functions_native_authenticated_account_scope',
+                'selected_tools': list(dict.fromkeys([*preview.selected_tools, 'get_actor_identity_context'])),
+            }
+        )
+        execution_reason = 'python_functions_native_authenticated_account_scope'
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=preview.selected_tools,
+            slice_name=plan.slice_name,
+            summary='Resposta deterministica sobre escopo autenticado e identidade da conta.',
         )
     elif contextual_public_answer:
         message_text = contextual_public_answer

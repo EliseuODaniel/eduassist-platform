@@ -1,0 +1,241 @@
+[
+  {
+    "prompt": "Qual e o endereco completo da escola, o telefone principal e o melhor canal para falar com a secretaria hoje?",
+    "slice": "public",
+    "category": "public_grounding",
+    "thread_id": "sqb_public_address",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["Rua das Acacias, 1450", "(11) 3333-4200", "secretaria"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q001"
+  },
+  {
+    "prompt": "Essa escola tem biblioteca de verdade ou so fala que tem? Qual e o nome e o horario?",
+    "slice": "public",
+    "category": "public_grounding",
+    "thread_id": "sqb_public_library",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["Biblioteca Aurora", "7h30", "18h00"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q002"
+  },
+  {
+    "prompt": "Quem responde por direcao, orientacao educacional e atendimento comercial?",
+    "slice": "public",
+    "category": "public_grounding",
+    "thread_id": "sqb_public_routing",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["Helena Martins", "orientacao educacional", "Atendimento comercial"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q003"
+  },
+  {
+    "prompt": "Se eu fosse uma familia nova e tivesse so 30 segundos, o que voce me diria sobre essa escola?",
+    "slice": "public",
+    "category": "public_grounding",
+    "thread_id": "sqb_public_pitch",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["aprendizagem por projetos", "acompanhamento", "contraturno"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q004"
+  },
+  {
+    "prompt": "Com quem eu falo sobre bolsa, com quem eu falo sobre boletos e com quem eu falo sobre bullying?",
+    "slice": "public",
+    "category": "public_grounding",
+    "thread_id": "sqb_public_channels",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["admissoes", "financeiro", "orientacao educacional"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q007"
+  },
+  {
+    "prompt": "Quando abre a matricula de 2026 e quando comecam as aulas?",
+    "slice": "public",
+    "category": "timeline",
+    "thread_id": "sqb_public_timeline",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["6 de outubro de 2025", "2 de fevereiro de 2026"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q009"
+  },
+  {
+    "prompt": "Quais documentos sao exigidos para matricula no ensino medio?",
+    "slice": "public",
+    "category": "documents",
+    "thread_id": "sqb_public_documents",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["Formulario cadastral", "Documento de identificacao", "Historico escolar"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q017"
+  },
+  {
+    "prompt": "Como funciona a politica de avaliacao, recuperacao e promocao da escola?",
+    "slice": "public",
+    "category": "policy",
+    "thread_id": "sqb_public_policy",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["7,0", "monitorias", "recuperacao"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q018"
+  },
+  {
+    "prompt": "Quais os prazos e canais para secretaria receber documentos, declaracoes e atualizacoes cadastrais?",
+    "slice": "public",
+    "category": "documents",
+    "thread_id": "sqb_public_secretaria",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["portal institucional", "email da secretaria", "2 dias uteis"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q021"
+  },
+  {
+    "prompt": "Compare o manual de regulamentos gerais com a politica de avaliacao e explique como os dois se complementam.",
+    "slice": "public",
+    "category": "graphrag",
+    "thread_id": "sqb_graphrag_compare",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["frequencia", "aprovacao", "recuperacao"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q025"
+  },
+  {
+    "prompt": "Sintetize tudo o que uma familia precisa entender sobre secretaria, portal, credenciais e envio de documentos.",
+    "slice": "public",
+    "category": "graphrag",
+    "thread_id": "sqb_graphrag_secretaria",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["secretaria", "portal", "credenciais", "documentos"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q027"
+  },
+  {
+    "prompt": "Como eu vinculo meu Telegram a minha conta da escola?",
+    "slice": "public",
+    "category": "identity",
+    "thread_id": "sqb_identity_link",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": ["Telegram", "/start", "link_"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q034"
+  },
+  {
+    "prompt": "Qual e exatamente o meu escopo: posso ver academico, financeiro ou os dois para cada filho?",
+    "slice": "protected",
+    "category": "identity",
+    "thread_id": "sqb_guardian_scope",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["academico", "financeiro", "Lucas Oliveira", "Ana Oliveira"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q036",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": ["stu-lucas", "stu-ana"],
+      "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"]
+    }
+  },
+  {
+    "prompt": "Quero ver as notas do Lucas Oliveira.",
+    "slice": "protected",
+    "category": "academic",
+    "thread_id": "sqb_guardian_academic",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Lucas Oliveira", "Historia", "Fisica"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q041",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": ["stu-lucas", "stu-ana"],
+      "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"]
+    }
+  },
+  {
+    "prompt": "E a frequencia?",
+    "slice": "protected",
+    "category": "academic",
+    "thread_id": "sqb_guardian_academic",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Lucas Oliveira", "faltas"],
+    "forbidden_keywords": ["Ana Oliveira"],
+    "note": "Q042",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": ["stu-lucas", "stu-ana"],
+      "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"]
+    }
+  },
+  {
+    "prompt": "Quero ver o financeiro da Ana Oliveira.",
+    "slice": "protected",
+    "category": "finance",
+    "thread_id": "sqb_guardian_finance",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["Resumo financeiro", "Ana Oliveira"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q049",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": ["stu-lucas", "stu-ana"],
+      "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"]
+    }
+  },
+  {
+    "prompt": "Quero saber se minha documentacao esta regular e se ha algo financeiro bloqueando atendimento.",
+    "slice": "protected",
+    "category": "administrative",
+    "thread_id": "sqb_guardian_admin_finance",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["documentacao", "financeiro"],
+    "forbidden_keywords": ["nao encontrei"],
+    "note": "Q060",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": ["stu-lucas", "stu-ana"],
+      "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"]
+    }
+  },
+  {
+    "prompt": "Quero agendar uma visita para conhecer a escola.",
+    "slice": "workflow",
+    "category": "workflow",
+    "thread_id": "sqb_workflow_visit",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["visita", "protocolo"],
+    "forbidden_keywords": ["nao consegui"],
+    "note": "Q073"
+  },
+  {
+    "prompt": "Pode ser na quinta a tarde?",
+    "slice": "workflow",
+    "category": "workflow",
+    "thread_id": "sqb_workflow_visit",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": ["quinta-feira", "14:30", "protocolo"],
+    "forbidden_keywords": ["nao encontrei protocolo recente"],
+    "note": "Q074"
+  }
+]

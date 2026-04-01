@@ -1,0 +1,589 @@
+[
+  {
+    "prompt": "Qual e o endereco completo da escola, o telefone principal e o melhor canal para falar com a secretaria hoje?",
+    "slice": "public",
+    "category": "publico_estruturado_institucional",
+    "thread_id": "system_bank:publico_estruturado_institucional:Q001",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q001|profile=anonimo|difficulty=facil|form=direta|sources=profile,service_dir|graph_rag=false",
+    "question_id": "Q001",
+    "profile": "anonimo",
+    "difficulty": "facil",
+    "form": "direta",
+    "sources": [
+      "profile",
+      "service_dir"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Essa escola tem biblioteca de verdade ou so fala que tem? Qual e o nome e o horario?",
+    "slice": "public",
+    "category": "publico_estruturado_institucional",
+    "thread_id": "system_bank:publico_estruturado_institucional:Q002",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q002|profile=anonimo|difficulty=facil|form=direta|sources=profile|graph_rag=false",
+    "question_id": "Q002",
+    "profile": "anonimo",
+    "difficulty": "facil",
+    "form": "direta",
+    "sources": [
+      "profile"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Quem responde por direcao, orientacao educacional e atendimento comercial?",
+    "slice": "public",
+    "category": "publico_estruturado_institucional",
+    "thread_id": "system_bank:publico_estruturado_institucional:Q003",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q003|profile=anonimo|difficulty=media|form=direta|sources=org_dir,service_dir|graph_rag=false",
+    "question_id": "Q003",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "org_dir",
+      "service_dir"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Se eu fosse uma familia nova e tivesse so 30 segundos, o que voce me diria sobre essa escola?",
+    "slice": "public",
+    "category": "publico_estruturado_institucional",
+    "thread_id": "system_bank:publico_estruturado_institucional:Q004",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q004|profile=anonimo|difficulty=media|form=criativa|sources=profile,service_dir|graph_rag=false",
+    "question_id": "Q004",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "criativa",
+    "sources": [
+      "profile",
+      "service_dir"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "O colegio divulga nomes e contatos diretos de professores por disciplina?",
+    "slice": "public",
+    "category": "publico_estruturado_institucional",
+    "thread_id": "system_bank:publico_estruturado_institucional:Q005",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q005|profile=anonimo|difficulty=media|form=direta|sources=profile,org_dir|graph_rag=false",
+    "question_id": "Q005",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "profile",
+      "org_dir"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Em qual bairro de Sao Paulo a escola fica e quais sao os principais referenciais de acesso?",
+    "slice": "public",
+    "category": "publico_estruturado_institucional",
+    "thread_id": "system_bank:publico_estruturado_institucional:Q006",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q006|profile=anonimo|difficulty=facil|form=direta|sources=profile|graph_rag=false",
+    "question_id": "Q006",
+    "profile": "anonimo",
+    "difficulty": "facil",
+    "form": "direta",
+    "sources": [
+      "profile"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Com quem eu falo sobre bolsa, com quem eu falo sobre boletos e com quem eu falo sobre bullying?",
+    "slice": "public",
+    "category": "publico_estruturado_institucional",
+    "thread_id": "system_bank:publico_estruturado_institucional:Q007",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q007|profile=anonimo|difficulty=media|form=direta|sources=service_dir|graph_rag=false",
+    "question_id": "Q007",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "service_dir"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Qual a diferenca entre falar com secretaria, coordenacao e orientacao educacional?",
+    "slice": "public",
+    "category": "publico_estruturado_institucional",
+    "thread_id": "system_bank:publico_estruturado_institucional:Q008",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q008|profile=anonimo|difficulty=media|form=comparativa|sources=profile,org_dir,service_dir|graph_rag=false",
+    "question_id": "Q008",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "comparativa",
+    "sources": [
+      "profile",
+      "org_dir",
+      "service_dir"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Quando abre a matricula de 2026 e quando comecam as aulas?",
+    "slice": "public",
+    "category": "timeline_e_calendario_publico",
+    "thread_id": "system_bank:timeline_e_calendario_publico:Q009",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q009|profile=anonimo|difficulty=facil|form=direta|sources=timeline|graph_rag=false",
+    "question_id": "Q009",
+    "profile": "anonimo",
+    "difficulty": "facil",
+    "form": "direta",
+    "sources": [
+      "timeline"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Quais sao os principais eventos publicos desta semana para familias e responsaveis?",
+    "slice": "public",
+    "category": "timeline_e_calendario_publico",
+    "thread_id": "system_bank:timeline_e_calendario_publico:Q010",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q010|profile=anonimo|difficulty=media|form=direta|sources=calendar|graph_rag=false",
+    "question_id": "Q010",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "calendar"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Monte uma linha do tempo do primeiro bimestre com datas que importam para pais e alunos.",
+    "slice": "public",
+    "category": "timeline_e_calendario_publico",
+    "thread_id": "system_bank:timeline_e_calendario_publico:Q011",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q011|profile=anonimo|difficulty=media|form=comparativa|sources=timeline,calendar|graph_rag=false",
+    "question_id": "Q011",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "comparativa",
+    "sources": [
+      "timeline",
+      "calendar"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Quando acontecem reunioes de pais, simulados e semanas de prova no ano letivo?",
+    "slice": "public",
+    "category": "timeline_e_calendario_publico",
+    "thread_id": "system_bank:timeline_e_calendario_publico:Q012",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q012|profile=anonimo|difficulty=media|form=direta|sources=calendar|graph_rag=false",
+    "question_id": "Q012",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "calendar"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "O que acontece antes da confirmacao da vaga e o que acontece depois do inicio das aulas?",
+    "slice": "public",
+    "category": "timeline_e_calendario_publico",
+    "thread_id": "system_bank:timeline_e_calendario_publico:Q013",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q013|profile=anonimo|difficulty=dificil|form=ambigua|sources=timeline,calendar|graph_rag=false",
+    "question_id": "Q013",
+    "profile": "anonimo",
+    "difficulty": "dificil",
+    "form": "ambigua",
+    "sources": [
+      "timeline",
+      "calendar"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Se eu quiser planejar uma viagem sem atrapalhar a vida escolar, quais marcos do calendario eu deveria observar?",
+    "slice": "public",
+    "category": "timeline_e_calendario_publico",
+    "thread_id": "system_bank:timeline_e_calendario_publico:Q014",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q014|profile=anonimo|difficulty=media|form=criativa|sources=calendar,timeline|graph_rag=false",
+    "question_id": "Q014",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "criativa",
+    "sources": [
+      "calendar",
+      "timeline"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Quais eventos do calendario sao realmente publicos e quais dependem de autenticacao ou contexto interno?",
+    "slice": "public",
+    "category": "timeline_e_calendario_publico",
+    "thread_id": "system_bank:timeline_e_calendario_publico:Q015",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q015|profile=anonimo|difficulty=facil|form=direta|sources=calendar|graph_rag=false",
+    "question_id": "Q015",
+    "profile": "anonimo",
+    "difficulty": "facil",
+    "form": "direta",
+    "sources": [
+      "calendar"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Resuma o ano escolar em tres fases: admissao, rotina academica e fechamento.",
+    "slice": "public",
+    "category": "timeline_e_calendario_publico",
+    "thread_id": "system_bank:timeline_e_calendario_publico:Q016",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q016|profile=anonimo|difficulty=dificil|form=multi-fonte|sources=timeline,calendar,public_docs|graph_rag=false",
+    "question_id": "Q016",
+    "profile": "anonimo",
+    "difficulty": "dificil",
+    "form": "multi-fonte",
+    "sources": [
+      "timeline",
+      "calendar",
+      "public_docs"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Quais documentos sao exigidos para matricula no ensino medio?",
+    "slice": "public",
+    "category": "retrieval_hibrido_sobre_documentos_publicos",
+    "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q017",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q017|profile=anonimo|difficulty=facil|form=direta|sources=public_docs|graph_rag=false",
+    "question_id": "Q017",
+    "profile": "anonimo",
+    "difficulty": "facil",
+    "form": "direta",
+    "sources": [
+      "public_docs"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Como funciona a politica de avaliacao, recuperacao e promocao da escola?",
+    "slice": "public",
+    "category": "retrieval_hibrido_sobre_documentos_publicos",
+    "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q018",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q018|profile=anonimo|difficulty=media|form=direta|sources=public_docs|graph_rag=false",
+    "question_id": "Q018",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "public_docs"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Quais sao as regras gerais de convivencia, frequencia e pontualidade?",
+    "slice": "public",
+    "category": "retrieval_hibrido_sobre_documentos_publicos",
+    "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q019",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q019|profile=anonimo|difficulty=media|form=direta|sources=public_docs|graph_rag=false",
+    "question_id": "Q019",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "public_docs"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Como funciona o uso da biblioteca, dos laboratorios e dos recursos digitais?",
+    "slice": "public",
+    "category": "retrieval_hibrido_sobre_documentos_publicos",
+    "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q020",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q020|profile=anonimo|difficulty=media|form=direta|sources=public_docs|graph_rag=false",
+    "question_id": "Q020",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "public_docs"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Quais os prazos e canais para secretaria receber documentos, declaracoes e atualizacoes cadastrais?",
+    "slice": "public",
+    "category": "retrieval_hibrido_sobre_documentos_publicos",
+    "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q021",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q021|profile=anonimo|difficulty=media|form=direta|sources=public_docs|graph_rag=false",
+    "question_id": "Q021",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "public_docs"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "O que a escola orienta sobre portal, aplicativo, senha, login e seguranca das credenciais?",
+    "slice": "public",
+    "category": "retrieval_hibrido_sobre_documentos_publicos",
+    "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q022",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q022|profile=anonimo|difficulty=media|form=multi-fonte|sources=public_docs|graph_rag=false",
+    "question_id": "Q022",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "multi-fonte",
+    "sources": [
+      "public_docs"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Como funcionam bolsas, descontos e regras de rematricula, transferencia e cancelamento?",
+    "slice": "public",
+    "category": "retrieval_hibrido_sobre_documentos_publicos",
+    "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q023",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q023|profile=anonimo|difficulty=media|form=direta|sources=public_docs|graph_rag=false",
+    "question_id": "Q023",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "public_docs"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Se eu faltar por motivo de saude e perder uma prova, onde a escola explica o que devo fazer?",
+    "slice": "public",
+    "category": "retrieval_hibrido_sobre_documentos_publicos",
+    "thread_id": "system_bank:retrieval_hibrido_sobre_documentos_publicos:Q024",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q024|profile=anonimo|difficulty=dificil|form=ambigua|sources=public_docs|graph_rag=false",
+    "question_id": "Q024",
+    "profile": "anonimo",
+    "difficulty": "dificil",
+    "form": "ambigua",
+    "sources": [
+      "public_docs"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  }
+]

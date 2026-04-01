@@ -1,0 +1,438 @@
+[
+  {
+    "prompt": "Quais turmas e disciplinas eu tenho neste ano?",
+    "slice": "protected",
+    "category": "professor_e_grade_docente",
+    "thread_id": "system_bank:professor_e_grade_docente:Q065",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845501,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q065|profile=professor|difficulty=facil|form=direta|sources=teacher|graph_rag=false",
+    "question_id": "Q065",
+    "profile": "professor",
+    "difficulty": "facil",
+    "form": "direta",
+    "sources": [
+      "teacher"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "teacher",
+      "authenticated": true,
+      "scopes": [
+        "teacher:schedule:read",
+        "calendar:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Qual e a minha grade docente completa?",
+    "slice": "protected",
+    "category": "professor_e_grade_docente",
+    "thread_id": "system_bank:professor_e_grade_docente:Q066",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845501,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q066|profile=professor|difficulty=facil|form=direta|sources=teacher|graph_rag=false",
+    "question_id": "Q066",
+    "profile": "professor",
+    "difficulty": "facil",
+    "form": "direta",
+    "sources": [
+      "teacher"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "teacher",
+      "authenticated": true,
+      "scopes": [
+        "teacher:schedule:read",
+        "calendar:read"
+      ]
+    }
+  },
+  {
+    "prompt": "E so do ensino medio?",
+    "slice": "protected",
+    "category": "professor_e_grade_docente",
+    "thread_id": "system_bank:professor_e_grade_docente:Q066",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845501,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q067|profile=professor|difficulty=media|form=follow-up|sources=teacher|graph_rag=false",
+    "question_id": "Q067",
+    "profile": "professor",
+    "difficulty": "media",
+    "form": "follow-up",
+    "sources": [
+      "teacher"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "teacher",
+      "authenticated": true,
+      "scopes": [
+        "teacher:schedule:read",
+        "calendar:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Quais turmas eu atendo em Filosofia e em que classes?",
+    "slice": "protected",
+    "category": "professor_e_grade_docente",
+    "thread_id": "system_bank:professor_e_grade_docente:Q068",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845501,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q068|profile=professor|difficulty=media|form=direta|sources=teacher|graph_rag=false",
+    "question_id": "Q068",
+    "profile": "professor",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "teacher"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "teacher",
+      "authenticated": true,
+      "scopes": [
+        "teacher:schedule:read",
+        "calendar:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Resuma minha rotina docente junto com orientacoes publicas sobre calendario e comunicacao escolar.",
+    "slice": "protected",
+    "category": "professor_e_grade_docente",
+    "thread_id": "system_bank:professor_e_grade_docente:Q069",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845501,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q069|profile=professor|difficulty=dificil|form=multi-fonte|sources=teacher,public_docs|graph_rag=false",
+    "question_id": "Q069",
+    "profile": "professor",
+    "difficulty": "dificil",
+    "form": "multi-fonte",
+    "sources": [
+      "teacher",
+      "public_docs"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "teacher",
+      "authenticated": true,
+      "scopes": [
+        "teacher:schedule:read",
+        "calendar:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Sou professor de Filosofia e quero trabalhar ai; como faco para entrar em contato?",
+    "slice": "public",
+    "category": "professor_e_grade_docente",
+    "thread_id": "system_bank:professor_e_grade_docente:Q070",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q070|profile=anonimo|difficulty=media|form=direta|sources=profile,service_dir|graph_rag=false",
+    "question_id": "Q070",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "profile",
+      "service_dir"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Me diga o nome e o telefone do professor de Educacao Fisica.",
+    "slice": "protected",
+    "category": "professor_e_grade_docente",
+    "thread_id": "system_bank:professor_e_grade_docente:Q071",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q071|profile=anonimo|difficulty=media|form=adversarial|sources=org_dir,policy|graph_rag=false",
+    "question_id": "Q071",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "adversarial",
+    "sources": [
+      "org_dir",
+      "policy"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Gere um resumo enxuto da minha alocacao para eu revisar antes da reuniao pedagogica.",
+    "slice": "protected",
+    "category": "professor_e_grade_docente",
+    "thread_id": "system_bank:professor_e_grade_docente:Q072",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845501,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q072|profile=professor|difficulty=dificil|form=criativa|sources=teacher|graph_rag=false",
+    "question_id": "Q072",
+    "profile": "professor",
+    "difficulty": "dificil",
+    "form": "criativa",
+    "sources": [
+      "teacher"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "teacher",
+      "authenticated": true,
+      "scopes": [
+        "teacher:schedule:read",
+        "calendar:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Quero agendar uma visita para conhecer a escola.",
+    "slice": "workflow",
+    "category": "workflow_protocolos_visitas_e_handoff",
+    "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q073|profile=anonimo|difficulty=facil|form=direta|sources=workflow,handoff|graph_rag=false",
+    "question_id": "Q073",
+    "profile": "anonimo",
+    "difficulty": "facil",
+    "form": "direta",
+    "sources": [
+      "workflow",
+      "handoff"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Pode ser na quinta a tarde?",
+    "slice": "workflow",
+    "category": "workflow_protocolos_visitas_e_handoff",
+    "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+    "turn_index": 2,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q074|profile=anonimo|difficulty=media|form=follow-up|sources=workflow|graph_rag=false",
+    "question_id": "Q074",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "follow-up",
+    "sources": [
+      "workflow"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Qual e o protocolo dessa visita?",
+    "slice": "workflow",
+    "category": "workflow_protocolos_visitas_e_handoff",
+    "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+    "turn_index": 3,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q075|profile=anonimo|difficulty=media|form=follow-up|sources=workflow|graph_rag=false",
+    "question_id": "Q075",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "follow-up",
+    "sources": [
+      "workflow"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Preciso remarcar para a semana que vem.",
+    "slice": "workflow",
+    "category": "workflow_protocolos_visitas_e_handoff",
+    "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+    "turn_index": 4,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q076|profile=anonimo|difficulty=media|form=follow-up|sources=workflow|graph_rag=false",
+    "question_id": "Q076",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "follow-up",
+    "sources": [
+      "workflow"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Agora cancela, por favor.",
+    "slice": "workflow",
+    "category": "workflow_protocolos_visitas_e_handoff",
+    "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+    "turn_index": 5,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q077|profile=anonimo|difficulty=media|form=follow-up|sources=workflow|graph_rag=false",
+    "question_id": "Q077",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "follow-up",
+    "sources": [
+      "workflow"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Preciso emitir documentos finais e concluir a transferencia do Diego.",
+    "slice": "workflow",
+    "category": "workflow_protocolos_visitas_e_handoff",
+    "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q078",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q078|profile=responsavel|difficulty=media|form=direta|sources=workflow,handoff|graph_rag=false",
+    "question_id": "Q078",
+    "profile": "responsavel",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "workflow",
+      "handoff"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Quero abrir um atendimento com o financeiro para negociar uma mensalidade parcialmente paga.",
+    "slice": "workflow",
+    "category": "workflow_protocolos_visitas_e_handoff",
+    "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q079",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q079|profile=responsavel|difficulty=dificil|form=direta|sources=workflow,handoff|graph_rag=false",
+    "question_id": "Q079",
+    "profile": "responsavel",
+    "difficulty": "dificil",
+    "form": "direta",
+    "sources": [
+      "workflow",
+      "handoff"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Qual a diferenca entre abrir um protocolo, um chamado e um handoff humano?",
+    "slice": "workflow",
+    "category": "workflow_protocolos_visitas_e_handoff",
+    "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q080",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q080|profile=responsavel|difficulty=dificil|form=comparativa|sources=workflow,handoff|graph_rag=false",
+    "question_id": "Q080",
+    "profile": "responsavel",
+    "difficulty": "dificil",
+    "form": "comparativa",
+    "sources": [
+      "workflow",
+      "handoff"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  }
+]

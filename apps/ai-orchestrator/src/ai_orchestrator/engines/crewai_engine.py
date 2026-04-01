@@ -75,6 +75,49 @@ def _is_public_institutional_pricing_query(request: Any) -> bool:
     return False
 
 
+def _is_teacher_internal_request(request: Any) -> bool:
+    user = getattr(request, 'user', None)
+    role = str(getattr(user, 'role', '') or '').strip().lower()
+    authenticated = bool(getattr(user, 'authenticated', False))
+    if role != 'teacher' and not authenticated:
+        return False
+    message = str(getattr(request, 'message', '') or '')
+    normalized = _normalize_shadow_message(message)
+    teacher_internal_terms = (
+        'meus alunos',
+        'minhas turmas',
+        'quais turmas eu atendo',
+        'minha grade docente',
+        'grade docente',
+        'grade docente completa',
+        'quais turmas eu tenho',
+        'quais disciplinas eu tenho',
+        'quais disciplinas eu atendo',
+        'quais turmas e disciplinas eu tenho',
+        'quais turmas e disciplinas eu atendo',
+        'quais classes eu tenho',
+        'quais classes eu atendo',
+        'rotina docente',
+        'minha rotina docente',
+        'alocacao docente',
+        'alocação docente',
+        'filosofia',
+        'sociologia',
+        'ensino medio',
+        'ensino médio',
+        'ja sou professor',
+        'já sou professor',
+        'sou professor do colegio',
+        'sou professor do colégio',
+    )
+    if any(_contains_phrase(normalized, term) for term in teacher_internal_terms):
+        return True
+    return role == 'teacher' and any(
+        _contains_phrase(normalized, term)
+        for term in ('turma', 'turmas', 'disciplina', 'disciplinas', 'classe', 'classes', 'grade', 'horario', 'horário')
+    )
+
+
 def _public_meta_shadow_slice(request: Any) -> bool:
     message = str(getattr(request, 'message', '') or '').strip()
     if not message:
@@ -99,9 +142,173 @@ def _public_meta_shadow_slice(request: Any) -> bool:
     return any(_contains_phrase(message, term) for term in direct_meta_terms)
 
 
+def _is_public_contact_bundle_request(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '')
+    normalized = _normalize_shadow_message(message)
+    if not normalized:
+        return False
+    asks_location = any(_contains_phrase(normalized, term) for term in ('endereco completo', 'onde fica', 'telefone principal'))
+    asks_secretaria = any(_contains_phrase(normalized, term) for term in ('secretaria hoje', 'melhor canal', 'canal da secretaria'))
+    return asks_location and (asks_secretaria or _contains_phrase(normalized, 'telefone principal'))
+
+
+def _is_public_service_routing_request(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '')
+    normalized = _normalize_shadow_message(message)
+    if not normalized:
+        return False
+    return any(
+        _contains_phrase(normalized, term)
+        for term in (
+            'com quem eu falo sobre',
+            'quem responde por',
+            'pra quem eu falo sobre',
+            'para quem eu falo sobre',
+        )
+    )
+
+
+def _is_public_policy_request(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '')
+    normalized = _normalize_shadow_message(message)
+    if not normalized:
+        return False
+    if 'projeto de vida' in normalized:
+        return True
+    if any(_contains_phrase(normalized, term) for term in ('politica de avaliacao', 'recuperacao e promocao', 'recuperacao promocao')):
+        return True
+    if any(_contains_phrase(normalized, term) for term in ('falta', 'faltas', 'frequencia', '75')) and any(
+        _contains_phrase(normalized, term) for term in ('politica', 'regra', 'minima', 'o que acontece')
+    ):
+        return True
+    return False
+
+
+def _is_public_document_submission_request(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '')
+    normalized = _normalize_shadow_message(message)
+    if not normalized:
+        return False
+    if any(
+        _contains_phrase(normalized, term)
+        for term in (
+            'envio de documentos',
+            'enviar documentos',
+            'mandar documentos',
+            'portal institucional',
+            'email da secretaria',
+            'secretaria presencial',
+            'prazos e canais da secretaria',
+            'prazo da secretaria para documentos',
+            'atualizacoes cadastrais',
+            'declaracoes',
+        )
+    ):
+        return True
+    return 'secretaria' in normalized and 'documentos' in normalized and any(
+        _contains_phrase(normalized, term) for term in ('prazo', 'prazos', 'canal', 'canais')
+    )
+
+
+def _is_public_service_credentials_bundle_request(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '')
+    normalized = _normalize_shadow_message(message)
+    if not normalized:
+        return False
+    return any(_contains_phrase(normalized, term) for term in ('credenciais', 'login', 'senha')) and any(
+        _contains_phrase(normalized, term) for term in ('secretaria', 'portal', 'documentos', 'documentacao', 'envio de documentos')
+    )
+
+
+def _is_public_timeline_request(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '')
+    normalized = _normalize_shadow_message(message)
+    if not normalized:
+        return False
+    asks_enrollment = any(_contains_phrase(normalized, term) for term in ('abre a matricula', 'abre a matrícula', 'matricula de 2026'))
+    asks_classes = any(_contains_phrase(normalized, term) for term in ('quando comecam as aulas', 'quando começam as aulas', 'inicio das aulas', 'início das aulas'))
+    return asks_enrollment or asks_classes
+
+
+def _is_public_auth_guidance_request(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '')
+    normalized = _normalize_shadow_message(message)
+    if not normalized:
+        return False
+    return any(
+        _contains_phrase(normalized, term)
+        for term in (
+            'como vinculo minha conta',
+            'como eu vinculo minha conta',
+            'como eu vinculo meu telegram',
+            'como vinculo meu telegram',
+            'telegram a minha conta da escola',
+            'vincular telegram',
+            '/start link_',
+            'codigo de vinculacao',
+        )
+    )
+
+
+def _is_protected_access_scope_request(request: Any) -> bool:
+    user = getattr(request, 'user', None)
+    authenticated = bool(getattr(user, 'authenticated', False))
+    if not authenticated:
+        return False
+    message = str(getattr(request, 'message', '') or '')
+    normalized = _normalize_shadow_message(message)
+    if not normalized:
+        return False
+    explicit_phrases = (
+        'qual e exatamente o meu escopo',
+        'qual e meu escopo',
+        'quais dados eu consigo acessar',
+        'quais dados dos meus alunos eu consigo acessar',
+        'quais dados dos meus dois alunos eu consigo acessar',
+        'quais dados dos meus filhos eu consigo acessar',
+    )
+    if any(_contains_phrase(normalized, phrase) for phrase in explicit_phrases):
+        return True
+    if 'meus alunos' in normalized or 'meus dois alunos' in normalized:
+        return any(
+            _contains_phrase(normalized, term)
+            for term in ('escopo', 'acesso', 'dados', 'consigo acessar', 'posso acessar')
+        )
+    return False
+
+
+def _is_protected_admin_finance_combo_request(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '')
+    normalized = _normalize_shadow_message(message)
+    if not normalized:
+        return False
+    asks_admin = any(_contains_phrase(normalized, term) for term in ('documentacao', 'documentos', 'cadastro', 'regular'))
+    asks_finance = any(
+        _contains_phrase(normalized, term)
+        for term in ('financeiro', 'fatura', 'boleto', 'mensalidade', 'pagamento', 'vencimento', 'bloqueando atendimento', 'bloqueio')
+    )
+    return asks_admin and asks_finance
+
+
 def _protected_shadow_slice(request: Any) -> bool:
     message = str(getattr(request, 'message', '') or '')
+    if _is_teacher_internal_request(request):
+        return True
+    if _is_protected_access_scope_request(request):
+        return True
+    if _is_protected_admin_finance_combo_request(request):
+        return True
     if _public_meta_shadow_slice(request):
+        return False
+    if (
+        _is_public_contact_bundle_request(request)
+        or _is_public_service_routing_request(request)
+        or _is_public_policy_request(request)
+        or _is_public_document_submission_request(request)
+        or _is_public_service_credentials_bundle_request(request)
+        or _is_public_timeline_request(request)
+        or _is_public_auth_guidance_request(request)
+    ):
         return False
     if _is_public_institutional_pricing_query(request):
         return False
@@ -165,6 +372,18 @@ def _protected_shadow_slice(request: Any) -> bool:
 
 
 def _support_shadow_slice(request: Any) -> bool:
+    if _is_protected_access_scope_request(request) or _is_protected_admin_finance_combo_request(request):
+        return False
+    if (
+        _is_public_contact_bundle_request(request)
+        or _is_public_service_routing_request(request)
+        or _is_public_policy_request(request)
+        or _is_public_document_submission_request(request)
+        or _is_public_service_credentials_bundle_request(request)
+        or _is_public_timeline_request(request)
+        or _is_public_auth_guidance_request(request)
+    ):
+        return False
     message = str(getattr(request, 'message', '') or '').lower()
     support_terms = (
         'atendente humano',
@@ -179,12 +398,6 @@ def _support_shadow_slice(request: Any) -> bool:
         'quero falar com a direção',
         'quero falar com a orientacao',
         'quero falar com a orientação',
-        'secretaria',
-        'financeiro',
-        'direcao',
-        'direção',
-        'orientacao',
-        'orientação',
         'suporte humano',
         'atendente',
         'humano',
@@ -198,6 +411,15 @@ def _workflow_shadow_slice(request: Any) -> bool:
     message = str(getattr(request, 'message', '') or '').lower()
     if _support_shadow_slice(request):
         return False
+    followup_terms = (
+        'pode ser na',
+        'pode ser no',
+        'pode ficar para',
+        'quinta a tarde',
+        'quinta à tarde',
+        'sexta de manha',
+        'sexta de manhã',
+    )
     workflow_terms = (
         'agendar visita',
         'visita',
@@ -213,7 +435,7 @@ def _workflow_shadow_slice(request: Any) -> bool:
         'status da visita',
         'status do protocolo',
     )
-    return any(term in message for term in workflow_terms)
+    return any(term in message for term in workflow_terms) or any(term in message for term in followup_terms)
 
 
 def infer_request_slice(request: Any) -> str:
@@ -269,7 +491,27 @@ def _public_selected_tools(metadata: dict[str, Any]) -> list[str]:
         selected.append('get_public_timeline')
     if any(str(source).startswith('calendar.') for source in relevant_sources):
         selected.append('get_public_calendar_events')
-    if not selected or any(str(source).startswith(('profile.', 'contact.', 'feature.', 'tuition.', 'visit.')) for source in relevant_sources):
+    if any(str(source).startswith(('directory.', 'leadership.')) for source in relevant_sources):
+        selected.append('get_org_directory')
+    if any(str(source).startswith('service.') for source in relevant_sources):
+        selected.append('get_service_directory')
+    if not selected or any(
+        str(source).startswith(
+            (
+                'profile.',
+                'contact.',
+                'feature.',
+                'tuition.',
+                'visit.',
+                'shift.',
+                'interval.',
+                'policy.',
+                'admissions.',
+                'highlight.',
+            )
+        )
+        for source in relevant_sources
+    ):
         selected.append('get_public_school_profile')
     deduped: list[str] = []
     for tool_name in selected:
@@ -455,7 +697,8 @@ class CrewAIEngine(ResponseEngine):
         pilot_url = str(getattr(settings, 'crewai_pilot_url', '') or '').strip()
         if not pilot_url:
             return None
-        async with httpx.AsyncClient(timeout=httpx.Timeout(13.0, connect=5.0)) as client:
+        timeout_seconds = float(getattr(settings, 'crewai_pilot_timeout_seconds', 90.0) or 90.0)
+        async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds, connect=5.0)) as client:
             response = await client.post(
                 f'{pilot_url.rstrip("/")}/v1/shadow/{slice_name}',
                 headers={
@@ -467,6 +710,7 @@ class CrewAIEngine(ResponseEngine):
                     'conversation_id': getattr(request, 'conversation_id', None),
                     'telegram_chat_id': getattr(request, 'telegram_chat_id', None),
                     'channel': getattr(getattr(request, 'channel', None), 'value', 'telegram'),
+                    'user': getattr(getattr(request, 'user', None), 'model_dump', lambda **_: None)(mode='json'),
                 },
             )
         response.raise_for_status()

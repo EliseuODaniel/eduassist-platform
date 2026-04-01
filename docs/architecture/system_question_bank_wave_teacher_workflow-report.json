@@ -1,0 +1,1714 @@
+{
+  "generated_at": "2026-04-01T04:57:41.162528+00:00",
+  "dataset": "tests/evals/datasets/system_question_bank_wave_teacher_workflow.json",
+  "run_prefix": "debug:five-path:20260401T045541Z",
+  "summary": {
+    "by_stack": {
+      "langgraph": {
+        "count": 16,
+        "ok": 16,
+        "keyword_pass": 16,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 1992.9
+      },
+      "python_functions": {
+        "count": 16,
+        "ok": 16,
+        "keyword_pass": 16,
+        "quality_avg": 99.4,
+        "avg_latency_ms": 579.7
+      },
+      "llamaindex": {
+        "count": 16,
+        "ok": 16,
+        "keyword_pass": 16,
+        "quality_avg": 99.4,
+        "avg_latency_ms": 484.5
+      },
+      "specialist_supervisor": {
+        "count": 16,
+        "ok": 16,
+        "keyword_pass": 16,
+        "quality_avg": 96.9,
+        "avg_latency_ms": 4354.7
+      }
+    },
+    "by_slice": {
+      "protected": {
+        "count": 7,
+        "langgraph": {
+          "ok": 7,
+          "keyword_pass": 7,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 2700.5
+        },
+        "python_functions": {
+          "ok": 7,
+          "keyword_pass": 7,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 1091.7
+        },
+        "llamaindex": {
+          "ok": 7,
+          "keyword_pass": 7,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 869.4
+        },
+        "specialist_supervisor": {
+          "ok": 7,
+          "keyword_pass": 7,
+          "quality_avg": 98.6,
+          "avg_latency_ms": 4328.3
+        }
+      },
+      "public": {
+        "count": 1,
+        "langgraph": {
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 6050.7
+        },
+        "python_functions": {
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 190.7
+        },
+        "llamaindex": {
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 245.3
+        },
+        "specialist_supervisor": {
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 5042.4
+        }
+      },
+      "workflow": {
+        "count": 8,
+        "langgraph": {
+          "ok": 8,
+          "keyword_pass": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 866.6
+        },
+        "python_functions": {
+          "ok": 8,
+          "keyword_pass": 8,
+          "quality_avg": 98.8,
+          "avg_latency_ms": 180.3
+        },
+        "llamaindex": {
+          "ok": 8,
+          "keyword_pass": 8,
+          "quality_avg": 98.8,
+          "avg_latency_ms": 177.6
+        },
+        "specialist_supervisor": {
+          "ok": 8,
+          "keyword_pass": 8,
+          "quality_avg": 95.0,
+          "avg_latency_ms": 4291.7
+        }
+      }
+    },
+    "error_types": {
+      "langgraph": {},
+      "python_functions": {
+        "repetitive_reply": 1
+      },
+      "llamaindex": {
+        "repetitive_reply": 1
+      },
+      "specialist_supervisor": {
+        "repetitive_reply": 5
+      }
+    }
+  },
+  "results": [
+    {
+      "prompt": "Quais turmas e disciplinas eu tenho neste ano?",
+      "slice": "protected",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q065",
+      "turn_index": 1,
+      "note": "Q065|profile=professor|difficulty=facil|form=direta|sources=teacher|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 309.9,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Se voce ja e professor do Colegio Horizonte, o acesso docente depende da vinculacao da conta institucional correta no Telegram. Nesta conta atual eu nao identifiquei um perfil docente ativo. Quando a vinculacao de professor estiver correta, por aqui eu consigo consultar horario, turmas e disciplinas; a situacao individual dos alunos continua fora do escopo deste canal nesta etapa.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 139.4,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Se voce ja e professor do Colegio Horizonte, o acesso docente depende da vinculacao da conta institucional correta no Telegram. Nesta conta atual eu nao identifiquei um perfil docente ativo. Quando a vinculacao de professor estiver correta, por aqui eu consigo consultar horario, turmas e disciplinas; a situacao individual dos alunos continua fora do escopo deste canal nesta etapa.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 140.3,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Se voce ja e professor do Colegio Horizonte, o acesso docente depende da vinculacao da conta institucional correta no Telegram. Nesta conta atual eu nao identifiquei um perfil docente ativo. Quando a vinculacao de professor estiver correta, por aqui eu consigo consultar horario, turmas e disciplinas; a situacao individual dos alunos continua fora do escopo deste canal nesta etapa.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5045.4,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Qual e a minha grade docente completa?",
+      "slice": "protected",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q066",
+      "turn_index": 1,
+      "note": "Q066|profile=professor|difficulty=facil|form=direta|sources=teacher|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1974.8,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify"
+        ],
+        "answer_text": "Para acessar sua grade docente completa, que inclui informações detalhadas sobre seus professores e horários, é necessário que você faça login no nosso portal do aluno. Lá, você encontrará todas as informações personalizadas.\n\nSe precisar de ajuda para acessar o portal ou tiver alguma dúvida, por favor, me avise!",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 158.1,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 163.2,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5038.9,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "E so do ensino medio?",
+      "slice": "protected",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q066",
+      "turn_index": 2,
+      "note": "Q067|profile=professor|difficulty=media|form=follow-up|sources=teacher|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 3841.5,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Olá! Para que eu possa te ajudar melhor, você poderia, por favor, reformular sua pergunta usando termos como \"matrícula\", \"calendário\", \"secretaria\" ou \"atendimento\"? Assim consigo buscar a informação que você precisa com mais precisão.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 161.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Ainda nao encontrei uma resposta suficientemente suportada na base publica. Tente reformular a pergunta com termos como matricula, calendario, secretaria ou atendimento.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 213.5,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Ainda nao encontrei uma resposta suficientemente suportada na base publica. Tente reformular a pergunta com termos como matricula, calendario, secretaria ou atendimento.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5037.5,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 90,
+        "error_types": [
+          "repetitive_reply"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": false,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quais turmas eu atendo em Filosofia e em que classes?",
+      "slice": "protected",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q068",
+      "turn_index": 1,
+      "note": "Q068|profile=professor|difficulty=media|form=direta|sources=teacher|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 138.1,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Se voce ja e professor do Colegio Horizonte, o acesso docente depende da vinculacao da conta institucional correta no Telegram. Nesta conta atual eu nao identifiquei um perfil docente ativo. Quando a vinculacao de professor estiver correta, por aqui eu consigo consultar horario, turmas e disciplinas; a situacao individual dos alunos continua fora do escopo deste canal nesta etapa.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 139.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Se voce ja e professor do Colegio Horizonte, o acesso docente depende da vinculacao da conta institucional correta no Telegram. Nesta conta atual eu nao identifiquei um perfil docente ativo. Quando a vinculacao de professor estiver correta, por aqui eu consigo consultar horario, turmas e disciplinas; a situacao individual dos alunos continua fora do escopo deste canal nesta etapa.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 120.7,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Se voce ja e professor do Colegio Horizonte, o acesso docente depende da vinculacao da conta institucional correta no Telegram. Nesta conta atual eu nao identifiquei um perfil docente ativo. Quando a vinculacao de professor estiver correta, por aqui eu consigo consultar horario, turmas e disciplinas; a situacao individual dos alunos continua fora do escopo deste canal nesta etapa.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5037.7,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Resuma minha rotina docente junto com orientacoes publicas sobre calendario e comunicacao escolar.",
+      "slice": "protected",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q069",
+      "turn_index": 1,
+      "note": "Q069|profile=professor|difficulty=dificil|form=multi-fonte|sources=teacher,public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 6032.3,
+        "mode": "structured_tool",
+        "reason": "planejamento semantico publico encontrou um ato estruturado mais adequado ao turno",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "hybrid_retrieval"
+        ],
+        "answer_text": "Para acessar sua rotina docente completa, incluindo horários, turmas e disciplinas, é importante que sua conta institucional do Telegram esteja vinculada corretamente. No momento, não identifiquei um perfil docente ativo com esta conta. Assim que a vinculação for confirmada, terei prazer em ajudar com essas informações!",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 5859.7,
+        "mode": "hybrid_retrieval",
+        "reason": "python_functions_native_public_retrieval",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Olá! Para resumir sua rotina docente e as orientações públicas, posso dizer que o Colégio Horizonte organiza a rotina acadêmica por turnos, combinando acolhimento, aulas regulares, intervalos, uso de espaços pedagógicos e fechamento com orientações de rotina.\n\nEm relação ao calendário e à comunicação, o calendário escolar é publicado com antecedência e a comunicação digital é centralizada no portal e no bot oficial. Além disso, a escola oferece apoio de orientação educacional, laboratórios e espaços de estudo acompanhados, e atendimento educacional especializado quando previsto.\n\nFontes:\n- Apresentacao Institucional do Colegio Horizonte (v2026.2)\n- Rotina e Vida Escolar (v2026.2)\n- Inclusao, Acessibilidade e Seguranca (v2026.2)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 4244.0,
+        "mode": "hybrid_retrieval",
+        "reason": "retrieval hibrido e o caminho padrao para faq e documentos",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Olá! Para resumir sua rotina docente e as orientações públicas, posso dizer que o dia escolar no Colégio Horizonte é organizado por turnos, combinando acolhimento, aulas regulares, intervalos, uso de espaços pedagógicos e fechamento com orientações de rotina.\n\nEm relação às orientações públicas, nosso calendário escolar é publicado com antecedência e a comunicação digital é centralizada no portal e no nosso bot oficial. Além disso, a escola oferece apoio de orientação educacional, laboratórios e espaços de estudo acompanhados, e uma biblioteca com atendimento ampliado.\n\nSe precisar de mais detalhes sobre algum ponto, é só me dizer!\n\nFontes:\n- Apresentacao Institucional do Colegio Horizonte (v2026.2)\n- Rotina e Vida Escolar (v2026.2)\n- Inclusao, Acessibilidade e Seguranca (v2026.2)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5037.5,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Sou professor de Filosofia e quero trabalhar ai; como faco para entrar em contato?",
+      "slice": "public",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q070",
+      "turn_index": 1,
+      "note": "Q070|profile=anonimo|difficulty=media|form=direta|sources=profile,service_dir|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 6050.7,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Olá! Entendo seu interesse em fazer parte da nossa equipe. No momento, não temos um processo de contato direto para envio de currículos ou candidaturas abertas na base pública. Sugiro que você fique atento ao nosso site oficial e redes sociais, onde divulgamos futuras oportunidades de trabalho.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 190.7,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Ainda nao encontrei uma resposta suficientemente suportada na base publica. Tente reformular a pergunta com termos como matricula, calendario, secretaria ou atendimento.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 245.3,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Ainda nao encontrei uma resposta suficientemente suportada na base publica. Tente reformular a pergunta com termos como matricula, calendario, secretaria ou atendimento.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5042.4,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui concluir essa resposta premium agora. Se quiser, reformule em uma frase mais direta ou repita em instantes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Me diga o nome e o telefone do professor de Educacao Fisica.",
+      "slice": "protected",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q071",
+      "turn_index": 1,
+      "note": "Q071|profile=anonimo|difficulty=media|form=adversarial|sources=org_dir,policy|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 156.4,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 137.8,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 133.6,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5038.7,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Gere um resumo enxuto da minha alocacao para eu revisar antes da reuniao pedagogica.",
+      "slice": "protected",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q072",
+      "turn_index": 1,
+      "note": "Q072|profile=professor|difficulty=dificil|form=criativa|sources=teacher|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 6450.6,
+        "mode": "structured_tool",
+        "reason": "planejamento semantico publico encontrou um ato estruturado mais adequado ao turno",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "hybrid_retrieval"
+        ],
+        "answer_text": "Para que eu possa te ajudar com a sua alocação, preciso que você se identifique. Por favor, faça login ou me informe seu nome completo e número de matrícula.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 1045.9,
+        "mode": "hybrid_retrieval",
+        "reason": "python_functions_native_public_retrieval",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "A base publica atual nao sustenta com seguranca todos os pontos dessa pergunta, especialmente sobre: alocacao, antes, enxuto, gere, resumo, reuniao, revisar. Para evitar uma orientacao incorreta, prefiro nao inferir alem do que esta documentado. Se quiser, eu posso responder apenas o que esta explicitamente registrado na base atual.\n\nFontes:\n- Politica de Avaliacao, Recuperacao e Promocao (v2026.3)\n- Agenda de Avaliacoes, Recuperacoes e Simulados 2026 (v2026.3)\n- Proposta Pedagogica (v2026.2)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 1070.6,
+        "mode": "hybrid_retrieval",
+        "reason": "retrieval hibrido e o caminho padrao para faq e documentos",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "A base publica atual nao sustenta com seguranca todos os pontos dessa pergunta, especialmente sobre: alocacao, antes, enxuto, gere, resumo, reuniao, revisar. Para evitar uma orientacao incorreta, prefiro nao inferir alem do que esta documentado. Se quiser, eu posso responder apenas o que esta explicitamente registrado na base atual.\n\nFontes:\n- Politica de Avaliacao, Recuperacao e Promocao (v2026.3)\n- Agenda de Avaliacoes, Recuperacoes e Simulados 2026 (v2026.3)\n- Proposta Pedagogica (v2026.2)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 62.7,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Quero agendar uma visita para conhecer a escola.",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+      "turn_index": 1,
+      "note": "Q073|profile=anonimo|difficulty=facil|form=direta|sources=workflow,handoff|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 243.7,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Posso orientar sobre visitas ao Colegio Horizonte, mas nao consegui registrar o pedido agora. Tente novamente em instantes ou use o canal de admissions.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 179.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Posso orientar sobre visitas ao Colegio Horizonte, mas nao consegui registrar o pedido agora. Tente novamente em instantes ou use o canal de admissions.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 188.5,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Posso orientar sobre visitas ao Colegio Horizonte, mas nao consegui registrar o pedido agora. Tente novamente em instantes ou use o canal de admissions.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 50.8,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Pode ser na quinta a tarde?",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+      "turn_index": 2,
+      "note": "Q074|profile=anonimo|difficulty=media|form=follow-up|sources=workflow|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1923.4,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify"
+        ],
+        "answer_text": "Para que eu possa te ajudar melhor, preciso de um pouco mais de contexto. Você poderia me dizer a que \"quinta à tarde\" você se refere? Assim consigo verificar a disponibilidade ou a informação que você precisa.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 182.1,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 167.9,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 4033.9,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 90,
+        "error_types": [
+          "repetitive_reply"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Qual e o protocolo dessa visita?",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+      "turn_index": 3,
+      "note": "Q075|profile=anonimo|difficulty=media|form=follow-up|sources=workflow|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 152.7,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Posso orientar sobre protocolos institucionais, mas nao consegui registrar a solicitacao agora. Tente novamente em instantes ou use a secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 202.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Posso orientar sobre protocolos institucionais, mas nao consegui registrar a solicitacao agora. Tente novamente em instantes ou use a secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 169.3,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Posso orientar sobre protocolos institucionais, mas nao consegui registrar a solicitacao agora. Tente novamente em instantes ou use a secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5042.4,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 90,
+        "error_types": [
+          "repetitive_reply"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Preciso remarcar para a semana que vem.",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+      "turn_index": 4,
+      "note": "Q076|profile=anonimo|difficulty=media|form=follow-up|sources=workflow|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 2126.7,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify"
+        ],
+        "answer_text": "Olá! Para que eu possa te ajudar com a remarcação, preciso saber qual é o compromisso ou evento que você deseja reagendar. Assim, consigo verificar as opções e te orientar da melhor forma.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 174.2,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 169.4,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5039.3,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 90,
+        "error_types": [
+          "repetitive_reply"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Agora cancela, por favor.",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+      "turn_index": 5,
+      "note": "Q077|profile=anonimo|difficulty=media|form=follow-up|sources=workflow|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1975.3,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify"
+        ],
+        "answer_text": "Para que eu possa ajudar com o cancelamento, preciso saber a qual serviço ou solicitação você se refere. Poderia me dar mais detalhes, por favor?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 257.2,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 90,
+        "error_types": [
+          "repetitive_reply"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 210.4,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 90,
+        "error_types": [
+          "repetitive_reply"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5041.7,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 90,
+        "error_types": [
+          "repetitive_reply"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Preciso emitir documentos finais e concluir a transferencia do Diego.",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q078",
+      "turn_index": 1,
+      "note": "Q078|profile=responsavel|difficulty=media|form=direta|sources=workflow,handoff|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 158.9,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 138.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 148.5,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5042.6,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quero abrir um atendimento com o financeiro para negociar uma mensalidade parcialmente paga.",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q079",
+      "turn_index": 1,
+      "note": "Q079|profile=responsavel|difficulty=dificil|form=direta|sources=workflow,handoff|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 219.1,
+        "mode": "structured_tool",
+        "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call",
+          "protected_domain_rescue"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 177.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Ainda nao encontrei uma resposta suficientemente suportada na base publica. Tente reformular a pergunta com termos como matricula, calendario, secretaria ou atendimento.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 234.6,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Ainda nao encontrei uma resposta suficientemente suportada na base publica. Tente reformular a pergunta com termos como matricula, calendario, secretaria ou atendimento.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5040.9,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Qual a diferenca entre abrir um protocolo, um chamado e um handoff humano?",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q080",
+      "turn_index": 1,
+      "note": "Q080|profile=responsavel|difficulty=dificil|form=comparativa|sources=workflow,handoff|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T045541Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 133.0,
+        "mode": "handoff",
+        "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "support_slice",
+          "handoff"
+        ],
+        "answer_text": "Posso seguir com orientacoes publicas por aqui, mas nao consegui registrar o encaminhamento humano agora. Tente novamente em instantes ou use a secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 132.3,
+        "mode": "handoff",
+        "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "handoff",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Posso seguir com orientacoes publicas por aqui, mas nao consegui registrar o encaminhamento humano agora. Tente novamente em instantes ou use a secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 132.2,
+        "mode": "handoff",
+        "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "handoff",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Posso seguir com orientacoes publicas por aqui, mas nao consegui registrar o encaminhamento humano agora. Tente novamente em instantes ou use a secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5042.2,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_strict_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "answer_text": "Nao consegui consolidar essa resposta premium com seguranca agora. Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    }
+  ],
+  "stacks": [
+    "langgraph",
+    "python_functions",
+    "llamaindex",
+    "specialist_supervisor"
+  ]
+}

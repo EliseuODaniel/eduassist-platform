@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from functools import lru_cache
 import json
 import logging
@@ -62,12 +63,18 @@ from .tools import get_tool_contracts
 
 logger = logging.getLogger(__name__)
 REPO_ROOT = Path(__file__).resolve().parents[4]
+ROOT_ENV_FILE = REPO_ROOT / '.env'
 FOUR_PATH_COMPARISON_REPORT_JSON = REPO_ROOT / 'docs/architecture/four-path-chatbot-comparison-report.json'
 FOUR_PATH_SMOKE_REPORT_JSON = REPO_ROOT / 'docs/architecture/four-path-chatbot-smoke-report.json'
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(case_sensitive=False)
+    model_config = SettingsConfigDict(
+        case_sensitive=False,
+        env_file=('/workspace/.env', str(ROOT_ENV_FILE), '.env'),
+        env_ignore_empty=True,
+        extra='ignore',
+    )
 
     app_env: str = 'development'
     log_level: str = 'INFO'
@@ -104,6 +111,7 @@ class Settings(BaseSettings):
     feature_flag_primary_orchestration_stack: str | None = None
     feature_flag_telegram_debug_trace_footer_enabled: bool = False
     crewai_pilot_url: str | None = None
+    crewai_pilot_timeout_seconds: float = 30.0
     specialist_supervisor_pilot_url: str | None = None
     specialist_supervisor_pilot_timeout_seconds: float = 75.0
     orchestrator_experiment_enabled: bool = False
@@ -602,12 +610,20 @@ def _warm_retrieval_service(settings: Settings) -> None:
         logger.exception('retrieval_service_warmup_failed')
 
 
+def _warm_langgraph_service(settings: Settings) -> None:
+    try:
+        warm_langgraph_runtime(settings)
+        logger.info('langgraph_runtime_warmed')
+    except Exception:
+        logger.exception('langgraph_runtime_warmup_failed')
+
+
 @app.on_event('startup')
 async def warm_runtime_dependencies() -> None:
     settings = get_settings()
     if settings.warm_retrieval_on_startup:
-        _warm_retrieval_service(settings)
-    warm_langgraph_runtime(settings)
+        asyncio.create_task(asyncio.to_thread(_warm_retrieval_service, settings))
+    asyncio.create_task(asyncio.to_thread(_warm_langgraph_service, settings))
 
 
 @app.on_event('shutdown')

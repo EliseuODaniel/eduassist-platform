@@ -73,7 +73,10 @@ _INTENT_EXPANSIONS = {
     'timeline_lookup': 'calendario aulas reuniao pais formatura matricula datas',
     'document_lookup': 'documentacao matricula documentos secretaria email portal',
     'contact_lookup': 'endereco cidade estado cep telefone email secretaria contato',
-    'corpus_overview': 'proposta pedagogica diferenciais projeto de vida rotina escolar acompanhamento',
+    'corpus_overview': 'proposta pedagogica diferenciais projeto de vida rotina escolar acompanhamento inclusao vida escolar permanencia familia apoio estudante secretaria portal credenciais documentos',
+    'policy_lookup': 'avaliacao recuperacao promocao frequencia pontualidade saude medicacao segunda chamada autorizacoes saidas pedagogicas regras',
+    'admissions_lookup': 'matricula rematricula transferencia cancelamento bolsas descontos documentos entrevista acolhimento prazos protocolos',
+    'service_overview': 'secretaria portal aplicativo credenciais login senha suporte digital servicos atendimento documentos prazos canais protocolos',
 }
 
 
@@ -111,7 +114,22 @@ class RetrievalService:
         self.late_interaction_model = late_interaction_model
         self.candidate_pool_size = max(6, candidate_pool_size)
         self.qdrant = QdrantClient(url=qdrant_url)
-        self.embedder = _build_embedder(embedding_model)
+        self._embedder: TextEmbedding | None = None
+        self._late_interaction_embedder: LateInteractionTextEmbedding | None = None
+
+    @property
+    def embedder(self) -> TextEmbedding:
+        if self._embedder is None:
+            self._embedder = _build_embedder(self.embedding_model)
+        return self._embedder
+
+    @property
+    def late_interaction_embedder(self) -> LateInteractionTextEmbedding | None:
+        if not self.enable_late_interaction_rerank or not self.late_interaction_model:
+            return None
+        if self._late_interaction_embedder is None:
+            self._late_interaction_embedder = _build_late_interaction_embedder(self.late_interaction_model)
+        return self._late_interaction_embedder
 
     def warm_components(self) -> None:
         with start_span(
@@ -123,8 +141,8 @@ class RetrievalService:
             },
         ):
             next(self.embedder.embed(['warmup retrieval query']))
-            if self.enable_late_interaction_rerank and self.late_interaction_model:
-                reranker = _build_late_interaction_embedder(self.late_interaction_model)
+            reranker = self.late_interaction_embedder
+            if reranker is not None:
                 next(reranker.embed(['warmup query']))
                 next(reranker.embed(['warmup document context']))
 
@@ -136,6 +154,8 @@ class RetrievalService:
         visibility: str,
         category: str | None = None,
     ) -> RetrievalSearchResponse:
+        effective_visibility = _normalize_visibility_filter(visibility)
+        effective_category = _normalize_category_filter(category)
         started_at = monotonic()
         query_plan = _build_query_plan(
             query=query,
@@ -150,8 +170,10 @@ class RetrievalService:
             **{
                 'eduassist.retrieval.query_length': len(query),
                 'eduassist.retrieval.top_k': top_k,
-                'eduassist.retrieval.visibility': visibility,
-                'eduassist.retrieval.category': category,
+                'eduassist.retrieval.visibility': effective_visibility,
+                'eduassist.retrieval.category': effective_category,
+                'eduassist.retrieval.requested_visibility': visibility,
+                'eduassist.retrieval.requested_category': category,
                 'eduassist.retrieval.collection': self.collection_name,
                 'eduassist.retrieval.intent': query_plan.intent,
                 'eduassist.retrieval.graph_rag_candidate': query_plan.graph_rag_candidate,
@@ -168,15 +190,15 @@ class RetrievalService:
                 lexical_sources[f'lexical:{index}'] = self._lexical_search(
                     query=variant,
                     top_k=query_plan.lexical_limit,
-                    visibility=visibility,
-                    category=category,
+                    visibility=effective_visibility,
+                    category=effective_category,
                 )
             for index, variant in enumerate(vector_variants):
                 vector_sources[f'vector:{index}'] = self._vector_search(
                     query=variant,
                     top_k=query_plan.vector_limit,
-                    visibility=visibility,
-                    category=category,
+                    visibility=effective_visibility,
+                    category=effective_category,
                 )
 
             fused_hits = self._fuse_hits(
@@ -207,8 +229,8 @@ class RetrievalService:
             )
             metric_attributes = {
                 'backend': RetrievalBackend.qdrant_hybrid.value,
-                'visibility': visibility,
-                'category': category or 'all',
+                'visibility': effective_visibility,
+                'category': effective_category or 'all',
                 'intent': query_plan.intent,
                 'reranker_applied': str(reranker_applied).lower(),
             }
@@ -522,7 +544,9 @@ class RetrievalService:
         if not self.enable_late_interaction_rerank or not self.late_interaction_model or not hits:
             return hits[:top_k], False
         try:
-            reranker = _build_late_interaction_embedder(self.late_interaction_model)
+            reranker = self.late_interaction_embedder
+            if reranker is None:
+                return hits[:top_k], False
             query_embedding = np.asarray(next(reranker.embed([query])))
             rerank_candidates = hits[: min(rerank_limit, len(hits))]
             document_inputs = [
@@ -613,20 +637,164 @@ def _keyword_variant(query: str) -> str | None:
     return variant
 
 
+def _cross_document_variants(query: str) -> list[str]:
+    terms = set(_query_terms(query))
+    variants: list[str] = []
+    if {'rematricula', 'transferencia', 'cancelamento'} & terms:
+        variants.append('rematricula transferencia cancelamento prazos documentos')
+    if {'bolsas', 'bolsa', 'descontos', 'desconto', 'mensalidades', 'mensalidade'} & terms:
+        variants.append('bolsas descontos mensalidades politica comercial admissions')
+    if {'secretaria', 'portal', 'credenciais', 'login', 'senha', 'documentos', 'documentacao'} & terms:
+        variants.append('secretaria portal credenciais login senha envio de documentos')
+    if {'avaliacao', 'recuperacao', 'promocao', 'frequencia', 'faltas', 'segunda', 'chamada'} & terms:
+        variants.append('avaliacao recuperacao promocao frequencia faltas segunda chamada regras')
+    if {'familia', 'aluno', 'rotina', 'canais', 'servicos', 'servico'} & terms:
+        variants.append('familia aluno rotina escolar canais servicos suporte')
+    return _dedupe_strings(variants)
+
+
+def _has_synthesis_language(normalized: str, terms: set[str]) -> bool:
+    if {
+        'panorama',
+        'visao',
+        'compare',
+        'comparacao',
+        'comparativo',
+        'diferenca',
+        'diferencas',
+        'diferenciais',
+        'sintetize',
+        'relacione',
+        'cruze',
+        'mapeie',
+        'explique',
+    } & terms:
+        return True
+    return any(
+        phrase in normalized
+        for phrase in (
+            'visao geral',
+            'proposta pedagogica',
+            'uma unica explicacao coerente',
+            'o que uma familia precisa entender',
+            'temas atravessam varios documentos',
+            'quando cruzamos',
+            'do ponto de vista financeiro e administrativo',
+            'guia de sobrevivencia do primeiro mes',
+            'de ponta a ponta',
+        )
+    )
+
+
+def _has_cross_document_scope(terms: set[str]) -> bool:
+    admissions_terms = {
+        'rematricula',
+        'transferencia',
+        'cancelamento',
+        'admissao',
+        'acolhimento',
+        'entrevista',
+        'bolsas',
+        'bolsa',
+        'descontos',
+        'desconto',
+        'mensalidades',
+        'mensalidade',
+    }
+    policy_terms = {
+        'avaliacao',
+        'avaliacoes',
+        'recuperacao',
+        'promocao',
+        'frequencia',
+        'pontualidade',
+        'saude',
+        'medicacao',
+        'emergencias',
+        'segunda',
+        'chamada',
+    }
+    service_terms = {
+        'secretaria',
+        'portal',
+        'aplicativo',
+        'credenciais',
+        'login',
+        'senha',
+        'servicos',
+        'servico',
+        'atendimento',
+        'telegram',
+        'documentos',
+        'documentacao',
+    }
+    institutional_terms = {
+        'familia',
+        'aluno',
+        'alunos',
+        'rotina',
+        'escolar',
+        'colegio',
+        'escola',
+        'acolhimento',
+        'suporte',
+        'apoio',
+    }
+    return bool(
+        admissions_terms & terms
+        or policy_terms & terms
+        or service_terms & terms
+        or institutional_terms & terms
+    )
+
+
 def _intent_for_query(query: str) -> str:
     normalized = _normalize_text(query)
     terms = set(_query_terms(query))
     if (
-        {'panorama', 'visao', 'visao geral', 'comparar', 'comparacao', 'comparativo', 'diferenca', 'diferenciais'} & terms
-        or 'proposta pedagogica' in normalized
+        any(
+            phrase in normalized
+            for phrase in (
+                'guia de sobrevivencia do primeiro mes',
+                'guia de sobrevivência do primeiro mês',
+                'o que uma familia precisa entender',
+                'o que uma família precisa entender',
+                'quando cruzamos',
+                'de ponta a ponta',
+            )
+        )
+        and _has_cross_document_scope(terms)
+    ):
+        return 'corpus_overview'
+    if _has_synthesis_language(normalized, terms) and _has_cross_document_scope(terms):
+        return 'corpus_overview'
+    if (
+        {'panorama', 'visao', 'comparar', 'comparacao', 'comparativo', 'diferenca', 'diferenciais', 'sintetize', 'relacione', 'pilares', 'temas'} & terms
+        or any(
+            phrase in normalized
+            for phrase in (
+                'visao geral',
+                'proposta pedagogica',
+                'uma unica explicacao coerente',
+                'o que uma familia precisa entender',
+                'temas atravessam varios documentos',
+                'quando cruzamos',
+            )
+        )
     ):
         return 'corpus_overview'
     if {'mensalidade', 'matricula', 'desconto', 'bolsa', 'valor', 'preco', 'precos'} & terms:
         return 'pricing_lookup'
+    if {'avaliacao', 'avaliacoes', 'recuperacao', 'promocao', 'frequencia', 'pontualidade', 'saude', 'medicacao', 'emergencias', 'segunda', 'chamada'} & terms:
+        return 'policy_lookup'
+    if {'rematricula', 'transferencia', 'cancelamento', 'admissao', 'acolhimento', 'entrevista'} & terms:
+        return 'admissions_lookup'
     if {'calendario', 'aulas', 'reuniao', 'reuniao', 'formatura', 'datas', 'quando'} & terms:
         return 'timeline_lookup'
     if {'documentacao', 'documentos', 'documento', 'portal', 'secretaria', 'email'} & terms:
         return 'document_lookup'
+    if {'credenciais', 'senha', 'login', 'aplicativo', 'app', 'servicos', 'servico', 'atendimento'} & terms:
+        return 'service_overview'
     if {'telefone', 'whatsapp', 'instagram', 'endereco', 'cidade', 'estado', 'cep', 'contato'} & terms or 'onde fica' in normalized:
         return 'contact_lookup'
     return 'fact_lookup'
@@ -635,33 +803,65 @@ def _intent_for_query(query: str) -> str:
 def _category_bias_for_query(query: str, *, category: str | None, intent: str) -> str | None:
     if category:
         return category
+    normalized = _normalize_text(query)
     if intent == 'timeline_lookup':
         return 'calendar'
     if intent == 'pricing_lookup':
-        return 'pricing'
+        return 'admissions'
+    if intent == 'admissions_lookup':
+        return 'admissions'
     if intent == 'document_lookup':
-        return 'documents'
+        return 'secretaria'
     if intent == 'contact_lookup':
-        return 'directory'
+        return 'services'
+    if intent == 'policy_lookup':
+        return 'policy'
+    if intent == 'service_overview':
+        if any(term in normalized for term in ('portal', 'aplicativo', 'senha', 'login', 'credenciais')):
+            return 'technology'
+        if any(term in normalized for term in ('secretaria', 'documentos', 'declaracoes', 'declaracoes', 'cadastro')):
+            return 'secretaria'
+        return 'services'
+    if intent == 'corpus_overview':
+        return 'institutional'
     return None
 
 
 def _graph_rag_candidate(query: str, *, intent: str) -> bool:
     normalized = _normalize_text(query)
-    if intent != 'corpus_overview':
-        return False
-    return any(
-        phrase in normalized
-        for phrase in (
-            'visao geral',
-            'panorama',
-            'compare',
-            'comparacao',
-            'comparativo',
-            'diferenciais',
-            'proposta pedagogica',
+    if intent in {'corpus_overview', 'policy_lookup', 'service_overview', 'admissions_lookup'}:
+        return any(
+            phrase in normalized
+            for phrase in (
+                'visao geral',
+                'panorama',
+                'compare',
+                'comparacao',
+                'comparativo',
+                'diferenciais',
+                'proposta pedagogica',
+                'sintetize',
+                'relacione',
+                'uma unica explicacao coerente',
+                'temas atravessam varios documentos',
+                'o que uma familia precisa entender',
+                'o que uma família precisa entender',
+                'quando cruzamos',
+                'do ponto de vista financeiro e administrativo',
+                'do ponto de vista de uma familia nova',
+                'do ponto de vista de uma família nova',
+                'guia de sobrevivencia do primeiro mes',
+                'guia de sobrevivência do primeiro mês',
+                'primeiro mes',
+                'primeiro mês',
+                'regras e prazos',
+                'muito esquecido',
+                'de ponta a ponta',
+                'o que muda',
+                'destacando o que muda',
+            )
         )
-    )
+    return False
 
 
 def _build_query_plan(
@@ -681,17 +881,28 @@ def _build_query_plan(
     expansion = _INTENT_EXPANSIONS.get(intent)
     if enable_query_variants and expansion:
         variants.append(f'{query} {expansion}'.strip())
+    if enable_query_variants and intent in {'corpus_overview', 'policy_lookup', 'admissions_lookup', 'service_overview'}:
+        variants.extend(_cross_document_variants(query))
     deduped_variants = _dedupe_strings(variants)
+    lexical_limit = max(top_k * 3, candidate_pool_size)
+    vector_limit = max(top_k * 3, candidate_pool_size)
+    rerank_limit = max(top_k * 2, min(candidate_pool_size, 10))
+    max_chunks_per_document = 2
+    if intent in {'corpus_overview', 'policy_lookup', 'service_overview'}:
+        lexical_limit = max(top_k * 4, candidate_pool_size)
+        vector_limit = max(top_k * 4, candidate_pool_size)
+        rerank_limit = max(top_k * 3, min(candidate_pool_size, 12))
+        max_chunks_per_document = 1
     return RetrievalQueryPlanSpec(
         intent=intent,
         normalized_query=normalized_query,
         query_variants=deduped_variants,
         graph_rag_candidate=_graph_rag_candidate(query, intent=intent),
         category_bias=_category_bias_for_query(query, category=category, intent=intent),
-        lexical_limit=max(top_k * 3, candidate_pool_size),
-        vector_limit=max(top_k * 3, candidate_pool_size),
-        rerank_limit=max(top_k * 2, min(candidate_pool_size, 10)),
-        max_chunks_per_document=2,
+        lexical_limit=lexical_limit,
+        vector_limit=vector_limit,
+        rerank_limit=rerank_limit,
+        max_chunks_per_document=max_chunks_per_document,
     )
 
 
@@ -790,6 +1001,22 @@ def _late_interaction_maxsim(query_embedding: np.ndarray, document_embedding: np
     if similarity.size == 0:
         return 0.0
     return float(np.max(similarity, axis=1).sum())
+
+
+def _normalize_visibility_filter(value: str) -> str:
+    normalized = _normalize_text(value)
+    if normalized in {'private', 'restricted', 'internal'}:
+        return 'restricted'
+    return 'public'
+
+
+def _normalize_category_filter(category: str | None) -> str | None:
+    normalized = _normalize_text(category or '')
+    if not normalized:
+        return None
+    if normalized in {'private_docs', 'public_docs', 'graph_rag'}:
+        return None
+    return normalized
 
 
 @lru_cache

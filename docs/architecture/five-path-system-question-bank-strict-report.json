@@ -1,0 +1,2431 @@
+{
+  "generated_at": "2026-04-01T01:13:12.268370+00:00",
+  "dataset": "tests/evals/datasets/system_question_bank_strict_cases.json",
+  "run_prefix": "debug:five-path:20260401T011233Z",
+  "summary": {
+    "by_stack": {
+      "langgraph": {
+        "count": 19,
+        "ok": 19,
+        "keyword_pass": 19,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 171.4
+      },
+      "crewai": {
+        "count": 19,
+        "ok": 19,
+        "keyword_pass": 19,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 322.8
+      },
+      "python_functions": {
+        "count": 19,
+        "ok": 19,
+        "keyword_pass": 19,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 147.5
+      },
+      "llamaindex": {
+        "count": 19,
+        "ok": 19,
+        "keyword_pass": 19,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 187.8
+      },
+      "specialist_supervisor": {
+        "count": 19,
+        "ok": 19,
+        "keyword_pass": 19,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 1193.7
+      }
+    },
+    "by_slice": {
+      "protected": {
+        "count": 5,
+        "langgraph": {
+          "ok": 5,
+          "keyword_pass": 5,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 194.3
+        },
+        "crewai": {
+          "ok": 5,
+          "keyword_pass": 5,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 423.5
+        },
+        "python_functions": {
+          "ok": 5,
+          "keyword_pass": 5,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 191.4
+        },
+        "llamaindex": {
+          "ok": 5,
+          "keyword_pass": 5,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 199.2
+        },
+        "specialist_supervisor": {
+          "ok": 5,
+          "keyword_pass": 5,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 167.4
+        }
+      },
+      "public": {
+        "count": 12,
+        "langgraph": {
+          "ok": 12,
+          "keyword_pass": 12,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 160.7
+        },
+        "crewai": {
+          "ok": 12,
+          "keyword_pass": 12,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 295.3
+        },
+        "python_functions": {
+          "ok": 12,
+          "keyword_pass": 12,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 122.1
+        },
+        "llamaindex": {
+          "ok": 12,
+          "keyword_pass": 12,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 174.4
+        },
+        "specialist_supervisor": {
+          "ok": 12,
+          "keyword_pass": 12,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 1796.8
+        }
+      },
+      "workflow": {
+        "count": 2,
+        "langgraph": {
+          "ok": 2,
+          "keyword_pass": 2,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 178.6
+        },
+        "crewai": {
+          "ok": 2,
+          "keyword_pass": 2,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 236.2
+        },
+        "python_functions": {
+          "ok": 2,
+          "keyword_pass": 2,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 190.4
+        },
+        "llamaindex": {
+          "ok": 2,
+          "keyword_pass": 2,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 239.2
+        },
+        "specialist_supervisor": {
+          "ok": 2,
+          "keyword_pass": 2,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 140.8
+        }
+      }
+    },
+    "error_types": {
+      "langgraph": {},
+      "crewai": {},
+      "python_functions": {},
+      "llamaindex": {},
+      "specialist_supervisor": {}
+    }
+  },
+  "results": [
+    {
+      "prompt": "Qual e o endereco completo da escola, o telefone principal e o melhor canal para falar com a secretaria hoje?",
+      "slice": "public",
+      "category": "public_grounding",
+      "thread_id": "sqb_public_address",
+      "turn_index": 1,
+      "note": "Q001",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 297.6,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "O endereco publicado de Colegio Horizonte hoje e Rua das Acacias, 1450, Vila Mariana, Sao Paulo, SP, CEP 04567-120. O telefone principal hoje e (11) 3333-4200. O canal mais direto para falar com a secretaria hoje e o WhatsApp (11) 97500-2041.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 185.9,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Endereco: Rua das Acacias, 1450, Vila Mariana, Sao Paulo/SP, CEP 04567-120 O telefone principal hoje e (11) 3333-4200. O melhor canal para a secretaria hoje e (11) 97500-2040.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 138.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "O endereco publicado de Colegio Horizonte hoje e Rua das Acacias, 1450, Vila Mariana, Sao Paulo, SP, CEP 04567-120. O telefone principal hoje e (11) 3333-4200. O canal mais direto para falar com a secretaria hoje e o WhatsApp (11) 97500-2041.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 187.9,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "O endereco publicado de Colegio Horizonte hoje e Rua das Acacias, 1450, Vila Mariana, Sao Paulo, SP, CEP 04567-120. O telefone principal hoje e (11) 3333-4200. O canal mais direto para falar com a secretaria hoje e o WhatsApp (11) 97500-2041.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 133.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:contact_bundle",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "contact_bundle"
+        ],
+        "answer_text": "O endereco completo da escola hoje e Rua das Acacias, 1450, Vila Mariana, Sao Paulo, SP, CEP 04567-120. O telefone principal e (11) 3333-4200. O melhor canal para a secretaria hoje e o WhatsApp (11) 97500-2041.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Essa escola tem biblioteca de verdade ou so fala que tem? Qual e o nome e o horario?",
+      "slice": "public",
+      "category": "public_grounding",
+      "thread_id": "sqb_public_library",
+      "turn_index": 1,
+      "note": "Q002",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 157.7,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "O horario de Biblioteca Aurora hoje funciona assim: Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.\n\nTurnos e horarios documentados:\n- Ensino Fundamental II (Manha): 07:15 as 12:30. Oficinas, plantoes, esportes e estudo orientado no contraturno em dias alternados.\n- Ensino Medio (Manha): 07:15 as 12:50. Trilhas eletivas, monitorias e laboratorios no contraturno a partir das 14h00.\n- Fundamental II e Ensino Medio (Integral opcional): 07:00 as 17:30. Inclui estudo orientado, almoco, oficinas, esportes e acompanhamento no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 187.8,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Sim. Biblioteca Aurora: biblioteca   Biblioteca Aurora   service   True   Atendimento ao publico de segunda a sexta, das 7h30 as 18h00..",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 185.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "O horario de Biblioteca Aurora hoje funciona assim: Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.\n\nTurnos e horarios documentados:\n- Ensino Fundamental II (Manha): 07:15 as 12:30. Oficinas, plantoes, esportes e estudo orientado no contraturno em dias alternados.\n- Ensino Medio (Manha): 07:15 as 12:50. Trilhas eletivas, monitorias e laboratorios no contraturno a partir das 14h00.\n- Fundamental II e Ensino Medio (Integral opcional): 07:00 as 17:30. Inclui estudo orientado, almoco, oficinas, esportes e acompanhamento no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 216.7,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "O horario de Biblioteca Aurora hoje funciona assim: Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.\n\nTurnos e horarios documentados:\n- Ensino Fundamental II (Manha): 07:15 as 12:30. Oficinas, plantoes, esportes e estudo orientado no contraturno em dias alternados.\n- Ensino Medio (Manha): 07:15 as 12:50. Trilhas eletivas, monitorias e laboratorios no contraturno a partir das 14h00.\n- Fundamental II e Ensino Medio (Integral opcional): 07:00 as 17:30. Inclui estudo orientado, almoco, oficinas, esportes e acompanhamento no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 116.2,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:library_hours",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "library_hours"
+        ],
+        "answer_text": "A biblioteca se chama Biblioteca Aurora e funciona Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Quem responde por direcao, orientacao educacional e atendimento comercial?",
+      "slice": "public",
+      "category": "public_grounding",
+      "thread_id": "sqb_public_routing",
+      "turn_index": 1,
+      "note": "Q003",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 135.2,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Diretora geral: Helena Martins. Canal institucional: direcao@colegiohorizonte.edu.br.\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 197.2,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Direcao geral: Helena Martins.\nPara bolsa, desconto e matricula, o melhor canal hoje e Atendimento comercial / Admissoes. Admissoes (telefone): (11) 3333-4201\nPara bullying, convivencia e apoio escolar, o canal indicado e a orientacao educacional. Orientacao educacional (telefone): (11) 3333-4202",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 96.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Diretora geral: Helena Martins. Canal institucional: direcao@colegiohorizonte.edu.br.\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 163.9,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Diretora geral: Helena Martins. Canal institucional: direcao@colegiohorizonte.edu.br.\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 118.8,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:service_routing",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "service_routing"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Diretora geral: Helena Martins. Canal institucional: direcao@colegiohorizonte.edu.br.\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.\n- Direcao: bot, ouvidoria ou protocolo institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Se eu fosse uma familia nova e tivesse so 30 segundos, o que voce me diria sobre essa escola?",
+      "slice": "public",
+      "category": "public_grounding",
+      "thread_id": "sqb_public_pitch",
+      "turn_index": 1,
+      "note": "Q004",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 132.7,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Se eu tivesse 30 segundos para resumir Colegio Horizonte, eu diria isto: Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Os diferenciais publicados com mais clareza hoje passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em aprendizagem por projetos, acompanhamento mais proximo, estudo orientado e contraturno com referencias claras para familias.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 210.6,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Se eu tivesse 30 segundos para resumir esta escola, eu diria isto: ela combina aprendizagem por projetos, acompanhamento mais proximo e trilhas academicas no contraturno. No que esta publicado aqui, os diferenciais mais claros passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo. Colegio Horizonte em Sao Paulo/SP. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 104.4,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Se eu tivesse 30 segundos para resumir Colegio Horizonte, eu diria isto: Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Os diferenciais publicados com mais clareza hoje passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em aprendizagem por projetos, acompanhamento mais proximo, estudo orientado e contraturno com referencias claras para familias.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 207.4,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Se eu tivesse 30 segundos para resumir Colegio Horizonte, eu diria isto: Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Os diferenciais publicados com mais clareza hoje passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em aprendizagem por projetos, acompanhamento mais proximo, estudo orientado e contraturno com referencias claras para familias.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 123.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:public_pitch",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "public_pitch"
+        ],
+        "answer_text": "Se eu tivesse 30 segundos para resumir esta escola, eu diria isto: ela combina aprendizagem por projetos, acompanhamento mais proximo e trilhas academicas no contraturno. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. No Ensino Medio, isso aparece junto de A escola segue a BNCC e o curriculo do Ensino Medio articulado com projeto de vida, producao textual, cultura digital e aprofundamento academico progressivo.. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e uma rotina pedagogica mais explicita no dia a dia.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Com quem eu falo sobre bolsa, com quem eu falo sobre boletos e com quem eu falo sobre bullying?",
+      "slice": "public",
+      "category": "public_grounding",
+      "thread_id": "sqb_public_channels",
+      "turn_index": 1,
+      "note": "Q007",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 167.4,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Financeiro: bot, financeiro, portal autenticado ou email institucional.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 192.8,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Para bolsa, desconto e matricula, o melhor canal hoje e Atendimento comercial / Admissoes. Admissoes (telefone): (11) 3333-4201\nPara boletos, vencimentos e contratos, o melhor canal hoje e o financeiro. Financeiro (telefone): (11) 3333-4203\nPara bullying, convivencia e apoio escolar, o canal indicado e a orientacao educacional. Orientacao educacional (telefone): (11) 3333-4202",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 117.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Financeiro: bot, financeiro, portal autenticado ou email institucional.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 185.9,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Financeiro: bot, financeiro, portal autenticado ou email institucional.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 125.4,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:service_routing",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "service_routing"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Atendimento comercial / Admissoes: bot, admissions, whatsapp comercial ou visita guiada.\n- Financeiro: bot, financeiro, portal autenticado ou email institucional.\n- Orientacao educacional: bot, orientacao educacional ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Quando abre a matricula de 2026 e quando comecam as aulas?",
+      "slice": "public",
+      "category": "timeline",
+      "thread_id": "sqb_public_timeline",
+      "turn_index": 1,
+      "note": "Q009",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 163.2,
+        "mode": "structured_tool",
+        "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos. O atendimento comercial segue enquanto houver vagas por segmento.\nAs aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026. A semana de acolhimento do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 226.4,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos. | 2025-10-06 | familias interessadas | O atendimento comercial segue enquanto houver vagas por segmento.\nAs aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026. | 2026-02-02 | alunos e familias | A semana de acolhimento do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 130.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos. O atendimento comercial segue enquanto houver vagas por segmento.\nAs aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026. A semana de acolhimento do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 142.1,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos. O atendimento comercial segue enquanto houver vagas por segmento.\nAs aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026. A semana de acolhimento do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 133.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:public_timeline_bundle",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "public_timeline_bundle"
+        ],
+        "answer_text": "O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos. O atendimento comercial segue enquanto houver vagas por segmento.\nAs aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026. A semana de acolhimento do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Quais documentos sao exigidos para matricula no ensino medio?",
+      "slice": "public",
+      "category": "documents",
+      "thread_id": "sqb_public_documents",
+      "turn_index": 1,
+      "note": "Q017",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 163.1,
+        "mode": "structured_tool",
+        "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call",
+          "protected_domain_rescue"
+        ],
+        "answer_text": "Hoje os documentos exigidos para a matricula publicados pela escola sao:\n- Formulario cadastral preenchido\n- Documento de identificacao do aluno\n- CPF do aluno, quando houver\n- Historico escolar\n- Comprovante de residencia atualizado\n- Documento de identificacao do responsavel legal\nSe quiser, eu tambem posso explicar as etapas da matricula ou como funciona o envio inicial desses documentos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 866.1,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Hoje os documentos exigidos para a matricula publicados pela escola sao:\n- Formulario cadastral preenchido\n- Documento de identificacao do aluno\n- CPF do aluno, quando houver\n- Historico escolar\n- Comprovante de residencia atualizado\n- Documento de identificacao do responsavel legal",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 123.6,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje os documentos exigidos para a matricula publicados pela escola sao:\n- Formulario cadastral preenchido\n- Documento de identificacao do aluno\n- CPF do aluno, quando houver\n- Historico escolar\n- Comprovante de residencia atualizado\n- Documento de identificacao do responsavel legal\nSe quiser, eu tambem posso explicar as etapas da matricula ou como funciona o envio inicial desses documentos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 164.2,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje os documentos exigidos para a matricula publicados pela escola sao:\n- Formulario cadastral preenchido\n- Documento de identificacao do aluno\n- CPF do aluno, quando houver\n- Historico escolar\n- Comprovante de residencia atualizado\n- Documento de identificacao do responsavel legal\nSe quiser, eu tambem posso explicar as etapas da matricula ou como funciona o envio inicial desses documentos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 10899.7,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_direct:institution_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "institution_specialist"
+        ],
+        "answer_text": "Para a matrícula no Ensino Médio, o Colégio Horizonte exige os seguintes documentos:\n* Formulário cadastral preenchido\n* Documento de identificação do aluno\n* CPF do aluno, quando houver\n* Histórico escolar\n* Comprovante de residência atualizado\n* Documento de identificação do responsável legal",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Como funciona a politica de avaliacao, recuperacao e promocao da escola?",
+      "slice": "public",
+      "category": "policy",
+      "thread_id": "sqb_public_policy",
+      "turn_index": 1,
+      "note": "Q018",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 191.2,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "No Colegio Horizonte, a referencia publica de aprovacao e media 7,0/10. Quando a media fica abaixo da referencia, a escola combina monitorias, plantoes e orientacoes de recuperacao conforme o calendario pedagogico. A referencia publica de aprovacao usada nas orientacoes do colegio e 7,0, com fechamento final sempre acompanhado pela equipe pedagogica no periodo letivo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 816.3,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "A referencia publica de aprovacao hoje e media 7.0 na escala 0-10. Quando a media fica abaixo da referencia, a escola combina monitorias, plantoes e orientacoes de recuperacao conforme o calendario pedagogico.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 130.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "No Colegio Horizonte, a referencia publica de aprovacao e media 7,0/10. Quando a media fica abaixo da referencia, a escola combina monitorias, plantoes e orientacoes de recuperacao conforme o calendario pedagogico. A referencia publica de aprovacao usada nas orientacoes do colegio e 7,0, com fechamento final sempre acompanhado pela equipe pedagogica no periodo letivo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 194.4,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "No Colegio Horizonte, a referencia publica de aprovacao e media 7,0/10. Quando a media fica abaixo da referencia, a escola combina monitorias, plantoes e orientacoes de recuperacao conforme o calendario pedagogico. A referencia publica de aprovacao usada nas orientacoes do colegio e 7,0, com fechamento final sempre acompanhado pela equipe pedagogica no periodo letivo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 9457.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_direct:academic_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "academic_specialist"
+        ],
+        "answer_text": "A política de avaliação, recuperação e promoção do Colégio Horizonte funciona da seguinte forma:\n\n**Política de Avaliação e Promoção:**\nA média para aprovação é de **7,0** em uma escala de **0 a 10**.\n\n**Recuperação:**\nQuando a média do estudante fica abaixo de 7,0, a escola oferece suporte por meio de monitorias, plantões e orientações de recuperação, seguindo o calendário pedagógico.\n\n**Frequência:**\nA frequência mínima exigida para aprovação é de **75%**. Se a frequência de um componente curricular cair abaixo desse percentual, o estudante entra em alerta acadêmico e a coordenação poderá acionar a família. A permanência abaixo desse limite pode comprometer a aprovação por frequência. O acompanhamento é feito pela coordenação pedagógica e orientação educacional, que também avalia justificativas e a necessidade de planos de recomposição junto à família e ao estudante.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quais os prazos e canais para secretaria receber documentos, declaracoes e atualizacoes cadastrais?",
+      "slice": "public",
+      "category": "documents",
+      "thread_id": "sqb_public_secretaria",
+      "turn_index": 1,
+      "note": "Q021",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 126.4,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Sim. O envio inicial de documentos pode ser feito por canal digital.\nHoje os canais mais diretos publicados para isso sao:\n- portal institucional\n- email da secretaria\n- secretaria presencial\nPrazo esperado da secretaria: retorno em ate 2 dias uteis.\nNo processo de matricula, o envio inicial pode ser digital. A validacao final continua com a secretaria.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 178.5,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Hoje a secretaria recebe documentos, declaracoes e atualizacoes cadastrais pelo portal institucional, pelo email da secretaria e pela secretaria presencial. Prazo esperado da secretaria: retorno em ate 2 dias uteis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 101.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Sim. O envio inicial de documentos pode ser feito por canal digital.\nHoje os canais mais diretos publicados para isso sao:\n- portal institucional\n- email da secretaria\n- secretaria presencial\nPrazo esperado da secretaria: retorno em ate 2 dias uteis.\nNo processo de matricula, o envio inicial pode ser digital. A validacao final continua com a secretaria.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 186.4,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Sim. O envio inicial de documentos pode ser feito por canal digital.\nHoje os canais mais diretos publicados para isso sao:\n- portal institucional\n- email da secretaria\n- secretaria presencial\nPrazo esperado da secretaria: retorno em ate 2 dias uteis.\nNo processo de matricula, o envio inicial pode ser digital. A validacao final continua com a secretaria.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 122.1,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:document_submission_policy",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "document_submission_policy"
+        ],
+        "answer_text": "Voce pode mandar documentos pelo portal institucional, pelo email da secretaria ou levar na secretaria presencial para conferencia final. Prazo esperado da secretaria: retorno em ate 2 dias uteis. No processo de matricula, o envio inicial pode ser digital. A validacao final continua com a secretaria. O chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Compare o manual de regulamentos gerais com a politica de avaliacao e explique como os dois se complementam.",
+      "slice": "public",
+      "category": "graphrag",
+      "thread_id": "sqb_graphrag_compare",
+      "turn_index": 1,
+      "note": "Q025",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 139.4,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "O manual de regulamentos gerais organiza convivencia, frequencia e rotina, com referencia minima de 75,0% de presenca por componente. Ja a politica de avaliacao explica a aprovacao, a media de referencia 7,0, recuperacao, monitorias e criterios de promocao. Os dois se complementam porque a frequencia e os combinados gerais sustentam a rotina, enquanto a politica academica mostra como a escola trata avaliacao, recuperacao e aprovacao quando a meta nao e atingida.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 172.3,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "O manual de regulamentos gerais organiza convivencia, frequencia e rotina, com referencia minima de 75% de presenca por componente. Ja a politica de avaliacao detalha aprovacao, media 7,0, recuperacao, monitorias e criterios de promocao. Os dois se complementam porque a frequencia sustenta a rotina, enquanto a politica academica mostra como a escola trata recuperacao e aprovacao quando a meta nao e atingida.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 106.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "O manual de regulamentos gerais organiza convivencia, frequencia e rotina, com referencia minima de 75,0% de presenca por componente. Ja a politica de avaliacao explica a aprovacao, a media de referencia 7,0, recuperacao, monitorias e criterios de promocao. Os dois se complementam porque a frequencia e os combinados gerais sustentam a rotina, enquanto a politica academica mostra como a escola trata avaliacao, recuperacao e aprovacao quando a meta nao e atingida.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 141.0,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "O manual de regulamentos gerais organiza convivencia, frequencia e rotina, com referencia minima de 75,0% de presenca por componente. Ja a politica de avaliacao explica a aprovacao, a media de referencia 7,0, recuperacao, monitorias e criterios de promocao. Os dois se complementam porque a frequencia e os combinados gerais sustentam a rotina, enquanto a politica academica mostra como a escola trata avaliacao, recuperacao e aprovacao quando a meta nao e atingida.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 125.8,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:policy_compare",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "policy_compare"
+        ],
+        "answer_text": "O manual de regulamentos gerais organiza convivencia, frequencia e rotina, com referencia minima de 75,0% de presenca por componente. Ja a politica de avaliacao detalha aprovacao, media 7,0, recuperacao, monitorias e criterios de promocao. Os dois se complementam porque a frequencia e os combinados gerais sustentam a rotina, enquanto a politica academica mostra como a escola trata recuperacao e aprovacao quando a meta nao e atingida.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Sintetize tudo o que uma familia precisa entender sobre secretaria, portal, credenciais e envio de documentos.",
+      "slice": "public",
+      "category": "graphrag",
+      "thread_id": "sqb_graphrag_secretaria",
+      "turn_index": 1,
+      "note": "Q027",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 136.2,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo:\n- Secretaria: recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas.\n- Portal institucional: centraliza protocolo e envio digital inicial de documentos.\n- Credenciais: login e senha do portal continuam sendo a base de acesso; se precisar recuperar acesso, o melhor caminho e a secretaria ou o suporte digital.\n- Documentos: o envio inicial pode ser feito por portal institucional, email da secretaria ou secretaria presencial.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 155.4,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo: Secretaria recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas. Portal institucional centraliza protocolo e envio digital inicial de documentos. Credenciais significam login e senha do portal; se voce perder o acesso, o melhor caminho e a secretaria ou o suporte digital. Documentos podem ser enviados pelo portal institucional, pelo email da secretaria ou pela secretaria presencial.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 132.6,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo:\n- Secretaria: recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas.\n- Portal institucional: centraliza protocolo e envio digital inicial de documentos.\n- Credenciais: login e senha do portal continuam sendo a base de acesso; se precisar recuperar acesso, o melhor caminho e a secretaria ou o suporte digital.\n- Documentos: o envio inicial pode ser feito por portal institucional, email da secretaria ou secretaria presencial.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 186.7,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo:\n- Secretaria: recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas.\n- Portal institucional: centraliza protocolo e envio digital inicial de documentos.\n- Credenciais: login e senha do portal continuam sendo a base de acesso; se precisar recuperar acesso, o melhor caminho e a secretaria ou o suporte digital.\n- Documentos: o envio inicial pode ser feito por portal institucional, email da secretaria ou secretaria presencial.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 115.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:service_credentials_bundle",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "service_credentials_bundle"
+        ],
+        "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo:\n- Secretaria: recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas.\n- Portal institucional: centraliza protocolo e envio digital inicial de documentos.\n- Credenciais: login e senha do portal continuam sendo a base de acesso; se voce perder o acesso, o melhor caminho e a secretaria ou o suporte digital.\n- Documentos: o envio inicial pode ser feito por portal institucional, email da secretaria ou secretaria presencial.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Como eu vinculo meu Telegram a minha conta da escola?",
+      "slice": "public",
+      "category": "identity",
+      "thread_id": "sqb_identity_link",
+      "turn_index": 1,
+      "note": "Q034",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 118.6,
+        "mode": "deny",
+        "reason": "a consulta exige autenticacao ou vinculo antes de qualquer acesso",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "deny"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 154.5,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Para vincular o Telegram a sua conta da escola, entre no portal autenticado, gere o codigo de vinculacao e depois envie aqui o comando /start link_<codigo>.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 100.1,
+        "mode": "deny",
+        "reason": "a consulta exige autenticacao ou vinculo antes de qualquer acesso",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "deny",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 116.6,
+        "mode": "deny",
+        "reason": "a consulta exige autenticacao ou vinculo antes de qualquer acesso",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "deny",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 90.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:auth_guidance",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "auth_guidance"
+        ],
+        "answer_text": "Para consultas protegidas, como notas, faltas e financeiro, voce precisa vincular sua conta do Telegram ao portal do Colegio Horizonte. No portal autenticado, gere o codigo de vinculacao e depois envie aqui o comando `/start link_<codigo>`. Depois disso, eu passo a consultar seus dados autorizados por este canal.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Qual e exatamente o meu escopo: posso ver academico, financeiro ou os dois para cada filho?",
+      "slice": "protected",
+      "category": "identity",
+      "thread_id": "sqb_guardian_scope",
+      "turn_index": 1,
+      "note": "Q036",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 112.6,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Voce ja esta autenticado por aqui e sua conta esta vinculada a Lucas Oliveira e Ana Oliveira. Por este canal eu consigo consultar notas, faltas, proximas provas, matricula, financeiro, boletos, dentro das permissoes dessa vinculacao.  Escopo atual:\n- Lucas Oliveira: academico, financeiro\n- Ana Oliveira: academico, financeiro Se quiser, me diga algo como \"notas do Lucas\", \"faltas da Ana\" ou \"financeiro do Lucas\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 192.5,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_identity_backstop",
+        "graph_path": [
+          "flow_router",
+          "identity_backstop"
+        ],
+        "answer_text": "Voce esta autenticado aqui como Maria Oliveira. Sua conta esta vinculada a Lucas Oliveira, Ana Oliveira. Hoje eu consigo consultar exatamente: notas, frequencia, avaliacoes, documentacao e financeiro desses alunos.\nEscopo atual:\n- Lucas Oliveira: academico, financeiro\n- Ana Oliveira: academico, financeiro\nSe quiser, ja posso abrir um desses assuntos agora.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 103.4,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_authenticated_account_scope",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Voce ja esta autenticado por aqui e sua conta esta vinculada a Lucas Oliveira e Ana Oliveira. Por este canal eu consigo consultar notas, faltas, proximas provas, matricula, financeiro, boletos, dentro das permissoes dessa vinculacao.  Escopo atual:\n- Lucas Oliveira: academico, financeiro\n- Ana Oliveira: academico, financeiro Se quiser, me diga algo como \"notas do Lucas\", \"faltas da Ana\" ou \"financeiro do Lucas\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 114.2,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Voce ja esta autenticado por aqui e sua conta esta vinculada a Lucas Oliveira e Ana Oliveira. Por este canal eu consigo consultar notas, faltas, proximas provas, matricula, financeiro, boletos, dentro das permissoes dessa vinculacao.  Escopo atual:\n- Lucas Oliveira: academico, financeiro\n- Ana Oliveira: academico, financeiro Se quiser, me diga algo como \"notas do Lucas\", \"faltas da Ana\" ou \"financeiro do Lucas\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 109.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:access_scope",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "access_scope"
+        ],
+        "answer_text": "Voce ja esta autenticado por aqui e sua conta esta vinculada a Lucas Oliveira e Ana Oliveira. Neste canal eu consigo consultar academico e financeiro dos alunos vinculados dentro das permissoes da conta.  Escopo atual:\n- Lucas Oliveira: academico, financeiro\n- Ana Oliveira: academico, financeiroSe quiser, me diga algo como \"notas do Lucas\", \"faltas da Ana\" ou \"financeiro da Ana\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Quero ver as notas do Lucas Oliveira.",
+      "slice": "protected",
+      "category": "academic",
+      "thread_id": "sqb_guardian_academic",
+      "turn_index": 1,
+      "note": "Q041",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 184.8,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Notas de Lucas Oliveira:\n- Biologia - Avaliacao B1: 8.40/10.00\n- Educacao Fisica - Avaliacao 2026-B1 - EF: 6.40/10.00\n- Filosofia - Avaliacao 2026-B1 - FIL: 7.00/10.00\n- Fisica - Avaliacao 2026-B1 - FIS: 5.80/10.00\n- Geografia - Avaliacao 2026-B1 - GEO: 6.40/10.00\n- Historia - Avaliacao 2026-B1 - HIS: 6.70/10.00\n- Ingles - Avaliacao B1: 8.90/10.00\n- Matematica - Avaliacao B1: 8.70/10.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 535.5,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "As notas mais recentes de Lucas Oliveira incluem Biologia: 8.40/10.00; Educacao Fisica: 6.40/10.00; Filosofia: 7.00/10.00; Fisica: 5.80/10.00; Geografia: 6.40/10.00; Historia: 6.70/10.00; Ingles: 8.90/10.00; Matematica: 8.70/10.00.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 186.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Notas de Lucas Oliveira:\n- Biologia - Avaliacao B1: 8.40/10.00\n- Educacao Fisica - Avaliacao 2026-B1 - EF: 6.40/10.00\n- Filosofia - Avaliacao 2026-B1 - FIL: 7.00/10.00\n- Fisica - Avaliacao 2026-B1 - FIS: 5.80/10.00\n- Geografia - Avaliacao 2026-B1 - GEO: 6.40/10.00\n- Historia - Avaliacao 2026-B1 - HIS: 6.70/10.00\n- Ingles - Avaliacao B1: 8.90/10.00\n- Matematica - Avaliacao B1: 8.70/10.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 186.6,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Notas de Lucas Oliveira:\n- Biologia - Avaliacao B1: 8.40/10.00\n- Educacao Fisica - Avaliacao 2026-B1 - EF: 6.40/10.00\n- Filosofia - Avaliacao 2026-B1 - FIL: 7.00/10.00\n- Fisica - Avaliacao 2026-B1 - FIS: 5.80/10.00\n- Geografia - Avaliacao 2026-B1 - GEO: 6.40/10.00\n- Historia - Avaliacao 2026-B1 - HIS: 6.70/10.00\n- Ingles - Avaliacao B1: 8.90/10.00\n- Matematica - Avaliacao B1: 8.70/10.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 167.6,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:student_grades",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "student_grades"
+        ],
+        "answer_text": "Notas de Lucas Oliveira:\n- Historia: media parcial 6,8\n- Fisica: media parcial 5,9\n- Matematica: media parcial 7,7\n- Portugues: media parcial 8,3",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "E a frequencia?",
+      "slice": "protected",
+      "category": "academic",
+      "thread_id": "sqb_guardian_academic",
+      "turn_index": 2,
+      "note": "Q042",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 232.5,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Panorama de frequencia de Lucas Oliveira:\nResumo geral:\n- Presencas registradas: 19\n- Faltas registradas: 6\n- Atrasos registrados: 7\n- Minutos somados de ausencia: 370",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 505.6,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Na frequencia de Lucas Oliveira, eu encontrei 12 registros neste recorte: 7 presencas, 2 faltas e 3 atrasos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 185.4,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Panorama de frequencia de Lucas Oliveira:\nResumo geral:\n- Presencas registradas: 19\n- Faltas registradas: 6\n- Atrasos registrados: 7\n- Minutos somados de ausencia: 370",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 216.3,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Panorama de frequencia de Lucas Oliveira:\nResumo geral:\n- Presencas registradas: 19\n- Faltas registradas: 6\n- Atrasos registrados: 7\n- Minutos somados de ausencia: 370",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 166.4,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:attendance_summary",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "attendance_summary"
+        ],
+        "answer_text": "Na frequencia de Lucas Oliveira em Tecnologia e Cultura Digital, eu encontrei 6 faltas, 7 atraso(s) e 19 presenca(s) neste recorte.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Quero ver o financeiro da Ana Oliveira.",
+      "slice": "protected",
+      "category": "finance",
+      "thread_id": "sqb_guardian_finance",
+      "turn_index": 1,
+      "note": "Q049",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 184.4,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Resumo financeiro de Ana Oliveira:\n- Contrato: CTR-2026-002\n- Responsavel financeiro: Maria Oliveira\n- Mensalidade base: 1450.00\n- Faturas em aberto: 2\n- Faturas vencidas: 0\nUltimas faturas:\n- 2026-01: vencimento 2026-01-10, status paga, valor 1450.00\n- 2026-02: vencimento 2026-02-10, status paga, valor 1450.00\n- 2026-03: vencimento 2026-03-10, status em aberto, valor 1450.00\n- 2026-04: vencimento 2026-04-10, status em aberto, valor 1450.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 471.0,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Resumo financeiro de Ana Oliveira: a mensalidade de referencia e 1450.00 e ha 2 fatura(s) em aberto, sendo 0 vencida(s).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 224.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Resumo financeiro de Ana Oliveira:\n- Contrato: CTR-2026-002\n- Responsavel financeiro: Maria Oliveira\n- Mensalidade base: 1450.00\n- Faturas em aberto: 2\n- Faturas vencidas: 0\nUltimas faturas:\n- 2026-01: vencimento 2026-01-10, status paga, valor 1450.00\n- 2026-02: vencimento 2026-02-10, status paga, valor 1450.00\n- 2026-03: vencimento 2026-03-10, status em aberto, valor 1450.00\n- 2026-04: vencimento 2026-04-10, status em aberto, valor 1450.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 189.5,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Resumo financeiro de Ana Oliveira:\n- Contrato: CTR-2026-002\n- Responsavel financeiro: Maria Oliveira\n- Mensalidade base: 1450.00\n- Faturas em aberto: 2\n- Faturas vencidas: 0\nUltimas faturas:\n- 2026-01: vencimento 2026-01-10, status paga, valor 1450.00\n- 2026-02: vencimento 2026-02-10, status paga, valor 1450.00\n- 2026-03: vencimento 2026-03-10, status em aberto, valor 1450.00\n- 2026-04: vencimento 2026-04-10, status em aberto, valor 1450.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 160.2,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:finance_student_summary",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "finance_student_summary"
+        ],
+        "answer_text": "Resumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 2\n- Total de faturas vencidas: 0\n- Ana Oliveira: 2 em aberto, 0 vencidas\n  2026-01: vencimento 2026-01-10, status paid, valor 1450.00\n  2026-02: vencimento 2026-02-10, status paid, valor 1450.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Quero saber se minha documentacao esta regular e se ha algo financeiro bloqueando atendimento.",
+      "slice": "protected",
+      "category": "administrative",
+      "thread_id": "sqb_guardian_admin_finance",
+      "turn_index": 1,
+      "note": "Q060",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 257.4,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Cadastro e documentacao:\nSituacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.\n\nFinanceiro:\n- Lucas Oliveira: 1 fatura(s) em aberto e 0 vencida(s).\n- Ana Oliveira: 2 fatura(s) em aberto e 0 vencida(s).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 413.1,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Panorama combinado de documentacao e financeiro das contas vinculadas:\n- Lucas Oliveira: documentacao regular e completa; financeiro com 1 fatura(s) em aberto e 0 vencida(s).\n- Ana Oliveira: documentacao com pendencias; financeiro com 2 fatura(s) em aberto e 0 vencida(s).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 256.7,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Cadastro e documentacao:\nSituacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.\n\nFinanceiro:\n- Lucas Oliveira: 1 fatura(s) em aberto e 0 vencida(s).\n- Ana Oliveira: 2 fatura(s) em aberto e 0 vencida(s).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 289.5,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Cadastro e documentacao:\nSituacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.\n\nFinanceiro:\n- Lucas Oliveira: 1 fatura(s) em aberto e 0 vencida(s).\n- Ana Oliveira: 2 fatura(s) em aberto e 0 vencida(s).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 233.7,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:admin_finance_overview",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "admin_finance_overview"
+        ],
+        "answer_text": "Situacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.\n\nFinanceiro:\n- Lucas Oliveira: 1 fatura(s) em aberto e 0 vencida(s).\n- Ana Oliveira: 2 fatura(s) em aberto e 0 vencida(s).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Quero agendar uma visita para conhecer a escola.",
+      "slice": "workflow",
+      "category": "workflow",
+      "thread_id": "sqb_workflow_visit",
+      "turn_index": 1,
+      "note": "Q073",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 185.7,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260401-8FF15F. Preferencia informada: janela a confirmar. Fila responsavel: admissoes. Ticket operacional: ATD-20260401-DE546A8B. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 241.9,
+        "mode": "structured_tool",
+        "reason": "workflow_visit_create",
+        "graph_path": [
+          "flow_router",
+          "operation_result",
+          "deterministic_workflow"
+        ],
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260401-2BDE2A. Preferencia informada: janela a confirmar. Fila responsavel: admissoes. Ticket operacional: ATD-20260401-6C1889DE. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 153.4,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260401-855035. Preferencia informada: janela a confirmar. Fila responsavel: admissoes. Ticket operacional: ATD-20260401-EC9059DF. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 230.2,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260401-B01821. Preferencia informada: janela a confirmar. Fila responsavel: admissoes. Ticket operacional: ATD-20260401-BD38FD21. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 160.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:visit_booking",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "visit_booking"
+        ],
+        "answer_text": "Pedido de visita registrado. Protocolo: VIS-20260401-A89E95. Preferencia registrada: janela a confirmar. Ticket operacional: ATD-20260401-0B7BFDDE. Se quiser, eu tambem posso acompanhar o status ou remarcar a visita.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Pode ser na quinta a tarde?",
+      "slice": "workflow",
+      "category": "workflow",
+      "thread_id": "sqb_workflow_visit",
+      "turn_index": 2,
+      "note": "Q074",
+      "run_prefix": "debug:five-path:20260401T011233Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 171.4,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Pedido de visita atualizado com a fila de admissions. Protocolo: VIS-20260401-8FF15F. Ticket operacional: ATD-20260401-DE546A8B. Nova preferencia: quinta-feira - tarde (02/04/2026 - 14:30). Admissions valida a nova janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 230.4,
+        "mode": "structured_tool",
+        "reason": "workflow_visit_reschedule",
+        "graph_path": [
+          "flow_router",
+          "operation_result",
+          "deterministic_workflow"
+        ],
+        "answer_text": "Pedido de visita atualizado com a fila de admissoes. - Protocolo: VIS-20260401-2BDE2A - Ticket operacional: ATD-20260401-6C1889DE - Nova preferencia: quinta-feira - tarde (02/04/2026 - 14:30) Proximo passo: admissions valida a nova janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 227.3,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Pedido de visita atualizado com a fila de admissions. Protocolo: VIS-20260401-855035. Ticket operacional: ATD-20260401-EC9059DF. Nova preferencia: quinta-feira - tarde (02/04/2026 - 14:30). Admissions valida a nova janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 248.2,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Pedido de visita atualizado com a fila de admissions. Protocolo: VIS-20260401-B01821. Ticket operacional: ATD-20260401-BD38FD21. Nova preferencia: quinta-feira - tarde (02/04/2026 - 14:30). Admissions valida a nova janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 121.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:visit_reschedule",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "visit_reschedule"
+        ],
+        "answer_text": "Pedido de visita atualizado. Protocolo: VIS-20260401-A89E95. Nova preferencia: quinta-feira, 14:30. Admissions valida a nova janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    }
+  ]
+}

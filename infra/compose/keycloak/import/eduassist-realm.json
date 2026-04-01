@@ -429,6 +429,22 @@
       ]
     },
     {
+      "id": "9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b3208",
+      "username": "fernando.azevedo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Fernando",
+      "lastName": "Azevedo",
+      "email": "fernando.azevedo@mock.eduassist.local",
+      "attributes": {
+        "external_code": ["USR-TEACH-008"]
+      },
+      "realmRoles": ["teacher"],
+      "credentials": [
+        { "type": "password", "value": "Eduassist123!", "temporary": false }
+      ]
+    },
+    {
       "id": "9d7f1f4a-8c5d-4b14-8a61-5d7c1e8b5201",
       "username": "murilo.bastos",
       "enabled": true,

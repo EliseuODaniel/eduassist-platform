@@ -1,0 +1,1038 @@
+[
+  {
+    "prompt": "Quero ver minhas notas.",
+    "slice": "protected",
+    "category": "identidade_autenticacao_vinculo_e_policy",
+    "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q033",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q033|profile=anonimo|difficulty=facil|form=direta|sources=identity,policy|graph_rag=false",
+    "question_id": "Q033",
+    "profile": "anonimo",
+    "difficulty": "facil",
+    "form": "direta",
+    "sources": [
+      "identity",
+      "policy"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Como eu vinculo meu Telegram a minha conta da escola?",
+    "slice": "protected",
+    "category": "identidade_autenticacao_vinculo_e_policy",
+    "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q034",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q034|profile=anonimo|difficulty=media|form=direta|sources=identity|graph_rag=false",
+    "question_id": "Q034",
+    "profile": "anonimo",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "identity"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Estou logado como quem e quais alunos eu tenho vinculados?",
+    "slice": "protected",
+    "category": "identidade_autenticacao_vinculo_e_policy",
+    "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q035",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q035|profile=responsavel|difficulty=media|form=direta|sources=identity|graph_rag=false",
+    "question_id": "Q035",
+    "profile": "responsavel",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "identity"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Qual e exatamente o meu escopo: posso ver academico, financeiro ou os dois para cada filho?",
+    "slice": "protected",
+    "category": "identidade_autenticacao_vinculo_e_policy",
+    "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q036",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q036|profile=responsavel|difficulty=dificil|form=direta|sources=identity,policy|graph_rag=false",
+    "question_id": "Q036",
+    "profile": "responsavel",
+    "difficulty": "dificil",
+    "form": "direta",
+    "sources": [
+      "identity",
+      "policy"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Quero ver minhas notas.",
+    "slice": "protected",
+    "category": "identidade_autenticacao_vinculo_e_policy",
+    "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q037",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q037|profile=responsavel|difficulty=dificil|form=ambigua|sources=identity,policy|graph_rag=false",
+    "question_id": "Q037",
+    "profile": "responsavel",
+    "difficulty": "dificil",
+    "form": "ambigua",
+    "sources": [
+      "identity",
+      "policy"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Lucas, eu falei.",
+    "slice": "protected",
+    "category": "identidade_autenticacao_vinculo_e_policy",
+    "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q037",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q038|profile=responsavel|difficulty=media|form=follow-up|sources=identity,policy|graph_rag=false",
+    "question_id": "Q038",
+    "profile": "responsavel",
+    "difficulty": "media",
+    "form": "follow-up",
+    "sources": [
+      "identity",
+      "policy"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Meu ex-conjuge tambem e responsavel. O que exatamente eu nao posso ver aqui?",
+    "slice": "protected",
+    "category": "identidade_autenticacao_vinculo_e_policy",
+    "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q039",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q039|profile=responsavel|difficulty=media|form=adversarial|sources=identity,policy|graph_rag=false",
+    "question_id": "Q039",
+    "profile": "responsavel",
+    "difficulty": "media",
+    "form": "adversarial",
+    "sources": [
+      "identity",
+      "policy"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Se eu souber o nome de um aluno da escola, consigo consultar notas ou boletos sem me autenticar?",
+    "slice": "protected",
+    "category": "identidade_autenticacao_vinculo_e_policy",
+    "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q040",
+    "turn_index": 1,
+    "telegram_chat_id": 777101,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q040|profile=anonimo|difficulty=dificil|form=adversarial|sources=identity,policy|graph_rag=false",
+    "question_id": "Q040",
+    "profile": "anonimo",
+    "difficulty": "dificil",
+    "form": "adversarial",
+    "sources": [
+      "identity",
+      "policy"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "scopes": []
+    }
+  },
+  {
+    "prompt": "Quero ver as notas do Lucas Oliveira.",
+    "slice": "protected",
+    "category": "academico_protegido",
+    "thread_id": "system_bank:academico_protegido:Q041",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q041|profile=responsavel|difficulty=facil|form=direta|sources=academic|graph_rag=false",
+    "question_id": "Q041",
+    "profile": "responsavel",
+    "difficulty": "facil",
+    "form": "direta",
+    "sources": [
+      "academic"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "E a frequencia?",
+    "slice": "protected",
+    "category": "academico_protegido",
+    "thread_id": "system_bank:academico_protegido:Q041",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q042|profile=responsavel|difficulty=facil|form=follow-up|sources=academic|graph_rag=false",
+    "question_id": "Q042",
+    "profile": "responsavel",
+    "difficulty": "facil",
+    "form": "follow-up",
+    "sources": [
+      "academic"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Quais sao as proximas provas do Lucas Oliveira?",
+    "slice": "protected",
+    "category": "academico_protegido",
+    "thread_id": "system_bank:academico_protegido:Q043",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q043|profile=responsavel|difficulty=media|form=direta|sources=academic|graph_rag=false",
+    "question_id": "Q043",
+    "profile": "responsavel",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "academic"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Em quais datas o Lucas faltou e em quais disciplinas isso aconteceu?",
+    "slice": "protected",
+    "category": "academico_protegido",
+    "thread_id": "system_bank:academico_protegido:Q044",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q044|profile=responsavel|difficulty=media|form=direta|sources=academic|graph_rag=false",
+    "question_id": "Q044",
+    "profile": "responsavel",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "academic"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Compare o desempenho do Rafael e da Manuela neste bimestre e diga quem precisa de mais atencao.",
+    "slice": "protected",
+    "category": "academico_protegido",
+    "thread_id": "system_bank:academico_protegido:Q045",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q045|profile=responsavel|difficulty=dificil|form=comparativa|sources=academic|graph_rag=false",
+    "question_id": "Q045",
+    "profile": "responsavel",
+    "difficulty": "dificil",
+    "form": "comparativa",
+    "sources": [
+      "academic"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "O Joao ainda consegue recuperar a disciplina ou ja passou do ponto segundo as regras da escola?",
+    "slice": "protected",
+    "category": "academico_protegido",
+    "thread_id": "system_bank:academico_protegido:Q046",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q046|profile=responsavel|difficulty=dificil|form=multi-fonte|sources=academic,public_docs|graph_rag=false",
+    "question_id": "Q046",
+    "profile": "responsavel",
+    "difficulty": "dificil",
+    "form": "multi-fonte",
+    "sources": [
+      "academic",
+      "public_docs"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Qual e a minha melhor disciplina, qual e a pior e quanto falta para eu fechar a media em Fisica?",
+    "slice": "protected",
+    "category": "academico_protegido",
+    "thread_id": "system_bank:academico_protegido:Q047",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845500,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q047|profile=aluno|difficulty=media|form=direta|sources=academic|graph_rag=false",
+    "question_id": "Q047",
+    "profile": "aluno",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "academic"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "student",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas"
+      ],
+      "scopes": [
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Monte um resumo academico curto para eu mandar no grupo da familia sem expor nada desnecessario.",
+    "slice": "protected",
+    "category": "academico_protegido",
+    "thread_id": "system_bank:academico_protegido:Q048",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q048|profile=responsavel|difficulty=dificil|form=criativa|sources=academic,public_docs|graph_rag=false",
+    "question_id": "Q048",
+    "profile": "responsavel",
+    "difficulty": "dificil",
+    "form": "criativa",
+    "sources": [
+      "academic",
+      "public_docs"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Quero ver o financeiro da Ana Oliveira.",
+    "slice": "protected",
+    "category": "financeiro_protegido",
+    "thread_id": "system_bank:financeiro_protegido:Q049",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q049|profile=responsavel|difficulty=facil|form=direta|sources=finance|graph_rag=false",
+    "question_id": "Q049",
+    "profile": "responsavel",
+    "difficulty": "facil",
+    "form": "direta",
+    "sources": [
+      "finance"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Tenho boletos atrasados?",
+    "slice": "protected",
+    "category": "financeiro_protegido",
+    "thread_id": "system_bank:financeiro_protegido:Q050",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q050|profile=responsavel|difficulty=facil|form=direta|sources=finance|graph_rag=false",
+    "question_id": "Q050",
+    "profile": "responsavel",
+    "difficulty": "facil",
+    "form": "direta",
+    "sources": [
+      "finance"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Qual e o proximo pagamento pendente e qual e a data de vencimento?",
+    "slice": "protected",
+    "category": "financeiro_protegido",
+    "thread_id": "system_bank:financeiro_protegido:Q051",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q051|profile=responsavel|difficulty=media|form=direta|sources=finance|graph_rag=false",
+    "question_id": "Q051",
+    "profile": "responsavel",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "finance"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Qual e o codigo do contrato e o identificador da fatura que esta em aberto?",
+    "slice": "protected",
+    "category": "financeiro_protegido",
+    "thread_id": "system_bank:financeiro_protegido:Q052",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q052|profile=responsavel|difficulty=media|form=direta|sources=finance|graph_rag=false",
+    "question_id": "Q052",
+    "profile": "responsavel",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "finance"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Compare a situacao financeira do Rafael, da Manuela e do Joao e destaque onde ha atraso ou pagamento parcial.",
+    "slice": "protected",
+    "category": "financeiro_protegido",
+    "thread_id": "system_bank:financeiro_protegido:Q053",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q053|profile=responsavel|difficulty=dificil|form=comparativa|sources=finance|graph_rag=false",
+    "question_id": "Q053",
+    "profile": "responsavel",
+    "difficulty": "dificil",
+    "form": "comparativa",
+    "sources": [
+      "finance"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Sou a Helena e quero ver o financeiro do Rafael.",
+    "slice": "protected",
+    "category": "financeiro_protegido",
+    "thread_id": "system_bank:financeiro_protegido:Q054",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q054|profile=responsavel|difficulty=dificil|form=multi-fonte|sources=finance,policy|graph_rag=false",
+    "question_id": "Q054",
+    "profile": "responsavel",
+    "difficulty": "dificil",
+    "form": "multi-fonte",
+    "sources": [
+      "finance",
+      "policy"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Paguei parte da mensalidade do Joao e preciso negociar o restante; o que ja aparece e qual o proximo passo?",
+    "slice": "workflow",
+    "category": "financeiro_protegido",
+    "thread_id": "system_bank:financeiro_protegido:Q055",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q055|profile=responsavel|difficulty=dificil|form=multi-fonte|sources=finance,workflow,handoff|graph_rag=false",
+    "question_id": "Q055",
+    "profile": "responsavel",
+    "difficulty": "dificil",
+    "form": "multi-fonte",
+    "sources": [
+      "finance",
+      "workflow",
+      "handoff"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Explique a minha situacao financeira como se eu fosse leigo, separando mensalidade, taxa, atraso e desconto.",
+    "slice": "protected",
+    "category": "financeiro_protegido",
+    "thread_id": "system_bank:financeiro_protegido:Q056",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q056|profile=responsavel|difficulty=dificil|form=criativa|sources=finance,public_docs|graph_rag=false",
+    "question_id": "Q056",
+    "profile": "responsavel",
+    "difficulty": "dificil",
+    "form": "criativa",
+    "sources": [
+      "finance",
+      "public_docs"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Minha documentacao e cadastro estao atualizados?",
+    "slice": "protected",
+    "category": "administrativo_e_documental_protegido",
+    "thread_id": "system_bank:administrativo_e_documental_protegido:Q057",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q057|profile=responsavel|difficulty=facil|form=direta|sources=admin|graph_rag=false",
+    "question_id": "Q057",
+    "profile": "responsavel",
+    "difficulty": "facil",
+    "form": "direta",
+    "sources": [
+      "admin"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Qual e a situacao documental do Lucas?",
+    "slice": "protected",
+    "category": "administrativo_e_documental_protegido",
+    "thread_id": "system_bank:administrativo_e_documental_protegido:Q058",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q058|profile=responsavel|difficulty=media|form=direta|sources=admin|graph_rag=false",
+    "question_id": "Q058",
+    "profile": "responsavel",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "admin"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Compare a documentacao dos meus filhos e diga qual deles ainda tem pendencia.",
+    "slice": "protected",
+    "category": "administrativo_e_documental_protegido",
+    "thread_id": "system_bank:administrativo_e_documental_protegido:Q059",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q059|profile=responsavel|difficulty=media|form=comparativa|sources=admin|graph_rag=false",
+    "question_id": "Q059",
+    "profile": "responsavel",
+    "difficulty": "media",
+    "form": "comparativa",
+    "sources": [
+      "admin"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Quero saber se minha documentacao esta regular e se ha algo financeiro bloqueando atendimento.",
+    "slice": "protected",
+    "category": "administrativo_e_documental_protegido",
+    "thread_id": "system_bank:administrativo_e_documental_protegido:Q060",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q060|profile=responsavel|difficulty=dificil|form=multi-fonte|sources=admin,finance|graph_rag=false",
+    "question_id": "Q060",
+    "profile": "responsavel",
+    "difficulty": "dificil",
+    "form": "multi-fonte",
+    "sources": [
+      "admin",
+      "finance"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Quais documentos eu ainda preciso enviar e por qual canal a escola aceita esse envio?",
+    "slice": "protected",
+    "category": "administrativo_e_documental_protegido",
+    "thread_id": "system_bank:administrativo_e_documental_protegido:Q061",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q061|profile=responsavel|difficulty=media|form=direta|sources=admin,public_docs|graph_rag=false",
+    "question_id": "Q061",
+    "profile": "responsavel",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "admin",
+      "public_docs"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Entao abra um protocolo para eu regularizar isso com a secretaria.",
+    "slice": "workflow",
+    "category": "administrativo_e_documental_protegido",
+    "thread_id": "system_bank:administrativo_e_documental_protegido:Q061",
+    "turn_index": 2,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q062|profile=responsavel|difficulty=dificil|form=follow-up|sources=admin,workflow|graph_rag=false",
+    "question_id": "Q062",
+    "profile": "responsavel",
+    "difficulty": "dificil",
+    "form": "follow-up",
+    "sources": [
+      "admin",
+      "workflow"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Meu cadastro esta regular para fazer provas e atividades?",
+    "slice": "protected",
+    "category": "administrativo_e_documental_protegido",
+    "thread_id": "system_bank:administrativo_e_documental_protegido:Q063",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845500,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q063|profile=aluno|difficulty=media|form=direta|sources=admin|graph_rag=false",
+    "question_id": "Q063",
+    "profile": "aluno",
+    "difficulty": "media",
+    "form": "direta",
+    "sources": [
+      "admin"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "student",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas"
+      ],
+      "scopes": [
+        "academic:read"
+      ]
+    }
+  },
+  {
+    "prompt": "Resuma minha situacao cadastral em linguagem de checklist, com o que esta ok e o que falta.",
+    "slice": "protected",
+    "category": "administrativo_e_documental_protegido",
+    "thread_id": "system_bank:administrativo_e_documental_protegido:Q064",
+    "turn_index": 1,
+    "telegram_chat_id": 1649845499,
+    "expected_keywords": [],
+    "forbidden_keywords": [],
+    "note": "Q064|profile=responsavel|difficulty=dificil|form=criativa|sources=admin|graph_rag=false",
+    "question_id": "Q064",
+    "profile": "responsavel",
+    "difficulty": "dificil",
+    "form": "criativa",
+    "sources": [
+      "admin"
+    ],
+    "graph_rag": false,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    }
+  }
+]

@@ -45,6 +45,7 @@ from .models import (
     RetrievalBackend,
 )
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
+from .public_known_unknowns import compose_public_known_unknown_answer, detect_public_known_unknown_key
 from .retrieval import get_retrieval_service
 
 try:
@@ -166,14 +167,19 @@ Resumo curado do que esta publicado:
 
 
 class FastembedSelectorEmbedding(BaseEmbedding):
-    _embedder: TextEmbedding = PrivateAttr()
+    _embedder: TextEmbedding | None = PrivateAttr(default=None)
 
     def __init__(self, *, model_name: str) -> None:
         super().__init__(model_name=model_name)
-        self._embedder = TextEmbedding(model_name=model_name)
+
+    @property
+    def embedder(self) -> TextEmbedding:
+        if self._embedder is None:
+            self._embedder = TextEmbedding(model_name=self.model_name)
+        return self._embedder
 
     def _embed_once(self, text: str) -> list[float]:
-        return list(next(self._embedder.embed([text])))
+        return list(next(self.embedder.embed([text])))
 
     def _get_query_embedding(self, query: str) -> list[float]:
         return self._embed_once(query)
@@ -297,30 +303,20 @@ class PublicProfileQueryEngine(CustomQueryEngine):
         )
         if resolved_plan is None or rule_plan.conversation_act != 'canonical_fact':
             resolved_plan = rule_plan
-        preview = self.preview.model_copy(deep=True)
-        preview.mode = OrchestrationMode.structured_tool
-        preview.reason = 'llamaindex_public_profile'
-        preview.classification = _public_classification_for_act(
-            resolved_plan.conversation_act,
-            'roteamento nativo do llamaindex para fato publico estruturado',
-        )
-        preview.needs_authentication = False
-        preview.selected_tools = list(resolved_plan.required_tools)
-        answer = await rt._compose_structured_tool_answer(
-            settings=self.settings,
-            request=self.request,
-            analysis_message=query_str,
-            preview=preview,
+        answer = rt._compose_public_profile_answer(
+            self.profile,
+            query_str,
             actor=self.actor,
-            school_profile=self.profile,
+            original_message=self.original_message,
             conversation_context=self.conversation_context,
-            resolved_public_plan=resolved_plan,
-            prefer_fast_public_path=True,
+            semantic_plan=resolved_plan,
         )
         return Response(
             response=answer,
             metadata={
-                'selected_tools': list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
+                'selected_tools': list(
+                    dict.fromkeys([*(list(getattr(resolved_plan, 'required_tools', ()) or ())), 'get_public_school_profile'])
+                ),
                 'reason': 'llamaindex_public_profile',
                 'retrieval_backend': RetrievalBackend.none.value,
             },
@@ -570,14 +566,20 @@ class PublicHybridCitationRetriever(BaseRetriever):
 
 def _should_use_llamaindex_native_public_router(plan: KernelPlan) -> bool:
     preview = plan.preview
-    if preview.classification.access_tier is not AccessTier.public:
+    if preview.classification.access_tier is AccessTier.public:
+        if preview.classification.domain not in {QueryDomain.institution, QueryDomain.calendar, QueryDomain.unknown}:
+            return False
+        return preview.mode in {
+            OrchestrationMode.structured_tool,
+            OrchestrationMode.hybrid_retrieval,
+            OrchestrationMode.clarify,
+        }
+    if preview.mode is not OrchestrationMode.clarify:
         return False
-    if preview.classification.domain not in {QueryDomain.institution, QueryDomain.calendar, QueryDomain.unknown}:
-        return False
-    return preview.mode in {
-        OrchestrationMode.structured_tool,
-        OrchestrationMode.hybrid_retrieval,
-        OrchestrationMode.clarify,
+    return preview.classification.domain in {
+        QueryDomain.institution,
+        QueryDomain.academic,
+        QueryDomain.unknown,
     }
 
 
@@ -735,11 +737,11 @@ def _recent_public_context_summary(conversation_context: dict[str, Any] | None) 
 
 
 def _llamaindex_public_rule_matches(*, rule: LlamaIndexPublicIntentRule, normalized_message: str) -> bool:
-    if rule.none_of and any(term in normalized_message for term in rule.none_of):
+    if rule.none_of and any(rt._message_matches_term(normalized_message, term) for term in rule.none_of):
         return False
-    if rule.all_of and not all(term in normalized_message for term in rule.all_of):
+    if rule.all_of and not all(rt._message_matches_term(normalized_message, term) for term in rule.all_of):
         return False
-    if rule.any_of and not any(term in normalized_message for term in rule.any_of):
+    if rule.any_of and not any(rt._message_matches_term(normalized_message, term) for term in rule.any_of):
         return False
     return bool(rule.any_of or rule.all_of)
 
@@ -1020,54 +1022,9 @@ def _native_llamaindex_public_unpublished_answer(
     normalized = rt._normalize_text(message)
     school_reference = str(school_profile.get('school_name', 'Colegio Horizonte')).strip() or 'Colegio Horizonte'
     unpublished_key = str(getattr(decision, 'unpublished_key', '') or '').strip()
-    recognized_unpublished_keys = {
-        'classroom_count',
-        'minimum_age',
-        'total_students',
-        'library_book_count',
-        'cafeteria_menu',
-    }
-    if unpublished_key not in recognized_unpublished_keys:
-        unpublished_key = ''
     if not unpublished_key:
-        if any(rt._message_matches_term(normalized, term) for term in {'quantas salas', 'quantidade de salas', 'numero de salas', 'número de salas'}):
-            unpublished_key = 'classroom_count'
-        elif any(rt._message_matches_term(normalized, term) for term in {'idade minima', 'idade mínima', 'idade para estudar', 'idade para matricular'}):
-            unpublished_key = 'minimum_age'
-        elif any(rt._message_matches_term(normalized, term) for term in {'quantos alunos', 'quantidade de alunos', 'numero de alunos', 'número de alunos'}):
-            unpublished_key = 'total_students'
-        elif any(rt._message_matches_term(normalized, term) for term in {'quantos livros', 'quantidade de livros', 'numero de livros', 'número de livros'}) and any(
-            rt._message_matches_term(normalized, term) for term in {'biblioteca', 'livros', 'acervo'}
-        ):
-            unpublished_key = 'library_book_count'
-        elif any(rt._message_matches_term(normalized, term) for term in {'cardapio', 'cardápio'}) and rt._message_matches_term(normalized, 'cantina'):
-            unpublished_key = 'cafeteria_menu'
-    if unpublished_key == 'classroom_count':
-        return (
-            f'Hoje os canais publicos de {school_reference} nao informam a quantidade total de salas de aula. '
-            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
-        )
-    if unpublished_key == 'minimum_age':
-        return (
-            f'Hoje os canais publicos de {school_reference} nao publicam uma idade minima exata para ingresso. '
-            'O que aparece oficialmente sao os segmentos atendidos e o enquadramento por serie; para confirmar idade e adequacao de ingresso, o canal certo e admissions.'
-        )
-    if unpublished_key == 'total_students':
-        return (
-            f'Hoje os canais publicos de {school_reference} nao informam o total de alunos matriculados. '
-            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
-        )
-    if unpublished_key == 'library_book_count':
-        return (
-            f'Hoje os canais publicos de {school_reference} nao informam a quantidade total de livros da biblioteca. '
-            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
-        )
-    if unpublished_key == 'cafeteria_menu':
-        return (
-            f'Hoje os canais publicos de {school_reference} confirmam que ha cantina e almoco supervisionado, '
-            'mas nao publicam um cardapio detalhado. Para esse detalhe, o melhor caminho e a secretaria ou o canal comercial.'
-        )
-    return None
+        unpublished_key = detect_public_known_unknown_key(message) or ''
+    return compose_public_known_unknown_answer(key=unpublished_key, school_name=school_reference)
 
 
 def _should_force_llamaindex_documentary_retrieval(
@@ -1658,10 +1615,302 @@ async def maybe_execute_llamaindex_native_plan(
         channel=request.channel.value,
     )
     conversation_context = rt._conversation_context_payload(conversation_context_bundle)
+    recent_focus = rt._recent_conversation_focus(conversation_context)
+    if recent_focus and recent_focus.get('kind') == 'visit' and rt._looks_like_visit_update_follow_up(request.message):
+        return None
+    actor_role = str((actor or {}).get('role_code', '') or '').strip().lower()
+    teacher_authenticated = actor_role == 'teacher' or (
+        getattr(request.user, 'authenticated', False)
+        and getattr(getattr(request.user, 'role', None), 'value', '') == 'teacher'
+    )
+    teacher_scope_query = rt._is_teacher_scope_guidance_query(
+        request.message,
+        actor=actor,
+        user=request.user,
+        conversation_context=conversation_context,
+    )
+    should_fetch_teacher_schedule = rt._should_fetch_teacher_schedule(
+        request.message,
+        actor=actor,
+        user=request.user,
+        conversation_context=conversation_context,
+    )
+    if teacher_scope_query and teacher_authenticated:
+        preview = plan.preview.model_copy(deep=True)
+        if should_fetch_teacher_schedule:
+            message_text = await rt._execute_teacher_protected_specialist(
+                settings=settings,
+                request=request,
+                actor=actor or {},
+                conversation_context=conversation_context,
+            )
+            preview.mode = OrchestrationMode.structured_tool
+            preview.classification = IntentClassification(
+                domain=QueryDomain.academic,
+                access_tier=AccessTier.authenticated,
+                confidence=0.99,
+                reason='consulta protegida de grade docente atendida pelo runtime nativo do llamaindex',
+            )
+            preview.selected_tools = list(dict.fromkeys([*preview.selected_tools, 'get_teacher_schedule']))
+            preview.needs_authentication = True
+            execution_reason = 'llamaindex_teacher_schedule_direct'
+            summary = 'Resposta deterministica grounded em service protegido de grade docente.'
+        else:
+            message_text = rt._compose_teacher_access_scope_answer(
+                actor,
+                school_name=str(((await rt._fetch_public_school_profile(settings=settings)) or {}).get('school_name', 'Colegio Horizonte')),
+            )
+            preview.mode = OrchestrationMode.structured_tool
+            preview.classification = IntentClassification(
+                domain=QueryDomain.academic,
+                access_tier=AccessTier.authenticated,
+                confidence=0.95,
+                reason='orientacao de escopo docente atendida pelo runtime nativo do llamaindex',
+            )
+            preview.selected_tools = list(dict.fromkeys([*preview.selected_tools, 'get_actor_identity_context']))
+            preview.needs_authentication = True
+            execution_reason = 'llamaindex_teacher_scope_guidance'
+            summary = 'Resposta deterministica sobre escopo docente e vinculacao da conta.'
+        suggested_replies = rt._build_suggested_replies(
+            request=request,
+            preview=preview,
+            actor=actor,
+            school_profile=await rt._fetch_public_school_profile(settings=settings),
+            conversation_context=conversation_context,
+        )
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=preview.selected_tools,
+            slice_name=plan.slice_name,
+            summary=summary,
+        )
+        await rt._persist_conversation_turn(
+            settings=settings,
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            actor=actor,
+            user_message=request.message,
+            assistant_message=message_text,
+        )
+        await rt._persist_operational_trace(
+            settings=settings,
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            engine_name=engine_name,
+            engine_mode=engine_mode,
+            actor=actor,
+            preview=preview,
+            school_profile=await rt._fetch_public_school_profile(settings=settings),
+            conversation_context=conversation_context,
+            public_plan=None,
+            request_message=request.message,
+            message_text=message_text,
+            citations_count=0,
+            suggested_reply_count=len(suggested_replies),
+            visual_asset_count=0,
+            answer_verifier_valid=True,
+            answer_verifier_reason='teacher deterministic native answer',
+            answer_verifier_fallback_used=False,
+            deterministic_fallback_available=True,
+            answer_verifier_judge_used=False,
+        )
+        response = MessageResponse(
+            message_text=rt._normalize_response_wording(message_text),
+            mode=preview.mode,
+            classification=preview.classification,
+            retrieval_backend=RetrievalBackend.none,
+            selected_tools=preview.selected_tools,
+            citations=[],
+            visual_assets=[],
+            suggested_replies=suggested_replies,
+            calendar_events=[],
+            evidence_pack=evidence_pack,
+            needs_authentication=preview.needs_authentication,
+            graph_path=[
+                *preview.graph_path,
+                'llamaindex:workflow',
+                'llamaindex:teacher',
+                f'kernel:{plan.stack_name}',
+            ],
+            risk_flags=preview.risk_flags,
+            reason=execution_reason,
+        )
+        reflection = KernelReflection(
+            grounded=True,
+            verifier_reason='teacher protected native path',
+            fallback_used=False,
+            answer_judge_used=False,
+            notes=[
+                f'route:{preview.mode.value}',
+                f'slice:{plan.slice_name}',
+                f'evidence:{evidence_pack.strategy}',
+                *plan.plan_notes,
+            ],
+        )
+        return KernelRunResult(
+            plan=plan,
+            reflection=reflection,
+            response=response.model_dump(mode='json'),
+        )
     analysis_message = rt._build_analysis_message(request.message, conversation_context_bundle)
     school_profile = await rt._fetch_public_school_profile(settings=settings)
     if not isinstance(school_profile, dict):
         return None
+    fast_public_channel_answer = rt._try_public_channel_fast_answer(
+        message=request.message,
+        profile=school_profile,
+    )
+    if fast_public_channel_answer:
+        preview = plan.preview.model_copy(deep=True)
+        preview.mode = OrchestrationMode.structured_tool
+        preview.classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.98,
+            reason='consulta publica resolvida deterministicamente antes do routing pesado do llamaindex',
+        )
+        preview.selected_tools = list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile']))
+        preview.needs_authentication = False
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=preview.selected_tools,
+            slice_name=plan.slice_name,
+            summary='Resposta publica deterministica servida antes do routing documental pesado do LlamaIndex.',
+        )
+        suggested_replies = rt._build_suggested_replies(
+            request=request,
+            preview=preview,
+            actor=actor,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+        )
+        message_text = rt._normalize_response_wording(fast_public_channel_answer)
+        await rt._persist_conversation_turn(
+            settings=settings,
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            actor=actor,
+            user_message=request.message,
+            assistant_message=message_text,
+        )
+        await rt._persist_operational_trace(
+            settings=settings,
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            engine_name=engine_name,
+            engine_mode=engine_mode,
+            actor=actor,
+            preview=preview,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+            public_plan=None,
+            request_message=request.message,
+            message_text=message_text,
+            citations_count=0,
+            suggested_reply_count=len(suggested_replies),
+            visual_asset_count=0,
+            answer_verifier_valid=True,
+            answer_verifier_reason='llamaindex deterministic public fast path',
+            answer_verifier_fallback_used=False,
+            deterministic_fallback_available=True,
+            answer_verifier_judge_used=False,
+        )
+        response = MessageResponse(
+            message_text=message_text,
+            mode=preview.mode,
+            classification=preview.classification,
+            retrieval_backend=RetrievalBackend.none,
+            selected_tools=preview.selected_tools,
+            citations=[],
+            visual_assets=[],
+            suggested_replies=suggested_replies,
+            calendar_events=[],
+            evidence_pack=evidence_pack,
+            needs_authentication=preview.needs_authentication,
+            graph_path=[
+                *preview.graph_path,
+                'llamaindex:public',
+                'llamaindex:contextual_public_direct',
+                f'kernel:{plan.stack_name}',
+            ],
+            risk_flags=preview.risk_flags,
+            reason='contextual_public_direct_answer',
+        )
+        reflection = KernelReflection(
+            grounded=True,
+            verifier_reason='llamaindex deterministic public fast path',
+            fallback_used=False,
+            answer_judge_used=False,
+            notes=[
+                f'route:{preview.mode.value}',
+                f'slice:{plan.slice_name}',
+                'llamaindex:contextual_public_direct',
+                f'evidence:{evidence_pack.strategy}',
+                *plan.plan_notes,
+            ],
+        )
+        return KernelRunResult(
+            plan=plan,
+            reflection=reflection,
+            response=response.model_dump(mode='json'),
+        )
+
+    orphan_workflow_follow_up = rt._compose_orphan_workflow_follow_up_answer(
+        request.message,
+        conversation_context,
+    )
+    if orphan_workflow_follow_up:
+        preview = plan.preview.model_copy(deep=True)
+        preview.mode = OrchestrationMode.structured_tool
+        preview.classification = IntentClassification(
+            domain=QueryDomain.support,
+            access_tier=AccessTier.public if not request.user.authenticated else AccessTier.authenticated,
+            confidence=0.95,
+            reason='follow-up de workflow resgatado do contexto antes do roteamento nativo do llamaindex',
+        )
+        preview.selected_tools = list(dict.fromkeys([*preview.selected_tools, 'get_workflow_status']))
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=preview.selected_tools,
+            slice_name=plan.slice_name,
+            summary='Follow-up de workflow recuperado do contexto conversacional.',
+        )
+        response = MessageResponse(
+            message_text=orphan_workflow_follow_up,
+            mode=preview.mode,
+            classification=preview.classification,
+            retrieval_backend=RetrievalBackend.none,
+            selected_tools=preview.selected_tools,
+            citations=[],
+            visual_assets=[],
+            suggested_replies=[],
+            calendar_events=[],
+            evidence_pack=evidence_pack,
+            needs_authentication=False,
+            graph_path=[
+                *preview.graph_path,
+                'llamaindex:workflow',
+                'llamaindex:orphan_workflow_followup',
+                f'kernel:{plan.stack_name}',
+            ],
+            risk_flags=preview.risk_flags,
+            reason='llamaindex_orphan_workflow_followup',
+        )
+        reflection = KernelReflection(
+            grounded=True,
+            verifier_reason='follow-up de workflow resgatado deterministicamente do contexto',
+            fallback_used=False,
+            answer_judge_used=False,
+            notes=[
+                f'route:{preview.mode.value}',
+                f'slice:{plan.slice_name}',
+                'llamaindex_tool:get_workflow_status',
+                f'evidence:{evidence_pack.strategy}',
+                *plan.plan_notes,
+            ],
+        )
+        return KernelRunResult(
+            plan=plan,
+            reflection=reflection,
+            response=response.model_dump(mode='json'),
+        )
 
     llamaindex_llm = _build_llamaindex_llm(settings=settings)
     llm_native_public_decision = None

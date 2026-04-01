@@ -15,6 +15,7 @@ from .models import (
     QueryDomain,
 )
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
+from .public_known_unknowns import resolve_public_known_unknown_answer
 from .retrieval import get_retrieval_service
 
 
@@ -201,6 +202,33 @@ async def _maybe_contextual_public_direct_answer(
     if not is_public_context:
         return None
 
+    fast_public_answer = None
+    if rt._base_profile_supports_fast_public_answer(
+        message=request.message,
+        profile=school_profile,
+    ):
+        fast_public_answer = rt._try_public_channel_fast_answer(
+            message=request.message,
+            profile=school_profile,
+        )
+    if fast_public_answer:
+        return fast_public_answer
+
+    if rt._is_public_timeline_query(request.message):
+        timeline = await rt._fetch_public_timeline(settings=settings)
+        entries = timeline.get('entries') if isinstance(timeline, dict) else None
+        if isinstance(entries, list) and entries:
+            timeline_profile = dict(school_profile)
+            timeline_profile['public_timeline'] = entries
+            context = rt._build_public_profile_context(
+                timeline_profile,
+                request.message,
+                conversation_context=conversation_context,
+            )
+            timeline_answer = rt._handle_public_timeline(context)
+            if isinstance(timeline_answer, str) and timeline_answer.strip():
+                return timeline_answer
+
     normalized_request = rt._normalize_text(request.message)
     normalized_analysis = rt._normalize_text(analysis_message)
     recent_context_lines = [rt._normalize_text(content) for _, content in rt._recent_message_lines(conversation_context)]
@@ -324,59 +352,7 @@ def _maybe_public_unpublished_direct_answer(
     is_public_context = preview.classification.access_tier is AccessTier.public or not request.user.authenticated
     if not is_public_context:
         return None
-    normalized_message = rt._normalize_text(request.message)
-    if any(
-        rt._message_matches_term(normalized_message, term)
-        for term in {'quantos alunos', 'quantidade de alunos', 'numero de alunos', 'número de alunos'}
-    ):
-        return (
-            'Hoje os canais publicos do Colegio Horizonte nao informam o total de alunos matriculados. '
-            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
-        )
-    if any(
-        rt._message_matches_term(normalized_message, term)
-        for term in {'quantos professores', 'quantidade de professores', 'numero de professores', 'número de professores'}
-    ):
-        return (
-            'Hoje os canais publicos do Colegio Horizonte nao informam a quantidade total de professores. '
-            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
-        )
-    if any(
-        rt._message_matches_term(normalized_message, term)
-        for term in {'quantos livros', 'quantidade de livros', 'numero de livros', 'número de livros'}
-    ) and any(
-        rt._message_matches_term(normalized_message, term)
-        for term in {'biblioteca', 'livros', 'acervo'}
-    ):
-        return (
-            'Hoje os canais publicos do Colegio Horizonte nao informam a quantidade total de livros da Biblioteca Aurora. '
-            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
-        )
-    if any(
-        rt._message_matches_term(normalized_message, term)
-        for term in {'quantas salas', 'quantidade de salas', 'numero de salas', 'número de salas'}
-    ):
-        return (
-            'Hoje os canais publicos do Colegio Horizonte nao informam a quantidade total de salas de aula. '
-            'Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.'
-        )
-    if any(
-        rt._message_matches_term(normalized_message, term)
-        for term in {'idade minima', 'idade mínima', 'idade para estudar', 'idade para matricular'}
-    ):
-        return (
-            'Hoje os canais publicos do Colegio Horizonte nao publicam uma idade minima exata para ingresso. '
-            'O que aparece oficialmente sao os segmentos atendidos e o enquadramento por serie; para confirmar idade e adequacao, o canal certo e admissions.'
-        )
-    if any(
-        rt._message_matches_term(normalized_message, term)
-        for term in {'cardapio', 'cardápio'}
-    ) and rt._message_matches_term(normalized_message, 'cantina'):
-        return (
-            'Hoje os canais publicos do Colegio Horizonte confirmam que ha cantina e almoco supervisionado, '
-            'mas nao publicam um cardapio detalhado. Para esse detalhe, o melhor caminho e a secretaria ou o canal comercial.'
-        )
-    return None
+    return resolve_public_known_unknown_answer(request.message)
 
 
 def _maybe_hypothetical_public_pricing_answer(

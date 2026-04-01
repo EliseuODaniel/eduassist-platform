@@ -52,6 +52,15 @@ Estado atual:
   - dados protegidos academicos, financeiros e administrativos
   - fluxo docente
   - workflows, handoff, casos adversariais e perguntas externas com fallback seguro
+- `tools/evals/build_system_question_bank_datasets.py` materializa esse banco mestre em datasets JSON executaveis:
+  - `tests/evals/datasets/system_question_bank_catalog.json`
+  - `tests/evals/datasets/system_question_bank_all.json`
+  - `tests/evals/datasets/system_question_bank_wave_public_grounding.json`
+  - `tests/evals/datasets/system_question_bank_wave_public_graphrag.json`
+  - `tests/evals/datasets/system_question_bank_wave_protected_ops.json`
+  - `tests/evals/datasets/system_question_bank_wave_teacher_workflow.json`
+  - `tests/evals/datasets/system_question_bank_wave_sensitive_external.json`
+  - esses arquivos preservam `question_id`, perfil, dificuldade, fontes, `GraphRAG` e `thread_id` para execucao por ondas
 
 Comandos uteis:
 
@@ -61,3 +70,4 @@ Comandos uteis:
 - `make smoke-all`
 - `make eval-orchestrator`
 - `make eval-all`
+- `python3 tools/evals/build_system_question_bank_datasets.py`

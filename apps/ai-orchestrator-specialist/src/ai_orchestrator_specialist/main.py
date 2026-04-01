@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 import secrets
 
 from fastapi import FastAPI, Header, HTTPException
@@ -11,8 +12,16 @@ from .models import SpecialistSupervisorRequest, SpecialistSupervisorResponse
 from .runtime import effective_llm_model_name, resolve_llm_provider, run_specialist_supervisor
 
 
+_ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / ".env"
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(case_sensitive=False)
+    model_config = SettingsConfigDict(
+        case_sensitive=False,
+        env_file=("/workspace/.env", str(_ROOT_ENV_FILE), ".env"),
+        env_ignore_empty=True,
+        extra='ignore',
+    )
 
     app_env: str = "development"
     log_level: str = "INFO"
@@ -27,6 +36,8 @@ class Settings(BaseSettings):
     google_api_key: str | None = None
     google_model: str = "gemini-2.5-flash"
     database_url: str = "sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db"
+    agent_memory_url: str = "sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db"
+    public_resource_cache_ttl_seconds: float = 120.0
 
 
 @lru_cache
