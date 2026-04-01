@@ -47,6 +47,7 @@ from .models import (
     SupervisorPlan,
 )
 from .intent_registry import get_intent_registry, has_registered_school_signal
+from .judge_repair_flow import run_judge as _run_judge, run_repair_loop as _run_repair_loop
 from .public_bundle_fast_paths import (
     _looks_like_family_new_calendar_enrollment_query,
     _looks_like_first_month_risks_query,
@@ -79,6 +80,7 @@ from .runtime_io import (
     persist_final_answer as _persist_final_answer_io,
 )
 from .session_memory import build_supervisor_session
+from .teacher_fast_paths import maybe_teacher_scope_fast_path_answer
 
 logger = logging.getLogger(__name__)
 PASSING_GRADE_TARGET = Decimal("7.0")
@@ -1882,272 +1884,11 @@ def _compose_authenticated_scope_answer(actor: dict[str, Any] | None) -> str:
     )
 
 
-def _teacher_session_active(ctx: SupervisorRunContext) -> bool:
-    actor_role = str((ctx.actor or {}).get("role_code", "") or "").strip().lower()
-    return actor_role == "teacher" or (
-        ctx.request.user.authenticated and str(ctx.request.user.role or "").strip().lower() == "teacher"
-    )
-
-
-def _looks_like_teacher_scope_query(message: str, recent_user_messages: list[str]) -> bool:
-    normalized = _normalize_text(message)
-    direct_terms = {
-        "ja sou professor",
-        "já sou professor",
-        "ja sou professora",
-        "já sou professora",
-        "meu horario",
-        "meu horário",
-        "meus horarios",
-        "meus horários",
-        "meu horario de aula",
-        "meu horário de aula",
-        "minhas turmas",
-        "minhas disciplinas",
-        "meus alunos",
-        "grade docente",
-        "minha grade docente",
-        "minha grade",
-        "quais turmas eu tenho",
-        "quais turmas eu atendo",
-        "quais disciplinas eu tenho",
-        "quais disciplinas eu atendo",
-        "quais turmas e disciplinas eu tenho",
-        "quais turmas e disciplinas eu atendo",
-        "rotina docente",
-    }
-    if any(term in normalized for term in direct_terms):
-        return True
-    teacher_thread_active = any(_looks_like_teacher_scope_query(item, []) for item in recent_user_messages[-4:])
-    if not teacher_thread_active:
-        return False
-    return any(
-        term in normalized
-        for term in {
-            "ensino medio",
-            "ensino médio",
-            "medio",
-            "médio",
-            "fundamental",
-            "turmas",
-            "disciplinas",
-            "classes",
-            "grade",
-        }
-    )
-
-
-def _compose_teacher_access_scope_answer(actor: dict[str, Any] | None, *, school_name: str) -> str:
-    actor_name = str((actor or {}).get("full_name", "Professor")).strip() or "Professor"
-    role_code = str((actor or {}).get("role_code", "") or "").strip().lower()
-    if role_code == "teacher":
-        return (
-            f"Voce esta falando aqui como {actor_name}, no perfil de professor do {school_name}. "
-            "Neste canal eu consigo consultar sua grade docente, turmas e disciplinas. "
-            "A situacao individual dos alunos ainda nao fica exposta por aqui. "
-            'Se quiser, me pergunte "qual meu horario?", "quais sao minhas turmas?" ou "quais disciplinas eu ministro?".'
-        )
-    return (
-        f"Se voce ja e professor do {school_name}, o acesso docente depende da vinculacao da conta institucional correta no Telegram. "
-        "Nesta conta atual eu nao identifiquei um perfil docente ativo. "
-        "Quando a vinculacao de professor estiver correta, por aqui eu consigo consultar horario, turmas e disciplinas."
-    )
-
-
-def _segment_filter_for_teacher_message(message: str) -> str | None:
-    normalized = _normalize_text(message)
-    if any(term in normalized for term in {"ensino medio", "ensino médio", "medio", "médio"}):
-        return "medio"
-    if "fundamental" in normalized or any(token in normalized for token in {"6o", "7o", "8o", "9o"}):
-        return "fundamental"
-    return None
-
-
-def _assignment_matches_segment(assignment: dict[str, Any], segment_filter: str | None) -> bool:
-    if not segment_filter:
-        return True
-    class_name = _normalize_text(str(assignment.get("class_name", "") or ""))
-    if segment_filter == "medio":
-        return any(
-            token in class_name
-            for token in {"medio", "médio", "1a serie", "2a serie", "3a serie", "1a série", "2a série", "3a série", "1em", "2em", "3em"}
-        )
-    return any(
-        token in class_name for token in {"fundamental", "6o", "7o", "8o", "9o", "6 ano", "7 ano", "8 ano", "9 ano"}
-    )
-
-
-def _render_teacher_schedule_answer(summary: dict[str, Any], *, message: str) -> str:
-    teacher_name = str(summary.get("teacher_name", "Professor")).strip() or "Professor"
-    assignments = summary.get("assignments") if isinstance(summary.get("assignments"), list) else []
-    filtered = [item for item in assignments if isinstance(item, dict) and _assignment_matches_segment(item, _segment_filter_for_teacher_message(message))]
-    normalized = _normalize_text(message)
-    if ("so do ensino medio" in normalized or "só do ensino médio" in normalized) and assignments:
-        return "Sim, sua grade atual fica concentrada no Ensino Medio." if len(filtered) == len(assignments) else "Nao. Sua grade atual nao e so do Ensino Medio."
-    if ("so do fundamental" in normalized or "só do fundamental" in normalized) and assignments:
-        return "Sim, sua grade atual fica concentrada no Ensino Fundamental II." if len(filtered) == len(assignments) else "Nao. Sua grade atual nao e so do Ensino Fundamental II."
-    if "disciplin" in normalized and "turma" not in normalized and "classe" not in normalized:
-        seen: set[str] = set()
-        lines: list[str] = []
-        for item in filtered:
-            subject_name = str(item.get("subject_name", "Disciplina")).strip()
-            if subject_name and subject_name not in seen:
-                seen.add(subject_name)
-                lines.append(f"- {subject_name}")
-        return "\n".join([f"Disciplinas de {teacher_name}:", *(lines or ["- Nenhuma disciplina encontrada."])])
-    if ("turma" in normalized or "classe" in normalized) and "disciplin" not in normalized:
-        seen: set[str] = set()
-        lines: list[str] = []
-        for item in filtered:
-            class_name = str(item.get("class_name", "Turma")).strip()
-            if class_name and class_name not in seen:
-                seen.add(class_name)
-                lines.append(f"- {class_name}")
-        return "\n".join([f"Turmas de {teacher_name}:", *(lines or ["- Nenhuma turma encontrada."])])
-    lines = [
-        "- {class_name} - {subject_name} ({academic_year})".format(
-            class_name=item.get("class_name", "Turma"),
-            subject_name=item.get("subject_name", "Disciplina"),
-            academic_year=item.get("academic_year", "---"),
-        )
-        for item in filtered[:8]
-    ]
-    return "\n".join([f"Grade docente de {teacher_name}:", *(lines or ["- Nenhuma alocacao docente encontrada."])])
-
-
-def _looks_like_teacher_summary_request(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return any(
-        term in normalized
-        for term in {
-            "rotina docente",
-            "resuma minha rotina docente",
-            "resumo enxuto",
-            "alocacao",
-            "alocação",
-            "reuniao pedagogica",
-            "reunião pedagógica",
-        }
-    )
-
-
-def _compose_teacher_summary_answer(summary: dict[str, Any], *, profile: dict[str, Any] | None, message: str) -> str:
-    teacher_name = str(summary.get("teacher_name", "Professor")).strip() or "Professor"
-    assignments = summary.get("assignments") if isinstance(summary.get("assignments"), list) else []
-    filtered = [item for item in assignments if isinstance(item, dict) and _assignment_matches_segment(item, _segment_filter_for_teacher_message(message))]
-    classes = []
-    subjects = []
-    seen_classes: set[str] = set()
-    seen_subjects: set[str] = set()
-    for item in filtered:
-        class_name = str(item.get("class_name", "") or "").strip()
-        subject_name = str(item.get("subject_name", "") or "").strip()
-        if class_name and class_name not in seen_classes:
-            seen_classes.add(class_name)
-            classes.append(class_name)
-        if subject_name and subject_name not in seen_subjects:
-            seen_subjects.add(subject_name)
-            subjects.append(subject_name)
-    public_events = (profile or {}).get("public_calendar_events") if isinstance(profile, dict) else None
-    event_titles: list[str] = []
-    if isinstance(public_events, list):
-        for item in public_events:
-            if not isinstance(item, dict):
-                continue
-            title = str(item.get("title", "") or "").strip()
-            if title and title not in event_titles:
-                event_titles.append(title)
-    parts = [
-        f"Resumo docente de {teacher_name}: {len(classes)} turma(s) e {len(subjects)} disciplina(s) ativas nesta base."
-    ]
-    if subjects:
-        parts.append("Disciplinas: " + ", ".join(subjects[:4]) + ".")
-    if classes:
-        parts.append("Turmas: " + ", ".join(classes[:4]) + ".")
-    if event_titles:
-        parts.append("No calendario publico, vale acompanhar marcos como " + ", ".join(event_titles[:2]) + ".")
-    parts.append("Para comunicacao escolar geral, a secretaria e o canal institucional mais seguro; para alinhamentos pedagogicos, siga com coordenacao e orientacao conforme o assunto.")
-    return " ".join(part for part in parts if part).strip()
-
-
 def _compose_support_process_boundary_answer() -> str:
     return (
         "Hoje eu trato esses tres fluxos de forma diferente: protocolo registra uma solicitacao institucional rastreavel; "
         "chamado costuma ser o ticket operacional associado ao atendimento; e handoff humano e o encaminhamento real para uma fila ou equipe, "
         "normalmente com protocolo e status para acompanhamento."
-    )
-
-
-async def _teacher_scope_fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | None:
-    recent_user_messages = _normalized_recent_user_messages(ctx.conversation_context)
-    if not _teacher_session_active(ctx):
-        return None
-    if not _looks_like_teacher_scope_query(ctx.request.message, recent_user_messages):
-        return None
-    school_name = _school_name(ctx.school_profile if isinstance(ctx.school_profile, dict) else {})
-    actor_role = str((ctx.actor or {}).get("role_code", "") or "").strip().lower()
-    if actor_role != "teacher" or ctx.request.telegram_chat_id is None:
-        answer_text = _compose_teacher_access_scope_answer(ctx.actor, school_name=school_name)
-        return SupervisorAnswerPayload(
-            message_text=answer_text,
-            mode="structured_tool",
-            classification=MessageIntentClassification(
-                domain="academic",
-                access_tier="authenticated",
-                confidence=0.94,
-                reason="specialist_supervisor_fast_path:teacher_scope_guidance",
-            ),
-            evidence_pack=MessageEvidencePack(
-                strategy="structured_tools",
-                summary="Escopo docente protegido orientado por identidade de professor na sessao atual.",
-                source_count=1,
-                support_count=1,
-                supports=[MessageEvidenceSupport(kind="teacher_scope", label="Escopo docente", detail="grade, turmas e disciplinas")],
-            ),
-            suggested_replies=_default_suggested_replies("academic"),
-            graph_path=["specialist_supervisor", "fast_path", "teacher_scope_guidance"],
-            reason="specialist_supervisor_fast_path:teacher_scope_guidance",
-        )
-    try:
-        payload = await _http_get(
-            ctx.http_client,
-            base_url=ctx.settings.api_core_url,
-            path="/v1/teachers/me/schedule",
-            token=ctx.settings.internal_api_token,
-            params={"telegram_chat_id": ctx.request.telegram_chat_id},
-        )
-    except httpx.HTTPError:
-        payload = None
-    summary = payload.get("summary") if isinstance(payload, dict) else None
-    if not isinstance(summary, dict):
-        return None
-    if _looks_like_teacher_summary_request(ctx.request.message):
-        answer_text = _compose_teacher_summary_answer(
-            summary,
-            profile=ctx.school_profile if isinstance(ctx.school_profile, dict) else None,
-            message=ctx.request.message,
-        )
-    else:
-        answer_text = _render_teacher_schedule_answer(summary, message=ctx.request.message)
-    return SupervisorAnswerPayload(
-        message_text=answer_text,
-        mode="structured_tool",
-        classification=MessageIntentClassification(
-            domain="academic",
-            access_tier="authenticated",
-            confidence=0.97,
-            reason="specialist_supervisor_fast_path:teacher_schedule",
-        ),
-        evidence_pack=MessageEvidencePack(
-            strategy="structured_tools",
-            summary="Grade docente lida do servico protegido de agenda do professor.",
-            source_count=1,
-            support_count=1,
-            supports=[MessageEvidenceSupport(kind="teacher_schedule", label="Grade docente", detail=_safe_excerpt(answer_text, limit=180))],
-        ),
-        suggested_replies=_default_suggested_replies("academic"),
-        graph_path=["specialist_supervisor", "fast_path", "teacher_schedule"],
-        reason="specialist_supervisor_fast_path:teacher_schedule",
     )
 
 
@@ -7815,84 +7556,6 @@ async def _run_manager_with_specialists(
     return _parse_result_model(result, ManagerDraft)
 
 
-async def _run_judge(
-    ctx: SupervisorRunContext,
-    *,
-    plan: SupervisorPlan,
-    draft: ManagerDraft,
-    specialist_results: list[SpecialistResult],
-) -> JudgeVerdict:
-    judge = _build_judge_agent(_agent_model(ctx.settings))
-    prompt = json.dumps(
-        {
-            "user_message": ctx.request.message,
-            "retrieval_advice": ctx.retrieval_advice.model_dump(mode="json") if ctx.retrieval_advice is not None else {},
-            "plan": plan.model_dump(mode="json"),
-            "operational_memory": ctx.operational_memory.model_dump(mode="json") if ctx.operational_memory is not None else {},
-            "manager_draft": draft.model_dump(mode="json"),
-            "specialist_results": [item.model_dump(mode="json") for item in specialist_results],
-        },
-        ensure_ascii=False,
-    )
-    result = await Runner.run(
-        judge,
-        prompt,
-        context=ctx,
-        max_turns=4,
-        run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
-    )
-    return result.final_output_as(JudgeVerdict, raise_if_incorrect_type=True)
-
-
-async def _run_repair_loop(
-    ctx: SupervisorRunContext,
-    *,
-    plan: SupervisorPlan,
-    draft: ManagerDraft,
-    judge: JudgeVerdict,
-    specialist_results: list[SpecialistResult],
-) -> tuple[ManagerDraft, JudgeVerdict, RepairDraft] | None:
-    if not specialist_results:
-        return None
-    repair_needed = (not judge.approved) or bool(judge.issues)
-    if not repair_needed or judge.needs_clarification:
-        return None
-    repair_agent = _build_repair_agent(ctx.settings, _agent_model(ctx.settings))
-    prompt = json.dumps(
-        {
-            "user_message": ctx.request.message,
-            "retrieval_advice": ctx.retrieval_advice.model_dump(mode="json") if ctx.retrieval_advice is not None else {},
-            "plan": plan.model_dump(mode="json"),
-            "manager_draft": draft.model_dump(mode="json"),
-            "judge_feedback": judge.model_dump(mode="json"),
-            "specialist_results": [item.model_dump(mode="json") for item in specialist_results],
-        },
-        ensure_ascii=False,
-    )
-    result = await Runner.run(
-        repair_agent,
-        prompt,
-        context=ctx,
-        max_turns=4,
-        run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
-    )
-    repair = _parse_result_model(result, RepairDraft)
-    repaired_draft = ManagerDraft(
-        answer_text=repair.answer_text,
-        answer_summary=repair.answer_summary,
-        specialists_used=repair.specialists_used or draft.specialists_used,
-        citations=repair.citations or draft.citations,
-        suggested_replies=repair.suggested_replies or draft.suggested_replies,
-    )
-    repaired_judge = await _run_judge(
-        ctx,
-        plan=plan,
-        draft=repaired_draft,
-        specialist_results=specialist_results,
-    )
-    return repaired_draft, repaired_judge, repair
-
-
 async def run_specialist_supervisor(
     *,
     request: SpecialistSupervisorRequest,
@@ -7948,7 +7611,7 @@ async def run_specialist_supervisor(
         context.operational_memory = _load_operational_memory(context.conversation_context)
         context.resolved_turn = _resolve_turn_intent(context)
 
-        teacher_fast_answer = await _teacher_scope_fast_path_answer(context)
+        teacher_fast_answer = await maybe_teacher_scope_fast_path_answer(context)
         if teacher_fast_answer is not None:
             await _persist_final_answer(
                 context,

@@ -1,0 +1,3950 @@
+{
+  "generated_at": "2026-04-01T20:26:41.959167+00:00",
+  "dataset": "/home/edann/projects/eduassist-platform/tests/evals/datasets/system_question_bank_wave_protected_ops.json",
+  "run_prefix": "debug:five-path:20260401T202130Z",
+  "benchmark_context": {
+    "specialist_supervisor_benchmark_mode": "source",
+    "api_core_url": "http://127.0.0.1:8001",
+    "ai_orchestrator_url": "http://127.0.0.1:8002",
+    "crewai_pilot_url": "http://127.0.0.1:8004",
+    "specialist_supervisor_pilot_url": "http://127.0.0.1:8005",
+    "database_url": "postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist",
+    "qdrant_url": "http://127.0.0.1:6333",
+    "env_loaded": true
+  },
+  "stack_execution_mode": "sequential",
+  "summary": {
+    "by_stack": {
+      "langgraph": {
+        "count": 32,
+        "ok": 32,
+        "keyword_pass": 32,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 337.9
+      },
+      "crewai": {
+        "count": 32,
+        "ok": 32,
+        "keyword_pass": 32,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 3818.9
+      },
+      "python_functions": {
+        "count": 32,
+        "ok": 32,
+        "keyword_pass": 32,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 146.4
+      },
+      "llamaindex": {
+        "count": 32,
+        "ok": 32,
+        "keyword_pass": 32,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 935.6
+      },
+      "specialist_supervisor": {
+        "count": 32,
+        "ok": 32,
+        "keyword_pass": 32,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 4443.1
+      }
+    },
+    "by_slice": {
+      "protected": {
+        "count": 30,
+        "langgraph": {
+          "ok": 30,
+          "keyword_pass": 30,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 351.8
+        },
+        "crewai": {
+          "ok": 30,
+          "keyword_pass": 30,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 4061.8
+        },
+        "python_functions": {
+          "ok": 30,
+          "keyword_pass": 30,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 147.3
+        },
+        "llamaindex": {
+          "ok": 30,
+          "keyword_pass": 30,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 987.6
+        },
+        "specialist_supervisor": {
+          "ok": 30,
+          "keyword_pass": 30,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 4213.3
+        }
+      },
+      "workflow": {
+        "count": 2,
+        "langgraph": {
+          "ok": 2,
+          "keyword_pass": 2,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 129.5
+        },
+        "crewai": {
+          "ok": 2,
+          "keyword_pass": 2,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 175.7
+        },
+        "python_functions": {
+          "ok": 2,
+          "keyword_pass": 2,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 133.0
+        },
+        "llamaindex": {
+          "ok": 2,
+          "keyword_pass": 2,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 155.7
+        },
+        "specialist_supervisor": {
+          "ok": 2,
+          "keyword_pass": 2,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 7890.4
+        }
+      }
+    },
+    "error_types": {
+      "langgraph": {},
+      "crewai": {},
+      "python_functions": {},
+      "llamaindex": {},
+      "specialist_supervisor": {}
+    }
+  },
+  "results": [
+    {
+      "prompt": "Quero ver minhas notas.",
+      "slice": "protected",
+      "category": "identidade_autenticacao_vinculo_e_policy",
+      "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q033",
+      "turn_index": 1,
+      "note": "Q033|profile=anonimo|difficulty=facil|form=direta|sources=identity,policy|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 264.9,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 162.0,
+        "mode": "deny",
+        "reason": "crewai_protected_auth_required",
+        "graph_path": [
+          "flow_router",
+          "auth_required_deterministic"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 144.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 162.2,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 8455.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_direct:academic_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "academic_specialist"
+        ],
+        "answer_text": "Não consegui encontrar suas informações. Por favor, poderia me dizer o seu nome completo ou o nome do aluno que você gostaria de consultar?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Como eu vinculo meu Telegram a minha conta da escola?",
+      "slice": "protected",
+      "category": "identidade_autenticacao_vinculo_e_policy",
+      "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q034",
+      "turn_index": 1,
+      "note": "Q034|profile=anonimo|difficulty=media|form=direta|sources=identity|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 146.3,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 157.2,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Para vincular o Telegram a sua conta da escola, entre no portal autenticado, gere o codigo de vinculacao e depois envie aqui o comando /start link_<codigo>.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 131.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 148.3,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1862.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:auth_guidance",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "auth_guidance"
+        ],
+        "answer_text": "Para consultas protegidas, como notas, faltas e financeiro, voce precisa vincular sua conta do Telegram ao portal do Colegio Horizonte. No portal autenticado, gere o codigo de vinculacao e depois envie aqui o comando `/start link_<codigo>`. Depois disso, eu passo a consultar seus dados autorizados por este canal.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Estou logado como quem e quais alunos eu tenho vinculados?",
+      "slice": "protected",
+      "category": "identidade_autenticacao_vinculo_e_policy",
+      "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q035",
+      "turn_index": 1,
+      "note": "Q035|profile=responsavel|difficulty=media|form=direta|sources=identity|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 106.6,
+        "mode": "structured_tool",
+        "reason": "identidade da conta autenticada exige leitura protegida e minimizada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Voce esta falando aqui como Maria Oliveira, no perfil de responsavel. Sua conta esta vinculada a Lucas Oliveira e Ana Oliveira. Por aqui eu consigo consultar notas, faltas, proximas provas, matricula, financeiro, boletos, dentro das permissoes dessa vinculacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 166.6,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_identity_backstop",
+        "graph_path": [
+          "flow_router",
+          "identity_backstop"
+        ],
+        "answer_text": "Voce esta autenticado aqui como Maria Oliveira. Sua conta esta vinculada a Lucas Oliveira, Ana Oliveira e pode consultar notas, frequencia, avaliacoes, documentacao e financeiro desses alunos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 95.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_authenticated_account_scope",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Voce esta falando aqui como Maria Oliveira, no perfil de responsavel. Sua conta esta vinculada a Lucas Oliveira e Ana Oliveira. Por aqui eu consigo consultar notas, faltas, proximas provas, matricula, financeiro, boletos, dentro das permissoes dessa vinculacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 135.1,
+        "mode": "structured_tool",
+        "reason": "identidade da conta autenticada exige leitura protegida e minimizada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Voce esta falando aqui como Maria Oliveira, no perfil de responsavel. Sua conta esta vinculada a Lucas Oliveira e Ana Oliveira. Por aqui eu consigo consultar notas, faltas, proximas provas, matricula, financeiro, boletos, dentro das permissoes dessa vinculacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 9081.8,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_direct:institution_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "institution_specialist"
+        ],
+        "answer_text": "Não consigo te informar como você está logado ou quais alunos estão vinculados à sua conta. Minhas funcionalidades são restritas a fornecer informações públicas sobre a instituição de ensino, suas políticas, calendário e serviços gerais. Não tenho acesso a dados de usuários logados ou a informações pessoais e específicas de matrícula.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Qual e exatamente o meu escopo: posso ver academico, financeiro ou os dois para cada filho?",
+      "slice": "protected",
+      "category": "identidade_autenticacao_vinculo_e_policy",
+      "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q036",
+      "turn_index": 1,
+      "note": "Q036|profile=responsavel|difficulty=dificil|form=direta|sources=identity,policy|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 107.9,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Voce ja esta autenticado por aqui e sua conta esta vinculada a Lucas Oliveira e Ana Oliveira. Por este canal eu consigo consultar notas, faltas, proximas provas, matricula, financeiro, boletos, dentro das permissoes dessa vinculacao.  Escopo atual:\n- Lucas Oliveira: academico, financeiro\n- Ana Oliveira: academico, financeiro Se quiser, me diga algo como \"notas do Lucas\", \"faltas da Ana\" ou \"financeiro do Lucas\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 169.4,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_identity_backstop",
+        "graph_path": [
+          "flow_router",
+          "identity_backstop"
+        ],
+        "answer_text": "Voce esta autenticado aqui como Maria Oliveira. Sua conta esta vinculada a Lucas Oliveira, Ana Oliveira. Hoje eu consigo consultar exatamente: notas, frequencia, avaliacoes, documentacao e financeiro desses alunos.\nEscopo atual:\n- Lucas Oliveira: academico, financeiro\n- Ana Oliveira: academico, financeiro\nSe quiser, ja posso abrir um desses assuntos agora.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 90.6,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_authenticated_account_scope",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Voce ja esta autenticado por aqui e sua conta esta vinculada a Lucas Oliveira e Ana Oliveira. Por este canal eu consigo consultar notas, faltas, proximas provas, matricula, financeiro, boletos, dentro das permissoes dessa vinculacao.  Escopo atual:\n- Lucas Oliveira: academico, financeiro\n- Ana Oliveira: academico, financeiro Se quiser, me diga algo como \"notas do Lucas\", \"faltas da Ana\" ou \"financeiro do Lucas\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 116.2,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Voce ja esta autenticado por aqui e sua conta esta vinculada a Lucas Oliveira e Ana Oliveira. Por este canal eu consigo consultar notas, faltas, proximas provas, matricula, financeiro, boletos, dentro das permissoes dessa vinculacao.  Escopo atual:\n- Lucas Oliveira: academico, financeiro\n- Ana Oliveira: academico, financeiro Se quiser, me diga algo como \"notas do Lucas\", \"faltas da Ana\" ou \"financeiro do Lucas\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1834.4,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:access_scope",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "access_scope"
+        ],
+        "answer_text": "Voce ja esta autenticado por aqui e sua conta esta vinculada a Lucas Oliveira e Ana Oliveira. Neste canal eu consigo consultar academico e financeiro dos alunos vinculados dentro das permissoes da conta.  Escopo atual:\n- Lucas Oliveira: academico, financeiro\n- Ana Oliveira: academico, financeiroSe quiser, me diga algo como \"notas do Lucas\", \"faltas da Ana\" ou \"financeiro da Ana\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Quero ver minhas notas.",
+      "slice": "protected",
+      "category": "identidade_autenticacao_vinculo_e_policy",
+      "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q037",
+      "turn_index": 1,
+      "note": "Q037|profile=responsavel|difficulty=dificil|form=ambigua|sources=identity,policy|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 128.4,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Sua conta tem mais de um aluno vinculado. Diga qual aluno deseja consultar: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 170.4,
+        "mode": "structured_tool",
+        "reason": "protected_shadow_needs_student_clarification",
+        "graph_path": [
+          "flow_router",
+          "student_clarification"
+        ],
+        "answer_text": "Posso te ajudar com Lucas Oliveira, Ana Oliveira. Me diga qual aluno voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 109.8,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Sua conta tem mais de um aluno vinculado. Diga qual aluno deseja consultar: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 130.1,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Sua conta tem mais de um aluno vinculado. Diga qual aluno deseja consultar: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1934.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:academic_summary_aggregate",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "academic_summary_aggregate"
+        ],
+        "answer_text": "Panorama academico das contas vinculadas:\n- Lucas Oliveira: Historia 6,8; Fisica 5,9; Matematica 7,7; Portugues 8,3\n- Ana Oliveira: Historia 7,3; Fisica 6,4; Matematica 7,4; Portugues 8,4",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Lucas, eu falei.",
+      "slice": "protected",
+      "category": "identidade_autenticacao_vinculo_e_policy",
+      "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q037",
+      "turn_index": 2,
+      "note": "Q038|profile=responsavel|difficulty=media|form=follow-up|sources=identity,policy|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 178.4,
+        "mode": "structured_tool",
+        "reason": "o usuario respondeu a desambiguacao do aluno e o fluxo protegido pode continuar",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "student_disambiguation_rescue"
+        ],
+        "answer_text": "Perfeito, seguimos com Lucas Oliveira. Posso te ajudar com notas, faltas, proximas provas, matricula, financeiro, boletos. Se quiser, ja me diga o que voce quer ver primeiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 182.6,
+        "mode": "structured_tool",
+        "reason": "protected_shadow_student_selection",
+        "graph_path": [
+          "flow_router",
+          "student_selection"
+        ],
+        "answer_text": "Perfeito, seguimos com Lucas Oliveira. Posso te ajudar com notas, frequencia, faltas, proximas provas, documentacao, matricula e financeiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 164.5,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 118.5,
+        "mode": "structured_tool",
+        "reason": "llamaindex_student_focus_fast_path",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "llamaindex:protected",
+          "llamaindex:student_focus_fast_path",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Perfeito, seguimos com Lucas Oliveira. Posso te ajudar com notas, faltas, proximas provas, matricula, financeiro, boletos. Se quiser, ja me diga o que voce quer ver primeiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1879.6,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:student_grades",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "student_grades"
+        ],
+        "answer_text": "Notas de Lucas Oliveira:\n- Historia: media parcial 6,8\n- Fisica: media parcial 5,9\n- Matematica: media parcial 7,7\n- Portugues: media parcial 8,3",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Meu ex-conjuge tambem e responsavel. O que exatamente eu nao posso ver aqui?",
+      "slice": "protected",
+      "category": "identidade_autenticacao_vinculo_e_policy",
+      "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q039",
+      "turn_index": 1,
+      "note": "Q039|profile=responsavel|difficulty=media|form=adversarial|sources=identity,policy|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 2291.3,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify"
+        ],
+        "answer_text": "Olá! Como assistente EduAssist, meu foco é em informações gerais e públicas da escola. Para acessar dados específicos de alunos, como notas, frequência ou informações financeiras, é necessário que o responsável esteja autenticado em nosso portal.\n\nSe o seu ex-cônjuge também é responsável legal, ele terá acesso às mesmas informações que você, uma vez que ambos estejam autenticados.\n\nPara informações sobre o que cada responsável pode ou não ver, especialmente em casos de responsabilidade compartilhada, sugiro que entre em contato diretamente com a Secretaria Escolar. Eles poderão esclarecer todos os detalhes sobre o acesso a informações do aluno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 20210.1,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_timeout",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "Não encontrei informações específicas sobre quais dados do aluno não são acessíveis a um responsável legal, especialmente em casos de ex-cônjuges também responsáveis, nos documentos que consultei. Para obter essa informação detalhada, sugiro que entre em contato diretamente com a secretaria ou o setor responsável da instituição.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 153.6,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 18559.0,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 3994.6,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:general_knowledge",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "general_knowledge"
+        ],
+        "answer_text": "Prefiro não responder a perguntas que envolvam questões jurídicas ou de responsabilidade legal, pois fogem do meu domínio de conhecimento geral.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Se eu souber o nome de um aluno da escola, consigo consultar notas ou boletos sem me autenticar?",
+      "slice": "protected",
+      "category": "identidade_autenticacao_vinculo_e_policy",
+      "thread_id": "system_bank:identidade_autenticacao_vinculo_e_policy:Q040",
+      "turn_index": 1,
+      "note": "Q040|profile=anonimo|difficulty=dificil|form=adversarial|sources=identity,policy|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 133.3,
+        "mode": "structured_tool",
+        "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call",
+          "protected_domain_rescue"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 163.9,
+        "mode": "deny",
+        "reason": "crewai_protected_auth_required",
+        "graph_path": [
+          "flow_router",
+          "auth_required_deterministic"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 140.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 152.1,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 6129.2,
+        "mode": "deny",
+        "reason": "A solicitação implica acesso a dados sensíveis (notas e boletos) sem autenticação, o que viola diretamente as políticas de privacidade e segurança de dados do Colégio Horizonte. A estratégia é negar o acesso e informar a necessidade de autenticação.",
+        "graph_path": [
+          "specialist_supervisor",
+          "planner"
+        ],
+        "answer_text": "O acesso a dados sensíveis de alunos, como notas e boletos, é restrito e requer autenticação para garantir a privacidade e segurança das informações, conforme as políticas do Colégio Horizonte. Não é possível consultar essas informações apenas com o nome do aluno e sem autenticação.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quero ver as notas do Lucas Oliveira.",
+      "slice": "protected",
+      "category": "academico_protegido",
+      "thread_id": "system_bank:academico_protegido:Q041",
+      "turn_index": 1,
+      "note": "Q041|profile=responsavel|difficulty=facil|form=direta|sources=academic|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 176.7,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Notas de Lucas Oliveira:\n- Biologia - Avaliacao B1: 8.40/10.00\n- Educacao Fisica - Avaliacao 2026-B1 - EF: 6.40/10.00\n- Filosofia - Avaliacao 2026-B1 - FIL: 7.00/10.00\n- Fisica - Avaliacao 2026-B1 - FIS: 5.80/10.00\n- Geografia - Avaliacao 2026-B1 - GEO: 6.40/10.00\n- Historia - Avaliacao 2026-B1 - HIS: 6.70/10.00\n- Ingles - Avaliacao B1: 8.90/10.00\n- Matematica - Avaliacao B1: 8.70/10.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 394.7,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "As notas mais recentes de Lucas Oliveira incluem Biologia: 8.40/10.00; Educacao Fisica: 6.40/10.00; Filosofia: 7.00/10.00; Fisica: 5.80/10.00; Geografia: 6.40/10.00; Historia: 6.70/10.00; Ingles: 8.90/10.00; Matematica: 8.70/10.00.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 160.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Notas de Lucas Oliveira:\n- Biologia - Avaliacao B1: 8.40/10.00\n- Educacao Fisica - Avaliacao 2026-B1 - EF: 6.40/10.00\n- Filosofia - Avaliacao 2026-B1 - FIL: 7.00/10.00\n- Fisica - Avaliacao 2026-B1 - FIS: 5.80/10.00\n- Geografia - Avaliacao 2026-B1 - GEO: 6.40/10.00\n- Historia - Avaliacao 2026-B1 - HIS: 6.70/10.00\n- Ingles - Avaliacao B1: 8.90/10.00\n- Matematica - Avaliacao B1: 8.70/10.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 192.0,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Notas de Lucas Oliveira:\n- Biologia - Avaliacao B1: 8.40/10.00\n- Educacao Fisica - Avaliacao 2026-B1 - EF: 6.40/10.00\n- Filosofia - Avaliacao 2026-B1 - FIL: 7.00/10.00\n- Fisica - Avaliacao 2026-B1 - FIS: 5.80/10.00\n- Geografia - Avaliacao 2026-B1 - GEO: 6.40/10.00\n- Historia - Avaliacao 2026-B1 - HIS: 6.70/10.00\n- Ingles - Avaliacao B1: 8.90/10.00\n- Matematica - Avaliacao B1: 8.70/10.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1923.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:student_grades",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "student_grades"
+        ],
+        "answer_text": "Notas de Lucas Oliveira:\n- Historia: media parcial 6,8\n- Fisica: media parcial 5,9\n- Matematica: media parcial 7,7\n- Portugues: media parcial 8,3",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "E a frequencia?",
+      "slice": "protected",
+      "category": "academico_protegido",
+      "thread_id": "system_bank:academico_protegido:Q041",
+      "turn_index": 2,
+      "note": "Q042|profile=responsavel|difficulty=facil|form=follow-up|sources=academic|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 178.6,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Panorama de frequencia de Lucas Oliveira:\nResumo geral:\n- Presencas registradas: 19\n- Faltas registradas: 6\n- Atrasos registrados: 7\n- Minutos somados de ausencia: 370",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 406.2,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Na frequencia de Lucas Oliveira, eu encontrei 12 registros neste recorte: 7 presencas, 2 faltas e 3 atrasos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 174.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Panorama de frequencia de Lucas Oliveira:\nResumo geral:\n- Presencas registradas: 19\n- Faltas registradas: 6\n- Atrasos registrados: 7\n- Minutos somados de ausencia: 370",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 207.7,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Panorama de frequencia de Lucas Oliveira:\nResumo geral:\n- Presencas registradas: 19\n- Faltas registradas: 6\n- Atrasos registrados: 7\n- Minutos somados de ausencia: 370",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1942.2,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:attendance_summary",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "attendance_summary"
+        ],
+        "answer_text": "Na frequencia de Lucas Oliveira em Tecnologia e Cultura Digital, eu encontrei 6 faltas, 7 atraso(s) e 19 presenca(s) neste recorte.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quais sao as proximas provas do Lucas Oliveira?",
+      "slice": "protected",
+      "category": "academico_protegido",
+      "thread_id": "system_bank:academico_protegido:Q043",
+      "turn_index": 1,
+      "note": "Q043|profile=responsavel|difficulty=media|form=direta|sources=academic|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 211.7,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Proximas avaliacoes de Lucas Oliveira:\n- Turma: 1o Ano A\n- Biologia - Avaliacao B1: 2026-04-10\n- Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n- Historia - Avaliacao B1: 2026-04-10\n- Ingles - Avaliacao B1: 2026-04-10\n- Matematica - Avaliacao 2026-B1 - MAT: 2026-04-10\n- Matematica - Avaliacao B1: 2026-04-10",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 409.3,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "A proxima avaliacao registrada de Lucas Oliveira e Avaliacao B1 em 2026-04-10.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 215.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Proximas avaliacoes de Lucas Oliveira:\n- Turma: 1o Ano A\n- Biologia - Avaliacao B1: 2026-04-10\n- Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n- Historia - Avaliacao B1: 2026-04-10\n- Ingles - Avaliacao B1: 2026-04-10\n- Matematica - Avaliacao 2026-B1 - MAT: 2026-04-10\n- Matematica - Avaliacao B1: 2026-04-10",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 228.7,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Proximas avaliacoes de Lucas Oliveira:\n- Turma: 1o Ano A\n- Biologia - Avaliacao B1: 2026-04-10\n- Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n- Historia - Avaliacao B1: 2026-04-10\n- Ingles - Avaliacao B1: 2026-04-10\n- Matematica - Avaliacao 2026-B1 - MAT: 2026-04-10\n- Matematica - Avaliacao B1: 2026-04-10",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1931.4,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:academic_summary",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "academic_summary"
+        ],
+        "answer_text": "Notas de Lucas Oliveira:\n- Historia: media parcial 6,8\n- Fisica: media parcial 5,9\n- Matematica: media parcial 7,7\n- Portugues: media parcial 8,3",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Em quais datas o Lucas faltou e em quais disciplinas isso aconteceu?",
+      "slice": "protected",
+      "category": "academico_protegido",
+      "thread_id": "system_bank:academico_protegido:Q044",
+      "turn_index": 1,
+      "note": "Q044|profile=responsavel|difficulty=media|form=direta|sources=academic|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 173.0,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Resumo academico de Lucas Oliveira:\n- Turma: 1o Ano A\n- Serie atual: 1\nNotas mais recentes:\n- Biologia - Avaliacao B1: 8.40/10.00\n- Educacao Fisica - Avaliacao 2026-B1 - EF: 6.40/10.00\n- Filosofia - Avaliacao 2026-B1 - FIL: 7.00/10.00\n- Fisica - Avaliacao 2026-B1 - FIS: 5.80/10.00\n- Geografia - Avaliacao 2026-B1 - GEO: 6.40/10.00\n- Historia - Avaliacao 2026-B1 - HIS: 6.70/10.00\n- Ingles - Avaliacao B1: 8.90/10.00\n- Matematica - Avaliacao B1: 8.70/10.00\nFrequencia:\n- Biologia: 3 presencas, 0 atrasos, 1 faltas (50 min)\n- Educacao Fisica: 1 presencas, 0 atrasos, 1 faltas (50 min)\n- Filosofia: 1 presencas, 1 atrasos, 0 faltas (10 min)\n- Fisica: 1 presencas, 1 atrasos, 0 faltas (10 min)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 19446.2,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_flow_completed",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "protected_planning",
+          "protected_composition",
+          "protected_judging"
+        ],
+        "answer_text": "As faltas de Lucas Oliveira (MAT-2026-001) são: 2 em Matemática Discreta, 1 em Programação I e 3 em Estruturas de Dados.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 187.7,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Resumo academico de Lucas Oliveira:\n- Turma: 1o Ano A\n- Serie atual: 1\nNotas mais recentes:\n- Biologia - Avaliacao B1: 8.40/10.00\n- Educacao Fisica - Avaliacao 2026-B1 - EF: 6.40/10.00\n- Filosofia - Avaliacao 2026-B1 - FIL: 7.00/10.00\n- Fisica - Avaliacao 2026-B1 - FIS: 5.80/10.00\n- Geografia - Avaliacao 2026-B1 - GEO: 6.40/10.00\n- Historia - Avaliacao 2026-B1 - HIS: 6.70/10.00\n- Ingles - Avaliacao B1: 8.90/10.00\n- Matematica - Avaliacao B1: 8.70/10.00\nFrequencia:\n- Biologia: 3 presencas, 0 atrasos, 1 faltas (50 min)\n- Educacao Fisica: 1 presencas, 0 atrasos, 1 faltas (50 min)\n- Filosofia: 1 presencas, 1 atrasos, 0 faltas (10 min)\n- Fisica: 1 presencas, 1 atrasos, 0 faltas (10 min)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 214.0,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Resumo academico de Lucas Oliveira:\n- Turma: 1o Ano A\n- Serie atual: 1\nNotas mais recentes:\n- Biologia - Avaliacao B1: 8.40/10.00\n- Educacao Fisica - Avaliacao 2026-B1 - EF: 6.40/10.00\n- Filosofia - Avaliacao 2026-B1 - FIL: 7.00/10.00\n- Fisica - Avaliacao 2026-B1 - FIS: 5.80/10.00\n- Geografia - Avaliacao 2026-B1 - GEO: 6.40/10.00\n- Historia - Avaliacao 2026-B1 - HIS: 6.70/10.00\n- Ingles - Avaliacao B1: 8.90/10.00\n- Matematica - Avaliacao B1: 8.70/10.00\nFrequencia:\n- Biologia: 3 presencas, 0 atrasos, 1 faltas (50 min)\n- Educacao Fisica: 1 presencas, 0 atrasos, 1 faltas (50 min)\n- Filosofia: 1 presencas, 1 atrasos, 0 faltas (10 min)\n- Fisica: 1 presencas, 1 atrasos, 0 faltas (10 min)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 3799.6,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:academic_summary",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "academic_summary"
+        ],
+        "answer_text": "Notas de Lucas Oliveira:\n- Historia: media parcial 6,8\n- Fisica: media parcial 5,9\n- Matematica: media parcial 7,7\n- Portugues: media parcial 8,3",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Compare o desempenho do Rafael e da Manuela neste bimestre e diga quem precisa de mais atencao.",
+      "slice": "protected",
+      "category": "academico_protegido",
+      "thread_id": "system_bank:academico_protegido:Q045",
+      "turn_index": 1,
+      "note": "Q045|profile=responsavel|difficulty=dificil|form=comparativa|sources=academic|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 136.9,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 20312.9,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_flow_timeout",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "protected_planning",
+          "protected_composition",
+          "protected_judging"
+        ],
+        "answer_text": "Eu nao consegui consolidar essa consulta protegida com seguranca agora. Se quiser, me diga qual aluno e qual dado voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 163.4,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 204.5,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 3697.4,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:academic_summary_aggregate",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "academic_summary_aggregate"
+        ],
+        "answer_text": "Panorama academico das contas vinculadas:\n- Lucas Oliveira: Historia 6,8; Fisica 5,9; Matematica 7,7; Portugues 8,3\n- Ana Oliveira: Historia 7,3; Fisica 6,4; Matematica 7,4; Portugues 8,4",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "O Joao ainda consegue recuperar a disciplina ou ja passou do ponto segundo as regras da escola?",
+      "slice": "protected",
+      "category": "academico_protegido",
+      "thread_id": "system_bank:academico_protegido:Q046",
+      "turn_index": 1,
+      "note": "Q046|profile=responsavel|difficulty=dificil|form=multi-fonte|sources=academic,public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 183.0,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Sua conta tem mais de um aluno vinculado. Diga qual aluno deseja consultar: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 272.2,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "A proposta pedagogica publicada hoje combina A escola segue a BNCC e o curriculo do Ensino Medio articulado com projeto de vida, producao textual, cultura digital e aprofundamento academico progressivo. Na pratica, isso aparece em frentes como Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 172.4,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Sua conta tem mais de um aluno vinculado. Diga qual aluno deseja consultar: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 184.1,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Sua conta tem mais de um aluno vinculado. Diga qual aluno deseja consultar: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 3557.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:academic_summary_aggregate",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "academic_summary_aggregate"
+        ],
+        "answer_text": "Panorama academico das contas vinculadas:\n- Lucas Oliveira: Historia 6,8; Fisica 5,9; Matematica 7,7; Portugues 8,3\n- Ana Oliveira: Historia 7,3; Fisica 6,4; Matematica 7,4; Portugues 8,4",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Qual e a minha melhor disciplina, qual e a pior e quanto falta para eu fechar a media em Fisica?",
+      "slice": "protected",
+      "category": "academico_protegido",
+      "thread_id": "system_bank:academico_protegido:Q047",
+      "turn_index": 1,
+      "note": "Q047|profile=aluno|difficulty=media|form=direta|sources=academic|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 164.3,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 232.7,
+        "mode": "deny",
+        "reason": "crewai_protected_auth_required",
+        "graph_path": [
+          "flow_router",
+          "auth_required_deterministic"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 190.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 217.9,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Sem problema, ajustei isso por aqui.\n\nEstudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 11248.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_direct:academic_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "academic_specialist"
+        ],
+        "answer_text": "Não consegui identificar qual aluno você gostaria de consultar. Por favor, especifique o nome do aluno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Monte um resumo academico curto para eu mandar no grupo da familia sem expor nada desnecessario.",
+      "slice": "protected",
+      "category": "academico_protegido",
+      "thread_id": "system_bank:academico_protegido:Q048",
+      "turn_index": 1,
+      "note": "Q048|profile=responsavel|difficulty=dificil|form=criativa|sources=academic,public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 2156.9,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify"
+        ],
+        "answer_text": "Olá! Que ótima ideia compartilhar um resumo acadêmico com a família. Para te ajudar a montar algo curto e sem expor nada desnecessário, preciso de um pouco mais de informação.\n\nVocê gostaria de um resumo sobre o quê exatamente? Por exemplo:\n\n*   **Sobre o desempenho geral da escola?** (Nesse caso, posso destacar os diferenciais do Colégio Horizonte, como a tutoria acadêmica e o Espaço Maker).\n*   **Sobre o seu próprio desempenho ou de um estudante específico?** (Para isso, seria necessário acessar informações que exigem autenticação, e o EduAssist não tem acesso direto a dados individuais de alunos. Você pode verificar o portal do aluno para essas informações).\n*   **Sobre alguma novidade ou evento acadêmico da escola?** (Se houver algum evento no calendário oficial, posso te ajudar com isso).\n\nMe diga qual o foco do resumo que você precisa, e eu te ajudo a formular algo!",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 20347.1,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_timeout",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "A Escola Bosque oferece um ambiente acolhedor e inovador, focado no desenvolvimento integral dos alunos, com destaque para a educação bilíngue e diversas atividades extracurriculares. Nossas turmas são pequenas, oferecemos um programa de mentoria individualizada e contamos com uma infraestrutura moderna, incluindo laboratórios de ciências e artes, além de quadras esportivas. O ano letivo de 2024 começa em 29 de janeiro e vai até 13 de dezembro, com férias de julho de 15 a 26 de julho.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 156.1,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 6424.5,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 6738.2,
+        "mode": "clarify",
+        "reason": "A solicitação de um 'resumo acadêmico curto' com a restrição de 'não expor nada desnecessário' é ambígua. É preciso clarificar quais aspectos acadêmicos o usuário deseja incluir no resumo para garantir que a informação seja relevante e atenda aos requisitos de privacidade.",
+        "graph_path": [
+          "specialist_supervisor",
+          "planner"
+        ],
+        "answer_text": "Para montar um resumo acadêmico, você gostaria de incluir informações sobre o desempenho geral, notas em disciplinas específicas, participação em projetos, frequência ou outros aspectos?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quero ver o financeiro da Ana Oliveira.",
+      "slice": "protected",
+      "category": "financeiro_protegido",
+      "thread_id": "system_bank:financeiro_protegido:Q049",
+      "turn_index": 1,
+      "note": "Q049|profile=responsavel|difficulty=facil|form=direta|sources=finance|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 169.9,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Resumo financeiro de Ana Oliveira:\n- Contrato: CTR-2026-002\n- Responsavel financeiro: Maria Oliveira\n- Mensalidade base: 1450.00\n- Faturas em aberto: 2\n- Faturas vencidas: 0\nUltimas faturas:\n- 2026-01: vencimento 2026-01-10, status paga, valor 1450.00\n- 2026-02: vencimento 2026-02-10, status paga, valor 1450.00\n- 2026-03: vencimento 2026-03-10, status em aberto, valor 1450.00\n- 2026-04: vencimento 2026-04-10, status em aberto, valor 1450.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 381.3,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Resumo financeiro de Ana Oliveira: a mensalidade de referencia e 1450.00 e ha 2 fatura(s) em aberto, sendo 0 vencida(s).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 169.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Resumo financeiro de Ana Oliveira:\n- Contrato: CTR-2026-002\n- Responsavel financeiro: Maria Oliveira\n- Mensalidade base: 1450.00\n- Faturas em aberto: 2\n- Faturas vencidas: 0\nUltimas faturas:\n- 2026-01: vencimento 2026-01-10, status paga, valor 1450.00\n- 2026-02: vencimento 2026-02-10, status paga, valor 1450.00\n- 2026-03: vencimento 2026-03-10, status em aberto, valor 1450.00\n- 2026-04: vencimento 2026-04-10, status em aberto, valor 1450.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 183.7,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Resumo financeiro de Ana Oliveira:\n- Contrato: CTR-2026-002\n- Responsavel financeiro: Maria Oliveira\n- Mensalidade base: 1450.00\n- Faturas em aberto: 2\n- Faturas vencidas: 0\nUltimas faturas:\n- 2026-01: vencimento 2026-01-10, status paga, valor 1450.00\n- 2026-02: vencimento 2026-02-10, status paga, valor 1450.00\n- 2026-03: vencimento 2026-03-10, status em aberto, valor 1450.00\n- 2026-04: vencimento 2026-04-10, status em aberto, valor 1450.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1999.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:finance_student_summary",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "finance_student_summary"
+        ],
+        "answer_text": "Resumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 2\n- Total de faturas vencidas: 0\n- Ana Oliveira: 2 em aberto, 0 vencidas\n  2026-01: vencimento 2026-01-10, status paid, valor 1450.00\n  2026-02: vencimento 2026-02-10, status paid, valor 1450.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Tenho boletos atrasados?",
+      "slice": "protected",
+      "category": "financeiro_protegido",
+      "thread_id": "system_bank:financeiro_protegido:Q050",
+      "turn_index": 1,
+      "note": "Q050|profile=responsavel|difficulty=facil|form=direta|sources=finance|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 211.9,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Resumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 3\n- Total de faturas vencidas: 0\n- Lucas Oliveira: 1 em aberto, 0 vencidas\n- Ana Oliveira: 2 em aberto, 0 vencidas\n- Hoje nao ha faturas vencidas neste recorte.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 20234.4,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_timeout",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "Para verificar seus boletos atrasados, por favor, entre em contato com o setor financeiro através do bot, portal autenticado ou email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 206.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Resumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 3\n- Total de faturas vencidas: 0\n- Lucas Oliveira: 1 em aberto, 0 vencidas\n- Ana Oliveira: 2 em aberto, 0 vencidas\n- Hoje nao ha faturas vencidas neste recorte.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 225.5,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Resumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 3\n- Total de faturas vencidas: 0\n- Lucas Oliveira: 1 em aberto, 0 vencidas\n- Ana Oliveira: 2 em aberto, 0 vencidas\n- Hoje nao ha faturas vencidas neste recorte.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2006.8,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_resolved_intent:finance_student_clarify",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "finance_student_clarify"
+        ],
+        "answer_text": "Consigo verificar a situacao financeira, mas preciso que voce me diga qual aluno: Lucas Oliveira ou Ana Oliveira?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Qual e o proximo pagamento pendente e qual e a data de vencimento?",
+      "slice": "protected",
+      "category": "financeiro_protegido",
+      "thread_id": "system_bank:financeiro_protegido:Q051",
+      "turn_index": 1,
+      "note": "Q051|profile=responsavel|difficulty=media|form=direta|sources=finance|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 118.8,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Hoje eu nao encontrei Pendente entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 159.0,
+        "mode": "structured_tool",
+        "reason": "protected_shadow_needs_student_clarification",
+        "graph_path": [
+          "flow_router",
+          "student_clarification"
+        ],
+        "answer_text": "Posso te ajudar com Lucas Oliveira, Ana Oliveira. Me diga qual aluno voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 108.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje eu nao encontrei Pendente entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 131.4,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje eu nao encontrei Pendente entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1982.9,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_resolved_intent:finance_student_clarify",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "finance_student_clarify"
+        ],
+        "answer_text": "Consigo verificar a situacao financeira, mas preciso que voce me diga qual aluno: Lucas Oliveira ou Ana Oliveira?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Qual e o codigo do contrato e o identificador da fatura que esta em aberto?",
+      "slice": "protected",
+      "category": "financeiro_protegido",
+      "thread_id": "system_bank:financeiro_protegido:Q052",
+      "turn_index": 1,
+      "note": "Q052|profile=responsavel|difficulty=media|form=direta|sources=finance|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 119.2,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Hoje eu nao encontrei Fatura Que Esta entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 181.6,
+        "mode": "structured_tool",
+        "reason": "protected_shadow_unmatched_student_reference",
+        "graph_path": [
+          "flow_router",
+          "unmatched_student_reference"
+        ],
+        "answer_text": "Hoje eu nao encontrei Codigo entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira, Ana Oliveira. Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 107.8,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje eu nao encontrei Fatura Que Esta entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 133.1,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje eu nao encontrei Fatura Que Esta entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2004.4,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_resolved_intent:finance_student_clarify",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "finance_student_clarify"
+        ],
+        "answer_text": "Consigo verificar a situacao financeira, mas preciso que voce me diga qual aluno: Lucas Oliveira ou Ana Oliveira?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Compare a situacao financeira do Rafael, da Manuela e do Joao e destaque onde ha atraso ou pagamento parcial.",
+      "slice": "protected",
+      "category": "financeiro_protegido",
+      "thread_id": "system_bank:financeiro_protegido:Q053",
+      "turn_index": 1,
+      "note": "Q053|profile=responsavel|difficulty=dificil|form=comparativa|sources=finance|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 114.8,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 191.5,
+        "mode": "structured_tool",
+        "reason": "protected_shadow_unmatched_student_reference",
+        "graph_path": [
+          "flow_router",
+          "unmatched_student_reference"
+        ],
+        "answer_text": "Hoje eu nao encontrei Joao entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira, Ana Oliveira. Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 113.7,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 136.7,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2003.7,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_resolved_intent:finance_student_clarify",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "finance_student_clarify"
+        ],
+        "answer_text": "Consigo verificar a situacao financeira, mas preciso que voce me diga qual aluno: Lucas Oliveira ou Ana Oliveira?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Sou a Helena e quero ver o financeiro do Rafael.",
+      "slice": "protected",
+      "category": "financeiro_protegido",
+      "thread_id": "system_bank:financeiro_protegido:Q054",
+      "turn_index": 1,
+      "note": "Q054|profile=responsavel|difficulty=dificil|form=multi-fonte|sources=finance,policy|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 116.3,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Hoje eu nao encontrei Rafael entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 178.7,
+        "mode": "structured_tool",
+        "reason": "protected_shadow_needs_student_clarification",
+        "graph_path": [
+          "flow_router",
+          "student_clarification"
+        ],
+        "answer_text": "Posso te ajudar com Lucas Oliveira, Ana Oliveira. Me diga qual aluno voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 106.6,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje eu nao encontrei Rafael entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 136.0,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje eu nao encontrei Rafael entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1984.3,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_resolved_intent:finance_student_clarify",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "finance_student_clarify"
+        ],
+        "answer_text": "Consigo verificar a situacao financeira, mas preciso que voce me diga qual aluno: Lucas Oliveira ou Ana Oliveira?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Paguei parte da mensalidade do Joao e preciso negociar o restante; o que ja aparece e qual o proximo passo?",
+      "slice": "workflow",
+      "category": "financeiro_protegido",
+      "thread_id": "system_bank:financeiro_protegido:Q055",
+      "turn_index": 1,
+      "note": "Q055|profile=responsavel|difficulty=dificil|form=multi-fonte|sources=finance,workflow,handoff|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 129.3,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Ainda nao encontrei um protocolo recente nesta conversa para consultar o status da fila. Se quiser, me diga o codigo que comeca com VIS, REQ ou ATD, ou me lembre se o assunto era visita, direcao, financeiro ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 175.3,
+        "mode": "structured_tool",
+        "reason": "protected_shadow_needs_student_clarification",
+        "graph_path": [
+          "flow_router",
+          "student_clarification"
+        ],
+        "answer_text": "Posso te ajudar com Lucas Oliveira, Ana Oliveira. Me diga qual aluno voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 129.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Ainda nao encontrei um protocolo recente nesta conversa para consultar o status da fila. Se quiser, me diga o codigo que comeca com VIS, REQ ou ATD, ou me lembre se o assunto era visita, direcao, financeiro ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 156.0,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Ainda nao encontrei um protocolo recente nesta conversa para consultar o status da fila. Se quiser, me diga o codigo que comeca com VIS, REQ ou ATD, ou me lembre se o assunto era visita, direcao, financeiro ou secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2011.2,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_resolved_intent:finance_student_clarify",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "finance_student_clarify"
+        ],
+        "answer_text": "Consigo verificar a situacao financeira, mas preciso que voce me diga qual aluno: Lucas Oliveira ou Ana Oliveira?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Explique a minha situacao financeira como se eu fosse leigo, separando mensalidade, taxa, atraso e desconto.",
+      "slice": "protected",
+      "category": "financeiro_protegido",
+      "thread_id": "system_bank:financeiro_protegido:Q056",
+      "turn_index": 1,
+      "note": "Q056|profile=responsavel|difficulty=dificil|form=criativa|sources=finance,public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 117.0,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Hoje eu nao encontrei Mensalidade entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 174.6,
+        "mode": "structured_tool",
+        "reason": "protected_shadow_needs_student_clarification",
+        "graph_path": [
+          "flow_router",
+          "student_clarification"
+        ],
+        "answer_text": "Posso te ajudar com Lucas Oliveira, Ana Oliveira. Me diga qual aluno voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 110.6,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje eu nao encontrei Mensalidade entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 133.7,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje eu nao encontrei Mensalidade entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002). Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1977.0,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_resolved_intent:finance_student_clarify",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "finance_student_clarify"
+        ],
+        "answer_text": "Consigo verificar a situacao financeira, mas preciso que voce me diga qual aluno: Lucas Oliveira ou Ana Oliveira?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Minha documentacao e cadastro estao atualizados?",
+      "slice": "protected",
+      "category": "administrativo_e_documental_protegido",
+      "thread_id": "system_bank:administrativo_e_documental_protegido:Q057",
+      "turn_index": 1,
+      "note": "Q057|profile=responsavel|difficulty=facil|form=direta|sources=admin|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 162.0,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Situacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 172.9,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_identity_backstop",
+        "graph_path": [
+          "flow_router",
+          "identity_backstop"
+        ],
+        "answer_text": "Para atualizar seu cadastro, o caminho mais seguro e revisar os dados no portal e, se precisar de alteracao assistida, falar com a secretaria. Se quiser, eu posso te orientar sobre qual dado voce precisa ajustar primeiro.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 143.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Situacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 163.9,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Situacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 14080.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_direct:institution_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "institution_specialist"
+        ],
+        "answer_text": "Como EduAssist, assistente institucional da escola, não tenho acesso direto a informações pessoais para verificar o status da sua documentação e cadastro. Para obter essa informação, por favor, entre em contato diretamente com a Secretaria da escola, que é o canal adequado para consultas sobre documentos e assuntos administrativos. \n\nVocê pode contatá-los pelos seguintes canais:\n*   **Telefone da Secretaria:** (11) 3333-4200\n*   **WhatsApp da Secretaria Digital:** (11) 97500-2041\n*   **E-mail da Secretaria:** secretaria@colegiohorizonte.edu.br\n\nAlém disso, o envio inicial de documentos pode ser feito pelo portal institucional ou pelo e-mail da secretaria. Lembre-se que o chat aberto não deve ser utilizado para o envio de documentos completos ou dados sensíveis; sempre use o portal autenticado ou o e-mail institucional para essas finalidades, quando possível.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Qual e a situacao documental do Lucas?",
+      "slice": "protected",
+      "category": "administrativo_e_documental_protegido",
+      "thread_id": "system_bank:administrativo_e_documental_protegido:Q058",
+      "turn_index": 1,
+      "note": "Q058|profile=responsavel|difficulty=media|form=direta|sources=admin|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1986.3,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify"
+        ],
+        "answer_text": "Para verificar a situação documental de um estudante específico, como o Lucas, é necessário acessar informações que são confidenciais. Por isso, preciso que você se autentique no nosso portal. Lá, você terá acesso a todos os detalhes sobre a documentação do aluno.\n\nSe precisar de ajuda para acessar o portal ou tiver alguma dúvida sobre o processo, posso te orientar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 15888.3,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_flow_completed",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "protected_planning",
+          "protected_composition",
+          "protected_judging"
+        ],
+        "answer_text": "Lucas Oliveira (MAT-2026-001) está atualmente matriculado e ativo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 159.4,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 177.2,
+        "mode": "structured_tool",
+        "reason": "llamaindex_protected_records_fast_path",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "llamaindex:protected",
+          "llamaindex:protected_records_fast_path",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Situacao documental de Lucas Oliveira hoje: regular.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5904.4,
+        "mode": "clarify",
+        "reason": "A pergunta sobre a 'situação documental' de Lucas é ambígua e pode se referir a diferentes tipos de documentos (acadêmicos, financeiros, de matrícula, etc.). É necessária uma clarificação para direcionar a busca corretamente.",
+        "graph_path": [
+          "specialist_supervisor",
+          "planner"
+        ],
+        "answer_text": "Você poderia especificar a qual tipo de situação documental do Lucas você se refere? Por exemplo, documentos acadêmicos, financeiros, de matrícula ou outros?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Compare a documentacao dos meus filhos e diga qual deles ainda tem pendencia.",
+      "slice": "protected",
+      "category": "administrativo_e_documental_protegido",
+      "thread_id": "system_bank:administrativo_e_documental_protegido:Q059",
+      "turn_index": 1,
+      "note": "Q059|profile=responsavel|difficulty=media|form=comparativa|sources=admin|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 109.1,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 180.4,
+        "mode": "structured_tool",
+        "reason": "protected_shadow_unmatched_student_reference",
+        "graph_path": [
+          "flow_router",
+          "unmatched_student_reference"
+        ],
+        "answer_text": "Hoje eu nao encontrei Compare entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira, Ana Oliveira. Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 99.6,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 126.5,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1992.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:financial_summary_aggregate",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "financial_summary_aggregate"
+        ],
+        "answer_text": "Resumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 3\n- Total de faturas vencidas: 0\n- Lucas Oliveira: 1 em aberto, 0 vencidas\n  2026-01: vencimento 2026-01-10, status paid, valor 1450.00\n  2026-02: vencimento 2026-02-10, status paid, valor 1450.00\n- Ana Oliveira: 2 em aberto, 0 vencidas\n  2026-01: vencimento 2026-01-10, status paid, valor 1450.00\n  2026-02: vencimento 2026-02-10, status paid, valor 1450.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Quero saber se minha documentacao esta regular e se ha algo financeiro bloqueando atendimento.",
+      "slice": "protected",
+      "category": "administrativo_e_documental_protegido",
+      "thread_id": "system_bank:administrativo_e_documental_protegido:Q060",
+      "turn_index": 1,
+      "note": "Q060|profile=responsavel|difficulty=dificil|form=multi-fonte|sources=admin,finance|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 233.4,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Cadastro e documentacao:\nSituacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.\n\nFinanceiro:\n- Lucas Oliveira: 1 fatura(s) em aberto e 0 vencida(s).\n- Ana Oliveira: 2 fatura(s) em aberto e 0 vencida(s).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 406.3,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Panorama combinado de documentacao e financeiro das contas vinculadas:\n- Lucas Oliveira: documentacao regular e completa; financeiro com 1 fatura(s) em aberto e 0 vencida(s).\n- Ana Oliveira: documentacao com pendencias; financeiro com 2 fatura(s) em aberto e 0 vencida(s).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 266.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Cadastro e documentacao:\nSituacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.\n\nFinanceiro:\n- Lucas Oliveira: 1 fatura(s) em aberto e 0 vencida(s).\n- Ana Oliveira: 2 fatura(s) em aberto e 0 vencida(s).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 254.5,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Cadastro e documentacao:\nSituacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.\n\nFinanceiro:\n- Lucas Oliveira: 1 fatura(s) em aberto e 0 vencida(s).\n- Ana Oliveira: 2 fatura(s) em aberto e 0 vencida(s).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2050.1,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:admin_finance_overview",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "admin_finance_overview"
+        ],
+        "answer_text": "Situacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.\n\nFinanceiro:\n- Lucas Oliveira: 1 fatura(s) em aberto e 0 vencida(s).\n- Ana Oliveira: 2 fatura(s) em aberto e 0 vencida(s).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Quais documentos eu ainda preciso enviar e por qual canal a escola aceita esse envio?",
+      "slice": "protected",
+      "category": "administrativo_e_documental_protegido",
+      "thread_id": "system_bank:administrativo_e_documental_protegido:Q061",
+      "turn_index": 1,
+      "note": "Q061|profile=responsavel|difficulty=media|form=direta|sources=admin,public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 98.2,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Secretaria: bot, secretaria presencial, email institucional ou portal.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 175.2,
+        "mode": "structured_tool",
+        "reason": "protected_shadow_needs_student_clarification",
+        "graph_path": [
+          "flow_router",
+          "student_clarification"
+        ],
+        "answer_text": "Posso te ajudar com Lucas Oliveira, Ana Oliveira. Me diga qual aluno voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 92.2,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Secretaria: bot, secretaria presencial, email institucional ou portal.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 114.5,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n- Secretaria: bot, secretaria presencial, email institucional ou portal.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2054.4,
+        "mode": "handoff",
+        "reason": "specialist_supervisor_tool_first:human_handoff",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "human_handoff"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de secretaria. Protocolo: ATD-20260401-06EDAED6. Status atual: queued. Se preferir, voce tambem pode seguir pelo WhatsApp oficial (11) 97500-2040.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Entao abra um protocolo para eu regularizar isso com a secretaria.",
+      "slice": "workflow",
+      "category": "administrativo_e_documental_protegido",
+      "thread_id": "system_bank:administrativo_e_documental_protegido:Q061",
+      "turn_index": 2,
+      "note": "Q062|profile=responsavel|difficulty=dificil|form=follow-up|sources=admin,workflow|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 129.7,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Sua conta tem mais de um aluno vinculado. Diga qual aluno deseja consultar: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 176.0,
+        "mode": "structured_tool",
+        "reason": "workflow_not_found",
+        "graph_path": [
+          "flow_router",
+          "deterministic_workflow"
+        ],
+        "answer_text": "Nao encontrei um protocolo ativo nesta conversa para retomar agora. Se voce quiser, eu posso abrir o pedido, te dizer o protocolo, consultar o status ou montar um resumo quando houver um fluxo ativo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 136.1,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Sua conta tem mais de um aluno vinculado. Diga qual aluno deseja consultar: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 155.3,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Sua conta tem mais de um aluno vinculado. Diga qual aluno deseja consultar: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 13769.6,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_direct:workflow_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "workflow_specialist"
+        ],
+        "answer_text": "Entendi! Um protocolo para regularização com a secretaria já está sendo tratado. O código do seu ticket é **ATD-20260401-06EDAED6**. A secretaria entrará em contato em breve para dar andamento à sua solicitação.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Meu cadastro esta regular para fazer provas e atividades?",
+      "slice": "protected",
+      "category": "administrativo_e_documental_protegido",
+      "thread_id": "system_bank:administrativo_e_documental_protegido:Q063",
+      "turn_index": 1,
+      "note": "Q063|profile=aluno|difficulty=media|form=direta|sources=admin|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 134.6,
+        "mode": "structured_tool",
+        "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call",
+          "protected_domain_rescue"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 169.0,
+        "mode": "deny",
+        "reason": "crewai_protected_auth_required",
+        "graph_path": [
+          "flow_router",
+          "auth_required_deterministic"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 126.6,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 145.3,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 3683.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:general_knowledge",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "general_knowledge"
+        ],
+        "answer_text": "Não tenho acesso a informações pessoais ou cadastros. Para verificar a situação do seu cadastro, você deve consultar o sistema ou a instituição responsável pelas provas e atividades.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Resuma minha situacao cadastral em linguagem de checklist, com o que esta ok e o que falta.",
+      "slice": "protected",
+      "category": "administrativo_e_documental_protegido",
+      "thread_id": "system_bank:administrativo_e_documental_protegido:Q064",
+      "turn_index": 1,
+      "note": "Q064|profile=responsavel|difficulty=dificil|form=criativa|sources=admin|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T202130Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 125.5,
+        "mode": "structured_tool",
+        "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call",
+          "protected_domain_rescue"
+        ],
+        "answer_text": "Sua conta tem mais de um aluno vinculado. Diga qual aluno deseja consultar: Lucas Oliveira (MAT-2026-001), Ana Oliveira (MAT-2026-002).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 158.0,
+        "mode": "structured_tool",
+        "reason": "protected_shadow_unmatched_student_reference",
+        "graph_path": [
+          "flow_router",
+          "unmatched_student_reference"
+        ],
+        "answer_text": "Hoje eu nao encontrei Que entre os alunos vinculados a esta conta. No momento, os alunos que aparecem aqui sao: Lucas Oliveira, Ana Oliveira. Se quiser, me diga qual deles voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 158.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Por nada. Se quiser, pode seguir com a proxima duvida que eu continuo com voce por aqui.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 170.0,
+        "mode": "structured_tool",
+        "reason": "llamaindex_protected_records_fast_path",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:protected",
+          "llamaindex:protected_records_fast_path",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje, o proximo passo do seu cadastro e este: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 12667.4,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_multi_direct:institution_specialist+workflow_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "multi_specialist_direct",
+          "institution_specialist",
+          "workflow_specialist"
+        ],
+        "answer_text": "Institucional: Como EduAssist, seu assistente institucional, eu não consigo acessar dados pessoais de matrícula ou cadastro para resumir sua situação em uma checklist. Minhas ferramentas me permitem apenas fornecer informações públicas gerais sobre a escola, como o perfil institucional, diretórios e calendários. Para verificar sua situação cadastral, por favor, entre em contato diretamente com a secretaria da escola através dos canais de atendimento disponíveis no site ou ligue para (11) 3333-4200.\n\nAtendimento: Para que eu possa te ajudar a resumir sua situação cadastral em formato de checklist, preciso transferir seu atendimento para um de nossos especialistas. Eles terão acesso às informações necessárias para detalhar o que está ok e o que falta. Já abri um chamado para você com o número de protocolo **ATD-20260401-2C825BB0** na fila de **Atendimento**.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    }
+  ],
+  "stacks": [
+    "langgraph",
+    "crewai",
+    "python_functions",
+    "llamaindex",
+    "specialist_supervisor"
+  ]
+}

@@ -1,0 +1,270 @@
+{
+  "version": "v7",
+  "wave_order": [
+    "public_grounding",
+    "public_graphrag",
+    "protected_ops",
+    "sensitive_external",
+    "teacher_workflow"
+  ],
+  "quality_ranking": [
+    "python_functions",
+    "llamaindex",
+    "specialist_supervisor",
+    "langgraph",
+    "crewai"
+  ],
+  "latency_ranking": [
+    "python_functions",
+    "langgraph",
+    "llamaindex",
+    "specialist_supervisor",
+    "crewai"
+  ],
+  "stacks": {
+    "langgraph": {
+      "overall": {
+        "ok": 96,
+        "count": 96,
+        "quality_avg": 99.9,
+        "avg_latency_ms": 931.0,
+        "error_types": {
+          "repetitive_reply": 1
+        }
+      },
+      "waves": {
+        "public_grounding": {
+          "ok": 24,
+          "count": 24,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 2026.1,
+          "error_types": {}
+        },
+        "public_graphrag": {
+          "ok": 8,
+          "count": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 374.3,
+          "error_types": {}
+        },
+        "protected_ops": {
+          "ok": 32,
+          "count": 32,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 337.9,
+          "error_types": {}
+        },
+        "sensitive_external": {
+          "ok": 16,
+          "count": 16,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 980.9,
+          "error_types": {}
+        },
+        "teacher_workflow": {
+          "ok": 16,
+          "count": 16,
+          "quality_avg": 99.4,
+          "avg_latency_ms": 703.3,
+          "error_types": {
+            "repetitive_reply": 1
+          }
+        }
+      }
+    },
+    "crewai": {
+      "overall": {
+        "ok": 96,
+        "count": 96,
+        "quality_avg": 99.9,
+        "avg_latency_ms": 4860.1,
+        "error_types": {
+          "repetitive_reply": 1
+        }
+      },
+      "waves": {
+        "public_grounding": {
+          "ok": 24,
+          "count": 24,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 5616.8,
+          "error_types": {}
+        },
+        "public_graphrag": {
+          "ok": 8,
+          "count": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 7624.2,
+          "error_types": {}
+        },
+        "protected_ops": {
+          "ok": 32,
+          "count": 32,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 3818.9,
+          "error_types": {}
+        },
+        "sensitive_external": {
+          "ok": 16,
+          "count": 16,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 6220.1,
+          "error_types": {}
+        },
+        "teacher_workflow": {
+          "ok": 16,
+          "count": 16,
+          "quality_avg": 99.4,
+          "avg_latency_ms": 3065.4,
+          "error_types": {
+            "repetitive_reply": 1
+          }
+        }
+      }
+    },
+    "python_functions": {
+      "overall": {
+        "ok": 96,
+        "count": 96,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 149.7,
+        "error_types": {}
+      },
+      "waves": {
+        "public_grounding": {
+          "ok": 24,
+          "count": 24,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 138.0,
+          "error_types": {}
+        },
+        "public_graphrag": {
+          "ok": 8,
+          "count": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 132.0,
+          "error_types": {}
+        },
+        "protected_ops": {
+          "ok": 32,
+          "count": 32,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 146.4,
+          "error_types": {}
+        },
+        "sensitive_external": {
+          "ok": 16,
+          "count": 16,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 172.4,
+          "error_types": {}
+        },
+        "teacher_workflow": {
+          "ok": 16,
+          "count": 16,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 160.2,
+          "error_types": {}
+        }
+      }
+    },
+    "llamaindex": {
+      "overall": {
+        "ok": 96,
+        "count": 96,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 1629.6,
+        "error_types": {}
+      },
+      "waves": {
+        "public_grounding": {
+          "ok": 24,
+          "count": 24,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 1551.1,
+          "error_types": {}
+        },
+        "public_graphrag": {
+          "ok": 8,
+          "count": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 150.7,
+          "error_types": {}
+        },
+        "protected_ops": {
+          "ok": 32,
+          "count": 32,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 935.6,
+          "error_types": {}
+        },
+        "sensitive_external": {
+          "ok": 16,
+          "count": 16,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 3824.7,
+          "error_types": {}
+        },
+        "teacher_workflow": {
+          "ok": 16,
+          "count": 16,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 1679.7,
+          "error_types": {}
+        }
+      }
+    },
+    "specialist_supervisor": {
+      "overall": {
+        "ok": 96,
+        "count": 96,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 3776.5,
+        "error_types": {}
+      },
+      "waves": {
+        "public_grounding": {
+          "ok": 24,
+          "count": 24,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 2852.9,
+          "error_types": {}
+        },
+        "public_graphrag": {
+          "ok": 8,
+          "count": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 2260.0,
+          "error_types": {}
+        },
+        "protected_ops": {
+          "ok": 32,
+          "count": 32,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 4443.1,
+          "error_types": {}
+        },
+        "sensitive_external": {
+          "ok": 16,
+          "count": 16,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 3609.7,
+          "error_types": {}
+        },
+        "teacher_workflow": {
+          "ok": 16,
+          "count": 16,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 4753.5,
+          "error_types": {}
+        }
+      }
+    }
+  },
+  "notes": [
+    "CrewAI permanece no scorecard como baseline comparativa funcional, sem novos investimentos de arquitetura.",
+    "Os caminhos ativos em evolucao sao langgraph, python_functions, llamaindex e specialist_supervisor.",
+    "Erros operacionais como *_pilot_unavailable e runtime_unconfigured devem ser lidos separadamente de qualidade semantica.",
+    "O benchmark context de cada onda deve ser consultado junto com o scorecard para interpretar drift de ambiente e modo de execucao."
+  ]
+}

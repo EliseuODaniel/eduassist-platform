@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 from dotenv import load_dotenv
 
@@ -72,6 +73,52 @@ def _specialist_benchmark_mode() -> str:
     return str(os.getenv('SPECIALIST_SUPERVISOR_BENCHMARK_MODE', 'pilot') or 'pilot').strip().lower()
 
 
+def _replace_url_host(value: str, *, replacements: dict[str, str]) -> str:
+    normalized = str(value or '').strip()
+    if not normalized:
+        return normalized
+    parsed = urlparse(normalized)
+    host = (parsed.hostname or '').strip().lower()
+    replacement_host = replacements.get(host)
+    if replacement_host is None:
+        return normalized
+    netloc = replacement_host
+    if parsed.port is not None:
+        netloc = f'{replacement_host}:{parsed.port}'
+    if parsed.username:
+        auth = parsed.username
+        if parsed.password:
+            auth = f'{auth}:{parsed.password}'
+        netloc = f'{auth}@{netloc}'
+    return urlunparse(parsed._replace(netloc=netloc))
+
+
+def _normalize_local_database_url(value: str) -> str:
+    normalized = str(value or '').strip()
+    if not normalized:
+        return 'postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist'
+    return _replace_url_host(
+        normalized,
+        replacements={
+            'postgres': '127.0.0.1',
+            'localhost': '127.0.0.1',
+        },
+    )
+
+
+def _normalize_local_qdrant_url(value: str) -> str:
+    normalized = str(value or '').strip()
+    if not normalized:
+        return 'http://127.0.0.1:6333'
+    return _replace_url_host(
+        normalized,
+        replacements={
+            'qdrant': '127.0.0.1',
+            'localhost': '127.0.0.1',
+        },
+    )
+
+
 def _exception_reason(*, stack: str, exc: Exception) -> str:
     details = f'{type(exc).__name__}: {exc}'.lower()
     if 'connecttimeout' in details or 'connecterror' in details or 'allconnectionattemptsfailed' in details:
@@ -93,6 +140,13 @@ def _benchmark_context() -> dict[str, Any]:
             os.getenv('SPECIALIST_SUPERVISOR_PILOT_URL', ''),
             kind='specialist_pilot',
         ),
+        'database_url': _normalize_local_database_url(
+            os.getenv('BENCHMARK_DATABASE_URL')
+            or os.getenv('DATABASE_URL_LOCAL')
+            or os.getenv('DATABASE_URL')
+            or ''
+        ),
+        'qdrant_url': _normalize_local_qdrant_url(os.getenv('BENCHMARK_QDRANT_URL') or os.getenv('QDRANT_URL') or ''),
         'env_loaded': True,
     }
 
@@ -113,8 +167,13 @@ def _build_settings(*, stack: str) -> Settings:
         orchestrator_experiment_enabled=False,
         langgraph_checkpointer_enabled=False,
         api_core_url=_normalize_local_service_url(os.getenv('API_CORE_URL', ''), kind='api_core'),
-        qdrant_url=os.getenv('QDRANT_URL', 'http://127.0.0.1:6333'),
-        database_url=os.getenv('DATABASE_URL', 'postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist'),
+        qdrant_url=_normalize_local_qdrant_url(os.getenv('BENCHMARK_QDRANT_URL') or os.getenv('QDRANT_URL') or ''),
+        database_url=_normalize_local_database_url(
+            os.getenv('BENCHMARK_DATABASE_URL')
+            or os.getenv('DATABASE_URL_LOCAL')
+            or os.getenv('DATABASE_URL')
+            or ''
+        ),
         crewai_pilot_url=_normalize_local_service_url(os.getenv('CREWAI_PILOT_URL', ''), kind='crewai_pilot'),
         specialist_supervisor_pilot_url=_normalize_local_service_url(
             os.getenv('SPECIALIST_SUPERVISOR_PILOT_URL', ''),

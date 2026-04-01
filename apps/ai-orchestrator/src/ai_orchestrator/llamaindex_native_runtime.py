@@ -28,7 +28,11 @@ from qdrant_client import AsyncQdrantClient, QdrantClient
 
 from . import runtime as rt
 from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult
-from .evidence_pack import build_retrieval_evidence_pack, build_structured_tool_evidence_pack
+from .evidence_pack import (
+    build_direct_answer_evidence_pack,
+    build_retrieval_evidence_pack,
+    build_structured_tool_evidence_pack,
+)
 from .entity_resolution import resolve_entity_hints
 from .kernel_runtime import _maybe_hypothetical_public_pricing_answer
 from .llm_provider import _google_model_candidates
@@ -93,6 +97,237 @@ class LlamaIndexNativePublicDecision(BaseModel):
     focus_hint: str | None = None
     unpublished_key: str | None = None
     use_conversation_context: bool = False
+
+
+def _looks_like_external_live_query(message: str) -> bool:
+    normalized = rt._normalize_text(message)
+    weather_terms = {'vai chover', 'chover', 'chuva', 'clima', 'previsao do tempo', 'previsão do tempo', 'tempo hoje'}
+    news_terms = {'ultima noticia', 'última notícia', 'noticia do mec', 'notícia do mec', 'publicada hoje', 'noticia hoje', 'notícia hoje'}
+    return any(rt._message_matches_term(normalized, term) for term in weather_terms | news_terms)
+
+
+def _compose_external_live_query_answer(message: str) -> str | None:
+    normalized = rt._normalize_text(message)
+    if any(rt._message_matches_term(normalized, term) for term in {'vai chover', 'chover', 'chuva', 'clima', 'previsao do tempo', 'previsão do tempo', 'tempo hoje'}):
+        return (
+            'Eu nao consigo consultar previsao do tempo em tempo real por aqui. '
+            'Se quiser, eu posso te informar a proxima reuniao geral de pais publicada pela escola e os canais oficiais para acompanhar mudancas de agenda.'
+        )
+    if any(rt._message_matches_term(normalized, term) for term in {'ultima noticia', 'última notícia', 'noticia do mec', 'notícia do mec', 'publicada hoje', 'noticia hoje', 'notícia hoje'}):
+        return (
+            'Eu nao consigo consultar noticias externas em tempo real por aqui, incluindo publicacoes do MEC no dia. '
+            'Se quiser, eu posso ajudar com normas e comunicados institucionais que ja estejam publicados no corpus da escola.'
+        )
+    return None
+
+
+def _can_read_private_documents(*, request: MessageResponseRequest, actor: dict[str, Any] | None) -> bool:
+    scopes = {str(item).strip().lower() for item in getattr(getattr(request, 'user', None), 'scopes', [])}
+    actor_role = str((actor or {}).get('role_code', '') or '').strip().lower()
+    request_role = str(getattr(getattr(request, 'user', None), 'role', '') or '').strip().lower()
+    return bool(
+        getattr(getattr(request, 'user', None), 'authenticated', False)
+        and (
+            'documents:private:read' in scopes
+            or actor_role in {'staff', 'teacher'}
+            or request_role in {'staff', 'teacher'}
+        )
+    )
+
+
+def _looks_like_restricted_doc_query(message: str) -> bool:
+    normalized = rt._normalize_text(message)
+    return any(
+        rt._message_matches_term(normalized, term)
+        for term in {
+            'procedimento interno',
+            'protocolo interno',
+            'manual interno',
+            'playbook interno',
+            'documento interno',
+            'documentos internos',
+            'por dentro',
+        }
+    )
+
+
+def _restricted_doc_hit_to_citation(hit: Any) -> MessageResponseCitation | None:
+    citation = getattr(hit, 'citation', None)
+    if citation is None:
+        return None
+    document_title = str(getattr(citation, 'document_title', '') or '').strip()
+    chunk_id = str(getattr(citation, 'chunk_id', '') or '').strip()
+    if not document_title or not chunk_id:
+        return None
+    return MessageResponseCitation(
+        document_title=document_title,
+        version_label=str(getattr(citation, 'version_label', 'atual') or 'atual'),
+        storage_path=str(getattr(citation, 'storage_path', 'inline') or 'inline'),
+        chunk_id=chunk_id,
+        excerpt=str(getattr(hit, 'text_excerpt', '') or getattr(hit, 'contextual_summary', '') or '').strip() or 'evidencia restrita',
+    )
+
+
+def _compose_restricted_doc_grounded_answer(hits: list[Any]) -> str | None:
+    if not hits:
+        return None
+    primary = hits[0]
+    primary_title = str(getattr(primary, 'document_title', '') or 'documento interno').strip()
+    primary_excerpt = str(getattr(primary, 'text_excerpt', '') or getattr(primary, 'contextual_summary', '') or '').strip()
+    lines = [f"Nos documentos internos consultados, a orientacao mais relevante aparece em {primary_title}:"]
+    if primary_excerpt:
+        lines.append(primary_excerpt)
+    seen_titles = {primary_title}
+    for hit in hits[1:3]:
+        title = str(getattr(hit, 'document_title', '') or '').strip()
+        excerpt = str(getattr(hit, 'text_excerpt', '') or getattr(hit, 'contextual_summary', '') or '').strip()
+        if not excerpt:
+            continue
+        label = title if title and title not in seen_titles else 'Complemento interno'
+        lines.append(f"{label}: {excerpt}")
+        if title:
+            seen_titles.add(title)
+    return "\n".join(lines)
+
+
+async def _maybe_execute_llamaindex_restricted_doc_fast_path(
+    *,
+    request: MessageResponseRequest,
+    settings: Any,
+    plan: KernelPlan,
+    engine_name: str,
+    engine_mode: str,
+) -> KernelRunResult | None:
+    if not _looks_like_restricted_doc_query(request.message):
+        return None
+    actor = await rt._fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
+    if not _can_read_private_documents(request=request, actor=actor):
+        return None
+    effective_conversation_id = rt._effective_conversation_id(request)
+    conversation_context_bundle = await rt._fetch_conversation_context(
+        settings=settings,
+        conversation_external_id=effective_conversation_id,
+        channel=request.channel.value,
+    )
+    conversation_context = rt._conversation_context_payload(conversation_context_bundle)
+    preview = plan.preview.model_copy(deep=True)
+    preview.mode = OrchestrationMode.hybrid_retrieval
+    preview.classification = IntentClassification(
+        domain=QueryDomain.institution,
+        access_tier=AccessTier.authenticated,
+        confidence=0.98,
+        reason='consulta autenticada de documento interno resolvida diretamente pelo retrieval restrito compartilhado',
+    )
+    preview.selected_tools = list(dict.fromkeys([*preview.selected_tools, 'search_documents']))
+    preview.needs_authentication = True
+    retrieval_service = get_retrieval_service(
+        database_url=str(settings.database_url),
+        qdrant_url=str(settings.qdrant_url),
+        collection_name=str(settings.qdrant_documents_collection),
+        embedding_model=str(settings.document_embedding_model),
+        enable_query_variants=bool(settings.retrieval_enable_query_variants),
+        enable_late_interaction_rerank=bool(settings.retrieval_enable_late_interaction_rerank),
+        late_interaction_model=str(settings.retrieval_late_interaction_model),
+        candidate_pool_size=int(settings.retrieval_candidate_pool_size),
+    )
+    retrieval_result = retrieval_service.hybrid_search(
+        query=request.message,
+        top_k=3,
+        visibility='private',
+        category=None,
+    )
+    citations = [
+        citation
+        for citation in (_restricted_doc_hit_to_citation(hit) for hit in retrieval_result.hits[:3])
+        if citation is not None
+    ]
+    message_text = rt._normalize_response_wording(
+        _compose_restricted_doc_grounded_answer(list(retrieval_result.hits[:3]))
+        or 'Consultei os documentos internos disponiveis, mas nao encontrei orientacao suficiente para responder com seguranca.'
+    )
+    school_profile = await rt._fetch_public_school_profile(settings=settings)
+    evidence_pack = build_retrieval_evidence_pack(
+        citations=citations,
+        selected_tools=preview.selected_tools,
+        retrieval_backend=RetrievalBackend.qdrant_hybrid,
+        summary='Resposta grounded em retrieval restrito autenticado antes do workflow pesado do LlamaIndex.',
+    )
+    suggested_replies = rt._build_suggested_replies(
+        request=request,
+        preview=preview,
+        actor=actor,
+        school_profile=school_profile,
+        conversation_context=conversation_context,
+    )
+    await rt._persist_conversation_turn(
+        settings=settings,
+        conversation_external_id=effective_conversation_id,
+        channel=request.channel.value,
+        actor=actor,
+        user_message=request.message,
+        assistant_message=message_text,
+    )
+    await rt._persist_operational_trace(
+        settings=settings,
+        conversation_external_id=effective_conversation_id,
+        channel=request.channel.value,
+        engine_name=engine_name,
+        engine_mode=engine_mode,
+        actor=actor,
+        preview=preview,
+        school_profile=school_profile,
+        conversation_context=conversation_context,
+        public_plan=None,
+        request_message=request.message,
+        message_text=message_text,
+        citations_count=len(citations),
+        suggested_reply_count=len(suggested_replies),
+        visual_asset_count=0,
+        answer_verifier_valid=True,
+        answer_verifier_reason='llamaindex restricted-doc retrieval fast path',
+        answer_verifier_fallback_used=False,
+        deterministic_fallback_available=True,
+        answer_verifier_judge_used=False,
+    )
+    response = MessageResponse(
+        message_text=message_text,
+        mode=preview.mode,
+        classification=preview.classification,
+        retrieval_backend=RetrievalBackend.qdrant_hybrid,
+        selected_tools=preview.selected_tools,
+        citations=citations,
+        visual_assets=[],
+        suggested_replies=suggested_replies,
+        calendar_events=[],
+        evidence_pack=evidence_pack,
+        needs_authentication=True,
+        graph_path=[
+            *preview.graph_path,
+            'llamaindex:restricted',
+            'llamaindex:restricted_doc_fast_path',
+            f'kernel:{plan.stack_name}',
+        ],
+        risk_flags=preview.risk_flags,
+        reason='llamaindex_restricted_doc_fast_path',
+    )
+    reflection = KernelReflection(
+        grounded=True,
+        verifier_reason='restricted doc retrieval fast path',
+        fallback_used=False,
+        answer_judge_used=False,
+        notes=[
+            f'route:{preview.mode.value}',
+            f'slice:{plan.slice_name}',
+            'llamaindex:restricted_doc_fast_path',
+            f'evidence:{evidence_pack.strategy}',
+            *plan.plan_notes,
+        ],
+    )
+    return KernelRunResult(
+        plan=plan,
+        reflection=reflection,
+        response=response.model_dump(mode='json'),
+    )
 
 
 _LLAMAINDEX_NATIVE_PUBLIC_ROUTER_PROMPT = PromptTemplate(
@@ -1603,6 +1838,15 @@ async def maybe_execute_llamaindex_native_plan(
     engine_mode: str,
     path_profile: PathExecutionProfile | None = None,
 ) -> KernelRunResult | None:
+    restricted_doc_fast_path = await _maybe_execute_llamaindex_restricted_doc_fast_path(
+        request=request,
+        settings=settings,
+        plan=plan,
+        engine_name=engine_name,
+        engine_mode=engine_mode,
+    )
+    if restricted_doc_fast_path is not None:
+        return restricted_doc_fast_path
     effective_path_profile = path_profile or get_path_execution_profile(engine_name)
     if not _should_use_llamaindex_native_public_router(plan):
         return None
@@ -1742,6 +1986,204 @@ async def maybe_execute_llamaindex_native_plan(
             notes=[
                 f'route:{preview.mode.value}',
                 f'slice:{plan.slice_name}',
+                f'evidence:{evidence_pack.strategy}',
+                *plan.plan_notes,
+            ],
+        )
+        return KernelRunResult(
+            plan=plan,
+            reflection=reflection,
+            response=response.model_dump(mode='json'),
+        )
+    if _looks_like_external_live_query(request.message):
+        preview = plan.preview.model_copy(deep=True)
+        preview.mode = OrchestrationMode.structured_tool
+        preview.classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.98,
+            reason='consulta externa em tempo real encerrada deterministicamente antes do routing documental do llamaindex',
+        )
+        preview.selected_tools = []
+        preview.needs_authentication = False
+        message_text = rt._normalize_response_wording(_compose_external_live_query_answer(request.message) or '')
+        evidence_pack = build_direct_answer_evidence_pack(
+            summary='Pergunta externa reconhecida fora do escopo documental e de tempo real do assistente escolar.',
+            supports=[],
+        )
+        await rt._persist_conversation_turn(
+            settings=settings,
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            actor=actor,
+            user_message=request.message,
+            assistant_message=message_text,
+        )
+        await rt._persist_operational_trace(
+            settings=settings,
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            engine_name=engine_name,
+            engine_mode=engine_mode,
+            actor=actor,
+            preview=preview,
+            school_profile=await rt._fetch_public_school_profile(settings=settings),
+            conversation_context=conversation_context,
+            public_plan=None,
+            request_message=request.message,
+            message_text=message_text,
+            citations_count=0,
+            suggested_reply_count=0,
+            visual_asset_count=0,
+            answer_verifier_valid=True,
+            answer_verifier_reason='llamaindex deterministic external-live guardrail',
+            answer_verifier_fallback_used=False,
+            deterministic_fallback_available=True,
+            answer_verifier_judge_used=False,
+        )
+        response = MessageResponse(
+            message_text=message_text,
+            mode=preview.mode,
+            classification=preview.classification,
+            retrieval_backend=RetrievalBackend.none,
+            selected_tools=[],
+            citations=[],
+            visual_assets=[],
+            suggested_replies=[],
+            calendar_events=[],
+            evidence_pack=evidence_pack,
+            needs_authentication=False,
+            graph_path=[
+                *preview.graph_path,
+                'llamaindex:external',
+                'llamaindex:external_live_guardrail',
+                f'kernel:{plan.stack_name}',
+            ],
+            risk_flags=list(dict.fromkeys([*preview.risk_flags, 'external_live_data_unavailable'])),
+            reason='llamaindex_external_live_guardrail',
+        )
+        reflection = KernelReflection(
+            grounded=True,
+            verifier_reason='external live query blocked before llamaindex retrieval',
+            fallback_used=False,
+            answer_judge_used=False,
+            notes=[
+                f'route:{preview.mode.value}',
+                f'slice:{plan.slice_name}',
+                'llamaindex:external_live_guardrail',
+                f'evidence:{evidence_pack.strategy}',
+                *plan.plan_notes,
+            ],
+        )
+        return KernelRunResult(
+            plan=plan,
+            reflection=reflection,
+            response=response.model_dump(mode='json'),
+        )
+    protected_records_fast_path = (
+        request.telegram_chat_id is not None
+        and actor is not None
+        and (
+            rt._is_access_scope_query(request.message)
+            or rt._is_access_scope_repair_query(request.message, actor, conversation_context)
+            or rt._mentions_personal_admin_status(request.message)
+            or rt._detect_admin_attribute_request(request.message, conversation_context=conversation_context) is not None
+            or rt._is_private_admin_follow_up(request.message, conversation_context)
+            or bool({'get_administrative_status', 'get_student_administrative_status', 'get_actor_identity_context'} & set(plan.preview.selected_tools))
+        )
+    )
+    if protected_records_fast_path:
+        preview = plan.preview.model_copy(deep=True)
+        if not {'get_administrative_status', 'get_student_administrative_status', 'get_actor_identity_context'} & set(preview.selected_tools):
+            preview.selected_tools = [*preview.selected_tools, 'get_administrative_status', 'get_student_administrative_status']
+        preview.mode = OrchestrationMode.structured_tool
+        preview.classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.authenticated,
+            confidence=0.97,
+            reason='follow-up administrativo ou de identidade resolvido antes do routing documental pesado do llamaindex',
+        )
+        preview.needs_authentication = True
+        school_profile = await rt._fetch_public_school_profile(settings=settings)
+        message_text = await rt._execute_protected_records_specialist(
+            settings=settings,
+            request=request,
+            preview=preview,
+            actor=actor,
+            conversation_context=conversation_context,
+        )
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=preview.selected_tools,
+            slice_name=plan.slice_name,
+            summary='Consulta protegida administrativa ou de identidade resolvida deterministicamente antes do routing pesado do LlamaIndex.',
+        )
+        suggested_replies = rt._build_suggested_replies(
+            request=request,
+            preview=preview,
+            actor=actor,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+        )
+        await rt._persist_conversation_turn(
+            settings=settings,
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            actor=actor,
+            user_message=request.message,
+            assistant_message=message_text,
+        )
+        await rt._persist_operational_trace(
+            settings=settings,
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            engine_name=engine_name,
+            engine_mode=engine_mode,
+            actor=actor,
+            preview=preview,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+            public_plan=None,
+            request_message=request.message,
+            message_text=message_text,
+            citations_count=0,
+            suggested_reply_count=len(suggested_replies),
+            visual_asset_count=0,
+            answer_verifier_valid=True,
+            answer_verifier_reason='llamaindex protected records deterministic fast path',
+            answer_verifier_fallback_used=False,
+            deterministic_fallback_available=True,
+            answer_verifier_judge_used=False,
+        )
+        response = MessageResponse(
+            message_text=rt._normalize_response_wording(message_text),
+            mode=preview.mode,
+            classification=preview.classification,
+            retrieval_backend=RetrievalBackend.none,
+            selected_tools=preview.selected_tools,
+            citations=[],
+            visual_assets=[],
+            suggested_replies=suggested_replies,
+            calendar_events=[],
+            evidence_pack=evidence_pack,
+            needs_authentication=preview.needs_authentication,
+            graph_path=[
+                *preview.graph_path,
+                'llamaindex:protected',
+                'llamaindex:protected_records_fast_path',
+                f'kernel:{plan.stack_name}',
+            ],
+            risk_flags=preview.risk_flags,
+            reason='llamaindex_protected_records_fast_path',
+        )
+        reflection = KernelReflection(
+            grounded=True,
+            verifier_reason='protected records deterministic fast path',
+            fallback_used=False,
+            answer_judge_used=False,
+            notes=[
+                f'route:{preview.mode.value}',
+                f'slice:{plan.slice_name}',
+                'llamaindex:protected_records_fast_path',
                 f'evidence:{evidence_pack.strategy}',
                 *plan.plan_notes,
             ],
