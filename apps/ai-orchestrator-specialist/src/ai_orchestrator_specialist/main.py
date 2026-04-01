@@ -7,6 +7,7 @@ import secrets
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from eduassist_observability import build_runtime_diagnostics, configure_observability, detect_runtime_mode
 
 from .models import SpecialistSupervisorRequest, SpecialistSupervisorResponse
 from .runtime import effective_llm_model_name, resolve_llm_provider, run_specialist_supervisor
@@ -57,10 +58,63 @@ class HealthResponse(BaseModel):
     ready: bool
 
 
+def _specialist_runtime_diagnostics(settings: Settings) -> dict[str, object]:
+    llm_provider = resolve_llm_provider(settings)
+    runtime_mode = detect_runtime_mode()
+    extra_findings: list[dict[str, str]] = []
+    if llm_provider == "unconfigured":
+        extra_findings.append(
+            {
+                "level": "blocker",
+                "code": "llm_provider_unconfigured",
+                "message": "Nenhum provider LLM esta configurado para o specialist supervisor.",
+            }
+        )
+    memory_url = str(settings.agent_memory_url or settings.database_url or "").strip()
+    if runtime_mode == "source" and memory_url.startswith("sqlite") and "/workspace/" in memory_url:
+        extra_findings.append(
+            {
+                "level": "warning",
+                "code": "sqlite_workspace_path_in_source",
+                "message": "Agent memory usa caminho /workspace em runtime source, o que tende a gerar drift fora do container.",
+            }
+        )
+    diagnostics = build_runtime_diagnostics(
+        service_name="ai-orchestrator-specialist",
+        env_file_candidates=("/workspace/.env", str(_ROOT_ENV_FILE), ".env"),
+        service_checks=[
+            {"name": "api_core", "endpoint": settings.api_core_url, "required": True},
+            {"name": "ai_orchestrator", "endpoint": settings.orchestrator_url, "required": True},
+        ],
+        secret_checks=[
+            {
+                "name": "internal_api_token",
+                "value": settings.internal_api_token,
+                "required": True,
+                "placeholder_values": ("dev-internal-token",),
+            },
+            {"name": "openai_api_key", "value": settings.openai_api_key, "required": False},
+            {"name": "google_api_key", "value": settings.google_api_key, "required": False},
+        ],
+        extra_findings=extra_findings,
+    )
+    diagnostics["memoryBackend"] = "sqlite" if memory_url.startswith("sqlite") else "sqlalchemy"
+    diagnostics["memoryUrl"] = memory_url
+    return diagnostics
+
+
 app = FastAPI(
     title="EduAssist Specialist Supervisor Pilot",
     version="0.1.0",
     summary="Quality-first specialist supervisor service for side-by-side chatbot comparisons.",
+)
+
+configure_observability(
+    service_name="ai-orchestrator-specialist",
+    service_version=app.version,
+    environment=get_settings().app_env,
+    app=app,
+    excluded_urls="/healthz",
 )
 
 
@@ -76,6 +130,7 @@ async def status(
     _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
     llm_provider = resolve_llm_provider(settings)
+    runtime_diagnostics = _specialist_runtime_diagnostics(settings)
     return {
         "service": "ai-orchestrator-specialist",
         "ready": True,
@@ -87,6 +142,7 @@ async def status(
         "llmConfigured": llm_provider != "unconfigured",
         "apiCoreUrl": settings.api_core_url,
         "orchestratorUrl": settings.orchestrator_url,
+        "runtimeDiagnostics": runtime_diagnostics,
         "capabilities": [
             "openai-agents-sdk",
             "litellm-provider-fallback",

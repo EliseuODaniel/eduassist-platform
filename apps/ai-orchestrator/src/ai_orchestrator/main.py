@@ -6,12 +6,15 @@ import json
 import logging
 import secrets
 from pathlib import Path
+from time import monotonic
 from typing import Any
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from eduassist_observability import configure_observability
+from eduassist_observability import build_runtime_diagnostics, configure_observability
 
 from .engine_selector import (
     SUPPORTED_PRIMARY_STACKS,
@@ -66,6 +69,7 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 ROOT_ENV_FILE = REPO_ROOT / '.env'
 FOUR_PATH_COMPARISON_REPORT_JSON = REPO_ROOT / 'docs/architecture/four-path-chatbot-comparison-report.json'
 FOUR_PATH_SMOKE_REPORT_JSON = REPO_ROOT / 'docs/architecture/four-path-chatbot-smoke-report.json'
+_REMOTE_STATUS_CACHE: dict[str, dict[str, Any]] = {}
 
 
 class Settings(BaseSettings):
@@ -227,6 +231,204 @@ def _runtime_primary_stack_payload(settings: Settings) -> dict[str, object]:
         'runtimeTargetedStackOverrideTelegramChatAllowlist': targeted_override.get('telegram_chat_allowlist') if isinstance(targeted_override, dict) else [],
         'runtimeTargetedStackOverrideConversationAllowlist': targeted_override.get('conversation_allowlist') if isinstance(targeted_override, dict) else [],
         'strictFrameworkIsolationEnabled': settings.strict_framework_isolation_enabled,
+    }
+
+
+def _probe_remote_status_payload(
+    *,
+    name: str,
+    url: str | None,
+    token: str,
+    ttl_seconds: int,
+    timeout_seconds: float = 3.0,
+) -> dict[str, Any] | None:
+    normalized_url = str(url or '').strip()
+    if not normalized_url:
+        return None
+    cache_key = f'{name}:{normalized_url}'
+    now = monotonic()
+    cached = _REMOTE_STATUS_CACHE.get(cache_key) or {}
+    cached_timestamp = float(cached.get('timestamp', 0.0) or 0.0)
+    if cached and now - cached_timestamp < max(1, ttl_seconds):
+        payload = cached.get('payload')
+        return dict(payload) if isinstance(payload, dict) else None
+
+    payload: dict[str, Any] | None = None
+    request = Request(
+        f'{normalized_url.rstrip("/")}/v1/status',
+        headers={'X-Internal-Api-Token': token},
+    )
+    try:
+        with urlopen(request, timeout=timeout_seconds) as response:
+            if response.status == 200:
+                loaded = json.load(response)
+                if isinstance(loaded, dict):
+                    payload = loaded
+    except URLError:
+        payload = None
+    except Exception:
+        logger.exception('remote_status_probe_failed', extra={'target': name, 'url': normalized_url})
+        payload = None
+
+    _REMOTE_STATUS_CACHE[cache_key] = {
+        'timestamp': now,
+        'payload': payload,
+    }
+    return dict(payload) if isinstance(payload, dict) else None
+
+
+def _pilot_diagnostics(settings: Settings) -> dict[str, dict[str, Any]]:
+    ttl_seconds = max(1, int(settings.orchestrator_experiment_health_ttl_seconds or 15))
+    crewai_status = _probe_remote_status_payload(
+        name='crewai',
+        url=settings.crewai_pilot_url,
+        token=settings.internal_api_token,
+        ttl_seconds=ttl_seconds,
+        timeout_seconds=3.0,
+    )
+    specialist_status = _probe_remote_status_payload(
+        name='specialist_supervisor',
+        url=settings.specialist_supervisor_pilot_url,
+        token=settings.internal_api_token,
+        ttl_seconds=ttl_seconds,
+        timeout_seconds=4.0,
+    )
+    return {
+        'crewai': {
+            'configured': bool(str(settings.crewai_pilot_url or '').strip()),
+            'ready': bool(isinstance(crewai_status, dict) and crewai_status.get('ready')),
+            'status': crewai_status,
+        },
+        'specialist_supervisor': {
+            'configured': bool(str(settings.specialist_supervisor_pilot_url or '').strip()),
+            'ready': bool(isinstance(specialist_status, dict) and specialist_status.get('ready')),
+            'status': specialist_status,
+        },
+    }
+
+
+def _orchestrator_runtime_diagnostics(settings: Settings) -> dict[str, Any]:
+    resolved_stack = str(resolve_primary_stack(settings) or 'langgraph')
+    pilot_diagnostics = _pilot_diagnostics(settings)
+    extra_findings: list[dict[str, str]] = []
+
+    if settings.graph_rag_enabled and not graph_rag_workspace_ready(settings.graph_rag_workspace):
+        extra_findings.append(
+            {
+                'level': 'warning',
+                'code': 'graph_rag_workspace_unready',
+                'message': 'GraphRAG esta habilitado, mas o workspace nao esta pronto.',
+            }
+        )
+
+    if resolved_stack == 'crewai':
+        crewai = pilot_diagnostics['crewai']
+        if not crewai['configured']:
+            extra_findings.append(
+                {
+                    'level': 'blocker',
+                    'code': 'crewai_primary_without_pilot',
+                    'message': 'CrewAI esta resolvido como stack primario, mas o pilot URL nao esta configurado.',
+                }
+            )
+        elif not crewai['ready']:
+            extra_findings.append(
+                {
+                    'level': 'blocker',
+                    'code': 'crewai_primary_pilot_unready',
+                    'message': 'CrewAI esta resolvido como stack primario, mas o piloto remoto nao esta pronto.',
+                }
+            )
+
+    if resolved_stack == 'specialist_supervisor':
+        specialist = pilot_diagnostics['specialist_supervisor']
+        if not specialist['configured']:
+            extra_findings.append(
+                {
+                    'level': 'blocker',
+                    'code': 'specialist_primary_without_pilot',
+                    'message': 'Specialist Supervisor esta resolvido como stack primario, mas o pilot URL nao esta configurado.',
+                }
+            )
+        elif not specialist['ready']:
+            extra_findings.append(
+                {
+                    'level': 'blocker',
+                    'code': 'specialist_primary_pilot_unready',
+                    'message': 'Specialist Supervisor esta resolvido como stack primario, mas o piloto remoto nao esta pronto.',
+                }
+            )
+
+    diagnostics = build_runtime_diagnostics(
+        service_name='ai-orchestrator',
+        env_file_candidates=('/workspace/.env', str(ROOT_ENV_FILE), '.env'),
+        service_checks=[
+            {'name': 'api_core', 'endpoint': settings.api_core_url, 'required': True},
+            {'name': 'qdrant', 'endpoint': settings.qdrant_url, 'required': True},
+            {
+                'name': 'langgraph_checkpointer',
+                'endpoint': settings.langgraph_checkpointer_url,
+                'required': False,
+                'allow_localhost_in_container': False,
+                'allow_service_dns_in_source': False,
+            },
+            {'name': 'crewai_pilot', 'endpoint': settings.crewai_pilot_url, 'required': False},
+            {'name': 'specialist_supervisor_pilot', 'endpoint': settings.specialist_supervisor_pilot_url, 'required': False},
+            {
+                'name': 'graph_rag_local_chat',
+                'endpoint': settings.graph_rag_local_chat_api_base if settings.graph_rag_enabled else None,
+                'required': False,
+                'allow_localhost_in_container': False,
+            },
+            {
+                'name': 'graph_rag_local_embeddings',
+                'endpoint': settings.graph_rag_local_embedding_api_base if settings.graph_rag_enabled else None,
+                'required': False,
+                'allow_localhost_in_container': False,
+            },
+        ],
+        secret_checks=[
+            {
+                'name': 'internal_api_token',
+                'value': settings.internal_api_token,
+                'required': True,
+                'placeholder_values': ('dev-internal-token',),
+            },
+            {
+                'name': 'openai_api_key',
+                'value': settings.openai_api_key,
+                'required': False,
+            },
+            {
+                'name': 'google_api_key',
+                'value': settings.google_api_key,
+                'required': False,
+            },
+        ],
+        extra_findings=extra_findings,
+    )
+    diagnostics['pilotReadiness'] = pilot_diagnostics
+    diagnostics['resolvedPrimaryStack'] = resolved_stack
+    return diagnostics
+
+
+def _public_runtime_diagnostics_summary(diagnostics: dict[str, Any]) -> dict[str, Any]:
+    pilot_readiness = diagnostics.get('pilotReadiness') if isinstance(diagnostics.get('pilotReadiness'), dict) else {}
+    summarized_pilots: dict[str, Any] = {}
+    for key, value in pilot_readiness.items():
+        if not isinstance(value, dict):
+            continue
+        summarized_pilots[str(key)] = {
+            'configured': bool(value.get('configured')),
+            'ready': bool(value.get('ready')),
+        }
+    return {
+        'operationalReadiness': bool(diagnostics.get('operationalReadiness')),
+        'sourceContainerDriftRisk': diagnostics.get('sourceContainerDriftRisk'),
+        'warningCount': len(diagnostics.get('warnings') or []),
+        'blockerCount': len(diagnostics.get('blockers') or []),
+        'resolvedPrimaryStack': diagnostics.get('resolvedPrimaryStack'),
+        'pilotReadiness': summarized_pilots,
     }
 
 
@@ -650,6 +852,7 @@ async def meta(
     scorecard_gate = get_scorecard_gate_status(settings=settings)
     rollout_readiness = get_experiment_rollout_readiness(settings=settings)
     live_promotion_summary = get_experiment_live_promotion_summary(settings=settings)
+    runtime_diagnostics = _orchestrator_runtime_diagnostics(settings)
     return {
         'service': 'ai-orchestrator',
         'environment': settings.app_env,
@@ -691,6 +894,7 @@ async def meta(
         'langgraphHitlUserTrafficSlices': settings.langgraph_hitl_user_traffic_slices,
         'pythonFunctionsAvailable': True,
         'llamaindexWorkflowAvailable': LLAMAINDEX_WORKFLOW_AVAILABLE,
+        'runtimeDiagnostics': runtime_diagnostics,
     }
 
 
@@ -702,6 +906,7 @@ async def status() -> dict[str, object]:
     rollout_readiness = get_experiment_rollout_readiness(settings=settings)
     live_promotion_summary = get_experiment_live_promotion_summary(settings=settings)
     experimental_stack_readiness = _experimental_stack_readiness(settings)
+    runtime_diagnostics = _orchestrator_runtime_diagnostics(settings)
     return {
         'service': 'ai-orchestrator',
         'ready': True,
@@ -762,6 +967,7 @@ async def status() -> dict[str, object]:
         'pythonFunctionsAvailable': True,
         'llamaindexWorkflowAvailable': LLAMAINDEX_WORKFLOW_AVAILABLE,
         'experimentalStackReadiness': experimental_stack_readiness,
+        'runtimeDiagnosticsSummary': _public_runtime_diagnostics_summary(runtime_diagnostics),
     }
 
 

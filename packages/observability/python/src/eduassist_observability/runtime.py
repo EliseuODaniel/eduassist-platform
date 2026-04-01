@@ -5,8 +5,10 @@ import os
 from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
 from datetime import date, datetime
+from pathlib import Path
 from enum import Enum
 from typing import Any
+from urllib.parse import urlparse
 from uuid import UUID
 
 from fastapi import FastAPI
@@ -27,6 +29,25 @@ from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExp
 _CONFIGURED_SERVICES: set[str] = set()
 _COUNTERS: dict[tuple[str, str, str | None, str | None], Any] = {}
 _HISTOGRAMS: dict[tuple[str, str, str | None, str | None], Any] = {}
+_LOCALHOST_HOSTS = {"127.0.0.1", "localhost"}
+_CONTAINER_SERVICE_HOSTS = {
+    "admin-web",
+    "ai-orchestrator",
+    "ai-orchestrator-crewai",
+    "ai-orchestrator-specialist",
+    "api-core",
+    "grafana",
+    "keycloak",
+    "minio",
+    "opa",
+    "otel-collector",
+    "postgres",
+    "prometheus",
+    "qdrant",
+    "redis",
+    "telegram-gateway",
+    "worker",
+}
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -111,6 +132,152 @@ def _normalize_attribute_value(value: Any) -> Any:
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         return _normalize_sequence(value)
     return str(value)
+
+
+def detect_runtime_mode() -> str:
+    return "container" if Path("/.dockerenv").exists() else "source"
+
+
+def _normalize_env_file_candidates(candidates: Sequence[str | os.PathLike[str]] | None) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for raw in candidates or ():
+        path = Path(raw)
+        normalized.append(
+            {
+                "path": str(path),
+                "exists": path.exists(),
+            }
+        )
+    return normalized
+
+
+def _endpoint_host(endpoint: str) -> str | None:
+    parsed = urlparse(str(endpoint or "").strip())
+    host = parsed.hostname or ""
+    return host.strip().lower() or None
+
+
+def _service_check_status(
+    *,
+    endpoint: str,
+    runtime_mode: str,
+    allow_localhost_in_container: bool,
+    allow_service_dns_in_source: bool,
+) -> tuple[str, str | None]:
+    host = _endpoint_host(endpoint)
+    if not host:
+        return "invalid", "endpoint inválido ou sem host"
+    if runtime_mode == "container" and host in _LOCALHOST_HOSTS and not allow_localhost_in_container:
+        return "mode_mismatch", "host local em runtime container tende a causar drift"
+    if runtime_mode == "source" and host in _CONTAINER_SERVICE_HOSTS and not allow_service_dns_in_source:
+        return "mode_mismatch", "host de compose em runtime source tende a falhar fora da rede docker"
+    return "ok", None
+
+
+def build_runtime_diagnostics(
+    *,
+    service_name: str,
+    env_file_candidates: Sequence[str | os.PathLike[str]] | None = None,
+    service_checks: Sequence[Mapping[str, Any]] | None = None,
+    secret_checks: Sequence[Mapping[str, Any]] | None = None,
+    extra_findings: Sequence[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    runtime_mode = detect_runtime_mode()
+    warnings: list[dict[str, str]] = []
+    blockers: list[dict[str, str]] = []
+    checks: list[dict[str, Any]] = []
+
+    for spec in service_checks or ():
+        name = str(spec.get("name") or "service").strip() or "service"
+        endpoint = str(spec.get("endpoint") or "").strip()
+        required = bool(spec.get("required", False))
+        if not endpoint:
+            checks.append(
+                {
+                    "name": name,
+                    "kind": "service",
+                    "configured": False,
+                    "required": required,
+                    "status": "missing",
+                    "endpoint": None,
+                }
+            )
+            if required:
+                blockers.append({"code": f"{name}_missing", "message": f"{name} nao esta configurado"})
+            continue
+
+        status, detail = _service_check_status(
+            endpoint=endpoint,
+            runtime_mode=runtime_mode,
+            allow_localhost_in_container=bool(spec.get("allow_localhost_in_container", False)),
+            allow_service_dns_in_source=bool(spec.get("allow_service_dns_in_source", False)),
+        )
+        checks.append(
+            {
+                "name": name,
+                "kind": "service",
+                "configured": True,
+                "required": required,
+                "status": status,
+                "endpoint": endpoint,
+                "detail": detail,
+            }
+        )
+        if status == "mode_mismatch":
+            warnings.append({"code": f"{name}_mode_mismatch", "message": detail or f"{name} com host desalinhado"})
+        elif status == "invalid" and required:
+            blockers.append({"code": f"{name}_invalid", "message": detail or f"{name} invalido"})
+
+    for spec in secret_checks or ():
+        name = str(spec.get("name") or "secret").strip() or "secret"
+        value = spec.get("value")
+        required = bool(spec.get("required", False))
+        placeholder_values = {str(item).strip() for item in spec.get("placeholder_values", ()) if str(item).strip()}
+        rendered_value = str(value or "").strip()
+        configured = bool(rendered_value) if "configured" not in spec else bool(spec.get("configured"))
+        is_placeholder = bool(configured and rendered_value in placeholder_values)
+        status = "ok" if configured and not is_placeholder else "placeholder" if is_placeholder else "missing"
+        checks.append(
+            {
+                "name": name,
+                "kind": "secret",
+                "configured": configured,
+                "required": required,
+                "status": status,
+            }
+        )
+        if required and not configured:
+            blockers.append({"code": f"{name}_missing", "message": f"{name} nao esta configurado"})
+        elif is_placeholder:
+            warnings.append({"code": f"{name}_placeholder", "message": f"{name} ainda usa valor placeholder"})
+
+    for item in extra_findings or ():
+        level = str(item.get("level") or "warning").strip().lower()
+        payload = {
+            "code": str(item.get("code") or "runtime_finding").strip() or "runtime_finding",
+            "message": str(item.get("message") or "diagnostico adicional").strip() or "diagnostico adicional",
+        }
+        if level == "blocker":
+            blockers.append(payload)
+        else:
+            warnings.append(payload)
+
+    drift_risk = "low"
+    if blockers:
+        drift_risk = "high"
+    elif warnings:
+        drift_risk = "medium"
+
+    return {
+        "service": service_name,
+        "runtimeMode": runtime_mode,
+        "operationalReadiness": not blockers,
+        "sourceContainerDriftRisk": drift_risk,
+        "envFiles": _normalize_env_file_candidates(env_file_candidates),
+        "checks": checks,
+        "warnings": warnings,
+        "blockers": blockers,
+    }
 
 
 def get_tracer(name: str = "eduassist") -> trace.Tracer:

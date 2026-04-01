@@ -10,7 +10,7 @@ import httpx
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from eduassist_observability import configure_observability
+from eduassist_observability import build_runtime_diagnostics, configure_observability
 
 
 _ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / '.env'
@@ -69,6 +69,43 @@ def _require_internal_api_token(x_internal_api_token: str | None) -> None:
     settings = get_settings()
     if not x_internal_api_token or not secrets.compare_digest(x_internal_api_token, settings.internal_api_token):
         raise HTTPException(status_code=401, detail='invalid_internal_api_token')
+
+
+def _telegram_runtime_diagnostics(settings: Settings) -> dict[str, object]:
+    return build_runtime_diagnostics(
+        service_name='telegram-gateway',
+        env_file_candidates=('/workspace/.env', str(_ROOT_ENV_FILE), '.env'),
+        service_checks=[
+            {'name': 'api_core', 'endpoint': settings.api_core_url, 'required': True},
+            {'name': 'ai_orchestrator', 'endpoint': settings.ai_orchestrator_url, 'required': True},
+            {
+                'name': 'telegram_api',
+                'endpoint': settings.telegram_api_base_url,
+                'required': True,
+                'allow_localhost_in_container': False,
+                'allow_service_dns_in_source': True,
+            },
+        ],
+        secret_checks=[
+            {
+                'name': 'telegram_bot_token',
+                'value': settings.telegram_bot_token,
+                'required': True,
+            },
+            {
+                'name': 'telegram_webhook_secret',
+                'value': settings.telegram_webhook_secret,
+                'required': True,
+                'placeholder_values': ('change-me',),
+            },
+            {
+                'name': 'internal_api_token',
+                'value': settings.internal_api_token,
+                'required': True,
+                'placeholder_values': ('dev-internal-token',),
+            },
+        ],
+    )
 
 
 def _extract_message(payload: dict[str, object]) -> dict[str, object] | None:
@@ -227,6 +264,24 @@ async def meta(
         'environment': settings.app_env,
         'botUsername': settings.telegram_bot_username,
         'telegramConfigured': 'yes' if settings.telegram_bot_token else 'no',
+        'runtimeDiagnostics': _telegram_runtime_diagnostics(settings),
+    }
+
+
+@app.get('/v1/status')
+async def status(
+    x_internal_api_token: str | None = Header(default=None, alias='X-Internal-Api-Token'),
+) -> dict[str, object]:
+    _require_internal_api_token(x_internal_api_token)
+    settings = get_settings()
+    return {
+        'service': 'telegram-gateway',
+        'ready': True,
+        'environment': settings.app_env,
+        'botUsername': settings.telegram_bot_username,
+        'telegramConfigured': bool(settings.telegram_bot_token),
+        'aiOrchestratorTimeoutSeconds': settings.ai_orchestrator_timeout_seconds,
+        'runtimeDiagnostics': _telegram_runtime_diagnostics(settings),
     }
 
 

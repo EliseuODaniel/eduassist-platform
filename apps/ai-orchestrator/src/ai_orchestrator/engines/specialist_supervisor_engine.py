@@ -68,6 +68,25 @@ def _normalize_remote_answer(answer: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+def _mark_cross_stack_fallback(response: MessageResponse) -> MessageResponse:
+    graph_path = [str(item).strip() for item in response.graph_path if str(item).strip()]
+    if not graph_path or graph_path[0] != "specialist_supervisor":
+        graph_path = ["specialist_supervisor", "remote_unavailable", "langgraph_fallback", *graph_path]
+    else:
+        graph_path = ["specialist_supervisor", "remote_unavailable", "langgraph_fallback", *graph_path[1:]]
+
+    risk_flags = list(response.risk_flags)
+    for flag in ("dependency_unavailable", "cross_stack_fallback"):
+        if flag not in risk_flags:
+            risk_flags.append(flag)
+    return response.model_copy(
+        update={
+            "graph_path": graph_path,
+            "risk_flags": risk_flags,
+        }
+    )
+
+
 class SpecialistSupervisorEngine(ResponseEngine):
     name = "specialist_supervisor"
     ready = False
@@ -138,12 +157,15 @@ class SpecialistSupervisorEngine(ResponseEngine):
         from ..runtime import generate_message_response
 
         logger.warning("specialist_supervisor_fallback_to_langgraph")
-        return await generate_message_response(
+        fallback_response = await generate_message_response(
             request=request,
             settings=settings,
             engine_name="specialist_supervisor_stub",
             engine_mode=str(engine_mode or self.name),
         )
+        if isinstance(fallback_response, MessageResponse):
+            return _mark_cross_stack_fallback(fallback_response)
+        return fallback_response
 
     async def shadow_compare(self, *, request: Any, settings: Any) -> ShadowRunResult:
         pilot_url = str(getattr(settings, "specialist_supervisor_pilot_url", "") or "").strip()
