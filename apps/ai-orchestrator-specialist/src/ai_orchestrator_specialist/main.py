@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import logging
 from pathlib import Path
 import secrets
 
@@ -14,6 +15,7 @@ from .runtime import effective_llm_model_name, resolve_llm_provider, run_special
 
 
 _ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / ".env"
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -103,6 +105,27 @@ def _specialist_runtime_diagnostics(settings: Settings) -> dict[str, object]:
     return diagnostics
 
 
+def _log_runtime_diagnostics(diagnostics: dict[str, object]) -> None:
+    warnings = diagnostics.get("warnings") if isinstance(diagnostics.get("warnings"), list) else []
+    blockers = diagnostics.get("blockers") if isinstance(diagnostics.get("blockers"), list) else []
+    logger.info(
+        "ai_orchestrator_specialist_runtime_diagnostics",
+        extra={
+            "operational_readiness": bool(diagnostics.get("operationalReadiness")),
+            "runtime_mode": diagnostics.get("runtimeMode"),
+            "source_container_drift_risk": diagnostics.get("sourceContainerDriftRisk"),
+            "warning_count": len(warnings),
+            "blocker_count": len(blockers),
+        },
+    )
+    for item in warnings:
+        if isinstance(item, dict):
+            logger.warning("ai_orchestrator_specialist_runtime_warning %s", str(item.get("message") or item.get("code") or "warning"))
+    for item in blockers:
+        if isinstance(item, dict):
+            logger.error("ai_orchestrator_specialist_runtime_blocker %s", str(item.get("message") or item.get("code") or "blocker"))
+
+
 app = FastAPI(
     title="EduAssist Specialist Supervisor Pilot",
     version="0.1.0",
@@ -116,6 +139,11 @@ configure_observability(
     app=app,
     excluded_urls="/healthz",
 )
+
+
+@app.on_event("startup")
+async def log_startup_diagnostics() -> None:
+    _log_runtime_diagnostics(_specialist_runtime_diagnostics(get_settings()))
 
 
 @app.get("/healthz", response_model=HealthResponse)

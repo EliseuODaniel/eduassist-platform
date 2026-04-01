@@ -108,6 +108,27 @@ def _telegram_runtime_diagnostics(settings: Settings) -> dict[str, object]:
     )
 
 
+def _log_runtime_diagnostics(diagnostics: dict[str, object]) -> None:
+    warnings = diagnostics.get('warnings') if isinstance(diagnostics.get('warnings'), list) else []
+    blockers = diagnostics.get('blockers') if isinstance(diagnostics.get('blockers'), list) else []
+    logger.info(
+        'telegram_gateway_runtime_diagnostics',
+        extra={
+            'operational_readiness': bool(diagnostics.get('operationalReadiness')),
+            'runtime_mode': diagnostics.get('runtimeMode'),
+            'source_container_drift_risk': diagnostics.get('sourceContainerDriftRisk'),
+            'warning_count': len(warnings),
+            'blocker_count': len(blockers),
+        },
+    )
+    for item in warnings:
+        if isinstance(item, dict):
+            logger.warning('telegram_gateway_runtime_warning %s', str(item.get('message') or item.get('code') or 'warning'))
+    for item in blockers:
+        if isinstance(item, dict):
+            logger.error('telegram_gateway_runtime_blocker %s', str(item.get('message') or item.get('code') or 'blocker'))
+
+
 def _extract_message(payload: dict[str, object]) -> dict[str, object] | None:
     for key in ('message', 'edited_message'):
         value = payload.get(key)
@@ -251,6 +272,11 @@ async def healthz() -> HealthResponse:
         service='telegram-gateway',
         ready=True,
     )
+
+
+@app.on_event('startup')
+async def log_startup_diagnostics() -> None:
+    _log_runtime_diagnostics(_telegram_runtime_diagnostics(get_settings()))
 
 
 @app.get('/meta')

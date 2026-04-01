@@ -412,6 +412,28 @@ def _orchestrator_runtime_diagnostics(settings: Settings) -> dict[str, Any]:
     return diagnostics
 
 
+def _log_runtime_diagnostics(service_name: str, diagnostics: dict[str, Any]) -> None:
+    warnings = diagnostics.get('warnings') if isinstance(diagnostics.get('warnings'), list) else []
+    blockers = diagnostics.get('blockers') if isinstance(diagnostics.get('blockers'), list) else []
+    logger.info(
+        '%s_runtime_diagnostics',
+        service_name,
+        extra={
+            'operational_readiness': bool(diagnostics.get('operationalReadiness')),
+            'runtime_mode': diagnostics.get('runtimeMode'),
+            'source_container_drift_risk': diagnostics.get('sourceContainerDriftRisk'),
+            'warning_count': len(warnings),
+            'blocker_count': len(blockers),
+        },
+    )
+    for item in warnings:
+        if isinstance(item, dict):
+            logger.warning('%s_runtime_warning %s', service_name, str(item.get('message') or item.get('code') or 'warning'))
+    for item in blockers:
+        if isinstance(item, dict):
+            logger.error('%s_runtime_blocker %s', service_name, str(item.get('message') or item.get('code') or 'blocker'))
+
+
 def _public_runtime_diagnostics_summary(diagnostics: dict[str, Any]) -> dict[str, Any]:
     pilot_readiness = diagnostics.get('pilotReadiness') if isinstance(diagnostics.get('pilotReadiness'), dict) else {}
     summarized_pilots: dict[str, Any] = {}
@@ -823,6 +845,7 @@ def _warm_langgraph_service(settings: Settings) -> None:
 @app.on_event('startup')
 async def warm_runtime_dependencies() -> None:
     settings = get_settings()
+    _log_runtime_diagnostics('ai-orchestrator', _orchestrator_runtime_diagnostics(settings))
     if settings.warm_retrieval_on_startup:
         asyncio.create_task(asyncio.to_thread(_warm_retrieval_service, settings))
     asyncio.create_task(asyncio.to_thread(_warm_langgraph_service, settings))
