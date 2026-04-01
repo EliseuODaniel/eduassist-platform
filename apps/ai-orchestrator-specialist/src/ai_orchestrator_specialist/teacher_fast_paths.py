@@ -52,6 +52,8 @@ def _teacher_session_active(ctx: Any) -> bool:
 
 def _looks_like_teacher_scope_query(message: str, recent_user_messages: list[str]) -> bool:
     normalized = _normalize_text(message)
+    if _looks_like_teacher_summary_request(message):
+        return True
     direct_terms = {
         "ja sou professor",
         "já sou professor",

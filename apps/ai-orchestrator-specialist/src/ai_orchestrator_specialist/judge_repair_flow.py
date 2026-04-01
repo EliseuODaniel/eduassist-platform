@@ -18,9 +18,9 @@ async def run_judge(
     draft: ManagerDraft,
     specialist_results: list[SpecialistResult],
 ) -> JudgeVerdict:
-    from .runtime import _agent_model, _build_judge_agent, _effective_conversation_id, _run_config
+    from .runtime import _agent_model_for_role, _build_judge_agent, _effective_conversation_id, _run_config
 
-    judge = _build_judge_agent(_agent_model(ctx.settings))
+    judge = _build_judge_agent(_agent_model_for_role(ctx.settings, role="judge"))
     prompt = json.dumps(
         {
             "user_message": ctx.request.message,
@@ -50,14 +50,14 @@ async def run_repair_loop(
     judge: JudgeVerdict,
     specialist_results: list[SpecialistResult],
 ) -> tuple[ManagerDraft, JudgeVerdict, RepairDraft] | None:
-    from .runtime import _agent_model, _build_repair_agent, _effective_conversation_id, _parse_result_model, _run_config
+    from .runtime import _agent_model_for_role, _build_repair_agent, _effective_conversation_id, _parse_result_model, _run_config
 
     if not specialist_results:
         return None
     repair_needed = (not judge.approved) or bool(judge.issues)
     if not repair_needed or judge.needs_clarification:
         return None
-    repair_agent = _build_repair_agent(ctx.settings, _agent_model(ctx.settings))
+    repair_agent = _build_repair_agent(ctx.settings, _agent_model_for_role(ctx.settings, role="repair"))
     prompt = json.dumps(
         {
             "user_message": ctx.request.message,

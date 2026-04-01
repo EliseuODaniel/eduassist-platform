@@ -26,6 +26,9 @@ from .answer_payloads import (
     retrieval_backend_from_strategy as _retrieval_backend_from_strategy,
     safe_supervisor_fallback_answer as _safe_supervisor_fallback_answer,
 )
+from .execution_budget import ExecutionBudget
+from .guardrail_runtime import run_input_guardrail as _run_input_guardrail_stage
+from .manager_flow import needs_manager as _needs_manager, run_manager_stack as _run_manager_stack
 from .models import (
     IntentRouteSpec,
     JudgeVerdict,
@@ -47,7 +50,7 @@ from .models import (
     SupervisorPlan,
 )
 from .intent_registry import get_intent_registry, has_registered_school_signal
-from .judge_repair_flow import run_judge as _run_judge, run_repair_loop as _run_repair_loop
+from .planner_policy import execution_budget_metadata as _execution_budget_metadata, resolve_plan_and_budget as _resolve_plan_and_budget, run_retrieval_planner as _run_retrieval_planner_stage
 from .public_bundle_fast_paths import (
     _looks_like_family_new_calendar_enrollment_query,
     _looks_like_first_month_risks_query,
@@ -80,7 +83,10 @@ from .runtime_io import (
     orchestrator_retrieval_search as _orchestrator_retrieval_search,
     persist_final_answer as _persist_final_answer_io,
 )
-from .session_memory import build_supervisor_session
+from .specialist_executor import (
+    build_execution_specialists as _build_budgeted_execution_specialists,
+    execute_planned_specialists as _execute_budgeted_specialists,
+)
 from .teacher_fast_paths import maybe_teacher_scope_fast_path_answer
 
 logger = logging.getLogger(__name__)
@@ -121,6 +127,36 @@ def effective_llm_model_name(settings: Any) -> str:
     return f"gemini/{google_model}"
 
 
+def _model_name_for_role(settings: Any, *, role: str) -> str:
+    provider = resolve_llm_provider(settings)
+    explicit_override = str(getattr(settings, f"{role}_model", "") or "").strip()
+    if explicit_override:
+        if provider == "gemini_litellm" and "/" not in explicit_override:
+            return f"gemini/{explicit_override.removesuffix('-preview')}"
+        return explicit_override
+    if provider == "openai":
+        if role in {"planner", "judge", "guardrail"}:
+            return str(
+                getattr(settings, "openai_fast_model", None)
+                or getattr(settings, "openai_model", "gpt-5.4")
+                or "gpt-5.4"
+            )
+        return str(
+            getattr(settings, "openai_reasoning_model", None)
+            or getattr(settings, "openai_model", "gpt-5.4")
+            or "gpt-5.4"
+        )
+    google_override = None
+    if role in {"planner", "judge", "guardrail"}:
+        google_override = getattr(settings, "google_fast_model", None)
+    else:
+        google_override = getattr(settings, "google_reasoning_model", None)
+    google_model = str(google_override or getattr(settings, "google_model", "gemini-2.5-flash") or "gemini-2.5-flash").strip()
+    if google_model.endswith("-preview"):
+        google_model = google_model.removesuffix("-preview")
+    return google_model if "/" in google_model else f"gemini/{google_model}"
+
+
 def _agent_model(settings: Any) -> str | LitellmModel:
     provider = resolve_llm_provider(settings)
     if provider == "openai":
@@ -131,6 +167,22 @@ def _agent_model(settings: Any) -> str | LitellmModel:
             os.environ.setdefault("GEMINI_API_KEY", google_api_key)
         return LitellmModel(
             model=effective_llm_model_name(settings),
+            api_key=google_api_key or None,
+        )
+    raise RuntimeError("specialist_supervisor_llm_unconfigured")
+
+
+def _agent_model_for_role(settings: Any, *, role: str) -> str | LitellmModel:
+    provider = resolve_llm_provider(settings)
+    model_name = _model_name_for_role(settings, role=role)
+    if provider == "openai":
+        return model_name
+    if provider == "gemini_litellm":
+        google_api_key = str(getattr(settings, "google_api_key", "") or "").strip()
+        if google_api_key:
+            os.environ.setdefault("GEMINI_API_KEY", google_api_key)
+        return LitellmModel(
+            model=model_name,
             api_key=google_api_key or None,
         )
     raise RuntimeError("specialist_supervisor_llm_unconfigured")
@@ -170,6 +222,7 @@ class SupervisorRunContext:
     preview_hint: dict[str, Any] | None
     resolved_turn: ResolvedTurnIntent | None
     specialist_registry: dict[str, Any]
+    execution_budget: ExecutionBudget | None = None
     trace: SupervisorTrace = field(default_factory=SupervisorTrace)
 
 
@@ -1794,6 +1847,12 @@ def _compose_human_handoff_answer(profile: dict[str, Any] | None) -> str:
 def _looks_like_access_scope_query(message: str) -> bool:
     normalized = _normalize_text(message)
     terms = {
+        "estou logado como",
+        "estou logado como quem",
+        "quem sou eu aqui",
+        "quais alunos eu tenho vinculados",
+        "quais alunos tenho vinculados",
+        "alunos vinculados",
         "qual meu acesso",
         "qual e o meu escopo",
         "qual é o meu escopo",
@@ -1819,6 +1878,41 @@ def _looks_like_access_scope_query(message: str) -> bool:
         "quais dados dos meus filhos eu consigo acessar",
     }
     return any(term in normalized for term in terms)
+
+
+def _looks_like_actor_admin_status_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    admin_anchor = any(
+        term in normalized
+        for term in {
+            "documentacao",
+            "documentação",
+            "cadastro",
+            "cadastral",
+            "administrativo",
+            "administrativa",
+        }
+    )
+    if not admin_anchor:
+        return False
+    return any(
+        term in normalized
+        for term in {
+            "atualizado",
+            "atualizados",
+            "regular",
+            "regularizado",
+            "situacao",
+            "situação",
+            "ok",
+            "checklist",
+            "o que falta",
+            "falta",
+            "pendenc",
+            "resuma",
+            "resumo",
+        }
+    )
 
 
 def _looks_like_admin_finance_combo_query(message: str) -> bool:
@@ -1905,6 +1999,10 @@ def _looks_like_service_routing_query(message: str) -> bool:
             "qual área",
             "como falo com",
             "como falar com",
+            "como entro em contato",
+            "como entrar em contato",
+            "como faco para entrar em contato",
+            "como faço para entrar em contato",
             "por qual canal",
         }
     )
@@ -1929,6 +2027,8 @@ def _compose_service_routing_fast_answer(profile: dict[str, Any] | None, message
         requested.append(("orientacao_educacional", "Orientacao educacional"))
     if any(term in normalized for term in {"direcao", "direção", "diretora", "diretor"}):
         requested.append(("solicitacao_direcao", "Direcao"))
+    if any(term in normalized for term in {"trabalhar ai", "trabalhar aí", "quero trabalhar", "vaga", "vagas", "curriculo", "currículo", "professor"}):
+        requested.append(("carreiras_docentes", "Carreiras docentes"))
     if not requested:
         return None
     lines: list[str] = []
@@ -1953,6 +2053,45 @@ def _compose_service_routing_fast_answer(profile: dict[str, Any] | None, message
     if not lines:
         return None
     return "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n" + "\n".join(lines)
+
+
+def _looks_like_public_teacher_identity_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if not any(term in normalized for term in {"prof", "professor", "professora", "docente"}):
+        return False
+    return any(term in normalized for term in {"nome", "telefone", "contato", "canal", "como falar", "como falo"})
+
+
+def _extract_teacher_subject(message: str) -> str | None:
+    normalized = _normalize_text(message)
+    patterns = [
+        r"prof(?:essor|essora)?\s+de\s+(.+)",
+        r"docente\s+de\s+(.+)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, normalized)
+        if not match:
+            continue
+        subject = match.group(1).strip(" ?.")
+        if subject:
+            return subject
+    return None
+
+
+def _compose_public_teacher_directory_answer(profile: dict[str, Any] | None, message: str) -> str | None:
+    if not isinstance(profile, dict):
+        return None
+    school_name = _school_name(profile)
+    subject = _extract_teacher_subject(message)
+    if subject:
+        return (
+            f"O {school_name} nao divulga nomes nem contatos diretos de professores por disciplina, como {subject}. "
+            "Se quiser, eu posso te indicar a coordenacao pedagogica ou o setor certo para seguir com isso."
+        )
+    return (
+        f"O {school_name} nao divulga nomes nem contatos diretos de professores individualmente. "
+        "Se quiser, eu posso te indicar a coordenacao pedagogica ou o setor certo."
+    )
 
 
 def _compose_contact_bundle_answer(profile: dict[str, Any] | None) -> str | None:
@@ -3276,6 +3415,30 @@ def _fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | No
                 suggested_replies=_default_suggested_replies("institution"),
                 graph_path=["specialist_supervisor", "fast_path", "service_routing"],
                 reason="specialist_supervisor_fast_path:service_routing",
+            )
+
+    if profile and _looks_like_public_teacher_identity_query(ctx.request.message):
+        teacher_directory_answer = _compose_public_teacher_directory_answer(profile, ctx.request.message)
+        if teacher_directory_answer:
+            return SupervisorAnswerPayload(
+                message_text=teacher_directory_answer,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_fast_path:teacher_directory",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Politica publica de nao divulgacao de contatos individuais de professores.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[MessageEvidenceSupport(kind="teacher_directory", label="Diretorio docente publico", detail=_safe_excerpt(teacher_directory_answer, limit=180))],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "fast_path", "teacher_directory"],
+                reason="specialist_supervisor_fast_path:teacher_directory",
             )
 
     if profile and _looks_like_service_credentials_bundle_query(ctx.request.message):
@@ -4851,6 +5014,86 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                         reason="specialist_supervisor_tool_first:visit_reschedule",
                     )
 
+    if any(term in normalized for term in {"cancela", "cancelar", "cancelamento"}):
+        payload = await _workflow_status_payload(ctx, workflow_kind="visit_booking")
+        item = payload.get("item") if isinstance(payload, dict) else None
+        if isinstance(item, dict):
+            cancelled = await _http_post(
+                ctx.http_client,
+                base_url=ctx.settings.api_core_url,
+                path="/v1/internal/workflows/visit-bookings/actions",
+                token=ctx.settings.internal_api_token,
+                payload=_strip_none(
+                    {
+                        "conversation_external_id": _effective_conversation_id(ctx.request),
+                        "channel": ctx.request.channel.value,
+                        "telegram_chat_id": ctx.request.telegram_chat_id,
+                        "protocol_code": str(item.get("protocol_code") or "").strip() or None,
+                        "action": "cancel",
+                        "notes": ctx.request.message,
+                    }
+                ),
+            )
+            cancelled_item = cancelled.get("item") if isinstance(cancelled, dict) else None
+            if isinstance(cancelled_item, dict):
+                protocol = str(cancelled_item.get("protocol_code") or item.get("protocol_code") or "indisponivel").strip()
+                answer_text = (
+                    f"Pedido de visita cancelado. Protocolo: {protocol}. "
+                    "Se quiser, eu posso abrir um novo agendamento com outra data."
+                )
+                return SupervisorAnswerPayload(
+                    message_text=answer_text,
+                    mode="structured_tool",
+                    classification=MessageIntentClassification(
+                        domain="support",
+                        access_tier=_access_tier_for_domain("support", ctx.request.user.authenticated),
+                        confidence=0.99,
+                        reason="specialist_supervisor_tool_first:visit_cancel",
+                    ),
+                    evidence_pack=MessageEvidencePack(
+                        strategy="workflow_status",
+                        summary="Cancelamento deterministico do pedido de visita a partir do contexto recente.",
+                        source_count=1,
+                        support_count=1,
+                        supports=[
+                            MessageEvidenceSupport(kind="workflow", label=protocol or "protocolo", detail="visita cancelada"),
+                        ],
+                    ),
+                    suggested_replies=_default_suggested_replies("support"),
+                    graph_path=["specialist_supervisor", "tool_first", "visit_cancel"],
+                    reason="specialist_supervisor_tool_first:visit_cancel",
+                )
+
+    if "visita" in normalized and any(term in normalized for term in {"protocolo", "status", "andamento"}):
+        payload = await _workflow_status_payload(ctx, workflow_kind="visit_booking")
+        item = payload.get("item") if isinstance(payload, dict) else None
+        if isinstance(item, dict):
+            protocol = str(item.get("protocol_code") or "indisponivel").strip()
+            slot = str(item.get("slot_label") or item.get("preferred_window") or "janela a confirmar").strip()
+            answer_text = _compose_visit_status_answer(item)
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="support",
+                    access_tier=_access_tier_for_domain("support", ctx.request.user.authenticated),
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:visit_status",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="workflow_status",
+                    summary="Consulta deterministica ao status do fluxo de visita.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[
+                        MessageEvidenceSupport(kind="workflow", label=protocol or "protocolo", detail=slot),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("support"),
+                graph_path=["specialist_supervisor", "tool_first", "visit_status"],
+                reason="specialist_supervisor_tool_first:visit_status",
+            )
+
     if "visita" in normalized and any(term in normalized for term in {"agendar", "marcar"}):
         payload = await _create_visit_booking_payload(ctx)
         item = payload.get("item") if isinstance(payload, dict) else None
@@ -5166,7 +5409,48 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 reason="specialist_supervisor_tool_first:admin_finance_overview",
             )
 
-    if ctx.request.user.authenticated and "documentacao" in normalized:
+    if ctx.request.user.authenticated and _looks_like_actor_admin_status_query(ctx.request.message):
+        try:
+            actor_admin_payload = await _http_get(
+                ctx.http_client,
+                base_url=ctx.settings.api_core_url,
+                path="/v1/actors/me/administrative-status",
+                token=ctx.settings.internal_api_token,
+                params={"telegram_chat_id": ctx.request.telegram_chat_id},
+            )
+        except httpx.HTTPError:
+            actor_admin_payload = None
+        actor_admin_summary = actor_admin_payload.get("summary") if isinstance(actor_admin_payload, dict) else None
+        if isinstance(actor_admin_summary, dict):
+            answer_text = _compose_actor_admin_status_answer(actor_admin_summary)
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier=_access_tier_for_domain("institution", True),
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:actor_admin_status",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Status administrativo deterministico do cadastro autenticado.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[
+                        MessageEvidenceSupport(
+                            kind="administrative_status",
+                            label="Cadastro autenticado",
+                            detail=str(actor_admin_summary.get("overall_status") or "em analise"),
+                        ),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "tool_first", "actor_admin_status"],
+                reason="specialist_supervisor_tool_first:actor_admin_status",
+            )
+
+    if ctx.request.user.authenticated and any(term in normalized for term in {"documentacao", "documentação", "cadastro", "cadastral"}):
         student_hint = _student_hint_from_message(ctx.actor, ctx.request.message)
         student = _find_student_by_hint(ctx.actor, capability="academic", hint=student_hint) or _recent_student_from_context_with_memory(
             ctx.actor,
@@ -7717,7 +8001,7 @@ async def run_specialist_supervisor(
                 answer=answer,
             ).model_dump(mode="json")
 
-        guardrail = await _run_input_guardrail(context)
+        guardrail = await _run_input_guardrail_stage(context)
         if guardrail.blocked:
             answer = SupervisorAnswerPayload(
                 message_text=guardrail.safe_reply or "Nao posso ajudar com esse pedido.",
@@ -7736,23 +8020,27 @@ async def run_specialist_supervisor(
             return SpecialistSupervisorResponse(reason=answer.reason, metadata={"blocked": True}, answer=answer).model_dump(mode="json")
 
         try:
-            await _run_retrieval_planner_specialist(context)
+            await _run_retrieval_planner_stage(context)
         except Exception:
             logger.exception("specialist_supervisor_retrieval_planner_uncaught")
 
-        plan = _deterministic_plan_from_retrieval_advice(context)
-        if plan is not None:
+        try:
+            plan, execution_budget = await _resolve_plan_and_budget(context)
+            context.execution_budget = execution_budget
             logger.info(
-                "specialist_supervisor_deterministic_plan",
+                "specialist_supervisor_execution_budget",
                 extra={
                     "primary_domain": plan.primary_domain,
                     "specialists": list(plan.specialists),
                     "strategy": plan.retrieval_strategy,
+                    "budget_tier": execution_budget.tier,
+                    "budget_reasons": list(execution_budget.reasons),
+                    "allow_manager": execution_budget.allow_manager,
+                    "allow_judge": execution_budget.allow_judge,
+                    "allow_repair": execution_budget.allow_repair,
+                    "target_latency_ms": execution_budget.target_latency_ms,
                 },
             )
-        try:
-            if plan is None:
-                plan = await _run_planner(context)
         except Exception:
             logger.exception("specialist_supervisor_planner_uncaught")
             answer = _safe_supervisor_fallback_answer(
@@ -7762,6 +8050,12 @@ async def run_specialist_supervisor(
             )
             await _persist_final_answer(context, answer=answer, route="planner_safe_fallback")
             return SpecialistSupervisorResponse(reason=answer.reason, metadata={"fallback": True}, answer=answer).model_dump(mode="json")
+        plan_metadata = {
+            "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
+            "plan": plan.model_dump(mode="json"),
+            "preview_hint": context.preview_hint or {},
+            **_execution_budget_metadata(plan, execution_budget),
+        }
         if plan.should_deny:
             answer = SupervisorAnswerPayload(
                 message_text=plan.denial_reason or "Nao consigo atender esse pedido neste contexto.",
@@ -7780,17 +8074,11 @@ async def run_specialist_supervisor(
                 context,
                 answer=answer,
                 route="planner_denied",
-                metadata={
-                    "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
-                    "plan": plan.model_dump(mode="json"),
-                },
+                metadata=plan_metadata,
             )
             return SpecialistSupervisorResponse(
                 reason=answer.reason,
-                metadata={
-                    "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
-                    "plan": plan.model_dump(mode="json"),
-                },
+                metadata=plan_metadata,
                 answer=answer,
             ).model_dump(mode="json")
 
@@ -7813,95 +8101,123 @@ async def run_specialist_supervisor(
                 context,
                 answer=answer,
                 route="planner_clarify",
-                metadata={
-                    "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
-                    "plan": plan.model_dump(mode="json"),
-                },
+                metadata=plan_metadata,
             )
             return SpecialistSupervisorResponse(
                 reason=answer.reason,
-                metadata={
-                    "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
-                    "plan": plan.model_dump(mode="json"),
-                },
+                metadata=plan_metadata,
                 answer=answer,
             ).model_dump(mode="json")
 
         try:
-            precomputed_specialist_results = await _execute_planned_specialists(context, plan=plan)
-            multi_direct_answer = _build_multi_specialist_answer_from_results(
+            execution_specialists = _build_budgeted_execution_specialists(
+                context.settings,
+                model=_agent_model_for_role(context.settings, role="specialist"),
+            )
+            precomputed_specialist_results = await _execute_budgeted_specialists(
                 context,
                 plan=plan,
+                budget=execution_budget,
+                specialists=execution_specialists,
+            )
+            specialists_used = [item.specialist_id for item in precomputed_specialist_results]
+            direct_metadata = {
+                **plan_metadata,
+                "specialists_used": specialists_used,
+            }
+
+            multi_direct_answer = None
+            direct_result = None
+            if execution_budget.prefer_direct_answer:
+                multi_direct_answer = _build_multi_specialist_answer_from_results(
+                    context,
+                    plan=plan,
+                    specialist_results=precomputed_specialist_results,
+                )
+                if multi_direct_answer is not None:
+                    await _persist_final_answer(
+                        context,
+                        answer=multi_direct_answer,
+                        route="multi_specialist_direct",
+                        metadata=direct_metadata,
+                    )
+                    return SpecialistSupervisorResponse(
+                        reason=multi_direct_answer.reason,
+                        metadata=direct_metadata,
+                        answer=multi_direct_answer,
+                    ).model_dump(mode="json")
+                direct_result = _direct_compose_candidate(
+                    context,
+                    plan=plan,
+                    specialist_results=precomputed_specialist_results,
+                )
+                if direct_result is not None:
+                    answer = _build_direct_answer_from_specialist(context, plan=plan, result=direct_result)
+                    await _persist_final_answer(
+                        context,
+                        answer=answer,
+                        route="specialist_direct",
+                        metadata=direct_metadata,
+                    )
+                    return SpecialistSupervisorResponse(
+                        reason=answer.reason,
+                        metadata=direct_metadata,
+                        answer=answer,
+                    ).model_dump(mode="json")
+
+            requires_manager = _needs_manager(
+                plan=plan,
+                budget=execution_budget,
                 specialist_results=precomputed_specialist_results,
             )
-            if multi_direct_answer is not None:
-                await _persist_final_answer(
+            if not requires_manager:
+                multi_direct_answer = multi_direct_answer or _build_multi_specialist_answer_from_results(
                     context,
-                    answer=multi_direct_answer,
-                    route="multi_specialist_direct",
-                    metadata={
-                        "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
-                        "plan": plan.model_dump(mode="json"),
-                        "specialists_used": [item.specialist_id for item in precomputed_specialist_results],
-                    },
+                    plan=plan,
+                    specialist_results=precomputed_specialist_results,
                 )
-                return SpecialistSupervisorResponse(
-                    reason=multi_direct_answer.reason,
-                    metadata={
-                        "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
-                        "plan": plan.model_dump(mode="json"),
-                        "specialists_used": [item.specialist_id for item in precomputed_specialist_results],
-                    },
-                    answer=multi_direct_answer,
-                ).model_dump(mode="json")
-            direct_result = _direct_compose_candidate(
+                if multi_direct_answer is not None:
+                    await _persist_final_answer(
+                        context,
+                        answer=multi_direct_answer,
+                        route="multi_specialist_direct",
+                        metadata=direct_metadata,
+                    )
+                    return SpecialistSupervisorResponse(
+                        reason=multi_direct_answer.reason,
+                        metadata=direct_metadata,
+                        answer=multi_direct_answer,
+                    ).model_dump(mode="json")
+                direct_result = direct_result or _direct_compose_candidate(
+                    context,
+                    plan=plan,
+                    specialist_results=precomputed_specialist_results,
+                )
+                if direct_result is not None:
+                    answer = _build_direct_answer_from_specialist(context, plan=plan, result=direct_result)
+                    await _persist_final_answer(
+                        context,
+                        answer=answer,
+                        route="specialist_direct",
+                        metadata=direct_metadata,
+                    )
+                    return SpecialistSupervisorResponse(
+                        reason=answer.reason,
+                        metadata=direct_metadata,
+                        answer=answer,
+                    ).model_dump(mode="json")
+
+            draft, judge, repair_payload = await _run_manager_stack(
                 context,
                 plan=plan,
-                specialist_results=precomputed_specialist_results,
-            )
-            if direct_result is not None:
-                answer = _build_direct_answer_from_specialist(context, plan=plan, result=direct_result)
-                await _persist_final_answer(
-                    context,
-                    answer=answer,
-                    route="specialist_direct",
-                    metadata={
-                        "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
-                        "plan": plan.model_dump(mode="json"),
-                        "specialists_used": [item.specialist_id for item in precomputed_specialist_results],
-                    },
-                )
-                return SpecialistSupervisorResponse(
-                    reason=answer.reason,
-                    metadata={
-                        "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
-                        "plan": plan.model_dump(mode="json"),
-                        "specialists_used": [item.specialist_id for item in precomputed_specialist_results],
-                    },
-                    answer=answer,
-                ).model_dump(mode="json")
-            draft = await _run_manager_with_specialists(
-                context,
-                plan=plan,
-                specialists=_build_execution_specialists(context.settings, _agent_model(context.settings)),
+                budget=execution_budget,
+                specialists=execution_specialists,
                 precomputed_specialist_results=precomputed_specialist_results,
             )
             specialist_results = _merge_specialist_results(
                 precomputed_specialist_results,
                 _parse_specialist_results(context.trace),
             )
-            judge = await _run_judge(context, plan=plan, draft=draft, specialist_results=specialist_results)
-            repair_payload: tuple[RepairDraft, JudgeVerdict] | None = None
-            repaired = await _run_repair_loop(
-                context,
-                plan=plan,
-                draft=draft,
-                judge=judge,
-                specialist_results=specialist_results,
-            )
-            if repaired is not None:
-                draft, judge, repair = repaired
-                repair_payload = (repair, judge)
             gated_answer = _grounding_gate_answer(
                 authenticated=context.request.user.authenticated,
                 plan=plan,
@@ -7926,24 +8242,27 @@ async def run_specialist_supervisor(
                 context,
                 answer=answer,
                 route="manager_safe_fallback",
-                metadata={"plan": plan.model_dump(mode="json"), "fallback": True},
+                metadata={**plan_metadata, "fallback": True},
             )
-            return SpecialistSupervisorResponse(reason=answer.reason, metadata={"plan": plan.model_dump(mode="json"), "fallback": True}, answer=answer).model_dump(mode="json")
+            return SpecialistSupervisorResponse(reason=answer.reason, metadata={**plan_metadata, "fallback": True}, answer=answer).model_dump(mode="json")
         await _persist_final_answer(
             context,
             answer=answer,
             route="manager_judge",
+            metadata={
+                **plan_metadata,
+                "judge": judge.model_dump(mode="json"),
+                "specialists_used": [item.specialist_id for item in specialist_results],
+            },
             trace_payload=(plan, draft, judge),
             repair_payload=repair_payload,
         )
         return SpecialistSupervisorResponse(
             reason=answer.reason,
             metadata={
-                "retrieval_advice": context.retrieval_advice.model_dump(mode="json") if context.retrieval_advice is not None else {},
-                "plan": plan.model_dump(mode="json"),
+                **plan_metadata,
                 "judge": judge.model_dump(mode="json"),
                 "specialists_used": [item.specialist_id for item in specialist_results],
-                "preview_hint": context.preview_hint or {},
             },
             answer=answer,
         ).model_dump(mode="json")

@@ -122,6 +122,8 @@ SpecialistId = Literal[
     "document_specialist",
     "judge_specialist",
 ]
+ExecutionBudgetTier = Literal["cheap", "standard", "premium"]
+PlannerMode = Literal["deterministic", "adaptive"]
 
 
 class SpecialistSpec(BaseModel):
@@ -234,6 +236,24 @@ class RetrievalPlannerAdvice(BaseModel):
     denial_reason: str | None = None
     rationale: str = ""
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+
+
+class ExecutionBudget(BaseModel):
+    tier: ExecutionBudgetTier = "standard"
+    planner_mode: PlannerMode = "deterministic"
+    target_latency_ms: int = Field(default=1500, ge=100)
+    max_specialists: int = Field(default=1, ge=0, le=4)
+    allow_parallel_specialists: bool = True
+    allow_manager: bool = False
+    allow_judge: bool = False
+    allow_repair: bool = False
+    allow_session_memory: bool = False
+    prefer_direct_answer: bool = True
+    specialist_max_turns: int = Field(default=4, ge=1, le=12)
+    manager_max_turns: int = Field(default=6, ge=1, le=12)
+    judge_max_turns: int = Field(default=3, ge=1, le=8)
+    repair_max_turns: int = Field(default=3, ge=1, le=8)
+    reasons: list[str] = Field(default_factory=list)
 
 
 class SpecialistResult(BaseModel):

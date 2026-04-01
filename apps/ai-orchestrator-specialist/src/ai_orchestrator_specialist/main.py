@@ -38,10 +38,21 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-5.4"
+    openai_fast_model: str | None = None
+    openai_reasoning_model: str | None = None
     google_api_key: str | None = None
     google_model: str = "gemini-2.5-flash"
+    google_fast_model: str | None = None
+    google_reasoning_model: str | None = None
+    planner_model: str | None = None
+    specialist_model: str | None = None
+    manager_model: str | None = None
+    judge_model: str | None = None
+    repair_model: str | None = None
+    guardrail_model: str | None = None
     database_url: str = "sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db"
     agent_memory_url: str = "sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db"
+    agent_memory_dir: str | None = None
     public_resource_cache_ttl_seconds: float = 120.0
 
 
