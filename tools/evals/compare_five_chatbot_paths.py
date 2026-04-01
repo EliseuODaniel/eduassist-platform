@@ -11,12 +11,18 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
+from dotenv import load_dotenv
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(REPO_ROOT / '.env', override=False)
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 AI_ORCHESTRATOR_SRC = REPO_ROOT / 'apps/ai-orchestrator/src'
 if str(AI_ORCHESTRATOR_SRC) not in sys.path:
     sys.path.insert(0, str(AI_ORCHESTRATOR_SRC))
+SPECIALIST_SUPERVISOR_SRC = REPO_ROOT / 'apps/ai-orchestrator-specialist/src'
+if str(SPECIALIST_SUPERVISOR_SRC) not in sys.path:
+    sys.path.insert(0, str(SPECIALIST_SUPERVISOR_SRC))
 
 from ai_orchestrator.engine_selector import build_engine_bundle
 from ai_orchestrator.main import Settings
@@ -36,6 +42,10 @@ DEFAULT_PROMPTS = REPO_ROOT / 'tests/evals/datasets/five_path_random_probe_cases
 DEFAULT_REPORT = REPO_ROOT / 'docs/architecture/five-path-chatbot-comparison-report.md'
 DEFAULT_JSON_REPORT = REPO_ROOT / 'docs/architecture/five-path-chatbot-comparison-report.json'
 STACKS = ('langgraph', 'crewai', 'python_functions', 'llamaindex', 'specialist_supervisor')
+
+
+def _specialist_benchmark_mode() -> str:
+    return str(os.getenv('SPECIALIST_SUPERVISOR_BENCHMARK_MODE', 'pilot') or 'pilot').strip().lower()
 
 
 def _load_prompts(path: str) -> list[dict[str, Any]]:
@@ -78,6 +88,54 @@ def _user_for_slice(entry: dict[str, Any]) -> UserContext:
 
 
 async def _run_turn(*, stack: str, entry: dict[str, Any], timeout_seconds: float) -> dict[str, Any]:
+    if stack == 'specialist_supervisor' and _specialist_benchmark_mode() == 'source':
+        from ai_orchestrator_specialist.main import Settings as SpecialistSettings
+        from ai_orchestrator_specialist.models import SpecialistSupervisorRequest
+        from ai_orchestrator_specialist.runtime import run_specialist_supervisor
+
+        request = SpecialistSupervisorRequest(
+            message=str(entry['prompt']),
+            conversation_id=f"{entry.get('run_prefix') or 'debug:five-path'}:{entry.get('thread_id') or 'single'}:{stack}",
+            telegram_chat_id=entry.get('telegram_chat_id'),
+            channel='telegram',
+            user=_user_for_slice(entry).model_dump(mode='json'),
+            allow_graph_rag=True,
+            allow_handoff=True,
+        )
+        settings = SpecialistSettings(
+            api_core_url=os.getenv('API_CORE_URL', 'http://127.0.0.1:8001'),
+            orchestrator_url=os.getenv('AI_ORCHESTRATOR_URL', 'http://127.0.0.1:8002'),
+            internal_api_token=os.getenv('INTERNAL_API_TOKEN', 'dev-internal-token'),
+            openai_api_key=os.getenv('OPENAI_API_KEY'),
+            google_api_key=os.getenv('GOOGLE_API_KEY'),
+        )
+        started = perf_counter()
+        try:
+            payload = await asyncio.wait_for(
+                run_specialist_supervisor(request=request, settings=settings),
+                timeout=timeout_seconds,
+            )
+            answer = payload.get('answer') if isinstance(payload, dict) and isinstance(payload.get('answer'), dict) else {}
+            latency_ms = round((perf_counter() - started) * 1000, 1)
+            return {
+                'status': 200,
+                'body': answer,
+                'latency_ms': latency_ms,
+                'mode': answer.get('mode') or 'unknown',
+                'reason': answer.get('reason') or str((payload or {}).get('reason') or ''),
+                'graph_path': list(answer.get('graph_path') or []),
+            }
+        except Exception as exc:
+            latency_ms = round((perf_counter() - started) * 1000, 1)
+            return {
+                'status': 599,
+                'body': {'error': f'{type(exc).__name__}: {exc}'},
+                'latency_ms': latency_ms,
+                'mode': 'error',
+                'reason': 'exception',
+                'graph_path': [],
+            }
+
     settings = _build_settings(stack=stack)
     run_prefix = str(entry.get('run_prefix') or 'debug:five-path')
     conversation_id = f"{run_prefix}:{entry.get('thread_id') or 'single'}:{stack}"

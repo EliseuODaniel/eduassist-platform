@@ -4,6 +4,9 @@ from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+from pydantic import model_validator
+
+from eduassist_observability import canonicalize_evidence_strategy, canonicalize_risk_flags
 
 
 class ConversationChannel(StrEnum):
@@ -78,6 +81,16 @@ class SupervisorAnswerPayload(BaseModel):
     graph_path: list[str] = Field(default_factory=list)
     risk_flags: list[str] = Field(default_factory=list)
     reason: str
+
+    @model_validator(mode="after")
+    def _normalize_contract(self) -> "SupervisorAnswerPayload":
+        self.risk_flags = canonicalize_risk_flags(self.risk_flags)
+        if self.evidence_pack is not None:
+            self.evidence_pack.strategy = canonicalize_evidence_strategy(
+                self.evidence_pack.strategy,
+                retrieval_backend=self.retrieval_backend,
+            )
+        return self
 
 
 class SpecialistSupervisorResponse(BaseModel):

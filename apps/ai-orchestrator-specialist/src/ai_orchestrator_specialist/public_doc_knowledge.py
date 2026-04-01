@@ -188,6 +188,7 @@ def compose_public_permanence_and_family_support(profile: dict[str, Any] | None)
     return " ".join(
         part
         for part in (
+            "Quando o tema e permanencia escolar, os documentos publicos convergem em acompanhamento continuo do estudante, dialogo com a familia e intervencoes antes que a dificuldade vire ruptura.",
             _first_line(support),
             _first_line(mentoring),
             _first_line(family),

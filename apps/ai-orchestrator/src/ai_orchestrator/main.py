@@ -14,7 +14,12 @@ from urllib.request import Request, urlopen
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from eduassist_observability import build_runtime_diagnostics, configure_observability
+from eduassist_observability import (
+    build_runtime_diagnostics,
+    canonicalize_evidence_strategy,
+    canonicalize_risk_flags,
+    configure_observability,
+)
 
 from .engine_selector import (
     SUPPORTED_PRIMARY_STACKS,
@@ -543,7 +548,10 @@ def _build_debug_trace(
     evidence_pack = response.evidence_pack
     retrieval: dict[str, Any] = {
         'backend': response.retrieval_backend.value,
-        'strategy': evidence_pack.strategy if evidence_pack is not None else 'none',
+        'strategy': canonicalize_evidence_strategy(
+            evidence_pack.strategy if evidence_pack is not None else 'none',
+            retrieval_backend=response.retrieval_backend.value,
+        ),
         'source_count': evidence_pack.source_count if evidence_pack is not None else 0,
         'support_count': evidence_pack.support_count if evidence_pack is not None else 0,
         'citation_count': len(response.citations),
@@ -557,6 +565,7 @@ def _build_debug_trace(
         'agents': agents,
         'resources': resources,
         'selected_tools': list(response.selected_tools),
+        'risk_flags': canonicalize_risk_flags(response.risk_flags),
         'retrieval': retrieval,
         'reason': response.reason,
     }

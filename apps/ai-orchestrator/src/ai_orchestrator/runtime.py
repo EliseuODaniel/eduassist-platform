@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import io
 import re
@@ -12,7 +13,14 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 import httpx
-from eduassist_observability import record_counter, record_histogram, set_span_attributes, start_span
+from eduassist_observability import (
+    canonicalize_evidence_strategy,
+    canonicalize_risk_flags,
+    record_counter,
+    record_histogram,
+    set_span_attributes,
+    start_span,
+)
 from PIL import Image, ImageDraw, ImageFont
 
 from .graph_rag_runtime import graph_rag_workspace_ready, run_graph_rag_query
@@ -27,6 +35,7 @@ from .llm_provider import (
 )
 from .graph import to_preview
 from .crewai_trace import build_crewai_trace_sections
+from .specialist_trace import build_specialist_trace_sections
 from .entity_resolution import resolve_entity_hints
 from .langgraph_runtime import (
     get_langgraph_artifacts,
@@ -7803,6 +7812,19 @@ async def _persist_operational_trace(
             trace_request_payload['crewai'] = crewai_trace_sections['request']
 
     trace_response_payload = {
+        'mode': preview.mode.value,
+        'domain': preview.classification.domain.value,
+        'access_tier': preview.classification.access_tier.value,
+        'retrieval_backend': preview.retrieval_backend.value,
+        'graph_path': list(getattr(preview, 'graph_path', []) or []),
+        'selected_tools': list(getattr(preview, 'selected_tools', []) or []),
+        'risk_flags': canonicalize_risk_flags(getattr(preview, 'risk_flags', [])),
+        'evidence_strategy': canonicalize_evidence_strategy(
+            preview.mode.value,
+            retrieval_backend=preview.retrieval_backend.value,
+        ),
+        'evidence_source_count': citations_count,
+        'evidence_support_count': citations_count or len(getattr(preview, 'selected_tools', []) or []),
         'message_length': len(message_text),
         'citations_count': citations_count,
         'suggested_reply_count': suggested_reply_count,
@@ -7824,6 +7846,15 @@ async def _persist_operational_trace(
         crewai_trace_sections = build_crewai_trace_sections(engine_trace_metadata)
         if crewai_trace_sections.get('response'):
             trace_response_payload['crewai'] = crewai_trace_sections['response']
+    if engine_name == 'specialist_supervisor':
+        specialist_trace_sections = build_specialist_trace_sections(
+            engine_trace_metadata,
+            graph_path=list(getattr(preview, 'graph_path', []) or []),
+        )
+        if specialist_trace_sections.get('request'):
+            trace_request_payload['specialist_supervisor'] = specialist_trace_sections['request']
+        if specialist_trace_sections.get('response'):
+            trace_response_payload['specialist_supervisor'] = specialist_trace_sections['response']
     await _api_core_post(
         settings=settings,
         path='/v1/internal/conversations/tool-calls',
@@ -12826,6 +12857,140 @@ def _format_unique_subjects(summary: dict[str, Any]) -> list[str]:
     return lines or ['- Nenhuma disciplina encontrada.']
 
 
+def _segment_filter_for_teacher_message(message: str) -> str | None:
+    normalized = _normalize_text(message)
+    if any(term in normalized for term in {'ensino medio', 'ensino médio', 'medio', 'médio'}):
+        return 'medio'
+    if 'fundamental' in normalized or any(token in normalized for token in {'6o', '7o', '8o', '9o'}):
+        return 'fundamental'
+    return None
+
+
+def _assignment_matches_teacher_segment(assignment: dict[str, Any], segment_filter: str | None) -> bool:
+    if not segment_filter:
+        return True
+    class_name = _normalize_text(str(assignment.get('class_name', '') or ''))
+    if segment_filter == 'medio':
+        return any(
+            token in class_name
+            for token in {'medio', 'médio', '1a serie', '2a serie', '3a serie', '1a série', '2a série', '3a série', '1em', '2em', '3em'}
+        )
+    return any(
+        token in class_name for token in {'fundamental', '6o', '7o', '8o', '9o', '6 ano', '7 ano', '8 ano', '9 ano'}
+    )
+
+
+def _teacher_subject_filter(assignments: list[dict[str, Any]], *, message: str) -> str | None:
+    normalized = _normalize_text(message)
+    for item in assignments:
+        subject_name = str(item.get('subject_name', '') or '').strip()
+        if not subject_name:
+            continue
+        subject_normalized = _normalize_text(subject_name)
+        if subject_normalized and subject_normalized in normalized:
+            return subject_name
+    return None
+
+
+def _render_teacher_schedule_answer(summary: dict[str, Any], *, message: str) -> str:
+    teacher_name = str(summary.get('teacher_name', 'Professor')).strip() or 'Professor'
+    assignments = summary.get('assignments') if isinstance(summary.get('assignments'), list) else []
+    segment_filter = _segment_filter_for_teacher_message(message)
+    subject_filter = _teacher_subject_filter(assignments, message=message)
+    filtered = [
+        item for item in assignments
+        if isinstance(item, dict)
+        and _assignment_matches_teacher_segment(item, segment_filter)
+        and (not subject_filter or str(item.get('subject_name', '') or '').strip() == subject_filter)
+    ]
+    normalized = _normalize_text(message)
+    if ('so do ensino medio' in normalized or 'só do ensino médio' in normalized) and assignments:
+        return 'Sim, sua grade atual fica concentrada no Ensino Medio.' if len(filtered) == len(assignments) else 'Nao. Sua grade atual nao e so do Ensino Medio.'
+    if ('so do fundamental' in normalized or 'só do fundamental' in normalized) and assignments:
+        return 'Sim, sua grade atual fica concentrada no Ensino Fundamental II.' if len(filtered) == len(assignments) else 'Nao. Sua grade atual nao e so do Ensino Fundamental II.'
+    if 'disciplin' in normalized and 'turma' not in normalized and 'classe' not in normalized:
+        seen: set[str] = set()
+        lines: list[str] = []
+        for item in filtered:
+            subject_name = str(item.get('subject_name', 'Disciplina')).strip()
+            if subject_name and subject_name not in seen:
+                seen.add(subject_name)
+                lines.append(f'- {subject_name}')
+        return '\n'.join([f'Disciplinas de {teacher_name}:', *(lines or ['- Nenhuma disciplina encontrada.'])])
+    if ('turma' in normalized or 'classe' in normalized) and 'disciplin' not in normalized:
+        seen: set[str] = set()
+        lines: list[str] = []
+        for item in filtered:
+            class_name = str(item.get('class_name', 'Turma')).strip()
+            if class_name and class_name not in seen:
+                seen.add(class_name)
+                lines.append(f'- {class_name}')
+        return '\n'.join([f'Turmas de {teacher_name}:', *(lines or ['- Nenhuma turma encontrada.'])])
+    if subject_filter and ('turma' in normalized or 'classe' in normalized):
+        seen: set[str] = set()
+        lines: list[str] = []
+        for item in filtered:
+            class_name = str(item.get('class_name', 'Turma')).strip()
+            if class_name and class_name not in seen:
+                seen.add(class_name)
+                lines.append(f'- {class_name}')
+        return '\n'.join([f'Turmas de {teacher_name} em {subject_filter}:', *(lines or ['- Nenhuma turma encontrada.'])])
+    lines = [
+        '- {class_name} - {subject_name} ({academic_year})'.format(
+            class_name=item.get('class_name', 'Turma'),
+            subject_name=item.get('subject_name', 'Disciplina'),
+            academic_year=item.get('academic_year', '---'),
+        )
+        for item in filtered[:8]
+    ]
+    return '\n'.join([f'Grade docente de {teacher_name}:', *(lines or ['- Nenhuma alocacao docente encontrada.'])])
+
+
+def _compose_teacher_schedule_summary_answer(
+    summary: dict[str, Any],
+    *,
+    profile: dict[str, Any] | None,
+    message: str,
+) -> str:
+    teacher_name = str(summary.get('teacher_name', 'Professor')).strip() or 'Professor'
+    assignments = summary.get('assignments') if isinstance(summary.get('assignments'), list) else []
+    filtered = [
+        item for item in assignments
+        if isinstance(item, dict) and _assignment_matches_teacher_segment(item, _segment_filter_for_teacher_message(message))
+    ]
+    classes: list[str] = []
+    subjects: list[str] = []
+    seen_classes: set[str] = set()
+    seen_subjects: set[str] = set()
+    for item in filtered:
+        class_name = str(item.get('class_name', '') or '').strip()
+        subject_name = str(item.get('subject_name', '') or '').strip()
+        if class_name and class_name not in seen_classes:
+            seen_classes.add(class_name)
+            classes.append(class_name)
+        if subject_name and subject_name not in seen_subjects:
+            seen_subjects.add(subject_name)
+            subjects.append(subject_name)
+    public_events = (profile or {}).get('public_calendar_events') if isinstance(profile, dict) else None
+    event_titles: list[str] = []
+    if isinstance(public_events, list):
+        for item in public_events:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get('title', '') or '').strip()
+            if title and title not in event_titles:
+                event_titles.append(title)
+    parts = [f'Resumo docente de {teacher_name}: {len(classes)} turma(s) e {len(subjects)} disciplina(s) ativas nesta base.']
+    if subjects:
+        parts.append('Disciplinas: ' + ', '.join(subjects[:4]) + '.')
+    if classes:
+        parts.append('Turmas: ' + ', '.join(classes[:4]) + '.')
+    if event_titles:
+        parts.append('No calendario publico, vale acompanhar marcos como ' + ', '.join(event_titles[:2]) + '.')
+    parts.append('Para comunicacao escolar geral, a secretaria e o canal institucional mais seguro; para alinhamentos pedagogicos, siga com coordenacao e orientacao conforme o assunto.')
+    return ' '.join(part for part in parts if part).strip()
+
+
 def _build_protected_record_specialists(*, preview: Any, role_code: str) -> tuple[InternalSpecialistPlan, ...]:
     if preview.classification.domain is QueryDomain.institution and {
         'get_administrative_status',
@@ -12905,35 +13070,43 @@ async def _execute_teacher_protected_specialist(
     ):
         return _compose_teacher_access_scope_answer(actor)
 
-    payload, status_code = await _api_core_get(
-        settings=settings,
-        path='/v1/teachers/me/schedule',
-        params={'telegram_chat_id': request.telegram_chat_id},
-    )
+    payload: dict[str, Any] | None = None
+    status_code: int | None = None
+    for attempt in range(2):
+        payload, status_code = await _api_core_get(
+            settings=settings,
+            path='/v1/teachers/me/schedule',
+            params={'telegram_chat_id': request.telegram_chat_id},
+        )
+        if status_code == 200 and isinstance(payload, dict):
+            break
+        if attempt == 0:
+            await asyncio.sleep(0.15)
     if status_code != 200 or payload is None:
-        return 'Nao consegui consultar sua grade docente agora. Tente novamente em instantes.'
+        return (
+            'Nao consegui abrir sua grade docente agora. '
+            'Eu reconheci seu perfil de professor, mas a consulta protegida de agenda nao respondeu a tempo. '
+            'Tente novamente em instantes.'
+        )
 
     summary = payload.get('summary', {})
     teacher_name = summary.get('teacher_name', actor.get('full_name', 'Professor'))
     if not isinstance(summary, dict):
         return 'Nao consegui interpretar o retorno da grade docente.'
-
-    if _contains_any(message, TEACHER_CLASS_TERMS) and not _contains_any(message, TEACHER_SUBJECT_TERMS):
-        lines = [f'Turmas de {teacher_name}:', *_format_unique_classes(summary)]
-        return '\n'.join(lines)
-
-    if _contains_any(message, TEACHER_SUBJECT_TERMS) and not _contains_any(message, TEACHER_CLASS_TERMS):
-        lines = [f'Disciplinas de {teacher_name}:', *_format_unique_subjects(summary)]
-        return '\n'.join(lines)
-
-    assignments = _format_assignments(summary)
-    lines = [f'Grade docente de {teacher_name}:', *assignments]
+    if any(term in normalized_message for term in {'rotina docente', 'resuma minha rotina docente', 'resumo enxuto', 'alocacao', 'alocação'}):
+        return _compose_teacher_schedule_summary_answer(
+            summary,
+            profile=await _fetch_public_school_profile(settings=settings),
+            message=message,
+        )
+    answer_text = _render_teacher_schedule_answer(summary, message=message)
     if 'horario' in normalized_message or 'agenda' in normalized_message:
-        lines.append(
-            'Nesta base mockada atual, o detalhamento por bloco de horario ainda nao foi modelado; '
+        return (
+            f'{answer_text}\n'
+            'Nesta base atual, o detalhamento por bloco de horario ainda nao foi modelado; '
             'por enquanto eu mostro suas alocacoes de turmas e disciplinas.'
         )
-    return '\n'.join(lines)
+    return answer_text
 
 
 async def _execute_protected_records_specialist(

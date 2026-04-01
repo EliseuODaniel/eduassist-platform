@@ -13,9 +13,19 @@ from typing import Any
 
 import httpx
 from agents import Agent, ModelSettings, RunConfig, RunContextWrapper, RunHooks, Runner, function_tool, set_tracing_disabled
-from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
 from agents.extensions.models.litellm_model import LitellmModel
 
+from .answer_payloads import (
+    access_tier_for_domain as _access_tier_for_domain,
+    aggregate_citations as _aggregate_citations,
+    build_answer_payload as _build_answer_payload,
+    build_evidence_pack as _build_evidence_pack,
+    default_suggested_replies as _default_suggested_replies,
+    grounding_gate_answer as _grounding_gate_answer,
+    mode_from_strategy as _mode_from_strategy,
+    retrieval_backend_from_strategy as _retrieval_backend_from_strategy,
+    safe_supervisor_fallback_answer as _safe_supervisor_fallback_answer,
+)
 from .models import (
     IntentRouteSpec,
     JudgeVerdict,
@@ -49,6 +59,7 @@ from .public_doc_knowledge import (
     compose_public_process_compare,
 )
 from .registry import get_specialist_registry
+from .session_memory import build_supervisor_session
 
 logger = logging.getLogger(__name__)
 PASSING_GRADE_TARGET = Decimal("7.0")
@@ -529,39 +540,6 @@ def _effective_conversation_id(request: SpecialistSupervisorRequest) -> str:
     if request.channel == "telegram" and request.telegram_chat_id is not None:
         return f"telegram:{request.telegram_chat_id}"
     return f"{request.channel}:anonymous"
-
-
-def _sqlalchemy_url(database_url: str) -> str:
-    normalized = str(database_url or "").strip()
-    if normalized.startswith("sqlite+aiosqlite:///"):
-        return normalized
-    if normalized.startswith("sqlite:///"):
-        return normalized.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
-    if normalized.startswith("postgresql+asyncpg://"):
-        return normalized
-    if normalized.startswith("postgresql://"):
-        return normalized.replace("postgresql://", "postgresql+asyncpg://", 1)
-    return normalized
-
-
-def _sqlite_database_path(database_url: str) -> str | None:
-    normalized = _sqlalchemy_url(database_url)
-    if normalized.startswith("sqlite+aiosqlite:///"):
-        return normalized.split("sqlite+aiosqlite:///", 1)[1]
-    if normalized.startswith("sqlite:///"):
-        return normalized.split("sqlite:///", 1)[1]
-    return None
-
-
-def _prepare_agent_memory(database_url: str) -> tuple[str, bool]:
-    normalized = _sqlalchemy_url(database_url)
-    sqlite_path = _sqlite_database_path(normalized)
-    if sqlite_path:
-        parent = os.path.dirname(sqlite_path)
-        if parent:
-            os.makedirs(parent, exist_ok=True)
-        return normalized, True
-    return normalized, False
 
 
 def _stringify_payload_value(value: Any, *, preferred_keys: tuple[str, ...] = ()) -> str:
@@ -1054,30 +1032,45 @@ async def _persist_final_answer(
     metadata: dict[str, Any] | None = None,
     trace_payload: tuple[SupervisorPlan, ManagerDraft, JudgeVerdict] | None = None,
     repair_payload: tuple[RepairDraft, JudgeVerdict] | None = None,
+    timeout_seconds: float | None = None,
 ) -> None:
     operational_memory = _build_operational_memory(ctx, answer=answer, route=route)
     ctx.operational_memory = operational_memory
-    await _persist_conversation_turn(ctx, answer.message_text)
-    if trace_payload is not None:
-        plan, draft, judge = trace_payload
-        await _persist_trace(
+
+    async def _persist() -> None:
+        await _persist_conversation_turn(ctx, answer.message_text)
+        if trace_payload is not None:
+            plan, draft, judge = trace_payload
+            await _persist_trace(
+                ctx,
+                retrieval_advice=ctx.retrieval_advice,
+                plan=plan,
+                draft=draft,
+                judge=judge,
+                answer=answer,
+                operational_memory=operational_memory,
+                repair_payload=repair_payload,
+            )
+            return
+        await _persist_light_trace(
             ctx,
-            retrieval_advice=ctx.retrieval_advice,
-            plan=plan,
-            draft=draft,
-            judge=judge,
             answer=answer,
+            route=route,
+            metadata=metadata,
             operational_memory=operational_memory,
-            repair_payload=repair_payload,
         )
+
+    if timeout_seconds is None:
+        await _persist()
         return
-    await _persist_light_trace(
-        ctx,
-        answer=answer,
-        route=route,
-        metadata=metadata,
-        operational_memory=operational_memory,
-    )
+
+    try:
+        await asyncio.wait_for(_persist(), timeout=timeout_seconds)
+    except TimeoutError:
+        logger.warning(
+            "specialist_supervisor_persist_final_timeout",
+            extra={"route": route, "timeout_seconds": timeout_seconds},
+        )
 
 
 def _linked_students(actor: dict[str, Any] | None, *, capability: str) -> list[dict[str, Any]]:
@@ -3322,6 +3315,176 @@ def _looks_like_public_graph_rag_query(message: str) -> bool:
             _looks_like_process_compare_query,
         )
     )
+
+
+def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message: str) -> SupervisorAnswerPayload | None:
+    normalized = _normalize_text(message)
+
+    if profile and _looks_like_family_new_calendar_enrollment_query(message):
+        answer_text = compose_public_family_new_calendar_assessment_enrollment()
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_preflight:family_new_calendar_enrollment",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Sintese deterministica de familia nova antes do loop premium.",
+                    source_count=3,
+                    support_count=3,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Calendario Letivo 2026", detail="data/corpus/public/calendario-letivo-2026.md"),
+                        MessageEvidenceSupport(kind="document", label="Agenda de Avaliacoes 2026", detail="data/corpus/public/agenda-avaliacoes-recuperacoes-e-simulados-2026.md"),
+                        MessageEvidenceSupport(kind="document", label="Manual de Matricula", detail="data/corpus/public/manual-matricula-ensino-medio.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "preflight", "family_new_calendar_enrollment"],
+                reason="specialist_supervisor_preflight:family_new_calendar_enrollment",
+            )
+
+    if "secretaria" in normalized and "credencia" in normalized and "document" in normalized:
+        answer_text = _compose_service_credentials_bundle_answer(profile)
+        return SupervisorAnswerPayload(
+            message_text=answer_text,
+            mode="structured_tool",
+            classification=MessageIntentClassification(
+                domain="institution",
+                access_tier="public",
+                confidence=0.99,
+                reason="specialist_supervisor_preflight:service_credentials_bundle",
+            ),
+            evidence_pack=MessageEvidencePack(
+                strategy="direct_answer",
+                summary="Resumo publico deterministico sobre secretaria, portal, credenciais e documentos.",
+                source_count=2,
+                support_count=2,
+                supports=[
+                    MessageEvidenceSupport(kind="document", label="Secretaria, Documentacao e Prazos", detail="data/corpus/public/secretaria-documentacao-e-prazos.md"),
+                    MessageEvidenceSupport(kind="document", label="Politica de Uso do Portal, Aplicativo e Credenciais", detail="data/corpus/public/politica-uso-do-portal-aplicativo-e-credenciais.md"),
+                ],
+            ),
+            suggested_replies=_default_suggested_replies("institution"),
+            graph_path=["specialist_supervisor", "preflight", "service_credentials_bundle"],
+            reason="specialist_supervisor_preflight:service_credentials_bundle",
+        )
+
+    if _looks_like_permanence_family_query(message):
+        answer_text = compose_public_permanence_and_family_support(profile)
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_preflight:permanence_family_support",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Sintese deterministica sobre permanencia escolar e acompanhamento da familia.",
+                    source_count=3,
+                    support_count=3,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Orientacao, Apoio e Vida Escolar", detail="data/corpus/public/orientacao-apoio-e-vida-escolar.md"),
+                        MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
+                        MessageEvidenceSupport(kind="policy", label="Projeto de vida", detail="academic_policy.project_of_life_summary"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "preflight", "permanence_family_support"],
+                reason="specialist_supervisor_preflight:permanence_family_support",
+            )
+
+    if _looks_like_health_authorization_bridge_query(message):
+        answer_text = compose_public_health_authorizations_bridge()
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_preflight:health_authorizations_bridge",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Sintese deterministica cruzando saude, medicacao, segunda chamada e autorizacoes.",
+                    source_count=3,
+                    support_count=3,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Protocolo de Saude, Medicacao e Emergencias", detail="data/corpus/public/protocolo-saude-medicacao-e-emergencias.md"),
+                        MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
+                        MessageEvidenceSupport(kind="document", label="Saidas Pedagogicas, Eventos e Autorizacoes", detail="data/corpus/public/saidas-pedagogicas-eventos-e-autorizacoes.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "preflight", "health_authorizations_bridge"],
+                reason="specialist_supervisor_preflight:health_authorizations_bridge",
+            )
+
+    if _looks_like_first_month_risks_query(message):
+        answer_text = compose_public_first_month_risks(profile)
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_preflight:first_month_risks",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Sintese deterministica dos riscos operacionais do primeiro mes.",
+                    source_count=3,
+                    support_count=3,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Secretaria, Documentacao e Prazos", detail="data/corpus/public/secretaria-documentacao-e-prazos.md"),
+                        MessageEvidenceSupport(kind="document", label="Politica de Uso do Portal, Aplicativo e Credenciais", detail="data/corpus/public/politica-uso-do-portal-aplicativo-e-credenciais.md"),
+                        MessageEvidenceSupport(kind="document", label="Manual de Regulamentos Gerais", detail="data/corpus/public/manual-regulamentos-gerais.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "preflight", "first_month_risks"],
+                reason="specialist_supervisor_preflight:first_month_risks",
+            )
+
+    if _looks_like_process_compare_query(message):
+        answer_text = compose_public_process_compare()
+        if answer_text:
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_preflight:process_compare",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="direct_answer",
+                    summary="Comparacao deterministica de rematricula, transferencia e cancelamento.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[
+                        MessageEvidenceSupport(kind="document", label="Rematricula, Transferencia e Cancelamento 2026", detail="data/corpus/public/rematricula-transferencia-e-cancelamento-2026.md"),
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "preflight", "process_compare"],
+                reason="specialist_supervisor_preflight:process_compare",
+            )
+
+    return None
 
 
 def _parse_public_datetime(value: Any) -> datetime | None:
@@ -7921,126 +8084,6 @@ def _build_direct_answer_from_specialist(
     )
 
 
-def _aggregate_citations(results: list[SpecialistResult]) -> list[MessageResponseCitation]:
-    seen: set[tuple[str, str]] = set()
-    citations: list[MessageResponseCitation] = []
-    for result in results:
-        for citation in result.citations:
-            key = (citation.document_title, citation.chunk_id)
-            if key in seen:
-                continue
-            seen.add(key)
-            citations.append(citation)
-    return citations[:6]
-
-
-def _build_evidence_pack(plan: SupervisorPlan, results: list[SpecialistResult]) -> MessageEvidencePack:
-    supports: list[MessageEvidenceSupport] = []
-    for result in results:
-        supports.append(
-            MessageEvidenceSupport(
-                kind="specialist",
-                label=result.specialist_id,
-                detail=result.evidence_summary,
-                excerpt=_safe_excerpt(result.answer_text),
-            )
-        )
-        for point in result.support_points[:2]:
-            supports.append(
-                MessageEvidenceSupport(
-                    kind="support_point",
-                    label=result.specialist_id,
-                    excerpt=_safe_excerpt(point),
-                )
-            )
-        for citation in result.citations[:2]:
-            supports.append(
-                MessageEvidenceSupport(
-                    kind="citation",
-                    label=citation.document_title,
-                    detail=f"{citation.version_label} · {citation.chunk_id}",
-                    excerpt=_safe_excerpt(citation.excerpt),
-                )
-            )
-    return MessageEvidencePack(
-        strategy=plan.retrieval_strategy,
-        summary=f"Resposta coordenada pelo specialist supervisor com {len(results)} especialista(s).",
-        source_count=len(_aggregate_citations(results)) or len(results),
-        support_count=len(supports),
-        supports=supports[:8],
-    )
-
-
-def _default_suggested_replies(domain: str) -> list[MessageResponseSuggestedReply]:
-    suggestions_by_domain = {
-        "institution": ["Quais documentos preciso para matricula?", "Quero agendar uma visita", "Qual o horario da biblioteca?", "A escola segue a BNCC?"],
-        "academic": ["E as faltas?", "E as proximas provas?", "Quanto falta para passar?", "E do outro aluno?"],
-        "finance": ["Tem boleto em aberto?", "Qual o proximo vencimento?", "Quanto seria a matricula para 3 filhos?", "E do outro aluno?"],
-        "support": ["Qual o status do protocolo?", "Quero remarcar a visita", "Quero cancelar a visita", "Resume meu pedido"],
-    }
-    return [MessageResponseSuggestedReply(text=text) for text in suggestions_by_domain.get(domain, suggestions_by_domain["institution"])[:4]]
-
-
-def _mode_from_strategy(strategy: str) -> str:
-    if strategy == "graph_rag":
-        return "graph_rag"
-    if strategy == "hybrid_retrieval" or strategy == "document_search":
-        return "hybrid_retrieval"
-    if strategy == "clarify":
-        return "clarify"
-    if strategy == "deny":
-        return "deny"
-    return "structured_tool"
-
-
-def _retrieval_backend_from_strategy(strategy: str) -> str:
-    if strategy == "graph_rag":
-        return "graph_rag"
-    if strategy in {"hybrid_retrieval", "document_search"}:
-        return "qdrant_hybrid"
-    return "none"
-
-
-def _access_tier_for_domain(domain: str, authenticated: bool) -> str:
-    if domain in {"academic", "finance"}:
-        return "authenticated" if authenticated else "public"
-    if domain in {"support", "workflow"}:
-        return "authenticated" if authenticated else "public"
-    if authenticated:
-        return "authenticated"
-    return "public"
-
-
-def _safe_supervisor_fallback_answer(ctx: SupervisorRunContext, *, reason: str) -> SupervisorAnswerPayload:
-    preview = ctx.preview_hint or {}
-    classification = _preview_classification_dict(ctx.preview_hint)
-    domain = str(classification.get("domain") or "institution").strip().lower() or "institution"
-    if ctx.request.user.authenticated:
-        message_text = (
-            "Nao consegui consolidar essa resposta premium com seguranca agora. "
-            "Se quiser, me diga exatamente se voce quer ver notas, frequencia, documentacao, financeiro ou status de protocolo."
-        )
-    else:
-        message_text = (
-            "Nao consegui concluir essa resposta premium agora. "
-            "Se quiser, reformule em uma frase mais direta ou repita em instantes."
-        )
-    return SupervisorAnswerPayload(
-        message_text=message_text,
-        mode="clarify",
-        classification=MessageIntentClassification(
-            domain=domain,
-            access_tier=_access_tier_for_domain(domain, ctx.request.user.authenticated),
-            confidence=0.0,
-            reason=reason,
-        ),
-        suggested_replies=_default_suggested_replies(domain),
-        graph_path=["specialist_supervisor", "safe_fallback"],
-        risk_flags=["dependency_unavailable"],
-        reason=reason,
-    )
-
-
 def _build_manager_agent(*, settings: Any, model: Any, plan: SupervisorPlan, specialist_tools: list[Any]) -> Agent[SupervisorRunContext]:
     structured = _supports_tool_json_outputs(settings)
     return Agent[SupervisorRunContext](
@@ -8218,12 +8261,10 @@ async def _run_manager_with_specialists(
             )
         )
     manager = _build_manager_agent(settings=ctx.settings, model=model, plan=plan, specialist_tools=specialist_tools)
-    memory_url, create_memory_tables = _prepare_agent_memory(getattr(ctx.settings, "agent_memory_url", ctx.settings.database_url))
     try:
-        session = SQLAlchemySession.from_url(
-            _effective_conversation_id(ctx.request),
-            url=memory_url,
-            create_tables=create_memory_tables,
+        session = build_supervisor_session(
+            conversation_id=_effective_conversation_id(ctx.request),
+            agent_memory_url=getattr(ctx.settings, "agent_memory_url", ctx.settings.database_url),
         )
     except Exception as exc:
         logger.warning("specialist_session_memory_unavailable: %s", exc)
@@ -8340,115 +8381,6 @@ async def _run_repair_loop(
     return repaired_draft, repaired_judge, repair
 
 
-def _build_answer_payload(
-    ctx: SupervisorRunContext,
-    *,
-    plan: SupervisorPlan,
-    draft: ManagerDraft,
-    judge: JudgeVerdict,
-    specialist_results: list[SpecialistResult],
-) -> SupervisorAnswerPayload:
-    final_text = (
-        judge.clarification_question
-        if judge.needs_clarification and judge.clarification_question
-        else judge.revised_answer_text or draft.answer_text
-    )
-    stable_reason = f"specialist_supervisor_manager_judge:{plan.primary_domain}:{plan.retrieval_strategy}"
-    mode = "clarify" if judge.needs_clarification else _mode_from_strategy(plan.retrieval_strategy)
-    citations = _aggregate_citations(specialist_results)
-    suggested = judge.recommended_replies or draft.suggested_replies
-    suggested_replies = [MessageResponseSuggestedReply(text=text[:80]) for text in suggested[:4]] or _default_suggested_replies(plan.primary_domain)
-    graph_path = ["specialist_supervisor", "input_guardrail", "planner", *plan.specialists, "judge"]
-    risk_flags = []
-    if judge.issues:
-        risk_flags.extend(judge.issues[:4])
-    return SupervisorAnswerPayload(
-        message_text=final_text,
-        mode=mode,
-        classification=MessageIntentClassification(
-            domain=plan.primary_domain,
-            access_tier=_access_tier_for_domain(plan.primary_domain, ctx.request.user.authenticated),
-            confidence=max(plan.confidence, judge.grounding_score),
-            reason=stable_reason,
-        ),
-        retrieval_backend=_retrieval_backend_from_strategy(plan.retrieval_strategy),
-        selected_tools=sorted({tool for item in specialist_results for tool in item.tool_names}),
-        citations=citations,
-        suggested_replies=suggested_replies,
-        evidence_pack=_build_evidence_pack(plan, specialist_results),
-        needs_authentication=not ctx.request.user.authenticated and plan.primary_domain in {"academic", "finance"},
-        graph_path=graph_path,
-        risk_flags=risk_flags,
-        reason=stable_reason,
-    )
-
-
-def _grounding_gate_answer(
-    ctx: SupervisorRunContext,
-    *,
-    plan: SupervisorPlan,
-    judge: JudgeVerdict,
-    specialist_results: list[SpecialistResult],
-) -> SupervisorAnswerPayload | None:
-    requires_grounded_specialists = bool(plan.specialists) or plan.retrieval_strategy in {
-        "structured_tools",
-        "hybrid_retrieval",
-        "graph_rag",
-        "document_search",
-        "workflow_status",
-        "pricing_projection",
-    }
-    has_grounding = bool(specialist_results)
-    if judge.approved and (not requires_grounded_specialists or has_grounding):
-        return None
-    if judge.needs_clarification and judge.clarification_question:
-        return SupervisorAnswerPayload(
-            message_text=judge.clarification_question,
-            mode="clarify",
-            classification=MessageIntentClassification(
-                domain=plan.primary_domain,
-                access_tier=_access_tier_for_domain(plan.primary_domain, ctx.request.user.authenticated),
-                confidence=max(plan.confidence, 0.6),
-                reason="specialist_supervisor_grounding_gate:clarify",
-            ),
-            suggested_replies=_default_suggested_replies(plan.primary_domain),
-            evidence_pack=MessageEvidencePack(
-                strategy="clarify",
-                summary="O judge bloqueou uma resposta sem grounding suficiente e pediu clarificacao.",
-                source_count=0,
-                support_count=1,
-                supports=[MessageEvidenceSupport(kind="grounding_gate", label="Clarificacao", detail="Faltou grounding suficiente para responder com seguranca.")],
-            ),
-            graph_path=["specialist_supervisor", "grounding_gate", "clarify"],
-            risk_flags=["grounding_insufficient"],
-            reason="specialist_supervisor_grounding_gate:clarify",
-        )
-    return SupervisorAnswerPayload(
-        message_text=(
-            "Ainda nao consegui sustentar essa resposta com evidencias suficientes por aqui. "
-            "Se quiser, reformule em uma frase mais direta ou me diga o assunto exato para eu buscar o canal certo."
-        ),
-        mode="clarify",
-        classification=MessageIntentClassification(
-            domain=plan.primary_domain,
-            access_tier=_access_tier_for_domain(plan.primary_domain, ctx.request.user.authenticated),
-            confidence=max(plan.confidence, 0.55),
-            reason="specialist_supervisor_grounding_gate:safe_clarify",
-        ),
-        suggested_replies=_default_suggested_replies(plan.primary_domain),
-        evidence_pack=MessageEvidencePack(
-            strategy="clarify",
-            summary="O judge bloqueou uma resposta nao grounded.",
-            source_count=0,
-            support_count=1,
-            supports=[MessageEvidenceSupport(kind="grounding_gate", label="Resposta bloqueada", detail="A resposta do manager nao veio sustentada por specialist_results validos.")],
-        ),
-        graph_path=["specialist_supervisor", "grounding_gate", "safe_clarify"],
-        risk_flags=["grounding_insufficient"],
-        reason="specialist_supervisor_grounding_gate:safe_clarify",
-    )
-
-
 async def run_specialist_supervisor(
     *,
     request: SpecialistSupervisorRequest,
@@ -8468,6 +8400,28 @@ async def run_specialist_supervisor(
             resolved_turn=None,
             specialist_registry=get_specialist_registry(),
         )
+        if not request.user.authenticated and (
+            _looks_like_family_new_calendar_enrollment_query(request.message)
+            or _looks_like_public_graph_rag_query(request.message)
+        ):
+            preflight_answer = _preflight_public_doc_bundle_answer(None, request.message)
+            if preflight_answer is not None:
+                await _persist_final_answer(
+                    context,
+                    answer=preflight_answer,
+                    route="preflight_public_doc_bundle",
+                    metadata={"preview_hint": None},
+                    timeout_seconds=1.0,
+                )
+                return SpecialistSupervisorResponse(
+                    reason=preflight_answer.reason,
+                    metadata={
+                        "preflight_public_doc_bundle": True,
+                        "provider": resolve_llm_provider(settings),
+                        "model": effective_llm_model_name(settings),
+                    },
+                    answer=preflight_answer,
+                ).model_dump(mode="json")
         (
             context.actor,
             context.conversation_context,
@@ -8718,7 +8672,11 @@ async def run_specialist_supervisor(
                 plan = await _run_planner(context)
         except Exception:
             logger.exception("specialist_supervisor_planner_uncaught")
-            answer = _safe_supervisor_fallback_answer(context, reason="specialist_supervisor_planner_safe_fallback")
+            answer = _safe_supervisor_fallback_answer(
+                preview_hint=context.preview_hint,
+                authenticated=context.request.user.authenticated,
+                reason="specialist_supervisor_planner_safe_fallback",
+            )
             await _persist_final_answer(context, answer=answer, route="planner_safe_fallback")
             return SpecialistSupervisorResponse(reason=answer.reason, metadata={"fallback": True}, answer=answer).model_dump(mode="json")
         if plan.should_deny:
@@ -8861,11 +8819,26 @@ async def run_specialist_supervisor(
             if repaired is not None:
                 draft, judge, repair = repaired
                 repair_payload = (repair, judge)
-            gated_answer = _grounding_gate_answer(context, plan=plan, judge=judge, specialist_results=specialist_results)
-            answer = gated_answer or _build_answer_payload(context, plan=plan, draft=draft, judge=judge, specialist_results=specialist_results)
+            gated_answer = _grounding_gate_answer(
+                authenticated=context.request.user.authenticated,
+                plan=plan,
+                judge=judge,
+                specialist_results=specialist_results,
+            )
+            answer = gated_answer or _build_answer_payload(
+                authenticated=context.request.user.authenticated,
+                plan=plan,
+                draft=draft,
+                judge=judge,
+                specialist_results=specialist_results,
+            )
         except Exception:
             logger.exception("specialist_supervisor_manager_or_judge_failed")
-            answer = _safe_supervisor_fallback_answer(context, reason="specialist_supervisor_manager_safe_fallback")
+            answer = _safe_supervisor_fallback_answer(
+                preview_hint=context.preview_hint,
+                authenticated=context.request.user.authenticated,
+                reason="specialist_supervisor_manager_safe_fallback",
+            )
             await _persist_final_answer(
                 context,
                 answer=answer,

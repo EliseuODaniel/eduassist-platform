@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Iterable
 
+from eduassist_observability import canonicalize_evidence_strategy
+
 from .models import MessageEvidencePack, MessageEvidenceSupport, MessageResponseCitation, RetrievalBackend
 
 
@@ -73,7 +75,7 @@ def build_retrieval_evidence_pack(
         f'Resposta grounded em retrieval {retrieval_backend.value} com {len(citation_list)} evidencia(s).'
     )
     return MessageEvidencePack(
-        strategy='retrieval',
+        strategy=canonicalize_evidence_strategy('retrieval', retrieval_backend=retrieval_backend.value),
         summary=summary_text,
         source_count=len(citation_list) or len(supports),
         support_count=len(supports),

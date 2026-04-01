@@ -6,6 +6,8 @@ from pathlib import Path
 import secrets
 
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from eduassist_observability import build_runtime_diagnostics, configure_observability, detect_runtime_mode
@@ -194,3 +196,14 @@ async def respond(
     settings = get_settings()
     payload = await run_specialist_supervisor(request=request, settings=settings)
     return SpecialistSupervisorResponse.model_validate(payload)
+
+
+@app.post("/v1/respond-raw")
+async def respond_raw(
+    request: SpecialistSupervisorRequest,
+    x_internal_api_token: str | None = Header(default=None, alias="X-Internal-Api-Token"),
+) -> JSONResponse:
+    _require_internal_api_token(x_internal_api_token)
+    settings = get_settings()
+    payload = await run_specialist_supervisor(request=request, settings=settings)
+    return JSONResponse(content=jsonable_encoder(payload))

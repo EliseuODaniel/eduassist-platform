@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 import httpx
+from eduassist_observability import canonicalize_evidence_strategy, canonicalize_risk_flags
 
 from ..models import AccessTier, IntentClassification, MessageResponse, OrchestrationMode, QueryDomain, RetrievalBackend
 from .base import ResponseEngine, ShadowRunResult
@@ -65,6 +66,14 @@ def _normalize_remote_answer(answer: dict[str, Any]) -> dict[str, Any]:
     normalized["classification"] = classification
     normalized["mode"] = _normalize_mode(normalized.get("mode")).value
     normalized["retrieval_backend"] = _normalize_retrieval_backend(normalized.get("retrieval_backend")).value
+    evidence_pack = dict(normalized.get("evidence_pack") or {})
+    if evidence_pack:
+        evidence_pack["strategy"] = canonicalize_evidence_strategy(
+            evidence_pack.get("strategy"),
+            retrieval_backend=normalized["retrieval_backend"],
+        )
+        normalized["evidence_pack"] = evidence_pack
+    normalized["risk_flags"] = canonicalize_risk_flags(normalized.get("risk_flags"))
     return normalized
 
 
@@ -98,7 +107,7 @@ class SpecialistSupervisorEngine(ResponseEngine):
         timeout_seconds = float(getattr(settings, "specialist_supervisor_pilot_timeout_seconds", 75.0) or 75.0)
         async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds, connect=5.0)) as client:
             response = await client.post(
-                f"{pilot_url.rstrip('/')}/v1/respond",
+                f"{pilot_url.rstrip('/')}/v1/respond-raw",
                 headers={
                     "X-Internal-Api-Token": settings.internal_api_token,
                     "Content-Type": "application/json",
