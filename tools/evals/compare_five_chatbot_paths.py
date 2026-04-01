@@ -24,7 +24,7 @@ if str(AI_ORCHESTRATOR_SRC) not in sys.path:
 SPECIALIST_SUPERVISOR_SRC = REPO_ROOT / 'apps/ai-orchestrator-specialist/src'
 if str(SPECIALIST_SUPERVISOR_SRC) not in sys.path:
     sys.path.insert(0, str(SPECIALIST_SUPERVISOR_SRC))
-SPECIALIST_SOURCE_RUNNER = REPO_ROOT / 'tools/evals/run_specialist_supervisor_source.py'
+SPECIALIST_SOURCE_SERVER = REPO_ROOT / 'tools/evals/run_specialist_supervisor_source_server.py'
 
 from ai_orchestrator.engine_selector import build_engine_bundle
 from ai_orchestrator.main import Settings
@@ -44,6 +44,56 @@ DEFAULT_PROMPTS = REPO_ROOT / 'tests/evals/datasets/five_path_random_probe_cases
 DEFAULT_REPORT = REPO_ROOT / 'docs/architecture/five-path-chatbot-comparison-report.md'
 DEFAULT_JSON_REPORT = REPO_ROOT / 'docs/architecture/five-path-chatbot-comparison-report.json'
 STACKS = ('langgraph', 'crewai', 'python_functions', 'llamaindex', 'specialist_supervisor')
+
+
+class _SpecialistSourceClient:
+    def __init__(self) -> None:
+        self._process: asyncio.subprocess.Process | None = None
+        self._lock = asyncio.Lock()
+
+    async def _start(self) -> None:
+        if self._process is not None and self._process.returncode is None:
+            return
+        self._process = await asyncio.create_subprocess_exec(
+            'uv',
+            'run',
+            '--project',
+            str(REPO_ROOT / 'apps/ai-orchestrator-specialist'),
+            'python',
+            str(SPECIALIST_SOURCE_SERVER),
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+        )
+
+    async def request(self, payload: dict[str, Any], *, timeout_seconds: float) -> dict[str, Any]:
+        async with self._lock:
+            await self._start()
+            assert self._process is not None
+            assert self._process.stdin is not None
+            assert self._process.stdout is not None
+            self._process.stdin.write((json.dumps(payload, ensure_ascii=False) + '\n').encode('utf-8'))
+            await self._process.stdin.drain()
+            raw = await asyncio.wait_for(self._process.stdout.readline(), timeout=timeout_seconds)
+            if not raw:
+                raise RuntimeError('specialist_source_runner_terminated')
+            response = json.loads(raw.decode('utf-8'))
+            if not bool(response.get('ok', False)):
+                raise RuntimeError(str(response.get('error') or 'specialist_source_runner_error'))
+            result = response.get('response')
+            return result if isinstance(result, dict) else {}
+
+    async def close(self) -> None:
+        if self._process is None:
+            return
+        if self._process.stdin is not None and not self._process.stdin.is_closing():
+            self._process.stdin.close()
+        try:
+            await asyncio.wait_for(self._process.wait(), timeout=2.0)
+        except Exception:
+            self._process.kill()
+            await self._process.wait()
+        finally:
+            self._process = None
 
 
 def _normalize_local_service_url(value: str, *, kind: str) -> str:
@@ -198,44 +248,36 @@ def _user_for_slice(entry: dict[str, Any]) -> UserContext:
     return UserContext(role=UserRole.anonymous, authenticated=False)
 
 
-async def _run_turn(*, stack: str, entry: dict[str, Any], timeout_seconds: float) -> dict[str, Any]:
+async def _run_turn(
+    *,
+    stack: str,
+    entry: dict[str, Any],
+    timeout_seconds: float,
+    specialist_source_client: _SpecialistSourceClient | None = None,
+) -> dict[str, Any]:
     if stack == 'specialist_supervisor' and _specialist_benchmark_mode() == 'source':
-        payload = {
-            'request': {
-                'message': str(entry['prompt']),
-                'conversation_id': f"{entry.get('run_prefix') or 'debug:five-path'}:{entry.get('thread_id') or 'single'}:{stack}",
-                'telegram_chat_id': entry.get('telegram_chat_id'),
-                'channel': 'telegram',
-                'user': _user_for_slice(entry).model_dump(mode='json'),
-                'allow_graph_rag': True,
-                'allow_handoff': True,
-            },
-            'api_core_url': _normalize_local_service_url(os.getenv('API_CORE_URL', ''), kind='api_core'),
-            'orchestrator_url': _normalize_local_service_url(os.getenv('AI_ORCHESTRATOR_URL', ''), kind='ai_orchestrator'),
-            'internal_api_token': os.getenv('INTERNAL_API_TOKEN', 'dev-internal-token'),
-            'openai_api_key': os.getenv('OPENAI_API_KEY'),
-            'google_api_key': os.getenv('GOOGLE_API_KEY'),
-        }
         started = perf_counter()
         try:
-            process = await asyncio.create_subprocess_exec(
-                'uv',
-                'run',
-                '--project',
-                str(REPO_ROOT / 'apps/ai-orchestrator-specialist'),
-                'python',
-                str(SPECIALIST_SOURCE_RUNNER),
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
+            client = specialist_source_client or _SpecialistSourceClient()
+            payload = await client.request(
+                {
+                    'request': {
+                        'message': str(entry['prompt']),
+                        'conversation_id': f"{entry.get('run_prefix') or 'debug:five-path'}:{entry.get('thread_id') or 'single'}:{stack}",
+                        'telegram_chat_id': entry.get('telegram_chat_id'),
+                        'channel': 'telegram',
+                        'user': _user_for_slice(entry).model_dump(mode='json'),
+                        'allow_graph_rag': True,
+                        'allow_handoff': True,
+                    },
+                    'api_core_url': _normalize_local_service_url(os.getenv('API_CORE_URL', ''), kind='api_core'),
+                    'orchestrator_url': _normalize_local_service_url(os.getenv('AI_ORCHESTRATOR_URL', ''), kind='ai_orchestrator'),
+                    'internal_api_token': os.getenv('INTERNAL_API_TOKEN', 'dev-internal-token'),
+                    'openai_api_key': os.getenv('OPENAI_API_KEY'),
+                    'google_api_key': os.getenv('GOOGLE_API_KEY'),
+                },
+                timeout_seconds=timeout_seconds,
             )
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(json.dumps(payload, ensure_ascii=False).encode('utf-8')),
-                timeout=timeout_seconds,
-            )
-            if process.returncode != 0:
-                raise RuntimeError((stderr or stdout).decode('utf-8', errors='replace').strip() or 'specialist_source_runner_failed')
-            payload = json.loads(stdout.decode('utf-8'))
             answer = payload.get('answer') if isinstance(payload, dict) and isinstance(payload.get('answer'), dict) else {}
             latency_ms = round((perf_counter() - started) * 1000, 1)
             return {
@@ -247,9 +289,6 @@ async def _run_turn(*, stack: str, entry: dict[str, Any], timeout_seconds: float
                 'graph_path': list(answer.get('graph_path') or []),
             }
         except Exception as exc:
-            if 'process' in locals() and process.returncode is None:
-                process.kill()
-                await process.communicate()
             latency_ms = round((perf_counter() - started) * 1000, 1)
             return {
                 'status': 599,
@@ -380,85 +419,100 @@ async def _run_all(
     run_prefix = f"debug:five-path:{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
     previous_answers: dict[str, dict[str, str]] = {stack: {} for stack in stacks}
     results: list[dict[str, Any]] = []
+    specialist_source_client = (
+        _SpecialistSourceClient()
+        if 'specialist_supervisor' in stacks and _specialist_benchmark_mode() == 'source'
+        else None
+    )
 
-    for entry in entries:
-        entry_with_run_prefix = {**entry, 'run_prefix': run_prefix}
-        row: dict[str, Any] = {
-            'prompt': entry['prompt'],
-            'slice': entry['slice'],
-            'category': entry.get('category') or 'uncategorized',
-            'thread_id': entry.get('thread_id') or '',
-            'turn_index': entry.get('turn_index') or 1,
-            'note': entry.get('note') or '',
-            'run_prefix': run_prefix,
-        }
-        if parallel_stacks:
-            raw_by_stack = {
-                stack: result
-                for stack, result in zip(
-                    stacks,
-                    await asyncio.gather(
-                        *[
-                            _run_turn(stack=stack, entry=entry_with_run_prefix, timeout_seconds=timeout_seconds)
-                            for stack in stacks
-                        ]
-                    ),
-                    strict=True,
-                )
+    try:
+        for entry in entries:
+            entry_with_run_prefix = {**entry, 'run_prefix': run_prefix}
+            row: dict[str, Any] = {
+                'prompt': entry['prompt'],
+                'slice': entry['slice'],
+                'category': entry.get('category') or 'uncategorized',
+                'thread_id': entry.get('thread_id') or '',
+                'turn_index': entry.get('turn_index') or 1,
+                'note': entry.get('note') or '',
+                'run_prefix': run_prefix,
             }
-        else:
-            raw_by_stack = {}
+            if parallel_stacks:
+                raw_by_stack = {
+                    stack: result
+                    for stack, result in zip(
+                        stacks,
+                        await asyncio.gather(
+                            *[
+                                _run_turn(
+                                    stack=stack,
+                                    entry=entry_with_run_prefix,
+                                    timeout_seconds=timeout_seconds,
+                                    specialist_source_client=specialist_source_client,
+                                )
+                                for stack in stacks
+                            ]
+                        ),
+                        strict=True,
+                    )
+                }
+            else:
+                raw_by_stack = {}
+                for stack in stacks:
+                    raw_by_stack[stack] = await _run_turn(
+                        stack=stack,
+                        entry=entry_with_run_prefix,
+                        timeout_seconds=timeout_seconds,
+                        specialist_source_client=specialist_source_client,
+                    )
             for stack in stacks:
-                raw_by_stack[stack] = await _run_turn(
-                    stack=stack,
-                    entry=entry_with_run_prefix,
-                    timeout_seconds=timeout_seconds,
+                raw = raw_by_stack[stack]
+                answer_text = _extract_answer_text(raw['body'])
+                thread_key = str(entry.get('thread_id') or '')
+                previous_answer = previous_answers[stack].get(thread_key, '') if thread_key else ''
+                expected_keywords = list(entry.get('expected_keywords') or [])
+                forbidden_keywords = list(entry.get('forbidden_keywords') or [])
+                error_types = _detect_error_types(
+                    answer_text=answer_text,
+                    expected_keywords=expected_keywords,
+                    forbidden_keywords=forbidden_keywords,
+                    prompt=str(entry['prompt']),
+                    previous_answer=previous_answer,
+                    status=int(raw['status']),
+                    turn_index=int(entry.get('turn_index') or 1),
+                    note=str(entry.get('note') or ''),
                 )
-        for stack in stacks:
-            raw = raw_by_stack[stack]
-            answer_text = _extract_answer_text(raw['body'])
-            thread_key = str(entry.get('thread_id') or '')
-            previous_answer = previous_answers[stack].get(thread_key, '') if thread_key else ''
-            expected_keywords = list(entry.get('expected_keywords') or [])
-            forbidden_keywords = list(entry.get('forbidden_keywords') or [])
-            error_types = _detect_error_types(
-                answer_text=answer_text,
-                expected_keywords=expected_keywords,
-                forbidden_keywords=forbidden_keywords,
-                prompt=str(entry['prompt']),
-                previous_answer=previous_answer,
-                status=int(raw['status']),
-                turn_index=int(entry.get('turn_index') or 1),
-                note=str(entry.get('note') or ''),
-            )
-            quality_signals = _detect_quality_signals(
-                answer_text=answer_text,
-                expected_keywords=expected_keywords,
-                prompt=str(entry['prompt']),
-                previous_answer=previous_answer,
-                turn_index=int(entry.get('turn_index') or 1),
-                note=str(entry.get('note') or ''),
-            )
-            quality_score = _quality_score(status=int(raw['status']), error_types=error_types)
-            keyword_pass = _contains_expected_keywords(answer_text, expected_keywords) and not _contains_forbidden_keywords(
-                answer_text,
-                forbidden_keywords,
-            )
-            row[stack] = {
-                'status': int(raw['status']),
-                'latency_ms': float(raw['latency_ms']),
-                'mode': raw['mode'],
-                'reason': raw['reason'],
-                'graph_path': raw['graph_path'],
-                'answer_text': answer_text,
-                'keyword_pass': keyword_pass,
-                'quality_score': quality_score,
-                'error_types': error_types,
-                'quality_signals': quality_signals,
-            }
-            if thread_key:
-                previous_answers[stack][thread_key] = answer_text
-        results.append(row)
+                quality_signals = _detect_quality_signals(
+                    answer_text=answer_text,
+                    expected_keywords=expected_keywords,
+                    prompt=str(entry['prompt']),
+                    previous_answer=previous_answer,
+                    turn_index=int(entry.get('turn_index') or 1),
+                    note=str(entry.get('note') or ''),
+                )
+                quality_score = _quality_score(status=int(raw['status']), error_types=error_types)
+                keyword_pass = _contains_expected_keywords(answer_text, expected_keywords) and not _contains_forbidden_keywords(
+                    answer_text,
+                    forbidden_keywords,
+                )
+                row[stack] = {
+                    'status': int(raw['status']),
+                    'latency_ms': float(raw['latency_ms']),
+                    'mode': raw['mode'],
+                    'reason': raw['reason'],
+                    'graph_path': raw['graph_path'],
+                    'answer_text': answer_text,
+                    'keyword_pass': keyword_pass,
+                    'quality_score': quality_score,
+                    'error_types': error_types,
+                    'quality_signals': quality_signals,
+                }
+                if thread_key:
+                    previous_answers[stack][thread_key] = answer_text
+            results.append(row)
+    finally:
+        if specialist_source_client is not None:
+            await specialist_source_client.close()
 
     summary_by_stack: dict[str, Any] = {}
     summary_by_slice: dict[str, Any] = {}

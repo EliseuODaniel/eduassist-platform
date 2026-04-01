@@ -50,7 +50,7 @@ async def run_repair_loop(
     judge: JudgeVerdict,
     specialist_results: list[SpecialistResult],
 ) -> tuple[ManagerDraft, JudgeVerdict, RepairDraft] | None:
-    from .runtime import _agent_model, _build_repair_agent, _parse_result_model
+    from .runtime import _agent_model, _build_repair_agent, _effective_conversation_id, _parse_result_model, _run_config
 
     if not specialist_results:
         return None

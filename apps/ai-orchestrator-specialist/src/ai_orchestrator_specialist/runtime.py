@@ -6350,6 +6350,16 @@ def _normalize_result_payload(payload: Any) -> Any:
         }
         if confidence_token in confidence_map:
             normalized["confidence"] = confidence_map[confidence_token]
+        else:
+            try:
+                confidence = float(confidence_token)
+            except Exception:
+                confidence = None
+    if isinstance(confidence, (int, float)) and not isinstance(confidence, bool):
+        numeric_confidence = float(confidence)
+        if 1.0 < numeric_confidence <= 5.0:
+            numeric_confidence = numeric_confidence / 5.0
+        normalized["confidence"] = max(0.0, min(1.0, numeric_confidence))
     for text_key in ("answer_text", "answer_summary", "evidence_summary", "denial_reason", "clarification_question"):
         if normalized.get(text_key) is None:
             normalized[text_key] = ""

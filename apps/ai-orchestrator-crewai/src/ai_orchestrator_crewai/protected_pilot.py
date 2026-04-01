@@ -777,19 +777,43 @@ def _teacher_assignments(summary: dict[str, Any]) -> list[dict[str, str]]:
     return [item for item in normalized if item['class_name'] or item['subject_name']]
 
 
+def _segment_filter_for_teacher_message(message: str) -> str | None:
+    normalized = _normalize_text(message)
+    if any(term in normalized for term in {'ensino medio', 'ensino médio', 'medio', 'médio'}):
+        return 'medio'
+    if 'fundamental' in normalized or any(token in normalized for token in {'6o', '7o', '8o', '9o'}):
+        return 'fundamental'
+    return None
+
+
+def _assignment_matches_teacher_segment(assignment: dict[str, str], segment_filter: str | None) -> bool:
+    if not segment_filter:
+        return True
+    class_name = _normalize_text(assignment.get('class_name', '') or '')
+    if segment_filter == 'medio':
+        return any(
+            token in class_name
+            for token in {'medio', 'médio', '1a serie', '2a serie', '3a serie', '1a série', '2a série', '3a série', '1em', '2em', '3em'}
+        )
+    return any(token in class_name for token in {'fundamental', '6o', '7o', '8o', '9o', '6 ano', '7 ano', '8 ano', '9 ano'})
+
+
 def _render_teacher_schedule_summary(summary: dict[str, Any], message: str) -> str | None:
     teacher_name = str(summary.get('teacher_name') or 'Professor').strip() or 'Professor'
     assignments = _teacher_assignments(summary)
     if not assignments:
         return None
     normalized = _normalize_text(message)
-    if 'ensino medio' in normalized or 'ensino médio' in normalized:
-        filtered = [
-            item
-            for item in assignments
-            if 'medio' in _normalize_text(item['class_name']) or 'serie' in _normalize_text(item['class_name'])
-        ]
-        assignments = filtered or assignments
+    filtered = [
+        item
+        for item in assignments
+        if _assignment_matches_teacher_segment(item, _segment_filter_for_teacher_message(message))
+    ]
+    if ('so do ensino medio' in normalized or 'só do ensino médio' in normalized) and assignments:
+        return 'Sim, sua grade atual fica concentrada no Ensino Medio.' if len(filtered) == len(assignments) else 'Nao. Sua grade atual nao e so do Ensino Medio.'
+    if ('so do fundamental' in normalized or 'só do fundamental' in normalized) and assignments:
+        return 'Sim, sua grade atual fica concentrada no Ensino Fundamental II.' if len(filtered) == len(assignments) else 'Nao. Sua grade atual nao e so do Ensino Fundamental II.'
+    assignments = filtered or assignments
     if 'disciplin' in normalized and 'turm' not in normalized:
         subjects = sorted({item['subject_name'] for item in assignments if item['subject_name']})
         if subjects:
