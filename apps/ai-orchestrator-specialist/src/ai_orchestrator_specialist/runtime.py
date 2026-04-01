@@ -47,6 +47,15 @@ from .models import (
     SupervisorPlan,
 )
 from .intent_registry import get_intent_registry, has_registered_school_signal
+from .public_bundle_fast_paths import (
+    _looks_like_family_new_calendar_enrollment_query,
+    _looks_like_first_month_risks_query,
+    _looks_like_health_authorization_bridge_query,
+    _looks_like_permanence_family_query,
+    _looks_like_process_compare_query,
+    _looks_like_public_graph_rag_query,
+    _preflight_public_doc_bundle_answer,
+)
 from .public_doc_knowledge import (
     compose_public_academic_policy_overview,
     compose_public_bolsas_and_processes,
@@ -3278,213 +3287,6 @@ def _looks_like_health_second_call_query(message: str) -> bool:
     return any(term in normalized for term in {"saude", "saúde", "atestado", "motivo de saude", "motivo de saúde"}) and any(
         term in normalized for term in {"perder uma prova", "perdi uma prova", "segunda chamada"}
     )
-
-
-def _looks_like_permanence_family_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return "permanencia escolar" in normalized and "acompanhamento da familia" in normalized
-
-
-def _looks_like_health_authorization_bridge_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return all(
-        term in normalized
-        for term in {"saude", "medicacao", "segunda chamada", "saidas pedagogicas", "autorizacoes"}
-    )
-
-
-def _looks_like_first_month_risks_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return "primeiro mes" in normalized and any(term in normalized for term in {"riscos", "esquecido", "prazo"})
-
-
-def _looks_like_process_compare_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return any(term in normalized for term in {"rematricula", "rematrícula"}) and any(
-        term in normalized for term in {"transferencia", "transferência", "cancelamento"}
-    ) and any(term in normalized for term in {"compare", "destacando", "o que muda"})
-
-
-def _looks_like_public_graph_rag_query(message: str) -> bool:
-    return any(
-        detector(message)
-        for detector in (
-            _looks_like_permanence_family_query,
-            _looks_like_health_authorization_bridge_query,
-            _looks_like_first_month_risks_query,
-            _looks_like_process_compare_query,
-        )
-    )
-
-
-def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message: str) -> SupervisorAnswerPayload | None:
-    normalized = _normalize_text(message)
-
-    if profile and _looks_like_family_new_calendar_enrollment_query(message):
-        answer_text = compose_public_family_new_calendar_assessment_enrollment()
-        if answer_text:
-            return SupervisorAnswerPayload(
-                message_text=answer_text,
-                mode="structured_tool",
-                classification=MessageIntentClassification(
-                    domain="institution",
-                    access_tier="public",
-                    confidence=0.99,
-                    reason="specialist_supervisor_preflight:family_new_calendar_enrollment",
-                ),
-                evidence_pack=MessageEvidencePack(
-                    strategy="direct_answer",
-                    summary="Sintese deterministica de familia nova antes do loop premium.",
-                    source_count=3,
-                    support_count=3,
-                    supports=[
-                        MessageEvidenceSupport(kind="document", label="Calendario Letivo 2026", detail="data/corpus/public/calendario-letivo-2026.md"),
-                        MessageEvidenceSupport(kind="document", label="Agenda de Avaliacoes 2026", detail="data/corpus/public/agenda-avaliacoes-recuperacoes-e-simulados-2026.md"),
-                        MessageEvidenceSupport(kind="document", label="Manual de Matricula", detail="data/corpus/public/manual-matricula-ensino-medio.md"),
-                    ],
-                ),
-                suggested_replies=_default_suggested_replies("institution"),
-                graph_path=["specialist_supervisor", "preflight", "family_new_calendar_enrollment"],
-                reason="specialist_supervisor_preflight:family_new_calendar_enrollment",
-            )
-
-    if "secretaria" in normalized and "credencia" in normalized and "document" in normalized:
-        answer_text = _compose_service_credentials_bundle_answer(profile)
-        return SupervisorAnswerPayload(
-            message_text=answer_text,
-            mode="structured_tool",
-            classification=MessageIntentClassification(
-                domain="institution",
-                access_tier="public",
-                confidence=0.99,
-                reason="specialist_supervisor_preflight:service_credentials_bundle",
-            ),
-            evidence_pack=MessageEvidencePack(
-                strategy="direct_answer",
-                summary="Resumo publico deterministico sobre secretaria, portal, credenciais e documentos.",
-                source_count=2,
-                support_count=2,
-                supports=[
-                    MessageEvidenceSupport(kind="document", label="Secretaria, Documentacao e Prazos", detail="data/corpus/public/secretaria-documentacao-e-prazos.md"),
-                    MessageEvidenceSupport(kind="document", label="Politica de Uso do Portal, Aplicativo e Credenciais", detail="data/corpus/public/politica-uso-do-portal-aplicativo-e-credenciais.md"),
-                ],
-            ),
-            suggested_replies=_default_suggested_replies("institution"),
-            graph_path=["specialist_supervisor", "preflight", "service_credentials_bundle"],
-            reason="specialist_supervisor_preflight:service_credentials_bundle",
-        )
-
-    if _looks_like_permanence_family_query(message):
-        answer_text = compose_public_permanence_and_family_support(profile)
-        if answer_text:
-            return SupervisorAnswerPayload(
-                message_text=answer_text,
-                mode="structured_tool",
-                classification=MessageIntentClassification(
-                    domain="institution",
-                    access_tier="public",
-                    confidence=0.99,
-                    reason="specialist_supervisor_preflight:permanence_family_support",
-                ),
-                evidence_pack=MessageEvidencePack(
-                    strategy="direct_answer",
-                    summary="Sintese deterministica sobre permanencia escolar e acompanhamento da familia.",
-                    source_count=3,
-                    support_count=3,
-                    supports=[
-                        MessageEvidenceSupport(kind="document", label="Orientacao, Apoio e Vida Escolar", detail="data/corpus/public/orientacao-apoio-e-vida-escolar.md"),
-                        MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
-                        MessageEvidenceSupport(kind="policy", label="Projeto de vida", detail="academic_policy.project_of_life_summary"),
-                    ],
-                ),
-                suggested_replies=_default_suggested_replies("institution"),
-                graph_path=["specialist_supervisor", "preflight", "permanence_family_support"],
-                reason="specialist_supervisor_preflight:permanence_family_support",
-            )
-
-    if _looks_like_health_authorization_bridge_query(message):
-        answer_text = compose_public_health_authorizations_bridge()
-        if answer_text:
-            return SupervisorAnswerPayload(
-                message_text=answer_text,
-                mode="structured_tool",
-                classification=MessageIntentClassification(
-                    domain="institution",
-                    access_tier="public",
-                    confidence=0.99,
-                    reason="specialist_supervisor_preflight:health_authorizations_bridge",
-                ),
-                evidence_pack=MessageEvidencePack(
-                    strategy="direct_answer",
-                    summary="Sintese deterministica cruzando saude, medicacao, segunda chamada e autorizacoes.",
-                    source_count=3,
-                    support_count=3,
-                    supports=[
-                        MessageEvidenceSupport(kind="document", label="Protocolo de Saude, Medicacao e Emergencias", detail="data/corpus/public/protocolo-saude-medicacao-e-emergencias.md"),
-                        MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
-                        MessageEvidenceSupport(kind="document", label="Saidas Pedagogicas, Eventos e Autorizacoes", detail="data/corpus/public/saidas-pedagogicas-eventos-e-autorizacoes.md"),
-                    ],
-                ),
-                suggested_replies=_default_suggested_replies("institution"),
-                graph_path=["specialist_supervisor", "preflight", "health_authorizations_bridge"],
-                reason="specialist_supervisor_preflight:health_authorizations_bridge",
-            )
-
-    if _looks_like_first_month_risks_query(message):
-        answer_text = compose_public_first_month_risks(profile)
-        if answer_text:
-            return SupervisorAnswerPayload(
-                message_text=answer_text,
-                mode="structured_tool",
-                classification=MessageIntentClassification(
-                    domain="institution",
-                    access_tier="public",
-                    confidence=0.99,
-                    reason="specialist_supervisor_preflight:first_month_risks",
-                ),
-                evidence_pack=MessageEvidencePack(
-                    strategy="direct_answer",
-                    summary="Sintese deterministica dos riscos operacionais do primeiro mes.",
-                    source_count=3,
-                    support_count=3,
-                    supports=[
-                        MessageEvidenceSupport(kind="document", label="Secretaria, Documentacao e Prazos", detail="data/corpus/public/secretaria-documentacao-e-prazos.md"),
-                        MessageEvidenceSupport(kind="document", label="Politica de Uso do Portal, Aplicativo e Credenciais", detail="data/corpus/public/politica-uso-do-portal-aplicativo-e-credenciais.md"),
-                        MessageEvidenceSupport(kind="document", label="Manual de Regulamentos Gerais", detail="data/corpus/public/manual-regulamentos-gerais.md"),
-                    ],
-                ),
-                suggested_replies=_default_suggested_replies("institution"),
-                graph_path=["specialist_supervisor", "preflight", "first_month_risks"],
-                reason="specialist_supervisor_preflight:first_month_risks",
-            )
-
-    if _looks_like_process_compare_query(message):
-        answer_text = compose_public_process_compare()
-        if answer_text:
-            return SupervisorAnswerPayload(
-                message_text=answer_text,
-                mode="structured_tool",
-                classification=MessageIntentClassification(
-                    domain="institution",
-                    access_tier="public",
-                    confidence=0.99,
-                    reason="specialist_supervisor_preflight:process_compare",
-                ),
-                evidence_pack=MessageEvidencePack(
-                    strategy="direct_answer",
-                    summary="Comparacao deterministica de rematricula, transferencia e cancelamento.",
-                    source_count=1,
-                    support_count=1,
-                    supports=[
-                        MessageEvidenceSupport(kind="document", label="Rematricula, Transferencia e Cancelamento 2026", detail="data/corpus/public/rematricula-transferencia-e-cancelamento-2026.md"),
-                    ],
-                ),
-                suggested_replies=_default_suggested_replies("institution"),
-                graph_path=["specialist_supervisor", "preflight", "process_compare"],
-                reason="specialist_supervisor_preflight:process_compare",
-            )
-
-    return None
 
 
 def _parse_public_datetime(value: Any) -> datetime | None:

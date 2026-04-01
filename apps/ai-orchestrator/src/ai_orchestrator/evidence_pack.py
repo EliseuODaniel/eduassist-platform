@@ -45,6 +45,60 @@ def build_structured_tool_evidence_pack(
     )
 
 
+def build_direct_answer_evidence_pack(
+    *,
+    summary: str,
+    supports: Iterable[MessageEvidenceSupport],
+    strategy: str = 'direct_answer',
+) -> MessageEvidencePack:
+    support_list = list(supports)
+    return MessageEvidencePack(
+        strategy=canonicalize_evidence_strategy(strategy),
+        summary=summary,
+        source_count=len(support_list),
+        support_count=len(support_list),
+        supports=support_list[:6],
+    )
+
+
+def build_known_unknown_evidence_pack(
+    *,
+    requested_key: str | None,
+    selected_tools: Iterable[str],
+    school_name: str | None = None,
+) -> MessageEvidencePack:
+    normalized_key = str(requested_key or '').strip() or 'unknown_public_fact'
+    supports: list[MessageEvidenceSupport] = []
+    if school_name:
+        supports.append(
+            MessageEvidenceSupport(
+                kind='scope',
+                label='public_profile',
+                detail=f'Pergunta publica valida sobre {school_name}.',
+            )
+        )
+    supports.extend(
+        MessageEvidenceSupport(
+            kind='tool',
+            label=str(tool_name),
+            detail='Structured source checked before returning known-unknown.',
+        )
+        for tool_name in dict.fromkeys(str(tool_name).strip() for tool_name in selected_tools if str(tool_name).strip())
+    )
+    supports.append(
+        MessageEvidenceSupport(
+            kind='known_unknown',
+            label=normalized_key,
+            detail='O dado pedido e valido, mas nao consta nos canais publicados.',
+        )
+    )
+    return build_direct_answer_evidence_pack(
+        strategy='direct_answer',
+        summary='Pergunta publica valida, mas o dado solicitado nao esta publicado oficialmente.',
+        supports=supports,
+    )
+
+
 def build_retrieval_evidence_pack(
     *,
     citations: Iterable[MessageResponseCitation],

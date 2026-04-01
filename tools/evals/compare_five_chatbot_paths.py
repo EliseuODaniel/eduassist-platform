@@ -48,6 +48,28 @@ def _specialist_benchmark_mode() -> str:
     return str(os.getenv('SPECIALIST_SUPERVISOR_BENCHMARK_MODE', 'pilot') or 'pilot').strip().lower()
 
 
+def _exception_reason(*, stack: str, exc: Exception) -> str:
+    details = f'{type(exc).__name__}: {exc}'.lower()
+    if 'connecttimeout' in details or 'connecterror' in details or 'allconnectionattemptsfailed' in details:
+        if stack in {'crewai', 'specialist_supervisor'}:
+            return f'{stack}_pilot_unavailable'
+        return 'dependency_unavailable'
+    if 'llm_unconfigured' in details:
+        return 'runtime_unconfigured'
+    return 'exception'
+
+
+def _benchmark_context() -> dict[str, Any]:
+    return {
+        'specialist_supervisor_benchmark_mode': _specialist_benchmark_mode(),
+        'api_core_url': os.getenv('API_CORE_URL', 'http://127.0.0.1:8001'),
+        'ai_orchestrator_url': os.getenv('AI_ORCHESTRATOR_URL', 'http://127.0.0.1:8002'),
+        'crewai_pilot_url': os.getenv('CREWAI_PILOT_URL', 'http://127.0.0.1:8004'),
+        'specialist_supervisor_pilot_url': os.getenv('SPECIALIST_SUPERVISOR_PILOT_URL', 'http://127.0.0.1:8005'),
+        'env_loaded': True,
+    }
+
+
 def _load_prompts(path: str) -> list[dict[str, Any]]:
     payload = json.loads(Path(path).read_text(encoding='utf-8'))
     if isinstance(payload, dict) and isinstance(payload.get('threads'), list):
@@ -132,7 +154,7 @@ async def _run_turn(*, stack: str, entry: dict[str, Any], timeout_seconds: float
                 'body': {'error': f'{type(exc).__name__}: {exc}'},
                 'latency_ms': latency_ms,
                 'mode': 'error',
-                'reason': 'exception',
+                'reason': _exception_reason(stack=stack, exc=exc),
                 'graph_path': [],
             }
 
@@ -172,7 +194,7 @@ async def _run_turn(*, stack: str, entry: dict[str, Any], timeout_seconds: float
             'body': {'error': f'{type(exc).__name__}: {exc}'},
             'latency_ms': latency_ms,
             'mode': 'error',
-            'reason': 'exception',
+            'reason': _exception_reason(stack=stack, exc=exc),
             'graph_path': [],
         }
 
@@ -185,6 +207,16 @@ def _render_markdown(payload: dict[str, Any], *, stacks: tuple[str, ...]) -> str
     lines.append('')
     lines.append(f"Run prefix: `{payload.get('run_prefix', '')}`")
     lines.append('')
+    benchmark_context = payload.get('benchmark_context') if isinstance(payload.get('benchmark_context'), dict) else {}
+    if benchmark_context:
+        lines.append('## Benchmark Context')
+        lines.append('')
+        lines.append(f"- specialist benchmark mode: `{benchmark_context.get('specialist_supervisor_benchmark_mode', 'unknown')}`")
+        lines.append(f"- api-core: `{benchmark_context.get('api_core_url', '')}`")
+        lines.append(f"- ai-orchestrator: `{benchmark_context.get('ai_orchestrator_url', '')}`")
+        lines.append(f"- crewai pilot: `{benchmark_context.get('crewai_pilot_url', '')}`")
+        lines.append(f"- specialist pilot: `{benchmark_context.get('specialist_supervisor_pilot_url', '')}`")
+        lines.append('')
     lines.append('## Stack Summary')
     lines.append('')
     lines.append('| Stack | OK | Keyword pass | Quality | Avg latency |')
@@ -333,6 +365,7 @@ async def _run_all(
         'generated_at': datetime.now(UTC).isoformat(),
         'dataset': str(DEFAULT_PROMPTS),
         'run_prefix': run_prefix,
+        'benchmark_context': _benchmark_context(),
         'summary': {
             'by_stack': summary_by_stack,
             'by_slice': summary_by_slice,

@@ -4,18 +4,27 @@ from typing import Any, Callable
 
 from . import runtime as rt
 from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult, build_kernel_plan
+from .evidence_pack import (
+    build_direct_answer_evidence_pack,
+    build_known_unknown_evidence_pack,
+    build_retrieval_evidence_pack,
+    build_structured_tool_evidence_pack,
+)
 from .graph_rag_runtime import run_graph_rag_query
 from .llm_provider import compose_with_provider, polish_structured_with_provider, revise_with_provider
 from .models import (
     AccessTier,
     MessageResponse,
+    MessageEvidencePack,
+    MessageEvidenceSupport,
     MessageResponseCitation,
     MessageResponseRequest,
     OrchestrationMode,
     QueryDomain,
+    RetrievalBackend,
 )
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
-from .public_known_unknowns import resolve_public_known_unknown_answer
+from .public_known_unknowns import detect_public_known_unknown_key, resolve_public_known_unknown_answer
 from .retrieval import get_retrieval_service
 
 
@@ -396,6 +405,55 @@ def _maybe_hypothetical_public_pricing_answer(
     if str(plan.entities.quantity_hint) not in answer or 'R$' not in answer:
         return None
     return answer, public_plan
+
+
+def _build_kernel_evidence_pack(
+    *,
+    request: MessageResponseRequest,
+    plan: KernelPlan,
+    preview: Any,
+    selected_tools: list[str],
+    citations: list[MessageResponseCitation],
+    school_profile: dict[str, Any] | None,
+    has_known_unknown_answer: bool,
+) -> MessageEvidencePack | None:
+    school_name = str((school_profile or {}).get('name') or 'Colegio Horizonte').strip()
+    if has_known_unknown_answer:
+        return build_known_unknown_evidence_pack(
+            requested_key=detect_public_known_unknown_key(request.message),
+            selected_tools=selected_tools,
+            school_name=school_name,
+        )
+    if citations:
+        return build_retrieval_evidence_pack(
+            citations=citations,
+            selected_tools=selected_tools,
+            retrieval_backend=preview.retrieval_backend if isinstance(preview.retrieval_backend, RetrievalBackend) else RetrievalBackend.none,
+            summary='Resposta grounded no kernel compartilhado com retrieval e citacoes.',
+        )
+    if preview.mode is OrchestrationMode.structured_tool:
+        return build_structured_tool_evidence_pack(
+            selected_tools=selected_tools,
+            slice_name=plan.slice_name,
+            summary=(
+                'Resposta grounded em tool-first do kernel compartilhado.'
+                if selected_tools
+                else 'Resposta grounded em fatos publicos estruturados do kernel compartilhado.'
+            ),
+        )
+    if preview.mode in {OrchestrationMode.clarify, OrchestrationMode.deny}:
+        return build_direct_answer_evidence_pack(
+            strategy=preview.mode.value,
+            summary='Resposta emitida pelo contrato de seguranca do kernel compartilhado.',
+            supports=[
+                MessageEvidenceSupport(
+                    kind='contract',
+                    label=preview.mode.value,
+                    detail=preview.reason,
+                )
+            ],
+        )
+    return None
 
 
 async def execute_kernel_plan(
@@ -808,9 +866,21 @@ async def execute_kernel_plan(
         visual_assets=visual_assets,
         suggested_replies=suggested_replies,
         calendar_events=calendar_events,
+        evidence_pack=_build_kernel_evidence_pack(
+            request=request,
+            plan=effective_plan,
+            preview=preview,
+            selected_tools=selected_tools,
+            citations=citations,
+            school_profile=school_profile,
+            has_known_unknown_answer=bool(unpublished_public_answer),
+        ),
         needs_authentication=preview.needs_authentication,
         graph_path=[*preview.graph_path, f'kernel:{effective_plan.stack_name}'],
-        risk_flags=preview.risk_flags,
+        risk_flags=[
+            *preview.risk_flags,
+            *(["valid_but_unpublished"] if unpublished_public_answer and "valid_but_unpublished" not in preview.risk_flags else []),
+        ],
         reason=preview.reason,
     )
     reflection = KernelReflection(
