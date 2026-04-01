@@ -544,6 +544,73 @@ def _sqlalchemy_url(database_url: str) -> str:
     return normalized
 
 
+def _sqlite_database_path(database_url: str) -> str | None:
+    normalized = _sqlalchemy_url(database_url)
+    if normalized.startswith("sqlite+aiosqlite:///"):
+        return normalized.split("sqlite+aiosqlite:///", 1)[1]
+    if normalized.startswith("sqlite:///"):
+        return normalized.split("sqlite:///", 1)[1]
+    return None
+
+
+def _prepare_agent_memory(database_url: str) -> tuple[str, bool]:
+    normalized = _sqlalchemy_url(database_url)
+    sqlite_path = _sqlite_database_path(normalized)
+    if sqlite_path:
+        parent = os.path.dirname(sqlite_path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        return normalized, True
+    return normalized, False
+
+
+def _stringify_payload_value(value: Any, *, preferred_keys: tuple[str, ...] = ()) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, (int, float, bool)):
+        return str(value).strip()
+    if isinstance(value, dict):
+        for key in preferred_keys:
+            candidate = _stringify_payload_value(value.get(key), preferred_keys=())
+            if candidate:
+                return candidate
+        for fallback_key in ("text", "summary", "detail", "excerpt", "message", "reason", "issue", "note", "name", "label", "id"):
+            candidate = _stringify_payload_value(value.get(fallback_key), preferred_keys=())
+            if candidate:
+                return candidate
+        try:
+            return json.dumps(value, ensure_ascii=False, sort_keys=True)
+        except Exception:
+            return str(value).strip()
+    if isinstance(value, list):
+        parts = [_stringify_payload_value(item, preferred_keys=preferred_keys) for item in value]
+        return "; ".join(part for part in parts if part)
+    return str(value).strip()
+
+
+def _normalize_string_list(
+    value: Any,
+    *,
+    preferred_keys: tuple[str, ...] = (),
+) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        text_value = value.strip()
+        return [text_value] if text_value else []
+    if isinstance(value, list):
+        normalized_items: list[str] = []
+        for item in value:
+            text_value = _stringify_payload_value(item, preferred_keys=preferred_keys)
+            if text_value:
+                normalized_items.append(text_value)
+        return normalized_items
+    text_value = _stringify_payload_value(value, preferred_keys=preferred_keys)
+    return [text_value] if text_value else []
+
+
 async def _http_get(
     client: httpx.AsyncClient,
     *,
@@ -6972,30 +7039,35 @@ def _normalize_result_payload(payload: Any) -> Any:
     for text_key in ("answer_text", "answer_summary", "evidence_summary", "denial_reason", "clarification_question"):
         if normalized.get(text_key) is None:
             normalized[text_key] = ""
-    for list_key in (
-        "tool_names",
-        "support_points",
-        "citations",
-        "specialists_used",
-        "suggested_replies",
-        "repair_notes",
-        "secondary_domains",
-        "recommended_specialists",
-        "evidence_queries",
-        "issues",
-    ):
-        if normalized.get(list_key) is None:
-            normalized[list_key] = []
-        elif isinstance(normalized.get(list_key), str):
-            text_value = str(normalized.get(list_key) or "").strip()
-            normalized[list_key] = [text_value] if text_value else []
+        elif not isinstance(normalized.get(text_key), str):
+            normalized[text_key] = _stringify_payload_value(
+                normalized.get(text_key),
+                preferred_keys=("text", "answer_text", "answer_summary", "summary", "detail", "message"),
+            )
+    string_list_keys: dict[str, tuple[str, ...]] = {
+        "tool_names": ("tool_name", "name", "id", "label"),
+        "support_points": ("text", "summary", "detail", "excerpt", "message", "reason"),
+        "specialists_used": ("id", "specialist_id", "name"),
+        "suggested_replies": ("text", "label", "title"),
+        "repair_notes": ("note", "summary", "detail", "message", "reason"),
+        "secondary_domains": ("domain", "name", "id"),
+        "recommended_specialists": ("id", "specialist_id", "name"),
+        "evidence_queries": ("query", "text", "summary"),
+        "issues": ("issue", "reason", "message", "detail", "summary"),
+    }
+    for list_key, preferred_keys in string_list_keys.items():
+        normalized[list_key] = _normalize_string_list(normalized.get(list_key), preferred_keys=preferred_keys)
     citations = normalized.get("citations")
+    if isinstance(citations, str):
+        citations = [citations]
     if isinstance(citations, list):
         normalized["citations"] = [
             normalized_citation
             for item in citations
             if (normalized_citation := _normalize_citation_payload(item)) is not None
         ]
+    elif citations is None:
+        normalized["citations"] = []
     return normalized
 
 
@@ -8146,11 +8218,12 @@ async def _run_manager_with_specialists(
             )
         )
     manager = _build_manager_agent(settings=ctx.settings, model=model, plan=plan, specialist_tools=specialist_tools)
+    memory_url, create_memory_tables = _prepare_agent_memory(getattr(ctx.settings, "agent_memory_url", ctx.settings.database_url))
     try:
         session = SQLAlchemySession.from_url(
             _effective_conversation_id(ctx.request),
-            url=_sqlalchemy_url(getattr(ctx.settings, "agent_memory_url", ctx.settings.database_url)),
-            create_tables=False,
+            url=memory_url,
+            create_tables=create_memory_tables,
         )
     except Exception as exc:
         logger.warning("specialist_session_memory_unavailable: %s", exc)

@@ -250,6 +250,54 @@ def _is_public_auth_guidance_request(request: Any) -> bool:
     )
 
 
+def _is_public_doc_bundle_request(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '')
+    normalized = _normalize_shadow_message(message)
+    if not normalized:
+        return False
+    intent_markers = (
+        'compare',
+        'comparar',
+        'comparativo',
+        'compare o',
+        'compare a',
+        'sintetize',
+        'resuma',
+        'explique como',
+        'cruze',
+        'quais documentos',
+        'do ponto de vista de uma familia nova',
+        'impactam o primeiro mes',
+    )
+    public_doc_markers = (
+        'manual de regulamentos',
+        'politica de avaliacao',
+        'calendario letivo',
+        'agenda de avaliacoes',
+        'manual de matricula',
+        'secretaria',
+        'portal',
+        'credenciais',
+        'envio de documentos',
+        'protocolo de saude',
+        'medicacao',
+        'emergencias',
+        'segunda chamada',
+        'bolsas',
+        'descontos',
+        'rematricula',
+        'transferencia',
+        'cancelamento',
+        'permanencia',
+        'acolhimento familiar',
+        'estudo orientado',
+        'vida academica',
+    )
+    return any(_contains_phrase(normalized, term) for term in intent_markers) and any(
+        _contains_phrase(normalized, term) for term in public_doc_markers
+    )
+
+
 def _is_protected_access_scope_request(request: Any) -> bool:
     user = getattr(request, 'user', None)
     authenticated = bool(getattr(user, 'authenticated', False))
@@ -306,6 +354,7 @@ def _protected_shadow_slice(request: Any) -> bool:
         or _is_public_policy_request(request)
         or _is_public_document_submission_request(request)
         or _is_public_service_credentials_bundle_request(request)
+        or _is_public_doc_bundle_request(request)
         or _is_public_timeline_request(request)
         or _is_public_auth_guidance_request(request)
     ):
@@ -380,6 +429,7 @@ def _support_shadow_slice(request: Any) -> bool:
         or _is_public_policy_request(request)
         or _is_public_document_submission_request(request)
         or _is_public_service_credentials_bundle_request(request)
+        or _is_public_doc_bundle_request(request)
         or _is_public_timeline_request(request)
         or _is_public_auth_guidance_request(request)
     ):
