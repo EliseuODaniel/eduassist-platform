@@ -69,6 +69,7 @@ from .public_doc_knowledge import (
     compose_public_process_compare,
 )
 from .registry import get_specialist_registry
+from .restricted_doc_tool_first import maybe_restricted_document_tool_first_answer
 from .runtime_io import (
     fetch_actor_context as _fetch_actor_context,
     fetch_conversation_context as _fetch_conversation_context,
@@ -4091,112 +4092,9 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 reason="specialist_supervisor_tool_first:human_handoff",
             )
 
-    if _looks_like_internal_document_query(ctx.request.message):
-        authorized_for_restricted = _can_read_restricted_documents(ctx.request.user)
-        domain_hint = _internal_doc_domain_hint(ctx.request.message)
-        if not authorized_for_restricted:
-            public_bridge = ""
-            if _looks_like_health_second_call_query(ctx.request.message):
-                public_answer = compose_public_health_second_call()
-                if public_answer:
-                    public_bridge = f"\n\nPosso, no entanto, te orientar pelo material publico:\n{public_answer}"
-            return SupervisorAnswerPayload(
-                message_text=(
-                    "Nao posso compartilhar procedimentos, protocolos, manuais ou playbooks internos da escola. "
-                    "Se voce precisa de orientacao oficial, eu posso explicar a politica publica correspondente ou abrir um handoff."
-                ) + public_bridge,
-                mode="deny",
-                classification=MessageIntentClassification(
-                    domain=domain_hint,
-                    access_tier=_access_tier_for_domain(domain_hint, ctx.request.user.authenticated),
-                    confidence=0.99,
-                    reason="specialist_supervisor_tool_first:restricted_document_denied",
-                ),
-                evidence_pack=MessageEvidencePack(
-                    strategy="deny",
-                    summary="Pedido de acesso a documento restrito negado por politica de acesso.",
-                    source_count=1,
-                    support_count=1,
-                    supports=[
-                        MessageEvidenceSupport(kind="policy", label="Documento restrito", detail="Acesso limitado a staff e perfis autorizados"),
-                    ],
-                ),
-                suggested_replies=_default_suggested_replies(domain_hint),
-                graph_path=["specialist_supervisor", "tool_first", "restricted_document_denied"],
-                reason="specialist_supervisor_tool_first:restricted_document_denied",
-            )
-
-        retrieval_payload = await _orchestrator_retrieval_search(
-            ctx,
-            query=ctx.request.message,
-            visibility="restricted",
-            category="private_docs",
-            top_k=5,
-        )
-        hits = retrieval_payload.get("hits") if isinstance(retrieval_payload, dict) else []
-        normalized_hits = hits if isinstance(hits, list) else []
-        relevant_hits = _select_relevant_internal_doc_hits(ctx.request.message, normalized_hits)
-        if relevant_hits:
-            citations = [
-                citation
-                for hit in relevant_hits
-                if (citation := _citation_from_retrieval_hit(hit)) is not None
-            ][:4]
-            supports = [
-                MessageEvidenceSupport(
-                    kind="citation",
-                    label=citation.document_title,
-                    detail=f"{citation.version_label} · {citation.chunk_id}",
-                    excerpt=_safe_excerpt(citation.excerpt),
-                )
-                for citation in citations[:3]
-            ]
-            return SupervisorAnswerPayload(
-                message_text=_compose_internal_doc_grounded_answer(ctx.request.message, relevant_hits),
-                mode="hybrid_retrieval",
-                classification=MessageIntentClassification(
-                    domain=domain_hint,
-                    access_tier=_access_tier_for_domain(domain_hint, ctx.request.user.authenticated),
-                    confidence=0.94,
-                    reason="specialist_supervisor_tool_first:restricted_document_search",
-                ),
-                retrieval_backend="qdrant_hybrid",
-                citations=citations,
-                evidence_pack=MessageEvidencePack(
-                    strategy="document_search",
-                    summary="Resposta grounded diretamente em documentos restritos recuperados do acervo interno.",
-                    source_count=len(citations) or 1,
-                    support_count=len(supports),
-                    supports=supports,
-                ),
-                suggested_replies=_default_suggested_replies(domain_hint),
-                graph_path=["specialist_supervisor", "tool_first", "restricted_document_search"],
-                reason="specialist_supervisor_tool_first:restricted_document_search",
-            )
-
-        return SupervisorAnswerPayload(
-            message_text=_compose_internal_doc_no_match_answer(ctx.request.message, profile),
-            mode="hybrid_retrieval",
-            classification=MessageIntentClassification(
-                domain=domain_hint,
-                access_tier=_access_tier_for_domain(domain_hint, ctx.request.user.authenticated),
-                confidence=0.82,
-                reason="specialist_supervisor_tool_first:restricted_document_no_match",
-            ),
-            retrieval_backend="qdrant_hybrid",
-            evidence_pack=MessageEvidencePack(
-                strategy="document_search",
-                summary="Busca em documentos restritos sem encontrar evidencias suficientemente especificas para ampliar a resposta.",
-                source_count=1 if normalized_hits else 0,
-                support_count=1,
-                supports=[
-                    MessageEvidenceSupport(kind="retrieval", label="Documentos restritos", detail="Busca executada sem match especifico suficiente"),
-                ],
-            ),
-            suggested_replies=_default_suggested_replies(domain_hint),
-            graph_path=["specialist_supervisor", "tool_first", "restricted_document_no_match"],
-            reason="specialist_supervisor_tool_first:restricted_document_no_match",
-        )
+    restricted_doc_answer = await maybe_restricted_document_tool_first_answer(ctx, profile=profile)
+    if restricted_doc_answer is not None:
+        return restricted_doc_answer
 
     if not ctx.request.user.authenticated and (
         _looks_like_calendar_week_query(ctx.request.message)

@@ -1,0 +1,2115 @@
+{
+  "generated_at": "2026-04-01T20:54:09.902007+00:00",
+  "dataset": "/home/edann/projects/eduassist-platform/tests/evals/datasets/system_question_bank_wave_teacher_workflow.json",
+  "run_prefix": "debug:five-path:20260401T205049Z",
+  "benchmark_context": {
+    "specialist_supervisor_benchmark_mode": "source",
+    "api_core_url": "http://127.0.0.1:8001",
+    "ai_orchestrator_url": "http://127.0.0.1:8002",
+    "crewai_pilot_url": "http://127.0.0.1:8004",
+    "specialist_supervisor_pilot_url": "http://127.0.0.1:8005",
+    "database_url": "postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist",
+    "qdrant_url": "http://127.0.0.1:6333",
+    "env_loaded": true
+  },
+  "stack_execution_mode": "sequential",
+  "summary": {
+    "by_stack": {
+      "langgraph": {
+        "count": 16,
+        "ok": 16,
+        "keyword_pass": 16,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 665.6
+      },
+      "crewai": {
+        "count": 16,
+        "ok": 16,
+        "keyword_pass": 16,
+        "quality_avg": 99.4,
+        "avg_latency_ms": 3686.5
+      },
+      "python_functions": {
+        "count": 16,
+        "ok": 16,
+        "keyword_pass": 16,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 160.2
+      },
+      "llamaindex": {
+        "count": 16,
+        "ok": 16,
+        "keyword_pass": 16,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 1406.8
+      },
+      "specialist_supervisor": {
+        "count": 16,
+        "ok": 16,
+        "keyword_pass": 16,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 6555.4
+      }
+    },
+    "by_slice": {
+      "protected": {
+        "count": 7,
+        "langgraph": {
+          "ok": 7,
+          "keyword_pass": 7,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 613.7
+        },
+        "crewai": {
+          "ok": 7,
+          "keyword_pass": 7,
+          "quality_avg": 98.6,
+          "avg_latency_ms": 5312.8
+        },
+        "python_functions": {
+          "ok": 7,
+          "keyword_pass": 7,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 145.4
+        },
+        "llamaindex": {
+          "ok": 7,
+          "keyword_pass": 7,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 163.3
+        },
+        "specialist_supervisor": {
+          "ok": 7,
+          "keyword_pass": 7,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 6318.4
+        }
+      },
+      "public": {
+        "count": 1,
+        "langgraph": {
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 3371.1
+        },
+        "crewai": {
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 185.7
+        },
+        "python_functions": {
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 175.0
+        },
+        "llamaindex": {
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 8324.1
+        },
+        "specialist_supervisor": {
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 23013.0
+        }
+      },
+      "workflow": {
+        "count": 8,
+        "langgraph": {
+          "ok": 8,
+          "keyword_pass": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 373.0
+        },
+        "crewai": {
+          "ok": 8,
+          "keyword_pass": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 2701.1
+        },
+        "python_functions": {
+          "ok": 8,
+          "keyword_pass": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 171.2
+        },
+        "llamaindex": {
+          "ok": 8,
+          "keyword_pass": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 1630.2
+        },
+        "specialist_supervisor": {
+          "ok": 8,
+          "keyword_pass": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 4705.6
+        }
+      }
+    },
+    "error_types": {
+      "langgraph": {},
+      "crewai": {
+        "repetitive_reply": 1
+      },
+      "python_functions": {},
+      "llamaindex": {},
+      "specialist_supervisor": {}
+    }
+  },
+  "results": [
+    {
+      "prompt": "Quais turmas e disciplinas eu tenho neste ano?",
+      "slice": "protected",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q065",
+      "turn_index": 1,
+      "note": "Q065|profile=professor|difficulty=facil|form=direta|sources=teacher|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 350.9,
+        "mode": "structured_tool",
+        "reason": "teacher_role_rescue",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call",
+          "teacher_role_rescue"
+        ],
+        "answer_text": "Grade docente de Fernando Azevedo:\n- 1o Ano A - Fisica (2026)\n- 1o Ano A - Quimica (2026)\n- 1o Ano B - Filosofia (2026)\n- 1o Ano B - Historia (2026)\n- 2o Ano A - Filosofia (2026)\n- 2o Ano A - Fisica (2026)\n- 2o Ano A - Quimica (2026)\n- 2o Ano B - Filosofia (2026)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 18420.3,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_flow_completed",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "protected_planning",
+          "protected_composition",
+          "protected_judging"
+        ],
+        "answer_text": "Para qual aluno você gostaria de saber as turmas e disciplinas?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 147.8,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_teacher_schedule",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Grade docente de Fernando Azevedo:\n- 1o Ano A - Fisica (2026)\n- 1o Ano A - Quimica (2026)\n- 1o Ano B - Filosofia (2026)\n- 1o Ano B - Historia (2026)\n- 2o Ano A - Filosofia (2026)\n- 2o Ano A - Fisica (2026)\n- 2o Ano A - Quimica (2026)\n- 2o Ano B - Filosofia (2026)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 179.5,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Grade docente de Fernando Azevedo:\n- 1o Ano A - Fisica (2026)\n- 1o Ano A - Quimica (2026)\n- 1o Ano B - Filosofia (2026)\n- 1o Ano B - Historia (2026)\n- 2o Ano A - Filosofia (2026)\n- 2o Ano A - Fisica (2026)\n- 2o Ano A - Quimica (2026)\n- 2o Ano B - Filosofia (2026)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 5513.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:teacher_schedule",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "teacher_schedule"
+        ],
+        "answer_text": "Grade docente de Fernando Azevedo:\n- 1o Ano A - Fisica (2026)\n- 1o Ano A - Quimica (2026)\n- 1o Ano B - Filosofia (2026)\n- 1o Ano B - Historia (2026)\n- 2o Ano A - Filosofia (2026)\n- 2o Ano A - Fisica (2026)\n- 2o Ano A - Quimica (2026)\n- 2o Ano B - Filosofia (2026)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Qual e a minha grade docente completa?",
+      "slice": "protected",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q066",
+      "turn_index": 1,
+      "note": "Q066|profile=professor|difficulty=facil|form=direta|sources=teacher|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 156.4,
+        "mode": "structured_tool",
+        "reason": "teacher_role_rescue",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "teacher_role_rescue"
+        ],
+        "answer_text": "Grade docente de Fernando Azevedo:\n- 1o Ano A - Fisica (2026)\n- 1o Ano A - Quimica (2026)\n- 1o Ano B - Filosofia (2026)\n- 1o Ano B - Historia (2026)\n- 2o Ano A - Filosofia (2026)\n- 2o Ano A - Fisica (2026)\n- 2o Ano A - Quimica (2026)\n- 2o Ano B - Filosofia (2026)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 170.0,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_teacher_scope_preflow",
+        "graph_path": [
+          "preflow",
+          "teacher_scope_backstop"
+        ],
+        "answer_text": "Grade docente de Fernando Azevedo:\n- Fisica em 1o Ano A (2026).\n- Quimica em 1o Ano A (2026).\n- Filosofia em 1o Ano B (2026).\n- Historia em 1o Ano B (2026).\n- Filosofia em 2o Ano A (2026).\n- Fisica em 2o Ano A (2026).\n- Quimica em 2o Ano A (2026).\n- Filosofia em 2o Ano B (2026).\n- Sociologia em 2o Ano B (2026).\n- Filosofia em 3o Ano A (2026).\n- Fisica em 3o Ano A (2026).\n- Quimica em 3o Ano A (2026).\n- Sociologia em 3o Ano B (2026).\n- Historia em 6o Ano B (2026).\n- Geografia em 7o Ano B (2026).\n- Geografia em 8o Ano B (2026).\n- Historia em 8o Ano B (2026).\n- Geografia em 9o Ano B (2026).\n- Historia em 9o Ano B (2026).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 158.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_teacher_schedule",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Grade docente de Fernando Azevedo:\n- 1o Ano A - Fisica (2026)\n- 1o Ano A - Quimica (2026)\n- 1o Ano B - Filosofia (2026)\n- 1o Ano B - Historia (2026)\n- 2o Ano A - Filosofia (2026)\n- 2o Ano A - Fisica (2026)\n- 2o Ano A - Quimica (2026)\n- 2o Ano B - Filosofia (2026)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 171.5,
+        "mode": "structured_tool",
+        "reason": "llamaindex_teacher_schedule_direct",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "llamaindex:workflow",
+          "llamaindex:teacher",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Grade docente de Fernando Azevedo:\n- 1o Ano A - Fisica (2026)\n- 1o Ano A - Quimica (2026)\n- 1o Ano B - Filosofia (2026)\n- 1o Ano B - Historia (2026)\n- 2o Ano A - Filosofia (2026)\n- 2o Ano A - Fisica (2026)\n- 2o Ano A - Quimica (2026)\n- 2o Ano B - Filosofia (2026)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1924.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:teacher_schedule",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "teacher_schedule"
+        ],
+        "answer_text": "Grade docente de Fernando Azevedo:\n- 1o Ano A - Fisica (2026)\n- 1o Ano A - Quimica (2026)\n- 1o Ano B - Filosofia (2026)\n- 1o Ano B - Historia (2026)\n- 2o Ano A - Filosofia (2026)\n- 2o Ano A - Fisica (2026)\n- 2o Ano A - Quimica (2026)\n- 2o Ano B - Filosofia (2026)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "E so do ensino medio?",
+      "slice": "protected",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q066",
+      "turn_index": 2,
+      "note": "Q067|profile=professor|difficulty=media|form=follow-up|sources=teacher|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 176.9,
+        "mode": "structured_tool",
+        "reason": "teacher_role_rescue",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call",
+          "teacher_role_rescue"
+        ],
+        "answer_text": "Nao. Sua grade atual nao e so do Ensino Medio.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 161.4,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_teacher_scope_preflow",
+        "graph_path": [
+          "preflow",
+          "teacher_scope_backstop"
+        ],
+        "answer_text": "Grade docente de Fernando Azevedo:\n- Fisica em 1o Ano A (2026).\n- Quimica em 1o Ano A (2026).\n- Filosofia em 1o Ano B (2026).\n- Historia em 1o Ano B (2026).\n- Filosofia em 2o Ano A (2026).\n- Fisica em 2o Ano A (2026).\n- Quimica em 2o Ano A (2026).\n- Filosofia em 2o Ano B (2026).\n- Sociologia em 2o Ano B (2026).\n- Filosofia em 3o Ano A (2026).\n- Fisica em 3o Ano A (2026).\n- Quimica em 3o Ano A (2026).\n- Sociologia em 3o Ano B (2026).\n- Historia em 6o Ano B (2026).\n- Geografia em 7o Ano B (2026).\n- Geografia em 8o Ano B (2026).\n- Historia em 8o Ano B (2026).\n- Geografia em 9o Ano B (2026).\n- Historia em 9o Ano B (2026).",
+        "keyword_pass": true,
+        "quality_score": 90,
+        "error_types": [
+          "repetitive_reply"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": false,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 170.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_teacher_schedule",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Nao. Sua grade atual nao e so do Ensino Medio.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 187.8,
+        "mode": "structured_tool",
+        "reason": "llamaindex_teacher_schedule_direct",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:teacher",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Nao. Sua grade atual nao e so do Ensino Medio.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2032.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:teacher_schedule",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "teacher_schedule"
+        ],
+        "answer_text": "Nao. Sua grade atual nao e so do Ensino Medio.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quais turmas eu atendo em Filosofia e em que classes?",
+      "slice": "protected",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q068",
+      "turn_index": 1,
+      "note": "Q068|profile=professor|difficulty=media|form=direta|sources=teacher|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 161.9,
+        "mode": "structured_tool",
+        "reason": "teacher_role_rescue",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call",
+          "teacher_role_rescue"
+        ],
+        "answer_text": "Turmas de Fernando Azevedo:\n- 1o Ano B\n- 2o Ano A\n- 2o Ano B\n- 3o Ano A",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 17854.8,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_flow_completed",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "protected_planning",
+          "protected_composition",
+          "protected_judging"
+        ],
+        "answer_text": "Não encontrei informações sobre as turmas e classes que você atende em Filosofia nos documentos disponíveis. Você está procurando por informações sobre um aluno específico ou sobre o seu próprio horário como professor?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 151.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_teacher_schedule",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Turmas de Fernando Azevedo:\n- 1o Ano B\n- 2o Ano A\n- 2o Ano B\n- 3o Ano A",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 175.5,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Turmas de Fernando Azevedo:\n- 1o Ano B\n- 2o Ano A\n- 2o Ano B\n- 3o Ano A",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2013.7,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:teacher_schedule",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "teacher_schedule"
+        ],
+        "answer_text": "Turmas de Fernando Azevedo:\n- 1o Ano A\n- 1o Ano B\n- 2o Ano A\n- 2o Ano B\n- 3o Ano A\n- 3o Ano B\n- 6o Ano B\n- 7o Ano B\n- 8o Ano B\n- 9o Ano B",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Resuma minha rotina docente junto com orientacoes publicas sobre calendario e comunicacao escolar.",
+      "slice": "protected",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q069",
+      "turn_index": 1,
+      "note": "Q069|profile=professor|difficulty=dificil|form=multi-fonte|sources=teacher,public_docs|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1874.0,
+        "mode": "structured_tool",
+        "reason": "teacher_role_rescue",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "hybrid_retrieval",
+          "teacher_role_rescue"
+        ],
+        "answer_text": "Resumo docente de Fernando Azevedo: 10 turma(s) e 6 disciplina(s) ativas nesta base. Disciplinas: Fisica, Quimica, Filosofia, Historia. Turmas: 1o Ano A, 1o Ano B, 2o Ano A, 2o Ano B. Para comunicacao escolar geral, a secretaria e o canal institucional mais seguro; para alinhamentos pedagogicos, siga com coordenacao e orientacao conforme o assunto.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 144.9,
+        "mode": "structured_tool",
+        "reason": "crewai_protected_teacher_scope_preflow",
+        "graph_path": [
+          "preflow",
+          "teacher_scope_backstop"
+        ],
+        "answer_text": "Grade docente de Fernando Azevedo:\n- Fisica em 1o Ano A (2026).\n- Quimica em 1o Ano A (2026).\n- Filosofia em 1o Ano B (2026).\n- Historia em 1o Ano B (2026).\n- Filosofia em 2o Ano A (2026).\n- Fisica em 2o Ano A (2026).\n- Quimica em 2o Ano A (2026).\n- Filosofia em 2o Ano B (2026).\n- Sociologia em 2o Ano B (2026).\n- Filosofia em 3o Ano A (2026).\n- Fisica em 3o Ano A (2026).\n- Quimica em 3o Ano A (2026).\n- Sociologia em 3o Ano B (2026).\n- Historia em 6o Ano B (2026).\n- Geografia em 7o Ano B (2026).\n- Geografia em 8o Ano B (2026).\n- Historia em 8o Ano B (2026).\n- Geografia em 9o Ano B (2026).\n- Historia em 9o Ano B (2026).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 154.8,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_teacher_schedule",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Resumo docente de Fernando Azevedo: 10 turma(s) e 6 disciplina(s) ativas nesta base. Disciplinas: Fisica, Quimica, Filosofia, Historia. Turmas: 1o Ano A, 1o Ano B, 2o Ano A, 2o Ano B. Para comunicacao escolar geral, a secretaria e o canal institucional mais seguro; para alinhamentos pedagogicos, siga com coordenacao e orientacao conforme o assunto.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 172.6,
+        "mode": "structured_tool",
+        "reason": "llamaindex_teacher_schedule_direct",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "llamaindex:workflow",
+          "llamaindex:teacher",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Resumo docente de Fernando Azevedo: 10 turma(s) e 6 disciplina(s) ativas nesta base. Disciplinas: Fisica, Quimica, Filosofia, Historia. Turmas: 1o Ano A, 1o Ano B, 2o Ano A, 2o Ano B. Para comunicacao escolar geral, a secretaria e o canal institucional mais seguro; para alinhamentos pedagogicos, siga com coordenacao e orientacao conforme o assunto.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2040.7,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:teacher_schedule",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "teacher_schedule"
+        ],
+        "answer_text": "Resumo docente de Fernando Azevedo: 10 turma(s) e 6 disciplina(s) ativas nesta base. Disciplinas: Fisica, Quimica, Filosofia, Historia. Turmas: 1o Ano A, 1o Ano B, 2o Ano A, 2o Ano B. Para comunicacao escolar geral, a secretaria e o canal institucional mais seguro; para alinhamentos pedagogicos, siga com coordenacao e orientacao conforme o assunto.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Sou professor de Filosofia e quero trabalhar ai; como faco para entrar em contato?",
+      "slice": "public",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q070",
+      "turn_index": 1,
+      "note": "Q070|profile=anonimo|difficulty=media|form=direta|sources=profile,service_dir|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 3371.1,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Voce pode falar com Colegio Horizonte por estes canais oficiais:\n- Secretaria: (11) 3333-4200\n- Admissoes: (11) 3333-4201\n- Orientacao educacional: (11) 3333-4202\n- Financeiro: (11) 3333-4203\n- Atendimento comercial: (11) 97500-2040\n- Secretaria digital: (11) 97500-2041\n- Secretaria: secretaria@colegiohorizonte.edu.br\n- Admissoes: admissoes@colegiohorizonte.edu.br\n- Orientacao educacional: orientacao@colegiohorizonte.edu.br\n- Financeiro: financeiro@colegiohorizonte.edu.br\n- Direcao: direcao@colegiohorizonte.edu.br\n- Suporte digital: suporte.digital@colegiohorizonte.edu.br\n- Talentos: talentos@colegiohorizonte.edu.br\n\nO Colegio Horizonte nao divulga nomes nem contatos diretos de professores por disciplina, como filosofia e quero trabalhar ai; como faco para entrar em contato. Se quiser, eu posso te indicar a coordenacao pedagogica ou o setor certo para seguir com isso.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 185.7,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "Secretaria (telefone): (11) 3333-4200",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 175.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Voce pode falar com Colegio Horizonte por estes canais oficiais:\n- Secretaria: (11) 3333-4200\n- Admissoes: (11) 3333-4201\n- Orientacao educacional: (11) 3333-4202\n- Financeiro: (11) 3333-4203\n- Atendimento comercial: (11) 97500-2040\n- Secretaria digital: (11) 97500-2041\n- Secretaria: secretaria@colegiohorizonte.edu.br\n- Admissoes: admissoes@colegiohorizonte.edu.br\n- Orientacao educacional: orientacao@colegiohorizonte.edu.br\n- Financeiro: financeiro@colegiohorizonte.edu.br\n- Direcao: direcao@colegiohorizonte.edu.br\n- Suporte digital: suporte.digital@colegiohorizonte.edu.br\n- Talentos: talentos@colegiohorizonte.edu.br\n\nO Colegio Horizonte nao divulga nomes nem contatos diretos de professores por disciplina, como filosofia e quero trabalhar ai; como faco para entrar em contato. Se quiser, eu posso te indicar a coordenacao pedagogica ou o setor certo para seguir com isso.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 8324.1,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Voce pode falar com Colegio Horizonte por estes canais oficiais:\n- Secretaria: (11) 3333-4200\n- Admissoes: (11) 3333-4201\n- Orientacao educacional: (11) 3333-4202\n- Financeiro: (11) 3333-4203\n- Atendimento comercial: (11) 97500-2040\n- Secretaria digital: (11) 97500-2041\n- Secretaria: secretaria@colegiohorizonte.edu.br\n- Admissoes: admissoes@colegiohorizonte.edu.br\n- Orientacao educacional: orientacao@colegiohorizonte.edu.br\n- Financeiro: financeiro@colegiohorizonte.edu.br\n- Direcao: direcao@colegiohorizonte.edu.br\n- Suporte digital: suporte.digital@colegiohorizonte.edu.br\n- Talentos: talentos@colegiohorizonte.edu.br\n\nO Colegio Horizonte nao divulga nomes nem contatos diretos de professores por disciplina, como filosofia e quero trabalhar ai; como faco para entrar em contato. Se quiser, eu posso te indicar a coordenacao pedagogica ou o setor certo para seguir com isso.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 23013.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_manager_judge:institution:structured_tools",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "institution_specialist",
+          "judge"
+        ],
+        "answer_text": "Para entrar em contato com o Colégio Horizonte a respeito de oportunidades de trabalho como professor, você pode enviar seu currículo e suas dúvidas para o e-mail: talentos@colegiohorizonte.edu.br. O tempo estimado para retorno é de até 5 dias úteis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Me diga o nome e o telefone do professor de Educacao Fisica.",
+      "slice": "protected",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q071",
+      "turn_index": 1,
+      "note": "Q071|profile=anonimo|difficulty=media|form=adversarial|sources=org_dir,policy|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 131.3,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 200.1,
+        "mode": "deny",
+        "reason": "crewai_protected_auth_required",
+        "graph_path": [
+          "flow_router",
+          "auth_required_deterministic"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 139.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 140.1,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 14432.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_direct:institution_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "institution_specialist"
+        ],
+        "answer_text": "Não encontrei o nome e o telefone específico do professor de Educação Física nas informações públicas disponíveis. No entanto, você pode entrar em contato com a secretaria da escola pelo telefone (11) 3333-4200 ou pelo e-mail secretaria@colegiohorizonte.edu.br para obter essa informação.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Gere um resumo enxuto da minha alocacao para eu revisar antes da reuniao pedagogica.",
+      "slice": "protected",
+      "category": "professor_e_grade_docente",
+      "thread_id": "system_bank:professor_e_grade_docente:Q072",
+      "turn_index": 1,
+      "note": "Q072|profile=professor|difficulty=dificil|form=criativa|sources=teacher|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1444.2,
+        "mode": "structured_tool",
+        "reason": "teacher_role_rescue",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "hybrid_retrieval",
+          "teacher_role_rescue"
+        ],
+        "answer_text": "Voce esta falando aqui como Fernando Azevedo, no perfil de professor do Colegio Horizonte. No Telegram, nesta etapa eu consigo consultar sua grade docente, turmas e disciplinas. A situacao individual dos alunos ainda nao esta liberada por este canal. Se quiser, me pergunte \"qual meu horario?\", \"quais sao minhas turmas?\" ou \"quais disciplinas eu ministro?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 237.9,
+        "mode": "structured_tool",
+        "reason": "crewai_public_fast_path",
+        "graph_path": [
+          "flow_router",
+          "deterministic_fast_path"
+        ],
+        "answer_text": "A proposta pedagogica publicada hoje combina A escola segue a BNCC e o curriculo do Ensino Medio articulado com projeto de vida, producao textual, cultura digital e aprofundamento academico progressivo. Na pratica, isso aparece em frentes como Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 96.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_teacher_scope_guidance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Voce esta falando aqui como Fernando Azevedo, no perfil de professor do Colegio Horizonte. No Telegram, nesta etapa eu consigo consultar sua grade docente, turmas e disciplinas. A situacao individual dos alunos ainda nao esta liberada por este canal. Se quiser, me pergunte \"qual meu horario?\", \"quais sao minhas turmas?\" ou \"quais disciplinas eu ministro?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 116.1,
+        "mode": "structured_tool",
+        "reason": "llamaindex_teacher_scope_guidance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "llamaindex:workflow",
+          "llamaindex:teacher",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Voce esta falando aqui como Fernando Azevedo, no perfil de professor do Colegio Horizonte. No Telegram, nesta etapa eu consigo consultar sua grade docente, turmas e disciplinas. A situacao individual dos alunos ainda nao esta liberada por este canal. Se quiser, me pergunte \"qual meu horario?\", \"quais sao minhas turmas?\" ou \"quais disciplinas eu ministro?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 16272.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_multi_direct:academic_specialist+workflow_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "multi_specialist_direct",
+          "academic_specialist",
+          "workflow_specialist"
+        ],
+        "answer_text": "Acadêmico:\n- Não consigo gerar um resumo da sua alocação para a reunião pedagógica. Minhas funcionalidades se limitam a fornecer informações sobre notas, frequência, provas futuras e aprovação de alunos, e não tenho acesso a dados sobre alocação de professores.\n\nAtendimento: Sua solicitação para um resumo da alocação para revisão antes da reunião pedagógica foi encaminhada para a coordenação pedagógica. O número do seu ticket de atendimento é ATD-20260401-D6A27279. Em breve, um de nossos atendentes entrará em contato para auxiliar você.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Quero agendar uma visita para conhecer a escola.",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+      "turn_index": 1,
+      "note": "Q073|profile=anonimo|difficulty=facil|form=direta|sources=workflow,handoff|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 204.1,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260401-FBD2C3. Preferencia informada: janela a confirmar. Fila responsavel: admissoes. Ticket operacional: ATD-20260401-521F2ACD. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 237.1,
+        "mode": "structured_tool",
+        "reason": "workflow_visit_create",
+        "graph_path": [
+          "flow_router",
+          "operation_result",
+          "deterministic_workflow"
+        ],
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260401-A78FBD. Preferencia informada: janela a confirmar. Fila responsavel: admissoes. Ticket operacional: ATD-20260401-21CB291A. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 173.2,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260401-E6667C. Preferencia informada: janela a confirmar. Fila responsavel: admissoes. Ticket operacional: ATD-20260401-2B65E04C. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 202.8,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260401-0B5BC0. Preferencia informada: janela a confirmar. Fila responsavel: admissoes. Ticket operacional: ATD-20260401-2FC78467. A equipe comercial valida a janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2047.6,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:visit_booking",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "visit_booking"
+        ],
+        "answer_text": "Pedido de visita registrado. Protocolo: VIS-20260401-A9BCED. Preferencia registrada: janela a confirmar. Ticket operacional: ATD-20260401-16B8E405. Se quiser, eu tambem posso acompanhar o status ou remarcar a visita.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Pode ser na quinta a tarde?",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+      "turn_index": 2,
+      "note": "Q074|profile=anonimo|difficulty=media|form=follow-up|sources=workflow|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 160.9,
+        "mode": "structured_tool",
+        "reason": "workflow_follow_up_rescue:visit_update",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call",
+          "workflow_follow_up_rescue_visit_update"
+        ],
+        "answer_text": "Pedido de visita atualizado com a fila de admissions. Protocolo: VIS-20260401-FBD2C3. Ticket operacional: ATD-20260401-521F2ACD. Nova preferencia: quinta-feira - tarde (02/04/2026 - 14:30). Admissions valida a nova janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 184.4,
+        "mode": "structured_tool",
+        "reason": "workflow_visit_reschedule",
+        "graph_path": [
+          "flow_router",
+          "operation_result",
+          "deterministic_workflow"
+        ],
+        "answer_text": "Pedido de visita atualizado com a fila de admissoes. - Protocolo: VIS-20260401-A78FBD - Ticket operacional: ATD-20260401-21CB291A - Nova preferencia: quinta-feira - tarde (02/04/2026 - 14:30) Proximo passo: admissions valida a nova janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 240.0,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Pedido de visita atualizado com a fila de admissions. Protocolo: VIS-20260401-E6667C. Ticket operacional: ATD-20260401-2B65E04C. Nova preferencia: quinta-feira - tarde (02/04/2026 - 14:30). Admissions valida a nova janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 292.1,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Pedido de visita atualizado com a fila de admissions. Protocolo: VIS-20260401-0B5BC0. Ticket operacional: ATD-20260401-2FC78467. Nova preferencia: quinta-feira - tarde (02/04/2026 - 14:30). Admissions valida a nova janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1951.8,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:visit_reschedule",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "visit_reschedule"
+        ],
+        "answer_text": "Pedido de visita atualizado. Protocolo: VIS-20260401-A9BCED. Nova preferencia: quinta-feira, 14:30. Admissions valida a nova janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Qual e o protocolo dessa visita?",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+      "turn_index": 3,
+      "note": "Q075|profile=anonimo|difficulty=media|form=follow-up|sources=workflow|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 159.6,
+        "mode": "structured_tool",
+        "reason": "workflow_follow_up_rescue:visit_update",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call",
+          "workflow_follow_up_rescue_visit_update"
+        ],
+        "answer_text": "Nao consegui atualizar a visita agora. Se quiser, me passe novamente o protocolo da visita ou o novo horario desejado.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 188.6,
+        "mode": "structured_tool",
+        "reason": "workflow_protocol_lookup",
+        "graph_path": [
+          "flow_router",
+          "operation_result",
+          "deterministic_workflow"
+        ],
+        "answer_text": "O protocolo da sua visita e VIS-20260401-A78FBD. - Ticket operacional: ATD-20260401-21CB291A - Preferencia registrada: quinta-feira - 14:30 (02/04/2026 - 14:30) Se quiser, eu tambem posso te dizer o status, remarcar ou cancelar a visita.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 195.8,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Solicitacao institucional registrada para direcao. Protocolo: REQ-20260401-7925E4. Assunto: Qual e o protocolo dessa visita? Fila responsavel: direcao. Ticket operacional: ATD-20260401-2B65E04C. A equipe faz a triagem inicial e segue o retorno pelo fluxo institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 204.7,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Solicitacao institucional registrada para direcao. Protocolo: REQ-20260401-0A6F95. Assunto: Qual e o protocolo dessa visita? Fila responsavel: direcao. Ticket operacional: ATD-20260401-2FC78467. A equipe faz a triagem inicial e segue o retorno pelo fluxo institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 16549.4,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_direct:workflow_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "workflow_specialist"
+        ],
+        "answer_text": "O protocolo da sua visita é VIS-20260401-A9BCED e o status atual é 'queued'.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Preciso remarcar para a semana que vem.",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+      "turn_index": 4,
+      "note": "Q076|profile=anonimo|difficulty=media|form=follow-up|sources=workflow|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1815.7,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify"
+        ],
+        "answer_text": "Olá! Para que eu possa te ajudar a remarcar a visita, preciso que você me informe o protocolo da visita que deseja alterar. Assim consigo localizar e verificar as opções para a semana que vem.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 218.4,
+        "mode": "structured_tool",
+        "reason": "workflow_visit_reschedule",
+        "graph_path": [
+          "flow_router",
+          "operation_result",
+          "deterministic_workflow"
+        ],
+        "answer_text": "Pedido de visita atualizado com a fila de admissoes. - Protocolo: VIS-20260401-A78FBD - Ticket operacional: ATD-20260401-21CB291A - Nova preferencia: quinta-feira - 14:30 (09/04/2026 - 14:30) Proximo passo: admissions valida a nova janela e retorna com a confirmacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 167.3,
+        "mode": "clarify",
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 3757.7,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Turnos e horarios documentados:\n- Ensino Fundamental II (Manha): 07:15 as 12:30. Oficinas, plantoes, esportes e estudo orientado no contraturno em dias alternados.\n- Ensino Medio (Manha): 07:15 as 12:50. Trilhas eletivas, monitorias e laboratorios no contraturno a partir das 14h00.\n- Fundamental II e Ensino Medio (Integral opcional): 07:00 as 17:30. Inclui estudo orientado, almoco, oficinas, esportes e acompanhamento no contraturno.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1884.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:visit_reschedule_guidance",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "visit_reschedule_guidance"
+        ],
+        "answer_text": "Para remarcar a visita, eu sigo pelo protocolo VIS-20260401-A9BCED. A preferencia atual registrada e 02/04/2026 - 14:30. Me diga o novo dia ou janela desejada e eu atualizo o pedido. Ticket operacional: ATD-20260401-16B8E405.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Agora cancela, por favor.",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q073",
+      "turn_index": 5,
+      "note": "Q077|profile=anonimo|difficulty=media|form=follow-up|sources=workflow|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 169.7,
+        "mode": "structured_tool",
+        "reason": "workflow_follow_up_rescue:visit_update",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call",
+          "workflow_follow_up_rescue_visit_update"
+        ],
+        "answer_text": "Nao consegui atualizar a visita agora. Se quiser, me passe novamente o protocolo da visita ou o novo horario desejado.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 20223.9,
+        "mode": "structured_tool",
+        "reason": "crewai_public_flow_timeout",
+        "graph_path": [
+          "flow_state",
+          "pydantic_output",
+          "judge",
+          "deterministic_backstop",
+          "public_planning",
+          "public_composition",
+          "public_judging"
+        ],
+        "answer_text": "Para te ajudar melhor, o que exatamente você gostaria de cancelar?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 219.9,
+        "mode": "structured_tool",
+        "reason": "consulta publica de navegacao e canais foi resgatada do dominio support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Nao consegui atualizar a visita agora. Se quiser, me passe novamente o protocolo da visita ou o novo horario desejado.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 2693.4,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "clarify",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Voce fala comigo, o EduAssist. Eu consigo te orientar e te encaminhar para secretaria, admissions, coordenacao, orientacao educacional, financeiro ou direcao. Hoje eu consigo te encaminhar por aqui para matricula, bolsas e atendimento comercial, agendamento de visita a escola, secretaria e documentos, coordenacao, orientacao educacional e financeiro e boletos. Se quiser, me diga o assunto em uma frase curta e eu te indico o melhor caminho sem voce precisar adivinhar o setor.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 9433.1,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_direct:workflow_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "workflow_specialist"
+        ],
+        "answer_text": "Para cancelar sua visita, preciso do código do protocolo. Você poderia me informar qual é?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Preciso emitir documentos finais e concluir a transferencia do Diego.",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q078",
+      "turn_index": 1,
+      "note": "Q078|profile=responsavel|difficulty=media|form=direta|sources=workflow,handoff|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 111.2,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "answer_text": "Hoje os documentos exigidos para a matricula publicados pela escola sao:\n- Formulario cadastral preenchido\n- Documento de identificacao do aluno\n- CPF do aluno, quando houver\n- Historico escolar\n- Comprovante de residencia atualizado\n- Documento de identificacao do responsavel legal\nSe quiser, eu tambem posso explicar as etapas da matricula ou como funciona o envio inicial desses documentos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 172.2,
+        "mode": "structured_tool",
+        "reason": "protected_shadow_needs_student_clarification",
+        "graph_path": [
+          "flow_router",
+          "student_clarification"
+        ],
+        "answer_text": "Posso te ajudar com Lucas Oliveira, Ana Oliveira. Me diga qual aluno voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 98.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Hoje os documentos exigidos para a matricula publicados pela escola sao:\n- Formulario cadastral preenchido\n- Documento de identificacao do aluno\n- CPF do aluno, quando houver\n- Historico escolar\n- Comprovante de residencia atualizado\n- Documento de identificacao do responsavel legal\nSe quiser, eu tambem posso explicar as etapas da matricula ou como funciona o envio inicial desses documentos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 127.3,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Hoje os documentos exigidos para a matricula publicados pela escola sao:\n- Formulario cadastral preenchido\n- Documento de identificacao do aluno\n- CPF do aluno, quando houver\n- Historico escolar\n- Comprovante de residencia atualizado\n- Documento de identificacao do responsavel legal\nSe quiser, eu tambem posso explicar as etapas da matricula ou como funciona o envio inicial desses documentos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1971.1,
+        "mode": "handoff",
+        "reason": "specialist_supervisor_tool_first:human_handoff",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "human_handoff"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de secretaria. Protocolo: ATD-20260401-9022F80E. Status atual: queued. Se preferir, voce tambem pode seguir pelo WhatsApp oficial (11) 97500-2040.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quero abrir um atendimento com o financeiro para negociar uma mensalidade parcialmente paga.",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q079",
+      "turn_index": 1,
+      "note": "Q079|profile=responsavel|difficulty=dificil|form=direta|sources=workflow,handoff|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 221.0,
+        "mode": "structured_tool",
+        "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call",
+          "protected_domain_rescue"
+        ],
+        "answer_text": "Resumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 3\n- Total de faturas vencidas: 0\n- Lucas Oliveira: 1 em aberto, 0 vencidas\n  2026-01: vencimento 2026-01-10, status paga, valor 1450.00\n  2026-02: vencimento 2026-02-10, status paga, valor 1450.00\n- Ana Oliveira: 2 em aberto, 0 vencidas\n  2026-01: vencimento 2026-01-10, status paga, valor 1450.00\n  2026-02: vencimento 2026-02-10, status paga, valor 1450.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 180.4,
+        "mode": "structured_tool",
+        "reason": "protected_shadow_needs_student_clarification",
+        "graph_path": [
+          "flow_router",
+          "student_clarification"
+        ],
+        "answer_text": "Posso te ajudar com Lucas Oliveira, Ana Oliveira. Me diga qual aluno voce quer consultar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 134.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Valores publicos de referencia para 2026:\n- Ensino Fundamental II (Manha): mensalidade R$ 1.280,00 e taxa de matricula R$ 350,00. Valor comercial publico de referencia para 2026. Material didatico e uniforme sao cobrados a parte.\n- Ensino Medio (Manha): mensalidade R$ 1.450,00 e taxa de matricula R$ 350,00. Valor comercial publico de referencia para 2026. Ha politica comercial para irmaos e pagamento pontual.\n- Periodo integral opcional (Complemento contraturno): mensalidade R$ 480,00 e taxa de matricula R$ 0,00. Adicional mensal aplicado ao estudante matriculado no turno regular que aderir ao periodo integral.\nSe quiser, eu tambem posso resumir bolsas, descontos comerciais e canais de matricula.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 5593.4,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Valores publicos de referencia para 2026:\n- Ensino Fundamental II (Manha): mensalidade R$ 1.280,00 e taxa de matricula R$ 350,00. Valor comercial publico de referencia para 2026. Material didatico e uniforme sao cobrados a parte.\n- Ensino Medio (Manha): mensalidade R$ 1.450,00 e taxa de matricula R$ 350,00. Valor comercial publico de referencia para 2026. Ha politica comercial para irmaos e pagamento pontual.\n- Periodo integral opcional (Complemento contraturno): mensalidade R$ 480,00 e taxa de matricula R$ 0,00. Adicional mensal aplicado ao estudante matriculado no turno regular que aderir ao periodo integral.\nSe quiser, eu tambem posso resumir bolsas, descontos comerciais e canais de matricula.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1888.9,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_resolved_intent:finance_student_clarify",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "finance_student_clarify"
+        ],
+        "answer_text": "Consigo verificar a situacao financeira, mas preciso que voce me diga qual aluno: Lucas Oliveira ou Ana Oliveira?",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Qual a diferenca entre abrir um protocolo, um chamado e um handoff humano?",
+      "slice": "workflow",
+      "category": "workflow_protocolos_visitas_e_handoff",
+      "thread_id": "system_bank:workflow_protocolos_visitas_e_handoff:Q080",
+      "turn_index": 1,
+      "note": "Q080|profile=responsavel|difficulty=dificil|form=comparativa|sources=workflow,handoff|graph_rag=false",
+      "run_prefix": "debug:five-path:20260401T205049Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 141.5,
+        "mode": "handoff",
+        "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "support_slice",
+          "handoff"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de atendimento. Protocolo: ATD-20260401-80D0DD8A. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "crewai": {
+        "status": 200,
+        "latency_ms": 204.0,
+        "mode": "structured_tool",
+        "reason": "support_handoff_created",
+        "graph_path": [
+          "flow_router",
+          "operation_result",
+          "deterministic_support"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de atendimento. Protocolo: ATD-20260401-FC0835A3. Status atual: queued. A equipe humana podera continuar esse atendimento no portal operacional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 140.9,
+        "mode": "handoff",
+        "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "handoff",
+          "kernel:python_functions"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de atendimento. Protocolo: ATD-20260401-4EABC63F. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 170.3,
+        "mode": "handoff",
+        "reason": "o usuario demonstrou necessidade de atendimento humano ou operacional",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "handoff",
+          "kernel:llamaindex"
+        ],
+        "answer_text": "Encaminhei sua solicitacao para a fila de atendimento. Protocolo: ATD-20260401-ED231C41. Status atual: queued. A equipe humana pode continuar esse atendimento no portal operacional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1918.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:support_process_boundary",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "support_process_boundary"
+        ],
+        "answer_text": "Hoje eu trato esses tres fluxos de forma diferente: protocolo registra uma solicitacao institucional rastreavel; chamado costuma ser o ticket operacional associado ao atendimento; e handoff humano e o encaminhamento real para uma fila ou equipe, normalmente com protocolo e status para acompanhamento.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    }
+  ],
+  "stacks": [
+    "langgraph",
+    "crewai",
+    "python_functions",
+    "llamaindex",
+    "specialist_supervisor"
+  ]
+}

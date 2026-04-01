@@ -13767,6 +13767,18 @@ async def _compose_structured_tool_answer(
         user=request.user,
         conversation_context=conversation_context,
     ):
+        if actor is not None and _should_fetch_teacher_schedule(
+            message,
+            actor=actor,
+            user=request.user,
+            conversation_context=conversation_context,
+        ):
+            return await _execute_teacher_protected_specialist(
+                settings=settings,
+                request=request,
+                actor=actor,
+                conversation_context=conversation_context,
+            )
         return _compose_teacher_access_scope_answer(
             actor,
             school_name=str((school_profile or {}).get('school_name', 'Colegio Horizonte')),
