@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from time import monotonic
 from typing import TYPE_CHECKING
 
 from agents import Runner
@@ -18,8 +19,9 @@ async def run_judge(
     draft: ManagerDraft,
     specialist_results: list[SpecialistResult],
 ) -> JudgeVerdict:
-    from .runtime import _agent_model_for_role, _build_judge_agent, _effective_conversation_id, _run_config
+    from .runtime import _agent_model_for_role, _build_judge_agent, _effective_conversation_id, _record_stage_timing, _run_config
 
+    started = monotonic()
     judge = _build_judge_agent(_agent_model_for_role(ctx.settings, role="judge"))
     prompt = json.dumps(
         {
@@ -39,7 +41,9 @@ async def run_judge(
         max_turns=4,
         run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
     )
-    return result.final_output_as(JudgeVerdict, raise_if_incorrect_type=True)
+    verdict = result.final_output_as(JudgeVerdict, raise_if_incorrect_type=True)
+    _record_stage_timing(ctx, "judge", (monotonic() - started) * 1000.0)
+    return verdict
 
 
 async def run_repair_loop(
@@ -50,13 +54,14 @@ async def run_repair_loop(
     judge: JudgeVerdict,
     specialist_results: list[SpecialistResult],
 ) -> tuple[ManagerDraft, JudgeVerdict, RepairDraft] | None:
-    from .runtime import _agent_model_for_role, _build_repair_agent, _effective_conversation_id, _parse_result_model, _run_config
+    from .runtime import _agent_model_for_role, _build_repair_agent, _effective_conversation_id, _parse_result_model, _record_stage_timing, _run_config
 
     if not specialist_results:
         return None
     repair_needed = (not judge.approved) or bool(judge.issues)
     if not repair_needed or judge.needs_clarification:
         return None
+    started = monotonic()
     repair_agent = _build_repair_agent(ctx.settings, _agent_model_for_role(ctx.settings, role="repair"))
     prompt = json.dumps(
         {
@@ -90,4 +95,5 @@ async def run_repair_loop(
         draft=repaired_draft,
         specialist_results=specialist_results,
     )
+    _record_stage_timing(ctx, "repair", (monotonic() - started) * 1000.0)
     return repaired_draft, repaired_judge, repair

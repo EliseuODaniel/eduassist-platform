@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from time import monotonic
 from typing import Any
 
 from agents import Agent, ModelSettings, Runner
@@ -83,10 +84,12 @@ async def run_manager(
         _agent_model_for_role,
         _effective_conversation_id,
         _parse_result_model,
+        _record_stage_timing,
         _run_config,
         logger,
     )
 
+    started = monotonic()
     specialist_tools = []
     for specialist_id, agent in specialists.items():
         specialist_tools.append(
@@ -136,7 +139,9 @@ async def run_manager(
             session=None,
             run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
         )
-    return _parse_result_model(result, ManagerDraft)
+    draft = _parse_result_model(result, ManagerDraft)
+    _record_stage_timing(ctx, "manager", (monotonic() - started) * 1000.0)
+    return draft
 
 
 async def run_manager_stack(

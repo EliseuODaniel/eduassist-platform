@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from time import monotonic
 from typing import Any
 
 from agents import Runner
@@ -17,11 +18,13 @@ async def run_input_guardrail(ctx: Any) -> SupervisorInputGuardrail:
         _is_simple_greeting,
         _looks_like_general_knowledge_query,
         _normalize_text,
+        _record_stage_timing,
         _run_config,
         _school_domain_terms,
         _agent_model_for_role,
     )
 
+    started = monotonic()
     normalized = _normalize_text(ctx.request.message)
     if (
         _is_simple_greeting(ctx.request.message)
@@ -30,7 +33,9 @@ async def run_input_guardrail(ctx: Any) -> SupervisorInputGuardrail:
         or _looks_like_general_knowledge_query(ctx.request.message)
         or _contains_any(normalized, _school_domain_terms())
     ):
-        return SupervisorInputGuardrail(blocked=False, reason="deterministic_allowlist")
+        guardrail = SupervisorInputGuardrail(blocked=False, reason="deterministic_allowlist")
+        _record_stage_timing(ctx, "guardrail", (monotonic() - started) * 1000.0)
+        return guardrail
     agent = _build_guardrail_agent(_agent_model_for_role(ctx.settings, role="guardrail"))
     prompt = (
         "Mensagem do usuario:\n"
@@ -46,4 +51,6 @@ async def run_input_guardrail(ctx: Any) -> SupervisorInputGuardrail:
         max_turns=3,
         run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
     )
-    return result.final_output_as(SupervisorInputGuardrail, raise_if_incorrect_type=True)
+    guardrail = result.final_output_as(SupervisorInputGuardrail, raise_if_incorrect_type=True)
+    _record_stage_timing(ctx, "guardrail", (monotonic() - started) * 1000.0)
+    return guardrail

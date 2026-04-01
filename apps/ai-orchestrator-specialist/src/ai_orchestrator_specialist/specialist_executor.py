@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from time import monotonic
 from typing import Any
 
 from agents import Agent, Runner
@@ -40,12 +41,14 @@ async def run_specialist_agent(
         SupervisorHooks,
         _effective_conversation_id,
         _parse_result_model,
+        _record_stage_timing,
         _run_config,
     )
 
     agent = specialists.get(specialist_id)
     if agent is None:
         return None
+    started = monotonic()
     result = await Runner.run(
         agent,
         build_specialist_execution_prompt(ctx, specialist_id=specialist_id, plan=plan),
@@ -57,6 +60,7 @@ async def run_specialist_agent(
     specialist_result = _parse_result_model(result, SpecialistResult)
     if specialist_result.specialist_id != specialist_id:
         specialist_result = specialist_result.model_copy(update={"specialist_id": specialist_id})
+    _record_stage_timing(ctx, f"specialist:{specialist_id}", (monotonic() - started) * 1000.0)
     return specialist_result
 
 
@@ -67,8 +71,9 @@ async def execute_planned_specialists(
     budget: ExecutionBudget,
     specialists: dict[str, Agent[Any]] | None = None,
 ) -> list[SpecialistResult]:
-    from .runtime import _agent_model_for_role, _sorted_specialist_ids, logger
+    from .runtime import _agent_model_for_role, _record_stage_timing, _sorted_specialist_ids, logger
 
+    started = monotonic()
     specialist_ids = _sorted_specialist_ids(ctx, list(plan.specialists))
     if not specialist_ids or budget.max_specialists == 0:
         return []
@@ -105,4 +110,6 @@ async def execute_planned_specialists(
             if isinstance(item, SpecialistResult):
                 normalized[item.specialist_id] = item
         batch = []
-    return list(normalized.values())
+    results = list(normalized.values())
+    _record_stage_timing(ctx, "specialist_execution", (monotonic() - started) * 1000.0)
+    return results

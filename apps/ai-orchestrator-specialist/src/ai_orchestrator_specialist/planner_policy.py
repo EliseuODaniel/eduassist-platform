@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from time import monotonic
 from typing import Any
 
 from agents import Agent, ModelSettings, Runner
@@ -61,11 +62,13 @@ async def run_retrieval_planner(ctx: Any) -> RetrievalPlannerAdvice:
         _fallback_specialists_for_domain,
         _normalize_retrieval_advice,
         _preview_classification_dict,
+        _record_stage_timing,
         _retrieval_planner_instructions,
         _run_config,
         logger,
     )
 
+    started = monotonic()
     agent = Agent(
         name="Retrieval Planner Specialist",
         model=_agent_model_for_role(ctx.settings, role="planner"),
@@ -102,6 +105,7 @@ async def run_retrieval_planner(ctx: Any) -> RetrievalPlannerAdvice:
         )
     normalized = _normalize_retrieval_advice(ctx, advice)
     ctx.retrieval_advice = normalized
+    _record_stage_timing(ctx, "retrieval_planner", (monotonic() - started) * 1000.0)
     return normalized
 
 
@@ -113,10 +117,12 @@ async def run_planner(ctx: Any) -> SupervisorPlan:
         _normalize_plan_with_retrieval_advice,
         _planner_instructions,
         _preview_classification_dict,
+        _record_stage_timing,
         _run_config,
         logger,
     )
 
+    started = monotonic()
     agent = Agent(
         name="Retrieval Planner",
         model=_agent_model_for_role(ctx.settings, role="planner"),
@@ -159,7 +165,9 @@ async def run_planner(ctx: Any) -> SupervisorPlan:
             reasoning_summary=advice.rationale if advice is not None and advice.rationale else "planner_fallback_from_preview_hint",
             confidence=advice.confidence if advice is not None else 0.35,
         )
-    return _normalize_plan_with_retrieval_advice(ctx, plan, ctx.retrieval_advice)
+    normalized = _normalize_plan_with_retrieval_advice(ctx, plan, ctx.retrieval_advice)
+    _record_stage_timing(ctx, "planner", (monotonic() - started) * 1000.0)
+    return normalized
 
 
 async def resolve_plan_and_budget(ctx: Any) -> tuple[SupervisorPlan, ExecutionBudget]:

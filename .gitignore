@@ -25,6 +25,7 @@ __pycache__/
 tmp/
 .tmp/
 artifacts/
+.runtime/
 
 postgres-data/
 redis-data/

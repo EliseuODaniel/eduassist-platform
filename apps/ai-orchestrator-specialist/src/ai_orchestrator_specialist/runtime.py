@@ -207,6 +207,7 @@ def _run_config(settings: Any, *, conversation_id: str) -> RunConfig:
 class SupervisorTrace:
     agent_events: list[dict[str, Any]] = field(default_factory=list)
     tool_events: list[dict[str, Any]] = field(default_factory=list)
+    stage_timings_ms: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -252,6 +253,13 @@ class SupervisorHooks(RunHooks[SupervisorRunContext]):
                 "result": result,
             }
         )
+
+
+def _record_stage_timing(ctx: SupervisorRunContext, stage: str, elapsed_ms: float) -> None:
+    normalized_stage = str(stage or "").strip()
+    if not normalized_stage:
+        return
+    ctx.trace.stage_timings_ms[normalized_stage] = round(float(elapsed_ms), 1)
 
 
 def _normalize_text(value: str | None) -> str:
@@ -846,6 +854,16 @@ async def _persist_final_answer(
         repair_payload=repair_payload,
         timeout_seconds=timeout_seconds,
     )
+
+
+def _metadata_with_runtime_observability(
+    ctx: SupervisorRunContext,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload = dict(metadata or {})
+    if ctx.trace.stage_timings_ms:
+        payload["stage_timings_ms"] = dict(ctx.trace.stage_timings_ms)
+    return payload
 
 
 def _linked_students(actor: dict[str, Any] | None, *, capability: str) -> list[dict[str, Any]]:
@@ -8074,11 +8092,11 @@ async def run_specialist_supervisor(
                 context,
                 answer=answer,
                 route="planner_denied",
-                metadata=plan_metadata,
+                metadata=_metadata_with_runtime_observability(context, plan_metadata),
             )
             return SpecialistSupervisorResponse(
                 reason=answer.reason,
-                metadata=plan_metadata,
+                metadata=_metadata_with_runtime_observability(context, plan_metadata),
                 answer=answer,
             ).model_dump(mode="json")
 
@@ -8101,11 +8119,11 @@ async def run_specialist_supervisor(
                 context,
                 answer=answer,
                 route="planner_clarify",
-                metadata=plan_metadata,
+                metadata=_metadata_with_runtime_observability(context, plan_metadata),
             )
             return SpecialistSupervisorResponse(
                 reason=answer.reason,
-                metadata=plan_metadata,
+                metadata=_metadata_with_runtime_observability(context, plan_metadata),
                 answer=answer,
             ).model_dump(mode="json")
 
@@ -8139,11 +8157,11 @@ async def run_specialist_supervisor(
                         context,
                         answer=multi_direct_answer,
                         route="multi_specialist_direct",
-                        metadata=direct_metadata,
+                        metadata=_metadata_with_runtime_observability(context, direct_metadata),
                     )
                     return SpecialistSupervisorResponse(
                         reason=multi_direct_answer.reason,
-                        metadata=direct_metadata,
+                        metadata=_metadata_with_runtime_observability(context, direct_metadata),
                         answer=multi_direct_answer,
                     ).model_dump(mode="json")
                 direct_result = _direct_compose_candidate(
@@ -8157,11 +8175,11 @@ async def run_specialist_supervisor(
                         context,
                         answer=answer,
                         route="specialist_direct",
-                        metadata=direct_metadata,
+                        metadata=_metadata_with_runtime_observability(context, direct_metadata),
                     )
                     return SpecialistSupervisorResponse(
                         reason=answer.reason,
-                        metadata=direct_metadata,
+                        metadata=_metadata_with_runtime_observability(context, direct_metadata),
                         answer=answer,
                     ).model_dump(mode="json")
 
@@ -8181,11 +8199,11 @@ async def run_specialist_supervisor(
                         context,
                         answer=multi_direct_answer,
                         route="multi_specialist_direct",
-                        metadata=direct_metadata,
+                        metadata=_metadata_with_runtime_observability(context, direct_metadata),
                     )
                     return SpecialistSupervisorResponse(
                         reason=multi_direct_answer.reason,
-                        metadata=direct_metadata,
+                        metadata=_metadata_with_runtime_observability(context, direct_metadata),
                         answer=multi_direct_answer,
                     ).model_dump(mode="json")
                 direct_result = direct_result or _direct_compose_candidate(
@@ -8199,11 +8217,11 @@ async def run_specialist_supervisor(
                         context,
                         answer=answer,
                         route="specialist_direct",
-                        metadata=direct_metadata,
+                        metadata=_metadata_with_runtime_observability(context, direct_metadata),
                     )
                     return SpecialistSupervisorResponse(
                         reason=answer.reason,
-                        metadata=direct_metadata,
+                        metadata=_metadata_with_runtime_observability(context, direct_metadata),
                         answer=answer,
                     ).model_dump(mode="json")
 
@@ -8242,27 +8260,27 @@ async def run_specialist_supervisor(
                 context,
                 answer=answer,
                 route="manager_safe_fallback",
-                metadata={**plan_metadata, "fallback": True},
+                metadata=_metadata_with_runtime_observability(context, {**plan_metadata, "fallback": True}),
             )
-            return SpecialistSupervisorResponse(reason=answer.reason, metadata={**plan_metadata, "fallback": True}, answer=answer).model_dump(mode="json")
+            return SpecialistSupervisorResponse(reason=answer.reason, metadata=_metadata_with_runtime_observability(context, {**plan_metadata, "fallback": True}), answer=answer).model_dump(mode="json")
         await _persist_final_answer(
             context,
             answer=answer,
             route="manager_judge",
-            metadata={
+            metadata=_metadata_with_runtime_observability(context, {
                 **plan_metadata,
                 "judge": judge.model_dump(mode="json"),
                 "specialists_used": [item.specialist_id for item in specialist_results],
-            },
+            }),
             trace_payload=(plan, draft, judge),
             repair_payload=repair_payload,
         )
         return SpecialistSupervisorResponse(
             reason=answer.reason,
-            metadata={
+            metadata=_metadata_with_runtime_observability(context, {
                 **plan_metadata,
                 "judge": judge.model_dump(mode="json"),
                 "specialists_used": [item.specialist_id for item in specialist_results],
-            },
+            }),
             answer=answer,
         ).model_dump(mode="json")

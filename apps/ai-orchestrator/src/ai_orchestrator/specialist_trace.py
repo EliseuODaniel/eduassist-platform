@@ -92,9 +92,32 @@ def build_specialist_trace_sections(metadata: dict[str, Any] | None, *, graph_pa
             if key in judge
         }
 
+    execution_budget = metadata.get("execution_budget")
+    if isinstance(execution_budget, dict):
+        request_section["execution_budget"] = {
+            key: _json_safe(execution_budget.get(key))
+            for key in (
+                "tier",
+                "planner_mode",
+                "target_latency_ms",
+                "max_specialists",
+                "allow_parallel_specialists",
+                "allow_manager",
+                "allow_judge",
+                "allow_repair",
+                "prefer_direct_answer",
+                "reasons",
+            )
+            if key in execution_budget
+        }
+
     specialists_used = metadata.get("specialists_used")
     if isinstance(specialists_used, list) and specialists_used:
         response_section["specialists_used"] = _json_safe(specialists_used)
+
+    stage_timings = metadata.get("stage_timings_ms")
+    if isinstance(stage_timings, dict) and stage_timings:
+        response_section["stage_timings_ms"] = _json_safe(stage_timings)
 
     timeline = _build_timeline(
         graph_path=graph_path,

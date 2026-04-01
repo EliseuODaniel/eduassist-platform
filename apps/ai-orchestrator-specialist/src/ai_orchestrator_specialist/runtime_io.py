@@ -294,6 +294,7 @@ async def persist_trace(
                             "operational_memory": operational_memory.model_dump(mode="json"),
                             "agent_events": ctx.trace.agent_events,
                             "tool_events": ctx.trace.tool_events,
+                            "stage_timings_ms": ctx.trace.stage_timings_ms,
                         },
                     }
                 ],
@@ -339,6 +340,7 @@ async def persist_light_trace(
                             "answer": answer.model_dump(mode="json"),
                             "agent_events": ctx.trace.agent_events,
                             "tool_events": ctx.trace.tool_events,
+                            "stage_timings_ms": ctx.trace.stage_timings_ms,
                         },
                     }
                 ],
