@@ -467,6 +467,196 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Pode me mostrar aqui no bot o manual interno do professor?",
         ],
     },
+    {
+        "category": "public_service_routing",
+        "slice": "public",
+        "expected_keywords": ["Financeiro", "Direcao"],
+        "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "thread_id": "retrieval_public_service_routing",
+        "telegram_chat_id": 777221,
+        "note": "public service directory routing",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Com quem eu falo sobre bolsa, financeiro e direcao? Quero os setores e canais mais diretos.",
+            "Qual setor responde por bolsa, financeiro e direcao, e por qual canal eu comeco?",
+            "Se eu precisar tratar desconto, financeiro e um assunto com a direcao, quem responde por cada frente?",
+            "Como entrar em contato com admissoes, financeiro e direcao quando o assunto mistura bolsa e mensalidade?",
+            "Por qual canal eu falo com o setor de bolsas, com o financeiro e com a direcao da escola?",
+            "Quem responde por bolsa, financeiro e direcao hoje, e quais canais publicos devo usar?",
+        ],
+    },
+    {
+        "category": "public_teacher_directory",
+        "slice": "public",
+        "expected_keywords": ["nao divulga", "coordenacao"],
+        "forbidden_keywords": ["telefone do professor", "@", "11 9"],
+        "thread_id": "retrieval_public_teacher_directory",
+        "telegram_chat_id": 777222,
+        "note": "public teacher contact boundary",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Vocês divulgam o nome ou contato direto do professor de matematica? Se nao, para onde a familia deve ir?",
+            "Como falar com o professor de matematica? A escola divulga esse contato ou encaminha para outro setor?",
+            "O colegio passa contato direto do professor de matematica ou orienta a familia pela coordenacao?",
+            "Se eu quiser falar com o professor de matematica, a escola divulga esse contato ou manda procurar a coordenacao?",
+            "Existe canal publico com nome ou contato do professor de matematica, ou isso vai pela coordenacao pedagogica?",
+            "Para falar com o professor de matematica, o contato e publico ou a familia precisa passar pela coordenacao?",
+        ],
+    },
+    {
+        "category": "public_calendar_week",
+        "slice": "public",
+        "expected_keywords": ["familias", "responsaveis"],
+        "forbidden_keywords": ["nao encontrei"],
+        "thread_id": "retrieval_public_calendar_week",
+        "telegram_chat_id": 777223,
+        "note": "public calendar weekly family events",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Quais eventos publicos para familias e responsaveis aparecem nesta base agora?",
+            "No calendario publico atual, quais sao os eventos mais relevantes para familias e responsaveis?",
+            "Se eu olhar os eventos publicos voltados a familias e responsaveis, o que aparece primeiro?",
+            "Quais marcos do calendario publico hoje falam mais diretamente com familias e responsaveis?",
+            "Quero os principais eventos publicos para familias e responsaveis nesta base escolar.",
+            "Dentro do calendario publico, quais eventos parecem mais importantes para familias e responsaveis?",
+        ],
+    },
+    {
+        "category": "public_year_three_phases",
+        "slice": "public",
+        "expected_keywords": ["Admissao", "Rotina academica", "Fechamento"],
+        "forbidden_keywords": ["nao encontrei"],
+        "thread_id": "retrieval_public_year_three_phases",
+        "telegram_chat_id": 777224,
+        "note": "public year in three phases",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Se eu dividir o ano em admissao, rotina academica e fechamento, como isso aparece na linha do tempo publica?",
+            "Como a escola organiza o ano publico nas tres fases de admissao, rotina academica e fechamento?",
+            "Na linha do tempo publica, como ficam as tres fases do ano: admissao, rotina academica e fechamento?",
+            "Quero uma leitura do ano letivo em tres fases publicas: admissao, rotina academica e fechamento.",
+            "Olhando so a base publica, como o ano se distribui entre admissao, rotina academica e fechamento?",
+            "Se eu resumir o ano escolar em tres etapas publicas, como aparecem admissao, rotina academica e fechamento?",
+        ],
+    },
+    {
+        "category": "public_academic_policy_overview",
+        "slice": "public",
+        "expected_keywords": ["media", "frequencia"],
+        "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "thread_id": "retrieval_public_academic_policy_overview",
+        "telegram_chat_id": 777225,
+        "note": "public academic policy overview",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Na escola, como a politica de avaliacao, recuperacao e promocao conversa com media e frequencia minima?",
+            "Sem area autenticada: na escola, como politica de avaliacao, recuperacao, promocao, media e frequencia minima aparecem juntas?",
+            "Quero um panorama publico da escola sobre politica de avaliacao, recuperacao, promocao, media e frequencia minima.",
+            "Na escola, como ficam avaliacao, recuperacao, promocao, media de aprovacao e frequencia minima no material publico?",
+            "Pela politica publica da escola, como se juntam avaliacao, recuperacao, promocao, media e frequencia minima?",
+            "Sem usar dados privados, como a escola descreve avaliacao, recuperacao, promocao, media e frequencia minima?",
+        ],
+    },
+    {
+        "category": "public_conduct_frequency_punctuality",
+        "slice": "public",
+        "expected_keywords": ["frequencia", "pontualidade"],
+        "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "thread_id": "retrieval_public_conduct_frequency_punctuality",
+        "telegram_chat_id": 777226,
+        "note": "public conduct frequency punctuality bridge",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Como convivencia, frequencia e pontualidade se ligam na politica publica da escola?",
+            "Na base publica, como a escola conecta convivencia, frequencia, pontualidade e risco academico?",
+            "Pelo material publico, como ficam juntas regras de convivencia, frequencia e pontualidade?",
+            "Quero entender como a escola amarra convivencia, pontualidade e frequencia no regulamento publico.",
+            "Nos documentos publicos, como a escola trata pontualidade, frequencia e convivencia como parte do mesmo acompanhamento?",
+            "Como a politica publica da escola junta pontualidade, frequencia e convivencia no dia a dia do aluno?",
+        ],
+    },
+    {
+        "category": "public_bolsas_and_processes",
+        "slice": "public",
+        "expected_keywords": ["bolsas", "cancelamento"],
+        "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "thread_id": "retrieval_public_bolsas_and_processes",
+        "telegram_chat_id": 777227,
+        "note": "public bolsas and process compare",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Como bolsas e descontos se cruzam com rematricula, transferencia e cancelamento no material publico?",
+            "Pelos documentos publicos, como ficam juntos bolsas, descontos, rematricula, transferencia e cancelamento?",
+            "Quero relacionar bolsas e descontos com rematricula, transferencia e cancelamento sem sair do material publico.",
+            "Como a escola conecta edital de bolsas com rematricula, transferencia e cancelamento?",
+            "Na pratica, como bolsas e descontos conversam com rematricula, transferencia e cancelamento na base publica?",
+            "Se eu juntar bolsas, rematricula, transferencia e cancelamento, que panorama publico a escola oferece?",
+        ],
+    },
+    {
+        "category": "public_pricing_projection",
+        "slice": "public",
+        "expected_keywords": ["matricula", "por mes"],
+        "forbidden_keywords": ["nao encontrei"],
+        "thread_id": "retrieval_public_pricing_projection",
+        "telegram_chat_id": 777228,
+        "note": "public pricing projection deterministic",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Quanto eu pagaria de matricula e por mes para 3 filhos usando a referencia publica atual?",
+            "Usando a tabela publica, quanto dariam matricula e mensalidade para 3 filhos?",
+            "Se eu simular 3 filhos, qual seria o valor de matricula e o total por mes na referencia publica?",
+            "Na referencia publica atual, quanto fica a matricula e o total por mes para 3 filhos?",
+            "Se eu projetar 3 filhos no colegio, qual e o valor de matricula e quanto fica por mes na base publica?",
+            "Pela referencia publica de precos, qual seria a matricula total e o valor mensal para 3 filhos?",
+        ],
+    },
+    {
+        "category": "protected_access_scope",
+        "slice": "protected",
+        "expected_keywords": ["autenticado", "academico", "financeiro"],
+        "forbidden_keywords": [],
+        "thread_id": "retrieval_protected_access_scope",
+        "telegram_chat_id": 1649845499,
+        "note": "authenticated account scope",
+        "user": {
+            "role": "guardian",
+            "authenticated": True,
+            "linked_student_ids": ["stu-lucas", "stu-ana"],
+            "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"],
+        },
+        "prompts": [
+            "Qual e exatamente o meu escopo aqui? Quero saber se estou autenticado e quais dados academicos e financeiros consigo ver.",
+            "O que eu consigo consultar aqui no Telegram? Quero meu escopo exato entre academico e financeiro.",
+            "Quais dados dos meus filhos eu consigo acessar por aqui, e se o meu acesso cobre academico e financeiro?",
+            "Estou autenticado como quem e com qual escopo? Quero saber o que consigo ver de academico e financeiro.",
+            "Me diga o escopo atual da minha conta neste canal, incluindo acesso academico e financeiro.",
+            "Quero confirmar meu escopo no Telegram: estou autenticado e consigo ver o que de academico e financeiro?",
+        ],
+    },
+    {
+        "category": "protected_admin_finance_combo",
+        "slice": "protected",
+        "expected_keywords": ["Financeiro", "document"],
+        "forbidden_keywords": [],
+        "thread_id": "retrieval_protected_admin_finance_combo",
+        "telegram_chat_id": 1649845499,
+        "note": "combined admin and finance overview",
+        "user": {
+            "role": "guardian",
+            "authenticated": True,
+            "linked_student_ids": ["stu-lucas", "stu-ana"],
+            "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"],
+        },
+        "prompts": [
+            "Minha documentacao ou cadastro esta bloqueando atendimento financeiro? Quero um panorama combinado de documentacao e financeiro.",
+            "Junte documentacao administrativa e financeiro das contas vinculadas e diga se ha bloqueio de atendimento.",
+            "Quero um quadro unico de documentacao e financeiro para saber se alguma pendencia esta bloqueando atendimento.",
+            "Tem algo na minha documentacao ou no cadastro que esteja travando o financeiro? Me de a visao combinada.",
+            "Cruze meu status documental com o financeiro e diga se existe bloqueio ou pendencia relevante.",
+            "Resuma junto documentacao administrativa e financeiro das contas vinculadas para eu saber se ha impedimento de atendimento.",
+        ],
+    },
 ]
 
 
@@ -528,16 +718,23 @@ def _fresh_prompt_candidates(spec: dict[str, Any], history: set[str]) -> list[st
     return augmented
 
 
-def build_cases(seed: int, existing_prompts: set[str] | None = None) -> list[dict[str, Any]]:
+def build_cases(seed: int, existing_prompts: set[str] | None = None, *, count: int = 20) -> list[dict[str, Any]]:
     rng = random.Random(seed)
     history = {prompt.strip() for prompt in (existing_prompts or set()) if prompt.strip()}
+    if count < 1:
+        raise ValueError("count_must_be_positive")
+    if count > len(QUESTION_SPECS):
+        raise ValueError(
+            f"Requested {count} cases, but only {len(QUESTION_SPECS)} question specs are available. "
+            "Add more specs before generating a larger dataset."
+        )
     cases: list[dict[str, Any]] = []
-    for index, spec in enumerate(QUESTION_SPECS, start=1):
+    for index, spec in enumerate(QUESTION_SPECS[:count], start=1):
         available_prompts = _fresh_prompt_candidates(spec, history)
         if not available_prompts:
             raise ValueError(
                 f"No fresh prompt variants left for category '{spec['category']}'. "
-                "Add new prompt phrasings or expand the augmentation templates before generating another 20Q dataset."
+                "Add new prompt phrasings or expand the augmentation templates before generating another retrieval probe dataset."
             )
         prompt = rng.choice(available_prompts)
         item = {key: value for key, value in spec.items() if key != "prompts"}
@@ -549,8 +746,9 @@ def build_cases(seed: int, existing_prompts: set[str] | None = None) -> list[dic
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate a fresh 20-question retrieval probe dataset for EduAssist.")
+    parser = argparse.ArgumentParser(description="Generate a fresh retrieval probe dataset for EduAssist.")
     parser.add_argument("--seed", type=int, default=20260402)
+    parser.add_argument("--count", type=int, default=20)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument(
         "--datasets-dir",
@@ -561,7 +759,7 @@ def main() -> int:
     args = parser.parse_args()
 
     existing_prompts = _collect_existing_prompts(args.datasets_dir)
-    dataset = build_cases(seed=args.seed, existing_prompts=existing_prompts)
+    dataset = build_cases(seed=args.seed, existing_prompts=existing_prompts, count=int(args.count))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(dataset, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(

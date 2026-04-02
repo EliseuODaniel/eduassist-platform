@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
 from typing import Any
+from statistics import median
 
 from dotenv import load_dotenv
 
@@ -45,6 +46,19 @@ from tools.evals.compare_orchestrator_stacks import (
 DEFAULT_DATASET = REPO_ROOT / 'tests/evals/datasets/retrieval_20q_probe_cases.json'
 DEFAULT_REPORT = REPO_ROOT / 'docs/architecture/retrieval-20q-cross-path-report.md'
 DEFAULT_JSON_REPORT = REPO_ROOT / 'docs/architecture/retrieval-20q-cross-path-report.json'
+
+
+def _percentile(values: list[float], q: float) -> float:
+    if not values:
+        return 0.0
+    if len(values) == 1:
+        return float(values[0])
+    ordered = sorted(float(value) for value in values)
+    rank = max(0.0, min(1.0, q)) * (len(ordered) - 1)
+    low = int(rank)
+    high = min(low + 1, len(ordered) - 1)
+    weight = rank - low
+    return ordered[low] * (1.0 - weight) + ordered[high] * weight
 
 
 def _load_cases(path: Path) -> list[dict[str, Any]]:
@@ -182,16 +196,30 @@ def _summarize(results: list[dict[str, Any]], *, stacks: tuple[str, ...]) -> dic
     }
     for stack in stacks:
         subset = [item for item in results if item['stack'] == stack]
+        latencies = [float(item['latency_ms']) for item in subset]
         summary['by_stack'][stack] = {
             'count': len(subset),
             'ok': sum(1 for item in subset if item['status'] == 200),
             'keyword_pass': sum(1 for item in subset if item['keyword_pass']),
             'quality_avg': round(sum(item['quality_score'] for item in subset) / max(1, len(subset)), 1),
             'avg_latency_ms': round(sum(item['latency_ms'] for item in subset) / max(1, len(subset)), 1),
+            'median_latency_ms': round(float(median(latencies)) if latencies else 0.0, 1),
+            'p95_latency_ms': round(_percentile(latencies, 0.95), 1),
+            'max_latency_ms': round(max(latencies) if latencies else 0.0, 1),
             'mode_counts': dict(Counter(item['mode'] for item in subset)),
             'retrieval_backend_counts': dict(Counter(item['retrieval_backend'] or 'none' for item in subset)),
             'evidence_strategy_counts': dict(Counter(item['evidence_strategy'] or 'none' for item in subset)),
             'error_type_counts': dict(Counter(error for item in subset for error in item['error_types'])),
+            'top_latency_cases': [
+                {
+                    'id': item['id'],
+                    'latency_ms': float(item['latency_ms']),
+                    'quality_score': int(item['quality_score']),
+                    'reason': item['reason'],
+                    'retrieval_type': item['retrieval_type'],
+                }
+                for item in sorted(subset, key=lambda row: float(row['latency_ms']), reverse=True)[:3]
+            ],
         }
     for field in ('slice', 'category', 'retrieval_type'):
         target_key = f'by_{field}'
@@ -229,7 +257,8 @@ def _summarize(results: list[dict[str, Any]], *, stacks: tuple[str, ...]) -> dic
 
 
 def _render_markdown(payload: dict[str, Any], *, stacks: tuple[str, ...]) -> str:
-    lines = ['# Retrieval 20Q Cross-Path Report', '']
+    question_count = len({str(row['id']) for row in payload['results']})
+    lines = [f'# Retrieval {question_count}Q Cross-Path Report', '']
     lines.append(f"Date: {payload['generated_at']}")
     lines.append('')
     lines.append(f"Dataset: `{payload['dataset']}`")
@@ -238,13 +267,24 @@ def _render_markdown(payload: dict[str, Any], *, stacks: tuple[str, ...]) -> str
     lines.append('')
     lines.append('## Stack Summary')
     lines.append('')
-    lines.append('| Stack | OK | Keyword pass | Quality | Avg latency |')
-    lines.append('| --- | --- | --- | --- | --- |')
+    lines.append('| Stack | OK | Keyword pass | Quality | Avg latency | Median | P95 | Max |')
+    lines.append('| --- | --- | --- | --- | --- | --- | --- | --- |')
     for stack in stacks:
         bucket = payload['summary']['by_stack'][stack]
         lines.append(
-            f"| `{stack}` | `{bucket['ok']}/{bucket['count']}` | `{bucket['keyword_pass']}/{bucket['count']}` | `{bucket['quality_avg']}` | `{bucket['avg_latency_ms']} ms` |"
+            f"| `{stack}` | `{bucket['ok']}/{bucket['count']}` | `{bucket['keyword_pass']}/{bucket['count']}` | `{bucket['quality_avg']}` | `{bucket['avg_latency_ms']} ms` | `{bucket['median_latency_ms']} ms` | `{bucket['p95_latency_ms']} ms` | `{bucket['max_latency_ms']} ms` |"
         )
+    lines.append('')
+    lines.append('## By Slice')
+    lines.append('')
+    for slice_name, bucket in payload['summary']['by_slice'].items():
+        lines.append(f"- `{slice_name}`")
+        for stack in stacks:
+            item = bucket.get(stack) or {}
+            lines.append(
+                f"  - `{stack}`: keyword pass {item.get('keyword_pass', 0)}/{item.get('count', 0)}, "
+                f"quality {item.get('quality_avg', 0)}, latency {item.get('avg_latency_ms', 0)}ms"
+            )
     lines.append('')
     lines.append('## By Retrieval Type')
     lines.append('')
@@ -255,6 +295,16 @@ def _render_markdown(payload: dict[str, Any], *, stacks: tuple[str, ...]) -> str
             lines.append(
                 f"  - `{stack}`: keyword pass {item.get('keyword_pass', 0)}/{item.get('count', 0)}, "
                 f"quality {item.get('quality_avg', 0)}, latency {item.get('avg_latency_ms', 0)}ms"
+            )
+    lines.append('')
+    lines.append('## Latency Outliers')
+    lines.append('')
+    for stack in stacks:
+        bucket = payload['summary']['by_stack'][stack]
+        lines.append(f"- `{stack}`")
+        for item in bucket.get('top_latency_cases', []):
+            lines.append(
+                f"  - `{item['id']}` `{item['retrieval_type']}` `{item['latency_ms']} ms` quality `{item['quality_score']}` reason `{item['reason']}`"
             )
     lines.append('')
     lines.append('## Failures')

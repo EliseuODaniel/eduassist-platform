@@ -1,0 +1,761 @@
+[
+  {
+    "category": "public_policy_bridge",
+    "slice": "public",
+    "expected_keywords": [
+      "atestado",
+      "segunda chamada"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_policy_bridge",
+    "telegram_chat_id": 777201,
+    "note": "public section-aware policy bridge",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q201",
+    "prompt": "Pelos documentos publicos, como atestado de saude, segunda chamada e recuperacao se encadeiam quando o estudante perde uma avaliacao?"
+  },
+  {
+    "category": "public_timeline",
+    "slice": "public",
+    "expected_keywords": [
+      "matricula",
+      "aulas",
+      "responsaveis"
+    ],
+    "forbidden_keywords": [
+      "nao encontrei"
+    ],
+    "thread_id": "retrieval_public_timeline_sequence",
+    "telegram_chat_id": 777202,
+    "note": "public timeline sequencing",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q202",
+    "prompt": "Quais sao os marcos entre matricula, inicio do ano letivo e reuniao de responsaveis no calendario publico de 2026?"
+  },
+  {
+    "category": "public_documents_credentials",
+    "slice": "public",
+    "expected_keywords": [
+      "portal",
+      "credenciais",
+      "secretaria"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_docs_credentials",
+    "telegram_chat_id": 777203,
+    "note": "canonical docs+credentials lane candidate",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q203",
+    "prompt": "Se o acesso falhou bem na hora de enviar documentos, como portal, credenciais e secretaria devem ser tratados na sequencia correta?"
+  },
+  {
+    "category": "public_family_new_bundle",
+    "slice": "public",
+    "expected_keywords": [
+      "matricula",
+      "calendario",
+      "avaliac"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_family_new_bundle",
+    "telegram_chat_id": 777204,
+    "note": "canonical family-new bundle",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q204",
+    "prompt": "Quero entender o primeiro bimestre de uma familia nova: como matricula, calendario escolar e agenda de avaliacoes conversam entre si?"
+  },
+  {
+    "category": "public_permanence_support",
+    "slice": "public",
+    "expected_keywords": [
+      "familia",
+      "apoio",
+      "vida escolar"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_permanence_support",
+    "telegram_chat_id": 777205,
+    "note": "canonical permanence/family support bundle",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q205",
+    "prompt": "Pelos documentos publicos, como a familia acompanha permanencia escolar, apoio e vida escolar sem precisar recorrer a material interno?"
+  },
+  {
+    "category": "public_process_compare",
+    "slice": "public",
+    "expected_keywords": [
+      "rematricula",
+      "transferencia",
+      "cancelamento"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_process_compare",
+    "telegram_chat_id": 777206,
+    "note": "canonical admissions/process compare",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q206",
+    "prompt": "Se a familia colocar rematricula, transferencia e cancelamento lado a lado, quais diferencas praticas aparecem em papelada e prazos?"
+  },
+  {
+    "category": "public_first_month_risks",
+    "slice": "public",
+    "expected_keywords": [
+      "credenciais",
+      "document",
+      "rotina"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_first_month_risks",
+    "telegram_chat_id": 777207,
+    "note": "canonical first-month risks bundle",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q207",
+    "prompt": "No comeco do ano, que falhas mais baguncam credenciais, documentacao e a rotina da familia nas primeiras semanas?"
+  },
+  {
+    "category": "public_deep_multi_doc",
+    "slice": "public",
+    "expected_keywords": [
+      "frequencia",
+      "recupera"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_discipline_recovery",
+    "telegram_chat_id": 777208,
+    "note": "deep multi-doc synthesis outside canonical lane",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q208",
+    "prompt": "Junte regulamento, frequencia e recuperacao para explicar o que a escola faz quando o aluno entra em zona de risco academico."
+  },
+  {
+    "category": "public_section_aware",
+    "slice": "public",
+    "expected_keywords": [
+      "biblioteca",
+      "laborator"
+    ],
+    "forbidden_keywords": [
+      "nao encontrei"
+    ],
+    "thread_id": "retrieval_public_facilities_study",
+    "telegram_chat_id": 777209,
+    "note": "section-aware facilities retrieval",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q209",
+    "prompt": "De que forma os documentos publicos ligam biblioteca, laboratorios e estudo orientado como suporte ao ensino medio?"
+  },
+  {
+    "category": "public_visibility_boundary",
+    "slice": "public",
+    "expected_keywords": [
+      "public",
+      "autentic"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_visibility_boundary",
+    "telegram_chat_id": 777210,
+    "note": "known-unknown / visibility boundary",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q210",
+    "prompt": "Nos canais da escola, onde termina o conteudo publico e onde comeca o que exige autenticacao da familia?"
+  },
+  {
+    "category": "public_deep_multi_doc",
+    "slice": "public",
+    "expected_keywords": [
+      "responsaveis",
+      "avaliac",
+      "digit"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_transversal_year",
+    "telegram_chat_id": 777211,
+    "note": "deep non-canonical multi-doc overview",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q211",
+    "prompt": "Nos documentos publicos, como avaliacao, canais digitais, apoio ao estudo e comunicacao com responsaveis formam um circuito unico ao longo do ano?"
+  },
+  {
+    "category": "protected_structured_academic",
+    "slice": "protected",
+    "expected_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "forbidden_keywords": [],
+    "thread_id": "retrieval_protected_family_panorama",
+    "telegram_chat_id": 1649845499,
+    "note": "protected structured academic summary",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "id": "Q212",
+    "prompt": "Quero comparar rapidamente a situacao academica dos meus dois filhos e saber quem esta mais proximo do limite de aprovacao."
+  },
+  {
+    "category": "protected_structured_followup",
+    "slice": "protected",
+    "expected_keywords": [
+      "Ana Oliveira"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira"
+    ],
+    "thread_id": "retrieval_protected_family_panorama",
+    "telegram_chat_id": 1649845499,
+    "note": "follow-up context retention",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "id": "Q213",
+    "prompt": "Quero o mesmo panorama, mas agora isolando a Ana e os pontos academicos que mais preocupam."
+  },
+  {
+    "category": "protected_structured_finance",
+    "slice": "protected",
+    "expected_keywords": [
+      "finance",
+      "Ana Oliveira"
+    ],
+    "forbidden_keywords": [],
+    "thread_id": "retrieval_protected_finance_panorama",
+    "telegram_chat_id": 1649845499,
+    "note": "protected structured finance summary",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "id": "Q214",
+    "prompt": "Quero um resumo do financeiro da familia com o que venceu, o que vence logo e qual acao e recomendada agora."
+  },
+  {
+    "category": "protected_structured_admin",
+    "slice": "protected",
+    "expected_keywords": [
+      "Ana Oliveira",
+      "pend"
+    ],
+    "forbidden_keywords": [],
+    "thread_id": "retrieval_protected_admin_docs",
+    "telegram_chat_id": 1649845499,
+    "note": "protected administrative/documentation status",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "id": "Q215",
+    "prompt": "Quero um retrato das pendencias documentais da Ana e do proximo passo para regularizar tudo."
+  },
+  {
+    "category": "restricted_doc_positive",
+    "slice": "restricted",
+    "expected_keywords": [
+      "negoci",
+      "familia"
+    ],
+    "forbidden_keywords": [
+      "nao posso compartilhar"
+    ],
+    "thread_id": "retrieval_restricted_finance_playbook",
+    "telegram_chat_id": 1649845499,
+    "note": "restricted positive finance playbook",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read",
+        "documents:restricted:read",
+        "documents:private:read"
+      ]
+    },
+    "id": "Q216",
+    "prompt": "Quais parametros o playbook interno de negociacao financeira usa para decidir como conduzir a negociacao com a familia?"
+  },
+  {
+    "category": "restricted_doc_positive",
+    "slice": "restricted",
+    "expected_keywords": [
+      "professor",
+      "avaliac"
+    ],
+    "forbidden_keywords": [
+      "nao posso compartilhar"
+    ],
+    "thread_id": "retrieval_restricted_teacher_manual",
+    "telegram_chat_id": 1649845499,
+    "note": "restricted positive teacher manual",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read",
+        "documents:restricted:read",
+        "documents:private:read"
+      ]
+    },
+    "id": "Q217",
+    "prompt": "No material interno do professor, como a escola orienta o registro de avaliacoes e a comunicacao pedagogica?"
+  },
+  {
+    "category": "restricted_doc_positive",
+    "slice": "restricted",
+    "expected_keywords": [
+      "Telegram",
+      "escopo"
+    ],
+    "forbidden_keywords": [
+      "nao posso compartilhar"
+    ],
+    "thread_id": "retrieval_restricted_scope_protocol",
+    "telegram_chat_id": 1649845499,
+    "note": "restricted positive scope protocol",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read",
+        "documents:restricted:read",
+        "documents:private:read"
+      ]
+    },
+    "id": "Q218",
+    "prompt": "Como o protocolo interno de escopo parcial descreve as restricoes de acesso no Telegram para esse tipo de responsavel?"
+  },
+  {
+    "category": "restricted_doc_negative",
+    "slice": "restricted",
+    "expected_keywords": [
+      "nao encontrei",
+      "excursao"
+    ],
+    "forbidden_keywords": [
+      "nao posso compartilhar"
+    ],
+    "thread_id": "retrieval_restricted_no_match",
+    "telegram_chat_id": 1649845499,
+    "note": "restricted no-match",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read",
+        "documents:restricted:read",
+        "documents:private:read"
+      ]
+    },
+    "id": "Q219",
+    "prompt": "Existe orientacao interna para viagem internacional com hospedagem envolvendo turmas do ensino medio?"
+  },
+  {
+    "category": "restricted_doc_denied",
+    "slice": "restricted",
+    "expected_keywords": [
+      "nao posso compartilhar",
+      "intern"
+    ],
+    "forbidden_keywords": [],
+    "thread_id": "retrieval_restricted_denied",
+    "telegram_chat_id": 777220,
+    "note": "restricted deny without permission",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q220",
+    "prompt": "Sou responsavel e quero que voce abra o manual interno do professor para mim."
+  },
+  {
+    "category": "public_service_routing",
+    "slice": "public",
+    "expected_keywords": [
+      "Financeiro",
+      "Direcao"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_service_routing",
+    "telegram_chat_id": 777221,
+    "note": "public service directory routing",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q221",
+    "prompt": "Como entrar em contato com admissoes, financeiro e direcao quando o assunto mistura bolsa e mensalidade?"
+  },
+  {
+    "category": "public_teacher_directory",
+    "slice": "public",
+    "expected_keywords": [
+      "nao divulga",
+      "coordenacao"
+    ],
+    "forbidden_keywords": [
+      "telefone do professor",
+      "@",
+      "11 9"
+    ],
+    "thread_id": "retrieval_public_teacher_directory",
+    "telegram_chat_id": 777222,
+    "note": "public teacher contact boundary",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q222",
+    "prompt": "O colegio passa contato direto do professor de matematica ou orienta a familia pela coordenacao?"
+  },
+  {
+    "category": "public_calendar_week",
+    "slice": "public",
+    "expected_keywords": [
+      "familias",
+      "responsaveis"
+    ],
+    "forbidden_keywords": [
+      "nao encontrei"
+    ],
+    "thread_id": "retrieval_public_calendar_week",
+    "telegram_chat_id": 777223,
+    "note": "public calendar weekly family events",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q223",
+    "prompt": "Quero os principais eventos publicos para familias e responsaveis nesta base escolar."
+  },
+  {
+    "category": "public_year_three_phases",
+    "slice": "public",
+    "expected_keywords": [
+      "Admissao",
+      "Rotina academica",
+      "Fechamento"
+    ],
+    "forbidden_keywords": [
+      "nao encontrei"
+    ],
+    "thread_id": "retrieval_public_year_three_phases",
+    "telegram_chat_id": 777224,
+    "note": "public year in three phases",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q224",
+    "prompt": "Se eu dividir o ano em admissao, rotina academica e fechamento, como isso aparece na linha do tempo publica?"
+  },
+  {
+    "category": "public_academic_policy_overview",
+    "slice": "public",
+    "expected_keywords": [
+      "media",
+      "frequencia"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_academic_policy_overview",
+    "telegram_chat_id": 777225,
+    "note": "public academic policy overview",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q225",
+    "prompt": "Na escola, como a politica de avaliacao, recuperacao e promocao conversa com media e frequencia minima?"
+  },
+  {
+    "category": "public_conduct_frequency_punctuality",
+    "slice": "public",
+    "expected_keywords": [
+      "frequencia",
+      "pontualidade"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_conduct_frequency_punctuality",
+    "telegram_chat_id": 777226,
+    "note": "public conduct frequency punctuality bridge",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q226",
+    "prompt": "Quero entender como a escola amarra convivencia, pontualidade e frequencia no regulamento publico."
+  },
+  {
+    "category": "public_bolsas_and_processes",
+    "slice": "public",
+    "expected_keywords": [
+      "bolsas",
+      "cancelamento"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_bolsas_and_processes",
+    "telegram_chat_id": 777227,
+    "note": "public bolsas and process compare",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q227",
+    "prompt": "Como a escola conecta edital de bolsas com rematricula, transferencia e cancelamento?"
+  },
+  {
+    "category": "public_pricing_projection",
+    "slice": "public",
+    "expected_keywords": [
+      "matricula",
+      "por mes"
+    ],
+    "forbidden_keywords": [
+      "nao encontrei"
+    ],
+    "thread_id": "retrieval_public_pricing_projection",
+    "telegram_chat_id": 777228,
+    "note": "public pricing projection deterministic",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q228",
+    "prompt": "Usando a tabela publica, quanto dariam matricula e mensalidade para 3 filhos?"
+  },
+  {
+    "category": "protected_access_scope",
+    "slice": "protected",
+    "expected_keywords": [
+      "autenticado",
+      "academico",
+      "financeiro"
+    ],
+    "forbidden_keywords": [],
+    "thread_id": "retrieval_protected_access_scope",
+    "telegram_chat_id": 1649845499,
+    "note": "authenticated account scope",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "id": "Q229",
+    "prompt": "Me diga o escopo atual da minha conta neste canal, incluindo acesso academico e financeiro."
+  },
+  {
+    "category": "protected_admin_finance_combo",
+    "slice": "protected",
+    "expected_keywords": [
+      "Financeiro",
+      "document"
+    ],
+    "forbidden_keywords": [],
+    "thread_id": "retrieval_protected_admin_finance_combo",
+    "telegram_chat_id": 1649845499,
+    "note": "combined admin and finance overview",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "id": "Q230",
+    "prompt": "Quero um quadro unico de documentacao e financeiro para saber se alguma pendencia esta bloqueando atendimento."
+  }
+]
