@@ -144,6 +144,7 @@ def _build_context_sections(
     preview: Any,
     citations: list[MessageResponseCitation],
     calendar_events: list[CalendarEventCard],
+    context_pack: str | None,
     conversation_context: dict[str, Any] | None,
     school_profile: dict[str, Any] | None,
 ) -> tuple[str, str]:
@@ -228,6 +229,7 @@ def _build_context_sections(
         f'Perfil canonico da escola:\n{school_profile_block}\n\n'
         f'Historico recente da conversa:\n{memory_block}\n\n'
         f'Eventos estruturados:\n{calendar_context or "nenhum"}\n\n'
+        f'Contexto agregado por documento:\n{context_pack or "nenhum"}\n\n'
         f'Trechos citaveis:\n{snippets or "nenhum"}'
     )
     return instructions, prompt
@@ -494,6 +496,7 @@ async def compose_with_openai(
     calendar_events: list[CalendarEventCard],
     conversation_context: dict[str, Any] | None,
     school_profile: dict[str, Any] | None,
+    context_pack: str | None = None,
 ) -> str | None:
     if settings.llm_provider != 'openai' or not settings.openai_api_key:
         return None
@@ -504,6 +507,7 @@ async def compose_with_openai(
         preview=preview,
         citations=citations,
         calendar_events=calendar_events,
+        context_pack=context_pack,
         conversation_context=conversation_context,
         school_profile=school_profile,
     )
@@ -631,6 +635,7 @@ async def compose_with_google(
     calendar_events: list[CalendarEventCard],
     conversation_context: dict[str, Any] | None,
     school_profile: dict[str, Any] | None,
+    context_pack: str | None = None,
 ) -> str | None:
     if settings.llm_provider not in {'google', 'gemini'} or not settings.google_api_key:
         return None
@@ -641,6 +646,7 @@ async def compose_with_google(
         preview=preview,
         citations=citations,
         calendar_events=calendar_events,
+        context_pack=context_pack,
         conversation_context=conversation_context,
         school_profile=school_profile,
     )
@@ -903,6 +909,7 @@ async def compose_with_provider(
     calendar_events: list[CalendarEventCard],
     conversation_context: dict[str, Any] | None,
     school_profile: dict[str, Any] | None,
+    context_pack: str | None = None,
 ) -> str | None:
     if settings.llm_provider == 'openai':
         return await compose_with_openai(
@@ -912,6 +919,7 @@ async def compose_with_provider(
             preview=preview,
             citations=citations,
             calendar_events=calendar_events,
+            context_pack=context_pack,
             conversation_context=conversation_context,
             school_profile=school_profile,
         )
@@ -923,6 +931,7 @@ async def compose_with_provider(
             preview=preview,
             citations=citations,
             calendar_events=calendar_events,
+            context_pack=context_pack,
             conversation_context=conversation_context,
             school_profile=school_profile,
         )

@@ -61,6 +61,12 @@ ACADEMIC_TERMS = {
     'materia',
     'materias',
     'bimestre',
+    'media',
+    'média',
+    'desempenho',
+    'vulneravel',
+    'vulnerável',
+    'componentes',
 }
 ACADEMIC_IDENTITY_TERMS = {
     'qual a matricula',
@@ -133,6 +139,12 @@ PERSONAL_FINANCE_CONTEXT_TERMS = {
     'vencida',
     'vencidas',
     'em aberto',
+    'situacao financeira',
+    'situação financeira',
+    'vencimentos',
+    'atrasos',
+    'proximos passos',
+    'próximos passos',
 }
 PUBLIC_PRICING_TERMS = {
     'mensalidade',
@@ -516,6 +528,15 @@ WORKFLOW_FOLLOW_UP_TERMS = {
     'me da um resumo',
     'o que eu pedi',
     'qual foi meu pedido',
+}
+RESTRICTED_DOCUMENT_TERMS = {
+    'procedimento interno',
+    'protocolo interno',
+    'manual interno',
+    'playbook interno',
+    'documento interno',
+    'documentos internos',
+    'por dentro',
 }
 PROTOCOL_CODE_PATTERN = re.compile(
     r'\b(?:VIS|REQ)-\d{8}-[A-Z0-9]{6}\b|\bATD-\d{8}-[A-Z0-9]{8}\b',
@@ -1003,6 +1024,17 @@ def _contains_any(message: str, terms: set[str]) -> bool:
     return any(_message_matches_term(lowered, term) for term in terms)
 
 
+def _is_restricted_document_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(_message_matches_term(normalized, term) for term in RESTRICTED_DOCUMENT_TERMS)
+
+
+def _can_read_restricted_documents(request: OrchestrationRequest) -> bool:
+    role = str(getattr(request.user.role, 'value', request.user.role) or '').strip().lower()
+    scopes = {str(item).strip().lower() for item in request.user.scopes}
+    return bool(request.user.authenticated and ('documents:private:read' in scopes or role in {'staff', 'teacher'}))
+
+
 def _wants_human_support(message: str) -> bool:
     lowered = _normalize_text(message)
     return any(term in lowered for term in SUPPORT_TERMS) or any(
@@ -1110,6 +1142,22 @@ def _is_authenticated_personal_finance_query(message: str, *, authenticated: boo
     if not authenticated:
         return False
     lowered = _normalize_text(message)
+    if any(
+        _message_matches_term(lowered, term)
+        for term in {
+            'situacao financeira da familia',
+            'situação financeira da família',
+            'situacao financeira atual da familia',
+            'situação financeira atual da família',
+            'resuma a situacao financeira',
+            'resuma a situação financeira',
+            'vencimentos',
+            'atrasos',
+            'proximos passos',
+            'próximos passos',
+        }
+    ):
+        return True
     if not any(_message_matches_term(lowered, term) for term in FINANCE_TERMS):
         return False
     if any(_message_matches_term(lowered, term) for term in PERSONAL_FINANCE_TERMS):
@@ -1353,9 +1401,26 @@ def _is_public_service_credentials_bundle_query(message: str) -> bool:
 
 def _is_public_permanence_family_query(message: str) -> bool:
     lowered = _normalize_text(message)
-    return 'permanencia escolar' in lowered and any(
-        _message_matches_term(lowered, term)
-        for term in {'acompanhamento da familia', 'acompanhamento da família', 'responsaveis', 'responsáveis'}
+    family_terms = {
+        'acompanhamento da familia',
+        'acompanhamento da família',
+        'familia',
+        'família',
+        'responsaveis',
+        'responsáveis',
+        'acompanhe',
+    }
+    permanence_terms = {
+        'permanencia',
+        'permanência',
+        'vida escolar',
+        'apoio',
+        'orientacao',
+        'orientação',
+    }
+    return (
+        any(_message_matches_term(lowered, term) for term in family_terms)
+        and sum(1 for term in permanence_terms if _message_matches_term(lowered, term)) >= 2
     )
 
 
@@ -1592,6 +1657,23 @@ def _is_authenticated_student_assessment_query(message: str, *, authenticated: b
         return False
     if _message_matches_term(lowered, 'calendario'):
         return False
+    if any(
+        _message_matches_term(lowered, term)
+        for term in {
+            'panorama academico',
+            'panorama acadêmico',
+            'media minima',
+            'média mínima',
+            'mais perto da media',
+            'mais perto da média',
+            'componentes',
+            'mais vulneravel',
+            'mais vulnerável',
+            'esta mais vulneravel',
+            'está mais vulnerável',
+        }
+    ):
+        return True
     return any(
         _message_matches_term(lowered, term)
         for term in {'prova', 'provas', 'avaliacao', 'avaliacoes', 'avaliação', 'avaliações'}
@@ -1646,12 +1728,33 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
             confidence=0.9,
             reason='mensagem autenticada pede status cadastral, documentacao pessoal ou atualizacao administrativa',
         )
+    elif _is_authenticated_personal_finance_query(message, authenticated=request.user.authenticated):
+        classification = IntentClassification(
+            domain=QueryDomain.finance,
+            access_tier=AccessTier.sensitive,
+            confidence=0.91,
+            reason='mensagem autenticada pede situacao financeira pessoal, vencimentos ou proximos passos da familia',
+        )
+    elif _is_authenticated_student_assessment_query(message, authenticated=request.user.authenticated):
+        classification = IntentClassification(
+            domain=QueryDomain.academic,
+            access_tier=AccessTier.authenticated,
+            confidence=0.92,
+            reason='mensagem autenticada pede panorama academico, vulnerabilidades ou componentes de aluno vinculado',
+        )
     elif _is_structured_support_workflow_request(message):
         classification = IntentClassification(
             domain=QueryDomain.support,
             access_tier=AccessTier.public,
             confidence=0.89,
             reason='mensagem pede uma acao institucional estruturada, como visita ou solicitacao formal',
+        )
+    elif _is_restricted_document_query(message):
+        classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.authenticated,
+            confidence=0.98,
+            reason='mensagem pede consulta a documento interno e deve seguir politica de acesso restrito',
         )
     elif _wants_human_support(message):
         classification = IntentClassification(
@@ -1831,7 +1934,13 @@ def route_request(state: OrchestrationState, runtime: GraphRuntimeConfig) -> Orc
         )
     )
 
-    if classification.domain is QueryDomain.unknown:
+    if _is_restricted_document_query(message) and not _can_read_restricted_documents(request):
+        route = OrchestrationMode.deny.value
+        reason = 'documentos internos exigem perfil com autorizacao explicita para leitura restrita'
+    elif _is_restricted_document_query(message):
+        route = OrchestrationMode.hybrid_retrieval.value
+        reason = 'consulta autenticada de documento interno deve usar retrieval restrito com grounding'
+    elif classification.domain is QueryDomain.unknown:
         route = OrchestrationMode.clarify.value
         reason = 'a intencao esta ambigua e exige clarificacao antes de recuperar contexto'
     elif state.get('needs_authentication'):

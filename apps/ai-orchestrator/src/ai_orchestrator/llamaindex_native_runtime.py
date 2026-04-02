@@ -49,8 +49,16 @@ from .models import (
     RetrievalBackend,
 )
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
+from .public_doc_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
 from .public_known_unknowns import compose_public_known_unknown_answer, detect_public_known_unknown_key
-from .retrieval import get_retrieval_service
+from .retrieval import (
+    can_read_restricted_documents,
+    compose_restricted_document_grounded_answer,
+    compose_restricted_document_no_match_answer,
+    get_retrieval_service,
+    looks_like_restricted_document_query,
+    select_relevant_restricted_hits,
+)
 
 try:
     from llama_index.llms.openai import OpenAI as LlamaIndexOpenAI
@@ -122,33 +130,15 @@ def _compose_external_live_query_answer(message: str) -> str | None:
 
 
 def _can_read_private_documents(*, request: MessageResponseRequest, actor: dict[str, Any] | None) -> bool:
-    scopes = {str(item).strip().lower() for item in getattr(getattr(request, 'user', None), 'scopes', [])}
     actor_role = str((actor or {}).get('role_code', '') or '').strip().lower()
-    request_role = str(getattr(getattr(request, 'user', None), 'role', '') or '').strip().lower()
     return bool(
-        getattr(getattr(request, 'user', None), 'authenticated', False)
-        and (
-            'documents:private:read' in scopes
-            or actor_role in {'staff', 'teacher'}
-            or request_role in {'staff', 'teacher'}
-        )
+        can_read_restricted_documents(request.user)
+        or actor_role in {'staff', 'teacher'}
     )
 
 
 def _looks_like_restricted_doc_query(message: str) -> bool:
-    normalized = rt._normalize_text(message)
-    return any(
-        rt._message_matches_term(normalized, term)
-        for term in {
-            'procedimento interno',
-            'protocolo interno',
-            'manual interno',
-            'playbook interno',
-            'documento interno',
-            'documentos internos',
-            'por dentro',
-        }
-    )
+    return looks_like_restricted_document_query(message)
 
 
 def _restricted_doc_hit_to_citation(hit: Any) -> MessageResponseCitation | None:
@@ -240,13 +230,18 @@ async def _maybe_execute_llamaindex_restricted_doc_fast_path(
         visibility='private',
         category=None,
     )
+    relevant_hits = select_relevant_restricted_hits(request.message, list(retrieval_result.hits))
     citations = [
         citation
-        for citation in (_restricted_doc_hit_to_citation(hit) for hit in retrieval_result.hits[:3])
+        for citation in (_restricted_doc_hit_to_citation(hit) for hit in relevant_hits[:3])
         if citation is not None
     ]
     message_text = rt._normalize_response_wording(
-        _compose_restricted_doc_grounded_answer(list(retrieval_result.hits[:3]))
+        (
+            compose_restricted_document_grounded_answer(relevant_hits[:3])
+            if relevant_hits
+            else compose_restricted_document_no_match_answer(request.message)
+        )
         or 'Consultei os documentos internos disponiveis, mas nao encontrei orientacao suficiente para responder com seguranca.'
     )
     school_profile = await rt._fetch_public_school_profile(settings=settings)
@@ -301,10 +296,10 @@ async def _maybe_execute_llamaindex_restricted_doc_fast_path(
         selected_tools=preview.selected_tools,
         citations=citations,
         visual_assets=[],
-        suggested_replies=suggested_replies,
-        calendar_events=[],
-        evidence_pack=evidence_pack,
-        needs_authentication=True,
+            suggested_replies=suggested_replies,
+            calendar_events=[],
+            evidence_pack=evidence_pack,
+            needs_authentication=True,
         graph_path=[
             *preview.graph_path,
             'llamaindex:restricted',
@@ -312,7 +307,7 @@ async def _maybe_execute_llamaindex_restricted_doc_fast_path(
             f'kernel:{plan.stack_name}',
         ],
         risk_flags=preview.risk_flags,
-        reason='llamaindex_restricted_doc_fast_path',
+        reason='llamaindex_restricted_doc_fast_path' if relevant_hits else 'llamaindex_restricted_doc_no_match',
     )
     reflection = KernelReflection(
         grounded=True,
@@ -2366,6 +2361,66 @@ async def maybe_execute_llamaindex_native_plan(
             response=response.model_dump(mode='json'),
         )
 
+    public_canonical_lane = match_public_canonical_lane(analysis_message) or match_public_canonical_lane(request.message)
+    public_canonical_answer = (
+        compose_public_canonical_lane_answer(public_canonical_lane, profile=school_profile)
+        if public_canonical_lane
+        else None
+    )
+    if public_canonical_answer:
+        preview = plan.preview.model_copy(deep=True)
+        preview.mode = OrchestrationMode.structured_tool
+        preview.classification = _public_classification_for_act(
+            'support_routing',
+            'pergunta publica canonica resolvida deterministicamente antes do roteador nativo do llamaindex',
+        )
+        preview.selected_tools = list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile']))
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=preview.selected_tools,
+            slice_name=plan.slice_name,
+            summary='Resposta publica canonica resolvida por lane deterministica compartilhada.',
+        )
+        response = MessageResponse(
+            message_text=public_canonical_answer,
+            mode=preview.mode,
+            classification=preview.classification,
+            retrieval_backend=RetrievalBackend.none,
+            selected_tools=preview.selected_tools,
+            citations=[],
+            visual_assets=[],
+            suggested_replies=[],
+            calendar_events=[],
+            evidence_pack=evidence_pack,
+            needs_authentication=False,
+            graph_path=[
+                *preview.graph_path,
+                'llamaindex:public',
+                'llamaindex:canonical_lane',
+                public_canonical_lane,
+                f'kernel:{plan.stack_name}',
+            ],
+            risk_flags=preview.risk_flags,
+            reason=f'llamaindex_public_canonical_lane:{public_canonical_lane}',
+        )
+        reflection = KernelReflection(
+            grounded=True,
+            verifier_reason='llamaindex deterministic canonical public lane',
+            fallback_used=False,
+            answer_judge_used=False,
+            notes=[
+                f'route:{preview.mode.value}',
+                f'slice:{plan.slice_name}',
+                f'canonical_lane:{public_canonical_lane}',
+                f'evidence:{evidence_pack.strategy}',
+                *plan.plan_notes,
+            ],
+        )
+        return KernelRunResult(
+            plan=plan,
+            reflection=reflection,
+            response=response.model_dump(mode='json'),
+        )
+
     llamaindex_llm = _build_llamaindex_llm(settings=settings)
     llm_native_public_decision = None
     if _should_run_llamaindex_native_public_resolver(request=request, plan=plan):
@@ -2439,6 +2494,15 @@ async def maybe_execute_llamaindex_native_plan(
         native_decision=native_public_decision,
         public_plan=public_plan,
     )
+    public_canonical_lane = (
+        match_public_canonical_lane(effective_analysis_message)
+        or match_public_canonical_lane(request.message)
+    )
+    public_canonical_answer = (
+        compose_public_canonical_lane_answer(public_canonical_lane, profile=school_profile)
+        if public_canonical_lane
+        else None
+    )
 
     descriptions = _tool_descriptions(public_plan)
     native_public_unpublished_answer = _native_llamaindex_public_unpublished_answer(
@@ -2505,7 +2569,19 @@ async def maybe_execute_llamaindex_native_plan(
 
     agent_workflow_result = None
     function_agent_result = None
-    if native_public_unpublished_answer:
+    if public_canonical_answer:
+        preview.mode = OrchestrationMode.structured_tool
+        preview.reason = f'llamaindex_public_canonical_lane:{public_canonical_lane}'
+        preview.classification = _public_classification_for_act(
+            public_plan.conversation_act,
+            'pergunta publica canonica resolvida por lane deterministica antes do roteador nativo',
+        )
+        preview.needs_authentication = False
+        preview.selected_tools = list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile']))
+        answer_text = public_canonical_answer
+        selected_tool_names = ('public_profile',)
+        execution_reason = preview.reason
+    elif native_public_unpublished_answer:
         preview.mode = OrchestrationMode.structured_tool
         preview.reason = 'llamaindex_public_unpublished_fact'
         preview.classification = _public_classification_for_act(

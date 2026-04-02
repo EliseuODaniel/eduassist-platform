@@ -156,6 +156,7 @@ class RetrievalHit(BaseModel):
     section_path: str | None = None
     section_parent: str | None = None
     section_title: str | None = None
+    labels: dict[str, list[str]] = Field(default_factory=dict)
     fused_score: float
     document_score: float | None = None
     lexical_score: float | None = None

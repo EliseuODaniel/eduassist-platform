@@ -56,6 +56,7 @@ from .protected_pilot import (
     _rank_docs,
     _requires_student,
     _resolve_student,
+    _restricted_doc_fast_path,
     _serialize_docs,
     _student_backstop,
     _student_focus_backstop,
@@ -238,6 +239,30 @@ class ProtectedShadowFlow(Flow[ProtectedFlowState]):
         if Crew is None or Agent is None or Task is None or Process is None or Flow is None:
             self.state.routing_label = 'dependency_unavailable'
             self.state.reason = 'crewai_dependency_unavailable'
+            return self.state.routing_label
+
+        restricted_doc_fast_path = await _restricted_doc_fast_path(
+            self.settings,
+            self.state.message,
+            self.state.user_context,
+        )
+        if restricted_doc_fast_path is not None:
+            answer_text, citations, reason = restricted_doc_fast_path
+            self.state.plan = ProtectedPilotPlan(
+                intent='restricted_document',
+                domain='institution',
+                attribute='restricted_document',
+                relevant_sources=citations or ['restricted.document'],
+            )
+            self.state.answer = ProtectedPilotAnswer(
+                answer_text=answer_text,
+                citations=citations,
+            )
+            self.state.judge = ProtectedPilotJudge(valid=True, reason=reason, revision_needed=False)
+            self.state.active_domain = 'institution'
+            self.state.active_attribute = 'restricted_document'
+            self.state.routing_label = 'fast_path'
+            self.state.reason = reason
             return self.state.routing_label
 
         if self.state.telegram_chat_id is None:

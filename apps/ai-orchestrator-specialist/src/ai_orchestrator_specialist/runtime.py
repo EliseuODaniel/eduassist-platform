@@ -305,10 +305,6 @@ _INTERNAL_DOC_STOPWORDS = {
     "internos",
     "orientacao",
     "orientação",
-    "procedimento",
-    "protocolo",
-    "manual",
-    "playbook",
 }
 
 
@@ -355,21 +351,77 @@ def _internal_doc_query_tokens(message: str) -> list[str]:
     return [token for token in tokens if len(token) >= 4 and token not in _INTERNAL_DOC_STOPWORDS]
 
 
-def _internal_doc_hit_overlap(query: str, hit: dict[str, Any]) -> int:
-    haystack = _normalize_text(
-        f"{hit.get('document_title') or ''} {hit.get('contextual_summary') or ''} {hit.get('text_excerpt') or ''}"
+def _internal_doc_hit_score(query: str, hit: dict[str, Any]) -> float:
+    query_terms = set(_internal_doc_query_tokens(query))
+    if not query_terms:
+        return 0.0
+    title = _normalize_text(str(hit.get('document_title') or ''))
+    summary = _normalize_text(str(hit.get('contextual_summary') or ''))
+    excerpt = _normalize_text(str(hit.get('text_excerpt') or ''))
+    section = _normalize_text(
+        ' '.join(
+            part
+            for part in (
+                hit.get('section_title'),
+                hit.get('section_parent'),
+                hit.get('section_path'),
+                hit.get('category'),
+                hit.get('document_set_slug'),
+            )
+            if part
+        )
     )
-    return sum(1 for token in set(_internal_doc_query_tokens(query)) if token in haystack)
+    labels = hit.get('labels') if isinstance(hit.get('labels'), dict) else {}
+    label_terms = _normalize_text(
+        ' '.join(
+            value
+            for values in labels.values()
+            if isinstance(values, list)
+            for value in values
+            if isinstance(value, str)
+        )
+    )
+    title_terms = {token for token in re.findall(r"[a-z0-9]+", title) if len(token) >= 4 and token not in _INTERNAL_DOC_STOPWORDS}
+    title_overlap = len(query_terms & title_terms)
+    haystack = ' '.join(part for part in (summary, excerpt, section, label_terms) if part)
+    evidence_overlap = sum(1 for token in query_terms if token in haystack)
+    score = 0.0
+    if title and title in _normalize_text(query):
+        score += 1.2
+    elif title_terms:
+        score += min(0.8, 0.3 * (title_overlap / max(1, len(title_terms))) + 0.2 * title_overlap)
+    if evidence_overlap:
+        score += min(0.7, 0.18 * evidence_overlap)
+    if 'telegram' in query_terms and 'telegram' in haystack:
+        score += 0.2
+    if 'professor' in query_terms and 'professor' in title:
+        score += 0.2
+    if 'financeira' in query_terms or 'financeiro' in query_terms:
+        if any(term in haystack for term in ('finance', 'inadimplencia', 'negociacao', 'negociacao financeira')):
+            score += 0.2
+    retrieval_score = float(hit.get('document_score') or hit.get('rerank_score') or hit.get('fused_score') or 0.0)
+    score += min(0.2, max(0.0, retrieval_score))
+    return round(score, 6)
 
 
 def _select_relevant_internal_doc_hits(query: str, hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    scored: list[tuple[int, dict[str, Any]]] = []
-    for hit in hits:
-        overlap = _internal_doc_hit_overlap(query, hit)
-        if overlap >= 2:
-            scored.append((overlap, hit))
-    scored.sort(key=lambda item: item[0], reverse=True)
-    return [hit for _, hit in scored[:3]]
+    scored: list[tuple[float, int, dict[str, Any]]] = []
+    for index, hit in enumerate(hits):
+        score = _internal_doc_hit_score(query, hit)
+        if score > 0.18:
+            scored.append((score, index, hit))
+    scored.sort(key=lambda item: (item[0], -item[1]), reverse=True)
+    selected: list[dict[str, Any]] = []
+    seen_titles: set[str] = set()
+    for _, _, hit in scored:
+        title_key = _normalize_text(str(hit.get('document_title') or hit.get('chunk_id') or ''))
+        if title_key in seen_titles:
+            continue
+        selected.append(hit)
+        seen_titles.add(title_key)
+        if len(selected) >= 3:
+            break
+    return selected
 
 
 def _citation_from_retrieval_hit(hit: dict[str, Any]) -> MessageResponseCitation | None:
@@ -466,17 +518,38 @@ def _compose_internal_doc_grounded_answer(query: str, hits: list[dict[str, Any]]
     primary = hits[0]
     primary_title = str(primary.get("document_title") or "documento interno").strip()
     primary_excerpt = str(primary.get("text_excerpt") or primary.get("contextual_summary") or "").strip()
+    primary_section = " - ".join(
+        str(part).strip()
+        for part in (
+            primary.get("section_parent"),
+            primary.get("section_title"),
+        )
+        if str(part or "").strip()
+    )
     lines = [f"Nos documentos internos consultados, a orientacao mais relevante aparece em {primary_title}:"]
+    if primary_section:
+        lines.append(f"Secao relevante: {primary_section}.")
     if primary_excerpt:
         lines.append(primary_excerpt)
     seen_titles = {primary_title}
     for hit in hits[1:]:
         title = str(hit.get("document_title") or "").strip()
         excerpt = str(hit.get("text_excerpt") or hit.get("contextual_summary") or "").strip()
+        section = " - ".join(
+            str(part).strip()
+            for part in (
+                hit.get("section_parent"),
+                hit.get("section_title"),
+            )
+            if str(part or "").strip()
+        )
         if not excerpt:
             continue
         label = title if title and title not in seen_titles else "Complemento interno"
-        lines.append(f"{label}: {excerpt}")
+        if section:
+            lines.append(f"{label} ({section}): {excerpt}")
+        else:
+            lines.append(f"{label}: {excerpt}")
         if title:
             seen_titles.add(title)
     return "\n".join(lines)

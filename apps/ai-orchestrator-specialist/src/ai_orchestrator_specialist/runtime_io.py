@@ -19,6 +19,8 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 _PUBLIC_RESOURCE_CACHE: dict[str, dict[str, Any]] = {}
+_ORCHESTRATOR_PREVIEW_CACHE: dict[str, dict[str, Any]] = {}
+_ORCHESTRATOR_RETRIEVAL_CACHE: dict[str, dict[str, Any]] = {}
 
 
 def _conversation_external_id(ctx: Any) -> str:
@@ -32,6 +34,30 @@ def _conversation_external_id(ctx: Any) -> str:
 
 def _strip_none(payload: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in payload.items() if value is not None}
+
+
+def _cache_get(cache: dict[str, dict[str, Any]], cache_key: str, *, allow_stale: bool = False) -> Any | None:
+    entry = cache.get(cache_key)
+    if not isinstance(entry, dict):
+        return None
+    expires_at = float(entry.get("expires_at", 0.0) or 0.0)
+    if expires_at > monotonic() or allow_stale:
+        value = entry.get("value")
+        if isinstance(value, dict):
+            return dict(value)
+        if isinstance(value, list):
+            return [dict(item) if isinstance(item, dict) else item for item in value]
+        return value
+    cache.pop(cache_key, None)
+    return None
+
+
+def _cache_set(cache: dict[str, dict[str, Any]], cache_key: str, value: Any, *, ttl_seconds: float) -> Any:
+    cache[cache_key] = {
+        "value": value,
+        "expires_at": monotonic() + ttl_seconds,
+    }
+    return value
 
 
 async def _http_get(
@@ -155,10 +181,27 @@ async def fetch_public_payload(ctx: Any, path: str, key: str) -> Any:
 
 
 async def orchestrator_preview(ctx: Any) -> dict[str, Any] | None:
+    cache_key = "|".join(
+        (
+            str(_conversation_external_id(ctx)),
+            str(ctx.request.message),
+            str(ctx.request.user.authenticated),
+            str(getattr(ctx.request.user.role, "value", ctx.request.user.role)),
+            ",".join(sorted(str(item) for item in ctx.request.user.scopes)),
+            str(ctx.request.allow_graph_rag),
+            str(ctx.request.allow_handoff),
+        )
+    )
+    cached_preview = _cache_get(
+        _ORCHESTRATOR_PREVIEW_CACHE,
+        cache_key,
+    )
+    if isinstance(cached_preview, dict):
+        return cached_preview
     try:
         response = await ctx.http_client.post(
             f"{ctx.settings.orchestrator_url.rstrip('/')}/v1/orchestrate/preview",
-            timeout=httpx.Timeout(1.5, connect=0.5),
+            timeout=httpx.Timeout(6.0, connect=1.5),
             json={
                 "message": ctx.request.message,
                 "conversation_id": _conversation_external_id(ctx),
@@ -170,12 +213,23 @@ async def orchestrator_preview(ctx: Any) -> dict[str, Any] | None:
         response.raise_for_status()
     except httpx.HTTPError as exc:
         logger.warning("specialist_orchestrator_preview_unavailable: %s", exc)
+        stale_preview = _cache_get(_ORCHESTRATOR_PREVIEW_CACHE, cache_key, allow_stale=True)
+        if isinstance(stale_preview, dict):
+            logger.info("specialist_orchestrator_preview_stale_cache_hit")
+            return stale_preview
         return None
     payload = response.json()
     if not isinstance(payload, dict):
         return None
     preview = payload.get("preview")
-    return preview if isinstance(preview, dict) else None
+    if not isinstance(preview, dict):
+        return None
+    return _cache_set(
+        _ORCHESTRATOR_PREVIEW_CACHE,
+        cache_key,
+        preview,
+        ttl_seconds=float(getattr(ctx.settings, "orchestrator_preview_cache_ttl_seconds", 20.0) or 20.0),
+    )
 
 
 async def orchestrator_retrieval_search(
@@ -186,10 +240,21 @@ async def orchestrator_retrieval_search(
     category: str | None = None,
     top_k: int = 4,
 ) -> dict[str, Any] | None:
+    cache_key = "|".join(
+        (
+            str(query),
+            str(visibility),
+            str(category or ""),
+            str(top_k),
+        )
+    )
+    cached_payload = _cache_get(_ORCHESTRATOR_RETRIEVAL_CACHE, cache_key)
+    if isinstance(cached_payload, dict):
+        return cached_payload
     try:
         response = await ctx.http_client.post(
             f"{ctx.settings.orchestrator_url.rstrip('/')}/v1/retrieval/search",
-            timeout=httpx.Timeout(4.0, connect=1.0),
+            timeout=httpx.Timeout(8.0, connect=1.5),
             headers={
                 "X-Internal-Api-Token": ctx.settings.internal_api_token,
                 "Content-Type": "application/json",
@@ -205,9 +270,20 @@ async def orchestrator_retrieval_search(
         )
         response.raise_for_status()
         body = response.json()
-        return body if isinstance(body, dict) else None
+        if not isinstance(body, dict):
+            return None
+        return _cache_set(
+            _ORCHESTRATOR_RETRIEVAL_CACHE,
+            cache_key,
+            body,
+            ttl_seconds=float(getattr(ctx.settings, "orchestrator_retrieval_cache_ttl_seconds", 45.0) or 45.0),
+        )
     except httpx.HTTPError as exc:
         logger.warning("specialist_orchestrator_retrieval_unavailable: %s", exc)
+        stale_payload = _cache_get(_ORCHESTRATOR_RETRIEVAL_CACHE, cache_key, allow_stale=True)
+        if isinstance(stale_payload, dict):
+            logger.info("specialist_orchestrator_retrieval_stale_cache_hit")
+            return stale_payload
         return None
 
 

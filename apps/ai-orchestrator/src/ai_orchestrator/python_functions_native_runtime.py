@@ -28,11 +28,24 @@ from .models import (
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
 from .public_doc_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
 from .retrieval import get_retrieval_service
+from .retrieval import (
+    can_read_restricted_documents,
+    compose_restricted_document_grounded_answer,
+    compose_restricted_document_no_match_answer,
+    looks_like_restricted_document_query,
+    select_relevant_restricted_hits,
+)
 
 
 def _should_use_python_functions_native_path(plan: KernelPlan) -> bool:
     preview = plan.preview
     if preview.mode is OrchestrationMode.structured_tool:
+        return True
+    if (
+        preview.mode is OrchestrationMode.hybrid_retrieval
+        and preview.classification.access_tier is AccessTier.authenticated
+        and 'documento interno' in str(preview.reason).lower()
+    ):
         return True
     if preview.classification.access_tier is AccessTier.public:
         if preview.classification.domain not in {QueryDomain.institution, QueryDomain.calendar, QueryDomain.unknown}:
@@ -75,6 +88,7 @@ async def maybe_execute_python_functions_native_plan(
     retrieval_hits: list[Any] = []
     citations: list[MessageResponseCitation] = []
     calendar_events = []
+    retrieval_context_pack: str | None = None
     public_plan = None
     deterministic_fallback_text: str | None = None
     query_hints: set[str] = set()
@@ -283,6 +297,12 @@ async def maybe_execute_python_functions_native_plan(
             summary=f'Resposta grounded em tools estruturadas do dominio {preview.classification.domain.value}.',
         )
     elif preview.mode is OrchestrationMode.hybrid_retrieval:
+        used_canonical_lane = False
+        restricted_document_query = (
+            preview.classification.access_tier is AccessTier.authenticated
+            and looks_like_restricted_document_query(request.message)
+            and can_read_restricted_documents(request.user)
+        )
         canonical_lane = (
             match_public_canonical_lane(analysis_message)
             if preview.classification.access_tier is AccessTier.public
@@ -297,7 +317,13 @@ async def maybe_execute_python_functions_native_plan(
             if lane_answer:
                 message_text = lane_answer
                 deterministic_fallback_text = message_text
-                execution_reason = f'python_functions_native_canonical_lane:{canonical_lane}'
+                preview = preview.model_copy(
+                    update={
+                        'reason': f'python_functions_native_canonical_lane:{canonical_lane}',
+                    }
+                )
+                execution_reason = preview.reason
+                used_canonical_lane = True
                 evidence_pack = build_direct_answer_evidence_pack(
                     summary='Resposta canônica grounded em um bundle documental público conhecido.',
                     supports=[
@@ -308,98 +334,118 @@ async def maybe_execute_python_functions_native_plan(
                         )
                     ],
                 )
-                suggested_replies = rt._build_suggested_replies(
-                    request=request,
-                    preview=preview,
-                    actor=actor,
-                    school_profile=school_profile,
-                    conversation_context=conversation_context,
-                )
-                return KernelRunResult(
-                    message_text=message_text,
-                    preview=preview,
-                    retrieval_hits=[],
-                    citations=[],
-                    calendar_events=calendar_events,
-                    visual_assets=[],
-                    evidence_pack=evidence_pack,
-                    risk_flags=rt._build_runtime_risk_flags(
-                        request_message=request.message,
-                        message_text=message_text,
-                        preview=preview,
-                    ),
-                    suggested_replies=suggested_replies,
-                    execution_reason=execution_reason,
-                )
-        retrieval_service = get_retrieval_service(
-            database_url=settings.database_url,
-            qdrant_url=settings.qdrant_url,
-            collection_name=settings.qdrant_documents_collection,
-            embedding_model=settings.document_embedding_model,
-            enable_query_variants=settings.retrieval_enable_query_variants,
-            enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
-            late_interaction_model=settings.retrieval_late_interaction_model,
-            candidate_pool_size=settings.retrieval_candidate_pool_size,
-            cheap_candidate_pool_size=settings.retrieval_cheap_candidate_pool_size,
-            deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
-            rerank_fused_weight=settings.retrieval_rerank_fused_weight,
-            rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
-        )
-        search = retrieval_service.hybrid_search(
-            query=analysis_message,
-            top_k=4,
-            visibility='public',
-            category=None,
-        )
-        query_hints = {
-            *rt._extract_public_entity_hints(request.message),
-            *rt._extract_public_entity_hints(analysis_message),
-        }
-        retrieval_hits = list(search.hits)
-        if rt._retrieval_hits_cover_query_hints(retrieval_hits, query_hints):
-            retrieval_hits = rt._filter_retrieval_hits_by_query_hints(retrieval_hits, query_hints)
-        citations = rt._collect_citations(retrieval_hits)
-        public_answerability = rt._assess_public_answerability(
-            analysis_message,
-            retrieval_hits,
-            query_hints,
-        )
-        if preview.classification.domain is QueryDomain.calendar:
-            calendar_events = await rt._fetch_public_calendar(settings=settings)
+                retrieval_hits = []
+                citations = []
+        if restricted_document_query:
+            retrieval_service = get_retrieval_service(
+                database_url=settings.database_url,
+                qdrant_url=settings.qdrant_url,
+                collection_name=settings.qdrant_documents_collection,
+                embedding_model=settings.document_embedding_model,
+                enable_query_variants=settings.retrieval_enable_query_variants,
+                enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
+                late_interaction_model=settings.retrieval_late_interaction_model,
+                candidate_pool_size=settings.retrieval_candidate_pool_size,
+                cheap_candidate_pool_size=settings.retrieval_cheap_candidate_pool_size,
+                deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
+                rerank_fused_weight=settings.retrieval_rerank_fused_weight,
+                rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
+            )
+            search = retrieval_service.hybrid_search(
+                query=analysis_message,
+                top_k=5,
+                visibility='restricted',
+                category=None,
+            )
+            retrieval_context_pack = search.context_pack
+            retrieval_hits = select_relevant_restricted_hits(analysis_message, list(search.hits))
+            citations = rt._collect_citations(retrieval_hits)
+            if retrieval_hits:
+                message_text = compose_restricted_document_grounded_answer(retrieval_hits) or ''
+                deterministic_fallback_text = message_text
+                execution_reason = 'python_functions_native_restricted_document_search'
+            else:
+                message_text = compose_restricted_document_no_match_answer(request.message)
+                deterministic_fallback_text = message_text
+                execution_reason = 'python_functions_native_restricted_document_no_match'
+            evidence_pack = build_retrieval_evidence_pack(
+                citations=citations,
+                selected_tools=preview.selected_tools,
+                retrieval_backend=RetrievalBackend.qdrant_hybrid,
+                summary='Resposta grounded em retrieval restrito autenticado no runtime nativo python_functions.',
+            )
+        elif not used_canonical_lane:
+            retrieval_service = get_retrieval_service(
+                database_url=settings.database_url,
+                qdrant_url=settings.qdrant_url,
+                collection_name=settings.qdrant_documents_collection,
+                embedding_model=settings.document_embedding_model,
+                enable_query_variants=settings.retrieval_enable_query_variants,
+                enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
+                late_interaction_model=settings.retrieval_late_interaction_model,
+                candidate_pool_size=settings.retrieval_candidate_pool_size,
+                cheap_candidate_pool_size=settings.retrieval_cheap_candidate_pool_size,
+                deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
+                rerank_fused_weight=settings.retrieval_rerank_fused_weight,
+                rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
+            )
+            search = retrieval_service.hybrid_search(
+                query=analysis_message,
+                top_k=4,
+                visibility='public',
+                category=None,
+            )
+            retrieval_context_pack = search.context_pack
+            query_hints = {
+                *rt._extract_public_entity_hints(request.message),
+                *rt._extract_public_entity_hints(analysis_message),
+            }
+            retrieval_hits = list(search.hits)
+            if rt._retrieval_hits_cover_query_hints(retrieval_hits, query_hints):
+                retrieval_hits = rt._filter_retrieval_hits_by_query_hints(retrieval_hits, query_hints)
+            citations = rt._collect_citations(retrieval_hits)
+            public_answerability = rt._assess_public_answerability(
+                analysis_message,
+                retrieval_hits,
+                query_hints,
+            )
+            if preview.classification.domain is QueryDomain.calendar:
+                calendar_events = await rt._fetch_public_calendar(settings=settings)
 
-        if not retrieval_hits:
-            message_text = rt._compose_public_gap_answer(query_hints)
-            deterministic_fallback_text = message_text
-        elif not public_answerability.enough_support:
-            message_text = rt._compose_answerability_gap_answer(public_answerability, request.message)
-            deterministic_fallback_text = message_text
-        else:
-            deterministic_fallback_text = rt._compose_deterministic_answer(
-                request_message=request.message,
-                preview=preview,
-                retrieval_hits=retrieval_hits,
+            if not retrieval_hits:
+                message_text = rt._compose_public_gap_answer(query_hints)
+                deterministic_fallback_text = message_text
+            elif not public_answerability.enough_support:
+                message_text = rt._compose_answerability_gap_answer(public_answerability, request.message)
+                deterministic_fallback_text = message_text
+            else:
+                deterministic_fallback_text = rt._compose_deterministic_answer(
+                    request_message=request.message,
+                    preview=preview,
+                    retrieval_hits=retrieval_hits,
+                    citations=citations,
+                    calendar_events=calendar_events,
+                    query_hints=query_hints,
+                )
+                llm_text = await compose_with_provider(
+                    settings=settings,
+                    request_message=request.message,
+                    analysis_message=analysis_message,
+                    preview=preview,
+                    citations=citations,
+                    calendar_events=calendar_events,
+                    conversation_context=conversation_context,
+                    school_profile=school_profile,
+                    context_pack=retrieval_context_pack,
+                )
+                message_text = llm_text or deterministic_fallback_text
+            execution_reason = 'python_functions_native_public_retrieval'
+            evidence_pack = build_retrieval_evidence_pack(
                 citations=citations,
-                calendar_events=calendar_events,
-                query_hints=query_hints,
+                selected_tools=preview.selected_tools,
+                retrieval_backend=RetrievalBackend.qdrant_hybrid,
+                summary='Resposta grounded em retrieval hibrida com reranqueamento compartilhado.',
             )
-            llm_text = await compose_with_provider(
-                settings=settings,
-                request_message=request.message,
-                analysis_message=analysis_message,
-                preview=preview,
-                citations=citations,
-                calendar_events=calendar_events,
-                conversation_context=conversation_context,
-                school_profile=school_profile,
-            )
-            message_text = llm_text or deterministic_fallback_text
-        execution_reason = 'python_functions_native_public_retrieval'
-        evidence_pack = build_retrieval_evidence_pack(
-            citations=citations,
-            selected_tools=preview.selected_tools,
-            retrieval_backend=RetrievalBackend.qdrant_hybrid,
-            summary='Resposta grounded em retrieval hibrida com reranqueamento compartilhado.',
-        )
     else:  # pragma: no cover - native path is intentionally bounded
         return None
 

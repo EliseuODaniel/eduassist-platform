@@ -83,6 +83,13 @@ from .public_doc_knowledge import (
     match_public_canonical_lane,
 )
 from .retrieval import get_retrieval_service
+from .retrieval import (
+    can_read_restricted_documents,
+    compose_restricted_document_grounded_answer,
+    compose_restricted_document_no_match_answer,
+    looks_like_restricted_document_query,
+    select_relevant_restricted_hits,
+)
 
 
 DEFAULT_PUBLIC_HELP = (
@@ -7428,9 +7435,25 @@ def _extract_school_reference_candidate(message: str) -> str | None:
         'telefone',
         'whatsapp',
         'email',
+        'descreve',
+        'explica',
+        'explique',
+        'mostra',
+        'mostre',
+        'quais',
+        'qual',
+        'que',
+        'como',
+        'onde',
+        'quando',
+        'para',
+        'pra',
+        'mecanismos',
+        'publicos',
+        'públicos',
     }
     patterns = (
-        r'\b(?:colegio|colégio|escola)\s+([a-z0-9]+(?:\s+[a-z0-9]+){0,3})\b',
+        r'\b(?:colegio|colégio)\s+([a-z0-9]+(?:\s+[a-z0-9]+){0,3})\b',
         r'\b(?:e|é)\s+do\s+([a-z0-9]+(?:\s+[a-z0-9]+){0,3})\b',
         r'\b(?:nao|não)\s+e\s+do\s+([a-z0-9]+(?:\s+[a-z0-9]+){0,3})\b',
         r'\bfalar com\s+(?:o|a)\s+([a-z0-9]+(?:\s+[a-z0-9]+){0,3})\b',
@@ -14180,6 +14203,11 @@ def _compose_deterministic_answer(
     query_hints: set[str],
 ) -> str:
     if preview.mode is OrchestrationMode.deny:
+        if looks_like_restricted_document_query(request_message):
+            return (
+                'Nao posso compartilhar procedimentos, protocolos, manuais ou playbooks internos da escola por este canal '
+                'para perfis sem autorizacao explicita. Se quiser, eu posso orientar pelo material publico correspondente.'
+            )
         return (
             'Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. '
             'Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando '
@@ -15095,6 +15123,7 @@ async def generate_message_response(
         deterministic_fallback_text: str | None = None
         rescued_public_plan: PublicInstitutionPlan | None = None
         canonical_lane: str | None = None
+        restricted_document_query = False
 
         if _is_public_semantic_rescue_candidate(preview):
             rescued_public_plan = await _resolve_public_institution_plan(
@@ -15302,9 +15331,11 @@ async def generate_message_response(
             )
 
         fast_public_channel_answer = None
+        public_canonical_lane_request = match_public_canonical_lane(request.message)
         if (
             preview.classification.domain is QueryDomain.institution
             and preview.classification.access_tier is AccessTier.public
+            and not public_canonical_lane_request
             and _base_profile_supports_fast_public_answer(
                 message=request.message,
                 profile=school_profile,
@@ -15410,54 +15441,79 @@ async def generate_message_response(
                     rerank_fused_weight=settings.retrieval_rerank_fused_weight,
                     rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
                 )
-                search = retrieval_service.hybrid_search(
-                    query=analysis_message,
-                    top_k=4,
-                    visibility='public',
-                    category=_category_for_domain(preview.classification.domain),
+                restricted_document_query = (
+                    preview.classification.access_tier is AccessTier.authenticated
+                    and looks_like_restricted_document_query(request.message)
+                    and can_read_restricted_documents(request.user)
                 )
-                canonical_lane = (
-                    (search.query_plan.canonical_lane if search.query_plan is not None else None)
-                    or match_public_canonical_lane(analysis_message)
-                    or match_public_canonical_lane(request.message)
-                )
-                retrieval_hits = search.hits
-                query_hints = {
-                    *_extract_public_entity_hints(request.message),
-                    *_extract_public_entity_hints(analysis_message),
-                }
-                retrieval_supported = _retrieval_hits_cover_query_hints(retrieval_hits, query_hints)
-                if retrieval_supported:
-                    retrieval_hits = _filter_retrieval_hits_by_query_hints(retrieval_hits, query_hints)
-                citations = _collect_citations(retrieval_hits)
-                set_span_attributes(
-                    **{
-                        'eduassist.retrieval.hit_count': len(retrieval_hits),
-                        'eduassist.retrieval.citation_count': len(citations),
-                        'eduassist.retrieval.query_hint_count': len(query_hints),
-                        'eduassist.retrieval.hints_supported': retrieval_supported,
+                if restricted_document_query:
+                    search = retrieval_service.hybrid_search(
+                        query=analysis_message,
+                        top_k=5,
+                        visibility='restricted',
+                        category=None,
+                    )
+                    retrieval_hits = select_relevant_restricted_hits(analysis_message, list(search.hits))
+                    citations = _collect_citations(retrieval_hits)
+                    retrieval_supported = bool(retrieval_hits)
+                    set_span_attributes(
+                        **{
+                            'eduassist.retrieval.hit_count': len(retrieval_hits),
+                            'eduassist.retrieval.citation_count': len(citations),
+                            'eduassist.retrieval.query_hint_count': 0,
+                            'eduassist.retrieval.hints_supported': retrieval_supported,
+                            'eduassist.retrieval.restricted_document_query': True,
+                        }
+                    )
+                else:
+                    search = retrieval_service.hybrid_search(
+                        query=analysis_message,
+                        top_k=4,
+                        visibility='public',
+                        category=_category_for_domain(preview.classification.domain),
+                    )
+                    canonical_lane = (
+                        (search.query_plan.canonical_lane if search.query_plan is not None else None)
+                        or match_public_canonical_lane(analysis_message)
+                        or match_public_canonical_lane(request.message)
+                    )
+                    retrieval_hits = search.hits
+                    query_hints = {
+                        *_extract_public_entity_hints(request.message),
+                        *_extract_public_entity_hints(analysis_message),
                     }
-                )
-                if not retrieval_supported:
-                    retrieval_hits = []
-                    citations = []
-                public_answerability = _assess_public_answerability(
-                    analysis_message,
-                    retrieval_hits,
-                    query_hints,
-                )
-                set_span_attributes(
-                    **{
-                        'eduassist.retrieval.answerability_coverage_ratio': public_answerability.coverage_ratio,
-                        'eduassist.retrieval.answerability_high_risk': public_answerability.high_risk_reasoning,
-                        'eduassist.retrieval.answerability_supported_terms': len(public_answerability.matched_terms),
-                        'eduassist.retrieval.answerability_unsupported_terms': len(public_answerability.unsupported_terms),
-                    }
-                )
+                    retrieval_supported = _retrieval_hits_cover_query_hints(retrieval_hits, query_hints)
+                    if retrieval_supported:
+                        retrieval_hits = _filter_retrieval_hits_by_query_hints(retrieval_hits, query_hints)
+                    citations = _collect_citations(retrieval_hits)
+                    set_span_attributes(
+                        **{
+                            'eduassist.retrieval.hit_count': len(retrieval_hits),
+                            'eduassist.retrieval.citation_count': len(citations),
+                            'eduassist.retrieval.query_hint_count': len(query_hints),
+                            'eduassist.retrieval.hints_supported': retrieval_supported,
+                        }
+                    )
+                    if not retrieval_supported:
+                        retrieval_hits = []
+                        citations = []
+                    public_answerability = _assess_public_answerability(
+                        analysis_message,
+                        retrieval_hits,
+                        query_hints,
+                    )
+                    set_span_attributes(
+                        **{
+                            'eduassist.retrieval.answerability_coverage_ratio': public_answerability.coverage_ratio,
+                            'eduassist.retrieval.answerability_high_risk': public_answerability.high_risk_reasoning,
+                            'eduassist.retrieval.answerability_supported_terms': len(public_answerability.matched_terms),
+                            'eduassist.retrieval.answerability_unsupported_terms': len(public_answerability.unsupported_terms),
+                        }
+                    )
 
-                if preview.classification.domain is QueryDomain.calendar:
-                    calendar_events = await _fetch_public_calendar(settings=settings)
-                    set_span_attributes(**{'eduassist.calendar.event_count': len(calendar_events)})
+                    if preview.classification.domain is QueryDomain.calendar:
+                        calendar_events = await _fetch_public_calendar(settings=settings)
+                        set_span_attributes(**{'eduassist.calendar.event_count': len(calendar_events)})
         elif preview.mode is OrchestrationMode.graph_rag:
             with start_span('eduassist.orchestration.graph_rag', tracer_name='eduassist.ai_orchestrator.runtime'):
                 set_span_attributes(
@@ -15512,20 +15568,50 @@ async def generate_message_response(
 
         if preview.mode is OrchestrationMode.structured_tool:
             with start_span('eduassist.orchestration.structured_tool', tracer_name='eduassist.ai_orchestrator.runtime'):
-                public_plan_sink: dict[str, Any] = {}
-                message_text = await _compose_structured_tool_answer(
-                    settings=settings,
-                    request=request,
-                    analysis_message=analysis_message,
-                    preview=preview,
-                    actor=actor,
-                    school_profile=school_profile,
-                    conversation_context=context_payload,
-                    public_plan_sink=public_plan_sink,
-                    resolved_public_plan=rescued_public_plan,
-                )
-                public_plan = public_plan_sink.get('plan')
-                deterministic_fallback_text = str(public_plan_sink.get('deterministic_text') or message_text)
+                if public_canonical_lane_request:
+                    lane_answer = compose_public_canonical_lane_answer(
+                        public_canonical_lane_request,
+                        profile=school_profile,
+                    )
+                    if lane_answer:
+                        preview = preview.model_copy(
+                            update={
+                                'reason': f'langgraph_public_canonical_lane:{public_canonical_lane_request}',
+                                'selected_tools': list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
+                            }
+                        )
+                        message_text = lane_answer
+                        deterministic_fallback_text = lane_answer
+                    else:
+                        public_plan_sink: dict[str, Any] = {}
+                        message_text = await _compose_structured_tool_answer(
+                            settings=settings,
+                            request=request,
+                            analysis_message=analysis_message,
+                            preview=preview,
+                            actor=actor,
+                            school_profile=school_profile,
+                            conversation_context=context_payload,
+                            public_plan_sink=public_plan_sink,
+                            resolved_public_plan=rescued_public_plan,
+                        )
+                        public_plan = public_plan_sink.get('plan')
+                        deterministic_fallback_text = str(public_plan_sink.get('deterministic_text') or message_text)
+                else:
+                    public_plan_sink: dict[str, Any] = {}
+                    message_text = await _compose_structured_tool_answer(
+                        settings=settings,
+                        request=request,
+                        analysis_message=analysis_message,
+                        preview=preview,
+                        actor=actor,
+                        school_profile=school_profile,
+                        conversation_context=context_payload,
+                        public_plan_sink=public_plan_sink,
+                        resolved_public_plan=rescued_public_plan,
+                    )
+                    public_plan = public_plan_sink.get('plan')
+                    deterministic_fallback_text = str(public_plan_sink.get('deterministic_text') or message_text)
         elif preview.mode is OrchestrationMode.handoff:
             with start_span('eduassist.orchestration.handoff', tracer_name='eduassist.ai_orchestrator.runtime'):
                 handoff_payload = await _create_support_handoff(
@@ -15583,6 +15669,22 @@ async def generate_message_response(
                     citations = []
                     message_text = INSTITUTIONAL_GREETING
                     deterministic_answer_candidate = message_text
+                elif preview.mode is OrchestrationMode.hybrid_retrieval and restricted_document_query:
+                    set_span_attributes(
+                        **{
+                            'eduassist.orchestration.used_llm': False,
+                            'eduassist.orchestration.answer_guardrail': 'restricted_document_search',
+                        }
+                    )
+                    if retrieval_hits:
+                        message_text = compose_restricted_document_grounded_answer(retrieval_hits) or ''
+                        deterministic_answer_candidate = message_text
+                        preview = preview.model_copy(update={'reason': 'langgraph_restricted_document_search'})
+                    else:
+                        citations = []
+                        message_text = compose_restricted_document_no_match_answer(request.message)
+                        deterministic_answer_candidate = message_text
+                        preview = preview.model_copy(update={'reason': 'langgraph_restricted_document_no_match'})
                 elif preview.mode is OrchestrationMode.hybrid_retrieval and canonical_lane:
                     lane_answer = compose_public_canonical_lane_answer(
                         canonical_lane,

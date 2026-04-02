@@ -23,6 +23,7 @@ from .models import (
     RetrievalProfile,
     RetrievalQueryPlan,
     RetrievalSearchResponse,
+    UserContext,
 )
 from .public_doc_knowledge import match_public_canonical_lane
 
@@ -80,6 +81,27 @@ _INTENT_EXPANSIONS = {
     'policy_lookup': 'avaliacao recuperacao promocao frequencia pontualidade saude medicacao segunda chamada autorizacoes saidas pedagogicas regras',
     'admissions_lookup': 'matricula rematricula transferencia cancelamento bolsas descontos documentos entrevista acolhimento prazos protocolos',
     'service_overview': 'secretaria portal aplicativo credenciais login senha suporte digital servicos atendimento documentos prazos canais protocolos',
+}
+_RESTRICTED_DOC_QUERY_TERMS = {
+    'procedimento interno',
+    'protocolo interno',
+    'manual interno',
+    'playbook interno',
+    'documento interno',
+    'documentos internos',
+    'por dentro',
+}
+_RESTRICTED_DOC_STOPWORDS = {
+    *_STOPWORDS,
+    'interna',
+    'internas',
+    'interno',
+    'internos',
+    'segundo',
+    'diz',
+    'orienta',
+    'orientam',
+    'sobre',
 }
 
 
@@ -391,6 +413,7 @@ class RetrievalService:
                   document.visibility,
                   version.version_label,
                   version.storage_path,
+                  coalesce(label_bucket.labels, '{{}}'::jsonb) as labels,
                   ts_rank_cd(
                     to_tsvector(
                       'portuguese',
@@ -401,6 +424,15 @@ class RetrievalService:
                 from documents.document_chunks chunk
                 join documents.document_versions version on version.id = chunk.document_version_id
                 join documents.documents document on document.id = version.document_id
+                left join lateral (
+                  select jsonb_object_agg(label_type, values) as labels
+                  from (
+                    select label_type, array_agg(label_value order by label_value) as values
+                    from documents.retrieval_labels
+                    where document_chunk_id = chunk.id
+                    group by label_type
+                  ) grouped
+                ) label_bucket on true
                 where {' and '.join(conditions)}
                 order by lexical_score desc, document.title asc, chunk.chunk_index asc
                 limit %(top_k)s
@@ -468,6 +500,7 @@ class RetrievalService:
                             'section_path': payload.get('section_path'),
                             'section_parent': payload.get('section_parent'),
                             'section_title': payload.get('section_title'),
+                            'labels': payload.get('labels') or {},
                             'category': str(payload.get('category', 'unknown')),
                             'audience': str(payload.get('audience', 'publico')),
                             'visibility': str(payload.get('visibility', visibility)),
@@ -558,6 +591,7 @@ class RetrievalService:
                     section_path=item.get('section_path'),
                     section_parent=item.get('section_parent'),
                     section_title=item.get('section_title'),
+                    labels=_normalize_hit_labels(item.get('labels')),
                     fused_score=round(float(item.get('rrf_score', 0.0)), 6),
                     document_score=round(float(item.get('document_score', 0.0) or 0.0), 6),
                     lexical_score=(
@@ -1191,7 +1225,185 @@ def _enrich_hit_metadata(hit: dict[str, Any]) -> dict[str, Any]:
     enriched['section_path'] = section_path
     enriched['section_parent'] = hit.get('section_parent') or section_parent
     enriched['section_title'] = hit.get('section_title') or section_title
+    enriched['labels'] = _normalize_hit_labels(hit.get('labels'))
     return enriched
+
+
+def _normalize_hit_labels(value: Any) -> dict[str, list[str]]:
+    if not isinstance(value, dict):
+        return {}
+    normalized: dict[str, list[str]] = {}
+    for key, items in value.items():
+        key_text = str(key or '').strip()
+        if not key_text:
+            continue
+        if isinstance(items, list):
+            values = [str(item).strip() for item in items if str(item or '').strip()]
+        else:
+            values = [str(items).strip()] if str(items or '').strip() else []
+        if values:
+            normalized[key_text] = values
+    return normalized
+
+
+def looks_like_restricted_document_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(term in normalized for term in _RESTRICTED_DOC_QUERY_TERMS)
+
+
+def can_read_restricted_documents(user: UserContext) -> bool:
+    role = str(getattr(user.role, 'value', user.role) or '').strip().lower()
+    scopes = {str(item).strip().lower() for item in getattr(user, 'scopes', [])}
+    return bool(getattr(user, 'authenticated', False) and ('documents:private:read' in scopes or role in {'staff', 'teacher'}))
+
+
+def select_relevant_restricted_hits(query: str, hits: list[Any], *, max_hits: int = 3) -> list[Any]:
+    if not hits:
+        return []
+    scored: list[tuple[float, int, Any]] = []
+    for index, hit in enumerate(hits):
+        score = _restricted_document_hit_score(query=query, hit=hit)
+        if score > 0.18:
+            scored.append((score, index, hit))
+    if not scored:
+        return []
+    scored.sort(key=lambda item: (item[0], -item[1]), reverse=True)
+    selected: list[Any] = []
+    seen_titles: set[str] = set()
+    for _, _, hit in scored:
+        title = _normalize_text(_hit_value(hit, 'document_title'))
+        title_key = title or _normalize_text(_hit_value(hit, 'chunk_id'))
+        if title_key in seen_titles:
+            continue
+        selected.append(hit)
+        seen_titles.add(title_key)
+        if len(selected) >= max_hits:
+            break
+    return selected
+
+
+def compose_restricted_document_grounded_answer(hits: list[Any]) -> str | None:
+    if not hits:
+        return None
+    primary = hits[0]
+    primary_title = str(_hit_value(primary, 'document_title') or 'documento interno').strip()
+    primary_excerpt = str(
+        _hit_value(primary, 'text_excerpt')
+        or _hit_value(primary, 'contextual_summary')
+        or ''
+    ).strip()
+    primary_section = ' - '.join(
+        str(part).strip()
+        for part in (
+            _hit_value(primary, 'section_parent'),
+            _hit_value(primary, 'section_title'),
+        )
+        if str(part or '').strip()
+    )
+    lines = [f"Nos documentos internos consultados, a orientacao mais relevante aparece em {primary_title}:"]
+    if primary_section:
+        lines.append(f"Secao relevante: {primary_section}.")
+    if primary_excerpt:
+        lines.append(primary_excerpt)
+    seen_titles = {primary_title}
+    for hit in hits[1:3]:
+        title = str(_hit_value(hit, 'document_title') or '').strip()
+        excerpt = str(_hit_value(hit, 'text_excerpt') or _hit_value(hit, 'contextual_summary') or '').strip()
+        section = ' - '.join(
+            str(part).strip()
+            for part in (
+                _hit_value(hit, 'section_parent'),
+                _hit_value(hit, 'section_title'),
+            )
+            if str(part or '').strip()
+        )
+        if not excerpt:
+            continue
+        label = title if title and title not in seen_titles else 'Complemento interno'
+        if section:
+            lines.append(f"{label} ({section}): {excerpt}")
+        else:
+            lines.append(f"{label}: {excerpt}")
+        if title:
+            seen_titles.add(title)
+    return '\n'.join(lines)
+
+
+def compose_restricted_document_no_match_answer(query: str) -> str:
+    return (
+        'Consultei os documentos internos disponiveis, mas nao encontrei uma orientacao restrita '
+        f'especifica para: "{query.strip()}". Se quiser, eu posso orientar pelo material publico correspondente '
+        'ou encaminhar o caso para validacao humana.'
+    )
+
+
+def _hit_value(hit: Any, field_name: str) -> Any:
+    if isinstance(hit, dict):
+        return hit.get(field_name)
+    return getattr(hit, field_name, None)
+
+
+def _restricted_document_query_terms(query: str) -> list[str]:
+    normalized = _normalize_text(query)
+    return [
+        token
+        for token in re.findall(r'[a-z0-9]{3,}', normalized)
+        if token not in _RESTRICTED_DOC_STOPWORDS
+    ]
+
+
+def _restricted_document_hit_score(*, query: str, hit: Any) -> float:
+    query_terms = set(_restricted_document_query_terms(query))
+    if not query_terms:
+        return 0.0
+    title = _normalize_text(_hit_value(hit, 'document_title'))
+    summary = _normalize_text(_hit_value(hit, 'contextual_summary'))
+    excerpt = _normalize_text(_hit_value(hit, 'text_excerpt'))
+    section = _normalize_text(
+        ' '.join(
+            part
+            for part in (
+                _hit_value(hit, 'section_title'),
+                _hit_value(hit, 'section_parent'),
+                _hit_value(hit, 'section_path'),
+                _hit_value(hit, 'category'),
+                _hit_value(hit, 'document_set_slug'),
+            )
+            if part
+        )
+    )
+    label_terms = ' '.join(
+        value
+        for values in _normalize_hit_labels(_hit_value(hit, 'labels')).values()
+        for value in values
+    )
+    label_haystack = _normalize_text(label_terms)
+    title_terms = {token for token in re.findall(r'[a-z0-9]{3,}', title) if token not in _RESTRICTED_DOC_STOPWORDS}
+    title_overlap = len(query_terms & title_terms)
+    haystack = ' '.join(part for part in (summary, excerpt, section, label_haystack) if part)
+    evidence_overlap = sum(1 for term in query_terms if term in haystack)
+    score = 0.0
+    if title and title in _normalize_text(query):
+        score += 1.2
+    elif title_terms:
+        score += min(0.8, 0.3 * (title_overlap / max(1, len(title_terms))) + 0.2 * title_overlap)
+    if evidence_overlap:
+        score += min(0.7, 0.18 * evidence_overlap)
+    if 'telegram' in query_terms and 'telegram' in haystack:
+        score += 0.2
+    if 'professor' in query_terms and 'professor' in title:
+        score += 0.2
+    if 'financeira' in query_terms or 'financeiro' in query_terms:
+        if any(term in haystack for term in ('finance', 'inadimplencia', 'negociacao', 'negociacao financeira')):
+            score += 0.2
+    retrieval_score = float(
+        _hit_value(hit, 'document_score')
+        or _hit_value(hit, 'rerank_score')
+        or _hit_value(hit, 'fused_score')
+        or 0.0
+    )
+    score += min(0.2, max(0.0, retrieval_score))
+    return round(score, 6)
 
 
 def _section_alignment_boost(*, item: dict[str, Any], query_terms: set[str]) -> float:

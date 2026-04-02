@@ -18,6 +18,7 @@ from ..models import (
     QueryDomain,
     RetrievalBackend,
 )
+from ..retrieval import looks_like_restricted_document_query
 from .base import ResponseEngine, ShadowRunResult
 
 logger = logging.getLogger(__name__)
@@ -298,6 +299,11 @@ def _is_public_doc_bundle_request(request: Any) -> bool:
     )
 
 
+def _is_restricted_document_request(request: Any) -> bool:
+    message = str(getattr(request, 'message', '') or '')
+    return bool(message) and looks_like_restricted_document_query(message)
+
+
 def _is_protected_access_scope_request(request: Any) -> bool:
     user = getattr(request, 'user', None)
     authenticated = bool(getattr(user, 'authenticated', False))
@@ -340,6 +346,8 @@ def _is_protected_admin_finance_combo_request(request: Any) -> bool:
 
 def _protected_shadow_slice(request: Any) -> bool:
     message = str(getattr(request, 'message', '') or '')
+    if _is_restricted_document_request(request):
+        return True
     if _is_teacher_internal_request(request):
         return True
     if _is_protected_access_scope_request(request):
@@ -459,6 +467,8 @@ def _support_shadow_slice(request: Any) -> bool:
 
 def _workflow_shadow_slice(request: Any) -> bool:
     message = str(getattr(request, 'message', '') or '').lower()
+    if _is_restricted_document_request(request):
+        return False
     if _support_shadow_slice(request):
         return False
     followup_terms = (

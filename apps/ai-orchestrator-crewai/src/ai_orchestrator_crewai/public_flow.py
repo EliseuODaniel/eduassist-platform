@@ -53,6 +53,7 @@ from .public_pilot import (
     _serialize_evidence_pack,
     _stateful_public_followup_fast_answer,
 )
+from .protected_pilot import _looks_like_restricted_doc_query, _restricted_document_denied_answer
 
 
 class PublicFlowState(BaseModel):
@@ -108,6 +109,12 @@ class PublicShadowFlow(Flow[PublicFlowState]):
         if Crew is None or Agent is None or Task is None or Process is None or Flow is None:
             self.state.routing_label = 'dependency_unavailable'
             self.state.reason = 'crewai_dependency_unavailable'
+            return self.state.routing_label
+
+        if _looks_like_restricted_doc_query(self.state.message):
+            self.state.fast_path_answer = _restricted_document_denied_answer()
+            self.state.routing_label = 'fast_path'
+            self.state.reason = 'crewai_restricted_doc_denied'
             return self.state.routing_label
 
         early_fast_path_answer = _deterministic_backstop(self.state.effective_message, None, [])

@@ -38,7 +38,27 @@ def _looks_like_family_new_calendar_enrollment_query(message: str) -> bool:
 
 def _looks_like_permanence_family_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    return "permanencia escolar" in normalized and "acompanhamento da familia" in normalized
+    family_terms = {
+        "familia",
+        "família",
+        "responsaveis",
+        "responsáveis",
+        "acompanhamento da familia",
+        "acompanhamento da família",
+        "acompanhe",
+    }
+    permanence_terms = {
+        "permanencia",
+        "permanência",
+        "vida escolar",
+        "apoio",
+        "orientacao",
+        "orientação",
+    }
+    return (
+        any(term in normalized for term in family_terms)
+        and sum(1 for term in permanence_terms if term in normalized) >= 2
+    )
 
 
 def _looks_like_health_authorization_bridge_query(message: str) -> bool:

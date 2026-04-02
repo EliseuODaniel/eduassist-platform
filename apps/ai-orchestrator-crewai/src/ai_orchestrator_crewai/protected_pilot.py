@@ -71,6 +71,30 @@ def _query_terms(message: str) -> set[str]:
     }
 
 
+def _looks_like_restricted_doc_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(
+        term in normalized
+        for term in (
+            'procedimento interno',
+            'protocolo interno',
+            'manual interno',
+            'playbook interno',
+            'documento interno',
+            'documentos internos',
+            'por dentro',
+        )
+    )
+
+
+def _can_read_restricted_documents(user_context: dict[str, Any] | None) -> bool:
+    if not bool((user_context or {}).get('authenticated')):
+        return False
+    role = _normalize_text(str((user_context or {}).get('role', '') or ''))
+    scopes = {str(item).strip().lower() for item in ((user_context or {}).get('scopes') or [])}
+    return 'documents:private:read' in scopes or role in {'staff', 'teacher'}
+
+
 def _crewai_google_model(configured_model: str) -> str:
     base = str(configured_model or '').strip()
     if base.startswith('models/'):
@@ -121,8 +145,157 @@ async def _api_get(settings: Any, path: str) -> dict[str, Any]:
     return body if isinstance(body, dict) else {}
 
 
+async def _orchestrator_post(settings: Any, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+    base_url = str(getattr(settings, 'orchestrator_url', 'http://ai-orchestrator:8000')).rstrip('/')
+    headers = {
+        'X-Internal-Api-Token': getattr(settings, 'internal_api_token', 'dev-internal-token'),
+        'Content-Type': 'application/json',
+    }
+    async with httpx.AsyncClient(timeout=12.0) as client:
+        response = await client.post(f'{base_url}{path}', headers=headers, json=payload)
+    response.raise_for_status()
+    body = response.json()
+    return body if isinstance(body, dict) else {}
+
+
 async def _load_actor_context(settings: Any, telegram_chat_id: int) -> dict[str, Any]:
     return await _api_get(settings, f'/v1/internal/identity/context?telegram_chat_id={telegram_chat_id}')
+
+
+def _restricted_document_denied_answer() -> str:
+    return (
+        'Nao posso compartilhar procedimentos, protocolos, manuais ou playbooks internos da escola por este canal '
+        'para perfis sem autorizacao explicita. Se quiser, eu posso orientar pelo material publico correspondente.'
+    )
+
+
+def _compose_restricted_doc_fast_answer(hits: list[dict[str, Any]]) -> str | None:
+    if not hits:
+        return None
+    primary = hits[0]
+    title = str(primary.get('document_title') or 'documento interno').strip()
+    excerpt = str(primary.get('text_excerpt') or primary.get('contextual_summary') or '').strip()
+    primary_section = ' - '.join(
+        str(part).strip()
+        for part in (
+            primary.get('section_parent'),
+            primary.get('section_title'),
+        )
+        if str(part or '').strip()
+    )
+    lines = [f'Nos documentos internos consultados, a orientacao mais relevante aparece em {title}:']
+    if primary_section:
+        lines.append(f'Secao relevante: {primary_section}.')
+    if excerpt:
+        lines.append(excerpt)
+    seen = {title}
+    for hit in hits[1:3]:
+        extra_title = str(hit.get('document_title') or '').strip()
+        extra_excerpt = str(hit.get('text_excerpt') or hit.get('contextual_summary') or '').strip()
+        extra_section = ' - '.join(
+            str(part).strip()
+            for part in (
+                hit.get('section_parent'),
+                hit.get('section_title'),
+            )
+            if str(part or '').strip()
+        )
+        if not extra_excerpt:
+            continue
+        label = extra_title if extra_title and extra_title not in seen else 'Complemento interno'
+        if extra_section:
+            lines.append(f'{label} ({extra_section}): {extra_excerpt}')
+        else:
+            lines.append(f'{label}: {extra_excerpt}')
+        if extra_title:
+            seen.add(extra_title)
+    return '\n'.join(lines)
+
+
+def _score_restricted_doc_hit(message: str, hit: dict[str, Any]) -> float:
+    query_terms = _query_terms(message)
+    if not query_terms:
+        return 0.0
+    title = _normalize_text(str(hit.get('document_title') or ''))
+    excerpt = _normalize_text(str(hit.get('text_excerpt') or hit.get('contextual_summary') or ''))
+    section = _normalize_text(
+        ' '.join(
+            part
+            for part in (
+                hit.get('section_title'),
+                hit.get('section_parent'),
+                hit.get('section_path'),
+                hit.get('category'),
+            )
+            if part
+        )
+    )
+    title_terms = {
+        token
+        for token in re.findall(r'[a-z0-9]{3,}', title)
+        if token not in {'interno', 'internos', 'interna', 'procedimento'}
+    }
+    score = 0.0
+    if title and title in _normalize_text(message):
+        score += 1.0
+    score += 0.35 * len(query_terms & title_terms)
+    score += 0.12 * sum(1 for token in query_terms if token in f'{excerpt} {section}')
+    return score
+
+
+def _select_restricted_doc_hits(message: str, hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    scored = []
+    for index, hit in enumerate(hits):
+        score = _score_restricted_doc_hit(message, hit)
+        if score > 0.18:
+            scored.append((score, index, hit))
+    scored.sort(key=lambda item: (item[0], -item[1]), reverse=True)
+    selected: list[dict[str, Any]] = []
+    seen_titles: set[str] = set()
+    for _, _, hit in scored:
+        title_key = _normalize_text(str(hit.get('document_title') or hit.get('chunk_id') or ''))
+        if title_key in seen_titles:
+            continue
+        selected.append(hit)
+        seen_titles.add(title_key)
+        if len(selected) >= 3:
+            break
+    return selected
+
+
+async def _restricted_doc_fast_path(settings: Any, message: str, user_context: dict[str, Any] | None) -> tuple[str, list[str], str] | None:
+    if not _looks_like_restricted_doc_query(message):
+        return None
+    if not _can_read_restricted_documents(user_context):
+        return _restricted_document_denied_answer(), [], 'crewai_restricted_doc_denied'
+    try:
+        payload = await _orchestrator_post(
+            settings,
+            '/v1/retrieval/search',
+            {
+                'query': message,
+                'top_k': 5,
+                'visibility': 'restricted',
+            },
+        )
+    except Exception:
+        return (
+            'Consultei o caminho restrito planejado para documentos internos, mas a busca nao ficou disponivel agora. '
+            'Se quiser, eu posso tentar novamente ou encaminhar para validacao humana.',
+            [],
+            'crewai_restricted_doc_unavailable',
+        )
+    hits = payload.get('hits') if isinstance(payload, dict) else []
+    normalized_hits = hits if isinstance(hits, list) else []
+    selected = _select_restricted_doc_hits(message, normalized_hits)
+    if not selected:
+        return (
+            'Consultei os documentos internos disponiveis, mas nao encontrei um match suficientemente especifico para esse pedido.',
+            [],
+            'crewai_restricted_doc_no_match',
+        )
+    citations = [str(hit.get('document_title') or '').strip() for hit in selected if str(hit.get('document_title') or '').strip()]
+    return _compose_restricted_doc_fast_answer(selected) or '', citations[:3], 'crewai_restricted_doc_fast_path'
 
 
 def _conversation_state_key(

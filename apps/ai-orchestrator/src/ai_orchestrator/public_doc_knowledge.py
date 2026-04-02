@@ -373,11 +373,24 @@ def match_public_canonical_lane(message: str) -> str | None:
         and "matricula" in normalized
     ):
         return "public_bundle.family_new_calendar_assessment_enrollment"
-    if (
-        any(term in normalized for term in ("permanencia", "permanência"))
-        and "familia" in normalized
-        and any(term in normalized for term in ("apoio", "acompanhamento"))
-    ):
+    family_terms = (
+        "familia",
+        "família",
+        "responsaveis",
+        "responsáveis",
+        "acompanhamento da familia",
+        "acompanhamento da família",
+        "acompanhe",
+    )
+    permanence_terms = (
+        "permanencia",
+        "permanência",
+        "vida escolar",
+        "apoio",
+        "orientacao",
+        "orientação",
+    )
+    if any(term in normalized for term in family_terms) and sum(1 for term in permanence_terms if term in normalized) >= 2:
         return "public_bundle.permanence_family_support"
     if all(term in normalized for term in ("rematricula", "transferencia", "cancelamento")):
         return "public_bundle.process_compare"
