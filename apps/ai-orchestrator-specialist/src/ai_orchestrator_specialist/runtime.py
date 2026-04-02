@@ -306,6 +306,46 @@ _INTERNAL_DOC_STOPWORDS = {
     "orientacao",
     "orientação",
 }
+_INTERNAL_DOC_GENERIC_TERMS = {
+    "aluno",
+    "alunos",
+    "ensino",
+    "medio",
+    "médio",
+    "ano",
+    "anos",
+    "escola",
+    "procedimento",
+    "protocolo",
+    "manual",
+    "playbook",
+    "interno",
+    "interna",
+    "internos",
+    "orientacao",
+    "orientação",
+    "documento",
+    "documentos",
+    "existe",
+    "algum",
+    "alguma",
+    "especifica",
+    "específica",
+}
+_INTERNAL_DOC_RARE_TERMS = {
+    "telegram",
+    "escopo",
+    "avaliac",
+    "professor",
+    "negoci",
+    "familia",
+    "família",
+    "hospedagem",
+    "internacional",
+    "excursao",
+    "excursão",
+    "viagem",
+}
 
 
 def _strip_none(payload: dict[str, Any]) -> dict[str, Any]:
@@ -356,6 +396,22 @@ def _internal_doc_query_tokens(message: str) -> list[str]:
     return [token for token in tokens if len(token) >= 4 and token not in _INTERNAL_DOC_STOPWORDS]
 
 
+def _internal_doc_anchor_terms(message: str) -> set[str]:
+    return {
+        token
+        for token in _internal_doc_query_tokens(message)
+        if token not in _INTERNAL_DOC_GENERIC_TERMS
+    }
+
+
+def _internal_doc_rare_terms(message: str) -> set[str]:
+    return {
+        token
+        for token in _internal_doc_query_tokens(message)
+        if any(token.startswith(marker) or marker.startswith(token) for marker in _INTERNAL_DOC_RARE_TERMS)
+    }
+
+
 def _internal_doc_hit_score(query: str, hit: dict[str, Any]) -> float:
     query_terms = set(_internal_doc_query_tokens(query))
     if not query_terms:
@@ -389,6 +445,12 @@ def _internal_doc_hit_score(query: str, hit: dict[str, Any]) -> float:
     title_terms = {token for token in re.findall(r"[a-z0-9]+", title) if len(token) >= 4 and token not in _INTERNAL_DOC_STOPWORDS}
     title_overlap = len(query_terms & title_terms)
     haystack = ' '.join(part for part in (summary, excerpt, section, label_terms) if part)
+    anchor_terms = _internal_doc_anchor_terms(query)
+    if anchor_terms and not any(term in title or term in haystack for term in anchor_terms):
+        return 0.0
+    rare_terms = _internal_doc_rare_terms(query)
+    if rare_terms and not any(term in title or term in haystack for term in rare_terms):
+        return 0.0
     evidence_overlap = sum(1 for token in query_terms if token in haystack)
     score = 0.0
     if title and title in _normalize_text(query):
@@ -404,6 +466,16 @@ def _internal_doc_hit_score(query: str, hit: dict[str, Any]) -> float:
     if 'financeira' in query_terms or 'financeiro' in query_terms:
         if any(term in haystack for term in ('finance', 'inadimplencia', 'negociacao', 'negociacao financeira')):
             score += 0.2
+    if any(term.startswith('avaliac') for term in query_terms) and any(term.startswith('avaliac') for term in haystack.split()):
+        score += 0.25
+    if 'escopo' in query_terms and 'escopo' in haystack:
+        score += 0.25
+    if any(term in query_terms for term in {'telegram', 'hospedagem', 'internacional', 'excursao', 'excursões', 'viagem'}):
+        score += 0.35 * sum(
+            1
+            for term in {'telegram', 'hospedagem', 'internacional', 'excursao', 'excursões', 'viagem'}
+            if term in query_terms and term in haystack
+        )
     retrieval_score = float(hit.get('document_score') or hit.get('rerank_score') or hit.get('fused_score') or 0.0)
     score += min(0.2, max(0.0, retrieval_score))
     return round(score, 6)
@@ -531,7 +603,24 @@ def _compose_internal_doc_grounded_answer(query: str, hits: list[dict[str, Any]]
         )
         if str(part or "").strip()
     )
-    lines = [f"Nos documentos internos consultados, a orientacao mais relevante aparece em {primary_title}:"]
+    normalized_query = _normalize_text(query)
+    if "professor" in normalized_query and "avaliac" in normalized_query:
+        lines = [
+            "Para o pedido sobre o manual interno do professor, o trecho mais relevante sobre registro de avaliacoes e comunicacao pedagogica e este:",
+            f"Documento principal: {primary_title}.",
+        ]
+    elif "telegram" in normalized_query and "escopo" in normalized_query:
+        lines = [
+            "Para o pedido sobre limites de acesso no Telegram para responsaveis com escopo parcial, o protocolo interno mais relevante e este:",
+            f"Documento principal: {primary_title}.",
+        ]
+    elif ("negoci" in normalized_query or "financeir" in normalized_query) and ("familia" in normalized_query or "família" in normalized_query):
+        lines = [
+            "Para o pedido sobre o playbook interno de negociacao financeira com a familia, a orientacao mais relevante e esta:",
+            f"Documento principal: {primary_title}.",
+        ]
+    else:
+        lines = [f"Nos documentos internos consultados, a orientacao mais relevante aparece em {primary_title}:"]
     if primary_section:
         lines.append(f"Secao relevante: {primary_section}.")
     if primary_excerpt:
@@ -1840,6 +1929,50 @@ def _compose_finance_aggregate_answer(summaries: list[dict[str, Any]]) -> str:
                 f"status {invoice.get('status', '--')}, valor {invoice.get('amount_due', '--')}"
             )
     return "\n".join(lines)
+
+
+def _looks_like_family_finance_aggregate_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    explicit_terms = {
+        "situacao financeira da familia",
+        "situação financeira da família",
+        "situacao financeira atual da familia",
+        "situação financeira atual da família",
+        "resuma a situacao financeira",
+        "resuma a situação financeira",
+        "resumo financeiro da familia",
+        "resumo financeiro da família",
+        "quadro financeiro da familia",
+        "quadro financeiro da família",
+        "contas vinculadas",
+    }
+    if any(term in normalized for term in explicit_terms):
+        return True
+    return any(term in normalized for term in {"familia", "família", "filhos", "responsavel", "responsável"}) and any(
+        term in normalized for term in {"financeiro", "mensalidade", "boleto", "vencimentos", "atrasos", "proximos passos", "próximos passos"}
+    )
+
+
+def _looks_like_family_academic_aggregate_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    explicit_terms = {
+        "panorama academico",
+        "panorama acadêmico",
+        "quadro academico",
+        "quadro acadêmico",
+        "meus dois filhos",
+        "meus filhos",
+        "mais perto do limite de aprovacao",
+        "mais perto do limite de aprovação",
+        "corte de aprovacao",
+        "corte de aprovação",
+    }
+    if any(term in normalized for term in explicit_terms):
+        return True
+    return any(term in normalized for term in {"familia", "família", "filhos", "responsavel", "responsável"}) and any(
+        term in normalized
+        for term in {"quadro academico", "quadro acadêmico", "panorama academico", "panorama acadêmico", "aprovacao", "aprovação"}
+    )
 
 
 def _compose_finance_installments_answer(summary: dict[str, Any]) -> str:
@@ -5417,11 +5550,16 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
     if ctx.request.user.authenticated and not _looks_like_admin_finance_combo_query(ctx.request.message) and (
         _contains_any(normalized, finance_terms)
         or str(preview.get("classification", {}).get("domain") or "") == "finance"
-    ):
+    ) and not any(term in normalized for term in {"documentacao", "documentação", "documental", "documentais", "pendencia", "pendencias", "pendência", "pendências", "cadastro", "cadastral"}):
+        wants_family_finance_aggregate = _looks_like_family_finance_aggregate_query(ctx.request.message)
         student_hint = (
-            str((ctx.resolved_turn.referenced_student_name if ctx.resolved_turn is not None else "") or "").strip()
-            or _student_hint_from_message(ctx.actor, ctx.request.message)
-            or (memory.active_student_name if _looks_like_student_pronoun_followup(ctx.request.message) else None)
+            None
+            if wants_family_finance_aggregate
+            else (
+                str((ctx.resolved_turn.referenced_student_name if ctx.resolved_turn is not None else "") or "").strip()
+                or _student_hint_from_message(ctx.actor, ctx.request.message)
+                or (memory.active_student_name if _looks_like_student_pronoun_followup(ctx.request.message) else None)
+            )
         )
         if student_hint:
             payload = await _fetch_financial_summary_payload(ctx, student_name_hint=student_hint)
@@ -5489,6 +5627,7 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
     if ctx.request.user.authenticated and (
         "nota" in normalized
         or "notas" in normalized
+        or _looks_like_family_academic_aggregate_query(ctx.request.message)
         or str(preview.get("classification", {}).get("domain") or "") == "academic"
     ) and not _looks_like_passing_policy_query(ctx.request.message) and not _looks_like_public_doc_bundle_request(
         ctx.request.message
@@ -5946,7 +6085,43 @@ async def _resolved_finance_student_summary_answer(
 ) -> SupervisorAnswerPayload | None:
     if not ctx.request.user.authenticated:
         return None
+    wants_family_finance_aggregate = _looks_like_family_finance_aggregate_query(ctx.request.message)
     target_name = str(resolved.referenced_student_name or "").strip()
+    if not target_name and wants_family_finance_aggregate:
+        summaries: list[dict[str, Any]] = []
+        for student in _linked_students(ctx.actor, capability="finance"):
+            payload = await _fetch_financial_summary_payload(ctx, student_name_hint=str(student.get("full_name") or ""))
+            summary = payload.get("summary") if isinstance(payload, dict) else None
+            if isinstance(summary, dict):
+                summaries.append(summary)
+        if summaries:
+            return SupervisorAnswerPayload(
+                message_text=_compose_finance_aggregate_answer(summaries),
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="finance",
+                    access_tier=_access_tier_for_domain("finance", True),
+                    confidence=resolved.confidence,
+                    reason="specialist_supervisor_resolved_intent:financial_summary_aggregate",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Resumo financeiro agregado resolvido pela memoria discursiva e pelos alunos vinculados.",
+                    source_count=len(summaries),
+                    support_count=len(summaries),
+                    supports=[
+                        MessageEvidenceSupport(
+                            kind="finance_summary",
+                            label=str(summary.get("student_name") or "Aluno"),
+                            detail=f"em aberto {summary.get('open_invoice_count', 0)} · vencidas {summary.get('overdue_invoice_count', 0)}",
+                        )
+                        for summary in summaries[:4]
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("finance"),
+                graph_path=["specialist_supervisor", "resolved_intent", "financial_summary_aggregate"],
+                reason="specialist_supervisor_resolved_intent:financial_summary_aggregate",
+            )
     if not target_name and len(_linked_students(ctx.actor, capability="finance")) > 1:
         clarification = "Consigo verificar a situacao financeira, mas preciso que voce me diga qual aluno: Lucas Oliveira ou Ana Oliveira?"
         return SupervisorAnswerPayload(

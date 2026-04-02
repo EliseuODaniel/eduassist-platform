@@ -256,6 +256,7 @@ def compose_public_first_month_risks(profile: dict[str, Any] | None) -> str | No
         part
         for part in (
             "No primeiro mes, os riscos operacionais mais claros sao perder prazo documental, ficar com cadastro desatualizado, usar credenciais de forma insegura ou ignorar alertas de frequencia e pontualidade.",
+            "Na pratica, isso compromete credenciais, documentacao e a rotina escolar da familia logo nas primeiras semanas.",
             _first_line(docs),
             _first_line(timelines),
             _first_line(credentials),
@@ -434,18 +435,91 @@ def compose_public_family_new_calendar_assessment_enrollment() -> str | None:
     ).strip()
 
 
+def compose_public_timeline_lifecycle_bundle() -> str | None:
+    school_calendar = {
+        "entry": _section("calendario-letivo-2026.md", "Matricula e ingresso"),
+        "start": _section("calendario-letivo-2026.md", "Inicio das aulas"),
+        "family": _section("calendario-letivo-2026.md", "Reunioes com responsaveis"),
+    }
+    if not any(school_calendar.values()):
+        return None
+    return " ".join(
+        part
+        for part in (
+            f"Antes da confirmacao da vaga: {_first_line(school_calendar['entry'])}",
+            f"Depois do inicio das aulas: {_first_line(school_calendar['start'])}",
+            f"Primeira reuniao com responsaveis: {_first_line(school_calendar['family'])}",
+        )
+        if part
+    ).strip()
+
+
 def match_public_canonical_lane(message: str) -> str | None:
     normalized = _normalize_space(message).lower()
     if not normalized:
         return None
 
+    family_entry_terms = (
+        "familia nova",
+        "família nova",
+        "familia entrando agora",
+        "família entrando agora",
+        "familia chegando agora",
+        "família chegando agora",
+        "entrando agora",
+        "chegando agora",
+        "primeiro filho",
+        "primeiro bimestre",
+        "inicio do ano",
+        "início do ano",
+    )
     if (
-        "familia nova" in normalized
-        and "calendario" in normalized
+        any(term in normalized for term in family_entry_terms)
+        and any(term in normalized for term in ("calendario", "calendário", "inicio do ano", "início do ano", "primeiro bimestre"))
         and any(term in normalized for term in ("avaliacao", "avaliações", "avaliacoes"))
         and "matricula" in normalized
     ):
         return "public_bundle.family_new_calendar_assessment_enrollment"
+    if (
+        any(term in normalized for term in ("antes da confirmacao da vaga", "antes da confirmação da vaga", "depois do inicio das aulas", "depois do início das aulas"))
+        or (
+            any(term in normalized for term in ("sequencia", "sequência", "ordem", "linha do tempo", "passo a passo"))
+            and any(term in normalized for term in ("vaga", "matricula", "matrícula"))
+            and any(term in normalized for term in ("inicio das aulas", "início das aulas", "aulas"))
+            and any(term in normalized for term in ("responsaveis", "responsáveis", "reuniao", "reunião", "familia", "família"))
+        )
+    ):
+        return "public_bundle.timeline_lifecycle"
+    if (
+        any(term in normalized for term in ("secretaria", "portal", "credenciais", "login", "senha"))
+        and any(term in normalized for term in ("documentos", "documentacao", "documentação", "envio"))
+    ):
+        return "public_bundle.secretaria_portal_credentials"
+    has_visibility_channel = any(term in normalized for term in ("canais digitais", "portal", "calendario", "calendário", "canais oficiais"))
+    has_public_visibility = any(term in normalized for term in ("publico", "público", "publica", "pública", "aberto", "aberta"))
+    has_auth_visibility = any(
+        term in normalized
+        for term in (
+            "autenticacao",
+            "autenticação",
+            "autenticado",
+            "autenticada",
+            "login",
+            "senha",
+            "depende de autenticacao",
+            "depende de autenticação",
+            "so aparece depois",
+            "só aparece depois",
+        )
+    )
+    if (
+        has_visibility_channel
+        and (
+            (has_public_visibility and has_auth_visibility)
+            or any(term in normalized for term in ("fronteira", "limite", "o que fica publico", "o que e publico"))
+        )
+    ):
+        return "public_bundle.visibility_boundary"
     family_terms = (
         "familia",
         "família",
@@ -489,11 +563,6 @@ def match_public_canonical_lane(message: str) -> str | None:
     ):
         return "public_bundle.conduct_frequency_recovery"
     if (
-        any(term in normalized for term in ("secretaria", "portal", "credenciais", "login", "senha"))
-        and any(term in normalized for term in ("documentos", "documentacao", "documentação", "envio"))
-    ):
-        return "public_bundle.secretaria_portal_credentials"
-    if (
         any(term in normalized for term in ("bolsas", "bolsa", "descontos", "desconto"))
         and any(term in normalized for term in ("rematricula", "transferencia", "cancelamento", "matricula"))
     ):
@@ -519,6 +588,10 @@ def compose_public_canonical_lane_answer(
 ) -> str | None:
     if lane == "public_bundle.family_new_calendar_assessment_enrollment":
         return compose_public_family_new_calendar_assessment_enrollment()
+    if lane == "public_bundle.timeline_lifecycle":
+        return compose_public_timeline_lifecycle_bundle()
+    if lane == "public_bundle.visibility_boundary":
+        return compose_public_calendar_visibility(profile)
     if lane == "public_bundle.permanence_family_support":
         return compose_public_permanence_and_family_support(profile)
     if lane == "public_bundle.process_compare":

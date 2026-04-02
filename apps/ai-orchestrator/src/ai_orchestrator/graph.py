@@ -1383,11 +1383,6 @@ def _is_public_policy_compare_query(message: str) -> bool:
 
 def _is_public_family_new_calendar_enrollment_query(message: str) -> bool:
     lowered = _normalize_text(message)
-    if not any(
-        _message_matches_term(lowered, term)
-        for term in {'compare', 'comparar', 'comparacao', 'comparação', 'do ponto de vista'}
-    ):
-        return False
     required_groups = (
         {'calendario letivo', 'calendário letivo', 'calendario', 'calendário'},
         {'agenda de avaliacoes', 'agenda de avaliações', 'avaliacoes', 'avaliações', 'simulados'},
@@ -1398,6 +1393,9 @@ def _is_public_family_new_calendar_enrollment_query(message: str) -> bool:
     return any(
         _message_matches_term(lowered, term)
         for term in {'familia nova', 'família nova', 'aluno novo', 'responsavel novo', 'responsável novo'}
+    ) or (
+        any(_message_matches_term(lowered, term) for term in {'familia', 'família', 'responsaveis', 'responsáveis'})
+        and any(_message_matches_term(lowered, term) for term in {'entrando agora', 'chegando agora', 'inicio do ano', 'início do ano', 'primeiro bimestre'})
     )
 
 
@@ -1489,10 +1487,38 @@ def _is_public_facilities_study_query(message: str) -> bool:
     )
 
 
+def _is_public_calendar_visibility_bundle_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    if not any(
+        _message_matches_term(lowered, term)
+        for term in {'portal', 'canais digitais', 'canais oficiais', 'calendario', 'calendário'}
+    ):
+        return False
+    return any(
+        _message_matches_term(lowered, term)
+        for term in {
+            'autenticacao',
+            'autenticação',
+            'autenticado',
+            'autenticada',
+            'login',
+            'senha',
+            'publico',
+            'público',
+            'publica',
+            'pública',
+            'aparece depois',
+            'sem autenticacao',
+            'sem autenticação',
+        }
+    )
+
+
 def _is_known_public_doc_bundle_query(message: str) -> bool:
     return (
         _is_public_policy_compare_query(message)
         or _is_public_family_new_calendar_enrollment_query(message)
+        or _is_public_calendar_visibility_bundle_query(message)
         or _is_public_service_credentials_bundle_query(message)
         or _is_public_permanence_family_query(message)
         or _is_public_first_month_risks_query(message)
@@ -1522,6 +1548,7 @@ def _is_public_school_profile_request(message: str) -> bool:
         or _is_public_policy_query(lowered)
         or _is_public_policy_compare_query(lowered)
         or _is_public_family_new_calendar_enrollment_query(lowered)
+        or _is_public_calendar_visibility_bundle_query(lowered)
         or _is_public_service_credentials_bundle_query(lowered)
         or _is_public_permanence_family_query(lowered)
         or _is_public_first_month_risks_query(lowered)
@@ -1676,7 +1703,24 @@ def _is_authenticated_admin_query(message: str, *, authenticated: bool) -> bool:
         return False
     if any(
         _message_matches_term(lowered, term)
-        for term in {'documentacao', 'documentação', 'documentos', 'cadastro', 'dados cadastrais', 'email', 'telefone'}
+        for term in {
+            'documentacao',
+            'documentação',
+            'documentos',
+            'documental',
+            'documentais',
+            'status documental',
+            'pendencia documental',
+            'pendência documental',
+            'pendencias documentais',
+            'pendências documentais',
+            'cadastro',
+            'dados cadastrais',
+            'email',
+            'telefone',
+            'proximo passo recomendado',
+            'próximo passo recomendado',
+        }
     ):
         return True
     return any(_message_matches_term(lowered, term) for term in PERSONAL_ADMIN_TERMS)
@@ -1716,15 +1760,26 @@ def _is_authenticated_student_assessment_query(message: str, *, authenticated: b
         for term in {
             'panorama academico',
             'panorama acadêmico',
+            'quadro academico',
+            'quadro acadêmico',
             'media minima',
             'média mínima',
+            'limite de aprovacao',
+            'limite de aprovação',
             'mais perto da media',
             'mais perto da média',
+            'mais perto do limite',
+            'mais perto da aprovacao',
+            'mais perto da aprovação',
             'componentes',
             'mais vulneravel',
             'mais vulnerável',
+            'mais exposto',
+            'mais exposta',
             'esta mais vulneravel',
             'está mais vulnerável',
+            'meus dois filhos',
+            'meus filhos',
         }
     ):
         return True

@@ -54,6 +54,7 @@ from .public_known_unknowns import compose_public_known_unknown_answer, detect_p
 from .retrieval import (
     can_read_restricted_documents,
     compose_restricted_document_grounded_answer,
+    compose_restricted_document_grounded_answer_for_query,
     compose_restricted_document_no_match_answer,
     get_retrieval_service,
     looks_like_restricted_document_query,
@@ -238,7 +239,7 @@ async def _maybe_execute_llamaindex_restricted_doc_fast_path(
     ]
     message_text = rt._normalize_response_wording(
         (
-            compose_restricted_document_grounded_answer(relevant_hits[:3])
+            compose_restricted_document_grounded_answer_for_query(request.message, relevant_hits[:3])
             if relevant_hits
             else compose_restricted_document_no_match_answer(request.message)
         )
@@ -2204,6 +2205,15 @@ async def maybe_execute_llamaindex_native_plan(
     school_profile = await rt._fetch_public_school_profile(settings=settings)
     if not isinstance(school_profile, dict):
         return None
+    if rt._is_public_timeline_query(request.message):
+        timeline = await rt._fetch_public_timeline(settings=settings)
+        if isinstance(timeline, dict):
+            school_profile.setdefault('school_name', timeline.get('school_name'))
+            school_profile['public_timeline'] = timeline.get('entries', [])
+    if rt._is_public_calendar_event_query(request.message) or rt._is_public_calendar_visibility_query(request.message):
+        calendar_events = await rt._fetch_public_calendar_events(settings=settings)
+        if calendar_events:
+            school_profile['public_calendar_events'] = calendar_events
     fast_public_channel_answer = rt._try_public_channel_fast_answer(
         message=request.message,
         profile=school_profile,

@@ -27,6 +27,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Se um estudante faltar a uma avaliacao por motivo de saude, como os documentos publicos ligam atestado, segunda chamada e recuperacao?",
             "Quando a ausencia por saude coincide com prova, como a escola conecta comprovacao, segunda chamada e recuperacao na politica publica?",
             "Como a base publica da escola articula atestado medico, segunda chamada e recuperacao quando o aluno perde uma prova?",
+            "Se uma prova e perdida por motivo de saude, como atestado, segunda chamada e recuperacao aparecem conectados nos documentos publicos?",
         ],
     },
     {
@@ -42,6 +43,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Como fica a sequencia entre abertura da matricula, inicio das aulas e a primeira reuniao com responsaveis em 2026?",
             "Quais sao os marcos entre matricula, inicio do ano letivo e reuniao de responsaveis no calendario publico de 2026?",
             "Ordene matricula, comeco das aulas e primeira reuniao com responsaveis no ciclo publico de 2026.",
+            "No calendario publico de 2026, qual vem primeiro entre matricula, inicio das aulas e encontro inicial com responsaveis?",
         ],
     },
     {
@@ -57,6 +59,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Se eu ficar sem acesso e ainda precisar mandar documentos, qual e a ordem mais segura entre portal, credenciais e secretaria?",
             "Quando perco a senha e ainda tenho documento para enviar, como devo organizar portal, credenciais e secretaria?",
             "Para resolver acesso e envio documental sem erro, como portal, credenciais e secretaria entram na ordem certa?",
+            "Se o acesso falhou bem na hora de enviar documentos, como portal, credenciais e secretaria devem ser tratados na sequencia correta?",
         ],
     },
     {
@@ -72,6 +75,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Estou chegando agora com meu primeiro filho: como matricula, calendario e agenda de avaliacoes se encaixam no primeiro bimestre?",
             "Para uma familia entrando agora, como manual de matricula, calendario e agenda de avaliacoes se combinam no inicio do ano?",
             "Como uma familia nova deve ler matricula, calendario e avaliacoes para entender o primeiro bimestre sem se perder?",
+            "Para quem esta entrando este ano com o primeiro filho, como matricula, calendario e agenda de avaliacoes se amarram no comeco das aulas?",
         ],
     },
     {
@@ -87,6 +91,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Que mecanismos publicos ajudam a familia a acompanhar permanencia, apoio e vida escolar sem depender de informacao interna?",
             "Como a escola descreve publicamente os canais para a familia acompanhar permanencia, apoio e vida escolar?",
             "Quais apoios publicos evitam que a familia se perca ao acompanhar permanencia e vida escolar do estudante?",
+            "Pelos documentos publicos, como a familia acompanha permanencia escolar, apoio e vida escolar sem precisar recorrer a material interno?",
         ],
     },
     {
@@ -102,6 +107,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Na pratica, o que muda entre rematricula, transferencia de entrada e cancelamento quando olho prazos e documentos?",
             "Compare rematricula, transferencia e cancelamento destacando diferencas de prazo, protocolo e papelada.",
             "Se eu comparar rematricula, transferencia e cancelamento, quais mudancas reais aparecem em prazos e documentacao?",
+            "Olhando prazos, protocolo e documentacao, como rematricula, transferencia e cancelamento se diferenciam na pratica?",
         ],
     },
     {
@@ -117,6 +123,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Quais deslizes do primeiro mes mais viram problema com credenciais, documentos e rotina escolar?",
             "No primeiro mes, que erros mais comprometem credenciais, documentacao e rotina da familia?",
             "Que riscos do primeiro mes costumam surgir quando a familia atrasa documentos, credenciais e rotina?",
+            "No comeco do ano, que falhas mais baguncam credenciais, documentacao e a rotina da familia nas primeiras semanas?",
         ],
     },
     {
@@ -132,6 +139,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Cruze regulamentos gerais, politica de avaliacao e orientacao ao estudante para explicar como disciplina, frequencia e recuperacao se influenciam.",
             "Como regulamentos, frequencia minima e recuperacao se conectam quando o aluno entra em dificuldade academica?",
             "Relacione convivencia, frequencia e recuperacao usando os documentos publicos mais relevantes da escola.",
+            "Usando os documentos publicos, explique como convivencia, frequencia e recuperacao passam a se influenciar quando o aluno entra em dificuldade.",
         ],
     },
     {
@@ -147,6 +155,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Como biblioteca e laboratorios entram nas regras de uso e no apoio ao estudo do ensino medio?",
             "No ensino medio, de que forma biblioteca e laboratorios aparecem como apoio ao estudo na base publica?",
             "Como a escola conecta biblioteca, laboratorios e estudo orientado para o ensino medio?",
+            "Na documentacao publica do ensino medio, como biblioteca, laboratorios e estudo orientado aparecem conectados como apoio academico?",
         ],
     },
     {
@@ -162,6 +171,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "O que fica publico no calendario e no portal, e o que ja depende de autenticacao da familia?",
             "Qual e a fronteira entre o que a escola publica no calendario/portal e o que exige autenticacao?",
             "O que e publico nos canais digitais e o que so aparece depois de autenticacao da familia?",
+            "Nos canais digitais da escola, o que ainda e publico e o que passa a depender da autenticacao da familia?",
         ],
     },
     {
@@ -177,6 +187,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Monte uma visao transversal de como comunicacao com responsaveis, avaliacoes, estudo orientado e canais digitais se afetam ao longo do ano.",
             "Conecte comunicacao com responsaveis, avaliacoes, estudo orientado e canais digitais ao longo do ano letivo.",
             "Como responsaveis, avaliacoes, estudo orientado e canais digitais se influenciam mutuamente durante o ano?",
+            "Ao longo do ano letivo, como comunicacao com responsaveis, avaliacoes, estudo orientado e canais digitais passam a depender uns dos outros?",
         ],
     },
     {
@@ -197,6 +208,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Quero um panorama academico dos meus filhos com quem esta mais perto da media minima.",
             "Resuma o quadro academico dos meus dois filhos e diga quem esta mais perto do limite de aprovacao.",
             "Entre meus filhos, quem esta mais vulneravel academicamente hoje? Me de um panorama curto.",
+            "Faca um resumo academico dos meus dois filhos e destaque qual deles esta mais perto do corte de aprovacao.",
         ],
     },
     {
@@ -217,6 +229,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Agora foque so na Ana e diga em quais componentes ela esta mais vulneravel.",
             "Mantendo o contexto anterior, me diga so os pontos de maior risco da Ana.",
             "Agora quero apenas a Ana: em quais materias ela aparece mais exposta?",
+            "Seguindo o panorama anterior, isole a Ana e diga onde ela aparece mais fragilizada academicamente.",
         ],
     },
     {
@@ -237,6 +250,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Resuma a situacao financeira atual da familia, com vencimentos, atrasos e proximos passos.",
             "Quero um panorama financeiro da familia com boletos, atrasos e o que precisa ser feito agora.",
             "Como esta o financeiro da familia hoje, incluindo vencimentos e proximos passos?",
+            "Me de um quadro financeiro da familia hoje, com o que venceu, o que esta por vencer e o proximo passo recomendado.",
         ],
     },
     {
@@ -257,6 +271,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Quais pendencias documentais da Ana ainda pedem acao e qual e o proximo passo recomendado?",
             "Na documentacao da Ana, o que ainda esta pendente e qual e a acao recomendada agora?",
             "Quero o status documental da Ana com as pendencias e o proximo passo recomendado.",
+            "Na parte administrativa da Ana, quais pendencias documentais ainda restam e o que a familia deve fazer agora?",
         ],
     },
     {
@@ -284,6 +299,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "No playbook interno de negociacao financeira, quais criterios orientam uma negociacao com a familia?",
             "Segundo o playbook interno de negociacao financeira, que criterios guiam o atendimento a uma familia?",
             "Quais criterios o playbook interno usa para conduzir negociacao financeira com a familia?",
+            "Pelo playbook interno de negociacao financeira, quais criterios a equipe usa para conduzir uma conversa com a familia?",
         ],
     },
     {
@@ -311,6 +327,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Segundo o Manual interno do professor, como a escola orienta registro de avaliacoes e comunicacao pedagogica?",
             "No manual interno do professor, como ficam registro de avaliacoes e comunicacao pedagogica?",
             "O manual interno do professor diz o que sobre registro de avaliacoes e comunicacao pedagogica?",
+            "Dentro do manual interno do professor, qual e a orientacao sobre registro de avaliacoes e comunicacao pedagogica?",
         ],
     },
     {
@@ -338,6 +355,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "O Protocolo interno para responsaveis com escopo parcial diz o que sobre limites de acesso no Telegram?",
             "No protocolo interno de escopo parcial, como ficam os limites de acesso no Telegram?",
             "Que limite de acesso no Telegram aparece no protocolo interno para responsaveis com escopo parcial?",
+            "Segundo o protocolo interno de escopo parcial, que restricao de acesso no Telegram vale para responsaveis com esse perfil?",
         ],
     },
     {
@@ -365,6 +383,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Existe algum procedimento interno sobre excursao internacional com hospedagem para o ensino medio?",
             "A escola tem documento interno sobre excursao internacional com hospedagem para o ensino medio?",
             "Ha procedimento interno de viagem internacional com hospedagem para alunos do ensino medio?",
+            "Nos documentos internos, existe alguma orientacao especifica para excursao internacional com hospedagem no ensino medio?",
         ],
     },
     {
@@ -385,6 +404,7 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Como responsavel, quero ver o manual interno do professor.",
             "Mostre o manual interno do professor para mim.",
             "Quero acessar o manual interno do professor pelo bot.",
+            "Preciso que voce me mostre o manual interno do professor aqui no chat.",
         ],
     },
 ]

@@ -103,6 +103,45 @@ _RESTRICTED_DOC_STOPWORDS = {
     'orientam',
     'sobre',
 }
+_RESTRICTED_DOC_GENERIC_TERMS = {
+    'aluno',
+    'alunos',
+    'ensino',
+    'medio',
+    'ano',
+    'anos',
+    'escola',
+    'procedimento',
+    'protocolo',
+    'manual',
+    'playbook',
+    'interno',
+    'interna',
+    'internos',
+    'orientacao',
+    'orientação',
+    'documento',
+    'documentos',
+    'existe',
+    'algum',
+    'alguma',
+    'especifica',
+    'específica',
+}
+_RESTRICTED_DOC_RARE_TERMS = {
+    'telegram',
+    'escopo',
+    'avaliac',
+    'professor',
+    'negoci',
+    'familia',
+    'família',
+    'hospedagem',
+    'internacional',
+    'excursao',
+    'excursão',
+    'viagem',
+}
 
 
 @dataclass(frozen=True)
@@ -1336,6 +1375,32 @@ def compose_restricted_document_grounded_answer(hits: list[Any]) -> str | None:
     return '\n'.join(lines)
 
 
+def compose_restricted_document_grounded_answer_for_query(query: str, hits: list[Any]) -> str | None:
+    base = compose_restricted_document_grounded_answer(hits)
+    if not base:
+        return None
+    normalized = _normalize_text(query)
+    if 'professor' in normalized and 'avaliac' in normalized:
+        return (
+            'Para o pedido sobre o manual interno do professor, o trecho mais relevante sobre '
+            'registro de avaliacoes e comunicacao pedagogica e este:\n'
+            f'{base}'
+        )
+    if 'telegram' in normalized and 'escopo' in normalized:
+        return (
+            'Para o pedido sobre limites de acesso no Telegram para responsaveis com escopo parcial, '
+            'o protocolo interno mais relevante e este:\n'
+            f'{base}'
+        )
+    if ('negoci' in normalized or 'financeir' in normalized) and ('familia' in normalized or 'família' in normalized):
+        return (
+            'Para o pedido sobre o playbook interno de negociacao financeira com a familia, '
+            'a orientacao mais relevante e esta:\n'
+            f'{base}'
+        )
+    return base
+
+
 def compose_restricted_document_no_match_answer(query: str) -> str:
     return (
         'Consultei os documentos internos disponiveis, mas nao encontrei uma orientacao restrita '
@@ -1357,6 +1422,22 @@ def _restricted_document_query_terms(query: str) -> list[str]:
         for token in re.findall(r'[a-z0-9]{3,}', normalized)
         if token not in _RESTRICTED_DOC_STOPWORDS
     ]
+
+
+def _restricted_document_anchor_terms(query: str) -> set[str]:
+    return {
+        token
+        for token in _restricted_document_query_terms(query)
+        if token not in _RESTRICTED_DOC_GENERIC_TERMS
+    }
+
+
+def _restricted_document_rare_terms(query: str) -> set[str]:
+    return {
+        token
+        for token in _restricted_document_query_terms(query)
+        if any(token.startswith(marker) or marker.startswith(token) for marker in _RESTRICTED_DOC_RARE_TERMS)
+    }
 
 
 def _restricted_document_hit_score(*, query: str, hit: Any) -> float:
@@ -1388,6 +1469,12 @@ def _restricted_document_hit_score(*, query: str, hit: Any) -> float:
     title_terms = {token for token in re.findall(r'[a-z0-9]{3,}', title) if token not in _RESTRICTED_DOC_STOPWORDS}
     title_overlap = len(query_terms & title_terms)
     haystack = ' '.join(part for part in (summary, excerpt, section, label_haystack) if part)
+    anchor_terms = _restricted_document_anchor_terms(query)
+    if anchor_terms and not any(term in title or term in haystack for term in anchor_terms):
+        return 0.0
+    rare_terms = _restricted_document_rare_terms(query)
+    if rare_terms and not any(term in title or term in haystack for term in rare_terms):
+        return 0.0
     evidence_overlap = sum(1 for term in query_terms if term in haystack)
     score = 0.0
     if title and title in _normalize_text(query):
@@ -1403,6 +1490,16 @@ def _restricted_document_hit_score(*, query: str, hit: Any) -> float:
     if 'financeira' in query_terms or 'financeiro' in query_terms:
         if any(term in haystack for term in ('finance', 'inadimplencia', 'negociacao', 'negociacao financeira')):
             score += 0.2
+    if any(term.startswith('avaliac') for term in query_terms) and 'avaliac' in haystack:
+        score += 0.25
+    if 'escopo' in query_terms and 'escopo' in haystack:
+        score += 0.25
+    if any(term in query_terms for term in {'telegram', 'hospedagem', 'internacional', 'excursao', 'viagem'}):
+        score += 0.35 * sum(
+            1
+            for term in {'telegram', 'hospedagem', 'internacional', 'excursao', 'viagem'}
+            if term in query_terms and term in haystack
+        )
     retrieval_score = float(
         _hit_value(hit, 'document_score')
         or _hit_value(hit, 'rerank_score')

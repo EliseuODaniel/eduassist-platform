@@ -33,8 +33,23 @@ def _normalize_text(value: str) -> str:
 def _looks_like_family_new_calendar_enrollment_query(message: str) -> bool:
     normalized = _normalize_text(message)
     return (
-        any(term in normalized for term in {"familia nova", "família nova", "pais novos", "responsavel novo", "responsável novo"})
-        and any(term in normalized for term in {"calendario", "calendário", "rotina", "datas"})
+        any(
+            term in normalized
+            for term in {
+                "familia nova",
+                "família nova",
+                "pais novos",
+                "responsavel novo",
+                "responsável novo",
+                "familia entrando agora",
+                "família entrando agora",
+                "familia chegando agora",
+                "família chegando agora",
+                "entrando agora",
+                "chegando agora",
+            }
+        )
+        and any(term in normalized for term in {"calendario", "calendário", "rotina", "datas", "inicio do ano", "início do ano", "primeiro bimestre"})
         and any(term in normalized for term in {"matricula", "matrícula", "avaliacao", "avaliação", "provas"})
     )
 

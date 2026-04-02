@@ -86,6 +86,7 @@ from .retrieval import get_retrieval_service
 from .retrieval import (
     can_read_restricted_documents,
     compose_restricted_document_grounded_answer,
+    compose_restricted_document_grounded_answer_for_query,
     compose_restricted_document_no_match_answer,
     looks_like_restricted_document_query,
     select_relevant_restricted_hits,
@@ -223,6 +224,44 @@ PERSONAL_ADMIN_STATUS_TERMS = {
     'documentação',
     'documental',
     'documentais',
+}
+FAMILY_FINANCE_AGGREGATE_TERMS = {
+    'situacao financeira da familia',
+    'situação financeira da família',
+    'situacao financeira atual da familia',
+    'situação financeira atual da família',
+    'resuma a situacao financeira',
+    'resuma a situação financeira',
+    'resumo financeiro da familia',
+    'resumo financeiro da família',
+    'financeiro da familia',
+    'quadro financeiro da familia',
+    'financeiro da família',
+    'quadro financeiro da família',
+    'contas vinculadas',
+}
+FAMILY_ACADEMIC_AGGREGATE_TERMS = {
+    'panorama academico',
+    'panorama acadêmico',
+    'quadro academico',
+    'quadro acadêmico',
+    'meus dois filhos',
+    'meus filhos',
+    'dos meus filhos',
+    'da minha familia',
+    'da minha família',
+    'quem esta mais perto do limite',
+    'quem está mais perto do limite',
+    'quem esta mais perto da aprovacao',
+    'quem está mais perto da aprovação',
+}
+FAMILY_REFERENCE_TERMS = {
+    'familia',
+    'família',
+    'filhos',
+    'meus filhos',
+    'meus dois filhos',
+    'contas vinculadas',
 }
 PERSONAL_PROFILE_UPDATE_TERMS = {
     'alterar email',
@@ -772,6 +811,7 @@ PUBLIC_SCHOLARSHIP_TERMS = {
     'pagamento pontual',
 }
 SUPPORT_FINANCE_TERMS = {'financeiro', 'boleto', 'mensalidade', 'pagamento', 'fatura', 'faturas'}
+FINANCE_TERMS = SUPPORT_FINANCE_TERMS | {'vencimento', 'vencimentos', 'atraso', 'atrasos'}
 SUPPORT_COORDINATION_TERMS = {'coordenacao', 'pedagogico', 'ocorrencia', 'professor', 'disciplina'}
 SUPPORT_SECRETARIAT_TERMS = {'secretaria', 'matricula', 'documento', 'declaracao', 'historico', 'transferencia'}
 PUBLIC_ENTITY_HINTS = {
@@ -11781,6 +11821,13 @@ def _extract_explicit_student_reference_candidates(message: str) -> list[str]:
         'regularidade',
         'pagamento',
         'pagamentos',
+        'familia',
+        'família',
+        'responsavel',
+        'responsável',
+        'hoje',
+        'atual',
+        'atualmente',
         'data',
         'datas',
         'proximo',
@@ -11842,6 +11889,12 @@ def _looks_like_non_student_followup_candidate(candidate: str) -> bool:
         'notas',
         'boletim',
         'financeiro',
+        'familia',
+        'família',
+        'responsavel',
+        'responsável',
+        'situacao financeira',
+        'situação financeira',
         'documentacao',
         'documentação',
         'escopo',
@@ -12351,6 +12404,115 @@ def _format_attendance_overview(summary: dict[str, Any]) -> list[str]:
     ]
 
 
+def _academic_subject_averages(summary: dict[str, Any]) -> list[tuple[str, float]]:
+    grades = summary.get('grades')
+    if not isinstance(grades, list):
+        return []
+    grouped: dict[str, list[float]] = {}
+    display_names: dict[str, str] = {}
+    for grade in grades:
+        if not isinstance(grade, dict):
+            continue
+        subject_name = str(grade.get('subject_name', '') or '').strip()
+        if not subject_name:
+            continue
+        try:
+            score = float(grade.get('score', 0) or 0)
+            max_score = float(grade.get('max_score', 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        normalized_score = score if max_score <= 0 else (score / max_score) * 10.0
+        subject_key = _normalize_text(subject_name)
+        grouped.setdefault(subject_key, []).append(normalized_score)
+        display_names[subject_key] = subject_name
+    averages: list[tuple[str, float]] = []
+    for subject_key, scores in grouped.items():
+        if not scores:
+            continue
+        averages.append((display_names[subject_key], sum(scores) / len(scores)))
+    averages.sort(key=lambda item: item[0])
+    return averages
+
+
+def _compose_academic_aggregate_answer(summaries: list[dict[str, Any]]) -> str:
+    if not summaries:
+        return 'Nao encontrei resumo academico consolidado das contas vinculadas neste recorte.'
+
+    lines = ['Panorama academico das contas vinculadas:']
+    closest_student_name: str | None = None
+    closest_subject_name: str | None = None
+    closest_gap: float | None = None
+
+    for summary in summaries:
+        student_name = str(summary.get('student_name') or 'Aluno').strip() or 'Aluno'
+        averages = _academic_subject_averages(summary)
+        if not averages:
+            lines.append(f'- {student_name}: sem notas consolidadas neste recorte.')
+            continue
+        prioritized = [
+            item for item in averages
+            if _normalize_text(item[0]) in {'historia', 'história', 'fisica', 'física', 'matematica', 'matemática', 'portugues', 'português'}
+        ]
+        preview_items = prioritized[:4] or averages[:4]
+        preview = '; '.join(f'{name} {value:.1f}'.replace('.', ',') for name, value in preview_items)
+        lines.append(f'- {student_name}: {preview}')
+        below_target = [(name, value) for name, value in averages if value < PASSING_GRADE_TARGET]
+        if below_target:
+            subject_name, value = min(
+                below_target,
+                key=lambda item: (PASSING_GRADE_TARGET - item[1], item[0]),
+            )
+            gap = PASSING_GRADE_TARGET - value
+        else:
+            subject_name, value = min(
+                averages,
+                key=lambda item: (abs(item[1] - PASSING_GRADE_TARGET), item[0]),
+            )
+            gap = abs(value - PASSING_GRADE_TARGET)
+        if closest_gap is None or gap < closest_gap:
+            closest_gap = gap
+            closest_student_name = student_name
+            closest_subject_name = subject_name
+
+    if closest_student_name and closest_subject_name and closest_gap is not None:
+        lines.append(
+            'Quem hoje aparece mais perto do limite de aprovacao e '
+            f'{closest_student_name}, principalmente em {closest_subject_name}.'
+        )
+    return '\n'.join(lines)
+
+
+def _compose_finance_aggregate_answer(summaries: list[dict[str, Any]]) -> str:
+    if not summaries:
+        return 'Nao encontrei resumo financeiro consolidado das contas vinculadas neste recorte.'
+    lines = ['Resumo financeiro das contas vinculadas:']
+    total_open = 0
+    total_overdue = 0
+    for summary in summaries:
+        student_name = str(summary.get('student_name') or 'Aluno').strip() or 'Aluno'
+        open_count = int(summary.get('open_invoice_count', 0) or 0)
+        overdue_count = int(summary.get('overdue_invoice_count', 0) or 0)
+        total_open += open_count
+        total_overdue += overdue_count
+        next_invoice = _select_next_due_invoice(summary, status_filter=None)
+        details = [f'{open_count} em aberto', f'{overdue_count} vencida(s)']
+        if isinstance(next_invoice, dict):
+            details.append(
+                'proximo vencimento {due_date} ({amount_due})'.format(
+                    due_date=_format_public_date_text(next_invoice.get('due_date')),
+                    amount_due=str(next_invoice.get('amount_due', '0.00')).strip() or '0.00',
+                )
+            )
+        next_step = str(summary.get('next_step') or '').strip()
+        line = f"- {student_name}: {', '.join(details)}."
+        if next_step:
+            line += f' Proximo passo: {next_step}'
+        lines.append(line)
+    lines.insert(1, f'- Total de faturas em aberto: {total_open}')
+    lines.insert(2, f'- Total de faturas vencidas: {total_overdue}')
+    return '\n'.join(lines)
+
+
 def _format_invoices(summary: dict[str, Any]) -> list[str]:
     invoices = summary.get('invoices')
     if not isinstance(invoices, list) or not invoices:
@@ -12415,6 +12577,38 @@ def _wants_attendance_timeline(message: str) -> bool:
     return _contains_any(message, ATTENDANCE_TIMELINE_TERMS)
 
 
+def _looks_like_family_finance_aggregate_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if any(_message_matches_term(normalized, term) for term in FAMILY_FINANCE_AGGREGATE_TERMS):
+        return True
+    return any(_message_matches_term(normalized, term) for term in FAMILY_REFERENCE_TERMS) and (
+        any(_message_matches_term(normalized, term) for term in FINANCE_TERMS)
+        or any(_message_matches_term(normalized, term) for term in {'vencimentos', 'atrasos', 'proximos passos', 'próximos passos'})
+    )
+
+
+def _looks_like_family_academic_aggregate_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if any(_message_matches_term(normalized, term) for term in FAMILY_ACADEMIC_AGGREGATE_TERMS):
+        return True
+    return any(_message_matches_term(normalized, term) for term in FAMILY_REFERENCE_TERMS) and any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'quadro academico',
+            'quadro acadêmico',
+            'panorama academico',
+            'panorama acadêmico',
+            'limite de aprovacao',
+            'limite de aprovação',
+            'corte de aprovacao',
+            'corte de aprovação',
+            'componentes',
+            'mais vulneravel',
+            'mais vulnerável',
+        }
+    )
+
+
 def _mentions_personal_admin_status(message: str) -> bool:
     normalized = _normalize_text(message)
     has_personal_anchor = any(
@@ -12433,6 +12627,8 @@ def _mentions_personal_admin_status(message: str) -> bool:
             'atualizado',
             'completa',
             'completo',
+            'familia',
+            'família',
         }
     )
     return has_personal_anchor and any(
@@ -13250,6 +13446,22 @@ async def _execute_protected_records_specialist(
         message,
         conversation_context=conversation_context,
     )
+    force_family_finance_aggregate = _looks_like_family_finance_aggregate_query(message)
+    force_family_academic_aggregate = _looks_like_family_academic_aggregate_query(message)
+    explicit_student_admin_request = (
+        requested_admin_attribute is not None
+        and not any(_message_matches_term(normalized_message, term) for term in {'financeiro', 'boleto', 'boletos', 'fatura', 'faturas', 'mensalidade'})
+        and _effective_finance_attribute_request(
+            message,
+            conversation_context=conversation_context,
+        )
+        is None
+        and _should_use_student_administrative_status(
+            actor,
+            message,
+            conversation_context=conversation_context,
+        )
+    )
     if _is_access_scope_query(message) or _is_access_scope_repair_query(
         message,
         actor,
@@ -13279,25 +13491,16 @@ async def _execute_protected_records_specialist(
         )
     should_force_student_admin_path = (
         preview.classification.domain is QueryDomain.institution
-        and not any(_message_matches_term(normalized_message, term) for term in {'financeiro', 'boleto', 'boletos', 'fatura', 'faturas', 'mensalidade'})
-        and requested_admin_attribute is not None
-        and _effective_finance_attribute_request(
-            message,
-            conversation_context=conversation_context,
-        )
-        is None
-        and _should_use_student_administrative_status(
-            actor,
-            message,
-            conversation_context=conversation_context,
-        )
+        and explicit_student_admin_request
     )
     linked_students = _linked_students(actor)
-    unmatched_student_name = _explicit_unmatched_student_reference(
-        linked_students,
-        message,
-        conversation_context=conversation_context,
-    )
+    unmatched_student_name = None
+    if not force_family_finance_aggregate and not force_family_academic_aggregate:
+        unmatched_student_name = _explicit_unmatched_student_reference(
+            linked_students,
+            message,
+            conversation_context=conversation_context,
+        )
     if linked_students and unmatched_student_name:
         return _compose_unmatched_student_reference_answer(
             requested_name=unmatched_student_name,
@@ -13319,7 +13522,7 @@ async def _execute_protected_records_specialist(
             conversation_context=conversation_context,
         )
 
-    if should_force_student_admin_path:
+    if explicit_student_admin_request:
         preview.classification = IntentClassification(
             domain=QueryDomain.institution,
             access_tier=AccessTier.authenticated,
@@ -13448,6 +13651,23 @@ async def _execute_protected_records_specialist(
             wants_admin_status or wants_profile_update
         )
         finance_students = _eligible_students(actor, capability='finance')
+        if force_family_finance_aggregate and finance_students:
+            summaries: list[dict[str, Any]] = []
+            for candidate in finance_students:
+                candidate_id = candidate.get('student_id')
+                if not isinstance(candidate_id, str):
+                    continue
+                payload, status_code = await _api_core_get(
+                    settings=settings,
+                    path=f'/v1/students/{candidate_id}/financial-summary',
+                    params={'telegram_chat_id': request.telegram_chat_id},
+                )
+                if status_code == 200 and isinstance(payload, dict):
+                    summary = payload.get('summary')
+                    if isinstance(summary, dict):
+                        summaries.append(summary)
+            if summaries:
+                return _compose_finance_aggregate_answer(summaries)
         if len(finance_students) > 1:
             student, clarification = _select_linked_student(
                 actor,
@@ -13485,28 +13705,9 @@ async def _execute_protected_records_specialist(
                     _normalize_text(str(student.get('full_name', ''))) in normalized_message
                     for student in finance_students
                 ):
-                    lines = ['Resumo financeiro das contas vinculadas:']
-                    total_open = 0
-                    total_overdue = 0
-                    filtered_any = False
-                    for summary in summaries:
-                        open_count = int(summary.get('open_invoice_count', 0) or 0)
-                        overdue_count = int(summary.get('overdue_invoice_count', 0) or 0)
-                        total_open += open_count
-                        total_overdue += overdue_count
-                        filtered_invoices = _filter_invoice_rows(summary, status_filter=requested_status)
-                        status_line = (
-                            f"- {summary.get('student_name', 'Aluno')}: "
-                            f"{open_count} em aberto, {overdue_count} vencidas"
-                        )
-                        lines.append(status_line)
-                        if filtered_invoices:
-                            filtered_any = True
-                            for invoice_line in _format_invoice_lines(filtered_invoices, status_filter=requested_status)[:2]:
-                                lines.append(f'  {invoice_line[2:]}' if invoice_line.startswith('- ') else invoice_line)
-                    lines.insert(1, f'- Total de faturas em aberto: {total_open}')
-                    lines.insert(2, f'- Total de faturas vencidas: {total_overdue}')
-                    if not filtered_any:
+                    lines = _compose_finance_aggregate_answer(summaries).splitlines()
+                    filtered_any = any(_filter_invoice_rows(summary, status_filter=requested_status) for summary in summaries)
+                    if requested_status and not filtered_any:
                         lines.extend(_finance_empty_lines(requested_status))
                     if wants_second_copy:
                         lines.append(
@@ -13531,6 +13732,25 @@ async def _execute_protected_records_specialist(
                                 )
                             )
                     return '\n'.join(lines)
+
+    if force_family_academic_aggregate:
+        academic_students = _eligible_students(actor, capability='academic')
+        summaries: list[dict[str, Any]] = []
+        for candidate in academic_students:
+            candidate_id = candidate.get('student_id')
+            if not isinstance(candidate_id, str):
+                continue
+            payload, status_code = await _api_core_get(
+                settings=settings,
+                path=f'/v1/students/{candidate_id}/academic-summary',
+                params={'telegram_chat_id': request.telegram_chat_id},
+            )
+            if status_code == 200 and isinstance(payload, dict):
+                summary = payload.get('summary')
+                if isinstance(summary, dict):
+                    summaries.append(summary)
+        if summaries:
+            return _compose_academic_aggregate_answer(summaries)
 
     requested_capability = 'finance' if preview.classification.domain is QueryDomain.finance else 'academic'
     student, clarification = _select_linked_student(
@@ -15760,7 +15980,10 @@ async def generate_message_response(
                         }
                     )
                     if retrieval_hits:
-                        message_text = compose_restricted_document_grounded_answer(retrieval_hits) or ''
+                        message_text = compose_restricted_document_grounded_answer_for_query(
+                            request.message,
+                            retrieval_hits,
+                        ) or ''
                         deterministic_answer_candidate = message_text
                         preview = preview.model_copy(update={'reason': 'langgraph_restricted_document_search'})
                     else:

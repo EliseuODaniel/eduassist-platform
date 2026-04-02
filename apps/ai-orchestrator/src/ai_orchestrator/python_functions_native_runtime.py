@@ -31,6 +31,7 @@ from .retrieval import get_retrieval_service
 from .retrieval import (
     can_read_restricted_documents,
     compose_restricted_document_grounded_answer,
+    compose_restricted_document_grounded_answer_for_query,
     compose_restricted_document_no_match_answer,
     looks_like_restricted_document_query,
     select_relevant_restricted_hits,
@@ -361,7 +362,10 @@ async def maybe_execute_python_functions_native_plan(
             retrieval_hits = select_relevant_restricted_hits(analysis_message, list(search.hits))
             citations = rt._collect_citations(retrieval_hits)
             if retrieval_hits:
-                message_text = compose_restricted_document_grounded_answer(retrieval_hits) or ''
+                message_text = compose_restricted_document_grounded_answer_for_query(
+                    request.message,
+                    retrieval_hits,
+                ) or ''
                 deterministic_fallback_text = message_text
                 execution_reason = 'python_functions_native_restricted_document_search'
             else:
