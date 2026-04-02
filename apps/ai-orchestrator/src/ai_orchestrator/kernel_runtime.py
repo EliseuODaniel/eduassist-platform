@@ -538,6 +538,13 @@ async def execute_kernel_plan(
     if explicit_domain_override is not None:
         effective_plan = explicit_domain_override
     preview = effective_plan.preview.model_copy(deep=True)
+    if actor is not None and request.user.authenticated:
+        rt._apply_protected_domain_rescue(
+            preview=preview,
+            actor=actor,
+            message=request.message,
+            conversation_context=context_payload,
+        )
 
     retrieval_hits: list[Any] = []
     citations: list[MessageResponseCitation] = []

@@ -84,6 +84,13 @@ async def maybe_execute_python_functions_native_plan(
     analysis_message = rt._build_analysis_message(request.message, conversation_context_bundle)
     school_profile = await rt._fetch_public_school_profile(settings=settings)
     preview = plan.preview.model_copy(deep=True)
+    if actor is not None and request.user.authenticated:
+        rt._apply_protected_domain_rescue(
+            preview=preview,
+            actor=actor,
+            message=request.message,
+            conversation_context=conversation_context,
+        )
 
     retrieval_hits: list[Any] = []
     citations: list[MessageResponseCitation] = []

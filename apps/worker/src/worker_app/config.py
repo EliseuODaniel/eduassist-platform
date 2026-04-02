@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 _ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / '.env'
 
 
@@ -27,6 +26,7 @@ class Settings(BaseSettings):
     minio_bucket_documents: str = 'documents'
     qdrant_url: str = 'http://qdrant:6333'
     qdrant_documents_collection: str = 'school_documents'
+    qdrant_document_summaries_collection: str = 'school_document_summaries'
     llamaindex_qdrant_documents_collection: str = 'school_documents_llamaindex'
     document_pipeline_backend: str = 'markdown'
     document_corpus_dir: str = '/workspace/data/corpus'

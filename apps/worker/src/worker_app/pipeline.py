@@ -44,8 +44,26 @@ class DocumentChunkRecord:
     section_path: str | None
     section_parent: str | None
     section_title: str | None
+    parent_ref_key: str | None
     visibility: str
     labels: dict[str, list[str]]
+
+
+@dataclass(slots=True)
+class DocumentSummaryRecord:
+    summary_id: str
+    parent_ref_key: str
+    summary_text: str
+    document_title: str
+    storage_path: str
+    category: str
+    audience: str
+    visibility: str
+    version_label: str
+    document_set_slug: str
+    section_path: str | None
+    section_parent: str | None
+    section_title: str | None
 
 
 class DocumentPipeline:
@@ -65,12 +83,17 @@ class DocumentPipeline:
         documents.extend(self._load_restricted_catalog_documents())
         self._ensure_minio_bucket()
         indexed = self._replace_document_catalog(documents)
+        summary_records = self._build_summary_records(indexed)
         published_collection = self._publish_qdrant_index(indexed)
+        published_summary_collection = self._publish_qdrant_summary_index(summary_records)
         return {
             'document_count': len(documents),
             'chunk_count': sum(len(item['chunks']) for item in indexed),
+            'summary_count': len(summary_records),
             'collection': self.settings.qdrant_documents_collection,
             'published_collection': published_collection,
+            'summary_collection': self.settings.qdrant_document_summaries_collection,
+            'published_summary_collection': published_summary_collection,
         }
 
     def _load_corpus_documents(self, root: Path) -> list[CorpusDocument]:
@@ -231,6 +254,13 @@ class DocumentPipeline:
             section_path = ' > '.join(section_headings) if section_headings else document.title
             section_parent = section_headings[-2] if len(section_headings) >= 2 else None
             section_title = section_headings[-1] if section_headings else document.title
+            parent_ref_key = self._build_parent_ref_key(
+                storage_path=str(document.source_path),
+                document_title=document.title,
+                section_parent=section_parent,
+                section_path=section_path,
+                section_title=section_title,
+            )
             pieces = self._split_long_text(text)
             for piece in pieces:
                 chunks.append(
@@ -241,6 +271,7 @@ class DocumentPipeline:
                         section_path=section_path,
                         section_parent=section_parent,
                         section_title=section_title,
+                        parent_ref_key=parent_ref_key,
                         visibility=document.visibility,
                         labels=document.labels,
                     )
@@ -441,6 +472,7 @@ class DocumentPipeline:
                 'section_path': [self._truncate_label_value(chunk.section_path)] if chunk.section_path else [],
                 'section_title': [self._truncate_label_value(chunk.section_title)] if chunk.section_title else [],
                 'section_parent': [self._truncate_label_value(chunk.section_parent)] if chunk.section_parent else [],
+                'parent_ref_key': [self._truncate_label_value(chunk.parent_ref_key)] if chunk.parent_ref_key else [],
                 'document_set_slug': [self._truncate_label_value(document.document_set_slug)],
             }
             cursor.execute(
@@ -480,6 +512,7 @@ class DocumentPipeline:
                     'section_path': chunk.section_path,
                     'section_parent': chunk.section_parent,
                     'section_title': chunk.section_title,
+                    'parent_ref_key': chunk.parent_ref_key,
                     'visibility': chunk.visibility,
                     'document_title': document.title,
                     'category': document.category,
@@ -491,6 +524,114 @@ class DocumentPipeline:
 
     def _truncate_label_value(self, value: str | None, *, max_chars: int = 120) -> str:
         normalized = str(value or '').strip()
+        if len(normalized) <= max_chars:
+            return normalized
+        return normalized[: max_chars - 3].rstrip() + '...'
+
+    def _build_parent_ref_key(
+        self,
+        *,
+        storage_path: str,
+        document_title: str,
+        section_parent: str | None,
+        section_path: str | None,
+        section_title: str | None,
+    ) -> str | None:
+        base = str(storage_path or document_title).strip()
+        anchor = str(section_parent or section_path or section_title or document_title).strip()
+        if not base or not anchor:
+            return None
+        return f'{base}::{anchor}'
+
+    def _build_summary_records(self, indexed_documents: list[dict[str, object]]) -> list[DocumentSummaryRecord]:
+        grouped: dict[str, dict[str, object]] = {}
+
+        for item in indexed_documents:
+            document: CorpusDocument = item['document']
+            storage_path = str(item['storage_path'])
+            for chunk in item['chunks']:
+                parent_ref_key = str(chunk.get('parent_ref_key') or '').strip()
+                if not parent_ref_key:
+                    continue
+                bucket = grouped.setdefault(
+                    parent_ref_key,
+                    {
+                        'document_title': str(chunk['document_title']),
+                        'storage_path': storage_path,
+                        'category': str(chunk['category']),
+                        'audience': str(chunk['audience']),
+                        'visibility': str(chunk['visibility']),
+                        'version_label': document.version_label,
+                        'document_set_slug': document.document_set_slug,
+                        'section_path': chunk.get('section_path'),
+                        'section_parent': chunk.get('section_parent'),
+                        'section_title': chunk.get('section_title'),
+                        'summaries': [],
+                        'excerpts': [],
+                    },
+                )
+                summary = str(chunk.get('contextual_summary') or '').strip()
+                if summary and summary not in bucket['summaries']:
+                    bucket['summaries'].append(summary)
+                excerpt = self._truncate_summary_excerpt(str(chunk.get('text_content') or ''))
+                if excerpt and excerpt not in bucket['excerpts']:
+                    bucket['excerpts'].append(excerpt)
+
+        records: list[DocumentSummaryRecord] = []
+        for parent_ref_key, bucket in grouped.items():
+            summary_text = self._compose_summary_record_text(
+                document_title=str(bucket['document_title']),
+                section_path=str(bucket['section_path'] or '').strip() or None,
+                section_parent=str(bucket['section_parent'] or '').strip() or None,
+                section_title=str(bucket['section_title'] or '').strip() or None,
+                summaries=[str(item) for item in bucket['summaries']],
+                excerpts=[str(item) for item in bucket['excerpts']],
+            )
+            summary_id = hashlib.sha256(parent_ref_key.encode('utf-8')).hexdigest()
+            records.append(
+                DocumentSummaryRecord(
+                    summary_id=summary_id,
+                    parent_ref_key=parent_ref_key,
+                    summary_text=summary_text,
+                    document_title=str(bucket['document_title']),
+                    storage_path=str(bucket['storage_path']),
+                    category=str(bucket['category']),
+                    audience=str(bucket['audience']),
+                    visibility=str(bucket['visibility']),
+                    version_label=str(bucket['version_label']),
+                    document_set_slug=str(bucket['document_set_slug']),
+                    section_path=str(bucket['section_path'] or '').strip() or None,
+                    section_parent=str(bucket['section_parent'] or '').strip() or None,
+                    section_title=str(bucket['section_title'] or '').strip() or None,
+                )
+            )
+        return sorted(records, key=lambda item: (item.storage_path, item.parent_ref_key))
+
+    def _compose_summary_record_text(
+        self,
+        *,
+        document_title: str,
+        section_path: str | None,
+        section_parent: str | None,
+        section_title: str | None,
+        summaries: list[str],
+        excerpts: list[str],
+    ) -> str:
+        parts = [f'Documento: {document_title}']
+        if section_path:
+            parts.append(f'Secao: {section_path}')
+        elif section_title:
+            parts.append(f'Secao: {section_title}')
+        if section_parent and section_parent not in {section_path, section_title}:
+            parts.append(f'Secao pai: {section_parent}')
+        if summaries:
+            parts.append(f"Resumo contextual: {' | '.join(summaries[:3])}")
+        if excerpts:
+            parts.append(f"Trechos relacionados: {' '.join(excerpts[:2])}")
+        return '\n'.join(part for part in parts if part.strip()).strip()
+
+    def _truncate_summary_excerpt(self, value: str, *, max_chars: int = 220) -> str:
+        normalized = ' '.join(str(value or '').split())
         if len(normalized) <= max_chars:
             return normalized
         return normalized[: max_chars - 3].rstrip() + '...'
@@ -533,6 +674,7 @@ class DocumentPipeline:
                         'section_path': chunk['section_path'],
                         'section_parent': chunk['section_parent'],
                         'section_title': chunk['section_title'],
+                        'parent_ref_key': chunk['parent_ref_key'],
                         'category': chunk['category'],
                         'audience': chunk['audience'],
                         'visibility': chunk['visibility'],
@@ -572,6 +714,56 @@ class DocumentPipeline:
         self._activate_collection_alias(alias_name=alias_name, target_collection=target_collection)
         return target_collection
 
+    def _publish_qdrant_summary_index(self, summary_records: list[DocumentSummaryRecord]) -> str:
+        alias_name = self.settings.qdrant_document_summaries_collection
+        target_collection = f'{alias_name}__{int(time.time())}'
+        ids = [record.summary_id for record in summary_records]
+        texts = [record.summary_text for record in summary_records]
+        payloads = [
+            {
+                'summary_id': record.summary_id,
+                'parent_ref_key': record.parent_ref_key,
+                'document_title': record.document_title,
+                'storage_path': record.storage_path,
+                'category': record.category,
+                'audience': record.audience,
+                'visibility': record.visibility,
+                'version_label': record.version_label,
+                'document_set_slug': record.document_set_slug,
+                'section_path': record.section_path,
+                'section_parent': record.section_parent,
+                'section_title': record.section_title,
+                'summary_text': record.summary_text,
+            }
+            for record in summary_records
+        ]
+
+        embeddings = list(self.embedder.embed(texts))
+        if self._collection_exists(target_collection):
+            self.qdrant.delete_collection(target_collection)
+
+        if not embeddings:
+            self.qdrant.create_collection(
+                collection_name=target_collection,
+                vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE),
+            )
+            self._ensure_payload_indexes(target_collection)
+            self._activate_collection_alias(alias_name=alias_name, target_collection=target_collection)
+            return target_collection
+
+        self.qdrant.create_collection(
+            collection_name=target_collection,
+            vectors_config=models.VectorParams(size=len(embeddings[0]), distance=models.Distance.COSINE),
+        )
+        self._ensure_payload_indexes(target_collection)
+        points = [
+            models.PointStruct(id=point_id, vector=vector.tolist(), payload=payload)
+            for point_id, vector, payload in zip(ids, embeddings, payloads, strict=True)
+        ]
+        self.qdrant.upsert(collection_name=target_collection, points=points)
+        self._activate_collection_alias(alias_name=alias_name, target_collection=target_collection)
+        return target_collection
+
     def _ensure_payload_indexes(self, collection_name: str) -> None:
         keyword_fields = (
             'visibility',
@@ -579,6 +771,8 @@ class DocumentPipeline:
             'audience',
             'document_set_slug',
             'version_label',
+            'storage_path',
+            'parent_ref_key',
             'section_parent',
             'section_title',
         )

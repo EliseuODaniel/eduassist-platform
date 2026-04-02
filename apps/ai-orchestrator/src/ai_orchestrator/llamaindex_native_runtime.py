@@ -37,7 +37,7 @@ from llama_index.core.vector_stores.types import (
     VectorStoreInfo,
 )
 from pydantic import BaseModel, Field, PrivateAttr
-from qdrant_client import AsyncQdrantClient, QdrantClient
+from qdrant_client import AsyncQdrantClient, QdrantClient, models
 
 from . import runtime as rt
 from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult
@@ -348,10 +348,11 @@ async def _maybe_execute_llamaindex_restricted_doc_fast_path(
     )
 
 
-_LLAMAINDEX_NATIVE_PUBLIC_ROUTER_PROMPT = PromptTemplate(
+_LLAMAINDEX_NATIVE_PUBLIC_FALLBACK_ROUTER_PROMPT = PromptTemplate(
     """
-Voce e um roteador semantico para perguntas publicas de uma escola.
-Sua tarefa e produzir uma decisao estruturada para o runtime.
+Voce e um fallback semantico para perguntas publicas de uma escola.
+As regras deterministicas do runtime nao conseguiram fechar a decisao com confianca suficiente.
+Sua tarefa e produzir uma decisao estruturada, estrita e minima para o runtime.
 
 Escolha `conversation_act` usando um dos valores:
 - greeting
@@ -393,6 +394,7 @@ Escolha `answer_mode` usando um dos valores:
 - clarify: use somente se a pergunta estiver realmente ambigua e sem informacao minima para responder ou marcar como unpublished.
 
 Regras obrigatorias:
+- Use esta decisao apenas para desambiguar o que o roteamento deterministico ainda nao resolveu.
 - Prefira `unpublished` a `clarify` quando a pergunta for clara, mas o dado nao estiver publicado.
 - Prefira `documentary` para "me explique", "por que escolher", "quais os diferenciais", "proposta pedagogica", "com base nos documentos", comparacoes abertas e perguntas que pedem argumento institucional.
 - Use `pricing` para bolsa, desconto, mensalidade, taxa de matricula e simulacao comercial publica.
@@ -410,6 +412,9 @@ Mensagem do usuario:
 Preview atual:
 {preview_summary}
 
+Resumo da melhor pista deterministica encontrada:
+{deterministic_summary}
+
 Contexto recente:
 {conversation_context}
 
@@ -417,6 +422,42 @@ Resumo curado do que esta publicado:
 {profile_summary}
 """.strip()
 )
+
+
+_LLAMAINDEX_NATIVE_UNPUBLISHED_ROUTE_MAP: dict[str, dict[str, str]] = {
+    'minimum_age': {
+        'conversation_act': 'segments',
+        'requested_attribute': 'minimum_age',
+        'requested_channel': 'admissions',
+        'focus_hint': 'idade minima exata nao publicada; orientar por segmento e canal de admissions',
+    },
+    'classroom_count': {
+        'conversation_act': 'features',
+        'requested_attribute': 'classroom_count',
+        'focus_hint': 'quantidade de salas de aula nao publicada oficialmente',
+    },
+    'total_students': {
+        'conversation_act': 'kpi',
+        'requested_attribute': 'student_count',
+        'focus_hint': 'total de alunos nao publicado oficialmente',
+    },
+    'total_teachers': {
+        'conversation_act': 'teacher_directory',
+        'requested_attribute': 'teacher_count',
+        'focus_hint': 'quantidade total de professores nao publicada oficialmente',
+    },
+    'library_book_count': {
+        'conversation_act': 'features',
+        'requested_attribute': 'library_collection_size',
+        'focus_hint': 'quantidade total de livros da biblioteca nao publicada oficialmente',
+    },
+    'cafeteria_menu': {
+        'conversation_act': 'features',
+        'requested_attribute': 'cafeteria_menu',
+        'requested_channel': 'secretaria',
+        'focus_hint': 'cantina existe, mas o cardapio detalhado nao esta publicado oficialmente',
+    },
+}
 
 
 class FastembedSelectorEmbedding(BaseEmbedding):
@@ -476,12 +517,28 @@ def _qdrant_collection_exists(*, qdrant_url: str, collection_name: str) -> bool:
         return False
 
 
+@lru_cache(maxsize=4)
+def _qdrant_client(*, qdrant_url: str) -> QdrantClient:
+    return QdrantClient(url=qdrant_url)
+
+
 def _resolve_llamaindex_qdrant_collection(settings: Any) -> str:
     preferred = str(getattr(settings, 'llamaindex_qdrant_documents_collection', '') or '').strip()
     fallback = str(getattr(settings, 'qdrant_documents_collection', 'school_documents'))
     if preferred and _qdrant_collection_exists(qdrant_url=str(settings.qdrant_url), collection_name=preferred):
         return preferred
     return fallback
+
+
+def _resolve_llamaindex_qdrant_summary_collection(settings: Any) -> str | None:
+    preferred = str(getattr(settings, 'llamaindex_qdrant_document_summaries_collection', '') or '').strip()
+    fallback = str(getattr(settings, 'qdrant_document_summaries_collection', 'school_document_summaries') or '').strip()
+    qdrant_url = str(settings.qdrant_url)
+    if preferred and _qdrant_collection_exists(qdrant_url=qdrant_url, collection_name=preferred):
+        return preferred
+    if fallback and _qdrant_collection_exists(qdrant_url=qdrant_url, collection_name=fallback):
+        return fallback
+    return None
 
 
 def _llamaindex_timeout_seconds(settings: Any | None = None) -> float:
@@ -696,11 +753,10 @@ class PublicRetrievalQueryEngine(CustomQueryEngine):
             rerank_fused_weight=self.settings.retrieval_rerank_fused_weight,
             rerank_late_interaction_weight=self.settings.retrieval_rerank_late_interaction_weight,
         )
-        search = retrieval_service.hybrid_search(
+        search = _run_public_hybrid_search(
+            retrieval_service=retrieval_service,
             query=query_str,
-            top_k=4,
-            visibility='public',
-            category=None,
+            settings=self.settings,
         )
         query_hints = {
             *rt._extract_public_entity_hints(self.original_message),
@@ -771,11 +827,10 @@ class PublicHybridCitationRetriever(BaseRetriever):
             rerank_fused_weight=self._settings.retrieval_rerank_fused_weight,
             rerank_late_interaction_weight=self._settings.retrieval_rerank_late_interaction_weight,
         )
-        search = retrieval_service.hybrid_search(
+        search = _run_public_hybrid_search(
+            retrieval_service=retrieval_service,
             query=query_str,
-            top_k=4,
-            visibility='public',
-            category=None,
+            settings=self._settings,
         )
         query_hints = {
             *rt._extract_public_entity_hints(self._original_message),
@@ -1026,6 +1081,131 @@ def _heuristic_llamaindex_native_public_decision(
     )
 
 
+def _llamaindex_public_plan_has_deterministic_signal(public_plan: Any) -> bool:
+    required_tools = tuple(getattr(public_plan, 'required_tools', ()) or ())
+    secondary_acts = tuple(getattr(public_plan, 'secondary_acts', ()) or ())
+    requested_attribute = str(getattr(public_plan, 'requested_attribute', '') or '').strip()
+    requested_channel = str(getattr(public_plan, 'requested_channel', '') or '').strip()
+    focus_hint = str(getattr(public_plan, 'focus_hint', '') or '').strip()
+    conversation_act = str(getattr(public_plan, 'conversation_act', '') or '').strip()
+    if conversation_act and conversation_act != 'canonical_fact':
+        return True
+    if requested_attribute or requested_channel or focus_hint:
+        return True
+    if secondary_acts:
+        return True
+    return bool(set(required_tools) - {'get_public_school_profile'})
+
+
+def _llamaindex_unpublished_decision_for_key(key: str) -> LlamaIndexNativePublicDecision | None:
+    route = _LLAMAINDEX_NATIVE_UNPUBLISHED_ROUTE_MAP.get(str(key or '').strip())
+    if route is None:
+        return None
+    return LlamaIndexNativePublicDecision(
+        conversation_act=route.get('conversation_act', 'canonical_fact'),
+        answer_mode='unpublished',
+        required_tools=['get_public_school_profile'],
+        requested_attribute=route.get('requested_attribute') or None,
+        requested_channel=route.get('requested_channel') or None,
+        focus_hint=route.get('focus_hint') or None,
+        unpublished_key=str(key or '').strip() or None,
+        use_conversation_context=False,
+    )
+
+
+def _llamaindex_infer_answer_mode_from_public_plan(*, message: str, public_plan: Any) -> str:
+    required_tools = set(getattr(public_plan, 'required_tools', ()) or ())
+    conversation_act = str(getattr(public_plan, 'conversation_act', '') or '').strip()
+    if 'project_public_pricing' in required_tools or conversation_act == 'pricing':
+        return 'pricing'
+    if _has_documentary_retrieval_cues(message) or _looks_like_open_documentary_bundle_query(message):
+        return 'documentary'
+    normalized = rt._normalize_text(message)
+    if conversation_act in {'highlight', 'comparative', 'curriculum', 'confessional'} and any(
+        marker in normalized
+        for marker in (
+            'por que ',
+            'porque ',
+            'me explique',
+            'explique',
+            'compare',
+            'comparar',
+            'comparacao',
+            'comparação',
+            'sintetize',
+            'sintetiza',
+            'relacione',
+            'conecte',
+            'diferenciais',
+            'vale a pena',
+            'proposta pedagogica',
+            'proposta pedagógica',
+        )
+    ):
+        return 'documentary'
+    return 'profile'
+
+
+def _llamaindex_decision_from_public_plan(
+    *,
+    message: str,
+    public_plan: Any,
+) -> LlamaIndexNativePublicDecision | None:
+    if not _llamaindex_public_plan_has_deterministic_signal(public_plan):
+        return None
+    return LlamaIndexNativePublicDecision(
+        conversation_act=str(getattr(public_plan, 'conversation_act', 'canonical_fact') or 'canonical_fact'),
+        answer_mode=_llamaindex_infer_answer_mode_from_public_plan(message=message, public_plan=public_plan),
+        required_tools=list(getattr(public_plan, 'required_tools', ()) or ()),
+        secondary_acts=list(getattr(public_plan, 'secondary_acts', ()) or ()),
+        requested_attribute=str(getattr(public_plan, 'requested_attribute', '') or '').strip() or None,
+        requested_channel=str(getattr(public_plan, 'requested_channel', '') or '').strip() or None,
+        focus_hint=str(getattr(public_plan, 'focus_hint', '') or '').strip() or None,
+        use_conversation_context=bool(getattr(public_plan, 'use_conversation_context', False)),
+    )
+
+
+def _deterministic_llamaindex_native_public_decision(
+    *,
+    message: str,
+    preview: Any,
+    conversation_context: dict[str, Any] | None,
+    school_profile: dict[str, Any],
+) -> LlamaIndexNativePublicDecision | None:
+    known_unknown_key = detect_public_known_unknown_key(message)
+    if known_unknown_key:
+        return _normalize_llamaindex_native_public_decision(
+            _llamaindex_unpublished_decision_for_key(known_unknown_key)
+        )
+    heuristic_decision = _heuristic_llamaindex_native_public_decision(
+        message=message,
+        conversation_context=conversation_context,
+    )
+    if heuristic_decision is not None:
+        return _normalize_llamaindex_native_public_decision(heuristic_decision)
+    public_plan = rt._build_public_institution_plan(
+        message,
+        list(getattr(preview, 'selected_tools', ()) or ()),
+        semantic_plan=None,
+        conversation_context=conversation_context,
+        school_profile=school_profile,
+    )
+    plan_decision = _llamaindex_decision_from_public_plan(message=message, public_plan=public_plan)
+    if plan_decision is not None:
+        return _normalize_llamaindex_native_public_decision(plan_decision)
+    if _looks_like_llamaindex_value_prop_query(message):
+        return _normalize_llamaindex_native_public_decision(
+            LlamaIndexNativePublicDecision(
+                conversation_act='highlight',
+                answer_mode='documentary',
+                required_tools=['get_public_school_profile'],
+                focus_hint='diferenciais institucionais, proposta pedagogica e evidencias documentais publicas',
+                use_conversation_context=True,
+            )
+        )
+    return None
+
+
 def _build_llamaindex_analysis_query(
     *,
     original_message: str,
@@ -1137,6 +1317,24 @@ def _should_trust_llamaindex_native_deterministic_answer(
     return effective_tools.issubset(deterministic_tools)
 
 
+def _should_use_llamaindex_selector_router(
+    *,
+    settings: Any,
+    native_decision: LlamaIndexNativePublicDecision | None,
+    public_plan: Any,
+    llm: Any | None,
+    profile: PathExecutionProfile,
+) -> bool:
+    if llm is None or not profile.prefer_native_llamaindex_selector:
+        return False
+    if bool(getattr(settings, 'llamaindex_native_selector_ambiguity_only', True)):
+        if native_decision is not None and native_decision.answer_mode != 'clarify':
+            return False
+        if _llamaindex_public_plan_has_deterministic_signal(public_plan):
+            return False
+    return True
+
+
 def _build_llamaindex_node_postprocessors(*, settings: Any) -> list[Any]:
     postprocessors: list[Any] = []
     if bool(getattr(settings, 'llamaindex_native_sentence_optimizer_enabled', True)):
@@ -1179,6 +1377,10 @@ def _build_public_document_group_node(group: Any) -> NodeWithScore:
                 'contextual_summary': summary,
                 'section_path': section_label,
                 'section_title': section_titles[0] if section_titles else section_label,
+                'parent_ref_key': str(
+                    getattr(group, 'parent_ref_key', '')
+                    or f"{str(getattr(citation, 'storage_path', '') or group.document_title)}::{section_label or group.document_title}"
+                ),
             },
         ),
         score=float(getattr(group, 'document_score', 0.0) or 0.0),
@@ -1209,6 +1411,7 @@ def _build_public_retrieval_hit_node(hit: Any) -> NodeWithScore:
                 'section_path': section_path,
                 'section_parent': str(getattr(hit, 'section_parent', '') or ''),
                 'section_title': section_title,
+                'parent_ref_key': str(getattr(hit, 'parent_ref_key', '') or ''),
             },
         ),
         score=float(getattr(hit, 'rerank_score', None) or getattr(hit, 'fused_score', 0.0) or 0.0),
@@ -1244,16 +1447,22 @@ class _StaticRecursiveEntryRetriever(BaseRetriever):
 
 
 def _build_public_recursive_parent_node(*, hit: Any, group: Any | None) -> TextNode:
+    parent_ref_key = str(getattr(hit, 'parent_ref_key', '') or '').strip()
     if group is not None:
         parent = _build_public_document_group_node(group).node
+        group_parent_ref_key = str(
+            getattr(group, 'parent_ref_key', '')
+            or getattr(parent, 'metadata', {}).get('parent_ref_key', '')
+            or parent_ref_key
+        ).strip()
         return TextNode(
-            id_=f"public-parent::{_normalize_recursive_node_id(hit.document_title)}::{_normalize_recursive_node_id(str(hit.section_path or hit.section_title or hit.chunk_id))}",
+            id_=f"public-parent::{_normalize_recursive_node_id(group_parent_ref_key or hit.document_title)}",
             text=parent.text,
             metadata=dict(parent.metadata or {}),
         )
     parent = _build_public_retrieval_hit_node(hit).node
     return TextNode(
-        id_=f"public-parent::{_normalize_recursive_node_id(hit.document_title)}::{_normalize_recursive_node_id(str(hit.chunk_id))}",
+        id_=f"public-parent::{_normalize_recursive_node_id(parent_ref_key or str(hit.chunk_id))}",
         text=parent.text,
         metadata=dict(parent.metadata or {}),
     )
@@ -1266,14 +1475,14 @@ def _build_public_recursive_retriever(
     retrieval_hits = list(getattr(search, 'hits', []) or [])
     if not retrieval_hits:
         return None
-    group_by_title = {
-        str(group.document_title): group
+    group_by_key = {
+        _document_group_lookup_key(group): group
         for group in list(getattr(search, 'document_groups', []) or [])
     }
     parent_nodes: dict[str, TextNode] = {}
     child_nodes: list[NodeWithScore] = []
     for hit in retrieval_hits[:6]:
-        group = group_by_title.get(str(hit.document_title))
+        group = group_by_key.get(_retrieval_hit_lookup_key(hit))
         parent_node = _build_public_recursive_parent_node(hit=hit, group=group)
         parent_nodes[parent_node.node_id] = parent_node
         child_text = str(hit.contextual_summary or hit.section_title or hit.text_excerpt or '').strip()
@@ -1290,6 +1499,7 @@ def _build_public_recursive_retriever(
                 'chunk_id': hit.citation.chunk_id,
                 'section_path': hit.section_path,
                 'section_title': hit.section_title,
+                'parent_ref_key': str(getattr(hit, 'parent_ref_key', '') or ''),
             },
         )
         child_nodes.append(
@@ -1306,6 +1516,140 @@ def _build_public_recursive_retriever(
         node_dict=parent_nodes,
         verbose=False,
     )
+
+
+def _document_group_lookup_key(group: Any) -> str:
+    citation = getattr(group, 'citation', None)
+    storage_path = str(getattr(citation, 'storage_path', '') or '').strip()
+    return storage_path or str(getattr(group, 'document_title', '') or '').strip()
+
+
+def _retrieval_hit_lookup_key(hit: Any) -> str:
+    citation = getattr(hit, 'citation', None)
+    storage_path = str(getattr(citation, 'storage_path', '') or '').strip()
+    return storage_path or str(getattr(hit, 'document_title', '') or '').strip()
+
+
+def _filter_search_to_document_keys(*, search: Any, document_keys: set[str]) -> Any:
+    if not document_keys:
+        return search
+    filtered_groups = [
+        group
+        for group in list(getattr(search, 'document_groups', []) or [])
+        if _document_group_lookup_key(group) in document_keys
+    ]
+    filtered_hits = [
+        hit
+        for hit in list(getattr(search, 'hits', []) or [])
+        if _retrieval_hit_lookup_key(hit) in document_keys
+    ]
+    if not filtered_groups and not filtered_hits:
+        return search
+    return search.model_copy(update={'document_groups': filtered_groups, 'hits': filtered_hits})
+
+
+def _extract_public_summary_store_parent_ref_keys(points: Any) -> tuple[str, ...]:
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for point in list(getattr(points, 'points', points) or []):
+        payload = getattr(point, 'payload', None) or {}
+        parent_ref_key = str(payload.get('parent_ref_key', '') or '').strip()
+        if not parent_ref_key or parent_ref_key in seen:
+            continue
+        seen.add(parent_ref_key)
+        ordered.append(parent_ref_key)
+    return tuple(ordered)
+
+
+def _query_public_summary_store_parent_ref_keys(*, query: str, settings: Any) -> tuple[str, ...]:
+    if not bool(getattr(settings, 'llamaindex_native_summary_stage_enabled', True)):
+        return ()
+    collection_name = _resolve_llamaindex_qdrant_summary_collection(settings)
+    if not collection_name:
+        return ()
+    top_k = int(getattr(settings, 'llamaindex_native_summary_stage_top_k', 2) or 2)
+    top_k = max(1, top_k)
+    try:
+        vector = _selector_embedding(str(settings.document_embedding_model))._get_query_embedding(query)
+        response = _qdrant_client(qdrant_url=str(settings.qdrant_url)).query_points(
+            collection_name=collection_name,
+            query=vector,
+            query_filter=models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key='visibility',
+                        match=models.MatchValue(value='public'),
+                    )
+                ]
+            ),
+            limit=top_k,
+            with_payload=True,
+        )
+    except Exception:
+        return ()
+    return _extract_public_summary_store_parent_ref_keys(response)
+
+
+def _run_public_hybrid_search(
+    *,
+    retrieval_service: Any,
+    query: str,
+    settings: Any,
+) -> Any:
+    parent_ref_keys = _query_public_summary_store_parent_ref_keys(query=query, settings=settings)
+    search = retrieval_service.hybrid_search(
+        query=query,
+        top_k=4,
+        visibility='public',
+        category=None,
+        parent_ref_keys=parent_ref_keys or None,
+    )
+    if parent_ref_keys and not list(getattr(search, 'hits', []) or []):
+        search = retrieval_service.hybrid_search(
+            query=query,
+            top_k=4,
+            visibility='public',
+            category=None,
+        )
+    return _maybe_apply_public_summary_stage(search=search, query=query, settings=settings)
+
+
+def _select_public_document_keys_by_summary(*, search: Any, query: str, settings: Any) -> set[str]:
+    groups = list(getattr(search, 'document_groups', []) or [])
+    if not groups:
+        return set()
+    top_k = int(getattr(settings, 'llamaindex_native_summary_stage_top_k', 2) or 2)
+    top_k = max(1, min(top_k, len(groups)))
+    if len(groups) <= top_k:
+        return {_document_group_lookup_key(group) for group in groups}
+    summary_nodes = [_build_public_document_group_node(group).node for group in groups]
+    try:
+        index = VectorStoreIndex(nodes=summary_nodes, embed_model=_selector_embedding(str(settings.document_embedding_model)))
+        retriever = index.as_retriever(similarity_top_k=top_k)
+        selected = retriever.retrieve(query)
+    except Exception:
+        return set()
+    document_keys: set[str] = set()
+    for item in selected:
+        node = getattr(item, 'node', item)
+        metadata = getattr(node, 'metadata', {}) or {}
+        storage_path = str(metadata.get('storage_path', '') or '').strip()
+        document_title = str(metadata.get('document_title', '') or '').strip()
+        key = storage_path or document_title
+        if key:
+            document_keys.add(key)
+    return document_keys
+
+
+def _maybe_apply_public_summary_stage(*, search: Any, query: str, settings: Any) -> Any:
+    if not bool(getattr(settings, 'llamaindex_native_summary_stage_enabled', True)):
+        return search
+    if not getattr(search, 'document_groups', None):
+        return search
+    document_keys = _select_public_document_keys_by_summary(search=search, query=query, settings=settings)
+    if not document_keys:
+        return search
+    return _filter_search_to_document_keys(search=search, document_keys=document_keys)
 
 
 def _normalize_llamaindex_native_public_decision(
@@ -1353,6 +1697,21 @@ def _normalize_llamaindex_native_public_decision(
     )
 
 
+def _llamaindex_public_plan_summary(public_plan: Any | None) -> str:
+    if public_plan is None:
+        return 'sem pista deterministica confiavel'
+    summary = {
+        'conversation_act': str(getattr(public_plan, 'conversation_act', '') or '').strip(),
+        'required_tools': list(getattr(public_plan, 'required_tools', ()) or ()),
+        'secondary_acts': list(getattr(public_plan, 'secondary_acts', ()) or ()),
+        'requested_attribute': str(getattr(public_plan, 'requested_attribute', '') or '').strip(),
+        'requested_channel': str(getattr(public_plan, 'requested_channel', '') or '').strip(),
+        'focus_hint': str(getattr(public_plan, 'focus_hint', '') or '').strip(),
+        'use_conversation_context': bool(getattr(public_plan, 'use_conversation_context', False)),
+    }
+    return json.dumps(summary, ensure_ascii=False, sort_keys=True)
+
+
 async def _resolve_llamaindex_native_public_decision(
     *,
     llm: Any | None,
@@ -1361,6 +1720,7 @@ async def _resolve_llamaindex_native_public_decision(
     preview: Any,
     school_profile: dict[str, Any],
     conversation_context: dict[str, Any] | None,
+    deterministic_plan: Any | None = None,
 ) -> LlamaIndexNativePublicDecision | None:
     if llm is None:
         return None
@@ -1368,7 +1728,7 @@ async def _resolve_llamaindex_native_public_decision(
         decision = await _await_with_llamaindex_timeout(
             llm.astructured_predict(
                 LlamaIndexNativePublicDecision,
-                _LLAMAINDEX_NATIVE_PUBLIC_ROUTER_PROMPT,
+                _LLAMAINDEX_NATIVE_PUBLIC_FALLBACK_ROUTER_PROMPT,
                 message=message,
                 preview_summary=json.dumps(
                     {
@@ -1380,6 +1740,7 @@ async def _resolve_llamaindex_native_public_decision(
                     ensure_ascii=False,
                     sort_keys=True,
                 ),
+                deterministic_summary=_llamaindex_public_plan_summary(deterministic_plan),
                 conversation_context=_recent_public_context_summary(conversation_context),
                 profile_summary=_native_public_profile_summary(school_profile),
             ),
@@ -1558,6 +1919,32 @@ def _should_skip_llamaindex_public_fast_paths(
     if native_decision is not None and native_decision.answer_mode == 'documentary':
         return True
     return False
+
+
+def _should_use_llamaindex_protected_records_fast_path(
+    *,
+    request: MessageResponseRequest,
+    actor: dict[str, Any] | None,
+    preview: Any,
+    conversation_context: dict[str, Any] | None,
+) -> bool:
+    if request.telegram_chat_id is None or actor is None:
+        return False
+    if (
+        rt._is_access_scope_query(request.message)
+        or rt._is_access_scope_repair_query(request.message, actor, conversation_context)
+        or rt._mentions_personal_admin_status(request.message)
+        or rt._detect_admin_attribute_request(request.message, conversation_context=conversation_context) is not None
+        or rt._is_private_admin_follow_up(request.message, conversation_context)
+        or bool({'get_administrative_status', 'get_student_administrative_status', 'get_actor_identity_context'} & set(preview.selected_tools))
+    ):
+        return True
+    protected_domain_hint = rt._explicit_protected_domain_hint(
+        request.message,
+        actor=actor,
+        conversation_context=conversation_context,
+    )
+    return protected_domain_hint in {QueryDomain.academic, QueryDomain.finance}
 
 
 def _llamaindex_llm_supports_function_calls(llm: Any | None) -> bool:
@@ -2360,29 +2747,30 @@ async def maybe_execute_llamaindex_native_plan(
             reflection=reflection,
             response=response.model_dump(mode='json'),
         )
-    protected_records_fast_path = (
-        request.telegram_chat_id is not None
-        and actor is not None
-        and (
-            rt._is_access_scope_query(request.message)
-            or rt._is_access_scope_repair_query(request.message, actor, conversation_context)
-            or rt._mentions_personal_admin_status(request.message)
-            or rt._detect_admin_attribute_request(request.message, conversation_context=conversation_context) is not None
-            or rt._is_private_admin_follow_up(request.message, conversation_context)
-            or bool({'get_administrative_status', 'get_student_administrative_status', 'get_actor_identity_context'} & set(plan.preview.selected_tools))
-        )
+    protected_records_fast_path = _should_use_llamaindex_protected_records_fast_path(
+        request=request,
+        actor=actor,
+        preview=plan.preview,
+        conversation_context=conversation_context,
     )
     if protected_records_fast_path:
         preview = plan.preview.model_copy(deep=True)
+        rt._apply_protected_domain_rescue(
+            preview=preview,
+            actor=actor,
+            message=request.message,
+            conversation_context=conversation_context,
+        )
         if not {'get_administrative_status', 'get_student_administrative_status', 'get_actor_identity_context'} & set(preview.selected_tools):
             preview.selected_tools = [*preview.selected_tools, 'get_administrative_status', 'get_student_administrative_status']
         preview.mode = OrchestrationMode.structured_tool
-        preview.classification = IntentClassification(
-            domain=QueryDomain.institution,
-            access_tier=AccessTier.authenticated,
-            confidence=0.97,
-            reason='follow-up administrativo ou de identidade resolvido antes do routing documental pesado do llamaindex',
-        )
+        if preview.classification.domain not in {QueryDomain.academic, QueryDomain.finance}:
+            preview.classification = IntentClassification(
+                domain=QueryDomain.institution,
+                access_tier=AccessTier.authenticated,
+                confidence=0.97,
+                reason='follow-up administrativo ou de identidade resolvido antes do routing documental pesado do llamaindex',
+            )
         preview.needs_authentication = True
         school_profile = await rt._fetch_public_school_profile(settings=settings)
         message_text = await rt._execute_protected_records_specialist(
@@ -2486,13 +2874,15 @@ async def maybe_execute_llamaindex_native_plan(
         calendar_events = await rt._fetch_public_calendar_events(settings=settings)
         if calendar_events:
             school_profile['public_calendar_events'] = calendar_events
-    heuristic_public_decision = _heuristic_llamaindex_native_public_decision(
+    deterministic_public_decision = _deterministic_llamaindex_native_public_decision(
         message=request.message,
+        preview=plan.preview,
         conversation_context=conversation_context,
+        school_profile=school_profile,
     )
     skip_fast_paths = _should_skip_llamaindex_public_fast_paths(
         request.message,
-        heuristic_decision=heuristic_public_decision,
+        heuristic_decision=deterministic_public_decision,
     )
     early_public_canonical_lane = (
         match_public_canonical_lane(analysis_message)
@@ -2720,9 +3110,16 @@ async def maybe_execute_llamaindex_native_plan(
     if _should_use_llamaindex_llm_public_resolver(
         request=request,
         plan=plan,
-        heuristic_decision=heuristic_public_decision,
+        heuristic_decision=deterministic_public_decision,
         settings=settings,
     ):
+        deterministic_public_plan = rt._build_public_institution_plan(
+            request.message,
+            list(getattr(plan.preview, 'selected_tools', ()) or ()),
+            semantic_plan=None,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
         llm_native_public_decision = await _resolve_llamaindex_native_public_decision(
             llm=llamaindex_llm,
             settings=settings,
@@ -2730,10 +3127,11 @@ async def maybe_execute_llamaindex_native_plan(
             preview=plan.preview,
             school_profile=school_profile,
             conversation_context=conversation_context,
+            deterministic_plan=deterministic_public_plan,
         )
     native_public_decision = _merge_llamaindex_native_public_decisions(
         llm_decision=llm_native_public_decision,
-        heuristic_decision=heuristic_public_decision,
+        heuristic_decision=deterministic_public_decision,
     )
 
     public_plan = await rt._resolve_public_institution_plan(
@@ -2791,7 +3189,7 @@ async def maybe_execute_llamaindex_native_plan(
     )
     skip_fast_paths = _should_skip_llamaindex_public_fast_paths(
         request.message,
-        heuristic_decision=heuristic_public_decision,
+        heuristic_decision=deterministic_public_decision,
         native_decision=native_public_decision,
     )
     public_canonical_lane = (
@@ -2983,7 +3381,13 @@ async def maybe_execute_llamaindex_native_plan(
             tool_response, selected_tool_name = subquestion_result
             selected_tool_names = (selected_tool_name,)
             execution_reason = 'llamaindex_subquestion_query_engine'
-        elif effective_path_profile.prefer_native_llamaindex_selector and llamaindex_llm is not None:
+        elif _should_use_llamaindex_selector_router(
+            settings=settings,
+            native_decision=native_public_decision,
+            public_plan=public_plan,
+            llm=llamaindex_llm,
+            profile=effective_path_profile,
+        ):
             router_result = await _maybe_execute_llamaindex_router_query_engine(
                 analysis_message=effective_analysis_message,
                 tools=tools,
@@ -2999,7 +3403,7 @@ async def maybe_execute_llamaindex_native_plan(
                 plan=public_plan,
                 tools=tools,
                 embedding_model=settings.document_embedding_model,
-                llm=llamaindex_llm if effective_path_profile.prefer_native_llamaindex_selector else None,
+                llm=None,
             )
             selected_tool_name = selected_tool.metadata.name
             selected_tool_names = (selected_tool_name,)

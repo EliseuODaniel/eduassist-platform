@@ -156,6 +156,7 @@ class RetrievalHit(BaseModel):
     section_path: str | None = None
     section_parent: str | None = None
     section_title: str | None = None
+    parent_ref_key: str | None = None
     labels: dict[str, list[str]] = Field(default_factory=dict)
     fused_score: float
     document_score: float | None = None
@@ -175,6 +176,7 @@ class RetrievalDocumentGroup(BaseModel):
     primary_excerpt: str
     primary_summary: str | None = None
     primary_section: str | None = None
+    parent_ref_key: str | None = None
     support_excerpt_count: int = 0
     section_titles: list[str] = Field(default_factory=list)
     citation: RetrievalCitation

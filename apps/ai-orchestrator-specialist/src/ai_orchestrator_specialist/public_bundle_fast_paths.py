@@ -151,7 +151,21 @@ def _looks_like_process_compare_query(message: str) -> bool:
     return (
         any(term in normalized for term in {"rematricula", "rematrícula"})
         and any(term in normalized for term in {"transferencia", "transferência", "cancelamento"})
-        and any(term in normalized for term in {"compare", "destacando", "o que muda", "na pratica", "na prática", "se diferenciam"})
+        and any(
+            term in normalized
+            for term in {
+                "compare",
+                "destacando",
+                "o que muda",
+                "na pratica",
+                "na prática",
+                "se diferenciam",
+                "lado a lado",
+                "diferencas praticas",
+                "diferenças práticas",
+                "papelada e prazos",
+            }
+        )
     )
 
 

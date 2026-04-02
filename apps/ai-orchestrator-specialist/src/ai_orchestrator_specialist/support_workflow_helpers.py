@@ -61,7 +61,17 @@ def _looks_like_human_handoff_request(message: str) -> bool:
     if any(marker in normalized for marker in direct_markers):
         return True
     if any(signal in normalized for signal in queue_signals) and any(
-        marker in normalized for marker in ("quero", "preciso", "falar", "encaminha", "encaminhe")
+        marker in normalized
+        for marker in (
+            "falar",
+            "encaminha",
+            "encaminhe",
+            "atendimento",
+            "atendente",
+            "chamado",
+            "abrir",
+            "abre",
+        )
     ):
         return True
     return False

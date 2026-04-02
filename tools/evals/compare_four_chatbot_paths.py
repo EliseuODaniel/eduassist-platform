@@ -70,7 +70,21 @@ def _build_settings(*, stack: str) -> Settings:
 
 def _user_for_slice(entry: dict[str, Any]) -> UserContext:
     slice_name = str(entry.get('slice') or 'public')
+    category = str(entry.get('category') or '').strip()
     chat_id = entry.get('telegram_chat_id')
+    if category in {'restricted_doc_positive', 'restricted_doc_negative'}:
+        return UserContext(
+            role=UserRole.staff,
+            authenticated=True,
+            scopes=['documents:restricted:read', 'documents:private:read'],
+        )
+    if category == 'restricted_doc_denied':
+        return UserContext(
+            role=UserRole.guardian,
+            authenticated=True,
+            linked_student_ids=['stu-lucas', 'stu-ana'],
+            scopes=['students:read', 'administrative:read', 'financial:read', 'academic:read'],
+        )
     if slice_name == 'protected' or str(chat_id) == '1649845499':
         return UserContext(
             role=UserRole.guardian,

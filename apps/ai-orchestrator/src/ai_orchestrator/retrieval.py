@@ -232,6 +232,7 @@ class RetrievalService:
         visibility: str,
         category: str | None = None,
         profile: RetrievalProfile | None = None,
+        parent_ref_keys: tuple[str, ...] | None = None,
     ) -> RetrievalSearchResponse:
         effective_visibility = _normalize_visibility_filter(visibility)
         effective_category = _normalize_category_filter(category)
@@ -275,6 +276,7 @@ class RetrievalService:
                     top_k=query_plan.lexical_limit,
                     visibility=effective_visibility,
                     category=effective_category,
+                    parent_ref_keys=parent_ref_keys,
                 )
             for index, variant in enumerate(vector_variants):
                 vector_sources[f'vector:{index}'] = self._vector_search(
@@ -282,6 +284,7 @@ class RetrievalService:
                     top_k=query_plan.vector_limit,
                     visibility=effective_visibility,
                     category=effective_category,
+                    parent_ref_keys=parent_ref_keys,
                 )
 
             fused_hits = self._fuse_hits(
@@ -418,6 +421,7 @@ class RetrievalService:
         top_k: int,
         visibility: str,
         category: str | None,
+        parent_ref_keys: tuple[str, ...] | None = None,
     ) -> list[dict[str, Any]]:
         with start_span(
             'eduassist.retrieval.lexical_search',
@@ -442,6 +446,19 @@ class RetrievalService:
             if category:
                 conditions.append('document.category = %(category)s')
                 params['category'] = category
+            if parent_ref_keys:
+                conditions.append(
+                    """
+                    exists (
+                      select 1
+                      from documents.retrieval_labels rl
+                      where rl.document_chunk_id = chunk.id
+                        and rl.label_type = 'parent_ref_key'
+                        and rl.label_value = any(%(parent_ref_keys)s)
+                    )
+                    """.strip()
+                )
+                params['parent_ref_keys'] = list(parent_ref_keys)
 
             sql = f"""
                 select
@@ -495,6 +512,7 @@ class RetrievalService:
         top_k: int,
         visibility: str,
         category: str | None,
+        parent_ref_keys: tuple[str, ...] | None = None,
     ) -> list[dict[str, Any]]:
         with start_span(
             'eduassist.retrieval.vector_search',
@@ -517,6 +535,13 @@ class RetrievalService:
             ]
             if category:
                 must_filters.append(models.FieldCondition(key='category', match=models.MatchValue(value=category)))
+            if parent_ref_keys:
+                must_filters.append(
+                    models.FieldCondition(
+                        key='parent_ref_key',
+                        match=models.MatchAny(any=list(parent_ref_keys)),
+                    )
+                )
 
             response = self.qdrant.query_points(
                 collection_name=self.collection_name,
@@ -542,6 +567,7 @@ class RetrievalService:
                             'section_path': payload.get('section_path'),
                             'section_parent': payload.get('section_parent'),
                             'section_title': payload.get('section_title'),
+                            'parent_ref_key': payload.get('parent_ref_key'),
                             'labels': payload.get('labels') or {},
                             'category': str(payload.get('category', 'unknown')),
                             'audience': str(payload.get('audience', 'publico')),
@@ -633,6 +659,7 @@ class RetrievalService:
                     section_path=item.get('section_path'),
                     section_parent=item.get('section_parent'),
                     section_title=item.get('section_title'),
+                    parent_ref_key=item.get('parent_ref_key'),
                     labels=_normalize_hit_labels(item.get('labels')),
                     fused_score=round(float(item.get('rrf_score', 0.0)), 6),
                     document_score=round(float(item.get('document_score', 0.0) or 0.0), 6),
@@ -768,6 +795,7 @@ class RetrievalService:
                     primary_excerpt=primary.text_excerpt,
                     primary_summary=primary.contextual_summary,
                     primary_section=primary.section_path or primary.section_title,
+                    parent_ref_key=primary.parent_ref_key,
                     support_excerpt_count=max(0, len(ordered) - 1),
                     section_titles=section_titles[:4],
                     citation=primary.citation,
@@ -1258,6 +1286,24 @@ def _section_metadata_from_summary(summary: str | None, *, fallback_title: str) 
     return section_path, section_parent, section_title
 
 
+def _parent_ref_key_from_hit(hit: dict[str, Any]) -> str | None:
+    explicit = str(hit.get('parent_ref_key') or '').strip()
+    if explicit:
+        return explicit
+    storage_path = str(hit.get('storage_path') or '').strip()
+    document_title = str(hit.get('document_title') or '').strip()
+    section_anchor = (
+        str(hit.get('section_parent') or '').strip()
+        or str(hit.get('section_path') or '').strip()
+        or str(hit.get('section_title') or '').strip()
+        or document_title
+    )
+    base = storage_path or document_title
+    if not base or not section_anchor:
+        return None
+    return f'{base}::{section_anchor}'
+
+
 def _enrich_hit_metadata(hit: dict[str, Any]) -> dict[str, Any]:
     section_path, section_parent, section_title = _section_metadata_from_summary(
         hit.get('section_path') or hit.get('contextual_summary'),
@@ -1267,6 +1313,14 @@ def _enrich_hit_metadata(hit: dict[str, Any]) -> dict[str, Any]:
     enriched['section_path'] = section_path
     enriched['section_parent'] = hit.get('section_parent') or section_parent
     enriched['section_title'] = hit.get('section_title') or section_title
+    enriched['parent_ref_key'] = _parent_ref_key_from_hit(
+        {
+            **hit,
+            'section_path': section_path,
+            'section_parent': hit.get('section_parent') or section_parent,
+            'section_title': hit.get('section_title') or section_title,
+        }
+    )
     enriched['labels'] = _normalize_hit_labels(hit.get('labels'))
     return enriched
 

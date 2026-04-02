@@ -94,10 +94,15 @@ class Settings(BaseSettings):
     database_url: str = 'postgresql://eduassist:eduassist@postgres:5432/eduassist'
     qdrant_url: str = 'http://qdrant:6333'
     qdrant_documents_collection: str = 'school_documents'
+    qdrant_document_summaries_collection: str = 'school_document_summaries'
     llamaindex_qdrant_documents_collection: str = 'school_documents_llamaindex'
+    llamaindex_qdrant_document_summaries_collection: str = 'school_document_summaries'
     llamaindex_native_timeout_seconds: float = 20.0
     llamaindex_native_prompt_router_ambiguity_only: bool = True
     llamaindex_native_recursive_retriever_enabled: bool = True
+    llamaindex_native_summary_stage_enabled: bool = True
+    llamaindex_native_summary_stage_top_k: int = 2
+    llamaindex_native_selector_ambiguity_only: bool = True
     llamaindex_native_sentence_optimizer_enabled: bool = True
     llamaindex_native_sentence_optimizer_percentile_cutoff: float = 0.55
     llamaindex_native_long_context_reorder_enabled: bool = True

@@ -7,11 +7,13 @@ from ai_orchestrator_specialist.public_query_patterns import (
     _looks_like_admin_finance_combo_query,
     _looks_like_calendar_week_query,
     _looks_like_health_second_call_query,
+    _looks_like_process_compare_query,
 )
 from ai_orchestrator_specialist.restricted_doc_matching import (
     _internal_doc_hit_score,
     _looks_like_internal_document_query,
 )
+from ai_orchestrator_specialist.protected_answer_helpers import looks_like_academic_risk_followup
 from ai_orchestrator_specialist.support_workflow_helpers import (
     _detect_support_handoff_queue,
     _looks_like_human_handoff_request,
@@ -47,6 +49,20 @@ def test_calendar_week_query_detects_generic_public_calendar_prompt() -> None:
     )
 
 
+def test_process_compare_query_detects_side_by_side_public_compare() -> None:
+    assert _looks_like_process_compare_query(
+        'Pensando no caso pratico, se a familia colocar rematricula, transferencia e cancelamento lado a lado, quais diferencas praticas aparecem em papelada e prazos?'
+    )
+
+
+def test_academic_risk_followup_detects_risco_academico_label() -> None:
+    deps = SimpleNamespace(normalize_text=lambda value: value.casefold())
+    assert looks_like_academic_risk_followup(
+        'Sem repetir o quadro inteiro, recorte so a Ana e mostre onde o risco academico dela esta mais alto.',
+        deps=deps,
+    )
+
+
 def test_internal_document_query_and_hit_score_favor_specific_hits() -> None:
     query = 'O protocolo interno para responsaveis com escopo parcial fala algo sobre Telegram?'
     assert _looks_like_internal_document_query(query)
@@ -79,6 +95,18 @@ def test_internal_document_query_matches_orientacao_interna_prompt() -> None:
 
 def test_human_handoff_request_detects_explicit_secretaria_request() -> None:
     assert _looks_like_human_handoff_request('Quero falar com a secretaria agora.')
+
+
+def test_human_handoff_request_does_not_steal_documental_status_query() -> None:
+    assert not _looks_like_human_handoff_request(
+        'Quero ver o quadro documental da Ana e o que esta pendente.'
+    )
+
+
+def test_human_handoff_request_does_not_steal_internal_document_probe() -> None:
+    assert not _looks_like_human_handoff_request(
+        'Os documentos internos mencionam algum protocolo para excursao internacional com pernoite no ensino medio?'
+    )
 
 
 def test_detect_support_handoff_queue_routes_financial_message() -> None:

@@ -221,6 +221,7 @@ PERSONAL_ADMIN_STATUS_TERMS = {
     'pendência documental',
     'pendencias documentais',
     'pendências documentais',
+    'quadro documental',
     'cadastro atualizado',
     'cadastro completo',
     'meu cadastro',
@@ -8810,6 +8811,11 @@ def _protected_selected_tools_for_domain(domain: QueryDomain) -> list[str]:
             'get_student_upcoming_assessments',
             'get_student_attendance_timeline',
         ]
+    if domain is QueryDomain.institution:
+        return [
+            'get_administrative_status',
+            'get_student_administrative_status',
+        ]
     return ['get_financial_summary']
 
 
@@ -8832,10 +8838,13 @@ def _apply_protected_domain_override(
     if domain is QueryDomain.academic:
         preview.output_contract = 'dados academicos autorizados, auditaveis e minimizados'
         preview.risk_flags = [flag for flag in preview.risk_flags if flag != 'sensitive_data_path']
-    else:
+    elif domain is QueryDomain.finance:
         preview.output_contract = 'dados financeiros autorizados, auditaveis e com trilha reforcada'
         if 'sensitive_data_path' not in preview.risk_flags:
             preview.risk_flags = [*preview.risk_flags, 'sensitive_data_path']
+    else:
+        preview.output_contract = 'dados administrativos autorizados, auditaveis e minimizados'
+        preview.risk_flags = [flag for flag in preview.risk_flags if flag != 'sensitive_data_path']
     preview.retrieval_backend = RetrievalBackend.none
     preview.citations_required = False
     preview.needs_authentication = False
@@ -8850,6 +8859,8 @@ def _explicit_protected_domain_hint(
     conversation_context: dict[str, Any] | None = None,
 ) -> QueryDomain | None:
     normalized = _normalize_text(message)
+    if looks_like_restricted_document_query(message):
+        return None
     if (
         _is_service_routing_query(message)
         or _matches_public_contact_rule(message)
@@ -8865,6 +8876,8 @@ def _explicit_protected_domain_hint(
     academic_risk_follow_up = any(
         _message_matches_term(normalized, term)
         for term in {
+            'risco academico',
+            'risco acadêmico',
             'maior risco',
             'pontos de maior risco',
             'pontos mais sensiveis',
@@ -8894,6 +8907,10 @@ def _explicit_protected_domain_hint(
     linked_students = _linked_students(actor)
     if not linked_students:
         return None
+    if _looks_like_family_finance_aggregate_query(message):
+        return QueryDomain.finance
+    if _looks_like_family_academic_aggregate_query(message):
+        return QueryDomain.academic
     recent_focus = _recent_trace_focus(conversation_context) or {}
     mentions_linked_student = bool(_matching_students_in_text(linked_students, message))
     protected_follow_up = _is_follow_up_query(message) and bool(recent_focus)
@@ -8953,14 +8970,27 @@ def _apply_protected_domain_rescue(
     conversation_context: dict[str, Any] | None,
 ) -> bool:
     current_domain = getattr(getattr(preview, 'classification', None), 'domain', None)
-    if current_domain not in {QueryDomain.institution, QueryDomain.academic, QueryDomain.finance}:
+    if current_domain not in {
+        QueryDomain.unknown,
+        QueryDomain.institution,
+        QueryDomain.academic,
+        QueryDomain.finance,
+    }:
         return False
     target_domain = _explicit_protected_domain_hint(
         message,
         actor=actor,
         conversation_context=conversation_context,
     )
-    if target_domain is None or target_domain is current_domain:
+    if target_domain is None:
+        return False
+    selected_tools = set(getattr(preview, 'selected_tools', []) or [])
+    needs_retool = not set(_protected_selected_tools_for_domain(target_domain)).issubset(selected_tools)
+    if (
+        target_domain is current_domain
+        and preview.mode is OrchestrationMode.structured_tool
+        and not needs_retool
+    ):
         return False
     _apply_protected_domain_override(
         preview,
@@ -14043,23 +14073,35 @@ async def _execute_protected_records_specialist(
             message,
             conversation_context=conversation_context,
         )
+        academic_risk_follow_up = any(
+            _message_matches_term(normalized_message, term)
+            for term in {
+                'risco academico',
+                'risco acadêmico',
+                'maior risco',
+                'mais vulneravel',
+                'mais vulnerável',
+                'mais perto da media',
+                'mais perto da média',
+            }
+        )
         payload, status_code = await _api_core_get(
             settings=settings,
             path=f'/v1/students/{student_id}/academic-summary',
             params={'telegram_chat_id': request.telegram_chat_id},
         )
         if status_code == 403:
-            if academic_attribute_request is not None:
+            if academic_attribute_request is not None or academic_risk_follow_up:
                 return (
                     f'{student_name} e o foco desta consulta academica. '
-                    'Nao consegui carregar agora o detalhamento solicitado por disciplina.'
+                    'Nao consegui carregar agora o resumo academico detalhado para apontar com seguranca os maiores riscos.'
                 )
             return 'Seu perfil nao tem permissao para consultar esses dados academicos.'
         if status_code != 200 or payload is None:
-            if academic_attribute_request is not None:
+            if academic_attribute_request is not None or academic_risk_follow_up:
                 return (
                     f'{student_name} e o foco desta consulta academica. '
-                    'Nao consegui carregar agora o detalhamento solicitado por disciplina.'
+                    'Nao consegui carregar agora o resumo academico detalhado para apontar com seguranca os maiores riscos.'
                 )
             return 'Nao consegui consultar os dados academicos agora. Tente novamente em instantes.'
 

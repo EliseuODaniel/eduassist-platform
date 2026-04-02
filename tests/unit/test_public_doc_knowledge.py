@@ -59,6 +59,13 @@ def test_calendar_week_lane_matches_generic_family_prompt() -> None:
     assert lane == 'public_bundle.calendar_week'
 
 
+def test_calendar_week_lane_matches_marcos_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Quais marcos do calendario publico hoje falam mais diretamente com familias e responsaveis?'
+    )
+    assert lane == 'public_bundle.calendar_week'
+
+
 def test_first_month_risks_lane_matches_arranque_prompt() -> None:
     lane = match_public_canonical_lane(
         'No arranque do ano letivo, que descuidos mais costumam explodir entre credenciais, papelada e rotina da casa?'

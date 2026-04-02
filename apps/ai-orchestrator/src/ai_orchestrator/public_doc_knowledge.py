@@ -570,6 +570,9 @@ def match_public_canonical_lane(message: str) -> str | None:
                 "prioritários",
                 "visiveis",
                 "visíveis",
+                "marcos",
+                "falam mais diretamente",
+                "mais diretamente",
             )
         )
     ):

@@ -11,7 +11,6 @@ from .config import Settings, get_settings
 from .llamaindex_pipeline import LlamaIndexDocumentPipeline
 from .pipeline import DocumentPipeline
 
-
 READY_FILE = Path('/tmp/worker-ready')
 RUNNING = True
 logger = logging.getLogger(__name__)
@@ -29,6 +28,8 @@ def _sync_documents(settings: Settings) -> None:
         f"documents={summary['document_count']}",
         f"chunks={summary['chunk_count']}",
         f"collection={summary['collection']}",
+        f"summaries={summary['summary_count']}",
+        f"summary_collection={summary['summary_collection']}",
     )
 
 

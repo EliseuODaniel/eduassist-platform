@@ -98,6 +98,8 @@ def looks_like_academic_risk_followup(message: str, *, deps: ProtectedAnswerDeps
     return any(
         term in normalized
         for term in {
+            "risco academico",
+            "risco acadêmico",
             "maior risco",
             "pontos de maior risco",
             "pontos mais sensiveis",
