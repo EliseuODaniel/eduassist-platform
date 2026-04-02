@@ -312,10 +312,16 @@ PERSONAL_ADMIN_TERMS = {
     'documentacao',
     'documentação',
     'documentos',
+    'documental',
+    'documentais',
     'documentacao atualizada',
     'documentação atualizada',
     'documentacao completa',
     'documentação completa',
+    'pendencia documental',
+    'pendência documental',
+    'pendencias documentais',
+    'pendências documentais',
     'meu cadastro',
     'meus dados cadastrais',
     'dados cadastrais',
@@ -1032,7 +1038,14 @@ def _is_restricted_document_query(message: str) -> bool:
 def _can_read_restricted_documents(request: OrchestrationRequest) -> bool:
     role = str(getattr(request.user.role, 'value', request.user.role) or '').strip().lower()
     scopes = {str(item).strip().lower() for item in request.user.scopes}
-    return bool(request.user.authenticated and ('documents:private:read' in scopes or role in {'staff', 'teacher'}))
+    return bool(
+        request.user.authenticated
+        and (
+            'documents:private:read' in scopes
+            or 'documents:restricted:read' in scopes
+            or role in {'staff', 'teacher'}
+        )
+    )
 
 
 def _wants_human_support(message: str) -> bool:
@@ -1181,10 +1194,14 @@ def _is_public_timeline_query(message: str) -> bool:
             'que dia',
             'quando comeca',
             'quando começa',
+            'comeco',
+            'começo',
             'quando fecha',
             'inicio',
             'início',
             'abertura',
+            'comeco das aulas',
+            'começo das aulas',
             'comecam as aulas',
             'começam as aulas',
         }
@@ -1199,6 +1216,8 @@ def _is_public_timeline_query(message: str) -> bool:
             'formatura',
             'inicio das aulas',
             'início das aulas',
+            'comeco das aulas',
+            'começo das aulas',
             'comecam as aulas',
             'começam as aulas',
             'ano letivo',
@@ -1441,6 +1460,35 @@ def _is_public_process_compare_query(message: str) -> bool:
     )
 
 
+def _is_public_conduct_frequency_recovery_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return (
+        any(_message_matches_term(lowered, term) for term in {'disciplina', 'regulamentos', 'regulamento', 'convivencia', 'convivência'})
+        and any(_message_matches_term(lowered, term) for term in {'frequencia', 'frequência'})
+        and any(_message_matches_term(lowered, term) for term in {'recuperacao', 'recuperação'})
+    )
+
+
+def _is_public_transversal_year_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return (
+        any(_message_matches_term(lowered, term) for term in {'responsaveis', 'responsáveis', 'familia', 'família'})
+        and any(_message_matches_term(lowered, term) for term in {'avaliacoes', 'avaliações', 'avaliacao', 'avaliação'})
+        and any(
+            _message_matches_term(lowered, term)
+            for term in {'estudo orientado', 'canais digitais', 'portal', 'telegram', 'digitais'}
+        )
+    )
+
+
+def _is_public_facilities_study_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return (
+        any(_message_matches_term(lowered, term) for term in {'biblioteca', 'laboratorios', 'laboratórios', 'laboratorio', 'laboratório'})
+        and any(_message_matches_term(lowered, term) for term in {'estudo', 'apoio', 'ensino medio', 'ensino médio'})
+    )
+
+
 def _is_known_public_doc_bundle_query(message: str) -> bool:
     return (
         _is_public_policy_compare_query(message)
@@ -1449,6 +1497,9 @@ def _is_known_public_doc_bundle_query(message: str) -> bool:
         or _is_public_permanence_family_query(message)
         or _is_public_first_month_risks_query(message)
         or _is_public_process_compare_query(message)
+        or _is_public_conduct_frequency_recovery_query(message)
+        or _is_public_transversal_year_query(message)
+        or _is_public_facilities_study_query(message)
     )
 
 
@@ -1475,6 +1526,9 @@ def _is_public_school_profile_request(message: str) -> bool:
         or _is_public_permanence_family_query(lowered)
         or _is_public_first_month_risks_query(lowered)
         or _is_public_process_compare_query(lowered)
+        or _is_public_conduct_frequency_recovery_query(lowered)
+        or _is_public_transversal_year_query(lowered)
+        or _is_public_facilities_study_query(lowered)
         or _is_public_operating_hours_query(lowered)
         or _is_public_location_query(lowered)
         or _is_public_contact_phrase_query(lowered)

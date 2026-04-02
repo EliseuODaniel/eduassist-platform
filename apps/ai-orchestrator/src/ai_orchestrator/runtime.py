@@ -210,6 +210,10 @@ PERSONAL_ADMIN_STATUS_TERMS = {
     'documentação atualizada',
     'documentacao completa',
     'documentação completa',
+    'pendencia documental',
+    'pendência documental',
+    'pendencias documentais',
+    'pendências documentais',
     'cadastro atualizado',
     'cadastro completo',
     'meu cadastro',
@@ -217,6 +221,8 @@ PERSONAL_ADMIN_STATUS_TERMS = {
     'dados cadastrais',
     'documentacao',
     'documentação',
+    'documental',
+    'documentais',
 }
 PERSONAL_PROFILE_UPDATE_TERMS = {
     'alterar email',
@@ -2059,9 +2065,26 @@ def _detect_admin_attribute_request(
     normalized = _normalize_text(message)
     if any(_message_matches_term(normalized, term) for term in {'proximo passo', 'próximo passo', 'o que falta', 'qual o proximo passo'}):
         return 'next_step'
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'pendencia documental',
+            'pendência documental',
+            'pendencias documentais',
+            'pendências documentais',
+            'acao recomendada',
+            'ação recomendada',
+            'proximo passo recomendado',
+            'próximo passo recomendado',
+        }
+    ):
+        return 'documents'
     if any(_message_matches_term(normalized, term) for term in {'status', 'situacao', 'situação', 'como esta'}):
         return 'status'
-    if any(_message_matches_term(normalized, term) for term in {'documentos', 'documentacao', 'documentação', 'comprovante', 'comprovantes'}):
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {'documentos', 'documentacao', 'documentação', 'documental', 'documentais', 'comprovante', 'comprovantes'}
+    ):
         return 'documents'
     if any(_message_matches_term(normalized, term) for term in {'telefone', 'celular', 'fone'}):
         return 'phone'
@@ -3475,10 +3498,14 @@ def _is_public_timeline_query(message: str) -> bool:
             'que dia',
             'quando comeca',
             'quando começa',
+            'comeco',
+            'começo',
             'quando fecha',
             'inicio',
             'início',
             'abertura',
+            'comeco das aulas',
+            'começo das aulas',
             'comecam as aulas',
             'começam as aulas',
         }
@@ -3493,6 +3520,8 @@ def _is_public_timeline_query(message: str) -> bool:
             'formatura',
             'inicio das aulas',
             'início das aulas',
+            'comeco das aulas',
+            'começo das aulas',
             'comecam as aulas',
             'começam as aulas',
             'ano letivo',
@@ -3506,10 +3535,19 @@ def _is_public_timeline_lifecycle_query(message: str) -> bool:
         _message_matches_term(normalized, term)
         for term in {'antes da confirmacao da vaga', 'antes da confirmação da vaga', 'depois do inicio das aulas', 'depois do início das aulas'}
     )
+    has_ordering = any(
+        _message_matches_term(normalized, term)
+        for term in {'ordene', 'ordem', 'sequencia', 'sequência', 'linha do tempo', 'passo a passo'}
+    )
+    mentions_core_milestones = (
+        any(_message_matches_term(normalized, term) for term in {'vaga', 'matricula', 'matrícula'})
+        and any(_message_matches_term(normalized, term) for term in {'inicio das aulas', 'início das aulas', 'aulas'})
+        and any(_message_matches_term(normalized, term) for term in {'responsaveis', 'responsáveis', 'reuniao', 'reunião', 'familia', 'família'})
+    )
     return has_before_after or (
         any(_message_matches_term(normalized, term) for term in {'antes', 'depois'})
         and any(_message_matches_term(normalized, term) for term in {'vaga', 'matricula', 'matrícula', 'inicio das aulas', 'início das aulas', 'aulas'})
-    )
+    ) or (has_ordering and mentions_core_milestones)
 
 
 def _is_public_travel_planning_query(message: str) -> bool:
@@ -4274,7 +4312,8 @@ def _timeline_entry(profile: dict[str, Any], topic_fragment: str) -> dict[str, A
 def _compose_public_timeline_lifecycle_answer(profile: dict[str, Any]) -> str | None:
     admissions = _timeline_entry(profile, 'admissions_opening')
     school_year = _timeline_entry(profile, 'school_year_start')
-    if not isinstance(admissions, dict) and not isinstance(school_year, dict):
+    family_meeting = _timeline_entry(profile, 'family_meeting')
+    if not isinstance(admissions, dict) and not isinstance(school_year, dict) and not isinstance(family_meeting, dict):
         return None
     parts: list[str] = []
     if isinstance(admissions, dict):
@@ -4285,6 +4324,10 @@ def _compose_public_timeline_lifecycle_answer(profile: dict[str, Any]) -> str | 
         school_year_text = f"{str(school_year.get('summary', '')).strip()} {str(school_year.get('notes', '')).strip()}".strip()
         if school_year_text:
             parts.append(f'Depois do inicio das aulas: {school_year_text}')
+    if isinstance(family_meeting, dict):
+        family_meeting_text = f"{str(family_meeting.get('summary', '')).strip()} {str(family_meeting.get('notes', '')).strip()}".strip()
+        if family_meeting_text:
+            parts.append(f'Primeira reuniao com responsaveis: {family_meeting_text}')
     return ' '.join(part for part in parts if part).strip() or None
 
 
@@ -5932,9 +5975,17 @@ def _handle_public_timeline(context: PublicProfileContext) -> str:
         _message_matches_term(normalized, term)
         for term in {'inicio das aulas', 'início das aulas', 'comecam as aulas', 'começam as aulas', 'ano letivo'}
     )
+    wants_family = any(
+        _message_matches_term(normalized, term)
+        for term in {'responsaveis', 'responsáveis', 'reuniao', 'reunião', 'familia', 'família'}
+    )
     if wants_enrollment and wants_school_year_start:
         lines: list[str] = []
-        for item in (_pick('admissions_opening'), _pick('school_year_start')):
+        topics: list[str] = ['admissions_opening', 'school_year_start']
+        if wants_family:
+            topics.append('family_meeting')
+        for topic in topics:
+            item = _pick(topic)
             if not isinstance(item, dict):
                 continue
             summary = str(item.get('summary', '')).strip()
@@ -7603,6 +7654,38 @@ def _user_context_from_actor(actor: dict[str, Any] | None) -> UserContext:
         authenticated=True,
         linked_student_ids=[str(student_id) for student_id in linked_student_ids],
         scopes=[],
+    )
+
+
+def _merge_user_context(actor: dict[str, Any] | None, request_user: UserContext) -> UserContext:
+    actor_user = _user_context_from_actor(actor)
+    if actor is None:
+        return request_user
+    linked_student_ids: list[str] = []
+    seen_students: set[str] = set()
+    for student_id in [*actor_user.linked_student_ids, *request_user.linked_student_ids]:
+        normalized = str(student_id or '').strip()
+        if not normalized or normalized in seen_students:
+            continue
+        seen_students.add(normalized)
+        linked_student_ids.append(normalized)
+    scopes: list[str] = []
+    seen_scopes: set[str] = set()
+    for scope in [*actor_user.scopes, *request_user.scopes]:
+        normalized = str(scope or '').strip()
+        if not normalized:
+            continue
+        key = normalized.lower()
+        if key in seen_scopes:
+            continue
+        seen_scopes.add(key)
+        scopes.append(normalized)
+    role = actor_user.role if actor_user.role is not UserRole.anonymous else request_user.role
+    return UserContext(
+        role=role,
+        authenticated=actor_user.authenticated or request_user.authenticated,
+        linked_student_ids=linked_student_ids,
+        scopes=scopes,
     )
 
 
@@ -14948,7 +15031,7 @@ async def generate_message_response(
         },
     ):
         actor = await _fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
-        effective_user = _user_context_from_actor(actor) if actor else request.user
+        effective_user = _merge_user_context(actor, request.user)
         effective_conversation_id = _effective_conversation_id(request)
         conversation_context = await _fetch_conversation_context(
             settings=settings,
@@ -15444,7 +15527,7 @@ async def generate_message_response(
                 restricted_document_query = (
                     preview.classification.access_tier is AccessTier.authenticated
                     and looks_like_restricted_document_query(request.message)
-                    and can_read_restricted_documents(request.user)
+                    and can_read_restricted_documents(effective_user)
                 )
                 if restricted_document_query:
                     search = retrieval_service.hybrid_search(

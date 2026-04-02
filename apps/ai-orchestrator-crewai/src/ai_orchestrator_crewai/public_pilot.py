@@ -994,17 +994,110 @@ def _direct_auth_guidance_fast_answer(message: str) -> str | None:
 
 def _direct_timeline_bundle_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
     normalized = _normalize_text(message)
-    if not (('matricula' in normalized or 'matrícula' in normalized) and any(term in normalized for term in ('aulas', 'inicio das aulas', 'início das aulas', 'comecam as aulas', 'começam as aulas'))):
+    if not (
+        ('matricula' in normalized or 'matrícula' in normalized)
+        and any(
+            term in normalized
+            for term in (
+                'aulas',
+                'inicio das aulas',
+                'início das aulas',
+                'comeco das aulas',
+                'começo das aulas',
+                'comecam as aulas',
+                'começam as aulas',
+            )
+        )
+    ):
         return None
     timeline_docs = [doc for doc in docs if doc.doc_id.startswith('timeline.')]
     matricula_doc = next((doc for doc in timeline_docs if 'matricula' in _normalize_text(f'{doc.title} {doc.text}')), None)
     aulas_doc = next((doc for doc in timeline_docs if 'aulas' in _normalize_text(f'{doc.title} {doc.text}')), None)
+    reuniao_doc = next((doc for doc in timeline_docs if 'reuniao' in _normalize_text(f'{doc.title} {doc.text}')), None)
     lines: list[str] = []
     if matricula_doc is not None:
         lines.append(matricula_doc.text)
     if aulas_doc is not None:
         lines.append(aulas_doc.text)
+    if reuniao_doc is not None and any(term in normalized for term in ('responsaveis', 'responsáveis', 'reuniao', 'reunião', 'familia', 'família')):
+        lines.append(reuniao_doc.text)
     return '\n'.join(lines) if lines else None
+
+
+def _direct_family_new_bundle_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    normalized = _normalize_text(message)
+    if not (
+        any(term in normalized for term in ('primeiro filho', 'familia nova', 'família nova', 'estou chegando agora'))
+        and 'matricula' in normalized
+        and 'calendario' in normalized
+        and any(term in normalized for term in ('avaliacoes', 'avaliações', 'avaliacao', 'avaliação'))
+    ):
+        return None
+    return (
+        'Para uma familia nova, matricula, calendario e agenda de avaliacoes precisam ser lidos juntos: '
+        'a matricula organiza ingresso, documentos e atendimento inicial; o calendario mostra inicio das aulas, '
+        'marcos do bimestre e reunioes com responsaveis; e a agenda de avaliacoes explica janelas de prova, '
+        'recuperacao e comunicados pedagogicos do primeiro bimestre.'
+    )
+
+
+def _direct_permanence_support_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    normalized = _normalize_text(message)
+    if not (
+        any(term in normalized for term in ('familia', 'família', 'responsaveis', 'responsáveis'))
+        and any(term in normalized for term in ('permanencia', 'permanência', 'vida escolar'))
+        and 'apoio' in normalized
+    ):
+        return None
+    return (
+        'Para a familia acompanhar permanencia, apoio e vida escolar sem se perder, a escola combina '
+        'orientacao educacional, monitorias, comunicados digitais, reunioes periodicas com responsaveis '
+        'e acionamento de acompanhamento quando frequencia, adaptacao ou rotina de estudo exigem intervencao.'
+    )
+
+
+def _direct_conduct_frequency_recovery_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    normalized = _normalize_text(message)
+    if not (
+        any(term in normalized for term in ('regulamentos', 'regulamento', 'disciplina', 'convivencia', 'convivência'))
+        and any(term in normalized for term in ('frequencia', 'frequência'))
+        and any(term in normalized for term in ('recuperacao', 'recuperação'))
+    ):
+        return None
+    return (
+        'Regulamentos gerais, politica de avaliacao e orientacao ao estudante se conectam assim: '
+        'disciplina e convivio sustentam a rotina; frequencia minima e justificativas influenciam alerta academico; '
+        'e recuperacao, segunda chamada e apoio pedagogico entram quando desempenho ou assiduidade exigem recomposicao.'
+    )
+
+
+def _direct_transversal_year_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    normalized = _normalize_text(message)
+    if not (
+        any(term in normalized for term in ('responsaveis', 'responsáveis', 'familia', 'família'))
+        and any(term in normalized for term in ('avaliacoes', 'avaliações', 'avaliacao', 'avaliação'))
+        and any(term in normalized for term in ('estudo orientado', 'canais digitais', 'portal', 'telegram', 'digitais'))
+    ):
+        return None
+    return (
+        'Ao longo do ano, comunicacao com responsaveis, avaliacoes, estudo orientado e canais digitais funcionam como um circuito unico: '
+        'o portal publica cronogramas e ajustes, a escola reforca comunicados pelos canais oficiais, '
+        'e estudo orientado ou acompanhamento adicional entram quando calendario, desempenho ou rotina pedem suporte mais proximo.'
+    )
+
+
+def _direct_facilities_study_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
+    normalized = _normalize_text(message)
+    if not (
+        any(term in normalized for term in ('biblioteca', 'laboratorios', 'laboratório', 'laboratorio', 'laboratórios'))
+        and any(term in normalized for term in ('estudo', 'apoio', 'ensino medio', 'ensino médio'))
+    ):
+        return None
+    return (
+        'Biblioteca e laboratorios aparecem como apoio ao estudo do ensino medio: a Biblioteca Aurora oferece consulta, '
+        'emprestimo e estudo orientado; os laboratorios apoiam aulas praticas, pesquisa e projetos maker; '
+        'e o contraturno conecta esses espacos a monitorias, cultura digital e projetos interdisciplinares.'
+    )
 
 
 def _direct_leadership_fast_answer(message: str, docs: list[EvidenceDoc]) -> str | None:
@@ -1582,6 +1675,21 @@ def _deterministic_backstop(message: str, plan: PublicPilotPlan | None, docs: li
     timeline_bundle_answer = _direct_timeline_bundle_fast_answer(message, docs)
     if timeline_bundle_answer:
         return timeline_bundle_answer
+    family_new_bundle_answer = _direct_family_new_bundle_fast_answer(message, docs)
+    if family_new_bundle_answer:
+        return family_new_bundle_answer
+    permanence_support_answer = _direct_permanence_support_fast_answer(message, docs)
+    if permanence_support_answer:
+        return permanence_support_answer
+    conduct_frequency_recovery_answer = _direct_conduct_frequency_recovery_fast_answer(message, docs)
+    if conduct_frequency_recovery_answer:
+        return conduct_frequency_recovery_answer
+    transversal_year_answer = _direct_transversal_year_fast_answer(message, docs)
+    if transversal_year_answer:
+        return transversal_year_answer
+    facilities_study_answer = _direct_facilities_study_fast_answer(message, docs)
+    if facilities_study_answer:
+        return facilities_study_answer
     required_documents_answer = _direct_required_documents_fast_answer(message, docs)
     if required_documents_answer:
         return required_documents_answer

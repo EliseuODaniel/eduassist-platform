@@ -185,17 +185,15 @@ def compose_public_permanence_and_family_support(profile: dict[str, Any] | None)
     project = str((((profile or {}).get("academic_policy") or {}).get("project_of_life_summary")) or "").strip()
     if not any((support, mentoring, family, attendance, project)):
         return None
-    return " ".join(
-        part
-        for part in (
-            _first_line(support),
-            _first_line(mentoring),
-            _first_line(family),
-            _first_line(attendance),
-            _first_line(project),
-        )
-        if part
-    ).strip()
+    parts = [
+        "Para a familia acompanhar permanencia, apoio e vida escolar sem se perder, a escola combina orientacao, monitorias, comunicacao recorrente e acompanhamento de frequencia.",
+        _first_line(support),
+        _first_line(mentoring),
+        _first_line(family),
+        _first_line(attendance),
+        _first_line(project),
+    ]
+    return " ".join(part for part in parts if part).strip()
 
 
 def compose_public_health_authorizations_bridge() -> str | None:
@@ -285,6 +283,81 @@ def compose_public_process_compare() -> str | None:
             f"Transferencia de saida: {_first_line(transfer_out)}",
             f"Cancelamento: {_first_line(cancelamento)}",
             f"Prazos e documentos: {_first_line(prazos)}",
+        )
+        if part
+    ).strip()
+
+
+def compose_public_conduct_frequency_recovery_bridge(profile: dict[str, Any] | None) -> str | None:
+    conduct = _section("manual-regulamentos-gerais.md", "Convivencia e respeito")
+    punctuality = _section("manual-regulamentos-gerais.md", "Pontualidade e frequencia")
+    justifications = _section("manual-regulamentos-gerais.md", "Avaliacoes e justificativas")
+    recovery = _section("politica-avaliacao-recuperacao-e-promocao.md", "Recuperacao")
+    second_call = _section("politica-avaliacao-recuperacao-e-promocao.md", "Segunda chamada")
+    support = _section("orientacao-apoio-e-vida-escolar.md", "Apoio ao estudante")
+    if not any((conduct, punctuality, justifications, recovery, second_call, support)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            "Os documentos publicos tratam disciplina, frequencia e recuperacao como partes do mesmo acompanhamento escolar.",
+            _first_line(conduct),
+            _first_line(punctuality),
+            _first_line(justifications),
+            _first_line(second_call),
+            _first_line(recovery),
+            _first_line(support),
+            "Na pratica, faltas, justificativas e postura em sala influenciam quando a escola ativa devolutiva, recomposicao e apoio pedagogico.",
+        )
+        if part
+    ).strip()
+
+
+def compose_public_transversal_year_bundle() -> str | None:
+    communication = _section("agenda-avaliacoes-recuperacoes-e-simulados-2026.md", "Comunicacao com as familias")
+    support = _section("orientacao-apoio-e-vida-escolar.md", "Comunicacao com responsaveis")
+    study = _section("programa-periodo-integral-e-estudo-orientado.md", "Estudo orientado")
+    activities = _section("programa-periodo-integral-e-estudo-orientado.md", "Atividades complementares")
+    digital = _section("politica-uso-do-portal-aplicativo-e-credenciais.md", "Vinculo com o Telegram")
+    limits = _section("politica-uso-do-portal-aplicativo-e-credenciais.md", "Limites do canal digital")
+    if not any((communication, support, study, activities, digital, limits)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            "Ao longo do ano, comunicacao com responsaveis, avaliacoes, estudo orientado e canais digitais se reforcam mutuamente.",
+            _first_line(communication),
+            _first_line(support),
+            _first_line(study),
+            _first_line(activities),
+            _first_line(digital),
+            _first_line(limits),
+            "Quando ha ajuste de calendario, reforco pedagogico ou nova orientacao, a escola tende a publicar no portal, reforcar pelos canais oficiais e acionar a familia quando o caso exige acompanhamento mais proximo.",
+        )
+        if part
+    ).strip()
+
+
+def compose_public_facilities_and_study_support() -> str | None:
+    library = _section("servicos-e-espacos-escolares.md", "Nome oficial e atendimento")
+    library_services = _section("servicos-e-espacos-escolares.md", "Servicos disponiveis")
+    science_lab = _section("servicos-e-espacos-escolares.md", "Laboratorio de ciencias")
+    maker_lab = _section("servicos-e-espacos-escolares.md", "Laboratorio de informatica e sala maker")
+    study = _section("programa-periodo-integral-e-estudo-orientado.md", "Estudo orientado")
+    activities = _section("programa-periodo-integral-e-estudo-orientado.md", "Atividades complementares")
+    if not any((library, library_services, science_lab, maker_lab, study, activities)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            "Biblioteca e laboratorios aparecem como espacos de apoio ao estudo, nao como ambientes isolados do curriculo.",
+            _first_line(library),
+            _first_line(library_services),
+            _first_line(science_lab),
+            _first_line(maker_lab),
+            _first_line(study),
+            _first_line(activities),
+            "No ensino medio, isso se conecta a monitorias, pesquisa, cultura digital e projetos praticos no contraturno.",
         )
         if part
     ).strip()
@@ -410,6 +483,12 @@ def match_public_canonical_lane(message: str) -> str | None:
     ):
         return "public_bundle.first_month_risks"
     if (
+        any(term in normalized for term in ("disciplina", "disciplinar", "regulamentos", "regulamento", "convivencia", "convivência"))
+        and any(term in normalized for term in ("frequencia", "frequência"))
+        and any(term in normalized for term in ("recuperacao", "recuperação"))
+    ):
+        return "public_bundle.conduct_frequency_recovery"
+    if (
         any(term in normalized for term in ("secretaria", "portal", "credenciais", "login", "senha"))
         and any(term in normalized for term in ("documentos", "documentacao", "documentação", "envio"))
     ):
@@ -419,6 +498,17 @@ def match_public_canonical_lane(message: str) -> str | None:
         and any(term in normalized for term in ("rematricula", "transferencia", "cancelamento", "matricula"))
     ):
         return "public_bundle.bolsas_and_processes"
+    if (
+        any(term in normalized for term in ("responsaveis", "responsáveis", "familia", "família"))
+        and any(term in normalized for term in ("avaliacoes", "avaliações", "avaliacao", "avaliação"))
+        and any(term in normalized for term in ("estudo orientado", "canais digitais", "portal", "telegram", "digitais"))
+    ):
+        return "public_bundle.transversal_year"
+    if (
+        any(term in normalized for term in ("biblioteca", "laboratorios", "laboratórios", "laboratorio", "laboratório"))
+        and any(term in normalized for term in ("estudo", "apoio", "ensino medio", "ensino médio"))
+    ):
+        return "public_bundle.facilities_study_support"
     return None
 
 
@@ -439,8 +529,14 @@ def compose_public_canonical_lane_answer(
         return compose_public_health_authorizations_bridge()
     if lane == "public_bundle.first_month_risks":
         return compose_public_first_month_risks(profile)
+    if lane == "public_bundle.conduct_frequency_recovery":
+        return compose_public_conduct_frequency_recovery_bridge(profile)
     if lane == "public_bundle.secretaria_portal_credentials":
         return compose_public_secretaria_portal_credentials()
     if lane == "public_bundle.bolsas_and_processes":
         return compose_public_bolsas_and_processes(profile)
+    if lane == "public_bundle.transversal_year":
+        return compose_public_transversal_year_bundle()
+    if lane == "public_bundle.facilities_study_support":
+        return compose_public_facilities_and_study_support()
     return None

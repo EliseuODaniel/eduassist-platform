@@ -328,7 +328,12 @@ def _contains_any(text: str, terms: set[str] | tuple[str, ...]) -> bool:
 
 def _can_read_restricted_documents(user: UserContext) -> bool:
     scopes = {str(item).strip().lower() for item in user.scopes}
-    return user.authenticated and ("documents:private:read" in scopes or user.role in {"staff", "teacher"})
+    role = str(getattr(user.role, "value", user.role) or "").strip().lower()
+    return user.authenticated and (
+        "documents:private:read" in scopes
+        or "documents:restricted:read" in scopes
+        or role in {"staff", "teacher"}
+    )
 
 
 def _looks_like_internal_document_query(message: str) -> bool:
@@ -2042,6 +2047,8 @@ def _looks_like_actor_admin_status_query(message: str) -> bool:
         for term in {
             "documentacao",
             "documentação",
+            "documental",
+            "documentais",
             "cadastro",
             "cadastral",
             "administrativo",
@@ -2066,6 +2073,10 @@ def _looks_like_actor_admin_status_query(message: str) -> bool:
             "pendenc",
             "resuma",
             "resumo",
+            "proximo passo",
+            "próximo passo",
+            "acao recomendada",
+            "ação recomendada",
         }
     )
 
@@ -2283,11 +2294,26 @@ def _compose_timeline_bundle_answer(profile: dict[str, Any] | None, message: str
         return None
     normalized = _normalize_text(message)
     wants_enrollment = "matricula" in normalized or "matrícula" in normalized
-    wants_classes = any(term in normalized for term in {"comecam as aulas", "começam as aulas", "inicio das aulas", "início das aulas", "ano letivo"})
+    wants_classes = any(
+        term in normalized
+        for term in {
+            "comecam as aulas",
+            "começam as aulas",
+            "comeco das aulas",
+            "começo das aulas",
+            "inicio das aulas",
+            "início das aulas",
+            "ano letivo",
+        }
+    )
+    wants_family = any(term in normalized for term in {"responsaveis", "responsáveis", "reuniao", "reunião", "familia", "família"})
     if not (wants_enrollment and wants_classes):
         return None
     lines: list[str] = []
-    for topic in ("admissions_opening", "school_year_start"):
+    topics = ["admissions_opening", "school_year_start"]
+    if wants_family:
+        topics.append("family_meeting")
+    for topic in topics:
         item = _timeline_entry(entries, topic_fragment=topic)
         if not isinstance(item, dict):
             continue
@@ -4974,6 +5000,8 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
             for term in {
                 "quando comecam as aulas",
                 "quando começam as aulas",
+                "comeco das aulas",
+                "começo das aulas",
                 "inicio das aulas",
                 "início das aulas",
                 "quando comeca o ano letivo",
@@ -4981,6 +5009,11 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 "inicio do ano letivo",
                 "início do ano letivo",
             }
+        )
+        or (
+            any(term in normalized for term in {"ordene", "ordem", "sequencia", "sequência"})
+            and "matricula" in normalized
+            and any(term in normalized for term in {"aulas", "ano letivo"})
         )
     )
     if timeline_query:
@@ -5619,7 +5652,12 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 reason="specialist_supervisor_tool_first:admin_finance_overview",
             )
 
-    if ctx.request.user.authenticated and _looks_like_actor_admin_status_query(ctx.request.message):
+    actor_admin_student_hint = _student_hint_from_message(ctx.actor, ctx.request.message)
+    if (
+        ctx.request.user.authenticated
+        and _looks_like_actor_admin_status_query(ctx.request.message)
+        and not actor_admin_student_hint
+    ):
         try:
             actor_admin_payload = await _http_get(
                 ctx.http_client,
@@ -5660,7 +5698,7 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 reason="specialist_supervisor_tool_first:actor_admin_status",
             )
 
-    if ctx.request.user.authenticated and any(term in normalized for term in {"documentacao", "documentação", "cadastro", "cadastral"}):
+    if ctx.request.user.authenticated and any(term in normalized for term in {"documentacao", "documentação", "documental", "documentais", "cadastro", "cadastral"}):
         student_hint = _student_hint_from_message(ctx.actor, ctx.request.message)
         student = _find_student_by_hint(ctx.actor, capability="academic", hint=student_hint) or _recent_student_from_context_with_memory(
             ctx.actor,
@@ -6202,7 +6240,12 @@ async def search_private_documents(
         return {"query": query, "total_hits": 0, "hits": [], "note": "not_authenticated"}
     scopes = {str(item).strip().lower() for item in ctx.request.user.scopes}
     normalized_audience = str(audience or "").strip().lower()
-    can_read_private = "documents:private:read" in scopes or ctx.request.user.role in {"staff", "teacher"}
+    role = str(getattr(ctx.request.user.role, "value", ctx.request.user.role) or "").strip().lower()
+    can_read_private = (
+        "documents:private:read" in scopes
+        or "documents:restricted:read" in scopes
+        or role in {"staff", "teacher"}
+    )
     visibility = "restricted" if can_read_private and normalized_audience != "public" else "public"
     payload = await _orchestrator_retrieval_search(
         ctx,

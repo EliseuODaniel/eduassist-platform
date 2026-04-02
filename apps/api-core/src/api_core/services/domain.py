@@ -1057,6 +1057,14 @@ def get_public_timeline(session: Session) -> PublicTimeline | None:
                 notes='A semana de acolhimento do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro.',
             ),
             PublicTimelineEntry(
+                topic_key='family_meeting_cycle_2026',
+                title='Primeira reuniao geral com responsaveis de 2026',
+                summary='A primeira reuniao geral com responsaveis de 2026 acontece em 28 de marco de 2026.',
+                event_date=date(2026, 3, 28),
+                audience='responsaveis e familias',
+                notes='A escola tambem pode convocar reunioes extraordinarias quando houver acompanhamento pedagogico individual.',
+            ),
+            PublicTimelineEntry(
                 topic_key='fundamental_graduation_2026',
                 title='Formatura interna do 9o ano',
                 summary=(

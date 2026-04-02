@@ -1254,7 +1254,14 @@ def looks_like_restricted_document_query(message: str) -> bool:
 def can_read_restricted_documents(user: UserContext) -> bool:
     role = str(getattr(user.role, 'value', user.role) or '').strip().lower()
     scopes = {str(item).strip().lower() for item in getattr(user, 'scopes', [])}
-    return bool(getattr(user, 'authenticated', False) and ('documents:private:read' in scopes or role in {'staff', 'teacher'}))
+    return bool(
+        getattr(user, 'authenticated', False)
+        and (
+            'documents:private:read' in scopes
+            or 'documents:restricted:read' in scopes
+            or role in {'staff', 'teacher'}
+        )
+    )
 
 
 def select_relevant_restricted_hits(query: str, hits: list[Any], *, max_hits: int = 3) -> list[Any]:

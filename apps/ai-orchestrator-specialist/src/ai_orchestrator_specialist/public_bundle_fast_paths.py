@@ -12,11 +12,14 @@ from .models import (
     SupervisorAnswerPayload,
 )
 from .public_doc_knowledge import (
+    compose_public_conduct_frequency_recovery_bridge,
+    compose_public_facilities_and_study_support,
     compose_public_family_new_calendar_assessment_enrollment,
     compose_public_first_month_risks,
     compose_public_health_authorizations_bridge,
     compose_public_permanence_and_family_support,
     compose_public_process_compare,
+    compose_public_transversal_year_bundle,
 )
 
 
@@ -81,6 +84,32 @@ def _looks_like_process_compare_query(message: str) -> bool:
     ) and any(term in normalized for term in {"compare", "destacando", "o que muda"})
 
 
+def _looks_like_conduct_frequency_recovery_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return (
+        any(term in normalized for term in {"disciplina", "regulamentos", "regulamento", "convivencia", "convivência"})
+        and any(term in normalized for term in {"frequencia", "frequência"})
+        and any(term in normalized for term in {"recuperacao", "recuperação"})
+    )
+
+
+def _looks_like_transversal_year_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return (
+        any(term in normalized for term in {"responsaveis", "responsáveis", "familia", "família"})
+        and any(term in normalized for term in {"avaliacoes", "avaliações", "avaliacao", "avaliação"})
+        and any(term in normalized for term in {"estudo orientado", "canais digitais", "portal", "telegram", "digitais"})
+    )
+
+
+def _looks_like_facilities_study_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return (
+        any(term in normalized for term in {"biblioteca", "laboratorios", "laboratório", "laboratorio", "laboratórios"})
+        and any(term in normalized for term in {"estudo", "apoio", "ensino medio", "ensino médio"})
+    )
+
+
 def _looks_like_public_graph_rag_query(message: str) -> bool:
     if any(
         detector(message)
@@ -89,6 +118,9 @@ def _looks_like_public_graph_rag_query(message: str) -> bool:
             _looks_like_health_authorization_bridge_query,
             _looks_like_first_month_risks_query,
             _looks_like_process_compare_query,
+            _looks_like_conduct_frequency_recovery_query,
+            _looks_like_transversal_year_query,
+            _looks_like_facilities_study_query,
         )
     ):
         return True
@@ -232,6 +264,51 @@ def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message:
                 summary="Comparacao deterministica de rematricula, transferencia e cancelamento.",
                 supports=[
                     MessageEvidenceSupport(kind="document", label="Rematricula, Transferencia e Cancelamento 2026", detail="data/corpus/public/rematricula-transferencia-e-cancelamento-2026.md"),
+                ],
+            )
+
+    if _looks_like_conduct_frequency_recovery_query(message):
+        answer_text = compose_public_conduct_frequency_recovery_bridge(profile)
+        if answer_text:
+            return _institution_preflight_answer(
+                answer_text=answer_text,
+                reason="specialist_supervisor_preflight:conduct_frequency_recovery",
+                graph_leaf="conduct_frequency_recovery",
+                summary="Sintese deterministica cruzando regulamentos, frequencia e recuperacao.",
+                supports=[
+                    MessageEvidenceSupport(kind="document", label="Manual de Regulamentos Gerais", detail="data/corpus/public/manual-regulamentos-gerais.md"),
+                    MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
+                    MessageEvidenceSupport(kind="document", label="Orientacao, Apoio e Vida Escolar", detail="data/corpus/public/orientacao-apoio-e-vida-escolar.md"),
+                ],
+            )
+
+    if _looks_like_transversal_year_query(message):
+        answer_text = compose_public_transversal_year_bundle()
+        if answer_text:
+            return _institution_preflight_answer(
+                answer_text=answer_text,
+                reason="specialist_supervisor_preflight:transversal_year_bundle",
+                graph_leaf="transversal_year_bundle",
+                summary="Sintese deterministica transversal entre comunicacao com familias, avaliacoes, estudo orientado e canais digitais.",
+                supports=[
+                    MessageEvidenceSupport(kind="document", label="Agenda de Avaliacoes 2026", detail="data/corpus/public/agenda-avaliacoes-recuperacoes-e-simulados-2026.md"),
+                    MessageEvidenceSupport(kind="document", label="Orientacao, Apoio e Vida Escolar", detail="data/corpus/public/orientacao-apoio-e-vida-escolar.md"),
+                    MessageEvidenceSupport(kind="document", label="Programa de Periodo Integral e Estudo Orientado", detail="data/corpus/public/programa-periodo-integral-e-estudo-orientado.md"),
+                    MessageEvidenceSupport(kind="document", label="Politica de Uso do Portal, Aplicativo e Credenciais", detail="data/corpus/public/politica-uso-do-portal-aplicativo-e-credenciais.md"),
+                ],
+            )
+
+    if _looks_like_facilities_study_query(message):
+        answer_text = compose_public_facilities_and_study_support()
+        if answer_text:
+            return _institution_preflight_answer(
+                answer_text=answer_text,
+                reason="specialist_supervisor_preflight:facilities_study_support",
+                graph_leaf="facilities_study_support",
+                summary="Sintese deterministica sobre biblioteca, laboratorios e apoio ao estudo.",
+                supports=[
+                    MessageEvidenceSupport(kind="document", label="Servicos e Espacos Escolares", detail="data/corpus/public/servicos-e-espacos-escolares.md"),
+                    MessageEvidenceSupport(kind="document", label="Programa de Periodo Integral e Estudo Orientado", detail="data/corpus/public/programa-periodo-integral-e-estudo-orientado.md"),
                 ],
             )
 

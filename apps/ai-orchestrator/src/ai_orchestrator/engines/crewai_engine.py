@@ -226,9 +226,29 @@ def _is_public_timeline_request(request: Any) -> bool:
     normalized = _normalize_shadow_message(message)
     if not normalized:
         return False
-    asks_enrollment = any(_contains_phrase(normalized, term) for term in ('abre a matricula', 'abre a matrícula', 'matricula de 2026'))
-    asks_classes = any(_contains_phrase(normalized, term) for term in ('quando comecam as aulas', 'quando começam as aulas', 'inicio das aulas', 'início das aulas'))
-    return asks_enrollment or asks_classes
+    asks_enrollment = any(_contains_phrase(normalized, term) for term in ('abre a matricula', 'abre a matrícula', 'matricula de 2026', 'abertura da matricula'))
+    asks_classes = any(
+        _contains_phrase(normalized, term)
+        for term in (
+            'quando comecam as aulas',
+            'quando começam as aulas',
+            'inicio das aulas',
+            'início das aulas',
+            'comeco das aulas',
+            'começo das aulas',
+        )
+    )
+    asks_family_meeting = any(
+        _contains_phrase(normalized, term)
+        for term in (
+            'reuniao com responsaveis',
+            'reunião com responsáveis',
+            'responsaveis em 2026',
+            'primeira reuniao com responsaveis',
+            'primeira reunião com responsáveis',
+        )
+    )
+    return asks_enrollment or asks_classes or asks_family_meeting
 
 
 def _is_public_auth_guidance_request(request: Any) -> bool:
@@ -267,13 +287,24 @@ def _is_public_doc_bundle_request(request: Any) -> bool:
         'explique como',
         'cruze',
         'quais documentos',
+        'familia nova',
+        'família nova',
+        'primeiro bimestre',
         'do ponto de vista de uma familia nova',
         'impactam o primeiro mes',
+        'como se encaixam',
+        'visao transversal',
+        'visão transversal',
+        'ao longo do ano',
     )
     public_doc_markers = (
         'manual de regulamentos',
         'politica de avaliacao',
+        'avaliacoes',
+        'avaliações',
         'calendario letivo',
+        'calendario',
+        'calendário',
         'agenda de avaliacoes',
         'manual de matricula',
         'secretaria',
@@ -293,6 +324,11 @@ def _is_public_doc_bundle_request(request: Any) -> bool:
         'acolhimento familiar',
         'estudo orientado',
         'vida academica',
+        'vida escolar',
+        'responsaveis',
+        'familia',
+        'biblioteca',
+        'laboratorios',
     )
     return any(_contains_phrase(normalized, term) for term in intent_markers) and any(
         _contains_phrase(normalized, term) for term in public_doc_markers
@@ -336,7 +372,10 @@ def _is_protected_admin_finance_combo_request(request: Any) -> bool:
     normalized = _normalize_shadow_message(message)
     if not normalized:
         return False
-    asks_admin = any(_contains_phrase(normalized, term) for term in ('documentacao', 'documentos', 'cadastro', 'regular'))
+    asks_admin = any(
+        _contains_phrase(normalized, term)
+        for term in ('documentacao', 'documentos', 'documental', 'documentais', 'cadastro', 'regular')
+    )
     asks_finance = any(
         _contains_phrase(normalized, term)
         for term in ('financeiro', 'fatura', 'boleto', 'mensalidade', 'pagamento', 'vencimento', 'bloqueando atendimento', 'bloqueio')
@@ -385,6 +424,8 @@ def _protected_shadow_slice(request: Any) -> bool:
         'mensalidade',
         'documentacao',
         'documentos',
+        'documental',
+        'documentais',
         'meus filhos',
         'meu filho',
         'minha filha',

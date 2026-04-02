@@ -92,7 +92,11 @@ def _can_read_restricted_documents(user_context: dict[str, Any] | None) -> bool:
         return False
     role = _normalize_text(str((user_context or {}).get('role', '') or ''))
     scopes = {str(item).strip().lower() for item in ((user_context or {}).get('scopes') or [])}
-    return 'documents:private:read' in scopes or role in {'staff', 'teacher'}
+    return (
+        'documents:private:read' in scopes
+        or 'documents:restricted:read' in scopes
+        or role in {'staff', 'teacher'}
+    )
 
 
 def _crewai_google_model(configured_model: str) -> str:
@@ -516,6 +520,8 @@ def _extract_unmatched_student_reference(actor: dict[str, Any], message: str) ->
         'proxima', 'proximo', 'data', 'pagamento', 'vencimento',
         'exatamente', 'escopo', 'academico', 'financeiro', 'dois', 'cada', 'posso', 'acessar',
         'dados', 'consigo', 'ver', 'ambos', 'filhos',
+        'documental', 'documentais', 'pendente', 'pendencias', 'pendência', 'pendências',
+        'acao', 'ação', 'recomendada', 'recomendado', 'agora',
     }
     for pattern in (
         r'\be\s+do\s+([a-z0-9]+)\b',
@@ -1093,7 +1099,7 @@ def _infer_fast_path_plan(message: str, student: dict[str, Any] | None) -> Prote
     student_name = str(student.get('full_name', '')).strip() if isinstance(student, dict) else None
     student_id = str(student.get('student_id', '')).strip() if isinstance(student, dict) else None
 
-    if any(term in terms for term in {'documentacao', 'documentos'}) and any(
+    if any(term in terms for term in {'documentacao', 'documentos', 'documental', 'documentais'}) and any(
         term in terms for term in {'financeiro', 'pagamento', 'mensalidade', 'boleto', 'vencimento', 'bloqueando', 'bloqueio'}
     ):
         return ProtectedPilotPlan(
@@ -1145,7 +1151,7 @@ def _infer_fast_path_plan(message: str, student: dict[str, Any] | None) -> Prote
             attribute=attribute,
             relevant_sources=['financial.overview'],
         )
-    if any(term in terms for term in {'documentacao', 'documentos'}):
+    if any(term in terms for term in {'documentacao', 'documentos', 'documental', 'documentais'}):
         return ProtectedPilotPlan(
             intent='student_admin',
             student_name=student_name or None,
@@ -1192,7 +1198,7 @@ def _student_backstop(message: str, student: dict[str, Any] | None, evidence: di
         return None
     terms = _query_terms(message)
     name = str(student.get('full_name', 'o aluno'))
-    if any(term in terms for term in {'documentacao', 'documentos'}) and any(
+    if any(term in terms for term in {'documentacao', 'documentos', 'documental', 'documentais'}) and any(
         term in terms for term in {'financeiro', 'pagamento', 'mensalidade', 'boleto', 'vencimento', 'bloqueando', 'bloqueio'}
     ):
         admin_summary = (evidence.get('admin', {}).get('summary', {}) or {})
@@ -1241,9 +1247,9 @@ def _student_backstop(message: str, student: dict[str, Any] | None, evidence: di
         first = next((item for item in assessments if isinstance(item, dict)), None)
         if first:
             return f"A proxima avaliacao registrada de {name} e {first.get('item_title')} em {first.get('due_date')}."
-    if any(term in terms for term in {'documentacao', 'documentos'}):
+    if any(term in terms for term in {'documentacao', 'documentos', 'documental', 'documentais'}):
         summary = (evidence.get('admin', {}).get('summary', {}) or {})
-        if {'falta', 'faltando', 'pendencia', 'pendencias', 'proximo', 'passo'} & terms:
+        if {'falta', 'faltando', 'pendencia', 'pendencias', 'proximo', 'passo', 'recomendado', 'acao', 'ação'} & terms:
             checklist = [item for item in (summary.get('checklist') or []) if isinstance(item, dict)]
             missing = [
                 item for item in checklist
@@ -1254,12 +1260,12 @@ def _student_backstop(message: str, student: dict[str, Any] | None, evidence: di
                 label = str(first.get('label', 'item')).strip() or 'documentacao pendente'
                 detail = str(first.get('detail') or first.get('notes') or '').strip()
                 if detail:
-                    return f'No momento, ainda falta para {name}: {label}. {detail}'
+                    return f'Hoje {name} ainda tem pendencias documentais em {label}. {detail}'
                 labels = ', '.join(str(item.get('label', 'item')).strip() for item in missing[:3])
-                return f'No momento, ainda faltam para {name}: {labels}.'
+                return f'Hoje {name} ainda tem pendencias documentais em: {labels}.'
             next_step = str(summary.get('next_step') or '').strip()
             if next_step:
-                return f'Para {name}, o proximo passo registrado hoje e: {next_step}.'
+                return f'Hoje nao encontrei nova pendencia documental para {name}. O proximo passo recomendado e: {next_step}.'
         return f"A situacao documental de {name} hoje esta {_humanize_admin_status(summary.get('overall_status'))}."
     if any(term in terms for term in {'financeiro', 'pagamento', 'mensalidade', 'boleto', 'aberto', 'saldo', 'devendo', 'pendente', 'proximo', 'vencimento', 'data'}):
         summary = (evidence.get('financial', {}).get('summary', {}) or {})

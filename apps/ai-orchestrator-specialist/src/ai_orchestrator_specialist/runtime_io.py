@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 _PUBLIC_RESOURCE_CACHE: dict[str, dict[str, Any]] = {}
 _ORCHESTRATOR_PREVIEW_CACHE: dict[str, dict[str, Any]] = {}
 _ORCHESTRATOR_RETRIEVAL_CACHE: dict[str, dict[str, Any]] = {}
+_ACTOR_CONTEXT_CACHE: dict[str, dict[str, Any]] = {}
 
 
 def _conversation_external_id(ctx: Any) -> str:
@@ -102,6 +103,10 @@ async def _http_post(
 async def fetch_actor_context(ctx: Any) -> dict[str, Any] | None:
     if ctx.request.telegram_chat_id is None:
         return None
+    cache_key = f"actor:{ctx.request.telegram_chat_id}"
+    cached_actor = _cache_get(_ACTOR_CONTEXT_CACHE, cache_key)
+    if isinstance(cached_actor, dict):
+        return cached_actor
     try:
         payload = await _http_get(
             ctx.http_client,
@@ -112,9 +117,12 @@ async def fetch_actor_context(ctx: Any) -> dict[str, Any] | None:
         )
     except httpx.HTTPError as exc:
         logger.warning("specialist_supervisor_actor_context_unavailable", extra={"error": str(exc)})
-        return None
+        stale_actor = _cache_get(_ACTOR_CONTEXT_CACHE, cache_key, allow_stale=True)
+        return stale_actor if isinstance(stale_actor, dict) else None
     actor = payload.get("actor") if isinstance(payload, dict) else None
-    return actor if isinstance(actor, dict) else None
+    if not isinstance(actor, dict):
+        return None
+    return _cache_set(_ACTOR_CONTEXT_CACHE, cache_key, actor, ttl_seconds=30.0)
 
 
 async def fetch_conversation_context(ctx: Any) -> dict[str, Any] | None:
@@ -137,13 +145,7 @@ async def fetch_conversation_context(ctx: Any) -> dict[str, Any] | None:
 
 
 async def fetch_public_school_profile(ctx: Any) -> dict[str, Any] | None:
-    payload = await _http_get(
-        ctx.http_client,
-        base_url=ctx.settings.api_core_url,
-        path="/v1/public/school-profile",
-        token=ctx.settings.internal_api_token,
-    )
-    profile = payload.get("profile") if isinstance(payload, dict) else None
+    profile = await fetch_public_payload(ctx, "/v1/public/school-profile", "profile")
     return profile if isinstance(profile, dict) else None
 
 
