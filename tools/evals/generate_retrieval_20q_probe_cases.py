@@ -10,6 +10,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT = REPO_ROOT / "tests/evals/datasets/retrieval_20q_probe_cases.generated.json"
+DATASETS_DIR = REPO_ROOT / "tests/evals/datasets"
 
 
 QUESTION_SPECS: list[dict[str, Any]] = [
@@ -389,15 +390,45 @@ QUESTION_SPECS: list[dict[str, Any]] = [
 ]
 
 
-def build_cases(seed: int) -> list[dict[str, Any]]:
+def _collect_existing_prompts(dataset_dir: Path) -> set[str]:
+    prompts: set[str] = set()
+    for path in sorted(dataset_dir.glob("*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(payload, list):
+            continue
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            prompt = item.get("prompt") or item.get("question")
+            if isinstance(prompt, str) and prompt.strip():
+                prompts.add(prompt.strip())
+    return prompts
+
+
+def build_cases(seed: int, existing_prompts: set[str] | None = None) -> list[dict[str, Any]]:
     rng = random.Random(seed)
+    history = {prompt.strip() for prompt in (existing_prompts or set()) if prompt.strip()}
     cases: list[dict[str, Any]] = []
     for index, spec in enumerate(QUESTION_SPECS, start=1):
-        prompt = rng.choice(list(spec["prompts"]))
+        available_prompts = [
+            prompt.strip()
+            for prompt in spec["prompts"]
+            if isinstance(prompt, str) and prompt.strip() and prompt.strip() not in history
+        ]
+        if not available_prompts:
+            raise ValueError(
+                f"No fresh prompt variants left for category '{spec['category']}'. "
+                "Add new prompt phrasings before generating another 20Q dataset."
+            )
+        prompt = rng.choice(available_prompts)
         item = {key: value for key, value in spec.items() if key != "prompts"}
         item["id"] = f"Q{200 + index}"
         item["prompt"] = prompt
         cases.append(item)
+        history.add(prompt)
     return cases
 
 
@@ -405,12 +436,22 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Generate a fresh 20-question retrieval probe dataset for EduAssist.")
     parser.add_argument("--seed", type=int, default=20260402)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--datasets-dir",
+        type=Path,
+        default=DATASETS_DIR,
+        help="Directory whose existing JSON datasets are scanned to forbid exact prompt overlap.",
+    )
     args = parser.parse_args()
 
-    dataset = build_cases(seed=args.seed)
+    existing_prompts = _collect_existing_prompts(args.datasets_dir)
+    dataset = build_cases(seed=args.seed, existing_prompts=existing_prompts)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(dataset, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"generated {len(dataset)} cases -> {args.output}")
+    print(
+        f"generated {len(dataset)} cases -> {args.output} "
+        f"(history_blocked={len(existing_prompts)})"
+    )
     return 0
 
 
