@@ -300,6 +300,7 @@ services:
     volumes:
       - ../../.env:/workspace/.env:ro
       - ../../artifacts/graphrag:/workspace/artifacts/graphrag
+      - ../../data:/workspace/data:ro
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     depends_on:
@@ -377,6 +378,7 @@ services:
     volumes:
       - ../../.env:/workspace/.env:ro
       - specialist-supervisor-data:/workspace/.runtime
+      - ../../data:/workspace/data:ro
     depends_on:
       api-core:
         condition: service_healthy

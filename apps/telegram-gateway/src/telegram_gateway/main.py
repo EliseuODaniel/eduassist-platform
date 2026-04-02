@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import base64
+from collections import OrderedDict
 from functools import lru_cache
 import logging
 from pathlib import Path
 import secrets
+from threading import Lock
+from time import monotonic
 
 import httpx
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request
@@ -14,6 +17,10 @@ from eduassist_observability import build_runtime_diagnostics, configure_observa
 
 
 _ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / '.env'
+_RECENT_TELEGRAM_UPDATE_IDS: OrderedDict[int, float] = OrderedDict()
+_TELEGRAM_UPDATE_DEDUPE_LOCK = Lock()
+_TELEGRAM_UPDATE_DEDUPE_TTL_SECONDS = 60.0 * 15.0
+_TELEGRAM_UPDATE_DEDUPE_LIMIT = 4096
 
 
 class Settings(BaseSettings):
@@ -145,6 +152,26 @@ def _extract_link_code(text: str) -> str | None:
     if text.startswith('/link '):
         return text.split(' ', 1)[1].strip()
     return None
+
+
+def _consume_telegram_update_id(update_id: int | None) -> bool:
+    if update_id is None:
+        return True
+    now = monotonic()
+    with _TELEGRAM_UPDATE_DEDUPE_LOCK:
+        expired = [
+            item
+            for item, seen_at in _RECENT_TELEGRAM_UPDATE_IDS.items()
+            if now - seen_at > _TELEGRAM_UPDATE_DEDUPE_TTL_SECONDS
+        ]
+        for item in expired:
+            _RECENT_TELEGRAM_UPDATE_IDS.pop(item, None)
+        if update_id in _RECENT_TELEGRAM_UPDATE_IDS:
+            return False
+        _RECENT_TELEGRAM_UPDATE_IDS[update_id] = now
+        while len(_RECENT_TELEGRAM_UPDATE_IDS) > _TELEGRAM_UPDATE_DEDUPE_LIMIT:
+            _RECENT_TELEGRAM_UPDATE_IDS.popitem(last=False)
+    return True
 
 
 def _build_reply_markup(suggested_replies: list[dict[str, object]] | None) -> dict[str, object] | None:
@@ -481,6 +508,14 @@ async def telegram_webhook(
 
     payload = await request.json()
     update_id = payload.get('update_id') if isinstance(payload, dict) else None
+    if isinstance(update_id, int) and not _consume_telegram_update_id(update_id):
+        logger.info('telegram_duplicate_update_ignored update_id=%s', update_id)
+        return {
+            'accepted': True,
+            'service': 'telegram-gateway',
+            'processed': 'duplicate_update_ignored',
+            'update_id': update_id,
+        }
     message = _extract_message(payload if isinstance(payload, dict) else {})
     if message is None:
         return {

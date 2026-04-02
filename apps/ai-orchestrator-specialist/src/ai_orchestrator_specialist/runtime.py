@@ -2400,6 +2400,16 @@ def _looks_like_cross_document_public_query(message: str) -> bool:
     )
 
 
+def _looks_like_public_doc_bundle_request(message: str) -> bool:
+    return (
+        _looks_like_cross_document_public_query(message)
+        or _looks_like_family_new_calendar_enrollment_query(message)
+        or _looks_like_public_graph_rag_query(message)
+        or _looks_like_service_credentials_bundle_query(message)
+        or _looks_like_policy_compare_query(message)
+    )
+
+
 def _looks_like_third_party_student_data_request(message: str) -> bool:
     normalized = _normalize_text(message)
     relationship_terms = {
@@ -3732,7 +3742,7 @@ def _fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | No
                 reason="specialist_supervisor_fast_path:health_second_call",
             )
 
-    if not ctx.request.user.authenticated and _looks_like_permanence_family_query(ctx.request.message):
+    if _looks_like_permanence_family_query(ctx.request.message):
         answer_text = compose_public_permanence_and_family_support(profile)
         if answer_text:
             return SupervisorAnswerPayload(
@@ -3760,7 +3770,7 @@ def _fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | No
                 reason="specialist_supervisor_fast_path:permanence_family_support",
             )
 
-    if not ctx.request.user.authenticated and _looks_like_health_authorization_bridge_query(ctx.request.message):
+    if _looks_like_health_authorization_bridge_query(ctx.request.message):
         answer_text = compose_public_health_authorizations_bridge()
         if answer_text:
             return SupervisorAnswerPayload(
@@ -3788,7 +3798,7 @@ def _fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | No
                 reason="specialist_supervisor_fast_path:health_authorizations_bridge",
             )
 
-    if not ctx.request.user.authenticated and _looks_like_first_month_risks_query(ctx.request.message):
+    if _looks_like_first_month_risks_query(ctx.request.message):
         answer_text = compose_public_first_month_risks(profile)
         if answer_text:
             return SupervisorAnswerPayload(
@@ -3816,7 +3826,7 @@ def _fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | No
                 reason="specialist_supervisor_fast_path:first_month_risks",
             )
 
-    if not ctx.request.user.authenticated and _looks_like_process_compare_query(ctx.request.message):
+    if _looks_like_process_compare_query(ctx.request.message):
         answer_text = compose_public_process_compare()
         if answer_text:
             return SupervisorAnswerPayload(
@@ -4592,7 +4602,7 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 reason="specialist_supervisor_tool_first:process_compare",
             )
 
-    if not ctx.request.user.authenticated and ctx.request.allow_graph_rag and _looks_like_public_graph_rag_query(ctx.request.message):
+    if ctx.request.allow_graph_rag and _looks_like_public_graph_rag_query(ctx.request.message):
         graph_rag_payload = await _orchestrator_graph_rag_query(ctx, query=ctx.request.message)
         result = graph_rag_payload.get("result") if isinstance(graph_rag_payload, dict) else None
         if isinstance(result, dict) and str(result.get("text") or "").strip():
@@ -4624,7 +4634,13 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 reason="specialist_supervisor_tool_first:graph_rag",
             )
 
-    if ctx.request.user.authenticated and len(multi_domains) >= 2 and "academic" in multi_domains and "finance" in multi_domains:
+    if (
+        ctx.request.user.authenticated
+        and not _looks_like_public_doc_bundle_request(ctx.request.message)
+        and len(multi_domains) >= 2
+        and "academic" in multi_domains
+        and "finance" in multi_domains
+    ):
         target_name = (
             _student_hint_from_message(ctx.actor, ctx.request.message)
             or _is_student_name_only_followup(ctx.actor, ctx.request.message)
@@ -5267,7 +5283,9 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
         "nota" in normalized
         or "notas" in normalized
         or str(preview.get("classification", {}).get("domain") or "") == "academic"
-    ) and not _looks_like_passing_policy_query(ctx.request.message):
+    ) and not _looks_like_passing_policy_query(ctx.request.message) and not _looks_like_public_doc_bundle_request(
+        ctx.request.message
+    ):
         subject_hint = _subject_hint_from_text(ctx.request.message) or (
             memory.active_subject if _looks_like_subject_followup(ctx.request.message) else None
         )
@@ -5579,6 +5597,8 @@ async def _resolved_academic_student_grades_answer(
     resolved: ResolvedTurnIntent,
 ) -> SupervisorAnswerPayload | None:
     if not ctx.request.user.authenticated:
+        return None
+    if _looks_like_public_doc_bundle_request(ctx.request.message):
         return None
     memory = ctx.operational_memory or OperationalMemory()
     subject_hint = str(resolved.referenced_subject or "").strip() or (
@@ -6285,6 +6305,8 @@ async def update_institutional_request(
 async def _operational_memory_follow_up_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | None:
     memory = ctx.operational_memory or OperationalMemory()
     if not ctx.request.user.authenticated:
+        return None
+    if _looks_like_public_doc_bundle_request(ctx.request.message):
         return None
     student_hint = _is_student_name_only_followup(ctx.actor, ctx.request.message)
     multi_domains = _effective_multi_intent_domains(memory, ctx.request.message)
@@ -7785,28 +7807,24 @@ async def run_specialist_supervisor(
             resolved_turn=None,
             specialist_registry=get_specialist_registry(),
         )
-        if not request.user.authenticated and (
-            _looks_like_family_new_calendar_enrollment_query(request.message)
-            or _looks_like_public_graph_rag_query(request.message)
-        ):
-            preflight_answer = _preflight_public_doc_bundle_answer(None, request.message)
-            if preflight_answer is not None:
-                await _persist_final_answer(
-                    context,
-                    answer=preflight_answer,
-                    route="preflight_public_doc_bundle",
-                    metadata={"preview_hint": None},
-                    timeout_seconds=1.0,
-                )
-                return SpecialistSupervisorResponse(
-                    reason=preflight_answer.reason,
-                    metadata={
-                        "preflight_public_doc_bundle": True,
-                        "provider": resolve_llm_provider(settings),
-                        "model": effective_llm_model_name(settings),
-                    },
-                    answer=preflight_answer,
-                ).model_dump(mode="json")
+        preflight_answer = _preflight_public_doc_bundle_answer(None, request.message)
+        if preflight_answer is not None:
+            await _persist_final_answer(
+                context,
+                answer=preflight_answer,
+                route="preflight_public_doc_bundle",
+                metadata={"preview_hint": None},
+                timeout_seconds=1.0,
+            )
+            return SpecialistSupervisorResponse(
+                reason=preflight_answer.reason,
+                metadata={
+                    "preflight_public_doc_bundle": True,
+                    "provider": resolve_llm_provider(settings),
+                    "model": effective_llm_model_name(settings),
+                },
+                answer=preflight_answer,
+            ).model_dump(mode="json")
         (
             context.actor,
             context.conversation_context,

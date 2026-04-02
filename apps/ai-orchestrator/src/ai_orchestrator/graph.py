@@ -1588,6 +1588,8 @@ def _is_authenticated_student_assessment_query(message: str, *, authenticated: b
     if not authenticated:
         return False
     lowered = _normalize_text(message)
+    if _is_cross_document_public_query(lowered) or _is_known_public_doc_bundle_query(lowered):
+        return False
     if _message_matches_term(lowered, 'calendario'):
         return False
     return any(
@@ -1600,6 +1602,8 @@ def _is_authenticated_student_registry_query(message: str, *, authenticated: boo
     if not authenticated:
         return False
     lowered = _normalize_text(message)
+    if _is_cross_document_public_query(lowered) or _is_known_public_doc_bundle_query(lowered):
+        return False
     return any(_message_matches_term(lowered, term) for term in ACADEMIC_IDENTITY_TERMS)
 
 
@@ -1655,6 +1659,13 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
             access_tier=AccessTier.public,
             confidence=0.92,
             reason='mensagem contem termos de atendimento humano ou suporte',
+        )
+    elif _is_cross_document_public_query(message) or _is_known_public_doc_bundle_query(message):
+        classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.97,
+            reason='mensagem pede sintese publica multi-documento e nao deve herdar contexto autenticado de aluno',
         )
     elif _is_teacher_self_service_request(message, request.user.role):
         classification = IntentClassification(
