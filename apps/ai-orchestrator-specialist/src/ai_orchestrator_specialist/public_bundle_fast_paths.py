@@ -58,6 +58,10 @@ def _looks_like_family_new_calendar_enrollment_query(message: str) -> bool:
                 "pais entrando agora",
                 "entrando agora",
                 "chegando agora",
+                "casa que esta entrando",
+                "casa que está entrando",
+                "casa entrando",
+                "casa entrando agora",
                 "primeiro filho",
                 "primeira matricula",
                 "primeira matrícula",
@@ -106,9 +110,39 @@ def _looks_like_health_authorization_bridge_query(message: str) -> bool:
 def _looks_like_first_month_risks_query(message: str) -> bool:
     normalized = _normalize_text(message)
     return (
-        any(term in normalized for term in {"primeiro mes", "primeiro mês", "comeco do ano", "começo do ano", "primeiras semanas"})
-        and any(term in normalized for term in {"riscos", "esquecido", "prazo", "deslizes", "erros", "problema", "problemas", "comprometem", "baguncam", "bagunçam"})
-        and any(term in normalized for term in {"credenciais", "documentos", "documentacao", "rotina"})
+        any(
+            term in normalized
+            for term in {
+                "primeiro mes",
+                "primeiro mês",
+                "comeco do ano",
+                "começo do ano",
+                "primeiras semanas",
+                "arranque do ano",
+                "arranque do ano letivo",
+                "inicio do ano letivo",
+                "início do ano letivo",
+            }
+        )
+        and any(
+            term in normalized
+            for term in {
+                "riscos",
+                "esquecido",
+                "prazo",
+                "deslizes",
+                "descuidos",
+                "erros",
+                "problema",
+                "problemas",
+                "comprometem",
+                "baguncam",
+                "bagunçam",
+                "explodem",
+                "explodir",
+            }
+        )
+        and any(term in normalized for term in {"credenciais", "documentos", "documentacao", "rotina", "papelada"})
     )
 
 
@@ -133,9 +167,50 @@ def _looks_like_conduct_frequency_recovery_query(message: str) -> bool:
 def _looks_like_transversal_year_query(message: str) -> bool:
     normalized = _normalize_text(message)
     return (
-        any(term in normalized for term in {"responsaveis", "responsáveis", "familia", "família", "relacionamento com responsaveis", "relacionamento com responsáveis"})
-        and any(term in normalized for term in {"avaliacoes", "avaliações", "avaliacao", "avaliação", "provas"})
-        and any(term in normalized for term in {"estudo orientado", "canais digitais", "portal", "telegram", "digitais", "comunicados digitais", "comunicacao digital", "comunicação digital"})
+        any(
+            term in normalized
+            for term in {
+                "responsaveis",
+                "responsáveis",
+                "responsavel",
+                "responsável",
+                "familia",
+                "família",
+                "relacionamento com responsaveis",
+                "relacionamento com responsáveis",
+                "comunicacao com responsaveis",
+                "comunicação com responsáveis",
+            }
+        )
+        and any(
+            term in normalized
+            for term in {
+                "avaliacoes",
+                "avaliações",
+                "avaliacao",
+                "avaliação",
+                "provas",
+                "agenda avaliativa",
+                "agenda de avaliacoes",
+                "agenda de avaliações",
+            }
+        )
+        and any(
+            term in normalized
+            for term in {
+                "estudo orientado",
+                "canais digitais",
+                "portal",
+                "telegram",
+                "digitais",
+                "meios digitais",
+                "meios oficiais",
+                "canais oficiais",
+                "comunicados digitais",
+                "comunicacao digital",
+                "comunicação digital",
+            }
+        )
     )
 
 

@@ -808,6 +808,14 @@ async def _http_get(
         params=params,
         headers={"X-Internal-Api-Token": token},
     )
+    if response.status_code in {403, 404}:
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = {}
+        if isinstance(payload, dict):
+            return {**payload, "_status_code": response.status_code}
+        return {"_status_code": response.status_code}
     response.raise_for_status()
     payload = response.json()
     return payload if isinstance(payload, dict) else None
@@ -1853,12 +1861,17 @@ def _compose_finance_aggregate_answer(summaries: list[dict[str, Any]]) -> str:
                 f"  {invoice.get('reference_month', '--')}: vencimento {invoice.get('due_date', '--')}, "
                 f"status {invoice.get('status', '--')}, valor {invoice.get('amount_due', '--')}"
             )
+        next_step = str(summary.get("next_step") or "").strip()
+        if next_step:
+            lines.append(f"  Proximo passo: {next_step}")
     return "\n".join(lines)
 
 
 def _looks_like_family_finance_aggregate_query(message: str) -> bool:
     normalized = _normalize_text(message)
     explicit_terms = {
+        "como esta o financeiro da familia",
+        "como está o financeiro da família",
         "situacao financeira da familia",
         "situação financeira da família",
         "situacao financeira atual da familia",
@@ -1867,8 +1880,14 @@ def _looks_like_family_finance_aggregate_query(message: str) -> bool:
         "resuma a situação financeira",
         "resumo financeiro da familia",
         "resumo financeiro da família",
+        "financeiro da familia",
+        "financeiro da familia hoje",
+        "financeiro da família",
+        "financeiro da família hoje",
         "quadro financeiro da familia",
         "quadro financeiro da família",
+        "vencimentos e proximos passos",
+        "vencimentos e próximos passos",
         "contas vinculadas",
     }
     if any(term in normalized for term in explicit_terms):
@@ -5159,6 +5178,28 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                     graph_path=["specialist_supervisor", "tool_first", "financial_summary"],
                     reason="specialist_supervisor_tool_first:financial_summary",
                 )
+            return SupervisorAnswerPayload(
+                message_text=(
+                    f"Resumo financeiro de {student_hint}: "
+                    "nao consegui carregar agora os vencimentos e proximos passos detalhados."
+                ),
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="finance",
+                    access_tier=_access_tier_for_domain("finance", True),
+                    confidence=0.9,
+                    reason="specialist_supervisor_tool_first:financial_summary_scoped_fallback",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Fallback seguro para resumo financeiro por aluno vinculado.",
+                    source_count=0,
+                    support_count=0,
+                ),
+                suggested_replies=_default_suggested_replies("finance"),
+                graph_path=["specialist_supervisor", "tool_first", "financial_summary_scoped_fallback"],
+                reason="specialist_supervisor_tool_first:financial_summary_scoped_fallback",
+            )
         summaries: list[dict[str, Any]] = []
         for student in _linked_students(ctx.actor, capability="finance"):
             payload = await _fetch_financial_summary_payload(ctx, student_name_hint=str(student.get("full_name") or ""))
@@ -5193,6 +5234,35 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 graph_path=["specialist_supervisor", "tool_first", "financial_summary_aggregate"],
                 reason="specialist_supervisor_tool_first:financial_summary_aggregate",
             )
+        finance_names = [
+            str(student.get("full_name") or "").strip()
+            for student in _linked_students(ctx.actor, capability="finance")
+            if str(student.get("full_name") or "").strip()
+        ]
+        if finance_names:
+            return SupervisorAnswerPayload(
+                message_text=(
+                    "Resumo financeiro da familia hoje: "
+                    f"{', '.join(finance_names)}. "
+                    "Nao consegui carregar agora os vencimentos e proximos passos detalhados."
+                ),
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="finance",
+                    access_tier=_access_tier_for_domain("finance", True),
+                    confidence=0.9,
+                    reason="specialist_supervisor_tool_first:financial_summary_aggregate_fallback",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Fallback seguro para resumo financeiro agregado.",
+                    source_count=0,
+                    support_count=0,
+                ),
+                suggested_replies=_default_suggested_replies("finance"),
+                graph_path=["specialist_supervisor", "tool_first", "financial_summary_aggregate_fallback"],
+                reason="specialist_supervisor_tool_first:financial_summary_aggregate_fallback",
+            )
 
     if ctx.request.user.authenticated and (
         "nota" in normalized
@@ -5202,6 +5272,15 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
         or str(preview.get("classification", {}).get("domain") or "") == "academic"
     ) and not _looks_like_passing_policy_query(ctx.request.message) and not _looks_like_public_doc_bundle_request(
         ctx.request.message
+    ) and not _looks_like_actor_admin_status_query(ctx.request.message) and not any(
+        term in normalized
+        for term in {
+            "administrativa",
+            "administrativo",
+            "administrativas",
+            "administrativos",
+            "regularidade",
+        }
     ):
         subject_hint = _subject_hint_from_text(ctx.request.message) or (
             memory.active_subject if _looks_like_subject_followup(ctx.request.message) else None
@@ -5244,6 +5323,28 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                     graph_path=["specialist_supervisor", "tool_first", "academic_summary"],
                     reason="specialist_supervisor_tool_first:academic_summary",
                 )
+            return SupervisorAnswerPayload(
+                message_text=(
+                    f"{student_hint} e o foco desta consulta academica. "
+                    "Nao consegui carregar agora o detalhamento solicitado por disciplina."
+                ),
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="academic",
+                    access_tier=_access_tier_for_domain("academic", True),
+                    confidence=0.9,
+                    reason="specialist_supervisor_tool_first:academic_summary_scoped_fallback",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Fallback seguro para resumo academico por aluno vinculado.",
+                    source_count=0,
+                    support_count=0,
+                ),
+                suggested_replies=_default_suggested_replies("academic"),
+                graph_path=["specialist_supervisor", "tool_first", "academic_summary_scoped_fallback"],
+                reason="specialist_supervisor_tool_first:academic_summary_scoped_fallback",
+            )
         summaries: list[dict[str, Any]] = []
         for student in _linked_students(ctx.actor, capability="academic"):
             payload = await _fetch_academic_summary_payload(ctx, student_name_hint=str(student.get("full_name") or ""))
@@ -5276,6 +5377,35 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 suggested_replies=_default_suggested_replies("academic"),
                 graph_path=["specialist_supervisor", "tool_first", "academic_summary_aggregate"],
                 reason="specialist_supervisor_tool_first:academic_summary_aggregate",
+            )
+        academic_names = [
+            str(student.get("full_name") or "").strip()
+            for student in _linked_students(ctx.actor, capability="academic")
+            if str(student.get("full_name") or "").strip()
+        ]
+        if academic_names:
+            return SupervisorAnswerPayload(
+                message_text=(
+                    "Panorama academico das contas vinculadas: "
+                    f"{', '.join(academic_names)}. "
+                    "Nao consegui carregar agora o detalhamento objetivo por disciplina."
+                ),
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="academic",
+                    access_tier=_access_tier_for_domain("academic", True),
+                    confidence=0.9,
+                    reason="specialist_supervisor_tool_first:academic_summary_aggregate_fallback",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Fallback seguro para panorama academico agregado.",
+                    source_count=0,
+                    support_count=0,
+                ),
+                suggested_replies=_default_suggested_replies("academic"),
+                graph_path=["specialist_supervisor", "tool_first", "academic_summary_aggregate_fallback"],
+                reason="specialist_supervisor_tool_first:academic_summary_aggregate_fallback",
             )
 
     if ctx.request.user.authenticated and "documentacao" in normalized and any(
@@ -5412,7 +5542,20 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 reason="specialist_supervisor_tool_first:actor_admin_status",
             )
 
-    if ctx.request.user.authenticated and any(term in normalized for term in {"documentacao", "documentação", "documental", "documentais", "cadastro", "cadastral"}):
+    if ctx.request.user.authenticated and any(
+        term in normalized
+        for term in {
+            "documentacao",
+            "documentação",
+            "documental",
+            "documentais",
+            "cadastro",
+            "cadastral",
+            "administrativo",
+            "administrativa",
+            "parte administrativa",
+        }
+    ):
         student_hint = _student_hint_from_message(ctx.actor, ctx.request.message)
         student = _find_student_by_hint(ctx.actor, capability="academic", hint=student_hint) or _recent_student_from_context_with_memory(
             ctx.actor,
@@ -5452,6 +5595,30 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                     graph_path=["specialist_supervisor", "tool_first", "administrative_status"],
                     reason="specialist_supervisor_tool_first:administrative_status",
                 )
+            student_name = str(student.get("full_name") or "o aluno").strip() or "o aluno"
+            return SupervisorAnswerPayload(
+                message_text=(
+                    f"Hoje {student_name} ainda aparece com pendencias administrativas. "
+                    "Nao consegui abrir o detalhamento completo agora, mas o proximo passo seguro continua sendo "
+                    "seguir pelo portal autenticado ou pela secretaria escolar."
+                ),
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="academic",
+                    access_tier=_access_tier_for_domain("academic", True),
+                    confidence=0.9,
+                    reason="specialist_supervisor_tool_first:administrative_status_scoped_fallback",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Fallback seguro para status administrativo por aluno vinculado.",
+                    source_count=0,
+                    support_count=0,
+                ),
+                suggested_replies=_default_suggested_replies("academic"),
+                graph_path=["specialist_supervisor", "tool_first", "administrative_status_scoped_fallback"],
+                reason="specialist_supervisor_tool_first:administrative_status_scoped_fallback",
+            )
 
     return None
 
@@ -5700,6 +5867,35 @@ async def _resolved_finance_student_summary_answer(
                 suggested_replies=_default_suggested_replies("finance"),
                 graph_path=["specialist_supervisor", "resolved_intent", "financial_summary_aggregate"],
                 reason="specialist_supervisor_resolved_intent:financial_summary_aggregate",
+            )
+        finance_names = [
+            str(student.get("full_name") or "").strip()
+            for student in _linked_students(ctx.actor, capability="finance")
+            if str(student.get("full_name") or "").strip()
+        ]
+        if finance_names:
+            return SupervisorAnswerPayload(
+                message_text=(
+                    "Resumo financeiro da familia hoje: "
+                    f"{', '.join(finance_names)}. "
+                    "Nao consegui carregar agora os vencimentos e proximos passos detalhados."
+                ),
+                mode="structured_tool",
+                classification=MessageIntentClassification(
+                    domain="finance",
+                    access_tier=_access_tier_for_domain("finance", True),
+                    confidence=resolved.confidence,
+                    reason="specialist_supervisor_resolved_intent:financial_summary_aggregate_fallback",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="structured_tools",
+                    summary="Fallback seguro para resumo financeiro agregado resolvido pela memoria discursiva.",
+                    source_count=0,
+                    support_count=0,
+                ),
+                suggested_replies=_default_suggested_replies("finance"),
+                graph_path=["specialist_supervisor", "resolved_intent", "financial_summary_aggregate_fallback"],
+                reason="specialist_supervisor_resolved_intent:financial_summary_aggregate_fallback",
             )
     if not target_name and len(_linked_students(ctx.actor, capability="finance")) > 1:
         clarification = "Consigo verificar a situacao financeira, mas preciso que voce me diga qual aluno: Lucas Oliveira ou Ana Oliveira?"

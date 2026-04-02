@@ -33,6 +33,11 @@ _INTERNAL_DOC_STOPWORDS = {
 _INTERNAL_DOC_GENERIC_TERMS = {
     'manual',
     'interno',
+    'interna',
+    'material',
+    'orientacao',
+    'orientação',
+    'procedimento',
     'protocolo',
     'politica',
     'politicas',
@@ -71,10 +76,26 @@ def _looks_like_internal_document_query(message: str) -> bool:
     normalized = _normalize_text(message)
     if not normalized:
         return False
-    anchor = any(term in normalized for term in {'manual interno', 'protocolo interno', 'playbook interno', 'documento interno'})
+    anchor = any(
+        term in normalized
+        for term in {
+            'manual interno',
+            'protocolo interno',
+            'playbook interno',
+            'documento interno',
+            'material interno',
+            'orientacao interna',
+            'orientação interna',
+            'procedimento interno',
+        }
+    )
     if anchor:
         return True
-    doc_nouns = sum(1 for term in {'manual', 'protocolo', 'playbook', 'documento'} if term in normalized)
+    doc_nouns = sum(
+        1
+        for term in {'manual', 'protocolo', 'playbook', 'documento', 'material', 'orientacao', 'orientação', 'procedimento'}
+        if term in normalized
+    )
     rare_terms = sum(1 for term in _INTERNAL_DOC_RARE_TERMS if term in normalized)
     return doc_nouns >= 1 and rare_terms >= 1
 

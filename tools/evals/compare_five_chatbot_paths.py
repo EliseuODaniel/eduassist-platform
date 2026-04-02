@@ -21,6 +21,9 @@ if str(REPO_ROOT) not in sys.path:
 AI_ORCHESTRATOR_SRC = REPO_ROOT / 'apps/ai-orchestrator/src'
 if str(AI_ORCHESTRATOR_SRC) not in sys.path:
     sys.path.insert(0, str(AI_ORCHESTRATOR_SRC))
+OBSERVABILITY_SRC = REPO_ROOT / 'packages/observability/python/src'
+if str(OBSERVABILITY_SRC) not in sys.path:
+    sys.path.insert(0, str(OBSERVABILITY_SRC))
 SPECIALIST_SUPERVISOR_SRC = REPO_ROOT / 'apps/ai-orchestrator-specialist/src'
 if str(SPECIALIST_SUPERVISOR_SRC) not in sys.path:
     sys.path.insert(0, str(SPECIALIST_SUPERVISOR_SRC))

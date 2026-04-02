@@ -204,6 +204,11 @@ FINANCE_SECOND_COPY_TERMS = {
     'emitir boleto novamente',
 }
 PERSONAL_ADMIN_STATUS_TERMS = {
+    'parte administrativa',
+    'situacao administrativa',
+    'situação administrativa',
+    'administrativo',
+    'administrativa',
     'pendencia administrativa',
     'pendência administrativa',
     'pendencias administrativas',
@@ -231,6 +236,8 @@ PERSONAL_ADMIN_STATUS_TERMS = {
     'próximo passo',
 }
 FAMILY_FINANCE_AGGREGATE_TERMS = {
+    'como esta o financeiro da familia',
+    'como está o financeiro da família',
     'situacao financeira da familia',
     'situação financeira da família',
     'situacao financeira atual da familia',
@@ -240,9 +247,13 @@ FAMILY_FINANCE_AGGREGATE_TERMS = {
     'resumo financeiro da familia',
     'resumo financeiro da família',
     'financeiro da familia',
+    'financeiro da familia hoje',
     'quadro financeiro da familia',
     'financeiro da família',
+    'financeiro da família hoje',
     'quadro financeiro da família',
+    'vencimentos e proximos passos',
+    'vencimentos e próximos passos',
     'contas vinculadas',
 }
 FAMILY_ACADEMIC_AGGREGATE_TERMS = {
@@ -2144,7 +2155,18 @@ def _detect_admin_attribute_request(
     conversation_context: dict[str, Any] | None = None,
 ) -> str | None:
     normalized = _normalize_text(message)
-    if any(_message_matches_term(normalized, term) for term in {'proximo passo', 'próximo passo', 'o que falta', 'qual o proximo passo'}):
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'proximo passo',
+            'próximo passo',
+            'o que falta',
+            'qual o proximo passo',
+            'agir em seguida',
+            'como agir em seguida',
+            'o que fazer em seguida',
+        }
+    ):
         return 'next_step'
     if any(
         _message_matches_term(normalized, term)
@@ -2162,6 +2184,11 @@ def _detect_admin_attribute_request(
         return 'documents'
     if any(_message_matches_term(normalized, term) for term in {'status', 'situacao', 'situação', 'como esta'}):
         return 'status'
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {'parte administrativa', 'situacao administrativa', 'situação administrativa'}
+    ):
+        return 'documents'
     if any(
         _message_matches_term(normalized, term)
         for term in {'documentos', 'documentacao', 'documentação', 'documental', 'documentais', 'comprovante', 'comprovantes'}
@@ -3670,8 +3697,14 @@ def _is_public_travel_planning_query(message: str) -> bool:
 
 def _is_public_year_three_phase_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    return 'tres fases' in normalized and all(
-        term in normalized for term in {'admiss', 'rotina', 'fechamento'}
+    return (
+        'tres fases' in normalized and all(term in normalized for term in {'admiss', 'rotina', 'fechamento'})
+    ) or (
+        all(term in normalized for term in {'admiss', 'rotina academica', 'fechamento'})
+        and any(
+            _message_matches_term(normalized, term)
+            for term in {'distribui', 'distribui entre', 'olhando so a base publica', 'olhando apenas a base publica'}
+        )
     )
 
 
@@ -4021,7 +4054,14 @@ def _extract_teacher_subject(message: str) -> str | None:
         match = re.search(pattern, normalized)
         if not match:
             continue
-        subject = re.split(r'\b(?:ou|e|mas|pela?|pelo)\b|[?!,;.]', match.group(1), maxsplit=1)[0].strip(' ?.')
+        subject = re.split(
+            r'\b(?:ou|e|mas|pela?|pelo|se|senao|senão|para)\b|[?!,;.:]',
+            match.group(1),
+            maxsplit=1,
+        )[0].strip(' ?.')
+        subject = re.sub(r'\b(?:se nao|senão|senao)\b.*$', '', subject).strip(' ?.')
+        if len(subject.split()) > 3:
+            subject = ' '.join(subject.split()[:3]).strip(' ?.')
         if subject:
             return subject
     return None
@@ -4198,11 +4238,6 @@ def _is_public_calendar_visibility_query(message: str) -> bool:
 
 def _is_public_family_new_calendar_enrollment_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    if not any(
-        _message_matches_term(normalized, term)
-        for term in {'compare', 'comparar', 'comparacao', 'comparação', 'do ponto de vista'}
-    ):
-        return False
     required_groups = (
         {'calendario letivo', 'calendário letivo', 'calendario', 'calendário'},
         {'agenda de avaliacoes', 'agenda de avaliações', 'avaliacoes', 'avaliações', 'simulados'},
@@ -4213,6 +4248,26 @@ def _is_public_family_new_calendar_enrollment_query(message: str) -> bool:
     return any(
         _message_matches_term(normalized, term)
         for term in {'familia nova', 'família nova', 'aluno novo', 'responsavel novo', 'responsável novo'}
+    ) or (
+        any(
+            _message_matches_term(normalized, term)
+            for term in {
+                'familia',
+                'família',
+                'casa',
+                'primeiro filho',
+                'entrando agora',
+                'chegando agora',
+                'comeco do ano',
+                'começo do ano',
+                'inicio do ano',
+                'início do ano',
+            }
+        )
+        and any(
+            _message_matches_term(normalized, term)
+            for term in {'relacionam', 'se relacionam', 'se encaixam', 'comeco do ano', 'começo do ano'}
+        )
     )
 
 
@@ -4246,13 +4301,36 @@ def _is_public_first_month_risks_query(message: str) -> bool:
     normalized = _normalize_text(message)
     return any(
         _message_matches_term(normalized, term)
-        for term in {'primeiro mes', 'primeiro mês', 'comeco do ano', 'começo do ano', 'primeiras semanas'}
+        for term in {
+            'primeiro mes',
+            'primeiro mês',
+            'comeco do ano',
+            'começo do ano',
+            'primeiras semanas',
+            'arranque do ano',
+            'arranque do ano letivo',
+            'inicio do ano letivo',
+            'início do ano letivo',
+        }
     ) and any(
         _message_matches_term(normalized, term)
-        for term in {'riscos', 'esquecido', 'prazo', 'prazos', 'deslizes', 'erros', 'baguncam', 'bagunçam', 'problemas'}
+        for term in {
+            'riscos',
+            'esquecido',
+            'prazo',
+            'prazos',
+            'deslizes',
+            'descuidos',
+            'erros',
+            'baguncam',
+            'bagunçam',
+            'problemas',
+            'explodem',
+            'explodir',
+        }
     ) and any(
         _message_matches_term(normalized, term)
-        for term in {'credenciais', 'documentos', 'documentacao', 'documentação', 'rotina'}
+        for term in {'credenciais', 'documentos', 'documentacao', 'documentação', 'rotina', 'papelada'}
     )
 
 
@@ -13827,6 +13905,18 @@ async def _execute_protected_records_specialist(
                         summaries.append(summary)
             if summaries:
                 return _compose_finance_aggregate_answer(summaries)
+            finance_names = [
+                str(student.get('full_name') or '').strip()
+                for student in finance_students
+                if str(student.get('full_name') or '').strip()
+            ]
+            if finance_names:
+                return (
+                    'Resumo financeiro da familia hoje: '
+                    f'{", ".join(finance_names)}. '
+                    'Nao consegui carregar agora os vencimentos e proximos passos detalhados, '
+                    'mas o recorte continua sendo o financeiro das contas vinculadas.'
+                )
         if len(finance_students) > 1:
             student, clarification = _select_linked_student(
                 actor,
@@ -13910,6 +14000,18 @@ async def _execute_protected_records_specialist(
                     summaries.append(summary)
         if summaries:
             return _compose_academic_aggregate_answer(summaries)
+        academic_names = [
+            str(student.get('full_name') or '').strip()
+            for student in academic_students
+            if str(student.get('full_name') or '').strip()
+        ]
+        if academic_names:
+            return (
+                'Panorama academico das contas vinculadas: '
+                f'{", ".join(academic_names)}. '
+                'Nao consegui carregar agora o detalhamento objetivo por disciplina, '
+                'mas o foco continua sendo comparar os alunos vinculados desta conta.'
+            )
 
     requested_capability = 'finance' if preview.classification.domain is QueryDomain.finance else 'academic'
     student, clarification = _select_linked_student(
@@ -13937,24 +14039,34 @@ async def _execute_protected_records_specialist(
         return 'Nao consegui identificar o aluno desta consulta. Tente novamente pelo portal.'
 
     if preview.classification.domain is QueryDomain.academic:
+        academic_attribute_request = _effective_academic_attribute_request(
+            message,
+            conversation_context=conversation_context,
+        )
         payload, status_code = await _api_core_get(
             settings=settings,
             path=f'/v1/students/{student_id}/academic-summary',
             params={'telegram_chat_id': request.telegram_chat_id},
         )
         if status_code == 403:
+            if academic_attribute_request is not None:
+                return (
+                    f'{student_name} e o foco desta consulta academica. '
+                    'Nao consegui carregar agora o detalhamento solicitado por disciplina.'
+                )
             return 'Seu perfil nao tem permissao para consultar esses dados academicos.'
         if status_code != 200 or payload is None:
+            if academic_attribute_request is not None:
+                return (
+                    f'{student_name} e o foco desta consulta academica. '
+                    'Nao consegui carregar agora o detalhamento solicitado por disciplina.'
+                )
             return 'Nao consegui consultar os dados academicos agora. Tente novamente em instantes.'
 
         summary = payload.get('summary', {})
         if not isinstance(summary, dict):
             return 'Nao consegui interpretar o retorno academico desta consulta.'
 
-        academic_attribute_request = _effective_academic_attribute_request(
-            message,
-            conversation_context=conversation_context,
-        )
         if academic_attribute_request is not None:
             return _compose_academic_attribute_answer(
                 summary,
@@ -14217,9 +14329,21 @@ async def _compose_student_administrative_status_answer(
         params={'telegram_chat_id': request.telegram_chat_id},
     )
     if status_code == 403:
+        if requested_attribute in {'documents', 'next_step', None}:
+            student_name = str(student.get('full_name') or 'o aluno').strip() or 'o aluno'
+            return (
+                f'Hoje {student_name} ainda aparece com pendencias administrativas. '
+                'Nao consegui abrir o detalhamento completo agora, mas o proximo passo seguro continua sendo '
+                'seguir pelo portal autenticado ou pela secretaria escolar.'
+            )
         return 'Seu perfil nao tem permissao para consultar a documentacao desse aluno.'
     if status_code != 200 or payload is None:
-        return 'Nao consegui consultar a documentacao desse aluno agora. Tente novamente em instantes.'
+        student_name = str(student.get('full_name') or 'o aluno').strip() or 'o aluno'
+        return (
+            f'Hoje {student_name} ainda aparece com pendencias administrativas. '
+            'Nao consegui abrir o detalhamento completo agora, mas o proximo passo seguro continua sendo '
+            'seguir pelo portal autenticado ou pela secretaria escolar.'
+        )
 
     summary = payload.get('summary', {})
     if not isinstance(summary, dict):
@@ -14927,6 +15051,8 @@ def _should_run_response_critic(*, preview: Any, request: MessageResponseRequest
 
 def _should_polish_structured_answer(*, preview: Any, request: MessageResponseRequest) -> bool:
     if preview.mode is not OrchestrationMode.structured_tool:
+        return False
+    if str(getattr(preview, "reason", "") or "").startswith("langgraph_public_canonical_lane:"):
         return False
     if preview.needs_authentication:
         return False

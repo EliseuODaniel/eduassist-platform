@@ -26,6 +26,15 @@ def test_admin_finance_combo_routes_protected() -> None:
     assert infer_request_slice(request) == 'protected'
 
 
+def test_administrative_student_followup_routes_protected() -> None:
+    request = _request(
+        'Hoje, o que ainda falta na parte administrativa da Ana e como a familia deve agir em seguida?',
+        authenticated=True,
+        role='guardian',
+    )
+    assert infer_request_slice(request) == 'protected'
+
+
 def test_human_handoff_routes_support() -> None:
     request = _request('Quero falar com a secretaria humana agora.')
     assert infer_request_slice(request) == 'support'

@@ -172,8 +172,8 @@ def compose_public_conduct_frequency_punctuality(profile: dict[str, Any] | None)
 def compose_public_teacher_directory_boundary(profile: dict[str, Any] | None) -> str | None:
     school_name = _school_name(profile)
     return (
-        f"O {school_name} nao divulga nome, telefone nem contato direto de professor individual por disciplina. "
-        "Quando a familia precisa tratar esse tipo de assunto, o caminho publico correto e a coordenacao pedagogica."
+        f"O {school_name} nao divulga nome nem contato direto de professor individual por disciplina. "
+        "Quando a familia precisa tratar esse tipo de assunto, o caminho publico correto e a coordenacao pedagogica, que faz a ponte institucional."
     )
 
 
@@ -449,10 +449,12 @@ def compose_public_calendar_week(profile: dict[str, Any] | None) -> str | None:
                 visible_titles.append(title)
     communication = _section("agenda-avaliacoes-recuperacoes-e-simulados-2026.md", "Comunicacao com as familias")
     parts = [
-        "Nesta semana, o calendario publico da escola prioriza eventos coletivos para familias e responsaveis."
+        "No calendario publico da escola, os eventos que mais costumam importar para familias e responsaveis sao marcos coletivos e comunicados institucionais."
     ]
     if visible_titles:
-        parts.append(f"Os marcos mais visiveis para familias nesta semana costumam aparecer como {', '.join(visible_titles[:4])}.")
+        parts.append(
+            f"Entre os eventos publicos mais visiveis para familias e responsaveis estao {', '.join(visible_titles[:4])}."
+        )
     if communication:
         parts.append(_first_line(communication))
     parts.append(
@@ -484,6 +486,9 @@ def compose_public_family_new_calendar_assessment_enrollment() -> str | None:
         part
         for part in (
             "Para uma familia nova, os tres documentos cumprem papeis diferentes e complementares.",
+            "Matricula: o manual orienta a entrada correta e a documentacao inicial.",
+            "Calendario: o calendario letivo organiza o comeco do ano e os primeiros marcos escolares.",
+            "Avaliacoes: a agenda avaliativa mostra quando entram devolutivas, provas e recuperacoes.",
             f"Calendario letivo: {_first_line(school_calendar['start'])}",
             f"Ingresso e marcos do ano: {_first_line(school_calendar['entry'])}",
             f"Relacao com a familia: {_first_line(school_calendar['family'])}",
@@ -520,9 +525,17 @@ def compose_public_timeline_lifecycle_bundle() -> str | None:
 
 
 def compose_public_year_three_phases(profile: dict[str, Any] | None) -> str | None:
-    admissions = _timeline_summary(_timeline_entry_from_profile(profile, "admissions_opening"))
-    school_year = _timeline_summary(_timeline_entry_from_profile(profile, "school_year_start"))
-    graduation = _timeline_summary(_timeline_entry_from_profile(profile, "graduation"))
+    admissions = _timeline_summary(_timeline_entry_from_profile(profile, "admissions_opening")) or _first_line(
+        _section("calendario-letivo-2026.md", "Matricula e ingresso")
+    )
+    school_year = _timeline_summary(_timeline_entry_from_profile(profile, "school_year_start")) or _timeline_summary(
+        _timeline_entry_from_profile(profile, "family_meeting")
+    ) or _first_line(_section("calendario-letivo-2026.md", "Inicio das aulas"))
+    graduation = _timeline_summary(_timeline_entry_from_profile(profile, "graduation")) or _timeline_summary(
+        _timeline_entry_from_profile(profile, "school_year_closing")
+    ) or _first_line(_section("calendario-letivo-2026.md", "Recesso e encerramento")) or _first_line(
+        _section("calendario-letivo-2026.md", "Formatura do ensino fundamental II")
+    )
     parts = []
     if admissions:
         parts.append(f"Admissao: {admissions}")
@@ -543,14 +556,33 @@ def match_public_canonical_lane(message: str) -> str | None:
     ):
         return "public_bundle.teacher_directory_boundary"
     if (
-        "desta semana" in normalized
-        and any(term in normalized for term in ("calendario", "calendário", "agenda", "eventos"))
+        any(term in normalized for term in ("calendario publico", "calendário público", "calendario", "calendário", "agenda", "eventos"))
         and any(term in normalized for term in ("familias", "famílias", "responsaveis", "responsáveis"))
+        and any(
+            term in normalized
+            for term in (
+                "desta semana",
+                "esta semana",
+                "importantes",
+                "mais importantes",
+                "mais relevantes",
+                "prioritarios",
+                "prioritários",
+                "visiveis",
+                "visíveis",
+            )
+        )
     ):
         return "public_bundle.calendar_week"
     if (
-        "tres fases" in normalized
-        and all(term in normalized for term in ("admiss", "rotina", "fechamento"))
+        (
+            "tres fases" in normalized
+            and all(term in normalized for term in ("admiss", "rotina", "fechamento"))
+        )
+        or (
+            all(term in normalized for term in ("admiss", "rotina academica", "fechamento"))
+            and any(term in normalized for term in ("distribui", "distribui entre", "olhando so a base publica", "olhando apenas a base publica"))
+        )
     ):
         return "public_bundle.year_three_phases"
     if (
@@ -576,6 +608,10 @@ def match_public_canonical_lane(message: str) -> str | None:
         "vai entrar pela primeira vez",
         "entrando agora",
         "chegando agora",
+        "casa que esta entrando",
+        "casa que está entrando",
+        "casa entrando",
+        "casa entrando agora",
         "primeiro filho",
         "primeiro bimestre",
         "inicio do ano",
@@ -585,7 +621,20 @@ def match_public_canonical_lane(message: str) -> str | None:
     )
     if (
         any(term in normalized for term in family_entry_terms)
-        and any(term in normalized for term in ("calendario", "calendário", "inicio do ano", "início do ano", "primeiro bimestre"))
+        and any(
+            term in normalized
+            for term in (
+                "calendario",
+                "calendário",
+                "inicio do ano",
+                "início do ano",
+                "inicio das aulas",
+                "início das aulas",
+                "comeco do ano",
+                "começo do ano",
+                "primeiro bimestre",
+            )
+        )
         and any(term in normalized for term in ("avaliacao", "avaliações", "avaliacoes"))
         and "matricula" in normalized
     ):
@@ -666,12 +715,41 @@ def match_public_canonical_lane(message: str) -> str | None:
     ):
         return "public_bundle.health_authorizations_bridge"
     if (
-        any(term in normalized for term in ("primeiro mes", "primeiro mês", "comeco do ano", "começo do ano", "primeiras semanas"))
+        any(
+            term in normalized
+            for term in (
+                "primeiro mes",
+                "primeiro mês",
+                "comeco do ano",
+                "começo do ano",
+                "primeiras semanas",
+                "arranque do ano",
+                "arranque do ano letivo",
+                "inicio do ano letivo",
+                "início do ano letivo",
+            )
+        )
         and any(
             term in normalized
-            for term in ("prazo", "prazos", "credenciais", "documentos", "deslizes", "erros", "problema", "problemas", "comprometem", "baguncam", "bagunçam")
+            for term in (
+                "prazo",
+                "prazos",
+                "credenciais",
+                "documentos",
+                "papelada",
+                "deslizes",
+                "descuidos",
+                "erros",
+                "problema",
+                "problemas",
+                "comprometem",
+                "baguncam",
+                "bagunçam",
+                "explodem",
+                "explodir",
+            )
         )
-        and any(term in normalized for term in ("credenciais", "documentos", "documentacao", "documentação", "rotina"))
+        and any(term in normalized for term in ("credenciais", "documentos", "documentacao", "documentação", "rotina", "papelada"))
     ):
         return "public_bundle.first_month_risks"
     if (
@@ -691,9 +769,46 @@ def match_public_canonical_lane(message: str) -> str | None:
     ):
         return "public_bundle.bolsas_and_processes"
     if (
-        any(term in normalized for term in ("responsaveis", "responsáveis", "familia", "família"))
-        and any(term in normalized for term in ("avaliacoes", "avaliações", "avaliacao", "avaliação"))
-        and any(term in normalized for term in ("estudo orientado", "canais digitais", "portal", "telegram", "digitais"))
+        any(
+            term in normalized
+            for term in (
+                "responsaveis",
+                "responsáveis",
+                "responsavel",
+                "responsável",
+                "familia",
+                "família",
+                "comunicacao com responsaveis",
+                "comunicação com responsáveis",
+            )
+        )
+        and any(
+            term in normalized
+            for term in (
+                "avaliacoes",
+                "avaliações",
+                "avaliacao",
+                "avaliação",
+                "agenda avaliativa",
+                "agenda de avaliacoes",
+                "agenda de avaliações",
+            )
+        )
+        and any(
+            term in normalized
+            for term in (
+                "estudo orientado",
+                "canais digitais",
+                "portal",
+                "telegram",
+                "digitais",
+                "meios digitais",
+                "meios oficiais",
+                "canais oficiais",
+                "comunicacao digital",
+                "comunicação digital",
+            )
+        )
     ):
         return "public_bundle.transversal_year"
     if (

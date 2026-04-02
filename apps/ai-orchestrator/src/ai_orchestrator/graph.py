@@ -1414,8 +1414,14 @@ def _is_public_family_new_calendar_enrollment_query(message: str) -> bool:
             'vai entrar pela primeira vez',
         }
     ) or (
-        any(_message_matches_term(lowered, term) for term in {'familia', 'família', 'responsaveis', 'responsáveis'})
-        and any(_message_matches_term(lowered, term) for term in {'entrando agora', 'chegando agora', 'inicio do ano', 'início do ano', 'primeiro bimestre'})
+        any(
+            _message_matches_term(lowered, term)
+            for term in {'familia', 'família', 'responsaveis', 'responsáveis', 'casa', 'primeiro filho'}
+        )
+        and any(
+            _message_matches_term(lowered, term)
+            for term in {'entrando agora', 'chegando agora', 'inicio do ano', 'início do ano', 'primeiro bimestre', 'comeco do ano', 'começo do ano'}
+        )
     )
 
 
@@ -1465,13 +1471,36 @@ def _is_public_first_month_risks_query(message: str) -> bool:
     lowered = _normalize_text(message)
     return any(
         _message_matches_term(lowered, term)
-        for term in {'primeiro mes', 'primeiro mês', 'comeco do ano', 'começo do ano', 'primeiras semanas'}
+        for term in {
+            'primeiro mes',
+            'primeiro mês',
+            'comeco do ano',
+            'começo do ano',
+            'primeiras semanas',
+            'arranque do ano',
+            'arranque do ano letivo',
+            'inicio do ano letivo',
+            'início do ano letivo',
+        }
     ) and any(
         _message_matches_term(lowered, term)
-        for term in {'riscos', 'esquecido', 'prazo', 'prazos', 'deslizes', 'erros', 'baguncam', 'bagunçam', 'problemas'}
+        for term in {
+            'riscos',
+            'esquecido',
+            'prazo',
+            'prazos',
+            'deslizes',
+            'descuidos',
+            'erros',
+            'baguncam',
+            'bagunçam',
+            'problemas',
+            'explodem',
+            'explodir',
+        }
     ) and any(
         _message_matches_term(lowered, term)
-        for term in {'credenciais', 'documentos', 'documentacao', 'documentação', 'rotina'}
+        for term in {'credenciais', 'documentos', 'documentacao', 'documentação', 'rotina', 'papelada'}
     )
 
 
@@ -1504,11 +1533,45 @@ def _is_public_conduct_frequency_recovery_query(message: str) -> bool:
 def _is_public_transversal_year_query(message: str) -> bool:
     lowered = _normalize_text(message)
     return (
-        any(_message_matches_term(lowered, term) for term in {'responsaveis', 'responsáveis', 'familia', 'família'})
-        and any(_message_matches_term(lowered, term) for term in {'avaliacoes', 'avaliações', 'avaliacao', 'avaliação'})
+        any(
+            _message_matches_term(lowered, term)
+            for term in {
+                'responsaveis',
+                'responsáveis',
+                'responsavel',
+                'responsável',
+                'familia',
+                'família',
+                'comunicacao com responsaveis',
+                'comunicação com responsáveis',
+            }
+        )
         and any(
             _message_matches_term(lowered, term)
-            for term in {'estudo orientado', 'canais digitais', 'portal', 'telegram', 'digitais'}
+            for term in {
+                'avaliacoes',
+                'avaliações',
+                'avaliacao',
+                'avaliação',
+                'agenda avaliativa',
+                'agenda de avaliacoes',
+                'agenda de avaliações',
+            }
+        )
+        and any(
+            _message_matches_term(lowered, term)
+            for term in {
+                'estudo orientado',
+                'canais digitais',
+                'portal',
+                'telegram',
+                'digitais',
+                'meios digitais',
+                'meios oficiais',
+                'canais oficiais',
+                'comunicacao digital',
+                'comunicação digital',
+            }
         )
     )
 

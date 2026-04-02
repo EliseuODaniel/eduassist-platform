@@ -161,7 +161,14 @@ def _extract_teacher_subject(message: str) -> str | None:
         match = re.search(pattern, normalized)
         if not match:
             continue
-        subject = re.split(r'\b(?:ou|e|mas|pela?|pelo)\b|[?!,;.]', match.group(1), maxsplit=1)[0].strip(' ?.')
+        subject = re.split(
+            r'\b(?:ou|e|mas|pela?|pelo|se|senao|senão|para)\b|[?!,;.:]',
+            match.group(1),
+            maxsplit=1,
+        )[0].strip(' ?.')
+        subject = re.sub(r'\b(?:se nao|senão|senao)\b.*$', '', subject).strip(' ?.')
+        if len(subject.split()) > 3:
+            subject = ' '.join(subject.split()[:3]).strip(' ?.')
         if subject:
             return subject
     return None
@@ -309,7 +316,11 @@ def _looks_like_passing_policy_query(message: str) -> bool:
 
 def _looks_like_calendar_week_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    return 'desta semana' in normalized and any(term in normalized for term in {'eventos', 'familias', 'responsaveis', 'responsáveis'})
+    return (
+        any(term in normalized for term in {'calendario publico', 'calendário público', 'calendario', 'calendário', 'eventos'})
+        and any(term in normalized for term in {'familias', 'famílias', 'responsaveis', 'responsáveis'})
+        and any(term in normalized for term in {'desta semana', 'esta semana', 'mais importantes', 'mais relevantes', 'importantes', 'visiveis', 'visíveis'})
+    )
 
 
 def _looks_like_first_bimester_timeline_query(message: str) -> bool:
@@ -329,7 +340,12 @@ def _looks_like_travel_planning_query(message: str) -> bool:
 
 def _looks_like_year_three_phases_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    return 'tres fases' in normalized and all(term in normalized for term in {'admiss', 'rotina', 'fechamento'})
+    return (
+        'tres fases' in normalized and all(term in normalized for term in {'admiss', 'rotina', 'fechamento'})
+    ) or (
+        all(term in normalized for term in {'admiss', 'rotina academica', 'fechamento'})
+        and any(term in normalized for term in {'distribui', 'distribui entre', 'olhando so a base publica', 'olhando apenas a base publica'})
+    )
 
 
 def _looks_like_enrollment_documents_query(message: str) -> bool:

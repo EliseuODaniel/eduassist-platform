@@ -195,7 +195,19 @@ def _contains_forbidden_keywords(answer_text: str, forbidden_keywords: list[str]
     if not forbidden_keywords:
         return False
     normalized_answer = _normalize_match_text(answer_text)
-    return any(_normalize_match_text(keyword) in normalized_answer for keyword in forbidden_keywords)
+    raw_answer = str(answer_text or '').casefold()
+    for keyword in forbidden_keywords:
+        raw_keyword = str(keyword or '')
+        if not raw_keyword.strip():
+            continue
+        normalized_keyword = _normalize_match_text(raw_keyword)
+        if normalized_keyword:
+            if normalized_keyword in normalized_answer:
+                return True
+            continue
+        if raw_keyword.casefold() in raw_answer:
+            return True
+    return False
 
 
 def _detect_error_types(

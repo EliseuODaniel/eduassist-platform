@@ -5,6 +5,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_PATHS = (
+    REPO_ROOT,
     REPO_ROOT / 'apps/api-core/src',
     REPO_ROOT / 'apps/ai-orchestrator/src',
     REPO_ROOT / 'apps/ai-orchestrator-specialist/src',

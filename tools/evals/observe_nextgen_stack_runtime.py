@@ -14,6 +14,9 @@ from urllib import error, request
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+OBSERVABILITY_SRC = REPO_ROOT / 'packages/observability/python/src'
+if str(OBSERVABILITY_SRC) not in sys.path:
+    sys.path.insert(0, str(OBSERVABILITY_SRC))
 
 from tools.evals.eval_quality_utils import (  # noqa: E402
     _contains_expected_keywords,

@@ -324,7 +324,7 @@ def _is_protected_admin_finance_combo_request(request: Any) -> bool:
     normalized = _normalize_shadow_message(str(getattr(request, 'message', '') or ''))
     asks_admin = any(
         _contains_phrase(normalized, term)
-        for term in ('documentacao', 'documentos', 'documental', 'documentais', 'cadastro', 'regular')
+        for term in ('documentacao', 'documentos', 'documental', 'documentais', 'cadastro', 'regular', 'administrativa', 'administrativo', 'parte administrativa')
     )
     asks_finance = any(
         _contains_phrase(normalized, term)

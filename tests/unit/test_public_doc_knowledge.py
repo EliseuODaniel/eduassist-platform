@@ -52,6 +52,53 @@ def test_calendar_week_lane_matches() -> None:
     assert 'semana' in answer.lower() or 'familias' in answer.lower()
 
 
+def test_calendar_week_lane_matches_generic_family_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Dentro do calendario publico, quais eventos parecem mais importantes para familias e responsaveis?'
+    )
+    assert lane == 'public_bundle.calendar_week'
+
+
+def test_first_month_risks_lane_matches_arranque_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'No arranque do ano letivo, que descuidos mais costumam explodir entre credenciais, papelada e rotina da casa?'
+    )
+    assert lane == 'public_bundle.first_month_risks'
+
+
+def test_transversal_year_lane_matches_agenda_avaliativa_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Como os materiais publicos mostram a relacao entre agenda avaliativa, comunicacao com responsaveis, estudo orientado e meios digitais durante o ano?'
+    )
+    assert lane == 'public_bundle.transversal_year'
+
+
+def test_family_new_bundle_matches_house_entering_now_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Para uma casa que esta entrando no Colegio Horizonte agora, como matricula, inicio das aulas e avaliacoes se relacionam no comeco do ano?'
+    )
+    assert lane == 'public_bundle.family_new_calendar_assessment_enrollment'
+    answer = compose_public_canonical_lane_answer(lane, profile=_sample_profile())
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'matricula' in lowered
+    assert 'calendario' in lowered
+    assert 'avaliacoes' in lowered
+
+
+def test_year_three_phases_matches_distribution_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Olhando so a base publica, como o ano se distribui entre admissao, rotina academica e fechamento?'
+    )
+    assert lane == 'public_bundle.year_three_phases'
+    answer = compose_public_canonical_lane_answer(lane, profile=_sample_profile())
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'admiss' in lowered
+    assert 'rotina academica' in lowered
+    assert 'fechamento' in lowered
+
+
 def test_academic_policy_overview_lane_matches() -> None:
     lane = match_public_canonical_lane('Qual a politica de avaliacao e recuperacao da escola?')
     assert lane == 'public_bundle.academic_policy_overview'
