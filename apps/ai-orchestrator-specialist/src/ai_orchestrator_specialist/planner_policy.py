@@ -4,22 +4,49 @@ import json
 from time import monotonic
 from typing import Any
 
-from agents import Agent, ModelSettings, Runner
-
 from .execution_budget import derive_execution_budget
+from .llm_runtime import agent_model_for_role, run_config
 from .models import ExecutionBudget, RetrievalPlannerAdvice, SupervisorPlan
+from .planner_support import (
+    PlannerSupportDeps,
+    normalize_plan_with_retrieval_advice,
+    run_planner as _run_planner_module,
+    run_retrieval_planner as _run_retrieval_planner_module,
+)
+
+
+def _planner_support_deps(ctx: Any) -> PlannerSupportDeps:
+    from .runtime import (
+        _effective_conversation_id,
+        _effective_multi_intent_domains,
+        _normalize_string_list,
+        _normalize_text,
+        _preview_classification_dict,
+        _school_name,
+        _stringify_payload_value,
+    )
+
+    return PlannerSupportDeps(
+        normalize_text=_normalize_text,
+        stringify_payload_value=_stringify_payload_value,
+        normalize_string_list=_normalize_string_list,
+        school_name=_school_name,
+        preview_classification_dict=_preview_classification_dict,
+        effective_multi_intent_domains=_effective_multi_intent_domains,
+        run_config=run_config,
+        effective_conversation_id=_effective_conversation_id,
+        agent_model_for_role=agent_model_for_role,
+    )
 
 
 def deterministic_plan_from_retrieval_advice(ctx: Any) -> SupervisorPlan | None:
-    from .runtime import _normalize_plan_with_retrieval_advice
-
     advice = ctx.retrieval_advice
     if advice is None:
         return None
     specialists = [item for item in advice.recommended_specialists if item in ctx.specialist_registry]
     if not specialists and advice.retrieval_strategy not in {"clarify", "deny"}:
         return None
-    normalized_plan = _normalize_plan_with_retrieval_advice(
+    normalized_plan = normalize_plan_with_retrieval_advice(
         ctx,
         SupervisorPlan(
             request_kind="multi_domain" if advice.secondary_domains else "simple",
@@ -35,6 +62,8 @@ def deterministic_plan_from_retrieval_advice(ctx: Any) -> SupervisorPlan | None:
             confidence=advice.confidence,
         ),
         advice,
+        deps=_planner_support_deps(ctx),
+        execution_specialists=set(ctx.specialist_registry),
     )
     if normalized_plan.should_deny or normalized_plan.requires_clarification:
         return normalized_plan
@@ -56,116 +85,30 @@ def deterministic_plan_from_retrieval_advice(ctx: Any) -> SupervisorPlan | None:
 
 
 async def run_retrieval_planner(ctx: Any) -> RetrievalPlannerAdvice:
-    from .runtime import (
-        _agent_model_for_role,
-        _effective_conversation_id,
-        _fallback_specialists_for_domain,
-        _normalize_retrieval_advice,
-        _preview_classification_dict,
-        _record_stage_timing,
-        _retrieval_planner_instructions,
-        _run_config,
-        logger,
-    )
+    from .runtime import _record_stage_timing, logger
 
     started = monotonic()
-    agent = Agent(
-        name="Retrieval Planner Specialist",
-        model=_agent_model_for_role(ctx.settings, role="planner"),
-        model_settings=ModelSettings(temperature=0.0, verbosity="low"),
-        instructions=_retrieval_planner_instructions,
-        output_type=RetrievalPlannerAdvice,
+    normalized = await _run_retrieval_planner_module(
+        ctx,
+        deps=_planner_support_deps(ctx),
+        execution_specialists=set(ctx.specialist_registry),
+        logger=logger,
     )
-    try:
-        result = await Runner.run(
-            agent,
-            f"Mensagem do usuario: {ctx.request.message}",
-            context=ctx,
-            max_turns=3,
-            run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
-        )
-        advice = result.final_output_as(RetrievalPlannerAdvice, raise_if_incorrect_type=True)
-    except Exception:
-        logger.exception("specialist_supervisor_retrieval_planner_failed")
-        preview = ctx.preview_hint or {}
-        classification = _preview_classification_dict(ctx.preview_hint)
-        domain = str(classification.get("domain") or "institution").strip().lower() or "institution"
-        retrieval_backend = str(preview.get("retrieval_backend") or "none").strip().lower()
-        specialists, strategy = _fallback_specialists_for_domain(domain, retrieval_backend)
-        advice = RetrievalPlannerAdvice(
-            normalized_query=ctx.request.message.strip(),
-            primary_domain=domain,
-            retrieval_strategy=strategy,
-            recommended_specialists=specialists,
-            preferred_category=None,
-            evidence_queries=[ctx.request.message.strip()],
-            requires_grounding=strategy != "direct_answer",
-            rationale="retrieval_planner_fallback_from_preview_hint",
-            confidence=0.35,
-        )
-    normalized = _normalize_retrieval_advice(ctx, advice)
     ctx.retrieval_advice = normalized
     _record_stage_timing(ctx, "retrieval_planner", (monotonic() - started) * 1000.0)
     return normalized
 
 
 async def run_planner(ctx: Any) -> SupervisorPlan:
-    from .runtime import (
-        _agent_model_for_role,
-        _effective_conversation_id,
-        _fallback_specialists_for_domain,
-        _normalize_plan_with_retrieval_advice,
-        _planner_instructions,
-        _preview_classification_dict,
-        _record_stage_timing,
-        _run_config,
-        logger,
-    )
+    from .runtime import _record_stage_timing, logger
 
     started = monotonic()
-    agent = Agent(
-        name="Retrieval Planner",
-        model=_agent_model_for_role(ctx.settings, role="planner"),
-        model_settings=ModelSettings(temperature=0.0, verbosity="low"),
-        instructions=_planner_instructions,
-        output_type=SupervisorPlan,
+    normalized = await _run_planner_module(
+        ctx,
+        deps=_planner_support_deps(ctx),
+        execution_specialists=set(ctx.specialist_registry),
+        logger=logger,
     )
-    try:
-        result = await Runner.run(
-            agent,
-            f"Mensagem do usuario: {ctx.request.message}",
-            context=ctx,
-            max_turns=3,
-            run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
-        )
-        plan = result.final_output_as(SupervisorPlan, raise_if_incorrect_type=True)
-    except Exception:
-        logger.exception("specialist_supervisor_planner_failed")
-        advice = ctx.retrieval_advice
-        if advice is not None:
-            specialists = [item for item in advice.recommended_specialists if item in ctx.specialist_registry]
-            strategy = advice.retrieval_strategy
-            domain = advice.primary_domain
-        else:
-            preview = ctx.preview_hint or {}
-            classification = _preview_classification_dict(ctx.preview_hint)
-            domain = str(classification.get("domain") or "institution").strip().lower() or "institution"
-            retrieval_backend = str(preview.get("retrieval_backend") or "none").strip().lower()
-            specialists, strategy = _fallback_specialists_for_domain(domain, retrieval_backend)
-        plan = SupervisorPlan(
-            request_kind="multi_domain" if advice is not None and advice.secondary_domains else "simple",
-            primary_domain=domain,
-            secondary_domains=advice.secondary_domains if advice is not None else [],
-            specialists=specialists,
-            retrieval_strategy=strategy,
-            requires_clarification=bool(advice.requires_clarification) if advice is not None else False,
-            clarification_question=advice.clarification_question if advice is not None else None,
-            should_deny=bool(advice.should_deny) if advice is not None else False,
-            denial_reason=advice.denial_reason if advice is not None else None,
-            reasoning_summary=advice.rationale if advice is not None and advice.rationale else "planner_fallback_from_preview_hint",
-            confidence=advice.confidence if advice is not None else 0.35,
-        )
-    normalized = _normalize_plan_with_retrieval_advice(ctx, plan, ctx.retrieval_advice)
     _record_stage_timing(ctx, "planner", (monotonic() - started) * 1000.0)
     return normalized
 

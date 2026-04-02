@@ -7,8 +7,34 @@ from agents import Agent, ModelSettings, Runner
 
 from .evidence_kernel import build_manager_prompt
 from .execution_budget import should_run_judge, should_run_repair, should_use_manager
+from .llm_runtime import agent_model_for_role, run_config
 from .models import ExecutionBudget, JudgeVerdict, ManagerDraft, RepairDraft, SpecialistResult, SupervisorPlan
+from .planner_support import PlannerSupportDeps, parse_result_model
 from .session_memory import build_supervisor_session
+
+
+def _planner_support_deps() -> PlannerSupportDeps:
+    from .runtime import (
+        _effective_conversation_id,
+        _effective_multi_intent_domains,
+        _normalize_string_list,
+        _normalize_text,
+        _preview_classification_dict,
+        _school_name,
+        _stringify_payload_value,
+    )
+
+    return PlannerSupportDeps(
+        normalize_text=_normalize_text,
+        stringify_payload_value=_stringify_payload_value,
+        normalize_string_list=_normalize_string_list,
+        school_name=_school_name,
+        preview_classification_dict=_preview_classification_dict,
+        effective_multi_intent_domains=_effective_multi_intent_domains,
+        run_config=run_config,
+        effective_conversation_id=_effective_conversation_id,
+        agent_model_for_role=agent_model_for_role,
+    )
 
 
 def _build_manager_agent(*, settings: Any, model: Any, plan: SupervisorPlan, specialist_tools: list[Any]) -> Agent[Any]:
@@ -79,15 +105,7 @@ async def run_manager(
     specialists: dict[str, Agent[Any]],
     precomputed_specialist_results: list[SpecialistResult] | None = None,
 ) -> ManagerDraft:
-    from .runtime import (
-        SupervisorHooks,
-        _agent_model_for_role,
-        _effective_conversation_id,
-        _parse_result_model,
-        _record_stage_timing,
-        _run_config,
-        logger,
-    )
+    from .runtime import SupervisorHooks, _effective_conversation_id, _record_stage_timing, logger
 
     started = monotonic()
     specialist_tools = []
@@ -101,7 +119,7 @@ async def run_manager(
         )
     manager = _build_manager_agent(
         settings=ctx.settings,
-        model=_agent_model_for_role(ctx.settings, role="manager"),
+        model=agent_model_for_role(ctx.settings, role="manager"),
         plan=plan,
         specialist_tools=specialist_tools,
     )
@@ -124,7 +142,7 @@ async def run_manager(
             max_turns=budget.manager_max_turns,
             hooks=SupervisorHooks(),
             session=session,
-            run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
+            run_config=run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
         )
     except Exception as exc:
         if session is None:
@@ -137,9 +155,9 @@ async def run_manager(
             max_turns=budget.manager_max_turns,
             hooks=SupervisorHooks(),
             session=None,
-            run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
+            run_config=run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
         )
-    draft = _parse_result_model(result, ManagerDraft)
+    draft = parse_result_model(result, ManagerDraft, deps=_planner_support_deps())
     _record_stage_timing(ctx, "manager", (monotonic() - started) * 1000.0)
     return draft
 
@@ -201,10 +219,8 @@ def needs_manager(
 
 def _specialist_output_extractor() -> Any:
     async def _extract(result: Any) -> str:
-        from .runtime import _parse_result_model
-
         try:
-            payload = _parse_result_model(result, SpecialistResult)
+            payload = parse_result_model(result, SpecialistResult, deps=_planner_support_deps())
             return payload.model_dump_json(ensure_ascii=False)
         except Exception:
             final_output = getattr(result, "final_output", "")

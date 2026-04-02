@@ -7,7 +7,33 @@ from typing import Any
 from agents import Agent, Runner
 
 from .evidence_kernel import build_specialist_execution_prompt
+from .llm_runtime import agent_model_for_role, run_config
 from .models import ExecutionBudget, SpecialistResult, SupervisorPlan
+from .planner_support import PlannerSupportDeps, parse_result_model
+
+
+def _planner_support_deps() -> PlannerSupportDeps:
+    from .runtime import (
+        _effective_conversation_id,
+        _effective_multi_intent_domains,
+        _normalize_string_list,
+        _normalize_text,
+        _preview_classification_dict,
+        _school_name,
+        _stringify_payload_value,
+    )
+
+    return PlannerSupportDeps(
+        normalize_text=_normalize_text,
+        stringify_payload_value=_stringify_payload_value,
+        normalize_string_list=_normalize_string_list,
+        school_name=_school_name,
+        preview_classification_dict=_preview_classification_dict,
+        effective_multi_intent_domains=_effective_multi_intent_domains,
+        run_config=run_config,
+        effective_conversation_id=_effective_conversation_id,
+        agent_model_for_role=agent_model_for_role,
+    )
 
 
 def build_execution_specialists(settings: Any, *, model: Any) -> dict[str, Agent[Any]]:
@@ -36,13 +62,7 @@ async def run_specialist_agent(
     budget: ExecutionBudget,
     specialists: dict[str, Agent[Any]],
 ) -> SpecialistResult | None:
-    from .runtime import (
-        SupervisorHooks,
-        _effective_conversation_id,
-        _parse_result_model,
-        _record_stage_timing,
-        _run_config,
-    )
+    from .runtime import SupervisorHooks, _effective_conversation_id, _record_stage_timing
 
     agent = specialists.get(specialist_id)
     if agent is None:
@@ -54,9 +74,9 @@ async def run_specialist_agent(
         context=ctx,
         max_turns=budget.specialist_max_turns,
         hooks=SupervisorHooks(),
-        run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
+        run_config=run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
     )
-    specialist_result = _parse_result_model(result, SpecialistResult)
+    specialist_result = parse_result_model(result, SpecialistResult, deps=_planner_support_deps())
     if specialist_result.specialist_id != specialist_id:
         specialist_result = specialist_result.model_copy(update={"specialist_id": specialist_id})
     _record_stage_timing(ctx, f"specialist:{specialist_id}", (monotonic() - started) * 1000.0)
@@ -70,7 +90,7 @@ async def execute_planned_specialists(
     budget: ExecutionBudget,
     specialists: dict[str, Agent[Any]] | None = None,
 ) -> list[SpecialistResult]:
-    from .runtime import _agent_model_for_role, _record_stage_timing, _sorted_specialist_ids, logger
+    from .runtime import _record_stage_timing, _sorted_specialist_ids, logger
 
     started = monotonic()
     specialist_ids = _sorted_specialist_ids(ctx, list(plan.specialists))
@@ -78,7 +98,7 @@ async def execute_planned_specialists(
         return []
     selected_ids = specialist_ids[: budget.max_specialists]
     if specialists is None:
-        model = _agent_model_for_role(ctx.settings, role="specialist")
+        model = agent_model_for_role(ctx.settings, role="specialist")
         specialists = build_execution_specialists(ctx.settings, model=model)
     normalized: dict[str, SpecialistResult] = {}
     batch: list[str] = []

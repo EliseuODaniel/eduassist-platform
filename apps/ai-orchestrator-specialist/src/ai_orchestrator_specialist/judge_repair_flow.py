@@ -6,10 +6,36 @@ from typing import TYPE_CHECKING
 
 from agents import Runner
 
+from .llm_runtime import agent_model_for_role, run_config
 from .models import JudgeVerdict, ManagerDraft, RepairDraft, SpecialistResult, SupervisorPlan
+from .planner_support import PlannerSupportDeps, parse_result_model
 
 if TYPE_CHECKING:
     from .runtime import SupervisorRunContext
+
+
+def _planner_support_deps() -> PlannerSupportDeps:
+    from .runtime import (
+        _effective_conversation_id,
+        _effective_multi_intent_domains,
+        _normalize_string_list,
+        _normalize_text,
+        _preview_classification_dict,
+        _school_name,
+        _stringify_payload_value,
+    )
+
+    return PlannerSupportDeps(
+        normalize_text=_normalize_text,
+        stringify_payload_value=_stringify_payload_value,
+        normalize_string_list=_normalize_string_list,
+        school_name=_school_name,
+        preview_classification_dict=_preview_classification_dict,
+        effective_multi_intent_domains=_effective_multi_intent_domains,
+        run_config=run_config,
+        effective_conversation_id=_effective_conversation_id,
+        agent_model_for_role=agent_model_for_role,
+    )
 
 
 async def run_judge(
@@ -19,10 +45,10 @@ async def run_judge(
     draft: ManagerDraft,
     specialist_results: list[SpecialistResult],
 ) -> JudgeVerdict:
-    from .runtime import _agent_model_for_role, _build_judge_agent, _effective_conversation_id, _record_stage_timing, _run_config
+    from .runtime import _build_judge_agent, _effective_conversation_id, _record_stage_timing
 
     started = monotonic()
-    judge = _build_judge_agent(_agent_model_for_role(ctx.settings, role="judge"))
+    judge = _build_judge_agent(agent_model_for_role(ctx.settings, role="judge"))
     prompt = json.dumps(
         {
             "user_message": ctx.request.message,
@@ -39,7 +65,7 @@ async def run_judge(
         prompt,
         context=ctx,
         max_turns=4,
-        run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
+        run_config=run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
     )
     verdict = result.final_output_as(JudgeVerdict, raise_if_incorrect_type=True)
     _record_stage_timing(ctx, "judge", (monotonic() - started) * 1000.0)
@@ -54,7 +80,7 @@ async def run_repair_loop(
     judge: JudgeVerdict,
     specialist_results: list[SpecialistResult],
 ) -> tuple[ManagerDraft, JudgeVerdict, RepairDraft] | None:
-    from .runtime import _agent_model_for_role, _build_repair_agent, _effective_conversation_id, _parse_result_model, _record_stage_timing, _run_config
+    from .runtime import _build_repair_agent, _effective_conversation_id, _record_stage_timing
 
     if not specialist_results:
         return None
@@ -62,7 +88,7 @@ async def run_repair_loop(
     if not repair_needed or judge.needs_clarification:
         return None
     started = monotonic()
-    repair_agent = _build_repair_agent(ctx.settings, _agent_model_for_role(ctx.settings, role="repair"))
+    repair_agent = _build_repair_agent(ctx.settings, agent_model_for_role(ctx.settings, role="repair"))
     prompt = json.dumps(
         {
             "user_message": ctx.request.message,
@@ -79,9 +105,9 @@ async def run_repair_loop(
         prompt,
         context=ctx,
         max_turns=4,
-        run_config=_run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
+        run_config=run_config(ctx.settings, conversation_id=_effective_conversation_id(ctx.request)),
     )
-    repair = _parse_result_model(result, RepairDraft)
+    repair = parse_result_model(result, RepairDraft, deps=_planner_support_deps())
     repaired_draft = ManagerDraft(
         answer_text=repair.answer_text,
         answer_summary=repair.answer_summary,

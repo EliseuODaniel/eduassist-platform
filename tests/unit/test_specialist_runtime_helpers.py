@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from ai_orchestrator_specialist.public_query_patterns import (
     _extract_teacher_subject,
     _looks_like_admin_finance_combo_query,
@@ -9,6 +11,10 @@ from ai_orchestrator_specialist.public_query_patterns import (
 from ai_orchestrator_specialist.restricted_doc_matching import (
     _internal_doc_hit_score,
     _looks_like_internal_document_query,
+)
+from ai_orchestrator_specialist.support_workflow_helpers import (
+    _detect_support_handoff_queue,
+    _looks_like_human_handoff_request,
 )
 
 
@@ -69,3 +75,16 @@ def test_internal_document_query_matches_orientacao_interna_prompt() -> None:
     assert _looks_like_internal_document_query(
         'Existe alguma orientacao interna sobre excursao internacional com hospedagem para o ensino medio?'
     )
+
+
+def test_human_handoff_request_detects_explicit_secretaria_request() -> None:
+    assert _looks_like_human_handoff_request('Quero falar com a secretaria agora.')
+
+
+def test_detect_support_handoff_queue_routes_financial_message() -> None:
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(message='Preciso falar sobre boletos e mensalidades.'),
+        specialist_registry={},
+        operational_memory=None,
+    )
+    assert _detect_support_handoff_queue(ctx) == 'financeiro'
