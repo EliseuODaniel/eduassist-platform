@@ -387,6 +387,70 @@ def _citation_from_retrieval_hit(hit: dict[str, Any]) -> MessageResponseCitation
     )
 
 
+def _select_public_graph_rag_fallback_hits(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    selected: list[dict[str, Any]] = []
+    seen_titles: set[str] = set()
+    for hit in hits:
+        if not isinstance(hit, dict):
+            continue
+        title = str(hit.get("document_title") or "").strip()
+        excerpt = str(hit.get("text_excerpt") or hit.get("contextual_summary") or "").strip()
+        if not title or not excerpt or title in seen_titles:
+            continue
+        selected.append(hit)
+        seen_titles.add(title)
+        if len(selected) >= 4:
+            break
+    return selected
+
+
+def _compose_public_graph_rag_fallback_answer(query: str, hits: list[dict[str, Any]]) -> str:
+    normalized = _normalize_text(query)
+    lines = [
+        "Nao fechei a sintese transversal completa em GraphRAG a tempo, mas os documentos publicos mais relevantes apontam um encadeamento claro entre prazos, regras, rotinas e canais digitais."
+    ]
+
+    if any(term in normalized for term in ("portal", "credenciais", "canais digitais", "comunicacao", "comunicação")):
+        lines.append(
+            "Calendario, orientacoes complementares e comunicacao com as familias funcionam como um circuito unico: quando a escola ajusta um prazo ou uma rotina, ela tende a atualizar o portal e reforcar isso pelos canais oficiais."
+        )
+    if any(term in normalized for term in ("avaliac", "recuperac", "prova", "simulado")):
+        lines.append(
+            "Isso repercute em avaliacoes, recuperacoes e justificativas: perder um aviso ou uma regra costuma afetar segunda chamada, acompanhamento pedagogico e organizacao do estudante."
+        )
+    if any(term in normalized for term in ("biblioteca", "laboratorio", "laboratorios", "recursos", "espacos de estudo")):
+        lines.append(
+            "Biblioteca, laboratorios e espacos de estudo entram como apoio operacional: acesso, uso correto e comunicados dependem de regulamentos e do acompanhamento digital ao longo do ano."
+        )
+
+    lines.append("Os documentos que mais sustentam essa relacao foram:")
+    for hit in hits:
+        title = str(hit.get("document_title") or "Documento publico").strip()
+        excerpt = _safe_excerpt(str(hit.get("text_excerpt") or hit.get("contextual_summary") or "").strip(), limit=220)
+        if excerpt:
+            lines.append(f"- {title}: {excerpt}")
+
+    lines.append(
+        "Na pratica, o risco para a familia e tratar cada documento como isolado: um atraso em credenciais, uma leitura incompleta do calendario ou um regulamento ignorado tende a repercutir em comunicados, prazos, avaliacoes, autorizacoes e acesso a servicos de apoio."
+    )
+    return "\n".join(lines)
+
+
+def _supports_from_public_graph_rag_fallback_hits(hits: list[dict[str, Any]]) -> list[MessageEvidenceSupport]:
+    supports: list[MessageEvidenceSupport] = []
+    for hit in hits:
+        title = str(hit.get("document_title") or "Documento publico").strip()
+        excerpt = _safe_excerpt(str(hit.get("text_excerpt") or hit.get("contextual_summary") or "").strip(), limit=180)
+        supports.append(
+            MessageEvidenceSupport(
+                kind="document",
+                label=title,
+                detail=excerpt or "evidencia publica relevante",
+            )
+        )
+    return supports
+
+
 def _internal_doc_domain_hint(message: str) -> str:
     normalized = _normalize_text(message)
     if any(term in normalized for term in ("financeiro", "quitacao", "quitação", "negociacao", "negociação", "pagamento")):
@@ -4632,6 +4696,43 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
                 suggested_replies=_default_suggested_replies("institution"),
                 graph_path=["specialist_supervisor", "tool_first", "graph_rag"],
                 reason="specialist_supervisor_tool_first:graph_rag",
+            )
+        retrieval_payload = await _orchestrator_retrieval_search(
+            ctx,
+            query=ctx.request.message,
+            visibility="public",
+            category=None,
+            top_k=6,
+        )
+        fallback_hits = _select_public_graph_rag_fallback_hits(
+            retrieval_payload.get("hits") if isinstance(retrieval_payload, dict) and isinstance(retrieval_payload.get("hits"), list) else []
+        )
+        if fallback_hits:
+            answer_text = _compose_public_graph_rag_fallback_answer(ctx.request.message, fallback_hits)
+            citations = [citation for hit in fallback_hits if (citation := _citation_from_retrieval_hit(hit)) is not None]
+            supports = _supports_from_public_graph_rag_fallback_hits(fallback_hits)
+            return SupervisorAnswerPayload(
+                message_text=answer_text,
+                mode="hybrid_retrieval",
+                classification=MessageIntentClassification(
+                    domain="institution",
+                    access_tier="public",
+                    confidence=0.9,
+                    reason="specialist_supervisor_tool_first:graph_rag_fallback_hybrid",
+                ),
+                retrieval_backend="qdrant_hybrid",
+                citations=citations,
+                evidence_pack=MessageEvidencePack(
+                    strategy="hybrid_retrieval",
+                    summary="GraphRAG compartilhado nao fechou no budget sincrono; resposta grounded por retrieval publico.",
+                    source_count=len(citations),
+                    support_count=len(supports),
+                    supports=supports,
+                ),
+                suggested_replies=_default_suggested_replies("institution"),
+                graph_path=["specialist_supervisor", "tool_first", "graph_rag_fallback_hybrid"],
+                risk_flags=["graphrag_unavailable"],
+                reason="specialist_supervisor_tool_first:graph_rag_fallback_hybrid",
             )
 
     if (

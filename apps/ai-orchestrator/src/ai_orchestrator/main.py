@@ -200,6 +200,10 @@ class RuntimeTargetedStackUpdateRequest(BaseModel):
 
 class GraphRagQueryRequest(BaseModel):
     query: str = Field(min_length=3, max_length=4000)
+    preferred_method: str | None = Field(default=None)
+    max_seconds: int | None = Field(default=None, ge=3, le=600)
+    fallback_enabled: bool = True
+    timeout_profile: str | None = Field(default=None)
 
 
 def _normalized_hitl_slices(values: list[str] | None, *, fallback: str) -> list[str]:
@@ -1220,7 +1224,14 @@ async def graph_rag_query(
 ) -> dict[str, object]:
     _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
-    result = await run_graph_rag_query(settings=settings, query=request.query)
+    result = await run_graph_rag_query(
+        settings=settings,
+        query=request.query,
+        preferred_method=request.preferred_method,
+        max_seconds=request.max_seconds,
+        fallback_enabled=request.fallback_enabled,
+        timeout_profile=request.timeout_profile,
+    )
     if result is None:
         return {
             'service': 'ai-orchestrator',

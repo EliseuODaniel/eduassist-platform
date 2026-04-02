@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 from pathlib import Path
+from time import monotonic
 from typing import Any
 
 
@@ -48,7 +49,14 @@ def select_graph_rag_method(message: str) -> str:
     return 'local'
 
 
-def _graph_rag_method_timeouts() -> dict[str, int]:
+def _graph_rag_method_timeouts(timeout_profile: str | None = None) -> dict[str, int]:
+    profile = str(timeout_profile or '').strip().lower()
+    if profile == 'async':
+        return {
+            'local': 180,
+            'global': 300,
+            'drift': 420,
+        }
     return {
         'local': 50,
         'global': 90,
@@ -79,12 +87,17 @@ async def run_graph_rag_query(
     *,
     settings: Any,
     query: str,
+    preferred_method: str | None = None,
+    max_seconds: int | None = None,
+    fallback_enabled: bool = True,
+    timeout_profile: str | None = None,
 ) -> dict[str, str] | None:
     workspace = Path(settings.graph_rag_workspace)
     if not graph_rag_workspace_ready(settings.graph_rag_workspace):
         return None
 
-    primary_method = select_graph_rag_method(query)
+    requested_method = str(preferred_method or "").strip().lower()
+    primary_method = requested_method if requested_method in {"local", "global", "drift"} else select_graph_rag_method(query)
     env = {
         **os.environ,
         'GRAPHRAG_LOCAL_CHAT_API_BASE': settings.graph_rag_local_chat_api_base,
@@ -94,9 +107,17 @@ async def run_graph_rag_query(
     }
 
     attempted_methods: list[str] = []
-    timeouts = _graph_rag_method_timeouts()
-    for method in _graph_rag_method_attempts(primary_method):
+    timeouts = _graph_rag_method_timeouts(timeout_profile)
+    attempt_methods = _graph_rag_method_attempts(primary_method) if fallback_enabled else (primary_method,)
+    started_at = monotonic()
+    for method in attempt_methods:
         attempted_methods.append(method)
+        method_timeout = timeouts.get(method, 60)
+        if max_seconds is not None:
+            remaining_budget = max_seconds - int(monotonic() - started_at)
+            if remaining_budget <= 0:
+                break
+            method_timeout = min(method_timeout, max(remaining_budget, 1))
         command = [
             'uv',
             'run',
@@ -120,7 +141,7 @@ async def run_graph_rag_query(
                 env=env,
                 text=True,
                 capture_output=True,
-                timeout=timeouts.get(method, 60),
+                timeout=method_timeout,
                 check=False,
             )
         except Exception:

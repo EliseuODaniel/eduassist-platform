@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     judge_model: str | None = None
     repair_model: str | None = None
     guardrail_model: str | None = None
+    graph_rag_sync_timeout_seconds: float = 12.0
+    graph_rag_sync_method: str = "local"
+    graph_rag_sync_fallback_enabled: bool = False
     database_url: str = "sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db"
     agent_memory_url: str = "sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db"
     agent_memory_dir: str | None = None

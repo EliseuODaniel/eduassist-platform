@@ -62,7 +62,7 @@ def _looks_like_process_compare_query(message: str) -> bool:
 
 
 def _looks_like_public_graph_rag_query(message: str) -> bool:
-    return any(
+    if any(
         detector(message)
         for detector in (
             _looks_like_permanence_family_query,
@@ -70,7 +70,43 @@ def _looks_like_public_graph_rag_query(message: str) -> bool:
             _looks_like_first_month_risks_query,
             _looks_like_process_compare_query,
         )
-    )
+    ):
+        return True
+
+    normalized = _normalize_text(message)
+    relational_terms = {
+        "mapa de dependencias",
+        "dependencias",
+        "relações indiretas",
+        "relacoes indiretas",
+        "se influenciam",
+        "mostrando como",
+        "repercutir",
+        "repercute",
+        "ao longo do ano",
+        "transversal",
+        "conecte",
+    }
+    topic_terms = {
+        "calendario",
+        "avaliacao",
+        "avaliacoes",
+        "recuperacao",
+        "portal",
+        "credenciais",
+        "autorizacoes",
+        "biblioteca",
+        "laboratorios",
+        "laboratorio",
+        "comunicacao",
+        "responsaveis",
+        "rotinas operacionais",
+        "canais digitais",
+        "regulamentos",
+        "politicas",
+    }
+    topic_count = sum(1 for term in topic_terms if term in normalized)
+    return topic_count >= 3 and any(term in normalized for term in relational_terms)
 
 
 def _institution_preflight_answer(

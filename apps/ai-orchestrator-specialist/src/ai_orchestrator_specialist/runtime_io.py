@@ -212,15 +212,23 @@ async def orchestrator_retrieval_search(
 
 
 async def orchestrator_graph_rag_query(ctx: Any, *, query: str) -> dict[str, Any] | None:
+    timeout_seconds = float(getattr(ctx.settings, "graph_rag_sync_timeout_seconds", 12.0) or 12.0)
+    preferred_method = str(getattr(ctx.settings, "graph_rag_sync_method", "local") or "local").strip().lower()
+    fallback_enabled = bool(getattr(ctx.settings, "graph_rag_sync_fallback_enabled", False))
     try:
         response = await ctx.http_client.post(
             f"{ctx.settings.orchestrator_url.rstrip('/')}/v1/internal/graphrag/query",
-            timeout=httpx.Timeout(8.0, connect=1.0),
+            timeout=httpx.Timeout(timeout_seconds + 2.0, connect=1.0),
             headers={
                 "X-Internal-Api-Token": ctx.settings.internal_api_token,
                 "Content-Type": "application/json",
             },
-            json={"query": query},
+            json={
+                "query": query,
+                "preferred_method": preferred_method if preferred_method in {"local", "global", "drift"} else None,
+                "max_seconds": max(3, int(round(timeout_seconds))),
+                "fallback_enabled": fallback_enabled,
+            },
         )
         response.raise_for_status()
         body = response.json()

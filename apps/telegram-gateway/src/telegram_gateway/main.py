@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     api_core_url: str = 'http://api-core:8000'
     ai_orchestrator_url: str = 'http://ai-orchestrator:8000'
     ai_orchestrator_timeout_seconds: float = 45.0
+    graph_rag_async_timeout_seconds: float = 480.0
+    graph_rag_async_max_seconds: int = 420
     internal_api_token: str = 'dev-internal-token'
     telegram_api_base_url: str = 'https://api.telegram.org'
 
@@ -152,6 +154,22 @@ def _extract_link_code(text: str) -> str | None:
     if text.startswith('/link '):
         return text.split(' ', 1)[1].strip()
     return None
+
+
+def _extract_explicit_graphrag_request(text: str) -> tuple[str | None, str | None]:
+    stripped = text.strip()
+    command_prefixes = (
+        ('/graphrag_global', 'global'),
+        ('/graphrag_local', 'local'),
+        ('/graphrag_drift', 'drift'),
+        ('/graphrag', None),
+    )
+    for prefix, method in command_prefixes:
+        if stripped == prefix:
+            return '', method
+        if stripped.startswith(f'{prefix} '):
+            return stripped[len(prefix):].strip(), method
+    return None, None
 
 
 def _consume_telegram_update_id(update_id: int | None) -> bool:
@@ -401,8 +419,118 @@ def _build_user_context(actor: dict[str, object] | None) -> dict[str, object]:
 def _default_help_message() -> str:
     return (
         'Oi. Sou o EduAssist do Colegio Horizonte. '
-        'Pode me dizer o assunto do jeito que for mais natural, como matricula, visita, financeiro, notas, secretaria ou direcao.'
+        'Pode me dizer o assunto do jeito que for mais natural, como matricula, visita, financeiro, notas, secretaria ou direcao. '
+        'Se quiser uma sintese GraphRAG real dos documentos publicos, use /graphrag seguido da pergunta.'
     )
+
+
+def _graph_rag_ack_message(*, preferred_method: str | None, max_seconds: int) -> str:
+    method_label = preferred_method or 'auto'
+    return (
+        'Iniciei uma consulta GraphRAG real nos documentos publicos. '
+        f'Metodo: {method_label}. '
+        f'Isso pode levar ate {max_seconds}s; quando terminar eu te respondo aqui.'
+    )
+
+
+def _graph_rag_usage_message() -> str:
+    return (
+        'Use um destes formatos:\n'
+        '- /graphrag <pergunta>\n'
+        '- /graphrag_global <pergunta ampla>\n'
+        '- /graphrag_local <pergunta focada em entidades/trechos>\n'
+        '- /graphrag_drift <pergunta investigativa>'
+    )
+
+
+def _format_explicit_graphrag_result(payload: dict[str, object], *, preferred_method: str | None) -> str | None:
+    result = payload.get('result')
+    if not isinstance(result, dict):
+        return None
+    text = str(result.get('text') or '').strip()
+    if not text:
+        return None
+    method = str(result.get('method') or preferred_method or 'auto').strip()
+    requested_method = str(result.get('requested_method') or preferred_method or '').strip()
+    footer_lines = ['[GraphRAG real]', f'metodo: {method}']
+    if requested_method and requested_method != method:
+        footer_lines.append(f'pedido: {requested_method}')
+    return f'{text}\n\n' + '\n'.join(footer_lines)
+
+
+async def _run_explicit_graphrag_query(
+    *,
+    query: str,
+    preferred_method: str | None,
+) -> dict[str, object]:
+    settings = get_settings()
+    payload: dict[str, object] = {
+        'query': query,
+        'max_seconds': settings.graph_rag_async_max_seconds,
+        'fallback_enabled': True,
+        'timeout_profile': 'async',
+    }
+    if preferred_method in {'local', 'global', 'drift'}:
+        payload['preferred_method'] = preferred_method
+    logger.info(
+        'telegram_graphrag_started preferred_method=%s max_seconds=%s query_len=%s',
+        preferred_method or 'auto',
+        settings.graph_rag_async_max_seconds,
+        len(query),
+    )
+    async with httpx.AsyncClient(timeout=settings.graph_rag_async_timeout_seconds) as client:
+        response = await client.post(
+            f'{settings.ai_orchestrator_url}/v1/internal/graphrag/query',
+            headers={'X-Internal-Api-Token': settings.internal_api_token},
+            json=payload,
+        )
+    response.raise_for_status()
+    body = response.json()
+    logger.info(
+        'telegram_graphrag_completed preferred_method=%s status_code=%s',
+        preferred_method or 'auto',
+        response.status_code,
+    )
+    return body if isinstance(body, dict) else {}
+
+
+async def _process_explicit_graphrag_message(
+    *,
+    chat_id: int,
+    query: str,
+    preferred_method: str | None,
+    update_id: int | None,
+) -> None:
+    try:
+        payload = await _run_explicit_graphrag_query(query=query, preferred_method=preferred_method)
+        result_text = _format_explicit_graphrag_result(payload, preferred_method=preferred_method)
+        if result_text is None:
+            result_text = (
+                'O GraphRAG real nao concluiu uma sintese final neste modo. '
+                'Tente uma pergunta mais curta ou especifique /graphrag_local ou /graphrag_global.'
+            )
+        sent = await _send_telegram_message(chat_id, result_text)
+        if not sent:
+            logger.error('telegram_graphrag_send_exhausted chat_id=%s update_id=%s', chat_id, update_id)
+    except httpx.HTTPError as exc:
+        logger.exception('telegram_graphrag_http_failed chat_id=%s update_id=%s error=%s', chat_id, update_id, exc)
+        await _send_telegram_message(
+            chat_id,
+            'Nao consegui concluir o GraphRAG real agora. '
+            'Tente novamente em instantes ou use uma pergunta mais curta com /graphrag_local.',
+        )
+    except Exception as exc:
+        logger.exception(
+            'telegram_graphrag_unexpected_failed chat_id=%s update_id=%s error=%s',
+            chat_id,
+            update_id,
+            exc,
+        )
+        await _send_telegram_message(
+            chat_id,
+            'O modo assíncrono de GraphRAG falhou antes de concluir a execução. '
+            'Tente novamente em instantes.',
+        )
 
 
 async def _orchestrate_message(
@@ -543,6 +671,38 @@ async def telegram_webhook(
                 'accepted': True,
                 'service': 'telegram-gateway',
                 'processed': 'missing_chat',
+            }
+
+        graphrag_query, graphrag_method = _extract_explicit_graphrag_request(text)
+        if graphrag_query is not None:
+            if not graphrag_query.strip():
+                await _send_telegram_message(chat_id, _graph_rag_usage_message())
+                return {
+                    'accepted': True,
+                    'service': 'telegram-gateway',
+                    'processed': 'graphrag_usage',
+                    'update_id': update_id,
+                }
+            await _send_telegram_message(
+                chat_id,
+                _graph_rag_ack_message(
+                    preferred_method=graphrag_method,
+                    max_seconds=get_settings().graph_rag_async_max_seconds,
+                ),
+            )
+            background_tasks.add_task(
+                _process_explicit_graphrag_message,
+                chat_id=chat_id,
+                query=graphrag_query,
+                preferred_method=graphrag_method,
+                update_id=update_id if isinstance(update_id, int) else None,
+            )
+            return {
+                'accepted': True,
+                'service': 'telegram-gateway',
+                'processed': 'graphrag_enqueued',
+                'update_id': update_id,
+                'preferred_method': graphrag_method or 'auto',
             }
 
         command_text = _command_to_orchestrator_text(text)

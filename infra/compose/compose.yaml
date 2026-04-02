@@ -217,7 +217,6 @@ services:
       KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8080}
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-eduassist}
       KEYCLOAK_ALLOWED_CLIENTS: ${KEYCLOAK_ALLOWED_CLIENTS:-eduassist-web,eduassist-cli}
-      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
       ALLOW_TEST_IDENTITY_OVERRIDES: ${ALLOW_TEST_IDENTITY_OVERRIDES:-false}
       TELEGRAM_LINK_TTL_MINUTES: ${TELEGRAM_LINK_TTL_MINUTES:-15}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
@@ -259,7 +258,6 @@ services:
       PORT: 8000
       LLM_PROVIDER: ${LLM_PROVIDER:-google}
       API_CORE_URL: http://api-core:8000
-      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4}
       GOOGLE_API_BASE_URL: ${GOOGLE_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
@@ -334,7 +332,6 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8000
       API_CORE_URL: ${API_CORE_URL:-http://api-core:8000}
-      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
       GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-flash-preview}
       CREWAI_HITL_ENABLED: ${CREWAI_HITL_ENABLED:-true}
       CREWAI_HITL_DEFAULT_SLICES: ${CREWAI_HITL_DEFAULT_SLICES:-protected}
@@ -368,7 +365,6 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-auto}
       API_CORE_URL: ${API_CORE_URL:-http://api-core:8000}
       ORCHESTRATOR_URL: ${ORCHESTRATOR_URL:-http://ai-orchestrator:8000}
-      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4}
       GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-flash}
@@ -404,12 +400,8 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8000
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
-      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-change-me}
       API_CORE_URL: http://api-core:8000
       AI_ORCHESTRATOR_URL: http://ai-orchestrator:8000
-      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
       OTEL_ENABLED: ${OTEL_ENABLED:-true}
       OTEL_SERVICE_NAMESPACE: ${OTEL_SERVICE_NAMESPACE:-eduassist-platform}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
