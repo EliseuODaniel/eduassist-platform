@@ -10,6 +10,7 @@ from ..models import AccessTier, IntentClassification, MessageResponse, Orchestr
 from .base import ResponseEngine, ShadowRunResult
 
 logger = logging.getLogger(__name__)
+_REMOTE_PILOT_CLIENTS: dict[tuple[str, float], httpx.AsyncClient] = {}
 
 
 def _strict_safe_response_text(*, request: Any) -> str:
@@ -96,6 +97,25 @@ def _mark_cross_stack_fallback(response: MessageResponse) -> MessageResponse:
     )
 
 
+def _pilot_client(*, pilot_url: str, timeout_seconds: float) -> httpx.AsyncClient:
+    cache_key = (pilot_url.rstrip("/"), round(float(timeout_seconds), 3))
+    client = _REMOTE_PILOT_CLIENTS.get(cache_key)
+    if client is not None:
+        return client
+    limits = httpx.Limits(
+        max_keepalive_connections=10,
+        max_connections=20,
+        keepalive_expiry=30.0,
+    )
+    client = httpx.AsyncClient(
+        timeout=httpx.Timeout(timeout_seconds, connect=3.0),
+        limits=limits,
+        headers={"Content-Type": "application/json"},
+    )
+    _REMOTE_PILOT_CLIENTS[cache_key] = client
+    return client
+
+
 class SpecialistSupervisorEngine(ResponseEngine):
     name = "specialist_supervisor"
     ready = False
@@ -104,26 +124,23 @@ class SpecialistSupervisorEngine(ResponseEngine):
         pilot_url = str(getattr(settings, "specialist_supervisor_pilot_url", "") or "").strip()
         if not pilot_url:
             return None
-        timeout_seconds = float(getattr(settings, "specialist_supervisor_pilot_timeout_seconds", 75.0) or 75.0)
-        async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds, connect=5.0)) as client:
-            response = await client.post(
-                f"{pilot_url.rstrip('/')}/v1/respond-raw",
-                headers={
-                    "X-Internal-Api-Token": settings.internal_api_token,
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "message": getattr(request, "message", ""),
-                    "conversation_id": getattr(request, "conversation_id", None),
-                    "telegram_chat_id": getattr(request, "telegram_chat_id", None),
-                    "channel": getattr(getattr(request, "channel", None), "value", "telegram"),
-                    "user": getattr(getattr(request, "user", None), "model_dump", lambda **_: {})(
-                        mode="json"
-                    ),
-                    "allow_graph_rag": bool(getattr(request, "allow_graph_rag", True)),
-                    "allow_handoff": bool(getattr(request, "allow_handoff", True)),
-                },
-            )
+        timeout_seconds = float(getattr(settings, "specialist_supervisor_pilot_timeout_seconds", 18.0) or 18.0)
+        client = _pilot_client(pilot_url=pilot_url, timeout_seconds=timeout_seconds)
+        response = await client.post(
+            f"{pilot_url.rstrip('/')}/v1/respond-raw",
+            headers={"X-Internal-Api-Token": settings.internal_api_token},
+            json={
+                "message": getattr(request, "message", ""),
+                "conversation_id": getattr(request, "conversation_id", None),
+                "telegram_chat_id": getattr(request, "telegram_chat_id", None),
+                "channel": getattr(getattr(request, "channel", None), "value", "telegram"),
+                "user": getattr(getattr(request, "user", None), "model_dump", lambda **_: {})(
+                    mode="json"
+                ),
+                "allow_graph_rag": bool(getattr(request, "allow_graph_rag", True)),
+                "allow_handoff": bool(getattr(request, "allow_handoff", True)),
+            },
+        )
         response.raise_for_status()
         payload = response.json()
         return payload if isinstance(payload, dict) else None

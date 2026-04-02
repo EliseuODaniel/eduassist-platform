@@ -7536,7 +7536,7 @@ def _retrieval_planner_instructions(context: RunContextWrapper[SupervisorRunCont
 async def _run_retrieval_planner_specialist(ctx: SupervisorRunContext) -> RetrievalPlannerAdvice:
     agent = Agent[SupervisorRunContext](
         name="Retrieval Planner Specialist",
-        model=_agent_model(ctx.settings),
+        model=_agent_model_for_role(ctx.settings, role="planner"),
         model_settings=ModelSettings(temperature=0.0, verbosity="medium"),
         instructions=_retrieval_planner_instructions,
         output_type=RetrievalPlannerAdvice,
@@ -7657,7 +7657,7 @@ async def _execute_planned_specialists(
     specialist_ids = _sorted_specialist_ids(ctx, list(plan.specialists))
     if not specialist_ids:
         return []
-    model = _agent_model(ctx.settings)
+    model = _agent_model_for_role(ctx.settings, role="specialist")
     specialists = _build_execution_specialists(ctx.settings, model)
     normalized: dict[str, SpecialistResult] = {}
     batch: list[str] = []
@@ -8080,6 +8080,29 @@ def _build_direct_answer_from_specialist(
     )
 
 
+def _budgeted_no_manager_candidate(
+    ctx: SupervisorRunContext,
+    *,
+    specialist_results: list[SpecialistResult],
+) -> SpecialistResult | None:
+    if not specialist_results:
+        return None
+    ordered = sorted(
+        specialist_results,
+        key=lambda item: (
+            _result_looks_negative(item),
+            -item.confidence,
+            int(getattr(_specialist_spec(ctx, item.specialist_id), "execution_priority", 100)),
+        ),
+    )
+    candidate = ordered[0]
+    if _result_looks_negative(candidate):
+        return None
+    if candidate.confidence < 0.55:
+        return None
+    return candidate
+
+
 def _build_manager_agent(*, settings: Any, model: Any, plan: SupervisorPlan, specialist_tools: list[Any]) -> Agent[SupervisorRunContext]:
     structured = _supports_tool_json_outputs(settings)
     return Agent[SupervisorRunContext](
@@ -8123,7 +8146,7 @@ async def _run_input_guardrail(ctx: SupervisorRunContext) -> SupervisorInputGuar
         or _contains_any(normalized, _school_domain_terms())
     ):
         return SupervisorInputGuardrail(blocked=False, reason="deterministic_allowlist")
-    agent = _build_guardrail_agent(_agent_model(ctx.settings))
+    agent = _build_guardrail_agent(_agent_model_for_role(ctx.settings, role="guardrail"))
     prompt = (
         "Mensagem do usuario:\n"
         f"{ctx.request.message}\n\n"
@@ -8187,7 +8210,7 @@ def _deterministic_plan_from_retrieval_advice(ctx: SupervisorRunContext) -> Supe
 async def _run_planner(ctx: SupervisorRunContext) -> SupervisorPlan:
     agent = Agent[SupervisorRunContext](
         name="Retrieval Planner",
-        model=_agent_model(ctx.settings),
+        model=_agent_model_for_role(ctx.settings, role="planner"),
         model_settings=ModelSettings(temperature=0.0, verbosity="low"),
         instructions=_planner_instructions,
         output_type=SupervisorPlan,
@@ -8231,7 +8254,7 @@ async def _run_planner(ctx: SupervisorRunContext) -> SupervisorPlan:
 
 
 async def _run_manager(ctx: SupervisorRunContext, *, plan: SupervisorPlan) -> ManagerDraft:
-    model = _agent_model(ctx.settings)
+    model = _agent_model_for_role(ctx.settings, role="specialist")
     specialists = _build_execution_specialists(ctx.settings, model)
     return await _run_manager_with_specialists(ctx, plan=plan, specialists=specialists)
 
@@ -8243,7 +8266,7 @@ async def _run_manager_with_specialists(
     specialists: dict[str, Agent[SupervisorRunContext]],
     precomputed_specialist_results: list[SpecialistResult] | None = None,
 ) -> ManagerDraft:
-    model = _agent_model(ctx.settings)
+    model = _agent_model_for_role(ctx.settings, role="manager")
     specialist_tools = []
     for specialist_id in EXECUTION_SPECIALISTS:
         agent = specialists.get(specialist_id)
@@ -8304,7 +8327,10 @@ async def run_specialist_supervisor(
     request: SpecialistSupervisorRequest,
     settings: Any,
 ) -> dict[str, Any]:
-    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0)) as client:
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(15.0, connect=2.5),
+        limits=httpx.Limits(max_keepalive_connections=20, max_connections=40, keepalive_expiry=30.0),
+    ) as client:
         context = SupervisorRunContext(
             request=request,
             settings=settings,
@@ -8753,6 +8779,46 @@ async def run_specialist_supervisor(
                         metadata=_metadata_with_runtime_observability(context, direct_metadata),
                         answer=answer,
                     ).model_dump(mode="json")
+                budgeted_result = _budgeted_no_manager_candidate(
+                    context,
+                    specialist_results=precomputed_specialist_results,
+                )
+                if budgeted_result is not None:
+                    answer = _build_direct_answer_from_specialist(context, plan=plan, result=budgeted_result)
+                    answer = answer.model_copy(
+                        update={
+                            "graph_path": ["specialist_supervisor", "retrieval_planner", "budget_direct", budgeted_result.specialist_id],
+                            "risk_flags": [*answer.risk_flags, "budget_degraded"],
+                            "reason": f"specialist_supervisor_budget_direct:{budgeted_result.specialist_id}",
+                        }
+                    )
+                    await _persist_final_answer(
+                        context,
+                        answer=answer,
+                        route="budget_direct",
+                        metadata=_metadata_with_runtime_observability(context, direct_metadata),
+                    )
+                    return SpecialistSupervisorResponse(
+                        reason=answer.reason,
+                        metadata=_metadata_with_runtime_observability(context, direct_metadata),
+                        answer=answer,
+                    ).model_dump(mode="json")
+                answer = _safe_supervisor_fallback_answer(
+                    preview_hint=context.preview_hint,
+                    authenticated=context.request.user.authenticated,
+                    reason="specialist_supervisor_budget_safe_fallback",
+                )
+                await _persist_final_answer(
+                    context,
+                    answer=answer,
+                    route="budget_safe_fallback",
+                    metadata=_metadata_with_runtime_observability(context, {**direct_metadata, "fallback": True}),
+                )
+                return SpecialistSupervisorResponse(
+                    reason=answer.reason,
+                    metadata=_metadata_with_runtime_observability(context, {**direct_metadata, "fallback": True}),
+                    answer=answer,
+                ).model_dump(mode="json")
 
             draft, judge, repair_payload = await _run_manager_stack(
                 context,

@@ -126,7 +126,7 @@ class Settings(BaseSettings):
     crewai_pilot_url: str | None = None
     crewai_pilot_timeout_seconds: float = 30.0
     specialist_supervisor_pilot_url: str | None = None
-    specialist_supervisor_pilot_timeout_seconds: float = 75.0
+    specialist_supervisor_pilot_timeout_seconds: float = 18.0
     orchestrator_experiment_enabled: bool = False
     orchestrator_experiment_primary_engine: str = 'crewai'
     orchestrator_experiment_slices: str = ''

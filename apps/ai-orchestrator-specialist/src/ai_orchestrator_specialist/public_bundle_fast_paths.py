@@ -12,6 +12,7 @@ from .models import (
     SupervisorAnswerPayload,
 )
 from .public_doc_knowledge import (
+    compose_public_calendar_visibility,
     compose_public_conduct_frequency_recovery_bridge,
     compose_public_facilities_and_study_support,
     compose_public_family_new_calendar_assessment_enrollment,
@@ -56,12 +57,14 @@ def _looks_like_family_new_calendar_enrollment_query(message: str) -> bool:
                 "entrando agora",
                 "chegando agora",
                 "primeiro filho",
+                "primeira matricula",
+                "primeira matrícula",
                 "comeco das aulas",
                 "começo das aulas",
             }
         )
         and any(term in normalized for term in {"calendario", "calendário", "rotina", "datas", "inicio do ano", "início do ano", "primeiro bimestre", "aulas"})
-        and any(term in normalized for term in {"matricula", "matrícula", "avaliacao", "avaliação", "provas"})
+        and any(term in normalized for term in {"matricula", "matrícula", "avaliacao", "avaliação", "provas", "processo de ingresso", "ingresso"})
     )
 
 
@@ -120,7 +123,7 @@ def _looks_like_conduct_frequency_recovery_query(message: str) -> bool:
     normalized = _normalize_text(message)
     return (
         any(term in normalized for term in {"disciplina", "regulamentos", "regulamento", "convivencia", "convivência"})
-        and any(term in normalized for term in {"frequencia", "frequência"})
+        and any(term in normalized for term in {"frequencia", "frequência", "faltas", "falta"})
         and any(term in normalized for term in {"recuperacao", "recuperação"})
     )
 
@@ -128,9 +131,9 @@ def _looks_like_conduct_frequency_recovery_query(message: str) -> bool:
 def _looks_like_transversal_year_query(message: str) -> bool:
     normalized = _normalize_text(message)
     return (
-        any(term in normalized for term in {"responsaveis", "responsáveis", "familia", "família"})
-        and any(term in normalized for term in {"avaliacoes", "avaliações", "avaliacao", "avaliação"})
-        and any(term in normalized for term in {"estudo orientado", "canais digitais", "portal", "telegram", "digitais"})
+        any(term in normalized for term in {"responsaveis", "responsáveis", "familia", "família", "relacionamento com responsaveis", "relacionamento com responsáveis"})
+        and any(term in normalized for term in {"avaliacoes", "avaliações", "avaliacao", "avaliação", "provas"})
+        and any(term in normalized for term in {"estudo orientado", "canais digitais", "portal", "telegram", "digitais", "comunicados digitais", "comunicacao digital", "comunicação digital"})
     )
 
 
@@ -140,6 +143,34 @@ def _looks_like_facilities_study_query(message: str) -> bool:
         any(term in normalized for term in {"biblioteca", "laboratorios", "laboratório", "laboratorio", "laboratórios"})
         and any(term in normalized for term in {"estudo", "apoio", "ensino medio", "ensino médio"})
     )
+
+
+def _looks_like_visibility_boundary_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    has_visibility_channel = any(
+        term in normalized
+        for term in {"canais digitais", "portal", "calendario", "calendário", "canais oficiais"}
+    )
+    has_public_visibility = any(
+        term in normalized
+        for term in {"publico", "público", "publica", "pública", "aberto", "aberta", "fronteira", "limite"}
+    )
+    has_auth_visibility = any(
+        term in normalized
+        for term in {
+            "autenticacao",
+            "autenticação",
+            "autenticado",
+            "autenticada",
+            "login",
+            "senha",
+            "exige autenticacao",
+            "exige autenticação",
+            "depende de autenticacao",
+            "depende de autenticação",
+        }
+    )
+    return has_visibility_channel and has_public_visibility and has_auth_visibility
 
 
 def _looks_like_public_graph_rag_query(message: str) -> bool:
@@ -326,6 +357,21 @@ def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message:
                     MessageEvidenceSupport(kind="document", label="Agenda de Avaliacoes 2026", detail="data/corpus/public/agenda-avaliacoes-recuperacoes-e-simulados-2026.md"),
                     MessageEvidenceSupport(kind="document", label="Orientacao, Apoio e Vida Escolar", detail="data/corpus/public/orientacao-apoio-e-vida-escolar.md"),
                     MessageEvidenceSupport(kind="document", label="Programa de Periodo Integral e Estudo Orientado", detail="data/corpus/public/programa-periodo-integral-e-estudo-orientado.md"),
+                    MessageEvidenceSupport(kind="document", label="Politica de Uso do Portal, Aplicativo e Credenciais", detail="data/corpus/public/politica-uso-do-portal-aplicativo-e-credenciais.md"),
+                ],
+            )
+
+    if _looks_like_visibility_boundary_query(message):
+        answer_text = compose_public_calendar_visibility(profile)
+        if answer_text:
+            return _institution_preflight_answer(
+                answer_text=answer_text,
+                reason="specialist_supervisor_preflight:visibility_boundary",
+                graph_leaf="visibility_boundary",
+                summary="Sintese deterministica da fronteira entre conteudo publico e autenticado.",
+                supports=[
+                    MessageEvidenceSupport(kind="document", label="Calendario Letivo 2026", detail="data/corpus/public/calendario-letivo-2026.md"),
+                    MessageEvidenceSupport(kind="document", label="Agenda de Avaliacoes 2026", detail="data/corpus/public/agenda-avaliacoes-recuperacoes-e-simulados-2026.md"),
                     MessageEvidenceSupport(kind="document", label="Politica de Uso do Portal, Aplicativo e Credenciais", detail="data/corpus/public/politica-uso-do-portal-aplicativo-e-credenciais.md"),
                 ],
             )

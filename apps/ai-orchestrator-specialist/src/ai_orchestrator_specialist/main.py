@@ -38,8 +38,8 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-5.4"
-    openai_fast_model: str | None = None
-    openai_reasoning_model: str | None = None
+    openai_fast_model: str | None = "gpt-5-mini"
+    openai_reasoning_model: str | None = "gpt-5.4"
     google_api_key: str | None = None
     google_model: str = "gemini-2.5-flash"
     google_fast_model: str | None = None

@@ -316,6 +316,38 @@ def compose_public_transversal_year_bundle() -> str | None:
     ).strip()
 
 
+def compose_public_calendar_visibility(profile: dict[str, Any] | None) -> str | None:
+    public_events = (profile or {}).get("public_calendar_events") if isinstance(profile, dict) else None
+    visible_titles: list[str] = []
+    if isinstance(public_events, list):
+        for item in public_events:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("title") or "").strip()
+            if title and title not in visible_titles:
+                visible_titles.append(title)
+    communication = _section("agenda-avaliacoes-recuperacoes-e-simulados-2026.md", "Comunicacao com as familias")
+    digital_limits = _section("politica-uso-do-portal-aplicativo-e-credenciais.md", "Limites do canal digital")
+    visible_preview = ", ".join(visible_titles[:3])
+    parts: list[str] = []
+    if visible_preview:
+        parts.append(
+            f"No calendario publico, o que costuma ficar aberto para familias sao marcos gerais como {visible_preview}."
+        )
+    else:
+        parts.append(
+            "No calendario publico, o que costuma ficar aberto para familias sao marcos institucionais gerais e eventos coletivos."
+        )
+    parts.append(
+        "O que depende de autenticacao ou contexto interno sao detalhes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos."
+    )
+    if communication:
+        parts.append(_first_line(communication))
+    if digital_limits:
+        parts.append(_first_line(digital_limits))
+    return " ".join(part for part in parts if part).strip()
+
+
 def compose_public_facilities_and_study_support() -> str | None:
     library = _section("servicos-e-espacos-escolares.md", "Nome oficial e atendimento")
     library_services = _section("servicos-e-espacos-escolares.md", "Servicos disponiveis")

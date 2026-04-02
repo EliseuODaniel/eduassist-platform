@@ -36,6 +36,12 @@ def derive_execution_budget(ctx: Any, plan: SupervisorPlan) -> ExecutionBudget:
         "ao mesmo tempo",
     }
     creative_or_summary = _has_any(normalized, premium_markers)
+    public_documental_complex = (
+        not authenticated
+        and plan.primary_domain in {"institution", "calendar"}
+        and plan.retrieval_strategy in {"structured_tools", "hybrid_retrieval", "document_search", "graph_rag", "direct_answer"}
+        and (is_multi_domain or plan.request_kind in {"complex", "ambiguous"})
+    )
 
     if plan.should_deny or plan.requires_clarification:
         reasons.append("clarify_or_deny")
@@ -52,6 +58,28 @@ def derive_execution_budget(ctx: Any, plan: SupervisorPlan) -> ExecutionBudget:
             prefer_direct_answer=True,
             specialist_max_turns=2,
             manager_max_turns=2,
+            judge_max_turns=1,
+            repair_max_turns=1,
+            reasons=reasons,
+        )
+
+    if public_documental_complex:
+        reasons.append("public_documental_complex")
+        if creative_or_summary:
+            reasons.append("summary_or_composition")
+        return ExecutionBudget(
+            tier="standard",
+            planner_mode="deterministic",
+            target_latency_ms=1800,
+            max_specialists=2,
+            allow_parallel_specialists=True,
+            allow_manager=False,
+            allow_judge=False,
+            allow_repair=False,
+            allow_session_memory=False,
+            prefer_direct_answer=True,
+            specialist_max_turns=4,
+            manager_max_turns=4,
             judge_max_turns=1,
             repair_max_turns=1,
             reasons=reasons,
