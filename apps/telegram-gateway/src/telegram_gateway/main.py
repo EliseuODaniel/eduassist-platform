@@ -549,6 +549,9 @@ async def _orchestrate_message(
         'telegram_chat_id': chat_id,
         'channel': 'telegram',
         'user': user_context,
+        # Telegram normal chat should stay on the fast grounded paths.
+        # Real GraphRAG is only exposed through the explicit /graphrag_* commands.
+        'allow_graph_rag': False,
     }
 
     async with httpx.AsyncClient(timeout=settings.ai_orchestrator_timeout_seconds) as client:
