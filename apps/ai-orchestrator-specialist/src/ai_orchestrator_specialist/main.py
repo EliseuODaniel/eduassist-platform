@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     graph_rag_sync_timeout_seconds: float = 12.0
     graph_rag_sync_method: str = "local"
     graph_rag_sync_fallback_enabled: bool = False
+    orchestrator_preview_timeout_seconds: float = 2.0
+    orchestrator_retrieval_timeout_seconds: float = 3.0
     database_url: str = "sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db"
     agent_memory_url: str = "sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db"
     agent_memory_dir: str | None = None

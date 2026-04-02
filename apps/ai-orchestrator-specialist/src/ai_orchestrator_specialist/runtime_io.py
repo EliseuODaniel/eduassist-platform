@@ -201,9 +201,10 @@ async def orchestrator_preview(ctx: Any) -> dict[str, Any] | None:
     if isinstance(cached_preview, dict):
         return cached_preview
     try:
+        timeout_seconds = float(getattr(ctx.settings, "orchestrator_preview_timeout_seconds", 2.0) or 2.0)
         response = await ctx.http_client.post(
             f"{ctx.settings.orchestrator_url.rstrip('/')}/v1/orchestrate/preview",
-            timeout=httpx.Timeout(6.0, connect=1.5),
+            timeout=httpx.Timeout(timeout_seconds, connect=min(1.5, max(0.5, timeout_seconds / 2.0))),
             json={
                 "message": ctx.request.message,
                 "conversation_id": _conversation_external_id(ctx),
@@ -254,9 +255,10 @@ async def orchestrator_retrieval_search(
     if isinstance(cached_payload, dict):
         return cached_payload
     try:
+        timeout_seconds = float(getattr(ctx.settings, "orchestrator_retrieval_timeout_seconds", 3.0) or 3.0)
         response = await ctx.http_client.post(
             f"{ctx.settings.orchestrator_url.rstrip('/')}/v1/retrieval/search",
-            timeout=httpx.Timeout(8.0, connect=1.5),
+            timeout=httpx.Timeout(timeout_seconds, connect=min(1.5, max(0.5, timeout_seconds / 2.0))),
             headers={
                 "X-Internal-Api-Token": ctx.settings.internal_api_token,
                 "Content-Type": "application/json",

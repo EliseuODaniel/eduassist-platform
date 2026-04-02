@@ -8362,6 +8362,35 @@ async def run_specialist_supervisor(
                 },
                 answer=preflight_answer,
             ).model_dump(mode="json")
+        if _looks_like_internal_document_query(context.request.message):
+            (
+                context.actor,
+                context.conversation_context,
+            ) = await asyncio.gather(
+                _fetch_actor_context(context),
+                _fetch_conversation_context(context),
+            )
+            context.operational_memory = _load_operational_memory(context.conversation_context)
+            context.resolved_turn = _resolve_turn_intent(context)
+            internal_tool_answer = await _tool_first_structured_answer(context)
+            if internal_tool_answer is not None:
+                await _persist_final_answer(
+                    context,
+                    answer=internal_tool_answer,
+                    route="tool_first_restricted_document",
+                    metadata={"preview_hint": None, "restricted_document_short_circuit": True},
+                )
+                return SpecialistSupervisorResponse(
+                    reason=internal_tool_answer.reason,
+                    metadata={
+                        "tool_first": True,
+                        "provider": resolve_llm_provider(settings),
+                        "model": effective_llm_model_name(settings),
+                        "preview_hint": None,
+                        "restricted_document_short_circuit": True,
+                    },
+                    answer=internal_tool_answer,
+                ).model_dump(mode="json")
         (
             context.actor,
             context.conversation_context,
