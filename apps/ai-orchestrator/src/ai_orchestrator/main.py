@@ -96,6 +96,11 @@ class Settings(BaseSettings):
     qdrant_documents_collection: str = 'school_documents'
     llamaindex_qdrant_documents_collection: str = 'school_documents_llamaindex'
     llamaindex_native_timeout_seconds: float = 20.0
+    llamaindex_native_prompt_router_ambiguity_only: bool = True
+    llamaindex_native_recursive_retriever_enabled: bool = True
+    llamaindex_native_sentence_optimizer_enabled: bool = True
+    llamaindex_native_sentence_optimizer_percentile_cutoff: float = 0.55
+    llamaindex_native_long_context_reorder_enabled: bool = True
     document_embedding_model: str = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
     warm_retrieval_on_startup: bool = True
     retrieval_enable_query_variants: bool = True

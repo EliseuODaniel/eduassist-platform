@@ -15,6 +15,7 @@ from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.base.response.schema import Response
 from llama_index.core.indices.vector_store.retrievers import VectorIndexAutoRetriever
 from llama_index.core.memory import Memory
+from llama_index.core.postprocessor import LongContextReorder, SentenceEmbeddingOptimizer
 from llama_index.core.prompts import PromptTemplate
 from llama_index.core.query_engine import (
     CitationQueryEngine,
@@ -24,7 +25,8 @@ from llama_index.core.query_engine import (
 )
 from llama_index.core.response_synthesizers import get_response_synthesizer
 from llama_index.core.response_synthesizers.type import ResponseMode
-from llama_index.core.schema import NodeWithScore, QueryBundle, TextNode
+from llama_index.core.retrievers import RecursiveRetriever
+from llama_index.core.schema import IndexNode, NodeWithScore, QueryBundle, TextNode
 from llama_index.core.selectors import EmbeddingSingleSelector, PydanticSingleSelector
 from llama_index.core.tools import FunctionTool, QueryEngineTool
 from llama_index.core.vector_stores.types import (
@@ -723,21 +725,9 @@ class PublicRetrievalQueryEngine(CustomQueryEngine):
                     calendar_events=[],
                     query_hints=query_hints,
                 )
-        source_nodes = [
-            NodeWithScore(
-                node=TextNode(
-                    text=hit.text_excerpt,
-                    extra_info={
-                        'document_title': hit.document_title,
-                        'version_label': hit.citation.version_label,
-                        'storage_path': hit.citation.storage_path,
-                        'chunk_id': hit.citation.chunk_id,
-                    },
-                ),
-                score=hit.rerank_score or hit.fused_score,
-            )
-            for hit in retrieval_hits[:4]
-        ]
+        use_document_groups = bool(search.document_groups) and len(retrieval_hits) == len(search.hits)
+        source_search = search if use_document_groups else search.model_copy(update={'hits': retrieval_hits, 'document_groups': []})
+        source_nodes = _build_public_retrieval_source_nodes(search=source_search)
         return Response(
             response=answer,
             source_nodes=source_nodes,
@@ -800,21 +790,20 @@ class PublicHybridCitationRetriever(BaseRetriever):
         citations = rt._collect_citations(retrieval_hits)
         self._latest_citations = tuple(citations)
         self._latest_query_plan = search.query_plan
-        return [
-            NodeWithScore(
-                node=TextNode(
-                    text=hit.text_excerpt,
-                    extra_info={
-                        'document_title': hit.document_title,
-                        'version_label': hit.citation.version_label,
-                        'storage_path': hit.citation.storage_path,
-                        'chunk_id': hit.citation.chunk_id,
-                    },
-                ),
-                score=hit.rerank_score or hit.fused_score,
-            )
-            for hit in retrieval_hits[:4]
-        ]
+        if not retrieval_hits:
+            return []
+        if bool(getattr(self._settings, 'llamaindex_native_recursive_retriever_enabled', True)):
+            enriched_search = search.model_copy(update={'hits': retrieval_hits})
+            recursive_retriever = _build_public_recursive_retriever(search=enriched_search)
+            if recursive_retriever is not None:
+                return recursive_retriever.retrieve(query_str)
+        use_document_groups = bool(search.document_groups) and len(retrieval_hits) == len(search.hits)
+        enriched_search = (
+            search
+            if use_document_groups
+            else search.model_copy(update={'hits': retrieval_hits, 'document_groups': []})
+        )
+        return _build_public_retrieval_source_nodes(search=enriched_search)
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
         return self._search(query_bundle.query_str)
@@ -1116,6 +1105,22 @@ def _merge_llamaindex_native_public_decisions(
     return llm_decision
 
 
+def _should_use_llamaindex_llm_public_resolver(
+    *,
+    request: MessageResponseRequest,
+    plan: KernelPlan,
+    heuristic_decision: LlamaIndexNativePublicDecision | None,
+    settings: Any,
+) -> bool:
+    if not _should_run_llamaindex_native_public_resolver(request=request, plan=plan):
+        return False
+    if not bool(getattr(settings, 'llamaindex_native_prompt_router_ambiguity_only', True)):
+        return True
+    if heuristic_decision is None:
+        return True
+    return heuristic_decision.answer_mode == 'clarify'
+
+
 def _should_trust_llamaindex_native_deterministic_answer(
     *,
     native_decision: LlamaIndexNativePublicDecision | None,
@@ -1130,6 +1135,177 @@ def _should_trust_llamaindex_native_deterministic_answer(
     if not effective_tools:
         return False
     return effective_tools.issubset(deterministic_tools)
+
+
+def _build_llamaindex_node_postprocessors(*, settings: Any) -> list[Any]:
+    postprocessors: list[Any] = []
+    if bool(getattr(settings, 'llamaindex_native_sentence_optimizer_enabled', True)):
+        percentile_cutoff = float(getattr(settings, 'llamaindex_native_sentence_optimizer_percentile_cutoff', 0.55) or 0.55)
+        percentile_cutoff = min(max(percentile_cutoff, 0.1), 0.95)
+        postprocessors.append(
+            SentenceEmbeddingOptimizer(
+                embed_model=_selector_embedding(str(settings.document_embedding_model)),
+                percentile_cutoff=percentile_cutoff,
+            )
+        )
+    if bool(getattr(settings, 'llamaindex_native_long_context_reorder_enabled', True)):
+        postprocessors.append(LongContextReorder())
+    return postprocessors
+
+
+def _build_public_document_group_node(group: Any) -> NodeWithScore:
+    section_titles = [str(item).strip() for item in list(getattr(group, 'section_titles', []) or []) if str(item).strip()]
+    section_label = str(getattr(group, 'primary_section', '') or '').strip()
+    summary = str(getattr(group, 'primary_summary', '') or '').strip()
+    excerpt = str(getattr(group, 'primary_excerpt', '') or '').strip()
+    text_parts = [f'Documento: {group.document_title}']
+    if section_label:
+        text_parts.append(f'Secao principal: {section_label}')
+    if summary:
+        text_parts.append(f'Resumo contextual: {summary}')
+    if excerpt:
+        text_parts.append(f'Trecho principal: {excerpt}')
+    if section_titles:
+        text_parts.append(f'Secoes relacionadas: {", ".join(section_titles[:4])}')
+    citation = getattr(group, 'citation', None)
+    return NodeWithScore(
+        node=TextNode(
+            text='\n'.join(text_parts).strip(),
+            metadata={
+                'document_title': group.document_title,
+                'version_label': str(getattr(citation, 'version_label', '') or ''),
+                'storage_path': str(getattr(citation, 'storage_path', '') or ''),
+                'chunk_id': str(getattr(citation, 'chunk_id', '') or ''),
+                'contextual_summary': summary,
+                'section_path': section_label,
+                'section_title': section_titles[0] if section_titles else section_label,
+            },
+        ),
+        score=float(getattr(group, 'document_score', 0.0) or 0.0),
+    )
+
+
+def _build_public_retrieval_hit_node(hit: Any) -> NodeWithScore:
+    section_path = str(getattr(hit, 'section_path', '') or '').strip()
+    section_title = str(getattr(hit, 'section_title', '') or '').strip()
+    summary = str(getattr(hit, 'contextual_summary', '') or '').strip()
+    excerpt = str(getattr(hit, 'text_excerpt', '') or '').strip()
+    text_parts = [f'Documento: {hit.document_title}']
+    if section_path:
+        text_parts.append(f'Secao: {section_path}')
+    if summary:
+        text_parts.append(f'Resumo contextual: {summary}')
+    if excerpt:
+        text_parts.append(f'Trecho: {excerpt}')
+    return NodeWithScore(
+        node=TextNode(
+            text='\n'.join(text_parts).strip(),
+            metadata={
+                'document_title': hit.document_title,
+                'version_label': hit.citation.version_label,
+                'storage_path': hit.citation.storage_path,
+                'chunk_id': hit.citation.chunk_id,
+                'contextual_summary': summary,
+                'section_path': section_path,
+                'section_parent': str(getattr(hit, 'section_parent', '') or ''),
+                'section_title': section_title,
+            },
+        ),
+        score=float(getattr(hit, 'rerank_score', None) or getattr(hit, 'fused_score', 0.0) or 0.0),
+    )
+
+
+def _build_public_retrieval_source_nodes(*, search: Any) -> list[NodeWithScore]:
+    document_groups = list(getattr(search, 'document_groups', []) or [])
+    if document_groups:
+        return [_build_public_document_group_node(group) for group in document_groups[:4]]
+    retrieval_hits = list(getattr(search, 'hits', []) or [])
+    return [_build_public_retrieval_hit_node(hit) for hit in retrieval_hits[:4]]
+
+
+def _normalize_recursive_node_id(value: str) -> str:
+    normalized = rt._normalize_text(value)
+    slug = ''.join(char if char.isalnum() else '-' for char in normalized).strip('-')
+    return slug or 'node'
+
+
+class _StaticRecursiveEntryRetriever(BaseRetriever):
+    _nodes: tuple[NodeWithScore, ...] = PrivateAttr(default_factory=tuple)
+
+    def __init__(self, *, nodes: list[NodeWithScore], **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._nodes = tuple(nodes)
+
+    def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
+        return list(self._nodes)
+
+    async def _aretrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
+        return list(self._nodes)
+
+
+def _build_public_recursive_parent_node(*, hit: Any, group: Any | None) -> TextNode:
+    if group is not None:
+        parent = _build_public_document_group_node(group).node
+        return TextNode(
+            id_=f"public-parent::{_normalize_recursive_node_id(hit.document_title)}::{_normalize_recursive_node_id(str(hit.section_path or hit.section_title or hit.chunk_id))}",
+            text=parent.text,
+            metadata=dict(parent.metadata or {}),
+        )
+    parent = _build_public_retrieval_hit_node(hit).node
+    return TextNode(
+        id_=f"public-parent::{_normalize_recursive_node_id(hit.document_title)}::{_normalize_recursive_node_id(str(hit.chunk_id))}",
+        text=parent.text,
+        metadata=dict(parent.metadata or {}),
+    )
+
+
+def _build_public_recursive_retriever(
+    *,
+    search: Any,
+) -> RecursiveRetriever | None:
+    retrieval_hits = list(getattr(search, 'hits', []) or [])
+    if not retrieval_hits:
+        return None
+    group_by_title = {
+        str(group.document_title): group
+        for group in list(getattr(search, 'document_groups', []) or [])
+    }
+    parent_nodes: dict[str, TextNode] = {}
+    child_nodes: list[NodeWithScore] = []
+    for hit in retrieval_hits[:6]:
+        group = group_by_title.get(str(hit.document_title))
+        parent_node = _build_public_recursive_parent_node(hit=hit, group=group)
+        parent_nodes[parent_node.node_id] = parent_node
+        child_text = str(hit.contextual_summary or hit.section_title or hit.text_excerpt or '').strip()
+        if not child_text:
+            child_text = str(hit.text_excerpt or '').strip()
+        child_node = IndexNode(
+            id_=f"public-child::{_normalize_recursive_node_id(str(hit.chunk_id))}",
+            text=child_text,
+            index_id=parent_node.node_id,
+            metadata={
+                'document_title': hit.document_title,
+                'version_label': hit.citation.version_label,
+                'storage_path': hit.citation.storage_path,
+                'chunk_id': hit.citation.chunk_id,
+                'section_path': hit.section_path,
+                'section_title': hit.section_title,
+            },
+        )
+        child_nodes.append(
+            NodeWithScore(
+                node=child_node,
+                score=float(getattr(hit, 'rerank_score', None) or getattr(hit, 'fused_score', 0.0) or 0.0),
+            )
+        )
+    if not child_nodes or not parent_nodes:
+        return None
+    return RecursiveRetriever(
+        root_id='public_recursive_entry',
+        retriever_dict={'public_recursive_entry': _StaticRecursiveEntryRetriever(nodes=child_nodes)},
+        node_dict=parent_nodes,
+        verbose=False,
+    )
 
 
 def _normalize_llamaindex_native_public_decision(
@@ -1312,6 +1488,76 @@ def _should_force_llamaindex_documentary_retrieval(
             'com base',
         )
     )
+
+
+def _looks_like_open_documentary_bundle_query(message: str) -> bool:
+    normalized = rt._normalize_text(message)
+    if not any(
+        marker in normalized
+        for marker in (
+            'compare',
+            'comparar',
+            'comparacao',
+            'comparação',
+            'sintetize',
+            'sintetiza',
+            'sintese',
+            'síntese',
+            'relacione',
+            'relaciona',
+            'conecte',
+            'conecta',
+            'mapa de dependencias',
+            'mapa de dependências',
+            'atravessam',
+            'temas em comum',
+            'como se influenciam',
+        )
+    ):
+        return False
+    document_markers = (
+        'calendario',
+        'calendário',
+        'agenda',
+        'manual',
+        'regulamentos',
+        'regulamento',
+        'avaliacoes',
+        'avaliações',
+        'portal',
+        'credenciais',
+        'secretaria',
+        'apoio',
+        'biblioteca',
+        'laboratorios',
+        'laboratórios',
+        'familia',
+        'família',
+        'responsaveis',
+        'responsáveis',
+        'comunicacao',
+        'comunicação',
+        'documentos',
+    )
+    hits = sum(1 for marker in document_markers if marker in normalized)
+    return hits >= 2
+
+
+def _should_skip_llamaindex_public_fast_paths(
+    message: str,
+    *,
+    heuristic_decision: LlamaIndexNativePublicDecision | None = None,
+    native_decision: LlamaIndexNativePublicDecision | None = None,
+) -> bool:
+    if _has_documentary_retrieval_cues(message):
+        return True
+    if _looks_like_open_documentary_bundle_query(message):
+        return True
+    if heuristic_decision is not None and heuristic_decision.answer_mode == 'documentary':
+        return True
+    if native_decision is not None and native_decision.answer_mode == 'documentary':
+        return True
+    return False
 
 
 def _llamaindex_llm_supports_function_calls(llm: Any | None) -> bool:
@@ -1560,7 +1806,14 @@ def _build_public_retrieval_query_engine(
     prefer_citation_engine: bool,
     prefer_native_qdrant_autoretriever: bool,
 ) -> tuple[Any, PublicHybridCitationRetriever | None]:
-    if llm is not None and prefer_native_qdrant_autoretriever and LLAMAINDEX_QDRANT_AVAILABLE:
+    node_postprocessors = _build_llamaindex_node_postprocessors(settings=settings)
+    prefer_recursive_retriever = bool(getattr(settings, 'llamaindex_native_recursive_retriever_enabled', True))
+    if (
+        llm is not None
+        and prefer_native_qdrant_autoretriever
+        and LLAMAINDEX_QDRANT_AVAILABLE
+        and not prefer_recursive_retriever
+    ):
         try:
             collection_name = _resolve_llamaindex_qdrant_collection(settings)
             index = _native_qdrant_vector_index(
@@ -1576,7 +1829,10 @@ def _build_public_retrieval_query_engine(
                         MetadataInfo(name='category', type='str', description='Categoria documental, como faq, policy, calendar ou institutional.'),
                         MetadataInfo(name='document_title', type='str', description='Titulo humano do documento.'),
                         MetadataInfo(name='audience', type='str', description='Publico-alvo do documento.'),
+                        MetadataInfo(name='document_set_slug', type='str', description='Conjunto documental ao qual o documento pertence.'),
                         MetadataInfo(name='version_label', type='str', description='Versao publicada do documento.'),
+                        MetadataInfo(name='section_parent', type='str', description='Secao pai da passagem recuperada.'),
+                        MetadataInfo(name='section_title', type='str', description='Titulo da secao mais especifica da passagem recuperada.'),
                     ],
                 )
                 retriever = VectorIndexAutoRetriever(
@@ -1605,6 +1861,7 @@ def _build_public_retrieval_query_engine(
                         response_synthesizer=response_synthesizer,
                         citation_chunk_size=384,
                         citation_chunk_overlap=32,
+                        node_postprocessors=node_postprocessors,
                     ),
                     None,
                 )
@@ -1636,6 +1893,7 @@ def _build_public_retrieval_query_engine(
             response_synthesizer=response_synthesizer,
             citation_chunk_size=384,
             citation_chunk_overlap=32,
+            node_postprocessors=node_postprocessors,
         ),
         retriever,
     )
@@ -2228,14 +2486,22 @@ async def maybe_execute_llamaindex_native_plan(
         calendar_events = await rt._fetch_public_calendar_events(settings=settings)
         if calendar_events:
             school_profile['public_calendar_events'] = calendar_events
+    heuristic_public_decision = _heuristic_llamaindex_native_public_decision(
+        message=request.message,
+        conversation_context=conversation_context,
+    )
+    skip_fast_paths = _should_skip_llamaindex_public_fast_paths(
+        request.message,
+        heuristic_decision=heuristic_public_decision,
+    )
     early_public_canonical_lane = (
         match_public_canonical_lane(analysis_message)
         or match_public_canonical_lane(request.message)
-    )
+    ) if not skip_fast_paths else None
     fast_public_channel_answer = rt._try_public_channel_fast_answer(
         message=request.message,
         profile=school_profile,
-    )
+    ) if not skip_fast_paths else None
     if fast_public_channel_answer and not early_public_canonical_lane:
         preview = plan.preview.model_copy(deep=True)
         preview.mode = OrchestrationMode.structured_tool
@@ -2451,7 +2717,12 @@ async def maybe_execute_llamaindex_native_plan(
 
     llamaindex_llm = _build_llamaindex_llm(settings=settings)
     llm_native_public_decision = None
-    if _should_run_llamaindex_native_public_resolver(request=request, plan=plan):
+    if _should_use_llamaindex_llm_public_resolver(
+        request=request,
+        plan=plan,
+        heuristic_decision=heuristic_public_decision,
+        settings=settings,
+    ):
         llm_native_public_decision = await _resolve_llamaindex_native_public_decision(
             llm=llamaindex_llm,
             settings=settings,
@@ -2460,10 +2731,6 @@ async def maybe_execute_llamaindex_native_plan(
             school_profile=school_profile,
             conversation_context=conversation_context,
         )
-    heuristic_public_decision = _heuristic_llamaindex_native_public_decision(
-        message=request.message,
-        conversation_context=conversation_context,
-    )
     native_public_decision = _merge_llamaindex_native_public_decisions(
         llm_decision=llm_native_public_decision,
         heuristic_decision=heuristic_public_decision,
@@ -2522,9 +2789,18 @@ async def maybe_execute_llamaindex_native_plan(
         native_decision=native_public_decision,
         public_plan=public_plan,
     )
+    skip_fast_paths = _should_skip_llamaindex_public_fast_paths(
+        request.message,
+        heuristic_decision=heuristic_public_decision,
+        native_decision=native_public_decision,
+    )
     public_canonical_lane = (
-        match_public_canonical_lane(effective_analysis_message)
-        or match_public_canonical_lane(request.message)
+        (
+            match_public_canonical_lane(effective_analysis_message)
+            or match_public_canonical_lane(request.message)
+        )
+        if not skip_fast_paths
+        else None
     )
     public_canonical_answer = (
         compose_public_canonical_lane_answer(public_canonical_lane, profile=school_profile)

@@ -1,0 +1,98 @@
+{
+  "baseline": [
+    {
+      "prompt": "Compare calendario, agenda de avaliacoes e manual de matricula e explique como esses documentos se influenciam ao longo do ano.",
+      "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+      "retrieval_backend": "none",
+      "selected_tools": [
+        "get_student_academic_summary",
+        "get_student_attendance",
+        "get_student_grades",
+        "get_student_upcoming_assessments",
+        "get_student_attendance_timeline"
+      ],
+      "citations": 0
+    },
+    {
+      "prompt": "Relacione regulamentos, recuperacao, frequencia e projeto de vida e mostre as fontes publicas mais relevantes.",
+      "reason": "langgraph_public_canonical_lane:public_bundle.academic_policy_overview",
+      "retrieval_backend": "none",
+      "selected_tools": [
+        "get_public_school_profile"
+      ],
+      "citations": 0
+    },
+    {
+      "prompt": "Conecte portal, credenciais, secretaria e envio de documentos e explique as dependencias praticas para uma familia nova.",
+      "reason": "langgraph_public_canonical_lane:public_bundle.secretaria_portal_credentials",
+      "retrieval_backend": "none",
+      "selected_tools": [
+        "get_service_directory",
+        "get_public_school_profile"
+      ],
+      "citations": 0
+    },
+    {
+      "prompt": "Monte uma sintese transversal entre biblioteca, laboratorios, apoio pedagogico e agenda de avaliacoes.",
+      "reason": "langgraph_public_canonical_lane:public_bundle.facilities_study_support",
+      "retrieval_backend": "none",
+      "selected_tools": [
+        "get_student_academic_summary",
+        "get_student_attendance",
+        "get_student_grades",
+        "get_student_upcoming_assessments",
+        "get_student_attendance_timeline",
+        "get_public_school_profile"
+      ],
+      "citations": 0
+    }
+  ],
+  "recursive": [
+    {
+      "prompt": "Compare calendario, agenda de avaliacoes e manual de matricula e explique como esses documentos se influenciam ao longo do ano.",
+      "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+      "retrieval_backend": "none",
+      "selected_tools": [
+        "get_student_academic_summary",
+        "get_student_attendance",
+        "get_student_grades",
+        "get_student_upcoming_assessments",
+        "get_student_attendance_timeline"
+      ],
+      "citations": 0
+    },
+    {
+      "prompt": "Relacione regulamentos, recuperacao, frequencia e projeto de vida e mostre as fontes publicas mais relevantes.",
+      "reason": "langgraph_public_canonical_lane:public_bundle.academic_policy_overview",
+      "retrieval_backend": "none",
+      "selected_tools": [
+        "get_public_school_profile"
+      ],
+      "citations": 0
+    },
+    {
+      "prompt": "Conecte portal, credenciais, secretaria e envio de documentos e explique as dependencias praticas para uma familia nova.",
+      "reason": "langgraph_public_canonical_lane:public_bundle.secretaria_portal_credentials",
+      "retrieval_backend": "none",
+      "selected_tools": [
+        "get_service_directory",
+        "get_public_school_profile"
+      ],
+      "citations": 0
+    },
+    {
+      "prompt": "Monte uma sintese transversal entre biblioteca, laboratorios, apoio pedagogico e agenda de avaliacoes.",
+      "reason": "langgraph_public_canonical_lane:public_bundle.facilities_study_support",
+      "retrieval_backend": "none",
+      "selected_tools": [
+        "get_student_academic_summary",
+        "get_student_attendance",
+        "get_student_grades",
+        "get_student_upcoming_assessments",
+        "get_student_attendance_timeline",
+        "get_public_school_profile"
+      ],
+      "citations": 0
+    }
+  ]
+}
