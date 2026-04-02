@@ -11,6 +11,7 @@ AI_ORCHESTRATOR_SRC = REPO_ROOT / 'apps/ai-orchestrator/src'
 if str(AI_ORCHESTRATOR_SRC) not in sys.path:
     sys.path.insert(0, str(AI_ORCHESTRATOR_SRC))
 
+from ai_orchestrator.models import RetrievalProfile
 from ai_orchestrator.retrieval import _build_query_plan
 from ai_orchestrator.graph_rag_runtime import select_graph_rag_method
 
@@ -22,6 +23,7 @@ CASES = [
         'expected_intent': 'policy_lookup',
         'expected_category_bias': 'policy',
         'expected_graph_rag_candidate': False,
+        'expected_profile': 'default',
     },
     {
         'id': 'service_credentials',
@@ -30,6 +32,7 @@ CASES = [
         'expected_category_bias': 'institutional',
         'expected_graph_rag_candidate': True,
         'expected_graph_rag_method': 'global',
+        'expected_profile': 'deep',
     },
     {
         'id': 'admissions_workflow',
@@ -37,12 +40,16 @@ CASES = [
         'expected_intent': 'corpus_overview',
         'expected_graph_rag_candidate': True,
         'expected_graph_rag_method': 'global',
+        'expected_profile': 'cheap',
+        'expected_canonical_lane': 'public_bundle.process_compare',
     },
     {
         'id': 'family_survival_guide',
         'query': 'Se eu fosse um aluno novo e muito esquecido, quais regras e prazos eu mais correria risco de perder no primeiro mes?',
         'expected_intent': 'fact_lookup',
         'expected_graph_rag_method': 'global',
+        'expected_profile': 'cheap',
+        'expected_canonical_lane': 'public_bundle.first_month_risks',
     },
 ]
 
@@ -54,8 +61,12 @@ def main() -> int:
             query=str(case['query']),
             top_k=6,
             category=None,
+            visibility='public',
             enable_query_variants=True,
             candidate_pool_size=12,
+            cheap_candidate_pool_size=8,
+            deep_candidate_pool_size=18,
+            profile_override=None,
         )
         graph_method = select_graph_rag_method(str(case['query']))
         results.append(
@@ -63,12 +74,16 @@ def main() -> int:
                 'id': case['id'],
                 'query': case['query'],
                 'intent': plan.intent,
+                'profile': plan.profile.value,
                 'category_bias': plan.category_bias,
+                'canonical_lane': plan.canonical_lane,
                 'graph_rag_candidate': plan.graph_rag_candidate,
                 'graph_rag_method': graph_method,
                 'passed': (
                     plan.intent == case.get('expected_intent', plan.intent)
+                    and plan.profile is RetrievalProfile(case.get('expected_profile', plan.profile.value))
                     and plan.category_bias == case.get('expected_category_bias', plan.category_bias)
+                    and plan.canonical_lane == case.get('expected_canonical_lane', plan.canonical_lane)
                     and plan.graph_rag_candidate == case.get('expected_graph_rag_candidate', plan.graph_rag_candidate)
                     and graph_method == case.get('expected_graph_rag_method', graph_method)
                 ),

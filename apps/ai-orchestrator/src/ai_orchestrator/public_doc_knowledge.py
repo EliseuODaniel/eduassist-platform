@@ -219,6 +219,32 @@ def compose_public_health_authorizations_bridge() -> str | None:
     ).strip()
 
 
+def compose_public_secretaria_portal_credentials() -> str | None:
+    documents = _section("secretaria-documentacao-e-prazos.md", "Canais para documentos")
+    timelines = _section("secretaria-documentacao-e-prazos.md", "Prazos tipicos")
+    declarations = _section("secretaria-documentacao-e-prazos.md", "Declaracoes e comprovantes")
+    credentials = _section("politica-uso-do-portal-aplicativo-e-credenciais.md", "Credenciais pessoais")
+    portal = _section("politica-uso-do-portal-aplicativo-e-credenciais.md", "Portal e aplicativo")
+    linkage = _section("politica-uso-do-portal-aplicativo-e-credenciais.md", "Vinculo com o Telegram")
+    support = _section("politica-uso-do-portal-aplicativo-e-credenciais.md", "Recuperacao e suporte")
+    if not any((documents, timelines, declarations, credentials, portal, linkage, support)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            "Para documentos, portal e credenciais, a familia precisa tratar secretaria, canais digitais e suporte como um fluxo unico.",
+            _first_line(documents),
+            _first_line(timelines),
+            _first_line(declarations),
+            _first_line(credentials),
+            _first_line(portal),
+            _first_line(linkage),
+            _first_line(support),
+        )
+        if part
+    ).strip()
+
+
 def compose_public_first_month_risks(profile: dict[str, Any] | None) -> str | None:
     docs = _section("secretaria-documentacao-e-prazos.md", "Canais para documentos")
     timelines = _section("secretaria-documentacao-e-prazos.md", "Prazos tipicos")
@@ -333,3 +359,75 @@ def compose_public_family_new_calendar_assessment_enrollment() -> str | None:
         )
         if part
     ).strip()
+
+
+def match_public_canonical_lane(message: str) -> str | None:
+    normalized = _normalize_space(message).lower()
+    if not normalized:
+        return None
+
+    if (
+        "familia nova" in normalized
+        and "calendario" in normalized
+        and any(term in normalized for term in ("avaliacao", "avaliações", "avaliacoes"))
+        and "matricula" in normalized
+    ):
+        return "public_bundle.family_new_calendar_assessment_enrollment"
+    if (
+        any(term in normalized for term in ("permanencia", "permanência"))
+        and "familia" in normalized
+        and any(term in normalized for term in ("apoio", "acompanhamento"))
+    ):
+        return "public_bundle.permanence_family_support"
+    if all(term in normalized for term in ("rematricula", "transferencia", "cancelamento")):
+        return "public_bundle.process_compare"
+    if (
+        any(term in normalized for term in ("saude", "saúde", "medicacao", "medicação"))
+        and any(term in normalized for term in ("segunda chamada", "segunda", "chamada"))
+    ):
+        return "public_bundle.health_second_call"
+    if (
+        any(term in normalized for term in ("autorizacao", "autorização", "saidas", "saídas"))
+        and any(term in normalized for term in ("saude", "saúde", "medicacao", "medicação"))
+    ):
+        return "public_bundle.health_authorizations_bridge"
+    if (
+        any(term in normalized for term in ("primeiro mes", "primeiro mês"))
+        and any(term in normalized for term in ("prazo", "prazos", "credenciais", "documentos"))
+    ):
+        return "public_bundle.first_month_risks"
+    if (
+        any(term in normalized for term in ("secretaria", "portal", "credenciais", "login", "senha"))
+        and any(term in normalized for term in ("documentos", "documentacao", "documentação", "envio"))
+    ):
+        return "public_bundle.secretaria_portal_credentials"
+    if (
+        any(term in normalized for term in ("bolsas", "bolsa", "descontos", "desconto"))
+        and any(term in normalized for term in ("rematricula", "transferencia", "cancelamento", "matricula"))
+    ):
+        return "public_bundle.bolsas_and_processes"
+    return None
+
+
+def compose_public_canonical_lane_answer(
+    lane: str,
+    *,
+    profile: dict[str, Any] | None = None,
+) -> str | None:
+    if lane == "public_bundle.family_new_calendar_assessment_enrollment":
+        return compose_public_family_new_calendar_assessment_enrollment()
+    if lane == "public_bundle.permanence_family_support":
+        return compose_public_permanence_and_family_support(profile)
+    if lane == "public_bundle.process_compare":
+        return compose_public_process_compare()
+    if lane == "public_bundle.health_second_call":
+        return compose_public_health_second_call()
+    if lane == "public_bundle.health_authorizations_bridge":
+        return compose_public_health_authorizations_bridge()
+    if lane == "public_bundle.first_month_risks":
+        return compose_public_first_month_risks(profile)
+    if lane == "public_bundle.secretaria_portal_credentials":
+        return compose_public_secretaria_portal_credentials()
+    if lane == "public_bundle.bolsas_and_processes":
+        return compose_public_bolsas_and_processes(profile)
+    return None

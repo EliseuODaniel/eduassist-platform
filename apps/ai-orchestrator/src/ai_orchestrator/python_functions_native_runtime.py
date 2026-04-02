@@ -4,7 +4,11 @@ from typing import Any
 
 from . import runtime as rt
 from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult
-from .evidence_pack import build_retrieval_evidence_pack, build_structured_tool_evidence_pack
+from .evidence_pack import (
+    build_direct_answer_evidence_pack,
+    build_retrieval_evidence_pack,
+    build_structured_tool_evidence_pack,
+)
 from .kernel_runtime import (
     _maybe_contextual_public_direct_answer,
     _maybe_hypothetical_public_pricing_answer,
@@ -15,12 +19,14 @@ from .models import (
     AccessTier,
     IntentClassification,
     MessageResponse,
+    MessageEvidenceSupport,
     MessageResponseCitation,
     OrchestrationMode,
     QueryDomain,
     RetrievalBackend,
 )
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
+from .public_doc_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
 from .retrieval import get_retrieval_service
 
 
@@ -277,6 +283,54 @@ async def maybe_execute_python_functions_native_plan(
             summary=f'Resposta grounded em tools estruturadas do dominio {preview.classification.domain.value}.',
         )
     elif preview.mode is OrchestrationMode.hybrid_retrieval:
+        canonical_lane = (
+            match_public_canonical_lane(analysis_message)
+            if preview.classification.access_tier is AccessTier.public
+            else None
+        ) or (
+            match_public_canonical_lane(request.message)
+            if preview.classification.access_tier is AccessTier.public
+            else None
+        )
+        if canonical_lane:
+            lane_answer = compose_public_canonical_lane_answer(canonical_lane, profile=school_profile)
+            if lane_answer:
+                message_text = lane_answer
+                deterministic_fallback_text = message_text
+                execution_reason = f'python_functions_native_canonical_lane:{canonical_lane}'
+                evidence_pack = build_direct_answer_evidence_pack(
+                    summary='Resposta canônica grounded em um bundle documental público conhecido.',
+                    supports=[
+                        MessageEvidenceSupport(
+                            kind='canonical_lane',
+                            label=canonical_lane,
+                            detail='Lane canônica pública selecionada antes do retrieval pesado.',
+                        )
+                    ],
+                )
+                suggested_replies = rt._build_suggested_replies(
+                    request=request,
+                    preview=preview,
+                    actor=actor,
+                    school_profile=school_profile,
+                    conversation_context=conversation_context,
+                )
+                return KernelRunResult(
+                    message_text=message_text,
+                    preview=preview,
+                    retrieval_hits=[],
+                    citations=[],
+                    calendar_events=calendar_events,
+                    visual_assets=[],
+                    evidence_pack=evidence_pack,
+                    risk_flags=rt._build_runtime_risk_flags(
+                        request_message=request.message,
+                        message_text=message_text,
+                        preview=preview,
+                    ),
+                    suggested_replies=suggested_replies,
+                    execution_reason=execution_reason,
+                )
         retrieval_service = get_retrieval_service(
             database_url=settings.database_url,
             qdrant_url=settings.qdrant_url,
@@ -286,6 +340,10 @@ async def maybe_execute_python_functions_native_plan(
             enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
             late_interaction_model=settings.retrieval_late_interaction_model,
             candidate_pool_size=settings.retrieval_candidate_pool_size,
+            cheap_candidate_pool_size=settings.retrieval_cheap_candidate_pool_size,
+            deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
+            rerank_fused_weight=settings.retrieval_rerank_fused_weight,
+            rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
         )
         search = retrieval_service.hybrid_search(
             query=analysis_message,

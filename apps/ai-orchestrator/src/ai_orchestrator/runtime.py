@@ -71,6 +71,7 @@ from .models import (
 from .public_agentic_engine import build_public_evidence_bundle
 from .public_known_unknowns import detect_public_known_unknown_key
 from .public_doc_knowledge import (
+    compose_public_canonical_lane_answer,
     compose_public_bolsas_and_processes,
     compose_public_calendar_visibility,
     compose_public_family_new_calendar_assessment_enrollment,
@@ -79,6 +80,7 @@ from .public_doc_knowledge import (
     compose_public_health_second_call,
     compose_public_permanence_and_family_support,
     compose_public_process_compare,
+    match_public_canonical_lane,
 )
 from .retrieval import get_retrieval_service
 
@@ -15092,6 +15094,7 @@ async def generate_message_response(
         public_plan: PublicInstitutionPlan | None = None
         deterministic_fallback_text: str | None = None
         rescued_public_plan: PublicInstitutionPlan | None = None
+        canonical_lane: str | None = None
 
         if _is_public_semantic_rescue_candidate(preview):
             rescued_public_plan = await _resolve_public_institution_plan(
@@ -15402,12 +15405,21 @@ async def generate_message_response(
                     enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
                     late_interaction_model=settings.retrieval_late_interaction_model,
                     candidate_pool_size=settings.retrieval_candidate_pool_size,
+                    cheap_candidate_pool_size=settings.retrieval_cheap_candidate_pool_size,
+                    deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
+                    rerank_fused_weight=settings.retrieval_rerank_fused_weight,
+                    rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
                 )
                 search = retrieval_service.hybrid_search(
                     query=analysis_message,
                     top_k=4,
                     visibility='public',
                     category=_category_for_domain(preview.classification.domain),
+                )
+                canonical_lane = (
+                    (search.query_plan.canonical_lane if search.query_plan is not None else None)
+                    or match_public_canonical_lane(analysis_message)
+                    or match_public_canonical_lane(request.message)
                 )
                 retrieval_hits = search.hits
                 query_hints = {
@@ -15474,6 +15486,10 @@ async def generate_message_response(
                         enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
                         late_interaction_model=settings.retrieval_late_interaction_model,
                         candidate_pool_size=settings.retrieval_candidate_pool_size,
+                        cheap_candidate_pool_size=settings.retrieval_cheap_candidate_pool_size,
+                        deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
+                        rerank_fused_weight=settings.retrieval_rerank_fused_weight,
+                        rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
                     )
                     search = retrieval_service.hybrid_search(
                         query=analysis_message,
@@ -15481,6 +15497,7 @@ async def generate_message_response(
                         visibility='public',
                         category=None,
                     )
+                    canonical_lane = search.query_plan.canonical_lane if search.query_plan is not None else None
                     retrieval_hits = search.hits
                     citations = _collect_citations(retrieval_hits)
                     set_span_attributes(
@@ -15566,6 +15583,24 @@ async def generate_message_response(
                     citations = []
                     message_text = INSTITUTIONAL_GREETING
                     deterministic_answer_candidate = message_text
+                elif preview.mode is OrchestrationMode.hybrid_retrieval and canonical_lane:
+                    lane_answer = compose_public_canonical_lane_answer(
+                        canonical_lane,
+                        profile=school_profile,
+                    )
+                    if lane_answer:
+                        set_span_attributes(
+                            **{
+                                'eduassist.orchestration.used_llm': False,
+                                'eduassist.orchestration.answer_guardrail': 'public_canonical_lane',
+                                'eduassist.retrieval.canonical_lane': canonical_lane,
+                            }
+                        )
+                        citations = []
+                        message_text = lane_answer
+                        deterministic_answer_candidate = message_text
+                    else:
+                        deterministic_answer_candidate = None
                 elif preview.mode is OrchestrationMode.hybrid_retrieval and not retrieval_supported:
                     set_span_attributes(**{'eduassist.orchestration.used_llm': False})
                     citations = []

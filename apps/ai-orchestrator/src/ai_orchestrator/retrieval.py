@@ -18,10 +18,13 @@ from qdrant_client import QdrantClient, models
 from .models import (
     RetrievalBackend,
     RetrievalCitation,
+    RetrievalDocumentGroup,
     RetrievalHit,
+    RetrievalProfile,
     RetrievalQueryPlan,
     RetrievalSearchResponse,
 )
+from .public_doc_knowledge import match_public_canonical_lane
 
 
 RRF_K = 60
@@ -83,10 +86,13 @@ _INTENT_EXPANSIONS = {
 @dataclass(frozen=True)
 class RetrievalQueryPlanSpec:
     intent: str
+    profile: RetrievalProfile
     normalized_query: str
     query_variants: list[str]
     graph_rag_candidate: bool
     category_bias: str | None
+    canonical_lane: str | None
+    candidate_pool_size: int
     lexical_limit: int
     vector_limit: int
     rerank_limit: int
@@ -105,6 +111,10 @@ class RetrievalService:
         enable_late_interaction_rerank: bool,
         late_interaction_model: str,
         candidate_pool_size: int,
+        cheap_candidate_pool_size: int,
+        deep_candidate_pool_size: int,
+        rerank_fused_weight: float,
+        rerank_late_interaction_weight: float,
     ) -> None:
         self.database_url = database_url
         self.collection_name = collection_name
@@ -113,6 +123,10 @@ class RetrievalService:
         self.enable_late_interaction_rerank = enable_late_interaction_rerank
         self.late_interaction_model = late_interaction_model
         self.candidate_pool_size = max(6, candidate_pool_size)
+        self.cheap_candidate_pool_size = max(4, cheap_candidate_pool_size)
+        self.deep_candidate_pool_size = max(self.candidate_pool_size, deep_candidate_pool_size)
+        self.rerank_fused_weight = max(0.0, rerank_fused_weight)
+        self.rerank_late_interaction_weight = max(0.0, rerank_late_interaction_weight)
         self.qdrant = QdrantClient(url=qdrant_url)
         self._embedder: TextEmbedding | None = None
         self._late_interaction_embedder: LateInteractionTextEmbedding | None = None
@@ -153,6 +167,7 @@ class RetrievalService:
         top_k: int,
         visibility: str,
         category: str | None = None,
+        profile: RetrievalProfile | None = None,
     ) -> RetrievalSearchResponse:
         effective_visibility = _normalize_visibility_filter(visibility)
         effective_category = _normalize_category_filter(category)
@@ -161,8 +176,12 @@ class RetrievalService:
             query=query,
             top_k=top_k,
             category=category,
+            visibility=effective_visibility,
             enable_query_variants=self.enable_query_variants,
             candidate_pool_size=self.candidate_pool_size,
+            cheap_candidate_pool_size=self.cheap_candidate_pool_size,
+            deep_candidate_pool_size=self.deep_candidate_pool_size,
+            profile_override=profile,
         )
         with start_span(
             'eduassist.retrieval.hybrid_search',
@@ -208,6 +227,7 @@ class RetrievalService:
                 category_bias=query_plan.category_bias,
                 max_chunks_per_document=query_plan.max_chunks_per_document,
                 intent=query_plan.intent,
+                normalized_query=query_plan.normalized_query,
             )
             reranked_hits, reranker_applied = self._rerank_hits(
                 query=query,
@@ -215,7 +235,11 @@ class RetrievalService:
                 rerank_limit=query_plan.rerank_limit,
                 top_k=top_k,
             )
-            context_pack = self._build_context_pack(reranked_hits)
+            document_groups = self._build_document_groups(
+                reranked_hits,
+                max_groups=max(top_k, 3),
+            )
+            context_pack = self._build_context_pack(document_groups)
 
             set_span_attributes(
                 **{
@@ -225,6 +249,8 @@ class RetrievalService:
                     'eduassist.retrieval.reranked_hits': len(reranked_hits),
                     'eduassist.retrieval.backend': RetrievalBackend.qdrant_hybrid.value,
                     'eduassist.retrieval.reranker_applied': reranker_applied,
+                    'eduassist.retrieval.profile': query_plan.profile.value,
+                    'eduassist.retrieval.canonical_lane': query_plan.canonical_lane,
                 }
             )
             metric_attributes = {
@@ -232,6 +258,7 @@ class RetrievalService:
                 'visibility': effective_visibility,
                 'category': effective_category or 'all',
                 'intent': query_plan.intent,
+                'profile': query_plan.profile.value,
                 'reranker_applied': str(reranker_applied).lower(),
             }
             record_counter(
@@ -256,14 +283,22 @@ class RetrievalService:
                 retrieval_backend=RetrievalBackend.qdrant_hybrid,
                 total_hits=len(reranked_hits),
                 hits=reranked_hits,
+                document_groups=document_groups,
                 query_plan=RetrievalQueryPlan(
                     intent=query_plan.intent,
+                    profile=query_plan.profile,
                     normalized_query=query_plan.normalized_query,
                     query_variants=query_plan.query_variants,
                     graph_rag_candidate=query_plan.graph_rag_candidate,
                     reranker_applied=reranker_applied,
                     reranker_model=self.late_interaction_model if reranker_applied else None,
                     category_bias=query_plan.category_bias,
+                    canonical_lane=query_plan.canonical_lane,
+                    candidate_pool_size=query_plan.candidate_pool_size,
+                    lexical_limit=query_plan.lexical_limit,
+                    vector_limit=query_plan.vector_limit,
+                    rerank_limit=query_plan.rerank_limit,
+                    max_chunks_per_document=query_plan.max_chunks_per_document,
                 ),
                 context_pack=context_pack,
             )
@@ -305,6 +340,11 @@ class RetrievalService:
                 'query_variants_enabled': self.enable_query_variants,
                 'late_interaction_rerank_enabled': self.enable_late_interaction_rerank,
                 'late_interaction_model': self.late_interaction_model,
+                'candidate_pool_size': self.candidate_pool_size,
+                'cheap_candidate_pool_size': self.cheap_candidate_pool_size,
+                'deep_candidate_pool_size': self.deep_candidate_pool_size,
+                'rerank_fused_weight': self.rerank_fused_weight,
+                'rerank_late_interaction_weight': self.rerank_late_interaction_weight,
             }
 
     def _lexical_search(
@@ -372,7 +412,7 @@ class RetrievalService:
                     rows = cursor.fetchall()
 
             set_span_attributes(**{'eduassist.retrieval.result_count': len(rows)})
-            return [dict(row) for row in rows]
+            return [_enrich_hit_metadata(dict(row)) for row in rows]
 
     def _vector_search(
         self,
@@ -417,19 +457,25 @@ class RetrievalService:
             for point in points:
                 payload = point.payload or {}
                 hits.append(
-                    {
-                        'chunk_id': str(payload.get('chunk_id', point.id)),
-                        'chunk_index': int(payload.get('chunk_index', 0)),
-                        'text_content': str(payload.get('text_content', '')),
-                        'contextual_summary': payload.get('contextual_summary'),
-                        'document_title': str(payload.get('document_title', 'Documento sem titulo')),
-                        'category': str(payload.get('category', 'unknown')),
-                        'audience': str(payload.get('audience', 'publico')),
-                        'visibility': str(payload.get('visibility', visibility)),
-                        'version_label': str(payload.get('version_label', 'v0')),
-                        'storage_path': str(payload.get('storage_path', '')),
-                        'vector_score': float(point.score or 0.0),
-                    }
+                    _enrich_hit_metadata(
+                        {
+                            'chunk_id': str(payload.get('chunk_id', point.id)),
+                            'chunk_index': int(payload.get('chunk_index', 0)),
+                            'text_content': str(payload.get('text_content', '')),
+                            'contextual_summary': payload.get('contextual_summary'),
+                            'document_title': str(payload.get('document_title', 'Documento sem titulo')),
+                            'document_set_slug': payload.get('document_set_slug'),
+                            'section_path': payload.get('section_path'),
+                            'section_parent': payload.get('section_parent'),
+                            'section_title': payload.get('section_title'),
+                            'category': str(payload.get('category', 'unknown')),
+                            'audience': str(payload.get('audience', 'publico')),
+                            'visibility': str(payload.get('visibility', visibility)),
+                            'version_label': str(payload.get('version_label', 'v0')),
+                            'storage_path': str(payload.get('storage_path', '')),
+                            'vector_score': float(point.score or 0.0),
+                        }
+                    )
                 )
             set_span_attributes(**{'eduassist.retrieval.result_count': len(hits)})
             return hits
@@ -450,6 +496,7 @@ class RetrievalService:
         category_bias: str | None,
         max_chunks_per_document: int,
         intent: str,
+        normalized_query: str,
     ) -> list[RetrievalHit]:
         with start_span(
             'eduassist.retrieval.fuse_hits',
@@ -478,40 +525,41 @@ class RetrievalService:
                         item.setdefault(key, value)
 
             category_bias_normalized = _normalize_text(category_bias or '')
+            query_terms = set(_query_terms(normalized_query))
             ranked = sorted(
                 combined.values(),
                 key=lambda item: (
                     float(item.get('rrf_score', 0.0))
                     + _category_boost(item=item, category_bias=category_bias_normalized)
-                    + _intent_alignment_boost(item=item, intent=intent),
+                    + _intent_alignment_boost(item=item, intent=intent)
+                    + _section_alignment_boost(item=item, query_terms=query_terms),
                     float(item.get('vector_score', 0.0) or 0.0),
                     float(item.get('lexical_score', 0.0) or 0.0),
                 ),
                 reverse=True,
             )
-            diversified: list[dict[str, Any]] = []
-            per_document_counts: dict[str, int] = {}
-            for item in ranked:
-                document_key = str(item.get('document_title', '') or item.get('storage_path', '') or item['chunk_id'])
-                current_count = per_document_counts.get(document_key, 0)
-                if current_count >= max_chunks_per_document:
-                    continue
-                per_document_counts[document_key] = current_count + 1
-                diversified.append(item)
-                if len(diversified) >= top_k:
-                    break
+            diversified = _document_diversified_hits(
+                ranked=ranked,
+                top_k=top_k,
+                max_chunks_per_document=max_chunks_per_document,
+            )
 
             set_span_attributes(**{'eduassist.retrieval.unique_hits': len(diversified)})
             return [
                 RetrievalHit(
                     chunk_id=item['chunk_id'],
                     document_title=item['document_title'],
+                    document_set_slug=item.get('document_set_slug'),
                     category=item['category'],
                     audience=item['audience'],
                     visibility=item['visibility'],
                     text_excerpt=self._excerpt(item.get('text_content', '')),
                     contextual_summary=item.get('contextual_summary'),
+                    section_path=item.get('section_path'),
+                    section_parent=item.get('section_parent'),
+                    section_title=item.get('section_title'),
                     fused_score=round(float(item.get('rrf_score', 0.0)), 6),
+                    document_score=round(float(item.get('document_score', 0.0) or 0.0), 6),
                     lexical_score=(
                         round(float(item['lexical_score']), 6)
                         if item.get('lexical_score') is not None
@@ -528,6 +576,7 @@ class RetrievalService:
                         storage_path=item['storage_path'],
                         chunk_id=item['chunk_id'],
                         chunk_index=int(item.get('chunk_index', 0)),
+                        section_path=item.get('section_path'),
                     ),
                 )
                 for item in diversified
@@ -561,6 +610,10 @@ class RetrievalService:
         except Exception:
             return hits[:top_k], False
 
+        fused_weight, rerank_weight = _normalized_blend_weights(
+            self.rerank_fused_weight,
+            self.rerank_late_interaction_weight,
+        )
         normalized_fused = _normalize_scores([hit.fused_score for hit in rerank_candidates])
         normalized_rerank = _normalize_scores(rerank_scores)
         rescored: list[tuple[float, RetrievalHit]] = []
@@ -571,11 +624,16 @@ class RetrievalService:
             normalized_rerank,
             strict=True,
         ):
-            combined_score = (0.4 * fused_score) + (0.6 * rerank_component)
+            combined_score = (fused_weight * fused_score) + (rerank_weight * rerank_component)
             rescored.append(
                 (
                     combined_score,
-                    hit.model_copy(update={'rerank_score': round(float(rerank_score), 6)}),
+                    hit.model_copy(
+                        update={
+                            'rerank_score': round(float(rerank_score), 6),
+                            'document_score': round(max(float(hit.document_score or 0.0), combined_score), 6),
+                        }
+                    ),
                 )
             )
         rescored.sort(key=lambda item: item[0], reverse=True)
@@ -584,16 +642,81 @@ class RetrievalService:
             reranked_hits.extend(hits[len(rerank_candidates):])
         return reranked_hits[:top_k], True
 
-    def _build_context_pack(self, hits: list[RetrievalHit], *, max_hits: int = 4, max_chars: int = 2200) -> str | None:
+    def _build_document_groups(
+        self,
+        hits: list[RetrievalHit],
+        *,
+        max_groups: int = 4,
+    ) -> list[RetrievalDocumentGroup]:
         if not hits:
+            return []
+        grouped: dict[str, list[RetrievalHit]] = {}
+        for hit in hits:
+            document_key = str(hit.citation.storage_path or hit.document_title or hit.chunk_id)
+            grouped.setdefault(document_key, []).append(hit)
+
+        groups: list[RetrievalDocumentGroup] = []
+        for document_hits in grouped.values():
+            ordered = sorted(
+                document_hits,
+                key=lambda hit: (
+                    float(hit.document_score or 0.0),
+                    float(hit.rerank_score or 0.0),
+                    float(hit.fused_score or 0.0),
+                ),
+                reverse=True,
+            )
+            primary = ordered[0]
+            section_titles = [
+                section
+                for section in dict.fromkeys(
+                    section
+                    for section in (
+                        hit.section_title or hit.section_path or hit.contextual_summary
+                        for hit in ordered
+                    )
+                    if section
+                )
+            ]
+            groups.append(
+                RetrievalDocumentGroup(
+                    document_title=primary.document_title,
+                    document_set_slug=primary.document_set_slug,
+                    category=primary.category,
+                    audience=primary.audience,
+                    visibility=primary.visibility,
+                    document_score=round(
+                        max(float(primary.document_score or 0.0), float(primary.fused_score or 0.0)),
+                        6,
+                    ),
+                    primary_excerpt=primary.text_excerpt,
+                    primary_summary=primary.contextual_summary,
+                    primary_section=primary.section_path or primary.section_title,
+                    support_excerpt_count=max(0, len(ordered) - 1),
+                    section_titles=section_titles[:4],
+                    citation=primary.citation,
+                )
+            )
+        groups.sort(key=lambda item: item.document_score, reverse=True)
+        return groups[:max_groups]
+
+    def _build_context_pack(
+        self,
+        document_groups: list[RetrievalDocumentGroup],
+        *,
+        max_hits: int = 4,
+        max_chars: int = 2200,
+    ) -> str | None:
+        if not document_groups:
             return None
         sections: list[str] = []
         current_chars = 0
-        for hit in hits[:max_hits]:
-            excerpt = str(hit.contextual_summary or hit.text_excerpt or '').strip()
+        for group in document_groups[:max_hits]:
+            excerpt = str(group.primary_summary or group.primary_excerpt or '').strip()
             if not excerpt:
                 continue
-            section = f'[{hit.document_title}] {excerpt}'
+            section_label = group.primary_section or group.document_title
+            section = f'[{group.document_title} | {section_label}] {excerpt}'
             projected = current_chars + len(section) + 2
             if projected > max_chars and sections:
                 break
@@ -864,16 +987,44 @@ def _graph_rag_candidate(query: str, *, intent: str) -> bool:
     return False
 
 
+def _select_retrieval_profile(
+    *,
+    intent: str,
+    visibility: str,
+    top_k: int,
+    canonical_lane: str | None,
+    profile_override: RetrievalProfile | None,
+) -> RetrievalProfile:
+    if profile_override is not None:
+        return profile_override
+    if canonical_lane:
+        return RetrievalProfile.cheap
+    if visibility != 'public':
+        return RetrievalProfile.deep
+    if intent == 'corpus_overview':
+        return RetrievalProfile.deep
+    if intent == 'policy_lookup':
+        return RetrievalProfile.default
+    if intent in {'contact_lookup', 'timeline_lookup', 'pricing_lookup'} and top_k <= 4:
+        return RetrievalProfile.cheap
+    return RetrievalProfile.default
+
+
 def _build_query_plan(
     *,
     query: str,
     top_k: int,
     category: str | None,
+    visibility: str,
     enable_query_variants: bool,
     candidate_pool_size: int,
+    cheap_candidate_pool_size: int,
+    deep_candidate_pool_size: int,
+    profile_override: RetrievalProfile | None,
 ) -> RetrievalQueryPlanSpec:
     intent = _intent_for_query(query)
     normalized_query = _normalize_text(query)
+    canonical_lane = match_public_canonical_lane(query) if visibility == 'public' else None
     keyword_variant = _keyword_variant(query) if enable_query_variants else None
     variants = [query]
     if keyword_variant:
@@ -884,21 +1035,44 @@ def _build_query_plan(
     if enable_query_variants and intent in {'corpus_overview', 'policy_lookup', 'admissions_lookup', 'service_overview'}:
         variants.extend(_cross_document_variants(query))
     deduped_variants = _dedupe_strings(variants)
+    profile = _select_retrieval_profile(
+        intent=intent,
+        visibility=visibility,
+        top_k=top_k,
+        canonical_lane=canonical_lane,
+        profile_override=profile_override,
+    )
+    plan_pool_size = candidate_pool_size
     lexical_limit = max(top_k * 3, candidate_pool_size)
     vector_limit = max(top_k * 3, candidate_pool_size)
     rerank_limit = max(top_k * 2, min(candidate_pool_size, 10))
     max_chunks_per_document = 2
-    if intent in {'corpus_overview', 'policy_lookup', 'service_overview'}:
+    if profile is RetrievalProfile.cheap:
+        plan_pool_size = cheap_candidate_pool_size
+        lexical_limit = max(top_k * 2, cheap_candidate_pool_size)
+        vector_limit = max(top_k * 2, cheap_candidate_pool_size)
+        rerank_limit = max(top_k, min(cheap_candidate_pool_size, 6))
+        max_chunks_per_document = 1
+    elif profile is RetrievalProfile.deep:
+        plan_pool_size = deep_candidate_pool_size
+        lexical_limit = max(top_k * 4, deep_candidate_pool_size)
+        vector_limit = max(top_k * 4, deep_candidate_pool_size)
+        rerank_limit = max(top_k * 3, min(deep_candidate_pool_size, 14))
+        max_chunks_per_document = 1
+    elif intent in {'corpus_overview', 'policy_lookup', 'service_overview'}:
         lexical_limit = max(top_k * 4, candidate_pool_size)
         vector_limit = max(top_k * 4, candidate_pool_size)
         rerank_limit = max(top_k * 3, min(candidate_pool_size, 12))
         max_chunks_per_document = 1
     return RetrievalQueryPlanSpec(
         intent=intent,
+        profile=profile,
         normalized_query=normalized_query,
         query_variants=deduped_variants,
         graph_rag_candidate=_graph_rag_candidate(query, intent=intent),
         category_bias=_category_bias_for_query(query, category=category, intent=intent),
+        canonical_lane=canonical_lane,
+        candidate_pool_size=plan_pool_size,
         lexical_limit=lexical_limit,
         vector_limit=vector_limit,
         rerank_limit=rerank_limit,
@@ -986,6 +1160,100 @@ def _normalize_scores(values: list[float]) -> list[float]:
     return [(value - minimum) / (maximum - minimum) for value in values]
 
 
+def _normalized_blend_weights(fused_weight: float, rerank_weight: float) -> tuple[float, float]:
+    total = fused_weight + rerank_weight
+    if total <= 1e-9:
+        return 0.4, 0.6
+    return fused_weight / total, rerank_weight / total
+
+
+def _section_metadata_from_summary(summary: str | None, *, fallback_title: str) -> tuple[str | None, str | None, str | None]:
+    normalized = str(summary or '').strip()
+    if not normalized:
+        if not fallback_title:
+            return None, None, None
+        return fallback_title, None, fallback_title
+    parts = [part.strip() for part in normalized.split('>') if part.strip()]
+    if not parts:
+        return normalized, None, normalized
+    section_path = ' > '.join(parts)
+    section_parent = parts[-2] if len(parts) >= 2 else None
+    section_title = parts[-1]
+    return section_path, section_parent, section_title
+
+
+def _enrich_hit_metadata(hit: dict[str, Any]) -> dict[str, Any]:
+    section_path, section_parent, section_title = _section_metadata_from_summary(
+        hit.get('section_path') or hit.get('contextual_summary'),
+        fallback_title=str(hit.get('document_title') or ''),
+    )
+    enriched = dict(hit)
+    enriched['section_path'] = section_path
+    enriched['section_parent'] = hit.get('section_parent') or section_parent
+    enriched['section_title'] = hit.get('section_title') or section_title
+    return enriched
+
+
+def _section_alignment_boost(*, item: dict[str, Any], query_terms: set[str]) -> float:
+    if not query_terms:
+        return 0.0
+    section_haystack = _normalize_text(
+        ' '.join(
+            part
+            for part in (
+                str(item.get('section_title', '') or ''),
+                str(item.get('section_parent', '') or ''),
+                str(item.get('section_path', '') or ''),
+            )
+            if part
+        )
+    )
+    if not section_haystack:
+        return 0.0
+    matched = sum(1 for term in query_terms if term in section_haystack)
+    if matched <= 0:
+        return 0.0
+    return min(0.02, 0.005 * matched)
+
+
+def _document_key_for_item(item: dict[str, Any]) -> str:
+    return str(item.get('storage_path', '') or item.get('document_title', '') or item['chunk_id'])
+
+
+def _document_diversified_hits(
+    *,
+    ranked: list[dict[str, Any]],
+    top_k: int,
+    max_chunks_per_document: int,
+) -> list[dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for item in ranked:
+        grouped.setdefault(_document_key_for_item(item), []).append(item)
+
+    document_scores: list[tuple[float, str]] = []
+    for document_key, items in grouped.items():
+        unique_sections = {
+            str(item.get('section_path') or item.get('section_title') or item.get('contextual_summary') or '').strip()
+            for item in items
+            if str(item.get('section_path') or item.get('section_title') or item.get('contextual_summary') or '').strip()
+        }
+        score = max(float(item.get('rrf_score', 0.0)) for item in items)
+        score += 0.01 * min(len(items), 3)
+        score += 0.005 * min(len(unique_sections), 2)
+        for item in items:
+            item['document_score'] = score
+        document_scores.append((score, document_key))
+
+    document_scores.sort(reverse=True)
+    diversified: list[dict[str, Any]] = []
+    for _score, document_key in document_scores:
+        for item in grouped[document_key][:max_chunks_per_document]:
+            diversified.append(item)
+            if len(diversified) >= top_k:
+                return diversified
+    return diversified
+
+
 def _rerank_text_for_hit(hit: RetrievalHit) -> str:
     summary = str(hit.contextual_summary or '').strip()
     excerpt = str(hit.text_excerpt or '').strip()
@@ -1030,6 +1298,10 @@ def get_retrieval_service(
     enable_late_interaction_rerank: bool,
     late_interaction_model: str,
     candidate_pool_size: int,
+    cheap_candidate_pool_size: int,
+    deep_candidate_pool_size: int,
+    rerank_fused_weight: float,
+    rerank_late_interaction_weight: float,
 ) -> RetrievalService:
     return RetrievalService(
         database_url=database_url,
@@ -1040,6 +1312,10 @@ def get_retrieval_service(
         enable_late_interaction_rerank=enable_late_interaction_rerank,
         late_interaction_model=late_interaction_model,
         candidate_pool_size=candidate_pool_size,
+        cheap_candidate_pool_size=cheap_candidate_pool_size,
+        deep_candidate_pool_size=deep_candidate_pool_size,
+        rerank_fused_weight=rerank_fused_weight,
+        rerank_late_interaction_weight=rerank_late_interaction_weight,
     )
 
 

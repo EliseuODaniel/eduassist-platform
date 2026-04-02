@@ -107,7 +107,11 @@ class Settings(BaseSettings):
     retrieval_enable_query_variants: bool = True
     retrieval_enable_late_interaction_rerank: bool = True
     retrieval_late_interaction_model: str = 'answerdotai/answerai-colbert-small-v1'
-    retrieval_candidate_pool_size: int = 12
+    retrieval_candidate_pool_size: int = 14
+    retrieval_cheap_candidate_pool_size: int = 8
+    retrieval_deep_candidate_pool_size: int = 22
+    retrieval_rerank_fused_weight: float = 0.35
+    retrieval_rerank_late_interaction_weight: float = 0.65
     strict_framework_isolation_enabled: bool = False
     graph_rag_enabled: bool = False
     graph_rag_workspace: str = '/workspace/artifacts/graphrag/eduassist-public-benchmark'
@@ -840,6 +844,10 @@ def _warm_retrieval_service(settings: Settings) -> None:
             enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
             late_interaction_model=settings.retrieval_late_interaction_model,
             candidate_pool_size=settings.retrieval_candidate_pool_size,
+            cheap_candidate_pool_size=settings.retrieval_cheap_candidate_pool_size,
+            deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
+            rerank_fused_weight=settings.retrieval_rerank_fused_weight,
+            rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
         )
         service.warm_components()
         logger.info('retrieval_service_warmed')
@@ -1185,6 +1193,10 @@ async def retrieval_status() -> dict[str, object]:
         enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
         late_interaction_model=settings.retrieval_late_interaction_model,
         candidate_pool_size=settings.retrieval_candidate_pool_size,
+        cheap_candidate_pool_size=settings.retrieval_cheap_candidate_pool_size,
+        deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
+        rerank_fused_weight=settings.retrieval_rerank_fused_weight,
+        rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
     )
     return {
         'service': 'ai-orchestrator',
@@ -1208,12 +1220,17 @@ async def retrieval_search(request: RetrievalSearchRequest) -> RetrievalSearchRe
         enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
         late_interaction_model=settings.retrieval_late_interaction_model,
         candidate_pool_size=settings.retrieval_candidate_pool_size,
+        cheap_candidate_pool_size=settings.retrieval_cheap_candidate_pool_size,
+        deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
+        rerank_fused_weight=settings.retrieval_rerank_fused_weight,
+        rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
     )
     return service.hybrid_search(
         query=request.query,
         top_k=request.top_k,
         visibility=request.visibility,
         category=request.category,
+        profile=request.profile,
     )
 
 

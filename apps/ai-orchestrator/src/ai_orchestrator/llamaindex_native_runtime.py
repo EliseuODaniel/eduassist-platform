@@ -229,6 +229,10 @@ async def _maybe_execute_llamaindex_restricted_doc_fast_path(
         enable_late_interaction_rerank=bool(settings.retrieval_enable_late_interaction_rerank),
         late_interaction_model=str(settings.retrieval_late_interaction_model),
         candidate_pool_size=int(settings.retrieval_candidate_pool_size),
+        cheap_candidate_pool_size=int(settings.retrieval_cheap_candidate_pool_size),
+        deep_candidate_pool_size=int(settings.retrieval_deep_candidate_pool_size),
+        rerank_fused_weight=float(settings.retrieval_rerank_fused_weight),
+        rerank_late_interaction_weight=float(settings.retrieval_rerank_late_interaction_weight),
     )
     retrieval_result = retrieval_service.hybrid_search(
         query=request.message,
@@ -673,6 +677,10 @@ class PublicRetrievalQueryEngine(CustomQueryEngine):
             enable_late_interaction_rerank=self.settings.retrieval_enable_late_interaction_rerank,
             late_interaction_model=self.settings.retrieval_late_interaction_model,
             candidate_pool_size=self.settings.retrieval_candidate_pool_size,
+            cheap_candidate_pool_size=self.settings.retrieval_cheap_candidate_pool_size,
+            deep_candidate_pool_size=self.settings.retrieval_deep_candidate_pool_size,
+            rerank_fused_weight=self.settings.retrieval_rerank_fused_weight,
+            rerank_late_interaction_weight=self.settings.retrieval_rerank_late_interaction_weight,
         )
         search = retrieval_service.hybrid_search(
             query=query_str,
@@ -756,6 +764,10 @@ class PublicHybridCitationRetriever(BaseRetriever):
             enable_late_interaction_rerank=self._settings.retrieval_enable_late_interaction_rerank,
             late_interaction_model=self._settings.retrieval_late_interaction_model,
             candidate_pool_size=self._settings.retrieval_candidate_pool_size,
+            cheap_candidate_pool_size=self._settings.retrieval_cheap_candidate_pool_size,
+            deep_candidate_pool_size=self._settings.retrieval_deep_candidate_pool_size,
+            rerank_fused_weight=self._settings.retrieval_rerank_fused_weight,
+            rerank_late_interaction_weight=self._settings.retrieval_rerank_late_interaction_weight,
         )
         search = retrieval_service.hybrid_search(
             query=query_str,

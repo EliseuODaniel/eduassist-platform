@@ -41,6 +41,9 @@ class DocumentChunkRecord:
     chunk_index: int
     text_content: str
     contextual_summary: str
+    section_path: str | None
+    section_parent: str | None
+    section_title: str | None
     visibility: str
     labels: dict[str, list[str]]
 
@@ -223,7 +226,11 @@ class DocumentPipeline:
             if not text:
                 buffer.clear()
                 return
-            summary = ' > '.join(headings[-2:]) if headings else document.title
+            section_headings = headings[-3:] if headings else []
+            summary = ' > '.join(section_headings[-2:]) if section_headings else document.title
+            section_path = ' > '.join(section_headings) if section_headings else document.title
+            section_parent = section_headings[-2] if len(section_headings) >= 2 else None
+            section_title = section_headings[-1] if section_headings else document.title
             pieces = self._split_long_text(text)
             for piece in pieces:
                 chunks.append(
@@ -231,6 +238,9 @@ class DocumentPipeline:
                         chunk_index=len(chunks),
                         text_content=piece,
                         contextual_summary=summary,
+                        section_path=section_path,
+                        section_parent=section_parent,
+                        section_title=section_title,
                         visibility=document.visibility,
                         labels=document.labels,
                     )
@@ -423,6 +433,16 @@ class DocumentPipeline:
         records: list[dict[str, object]] = []
         for chunk in chunks:
             chunk_id = uuid.uuid4()
+            chunk_labels = {
+                **{
+                    key: [self._truncate_label_value(item) for item in values if self._truncate_label_value(item)]
+                    for key, values in chunk.labels.items()
+                },
+                'section_path': [self._truncate_label_value(chunk.section_path)] if chunk.section_path else [],
+                'section_title': [self._truncate_label_value(chunk.section_title)] if chunk.section_title else [],
+                'section_parent': [self._truncate_label_value(chunk.section_parent)] if chunk.section_parent else [],
+                'document_set_slug': [self._truncate_label_value(document.document_set_slug)],
+            }
             cursor.execute(
                 """
                 insert into documents.document_chunks (
@@ -441,7 +461,7 @@ class DocumentPipeline:
             )
             row = cursor.fetchone()
             stored_chunk_id = row['id']
-            for label_type, values in chunk.labels.items():
+            for label_type, values in chunk_labels.items():
                 for label_value in values:
                     cursor.execute(
                         """
@@ -457,14 +477,23 @@ class DocumentPipeline:
                     'chunk_index': chunk.chunk_index,
                     'text_content': chunk.text_content,
                     'contextual_summary': chunk.contextual_summary,
+                    'section_path': chunk.section_path,
+                    'section_parent': chunk.section_parent,
+                    'section_title': chunk.section_title,
                     'visibility': chunk.visibility,
                     'document_title': document.title,
                     'category': document.category,
                     'audience': document.audience,
-                    'labels': chunk.labels,
+                    'labels': chunk_labels,
                 }
             )
         return records
+
+    def _truncate_label_value(self, value: str | None, *, max_chars: int = 120) -> str:
+        normalized = str(value or '').strip()
+        if len(normalized) <= max_chars:
+            return normalized
+        return normalized[: max_chars - 3].rstrip() + '...'
 
     def _upload_source_document(self, document: CorpusDocument) -> str:
         if document.source_path.exists():
@@ -501,6 +530,9 @@ class DocumentPipeline:
                         'chunk_id': chunk_id,
                         'chunk_index': chunk['chunk_index'],
                         'document_title': chunk['document_title'],
+                        'section_path': chunk['section_path'],
+                        'section_parent': chunk['section_parent'],
+                        'section_title': chunk['section_title'],
                         'category': chunk['category'],
                         'audience': chunk['audience'],
                         'visibility': chunk['visibility'],
@@ -523,6 +555,7 @@ class DocumentPipeline:
                 collection_name=target_collection,
                 vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE),
             )
+            self._ensure_payload_indexes(target_collection)
             self._activate_collection_alias(alias_name=alias_name, target_collection=target_collection)
             return target_collection
 
@@ -530,6 +563,7 @@ class DocumentPipeline:
             collection_name=target_collection,
             vectors_config=models.VectorParams(size=len(embeddings[0]), distance=models.Distance.COSINE),
         )
+        self._ensure_payload_indexes(target_collection)
         points = [
             models.PointStruct(id=point_id, vector=vector.tolist(), payload=payload)
             for point_id, vector, payload in zip(ids, embeddings, payloads, strict=True)
@@ -537,6 +571,27 @@ class DocumentPipeline:
         self.qdrant.upsert(collection_name=target_collection, points=points)
         self._activate_collection_alias(alias_name=alias_name, target_collection=target_collection)
         return target_collection
+
+    def _ensure_payload_indexes(self, collection_name: str) -> None:
+        keyword_fields = (
+            'visibility',
+            'category',
+            'audience',
+            'document_set_slug',
+            'version_label',
+            'section_parent',
+            'section_title',
+        )
+        for field_name in keyword_fields:
+            try:
+                self.qdrant.create_payload_index(
+                    collection_name=collection_name,
+                    field_name=field_name,
+                    field_schema=models.PayloadSchemaType.KEYWORD,
+                    wait=True,
+                )
+            except Exception:
+                continue
 
     def _activate_collection_alias(self, *, alias_name: str, target_collection: str) -> None:
         current_target = self._resolve_alias_target(alias_name)

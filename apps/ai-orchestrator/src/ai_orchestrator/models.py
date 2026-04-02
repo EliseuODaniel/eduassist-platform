@@ -48,6 +48,12 @@ class RetrievalBackend(StrEnum):
     none = 'none'
 
 
+class RetrievalProfile(StrEnum):
+    cheap = 'cheap'
+    default = 'default'
+    deep = 'deep'
+
+
 class ToolKind(StrEnum):
     retrieval = 'retrieval'
     data_service = 'data_service'
@@ -126,6 +132,7 @@ class RetrievalSearchRequest(BaseModel):
     top_k: int = Field(default=6, ge=1, le=20)
     visibility: str = Field(default='public')
     category: str | None = None
+    profile: RetrievalProfile | None = None
 
 
 class RetrievalCitation(BaseModel):
@@ -134,31 +141,59 @@ class RetrievalCitation(BaseModel):
     storage_path: str
     chunk_id: str
     chunk_index: int
+    section_path: str | None = None
 
 
 class RetrievalHit(BaseModel):
     chunk_id: str
     document_title: str
+    document_set_slug: str | None = None
     category: str
     audience: str
     visibility: str
     text_excerpt: str
     contextual_summary: str | None = None
+    section_path: str | None = None
+    section_parent: str | None = None
+    section_title: str | None = None
     fused_score: float
+    document_score: float | None = None
     lexical_score: float | None = None
     vector_score: float | None = None
     rerank_score: float | None = None
     citation: RetrievalCitation
 
 
+class RetrievalDocumentGroup(BaseModel):
+    document_title: str
+    document_set_slug: str | None = None
+    category: str
+    audience: str
+    visibility: str
+    document_score: float
+    primary_excerpt: str
+    primary_summary: str | None = None
+    primary_section: str | None = None
+    support_excerpt_count: int = 0
+    section_titles: list[str] = Field(default_factory=list)
+    citation: RetrievalCitation
+
+
 class RetrievalQueryPlan(BaseModel):
     intent: str
+    profile: RetrievalProfile = RetrievalProfile.default
     normalized_query: str
     query_variants: list[str] = Field(default_factory=list)
     graph_rag_candidate: bool = False
     reranker_applied: bool = False
     reranker_model: str | None = None
     category_bias: str | None = None
+    canonical_lane: str | None = None
+    candidate_pool_size: int = 0
+    lexical_limit: int = 0
+    vector_limit: int = 0
+    rerank_limit: int = 0
+    max_chunks_per_document: int = 0
 
 
 class RetrievalSearchResponse(BaseModel):
@@ -166,6 +201,7 @@ class RetrievalSearchResponse(BaseModel):
     retrieval_backend: RetrievalBackend
     total_hits: int
     hits: list[RetrievalHit]
+    document_groups: list[RetrievalDocumentGroup] = Field(default_factory=list)
     query_plan: RetrievalQueryPlan | None = None
     context_pack: str | None = None
 
