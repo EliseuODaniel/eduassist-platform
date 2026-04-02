@@ -1,0 +1,3738 @@
+{
+  "generated_at": "2026-04-02T06:13:26.512526+00:00",
+  "dataset": "/home/edann/projects/eduassist-platform/tests/evals/datasets/retrieval_20q_probe_cases.json",
+  "run_prefix": "debug:retrieval20:20260402T060753Z",
+  "stacks": [
+    "langgraph",
+    "crewai",
+    "llamaindex"
+  ],
+  "summary": {
+    "by_stack": {
+      "langgraph": {
+        "count": 20,
+        "ok": 20,
+        "keyword_pass": 6,
+        "quality_avg": 83.2,
+        "avg_latency_ms": 2502.8,
+        "mode_counts": {
+          "hybrid_retrieval": 2,
+          "structured_tool": 14,
+          "clarify": 4
+        },
+        "retrieval_backend_counts": {
+          "qdrant_hybrid": 6,
+          "none": 14
+        },
+        "evidence_strategy_counts": {
+          "direct_answer": 12,
+          "structured_tool": 3,
+          "clarify": 4,
+          "hybrid_retrieval": 1
+        },
+        "error_type_counts": {
+          "missing_expected_keyword": 14,
+          "forbidden_entity_or_value": 1,
+          "unnecessary_clarification": 1
+        }
+      },
+      "crewai": {
+        "count": 20,
+        "ok": 20,
+        "keyword_pass": 5,
+        "quality_avg": 80.3,
+        "avg_latency_ms": 7860.8,
+        "mode_counts": {
+          "deny": 5,
+          "structured_tool": 15
+        },
+        "retrieval_backend_counts": {
+          "none": 20
+        },
+        "evidence_strategy_counts": {
+          "none": 20
+        },
+        "error_type_counts": {
+          "missing_expected_keyword": 15,
+          "unnecessary_clarification": 4,
+          "forbidden_entity_or_value": 1
+        }
+      },
+      "llamaindex": {
+        "count": 20,
+        "ok": 19,
+        "keyword_pass": 6,
+        "quality_avg": 79.7,
+        "avg_latency_ms": 6271.6,
+        "mode_counts": {
+          "structured_tool": 11,
+          "hybrid_retrieval": 5,
+          "error": 1,
+          "clarify": 3
+        },
+        "retrieval_backend_counts": {
+          "none": 16,
+          "qdrant_hybrid": 4
+        },
+        "evidence_strategy_counts": {
+          "structured_tool": 12,
+          "none": 1,
+          "clarify": 3,
+          "hybrid_retrieval": 4
+        },
+        "error_type_counts": {
+          "missing_expected_keyword": 13,
+          "request_failed": 1,
+          "unnecessary_clarification": 3,
+          "repetitive_reply": 1
+        }
+      }
+    },
+    "by_slice": {
+      "protected": {
+        "count": 12,
+        "langgraph": {
+          "count": 4,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 2461.7
+        },
+        "crewai": {
+          "count": 4,
+          "keyword_pass": 2,
+          "quality_avg": 87.0,
+          "avg_latency_ms": 10429.3
+        },
+        "llamaindex": {
+          "count": 4,
+          "keyword_pass": 0,
+          "quality_avg": 71.5,
+          "avg_latency_ms": 12852.8
+        }
+      },
+      "public": {
+        "count": 33,
+        "langgraph": {
+          "count": 11,
+          "keyword_pass": 4,
+          "quality_avg": 87.3,
+          "avg_latency_ms": 2674.0
+        },
+        "crewai": {
+          "count": 11,
+          "keyword_pass": 1,
+          "quality_avg": 80.7,
+          "avg_latency_ms": 6502.1
+        },
+        "llamaindex": {
+          "count": 11,
+          "keyword_pass": 4,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 4992.2
+        }
+      },
+      "restricted": {
+        "count": 15,
+        "langgraph": {
+          "count": 5,
+          "keyword_pass": 2,
+          "quality_avg": 76.6,
+          "avg_latency_ms": 2158.8
+        },
+        "crewai": {
+          "count": 5,
+          "keyword_pass": 2,
+          "quality_avg": 74.2,
+          "avg_latency_ms": 8795.3
+        },
+        "llamaindex": {
+          "count": 5,
+          "keyword_pass": 2,
+          "quality_avg": 85.6,
+          "avg_latency_ms": 3821.3
+        }
+      }
+    },
+    "by_category": {
+      "protected_structured_academic": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 1945.2
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 207.2
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 68.0,
+          "avg_latency_ms": 35602.6
+        }
+      },
+      "protected_structured_admin": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 157.8
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 456.4
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 191.6
+        }
+      },
+      "protected_structured_finance": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 2086.4
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 68.0,
+          "avg_latency_ms": 20282.2
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 213.8
+        }
+      },
+      "protected_structured_followup": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 5657.4
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 20771.3
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 58.0,
+          "avg_latency_ms": 15403.2
+        }
+      },
+      "public_deep_multi_doc": {
+        "count": 6,
+        "langgraph": {
+          "count": 2,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 133.7
+        },
+        "crewai": {
+          "count": 2,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 4177.6
+        },
+        "llamaindex": {
+          "count": 2,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 6014.9
+        }
+      },
+      "public_documents_credentials": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 98.0
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 169.0
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 128.8
+        }
+      },
+      "public_family_new_bundle": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 6563.9
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 192.2
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 21011.5
+        }
+      },
+      "public_first_month_risks": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 109.3
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 180.6
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 136.0
+        }
+      },
+      "public_permanence_support": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 2134.7
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 20282.3
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 0.0,
+          "avg_latency_ms": 12751.0
+        }
+      },
+      "public_policy_bridge": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 3621.0
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 1355.9
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 142.4
+        }
+      },
+      "public_process_compare": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 151.0
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 20316.8
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 133.0
+        }
+      },
+      "public_section_aware": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 5914.0
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 182.3
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 8321.2
+        }
+      },
+      "public_timeline": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 4433.0
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 247.1
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 128.5
+        }
+      },
+      "public_visibility_boundary": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 6122.0
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 68.0,
+          "avg_latency_ms": 20242.0
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 132.0
+        }
+      },
+      "restricted_doc_denied": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 23.0,
+          "avg_latency_ms": 2431.1
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 23.0,
+          "avg_latency_ms": 23000.0
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 68.0,
+          "avg_latency_ms": 17704.6
+        }
+      },
+      "restricted_doc_no_match": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 4010.3
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 218.6
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 362.6
+        }
+      },
+      "restricted_doc_positive": {
+        "count": 9,
+        "langgraph": {
+          "count": 3,
+          "keyword_pass": 1,
+          "quality_avg": 86.7,
+          "avg_latency_ms": 1450.9
+        },
+        "crewai": {
+          "count": 3,
+          "keyword_pass": 1,
+          "quality_avg": 82.7,
+          "avg_latency_ms": 6919.2
+        },
+        "llamaindex": {
+          "count": 3,
+          "keyword_pass": 1,
+          "quality_avg": 86.7,
+          "avg_latency_ms": 346.5
+        }
+      }
+    },
+    "by_retrieval_type": {
+      "protected_structured_academic": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 1945.2
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 207.2
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 68.0,
+          "avg_latency_ms": 35602.6
+        }
+      },
+      "protected_structured_admin": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 157.8
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 456.4
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 191.6
+        }
+      },
+      "protected_structured_finance": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 2086.4
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 68.0,
+          "avg_latency_ms": 20282.2
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 213.8
+        }
+      },
+      "protected_structured_followup": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 5657.4
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 20771.3
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 58.0,
+          "avg_latency_ms": 15403.2
+        }
+      },
+      "public_deep_multi_doc": {
+        "count": 6,
+        "langgraph": {
+          "count": 2,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 133.7
+        },
+        "crewai": {
+          "count": 2,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 4177.6
+        },
+        "llamaindex": {
+          "count": 2,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 6014.9
+        }
+      },
+      "public_documents_credentials": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 98.0
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 169.0
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 128.8
+        }
+      },
+      "public_family_new_bundle": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 6563.9
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 192.2
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 21011.5
+        }
+      },
+      "public_first_month_risks": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 109.3
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 180.6
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 136.0
+        }
+      },
+      "public_permanence_support": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 2134.7
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 20282.3
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 0.0,
+          "avg_latency_ms": 12751.0
+        }
+      },
+      "public_policy_bridge": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 3621.0
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 1355.9
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 142.4
+        }
+      },
+      "public_process_compare": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 151.0
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 20316.8
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 133.0
+        }
+      },
+      "public_section_aware": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 5914.0
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 182.3
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 8321.2
+        }
+      },
+      "public_timeline": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 4433.0
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 247.1
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 80.0,
+          "avg_latency_ms": 128.5
+        }
+      },
+      "public_visibility_boundary": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 6122.0
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 68.0,
+          "avg_latency_ms": 20242.0
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 132.0
+        }
+      },
+      "restricted_doc_denied": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 23.0,
+          "avg_latency_ms": 2431.1
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 23.0,
+          "avg_latency_ms": 23000.0
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 0,
+          "quality_avg": 68.0,
+          "avg_latency_ms": 17704.6
+        }
+      },
+      "restricted_doc_no_match": {
+        "count": 3,
+        "langgraph": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 4010.3
+        },
+        "crewai": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 218.6
+        },
+        "llamaindex": {
+          "count": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 362.6
+        }
+      },
+      "restricted_doc_positive": {
+        "count": 9,
+        "langgraph": {
+          "count": 3,
+          "keyword_pass": 1,
+          "quality_avg": 86.7,
+          "avg_latency_ms": 1450.9
+        },
+        "crewai": {
+          "count": 3,
+          "keyword_pass": 1,
+          "quality_avg": 82.7,
+          "avg_latency_ms": 6919.2
+        },
+        "llamaindex": {
+          "count": 3,
+          "keyword_pass": 1,
+          "quality_avg": 86.7,
+          "avg_latency_ms": 346.5
+        }
+      }
+    },
+    "failures": [
+      {
+        "id": "Q201",
+        "stack": "crewai",
+        "slice": "public",
+        "category": "public_policy_bridge",
+        "retrieval_type": "public_policy_bridge",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "crewai_protected_auth_required",
+        "mode": "deny",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q202",
+        "stack": "langgraph",
+        "slice": "public",
+        "category": "public_timeline",
+        "retrieval_type": "public_timeline",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q202",
+        "stack": "crewai",
+        "slice": "public",
+        "category": "public_timeline",
+        "retrieval_type": "public_timeline",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "crewai_public_fast_path",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q202",
+        "stack": "llamaindex",
+        "slice": "public",
+        "category": "public_timeline",
+        "retrieval_type": "public_timeline",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "contextual_public_direct_answer",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q204",
+        "stack": "langgraph",
+        "slice": "public",
+        "category": "public_family_new_bundle",
+        "retrieval_type": "public_family_new_bundle",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "planejamento semantico publico encontrou um ato estruturado mais adequado ao turno",
+        "mode": "structured_tool",
+        "retrieval_backend": "qdrant_hybrid"
+      },
+      {
+        "id": "Q204",
+        "stack": "crewai",
+        "slice": "public",
+        "category": "public_family_new_bundle",
+        "retrieval_type": "public_family_new_bundle",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "crewai_protected_auth_required",
+        "mode": "deny",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q204",
+        "stack": "llamaindex",
+        "slice": "public",
+        "category": "public_family_new_bundle",
+        "retrieval_type": "public_family_new_bundle",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "llamaindex_public_profile",
+        "mode": "hybrid_retrieval",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q205",
+        "stack": "langgraph",
+        "slice": "public",
+        "category": "public_permanence_support",
+        "retrieval_type": "public_permanence_support",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "planejamento semantico publico encontrou um ato estruturado mais adequado ao turno",
+        "mode": "structured_tool",
+        "retrieval_backend": "qdrant_hybrid"
+      },
+      {
+        "id": "Q205",
+        "stack": "crewai",
+        "slice": "public",
+        "category": "public_permanence_support",
+        "retrieval_type": "public_permanence_support",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "crewai_public_flow_completed",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q205",
+        "stack": "llamaindex",
+        "slice": "public",
+        "category": "public_permanence_support",
+        "retrieval_type": "public_permanence_support",
+        "quality_score": 0,
+        "error_types": [
+          "request_failed"
+        ],
+        "reason": "WorkflowRuntimeError: Error in step 'execute': 3 validation errors for KernelRunResult\nplan\n  Field required [type=missing, input_value={'message_text': 'A equip...manence_family_support'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nreflection\n  Field required [type=missing, input_value={'message_text': 'A equip...manence_family_support'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nresponse\n  Field required [type=missing, input_value={'message_text': 'A equip...manence_family_support'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing",
+        "mode": "error",
+        "retrieval_backend": null
+      },
+      {
+        "id": "Q206",
+        "stack": "crewai",
+        "slice": "public",
+        "category": "public_process_compare",
+        "retrieval_type": "public_process_compare",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "crewai_public_flow_completed",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q207",
+        "stack": "langgraph",
+        "slice": "public",
+        "category": "public_first_month_risks",
+        "retrieval_type": "public_first_month_risks",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q207",
+        "stack": "crewai",
+        "slice": "public",
+        "category": "public_first_month_risks",
+        "retrieval_type": "public_first_month_risks",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "crewai_public_fast_path",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q207",
+        "stack": "llamaindex",
+        "slice": "public",
+        "category": "public_first_month_risks",
+        "retrieval_type": "public_first_month_risks",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "contextual_public_direct_answer",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q208",
+        "stack": "langgraph",
+        "slice": "public",
+        "category": "public_deep_multi_doc",
+        "retrieval_type": "public_deep_multi_doc",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q208",
+        "stack": "crewai",
+        "slice": "public",
+        "category": "public_deep_multi_doc",
+        "retrieval_type": "public_deep_multi_doc",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "crewai_public_fast_path",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q208",
+        "stack": "llamaindex",
+        "slice": "public",
+        "category": "public_deep_multi_doc",
+        "retrieval_type": "public_deep_multi_doc",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "contextual_public_direct_answer",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q209",
+        "stack": "langgraph",
+        "slice": "public",
+        "category": "public_section_aware",
+        "retrieval_type": "public_section_aware",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q209",
+        "stack": "crewai",
+        "slice": "public",
+        "category": "public_section_aware",
+        "retrieval_type": "public_section_aware",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "crewai_public_fast_path",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q209",
+        "stack": "llamaindex",
+        "slice": "public",
+        "category": "public_section_aware",
+        "retrieval_type": "public_section_aware",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "llamaindex_public_profile",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q210",
+        "stack": "crewai",
+        "slice": "public",
+        "category": "public_visibility_boundary",
+        "retrieval_type": "public_visibility_boundary",
+        "quality_score": 68,
+        "error_types": [
+          "missing_expected_keyword",
+          "unnecessary_clarification"
+        ],
+        "reason": "crewai_public_flow_timeout",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q211",
+        "stack": "langgraph",
+        "slice": "public",
+        "category": "public_deep_multi_doc",
+        "retrieval_type": "public_deep_multi_doc",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q211",
+        "stack": "crewai",
+        "slice": "public",
+        "category": "public_deep_multi_doc",
+        "retrieval_type": "public_deep_multi_doc",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "crewai_protected_auth_required",
+        "mode": "deny",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q211",
+        "stack": "llamaindex",
+        "slice": "public",
+        "category": "public_deep_multi_doc",
+        "retrieval_type": "public_deep_multi_doc",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q212",
+        "stack": "langgraph",
+        "slice": "protected",
+        "category": "protected_structured_academic",
+        "retrieval_type": "protected_structured_academic",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "mode": "clarify",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q212",
+        "stack": "llamaindex",
+        "slice": "protected",
+        "category": "protected_structured_academic",
+        "retrieval_type": "protected_structured_academic",
+        "quality_score": 68,
+        "error_types": [
+          "missing_expected_keyword",
+          "unnecessary_clarification"
+        ],
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "mode": "clarify",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q213",
+        "stack": "langgraph",
+        "slice": "protected",
+        "category": "protected_structured_followup",
+        "retrieval_type": "protected_structured_followup",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "planejamento semantico publico encontrou um ato estruturado mais adequado ao turno",
+        "mode": "structured_tool",
+        "retrieval_backend": "qdrant_hybrid"
+      },
+      {
+        "id": "Q213",
+        "stack": "llamaindex",
+        "slice": "protected",
+        "category": "protected_structured_followup",
+        "retrieval_type": "protected_structured_followup",
+        "quality_score": 58,
+        "error_types": [
+          "missing_expected_keyword",
+          "repetitive_reply",
+          "unnecessary_clarification"
+        ],
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "mode": "clarify",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q214",
+        "stack": "langgraph",
+        "slice": "protected",
+        "category": "protected_structured_finance",
+        "retrieval_type": "protected_structured_finance",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "mode": "clarify",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q214",
+        "stack": "crewai",
+        "slice": "protected",
+        "category": "protected_structured_finance",
+        "retrieval_type": "protected_structured_finance",
+        "quality_score": 68,
+        "error_types": [
+          "missing_expected_keyword",
+          "unnecessary_clarification"
+        ],
+        "reason": "crewai_public_flow_timeout",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q214",
+        "stack": "llamaindex",
+        "slice": "protected",
+        "category": "protected_structured_finance",
+        "retrieval_type": "protected_structured_finance",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "llamaindex_protected_records_fast_path",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q215",
+        "stack": "langgraph",
+        "slice": "protected",
+        "category": "protected_structured_admin",
+        "retrieval_type": "protected_structured_admin",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q215",
+        "stack": "crewai",
+        "slice": "protected",
+        "category": "protected_structured_admin",
+        "retrieval_type": "protected_structured_admin",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "crewai_protected_fast_path",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q215",
+        "stack": "llamaindex",
+        "slice": "protected",
+        "category": "protected_structured_admin",
+        "retrieval_type": "protected_structured_admin",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q216",
+        "stack": "langgraph",
+        "slice": "restricted",
+        "category": "restricted_doc_positive",
+        "retrieval_type": "restricted_doc_positive",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "mode": "clarify",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q216",
+        "stack": "crewai",
+        "slice": "restricted",
+        "category": "restricted_doc_positive",
+        "retrieval_type": "restricted_doc_positive",
+        "quality_score": 88,
+        "error_types": [
+          "unnecessary_clarification"
+        ],
+        "reason": "crewai_public_flow_timeout",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q217",
+        "stack": "langgraph",
+        "slice": "restricted",
+        "category": "restricted_doc_positive",
+        "retrieval_type": "restricted_doc_positive",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "dados estruturados devem passar por service deterministico",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q217",
+        "stack": "crewai",
+        "slice": "restricted",
+        "category": "restricted_doc_positive",
+        "retrieval_type": "restricted_doc_positive",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "crewai_protected_auth_required",
+        "mode": "deny",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q217",
+        "stack": "llamaindex",
+        "slice": "restricted",
+        "category": "restricted_doc_positive",
+        "retrieval_type": "restricted_doc_positive",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "llamaindex_restricted_doc_fast_path",
+        "mode": "hybrid_retrieval",
+        "retrieval_backend": "qdrant_hybrid"
+      },
+      {
+        "id": "Q218",
+        "stack": "crewai",
+        "slice": "restricted",
+        "category": "restricted_doc_positive",
+        "retrieval_type": "restricted_doc_positive",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "workflow_not_found",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q218",
+        "stack": "llamaindex",
+        "slice": "restricted",
+        "category": "restricted_doc_positive",
+        "retrieval_type": "restricted_doc_positive",
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "reason": "llamaindex_restricted_doc_fast_path",
+        "mode": "hybrid_retrieval",
+        "retrieval_backend": "qdrant_hybrid"
+      },
+      {
+        "id": "Q220",
+        "stack": "langgraph",
+        "slice": "restricted",
+        "category": "restricted_doc_denied",
+        "retrieval_type": "restricted_doc_denied",
+        "quality_score": 23,
+        "error_types": [
+          "forbidden_entity_or_value",
+          "missing_expected_keyword",
+          "unnecessary_clarification"
+        ],
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "mode": "clarify",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q220",
+        "stack": "crewai",
+        "slice": "restricted",
+        "category": "restricted_doc_denied",
+        "retrieval_type": "restricted_doc_denied",
+        "quality_score": 23,
+        "error_types": [
+          "forbidden_entity_or_value",
+          "missing_expected_keyword",
+          "unnecessary_clarification"
+        ],
+        "reason": "crewai_public_flow_completed",
+        "mode": "structured_tool",
+        "retrieval_backend": "none"
+      },
+      {
+        "id": "Q220",
+        "stack": "llamaindex",
+        "slice": "restricted",
+        "category": "restricted_doc_denied",
+        "retrieval_type": "restricted_doc_denied",
+        "quality_score": 68,
+        "error_types": [
+          "missing_expected_keyword",
+          "unnecessary_clarification"
+        ],
+        "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+        "mode": "clarify",
+        "retrieval_backend": "none"
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "Q201",
+      "stack": "langgraph",
+      "slice": "public",
+      "category": "public_policy_bridge",
+      "retrieval_type": "public_policy_bridge",
+      "thread_id": "retrieval_public_policy_bridge",
+      "turn_index": 1,
+      "prompt": "Se um aluno perde prova por motivo de saude, como a politica publica conecta atestado, segunda chamada e recuperacao?",
+      "status": 200,
+      "latency_ms": 3621.0,
+      "mode": "hybrid_retrieval",
+      "reason": "retrieval hibrido e o caminho padrao para faq e documentos",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "public_slice",
+        "hybrid_retrieval"
+      ],
+      "retrieval_backend": "qdrant_hybrid",
+      "evidence_strategy": "direct_answer",
+      "support_count": 3,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": true
+      },
+      "answer_text": "Atestados medicos e justificativas formais podem ser usados para apoiar analise de ausencia, segunda chamada ou adaptacao temporaria de rotina. Pedidos de segunda chamada exigem justificativa no prazo orientado pela escola."
+    },
+    {
+      "id": "Q201",
+      "stack": "crewai",
+      "slice": "public",
+      "category": "public_policy_bridge",
+      "retrieval_type": "public_policy_bridge",
+      "thread_id": "retrieval_public_policy_bridge",
+      "turn_index": 1,
+      "prompt": "Se um aluno perde prova por motivo de saude, como a politica publica conecta atestado, segunda chamada e recuperacao?",
+      "status": 200,
+      "latency_ms": 1355.9,
+      "mode": "deny",
+      "reason": "crewai_protected_auth_required",
+      "graph_path": [
+        "flow_router",
+        "auth_required_deterministic"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot."
+    },
+    {
+      "id": "Q201",
+      "stack": "llamaindex",
+      "slice": "public",
+      "category": "public_policy_bridge",
+      "retrieval_type": "public_policy_bridge",
+      "thread_id": "retrieval_public_policy_bridge",
+      "turn_index": 1,
+      "prompt": "Se um aluno perde prova por motivo de saude, como a politica publica conecta atestado, segunda chamada e recuperacao?",
+      "status": 200,
+      "latency_ms": 142.4,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "hybrid_retrieval",
+        "llamaindex:public",
+        "llamaindex:contextual_public_direct",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 3,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": true
+      },
+      "answer_text": "Atestados medicos e justificativas formais podem ser usados para apoiar analise de ausencia, segunda chamada ou adaptacao temporaria de rotina. Pedidos de segunda chamada exigem justificativa no prazo orientado pela escola."
+    },
+    {
+      "id": "Q202",
+      "stack": "langgraph",
+      "slice": "public",
+      "category": "public_timeline",
+      "retrieval_type": "public_timeline",
+      "thread_id": "retrieval_public_timeline_sequence",
+      "turn_index": 1,
+      "prompt": "Qual e a sequencia entre abertura da matricula, inicio das aulas e primeira reuniao com responsaveis em 2026?",
+      "status": 200,
+      "latency_ms": 4433.0,
+      "mode": "structured_tool",
+      "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "public_slice",
+        "structured_tool_call"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "direct_answer",
+      "support_count": 3,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Olá! Para 2026, as matrículas do Colégio Horizonte foram abertas em 6 de outubro de 2025, com pré-cadastro e visita opcional. As aulas para o Ensino Fundamental II e Médio começam em 2 de fevereiro de 2026, e a semana de acolhimento para o 6º ano e 1ª série será de 2 a 6 de fevereiro."
+    },
+    {
+      "id": "Q202",
+      "stack": "crewai",
+      "slice": "public",
+      "category": "public_timeline",
+      "retrieval_type": "public_timeline",
+      "thread_id": "retrieval_public_timeline_sequence",
+      "turn_index": 1,
+      "prompt": "Qual e a sequencia entre abertura da matricula, inicio das aulas e primeira reuniao com responsaveis em 2026?",
+      "status": 200,
+      "latency_ms": 247.1,
+      "mode": "structured_tool",
+      "reason": "crewai_public_fast_path",
+      "graph_path": [
+        "flow_router",
+        "deterministic_fast_path"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita orientada opcional e triagem inicial de documentos. | 2025-10-06 | familias interessadas | O atendimento comercial segue enquanto houver vagas por segmento.\nAs aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026. | 2026-02-02 | alunos e familias | A semana de acolhimento do 6o ano e da primeira serie ocorre entre 2 e 6 de fevereiro."
+    },
+    {
+      "id": "Q202",
+      "stack": "llamaindex",
+      "slice": "public",
+      "category": "public_timeline",
+      "retrieval_type": "public_timeline",
+      "thread_id": "retrieval_public_timeline_sequence",
+      "turn_index": 1,
+      "prompt": "Qual e a sequencia entre abertura da matricula, inicio das aulas e primeira reuniao com responsaveis em 2026?",
+      "status": 200,
+      "latency_ms": 128.5,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "llamaindex:public",
+        "llamaindex:contextual_public_direct",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 2,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Hoje a base publica de Colegio Horizonte nao traz um marco institucional estruturado para essa data."
+    },
+    {
+      "id": "Q203",
+      "stack": "langgraph",
+      "slice": "public",
+      "category": "public_documents_credentials",
+      "retrieval_type": "public_documents_credentials",
+      "thread_id": "retrieval_public_docs_credentials",
+      "turn_index": 1,
+      "prompt": "Se eu perder a senha e ainda precisar enviar documentos, em que ordem devo resolver portal, credenciais e secretaria?",
+      "status": 200,
+      "latency_ms": 98.0,
+      "mode": "structured_tool",
+      "reason": "fato institucional canonico deve vir de fonte estruturada",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "public_slice",
+        "structured_tool_call"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "direct_answer",
+      "support_count": 3,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo:\n- Secretaria: recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas.\n- Portal institucional: centraliza protocolo e envio digital inicial de documentos.\n- Credenciais: login e senha do portal continuam sendo a base de acesso; se precisar recuperar acesso, o melhor caminho e a secretaria ou o suporte digital.\n- Documentos: o envio inicial pode ser feito por portal institucional, email da secretaria ou secretaria presencial.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional."
+    },
+    {
+      "id": "Q203",
+      "stack": "crewai",
+      "slice": "public",
+      "category": "public_documents_credentials",
+      "retrieval_type": "public_documents_credentials",
+      "thread_id": "retrieval_public_docs_credentials",
+      "turn_index": 1,
+      "prompt": "Se eu perder a senha e ainda precisar enviar documentos, em que ordem devo resolver portal, credenciais e secretaria?",
+      "status": 200,
+      "latency_ms": 169.0,
+      "mode": "structured_tool",
+      "reason": "crewai_public_fast_path",
+      "graph_path": [
+        "flow_router",
+        "deterministic_fast_path"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo: Secretaria recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas. Portal institucional centraliza protocolo e envio digital inicial de documentos. Credenciais significam login e senha do portal; se voce perder o acesso, o melhor caminho e a secretaria ou o suporte digital. Documentos podem ser enviados pelo portal institucional, pelo email da secretaria ou pela secretaria presencial."
+    },
+    {
+      "id": "Q203",
+      "stack": "llamaindex",
+      "slice": "public",
+      "category": "public_documents_credentials",
+      "retrieval_type": "public_documents_credentials",
+      "thread_id": "retrieval_public_docs_credentials",
+      "turn_index": 1,
+      "prompt": "Se eu perder a senha e ainda precisar enviar documentos, em que ordem devo resolver portal, credenciais e secretaria?",
+      "status": 200,
+      "latency_ms": 128.8,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "llamaindex:public",
+        "llamaindex:contextual_public_direct",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 2,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo:\n- Secretaria: recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas.\n- Portal institucional: centraliza protocolo e envio digital inicial de documentos.\n- Credenciais: login e senha do portal continuam sendo a base de acesso; se precisar recuperar acesso, o melhor caminho e a secretaria ou o suporte digital.\n- Documentos: o envio inicial pode ser feito por portal institucional, email da secretaria ou secretaria presencial.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional."
+    },
+    {
+      "id": "Q204",
+      "stack": "langgraph",
+      "slice": "public",
+      "category": "public_family_new_bundle",
+      "retrieval_type": "public_family_new_bundle",
+      "thread_id": "retrieval_public_family_new_bundle",
+      "turn_index": 1,
+      "prompt": "Estou chegando agora com meu primeiro filho: como matricula, calendario e agenda de avaliacoes se encaixam no primeiro bimestre?",
+      "status": 200,
+      "latency_ms": 6563.9,
+      "mode": "structured_tool",
+      "reason": "planejamento semantico publico encontrou um ato estruturado mais adequado ao turno",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "public_slice",
+        "hybrid_retrieval"
+      ],
+      "retrieval_backend": "qdrant_hybrid",
+      "evidence_strategy": "direct_answer",
+      "support_count": 3,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Olá! Que bom ter você conosco. Para a matrícula do seu filho em 2026, o ciclo público começou em 6 de outubro de 2025, com pré-cadastro e triagem de documentos. Nosso atendimento comercial continua enquanto houver vagas.\n\nSobre o primeiro bimestre, temos uma visita guiada para famílias interessadas em 6 de abril de 2026, às 9h, e um plantão pedagógico em 11 de abril de 2026, às 8h."
+    },
+    {
+      "id": "Q204",
+      "stack": "crewai",
+      "slice": "public",
+      "category": "public_family_new_bundle",
+      "retrieval_type": "public_family_new_bundle",
+      "thread_id": "retrieval_public_family_new_bundle",
+      "turn_index": 1,
+      "prompt": "Estou chegando agora com meu primeiro filho: como matricula, calendario e agenda de avaliacoes se encaixam no primeiro bimestre?",
+      "status": 200,
+      "latency_ms": 192.2,
+      "mode": "deny",
+      "reason": "crewai_protected_auth_required",
+      "graph_path": [
+        "flow_router",
+        "auth_required_deterministic"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot."
+    },
+    {
+      "id": "Q204",
+      "stack": "llamaindex",
+      "slice": "public",
+      "category": "public_family_new_bundle",
+      "retrieval_type": "public_family_new_bundle",
+      "thread_id": "retrieval_public_family_new_bundle",
+      "turn_index": 1,
+      "prompt": "Estou chegando agora com meu primeiro filho: como matricula, calendario e agenda de avaliacoes se encaixam no primeiro bimestre?",
+      "status": 200,
+      "latency_ms": 21011.5,
+      "mode": "hybrid_retrieval",
+      "reason": "llamaindex_public_profile",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "hybrid_retrieval",
+        "llamaindex:workflow",
+        "llamaindex:llamaindex_public_profile",
+        "llamaindex:tool:public_profile",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Turnos e horarios documentados:\n- Ensino Fundamental II (Manha): 07:15 as 12:30. Oficinas, plantoes, esportes e estudo orientado no contraturno em dias alternados.\n- Ensino Medio (Manha): 07:15 as 12:50. Trilhas eletivas, monitorias e laboratorios no contraturno a partir das 14h00.\n- Fundamental II e Ensino Medio (Integral opcional): 07:00 as 17:30. Inclui estudo orientado, almoco, oficinas, esportes e acompanhamento no contraturno.\n\nHoje a base publica de eventos de Colegio Horizonte nao trouxe agenda estruturada para esse pedido.\n\nSim. O envio inicial de documentos pode ser feito por canal digital.\nHoje os canais mais diretos publicados para isso sao:\n- portal institucional\n- email da secretaria\n- secretaria presencial\nPrazo esperado da secretaria: retorno em ate 2 dias uteis.\nNo processo de matricula, o envio inicial pode ser digital. A validacao final continua com a secretaria.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional."
+    },
+    {
+      "id": "Q205",
+      "stack": "langgraph",
+      "slice": "public",
+      "category": "public_permanence_support",
+      "retrieval_type": "public_permanence_support",
+      "thread_id": "retrieval_public_permanence_support",
+      "turn_index": 1,
+      "prompt": "Que mecanismos publicos a escola descreve para que a familia acompanhe permanencia, apoio e vida escolar sem se perder?",
+      "status": 200,
+      "latency_ms": 2134.7,
+      "mode": "structured_tool",
+      "reason": "planejamento semantico publico encontrou um ato estruturado mais adequado ao turno",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "public_slice",
+        "hybrid_retrieval"
+      ],
+      "retrieval_backend": "qdrant_hybrid",
+      "evidence_strategy": "direct_answer",
+      "support_count": 6,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Aqui e o Colegio Horizonte. Se voce esta procurando o Descreve Para Que, eu nao tenho acesso ao atendimento dessa outra instituicao. Se quiser, sigo te ajudando com o Colegio Horizonte por aqui."
+    },
+    {
+      "id": "Q205",
+      "stack": "crewai",
+      "slice": "public",
+      "category": "public_permanence_support",
+      "retrieval_type": "public_permanence_support",
+      "thread_id": "retrieval_public_permanence_support",
+      "turn_index": 1,
+      "prompt": "Que mecanismos publicos a escola descreve para que a familia acompanhe permanencia, apoio e vida escolar sem se perder?",
+      "status": 200,
+      "latency_ms": 20282.3,
+      "mode": "structured_tool",
+      "reason": "crewai_public_flow_completed",
+      "graph_path": [
+        "flow_state",
+        "pydantic_output",
+        "judge",
+        "deterministic_backstop",
+        "public_planning",
+        "public_composition",
+        "public_judging"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes."
+    },
+    {
+      "id": "Q205",
+      "stack": "llamaindex",
+      "slice": "public",
+      "category": "public_permanence_support",
+      "retrieval_type": "public_permanence_support",
+      "thread_id": "retrieval_public_permanence_support",
+      "turn_index": 1,
+      "prompt": "Que mecanismos publicos a escola descreve para que a familia acompanhe permanencia, apoio e vida escolar sem se perder?",
+      "status": 599,
+      "latency_ms": 12751.0,
+      "mode": "error",
+      "reason": "WorkflowRuntimeError: Error in step 'execute': 3 validation errors for KernelRunResult\nplan\n  Field required [type=missing, input_value={'message_text': 'A equip...manence_family_support'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nreflection\n  Field required [type=missing, input_value={'message_text': 'A equip...manence_family_support'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nresponse\n  Field required [type=missing, input_value={'message_text': 'A equip...manence_family_support'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing",
+      "graph_path": [],
+      "retrieval_backend": null,
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 0,
+      "error_types": [
+        "request_failed"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": ""
+    },
+    {
+      "id": "Q206",
+      "stack": "langgraph",
+      "slice": "public",
+      "category": "public_process_compare",
+      "retrieval_type": "public_process_compare",
+      "thread_id": "retrieval_public_process_compare",
+      "turn_index": 1,
+      "prompt": "Na pratica, o que muda entre rematricula, transferencia de entrada e cancelamento olhando prazos e papelada?",
+      "status": 200,
+      "latency_ms": 151.0,
+      "mode": "structured_tool",
+      "reason": "fato institucional canonico deve vir de fonte estruturada",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "public_slice",
+        "structured_tool_call"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "direct_answer",
+      "support_count": 6,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Rematricula: A rematricula para estudantes ja vinculados ao Colegio Horizonte ocorre em janela administrativa propria, divulgada no portal e reforcada pelos canais oficiais. Transferencia de entrada: Pedidos de transferencia para ingresso durante o ano letivo dependem de vaga, analise academica, conferencia documental e alinhamento com a serie pretendida. Transferencia de saida: Quando a familia deseja transferir o aluno para outra instituicao, a solicitacao deve ser formalizada junto a secretaria. Cancelamento: Pedidos de cancelamento devem ser apresentados pelo responsavel legal por canal oficial e podem exigir confirmacao adicional da secretaria ou do financeiro. Prazos e documentos: Declaracoes simples costumam ser liberadas em ate dois dias uteis."
+    },
+    {
+      "id": "Q206",
+      "stack": "crewai",
+      "slice": "public",
+      "category": "public_process_compare",
+      "retrieval_type": "public_process_compare",
+      "thread_id": "retrieval_public_process_compare",
+      "turn_index": 1,
+      "prompt": "Na pratica, o que muda entre rematricula, transferencia de entrada e cancelamento olhando prazos e papelada?",
+      "status": 200,
+      "latency_ms": 20316.8,
+      "mode": "structured_tool",
+      "reason": "crewai_public_flow_completed",
+      "graph_path": [
+        "flow_state",
+        "pydantic_output",
+        "judge",
+        "deterministic_backstop",
+        "public_planning",
+        "public_composition",
+        "public_judging"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Nao consegui concluir essa resposta agora pelo caminho principal configurado. Tente reformular em uma frase mais direta ou repetir em instantes."
+    },
+    {
+      "id": "Q206",
+      "stack": "llamaindex",
+      "slice": "public",
+      "category": "public_process_compare",
+      "retrieval_type": "public_process_compare",
+      "thread_id": "retrieval_public_process_compare",
+      "turn_index": 1,
+      "prompt": "Na pratica, o que muda entre rematricula, transferencia de entrada e cancelamento olhando prazos e papelada?",
+      "status": 200,
+      "latency_ms": 133.0,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "llamaindex:public",
+        "llamaindex:contextual_public_direct",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Rematricula: A rematricula para estudantes ja vinculados ao Colegio Horizonte ocorre em janela administrativa propria, divulgada no portal e reforcada pelos canais oficiais. Transferencia de entrada: Pedidos de transferencia para ingresso durante o ano letivo dependem de vaga, analise academica, conferencia documental e alinhamento com a serie pretendida. Transferencia de saida: Quando a familia deseja transferir o aluno para outra instituicao, a solicitacao deve ser formalizada junto a secretaria. Cancelamento: Pedidos de cancelamento devem ser apresentados pelo responsavel legal por canal oficial e podem exigir confirmacao adicional da secretaria ou do financeiro. Prazos e documentos: Declaracoes simples costumam ser liberadas em ate dois dias uteis."
+    },
+    {
+      "id": "Q207",
+      "stack": "langgraph",
+      "slice": "public",
+      "category": "public_first_month_risks",
+      "retrieval_type": "public_first_month_risks",
+      "thread_id": "retrieval_public_first_month_risks",
+      "turn_index": 1,
+      "prompt": "Quais deslizes do primeiro mes mais costumam dar problema com credenciais, documentos e rotina?",
+      "status": 200,
+      "latency_ms": 109.3,
+      "mode": "structured_tool",
+      "reason": "fato institucional canonico deve vir de fonte estruturada",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "public_slice",
+        "structured_tool_call"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "direct_answer",
+      "support_count": 2,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo:\n- Secretaria: recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas.\n- Portal institucional: centraliza protocolo e envio digital inicial de documentos.\n- Credenciais: login e senha do portal continuam sendo a base de acesso; se precisar recuperar acesso, o melhor caminho e a secretaria ou o suporte digital.\n- Documentos: o envio inicial pode ser feito por portal institucional, email da secretaria ou secretaria presencial.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional."
+    },
+    {
+      "id": "Q207",
+      "stack": "crewai",
+      "slice": "public",
+      "category": "public_first_month_risks",
+      "retrieval_type": "public_first_month_risks",
+      "thread_id": "retrieval_public_first_month_risks",
+      "turn_index": 1,
+      "prompt": "Quais deslizes do primeiro mes mais costumam dar problema com credenciais, documentos e rotina?",
+      "status": 200,
+      "latency_ms": 180.6,
+      "mode": "structured_tool",
+      "reason": "crewai_public_fast_path",
+      "graph_path": [
+        "flow_router",
+        "deterministic_fast_path"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo: Secretaria recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas. Portal institucional centraliza protocolo e envio digital inicial de documentos. Credenciais significam login e senha do portal; se voce perder o acesso, o melhor caminho e a secretaria ou o suporte digital. Documentos podem ser enviados pelo portal institucional, pelo email da secretaria ou pela secretaria presencial."
+    },
+    {
+      "id": "Q207",
+      "stack": "llamaindex",
+      "slice": "public",
+      "category": "public_first_month_risks",
+      "retrieval_type": "public_first_month_risks",
+      "thread_id": "retrieval_public_first_month_risks",
+      "turn_index": 1,
+      "prompt": "Quais deslizes do primeiro mes mais costumam dar problema com credenciais, documentos e rotina?",
+      "status": 200,
+      "latency_ms": 136.0,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "llamaindex:public",
+        "llamaindex:contextual_public_direct",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo:\n- Secretaria: recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas.\n- Portal institucional: centraliza protocolo e envio digital inicial de documentos.\n- Credenciais: login e senha do portal continuam sendo a base de acesso; se precisar recuperar acesso, o melhor caminho e a secretaria ou o suporte digital.\n- Documentos: o envio inicial pode ser feito por portal institucional, email da secretaria ou secretaria presencial.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional."
+    },
+    {
+      "id": "Q208",
+      "stack": "langgraph",
+      "slice": "public",
+      "category": "public_deep_multi_doc",
+      "retrieval_type": "public_deep_multi_doc",
+      "thread_id": "retrieval_public_discipline_recovery",
+      "turn_index": 1,
+      "prompt": "Cruze regulamentos gerais, politica de avaliacao e orientacao ao estudante para explicar como disciplina, frequencia e recuperacao se influenciam.",
+      "status": 200,
+      "latency_ms": 115.4,
+      "mode": "structured_tool",
+      "reason": "fato institucional canonico deve vir de fonte estruturada",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "public_slice",
+        "structured_tool_call"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "direct_answer",
+      "support_count": 2,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "No Colegio Horizonte, a referencia publica minima de frequencia e 75,0% por componente. Se a frequencia de um componente cair abaixo de 75%, o estudante entra em alerta academico e a coordenacao pode acionar a familia. A permanencia abaixo desse limite pode comprometer a aprovacao por frequencia. A escola acompanha justificativas, recorrencia e necessidade de plano de recomposicao junto a familia e ao estudante."
+    },
+    {
+      "id": "Q208",
+      "stack": "crewai",
+      "slice": "public",
+      "category": "public_deep_multi_doc",
+      "retrieval_type": "public_deep_multi_doc",
+      "thread_id": "retrieval_public_discipline_recovery",
+      "turn_index": 1,
+      "prompt": "Cruze regulamentos gerais, politica de avaliacao e orientacao ao estudante para explicar como disciplina, frequencia e recuperacao se influenciam.",
+      "status": 200,
+      "latency_ms": 8175.8,
+      "mode": "structured_tool",
+      "reason": "crewai_public_fast_path",
+      "graph_path": [
+        "flow_router",
+        "deterministic_fast_path"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "A proposta pedagogica publicada hoje combina A escola segue a BNCC e o curriculo do Ensino Medio articulado com projeto de vida, producao textual, cultura digital e aprofundamento academico progressivo. Na pratica, isso aparece em frentes como Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes."
+    },
+    {
+      "id": "Q208",
+      "stack": "llamaindex",
+      "slice": "public",
+      "category": "public_deep_multi_doc",
+      "retrieval_type": "public_deep_multi_doc",
+      "thread_id": "retrieval_public_discipline_recovery",
+      "turn_index": 1,
+      "prompt": "Cruze regulamentos gerais, politica de avaliacao e orientacao ao estudante para explicar como disciplina, frequencia e recuperacao se influenciam.",
+      "status": 200,
+      "latency_ms": 182.1,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "llamaindex:public",
+        "llamaindex:contextual_public_direct",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "No Colegio Horizonte, a referencia publica minima de frequencia e 75,0% por componente. Se a frequencia de um componente cair abaixo de 75%, o estudante entra em alerta academico e a coordenacao pode acionar a familia. A permanencia abaixo desse limite pode comprometer a aprovacao por frequencia. A escola acompanha justificativas, recorrencia e necessidade de plano de recomposicao junto a familia e ao estudante."
+    },
+    {
+      "id": "Q209",
+      "stack": "langgraph",
+      "slice": "public",
+      "category": "public_section_aware",
+      "retrieval_type": "public_section_aware",
+      "thread_id": "retrieval_public_facilities_study",
+      "turn_index": 1,
+      "prompt": "Como biblioteca e laboratorios aparecem nas regras de uso e no apoio ao estudo do ensino medio?",
+      "status": 200,
+      "latency_ms": 5914.0,
+      "mode": "structured_tool",
+      "reason": "fato institucional canonico deve vir de fonte estruturada",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "public_slice",
+        "structured_tool_call"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "direct_answer",
+      "support_count": 6,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "A Biblioteca Aurora está disponível para todos os alunos do Ensino Médio, de segunda a sexta, das 7h30 às 18h00. Ela é um espaço importante para o apoio aos estudos e o acesso a recursos."
+    },
+    {
+      "id": "Q209",
+      "stack": "crewai",
+      "slice": "public",
+      "category": "public_section_aware",
+      "retrieval_type": "public_section_aware",
+      "thread_id": "retrieval_public_facilities_study",
+      "turn_index": 1,
+      "prompt": "Como biblioteca e laboratorios aparecem nas regras de uso e no apoio ao estudo do ensino medio?",
+      "status": 200,
+      "latency_ms": 182.3,
+      "mode": "structured_tool",
+      "reason": "crewai_public_fast_path",
+      "graph_path": [
+        "flow_router",
+        "deterministic_fast_path"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Sim. Biblioteca Aurora: biblioteca   Biblioteca Aurora   service   True   Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.."
+    },
+    {
+      "id": "Q209",
+      "stack": "llamaindex",
+      "slice": "public",
+      "category": "public_section_aware",
+      "retrieval_type": "public_section_aware",
+      "thread_id": "retrieval_public_facilities_study",
+      "turn_index": 1,
+      "prompt": "Como biblioteca e laboratorios aparecem nas regras de uso e no apoio ao estudo do ensino medio?",
+      "status": 200,
+      "latency_ms": 8321.2,
+      "mode": "structured_tool",
+      "reason": "llamaindex_public_profile",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "llamaindex:workflow",
+        "llamaindex:llamaindex_public_profile",
+        "llamaindex:tool:public_profile",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Sim. O Colegio Horizonte tem a Biblioteca Aurora. Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.\n\nHoje Colegio Horizonte atende estes segmentos:\n- Ensino Fundamental II (6o ao 9o ano)\n- Ensino Medio (1a a 3a serie)"
+    },
+    {
+      "id": "Q210",
+      "stack": "langgraph",
+      "slice": "public",
+      "category": "public_visibility_boundary",
+      "retrieval_type": "public_visibility_boundary",
+      "thread_id": "retrieval_public_visibility_boundary",
+      "turn_index": 1,
+      "prompt": "O que e publico no calendario e no portal, e o que ja depende de autenticacao da familia?",
+      "status": 200,
+      "latency_ms": 6122.0,
+      "mode": "structured_tool",
+      "reason": "planejamento semantico publico encontrou um ato estruturado mais adequado ao turno",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "public_slice",
+        "hybrid_retrieval"
+      ],
+      "retrieval_backend": "qdrant_hybrid",
+      "evidence_strategy": "direct_answer",
+      "support_count": 6,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "No nosso calendário público, você encontra os marcos institucionais e eventos coletivos da escola. Já os detalhes individuais de cada aluno, convites específicos, informações financeiras e acompanhamentos protegidos são acessíveis apenas com autenticação. Fique tranquila, sempre que houver alguma atualização importante no calendário de avaliações, avisaremos no portal e pelos nossos canais oficiais."
+    },
+    {
+      "id": "Q210",
+      "stack": "crewai",
+      "slice": "public",
+      "category": "public_visibility_boundary",
+      "retrieval_type": "public_visibility_boundary",
+      "thread_id": "retrieval_public_visibility_boundary",
+      "turn_index": 1,
+      "prompt": "O que e publico no calendario e no portal, e o que ja depende de autenticacao da familia?",
+      "status": 200,
+      "latency_ms": 20242.0,
+      "mode": "structured_tool",
+      "reason": "crewai_public_flow_timeout",
+      "graph_path": [
+        "flow_state",
+        "pydantic_output",
+        "judge",
+        "deterministic_backstop",
+        "public_planning",
+        "public_composition",
+        "public_judging"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 68,
+      "error_types": [
+        "missing_expected_keyword",
+        "unnecessary_clarification"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Olá! Os documentos que consultei não especificam quais informações ou serviços são acessíveis sem autenticação no calendário e no portal. Você gostaria de saber sobre quais informações ou serviços específicos você tem interesse em acessar sem autenticação?"
+    },
+    {
+      "id": "Q210",
+      "stack": "llamaindex",
+      "slice": "public",
+      "category": "public_visibility_boundary",
+      "retrieval_type": "public_visibility_boundary",
+      "thread_id": "retrieval_public_visibility_boundary",
+      "turn_index": 1,
+      "prompt": "O que e publico no calendario e no portal, e o que ja depende de autenticacao da familia?",
+      "status": 200,
+      "latency_ms": 132.0,
+      "mode": "structured_tool",
+      "reason": "contextual_public_direct_answer",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "hybrid_retrieval",
+        "llamaindex:public",
+        "llamaindex:contextual_public_direct",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 3,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "No calendario publico, o que costuma ficar aberto para familias sao marcos institucionais gerais e eventos coletivos. O que depende de autenticacao ou contexto interno sao detalhes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos. Sempre que houver ajuste relevante no calendario de avaliacao, a escola atualiza o portal e reforca a comunicacao pelos canais oficiais. O ambiente digital amplia o atendimento, mas nao substitui todos os processos formais."
+    },
+    {
+      "id": "Q211",
+      "stack": "langgraph",
+      "slice": "public",
+      "category": "public_deep_multi_doc",
+      "retrieval_type": "public_deep_multi_doc",
+      "thread_id": "retrieval_public_transversal_year",
+      "turn_index": 1,
+      "prompt": "Monte uma visao transversal de como comunicacao com responsaveis, avaliacoes, estudo orientado e canais digitais se afetam ao longo do ano.",
+      "status": 200,
+      "latency_ms": 152.0,
+      "mode": "structured_tool",
+      "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "public_slice",
+        "structured_tool_call",
+        "protected_domain_rescue"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 5,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando `/start link_<codigo>` ao bot."
+    },
+    {
+      "id": "Q211",
+      "stack": "crewai",
+      "slice": "public",
+      "category": "public_deep_multi_doc",
+      "retrieval_type": "public_deep_multi_doc",
+      "thread_id": "retrieval_public_transversal_year",
+      "turn_index": 1,
+      "prompt": "Monte uma visao transversal de como comunicacao com responsaveis, avaliacoes, estudo orientado e canais digitais se afetam ao longo do ano.",
+      "status": 200,
+      "latency_ms": 179.3,
+      "mode": "deny",
+      "reason": "crewai_protected_auth_required",
+      "graph_path": [
+        "flow_router",
+        "auth_required_deterministic"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot."
+    },
+    {
+      "id": "Q211",
+      "stack": "llamaindex",
+      "slice": "public",
+      "category": "public_deep_multi_doc",
+      "retrieval_type": "public_deep_multi_doc",
+      "thread_id": "retrieval_public_transversal_year",
+      "turn_index": 1,
+      "prompt": "Monte uma visao transversal de como comunicacao com responsaveis, avaliacoes, estudo orientado e canais digitais se afetam ao longo do ano.",
+      "status": 200,
+      "latency_ms": 11847.7,
+      "mode": "structured_tool",
+      "reason": "fato institucional canonico deve vir de fonte estruturada",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Hoje o Colegio Horizonte divulga atividades complementares no contraturno de forma assim: - Ensino Fundamental II: Oficinas, plantoes, esportes e estudo orientado no contraturno em dias alternados. - Ensino Medio: Trilhas eletivas, monitorias e laboratorios no contraturno a partir das 14h00. - Fundamental II e Ensino Medio: Inclui estudo orientado, almoco, oficinas, esportes e acompanhamento no contraturno. Entre as ofertas que aparecem com mais clareza hoje estao Biblioteca Aurora, Oficina de danca e expressao corporal, Oficina de teatro, Futsal e treinos esportivos, Volei escolar, Espaco Maker."
+    },
+    {
+      "id": "Q212",
+      "stack": "langgraph",
+      "slice": "protected",
+      "category": "protected_structured_academic",
+      "retrieval_type": "protected_structured_academic",
+      "thread_id": "retrieval_protected_family_panorama",
+      "turn_index": 1,
+      "prompt": "Faca um panorama academico dos meus filhos e destaque quem esta mais perto da media minima.",
+      "status": 200,
+      "latency_ms": 1945.2,
+      "mode": "clarify",
+      "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "clarify"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "clarify",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Para acessar um panorama acadêmico detalhado dos seus filhos e verificar quem está mais próximo da média mínima, é necessário que você se autentique em nosso portal. Lá, você terá acesso a todas as informações de desempenho individual.\n\nSe precisar de ajuda para acessar o portal ou tiver alguma dúvida sobre as informações, a Secretaria Escolar pode te auxiliar."
+    },
+    {
+      "id": "Q212",
+      "stack": "crewai",
+      "slice": "protected",
+      "category": "protected_structured_academic",
+      "retrieval_type": "protected_structured_academic",
+      "thread_id": "retrieval_protected_family_panorama",
+      "turn_index": 1,
+      "prompt": "Faca um panorama academico dos meus filhos e destaque quem esta mais perto da media minima.",
+      "status": 200,
+      "latency_ms": 207.2,
+      "mode": "structured_tool",
+      "reason": "crewai_protected_identity_backstop",
+      "graph_path": [
+        "flow_router",
+        "identity_backstop"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": true
+      },
+      "answer_text": "Sua conta esta vinculada a Lucas Oliveira, Ana Oliveira."
+    },
+    {
+      "id": "Q212",
+      "stack": "llamaindex",
+      "slice": "protected",
+      "category": "protected_structured_academic",
+      "retrieval_type": "protected_structured_academic",
+      "thread_id": "retrieval_protected_family_panorama",
+      "turn_index": 1,
+      "prompt": "Faca um panorama academico dos meus filhos e destaque quem esta mais perto da media minima.",
+      "status": 200,
+      "latency_ms": 35602.6,
+      "mode": "clarify",
+      "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "clarify",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "clarify",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 68,
+      "error_types": [
+        "missing_expected_keyword",
+        "unnecessary_clarification"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\"."
+    },
+    {
+      "id": "Q213",
+      "stack": "langgraph",
+      "slice": "protected",
+      "category": "protected_structured_followup",
+      "retrieval_type": "protected_structured_followup",
+      "thread_id": "retrieval_protected_family_panorama",
+      "turn_index": 2,
+      "prompt": "Agora foque so na Ana e diga em quais componentes ela esta mais vulneravel.",
+      "status": 200,
+      "latency_ms": 5657.4,
+      "mode": "structured_tool",
+      "reason": "planejamento semantico publico encontrou um ato estruturado mais adequado ao turno",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "public_slice",
+        "hybrid_retrieval"
+      ],
+      "retrieval_backend": "qdrant_hybrid",
+      "evidence_strategy": "direct_answer",
+      "support_count": 3,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Para acessar informações detalhadas sobre o desempenho acadêmico da Ana e identificar os componentes em que ela pode precisar de mais apoio, é necessário que você se autentique em nosso portal. Lá, você terá acesso completo ao histórico dela."
+    },
+    {
+      "id": "Q213",
+      "stack": "crewai",
+      "slice": "protected",
+      "category": "protected_structured_followup",
+      "retrieval_type": "protected_structured_followup",
+      "thread_id": "retrieval_protected_family_panorama",
+      "turn_index": 2,
+      "prompt": "Agora foque so na Ana e diga em quais componentes ela esta mais vulneravel.",
+      "status": 200,
+      "latency_ms": 20771.3,
+      "mode": "structured_tool",
+      "reason": "crewai_protected_flow_timeout",
+      "graph_path": [
+        "flow_state",
+        "pydantic_output",
+        "judge",
+        "deterministic_backstop",
+        "protected_planning",
+        "protected_composition",
+        "protected_judging"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": true
+      },
+      "answer_text": "Eu nao consegui consolidar essa consulta protegida com seguranca agora sobre Ana Oliveira. Se quiser, me diga exatamente se voce quer notas, faltas, provas, documentacao, matricula ou financeiro."
+    },
+    {
+      "id": "Q213",
+      "stack": "llamaindex",
+      "slice": "protected",
+      "category": "protected_structured_followup",
+      "retrieval_type": "protected_structured_followup",
+      "thread_id": "retrieval_protected_family_panorama",
+      "turn_index": 2,
+      "prompt": "Agora foque so na Ana e diga em quais componentes ela esta mais vulneravel.",
+      "status": 200,
+      "latency_ms": 15403.2,
+      "mode": "clarify",
+      "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "clarify",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "clarify",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 58,
+      "error_types": [
+        "missing_expected_keyword",
+        "repetitive_reply",
+        "unnecessary_clarification"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\"."
+    },
+    {
+      "id": "Q214",
+      "stack": "langgraph",
+      "slice": "protected",
+      "category": "protected_structured_finance",
+      "retrieval_type": "protected_structured_finance",
+      "thread_id": "retrieval_protected_finance_panorama",
+      "turn_index": 1,
+      "prompt": "Resuma a situacao financeira atual da familia, com vencimentos, atrasos e proximos passos.",
+      "status": 200,
+      "latency_ms": 2086.4,
+      "mode": "clarify",
+      "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "clarify"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "clarify",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Para acessar informações detalhadas sobre a situação financeira da família, incluindo vencimentos, atrasos e próximos passos, é necessário que você faça login no portal autenticado da escola. Lá, você terá acesso seguro e personalizado a todos os dados financeiros.\n\nSe precisar de ajuda para acessar o portal ou tiver alguma dúvida específica, nossa equipe do setor financeiro está à disposição para auxiliar. Você pode entrar em contato com eles por e-mail institucional ou presencialmente."
+    },
+    {
+      "id": "Q214",
+      "stack": "crewai",
+      "slice": "protected",
+      "category": "protected_structured_finance",
+      "retrieval_type": "protected_structured_finance",
+      "thread_id": "retrieval_protected_finance_panorama",
+      "turn_index": 1,
+      "prompt": "Resuma a situacao financeira atual da familia, com vencimentos, atrasos e proximos passos.",
+      "status": 200,
+      "latency_ms": 20282.2,
+      "mode": "structured_tool",
+      "reason": "crewai_public_flow_timeout",
+      "graph_path": [
+        "flow_state",
+        "pydantic_output",
+        "judge",
+        "deterministic_backstop",
+        "public_planning",
+        "public_composition",
+        "public_judging"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 68,
+      "error_types": [
+        "missing_expected_keyword",
+        "unnecessary_clarification"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Para ter um resumo da sua situação financeira específica, incluindo vencimentos, atrasos e próximos passos, você precisará entrar em contato com o departamento financeiro da escola. Gostaria de saber como fazer isso?"
+    },
+    {
+      "id": "Q214",
+      "stack": "llamaindex",
+      "slice": "protected",
+      "category": "protected_structured_finance",
+      "retrieval_type": "protected_structured_finance",
+      "thread_id": "retrieval_protected_finance_panorama",
+      "turn_index": 1,
+      "prompt": "Resuma a situacao financeira atual da familia, com vencimentos, atrasos e proximos passos.",
+      "status": 200,
+      "latency_ms": 213.8,
+      "mode": "structured_tool",
+      "reason": "llamaindex_protected_records_fast_path",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "clarify",
+        "llamaindex:protected",
+        "llamaindex:protected_records_fast_path",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 2,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Situacao administrativa do seu cadastro hoje: com pendencias."
+    },
+    {
+      "id": "Q215",
+      "stack": "langgraph",
+      "slice": "protected",
+      "category": "protected_structured_admin",
+      "retrieval_type": "protected_structured_admin",
+      "thread_id": "retrieval_protected_admin_docs",
+      "turn_index": 1,
+      "prompt": "Quais pendencias documentais da Ana ainda pedem acao e qual e o proximo passo recomendado?",
+      "status": 200,
+      "latency_ms": 157.8,
+      "mode": "structured_tool",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "support_slice",
+        "structured_tool_call"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Ainda nao encontrei um protocolo recente nesta conversa para consultar o status da fila. Se quiser, me diga o codigo que comeca com VIS, REQ ou ATD, ou me lembre se o assunto era visita, direcao, financeiro ou secretaria."
+    },
+    {
+      "id": "Q215",
+      "stack": "crewai",
+      "slice": "protected",
+      "category": "protected_structured_admin",
+      "retrieval_type": "protected_structured_admin",
+      "thread_id": "retrieval_protected_admin_docs",
+      "turn_index": 1,
+      "prompt": "Quais pendencias documentais da Ana ainda pedem acao e qual e o proximo passo recomendado?",
+      "status": 200,
+      "latency_ms": 456.4,
+      "mode": "structured_tool",
+      "reason": "crewai_protected_fast_path",
+      "graph_path": [
+        "flow_router",
+        "deterministic_fast_path"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "O proximo pagamento de Ana Oliveira vence em 2026-03-10 no valor de 1450.00."
+    },
+    {
+      "id": "Q215",
+      "stack": "llamaindex",
+      "slice": "protected",
+      "category": "protected_structured_admin",
+      "retrieval_type": "protected_structured_admin",
+      "thread_id": "retrieval_protected_admin_docs",
+      "turn_index": 1,
+      "prompt": "Quais pendencias documentais da Ana ainda pedem acao e qual e o proximo passo recomendado?",
+      "status": 200,
+      "latency_ms": 191.6,
+      "mode": "structured_tool",
+      "reason": "a solicitacao pode ser executada por workflow estruturado com protocolo",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Ainda nao encontrei um protocolo recente nesta conversa para consultar o status da fila. Se quiser, me diga o codigo que comeca com VIS, REQ ou ATD, ou me lembre se o assunto era visita, direcao, financeiro ou secretaria."
+    },
+    {
+      "id": "Q216",
+      "stack": "langgraph",
+      "slice": "restricted",
+      "category": "restricted_doc_positive",
+      "retrieval_type": "restricted_doc_positive",
+      "thread_id": "retrieval_restricted_finance_playbook",
+      "turn_index": 1,
+      "prompt": "No playbook interno de negociacao financeira, quais criterios orientam uma negociacao com a familia?",
+      "status": 200,
+      "latency_ms": 2069.1,
+      "mode": "clarify",
+      "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "clarify"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "clarify",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Compreendo sua pergunta sobre os critérios de negociação financeira. No entanto, o playbook interno de negociação financeira é um documento restrito e não temos acesso a ele para compartilhar os critérios específicos.\n\nPara informações sobre negociações financeiras, o ideal é entrar em contato diretamente com o setor financeiro da escola. Eles poderão te orientar sobre os procedimentos e critérios aplicáveis."
+    },
+    {
+      "id": "Q216",
+      "stack": "crewai",
+      "slice": "restricted",
+      "category": "restricted_doc_positive",
+      "retrieval_type": "restricted_doc_positive",
+      "thread_id": "retrieval_restricted_finance_playbook",
+      "turn_index": 1,
+      "prompt": "No playbook interno de negociacao financeira, quais criterios orientam uma negociacao com a familia?",
+      "status": 200,
+      "latency_ms": 20269.7,
+      "mode": "structured_tool",
+      "reason": "crewai_public_flow_timeout",
+      "graph_path": [
+        "flow_state",
+        "pydantic_output",
+        "judge",
+        "deterministic_backstop",
+        "public_planning",
+        "public_composition",
+        "public_judging"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 88,
+      "error_types": [
+        "unnecessary_clarification"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Olá! Para te ajudar com a sua pergunta sobre negociação financeira, os documentos que temos descrevem os serviços financeiros disponíveis, como bolsas, descontos e simulação financeira inicial, além do atendimento comercial para famílias. Você gostaria de saber mais sobre esses serviços ou especificamente sobre os critérios para a concessão de bolsas e descontos?"
+    },
+    {
+      "id": "Q216",
+      "stack": "llamaindex",
+      "slice": "restricted",
+      "category": "restricted_doc_positive",
+      "retrieval_type": "restricted_doc_positive",
+      "thread_id": "retrieval_restricted_finance_playbook",
+      "turn_index": 1,
+      "prompt": "No playbook interno de negociacao financeira, quais criterios orientam uma negociacao com a familia?",
+      "status": 200,
+      "latency_ms": 348.5,
+      "mode": "hybrid_retrieval",
+      "reason": "llamaindex_restricted_doc_fast_path",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "clarify",
+        "llamaindex:restricted",
+        "llamaindex:restricted_doc_fast_path",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "qdrant_hybrid",
+      "evidence_strategy": "hybrid_retrieval",
+      "support_count": 3,
+      "citation_count": 3,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Nos documentos internos consultados, a orientacao mais relevante aparece em Procedimento interno para pagamento parcial e negociacao:\nQuando a familia informa pagamento parcial, o financeiro deve registrar o valor pago, saldo pendente e canal de contato antes de propor negociacao. O sistema nao deve assumir quitacao total sem evidencia transacional.\nPlaybook interno de negociacao financeira: Em casos de atraso, a equipe financeira deve registrar contexto, verificar historico recente de pagamentos e orientar proposta de regularizacao antes de prometer condicao excepcional.\nProcedimento interno para transferencia no meio do ano: Sempre que houver cancelamento contratual associado, o financeiro e acionado para validar saldo e encerramento administrativo. O atendimento humano coordena a conclusao do caso."
+    },
+    {
+      "id": "Q217",
+      "stack": "langgraph",
+      "slice": "restricted",
+      "category": "restricted_doc_positive",
+      "retrieval_type": "restricted_doc_positive",
+      "thread_id": "retrieval_restricted_teacher_manual",
+      "turn_index": 1,
+      "prompt": "Segundo o Manual interno do professor, como a escola orienta registro de avaliacoes e comunicacao pedagogica?",
+      "status": 200,
+      "latency_ms": 187.5,
+      "mode": "structured_tool",
+      "reason": "dados estruturados devem passar por service deterministico",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "protected_slice",
+        "structured_tool_call"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "structured_tool",
+      "support_count": 5,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Aqui e o Colegio Horizonte. Se voce esta procurando o Orienta Registro Avaliacoes, eu nao tenho acesso ao atendimento dessa outra instituicao. Se quiser, sigo te ajudando com o Colegio Horizonte por aqui."
+    },
+    {
+      "id": "Q217",
+      "stack": "crewai",
+      "slice": "restricted",
+      "category": "restricted_doc_positive",
+      "retrieval_type": "restricted_doc_positive",
+      "thread_id": "retrieval_restricted_teacher_manual",
+      "turn_index": 1,
+      "prompt": "Segundo o Manual interno do professor, como a escola orienta registro de avaliacoes e comunicacao pedagogica?",
+      "status": 200,
+      "latency_ms": 273.4,
+      "mode": "deny",
+      "reason": "crewai_protected_auth_required",
+      "graph_path": [
+        "flow_router",
+        "auth_required_deterministic"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot."
+    },
+    {
+      "id": "Q217",
+      "stack": "llamaindex",
+      "slice": "restricted",
+      "category": "restricted_doc_positive",
+      "retrieval_type": "restricted_doc_positive",
+      "thread_id": "retrieval_restricted_teacher_manual",
+      "turn_index": 1,
+      "prompt": "Segundo o Manual interno do professor, como a escola orienta registro de avaliacoes e comunicacao pedagogica?",
+      "status": 200,
+      "latency_ms": 364.6,
+      "mode": "hybrid_retrieval",
+      "reason": "llamaindex_restricted_doc_fast_path",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "llamaindex:restricted",
+        "llamaindex:restricted_doc_fast_path",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "qdrant_hybrid",
+      "evidence_strategy": "hybrid_retrieval",
+      "support_count": 3,
+      "citation_count": 3,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Nos documentos internos consultados, a orientacao mais relevante aparece em Manual interno do professor:\nProfessores devem registrar frequencia ate o fechamento do turno e comunicar ocorrencias relevantes a coordenacao.\nRoteiro interno de acolhimento do 6o ano: No acolhimento do 6o ano, a escola prioriza ambientacao, apresentacao de rotinas, combinados de convivencia e acompanhamento da adaptacao nas primeiras semanas.\nProcedimento interno para transferencia no meio do ano: Transferencias no meio do ano exigem conferencia documental, historico parcial e alinhamento de pendencias academicas e financeiras. A secretaria registra protocolo e acompanha a emissao dos documentos finais."
+    },
+    {
+      "id": "Q218",
+      "stack": "langgraph",
+      "slice": "restricted",
+      "category": "restricted_doc_positive",
+      "retrieval_type": "restricted_doc_positive",
+      "thread_id": "retrieval_restricted_partial_scope",
+      "turn_index": 1,
+      "prompt": "O Protocolo interno para responsaveis com escopo parcial diz o que sobre limites de acesso no Telegram?",
+      "status": 200,
+      "latency_ms": 2096.1,
+      "mode": "hybrid_retrieval",
+      "reason": "retrieval hibrido e o caminho padrao para faq e documentos",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "support_slice",
+        "structured_tool_call"
+      ],
+      "retrieval_backend": "qdrant_hybrid",
+      "evidence_strategy": "hybrid_retrieval",
+      "support_count": 3,
+      "citation_count": 3,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Olá! Sobre o acesso no Telegram, o atendimento protegido por lá depende da vinculação da sua conta de mensageria com o cadastro institucional. Esse processo é importante para proteger informações restritas, como notas, frequência e dados financeiros.\n\nFontes:\n- Politica de Uso do Portal, Aplicativo e Credenciais (v2026.3)\n- Protocolo de Saude, Medicacao e Emergencias (v2026.3)\n- Inclusao, Acessibilidade e Seguranca (v2026.2)"
+    },
+    {
+      "id": "Q218",
+      "stack": "crewai",
+      "slice": "restricted",
+      "category": "restricted_doc_positive",
+      "retrieval_type": "restricted_doc_positive",
+      "thread_id": "retrieval_restricted_partial_scope",
+      "turn_index": 1,
+      "prompt": "O Protocolo interno para responsaveis com escopo parcial diz o que sobre limites de acesso no Telegram?",
+      "status": 200,
+      "latency_ms": 214.6,
+      "mode": "structured_tool",
+      "reason": "workflow_not_found",
+      "graph_path": [
+        "flow_router",
+        "deterministic_workflow"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Nao encontrei um protocolo ativo nesta conversa para retomar agora. Se voce quiser, eu posso abrir o pedido, te dizer o protocolo, consultar o status ou montar um resumo quando houver um fluxo ativo."
+    },
+    {
+      "id": "Q218",
+      "stack": "llamaindex",
+      "slice": "restricted",
+      "category": "restricted_doc_positive",
+      "retrieval_type": "restricted_doc_positive",
+      "thread_id": "retrieval_restricted_partial_scope",
+      "turn_index": 1,
+      "prompt": "O Protocolo interno para responsaveis com escopo parcial diz o que sobre limites de acesso no Telegram?",
+      "status": 200,
+      "latency_ms": 326.4,
+      "mode": "hybrid_retrieval",
+      "reason": "llamaindex_restricted_doc_fast_path",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "hybrid_retrieval",
+        "llamaindex:restricted",
+        "llamaindex:restricted_doc_fast_path",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "qdrant_hybrid",
+      "evidence_strategy": "hybrid_retrieval",
+      "support_count": 3,
+      "citation_count": 3,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 80,
+      "error_types": [
+        "missing_expected_keyword"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Nos documentos internos consultados, a orientacao mais relevante aparece em Protocolo interno para responsaveis com escopo parcial:\nQuando o pedido chega fora do escopo autorizado, o atendimento deve negar o conteudo protegido, registrar a decisao e orientar a regularizacao cadastral. Excecoes dependem de validacao humana formal.\nProcedimento interno para pagamento parcial e negociacao: Quando a familia informa pagamento parcial, o financeiro deve registrar o valor pago, saldo pendente e canal de contato antes de propor negociacao. O sistema nao deve assumir quitacao total sem evidencia transacional.\nProcedimento interno para transferencia no meio do ano: Sempre que houver cancelamento contratual associado, o financeiro e acionado para validar saldo e encerramento administrativo. O atendimento humano coordena a conclusao do caso."
+    },
+    {
+      "id": "Q219",
+      "stack": "langgraph",
+      "slice": "restricted",
+      "category": "restricted_doc_no_match",
+      "retrieval_type": "restricted_doc_no_match",
+      "thread_id": "retrieval_restricted_no_match",
+      "turn_index": 1,
+      "prompt": "Existe algum procedimento interno sobre excursao internacional com hospedagem para o ensino medio?",
+      "status": 200,
+      "latency_ms": 4010.3,
+      "mode": "structured_tool",
+      "reason": "fato institucional canonico deve vir de fonte estruturada",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "public_slice",
+        "structured_tool_call"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "direct_answer",
+      "support_count": 4,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Hoje Colegio Horizonte atende estes segmentos:\n- Ensino Fundamental II (6o ao 9o ano)\n- Ensino Medio (1a a 3a serie)"
+    },
+    {
+      "id": "Q219",
+      "stack": "crewai",
+      "slice": "restricted",
+      "category": "restricted_doc_no_match",
+      "retrieval_type": "restricted_doc_no_match",
+      "thread_id": "retrieval_restricted_no_match",
+      "turn_index": 1,
+      "prompt": "Existe algum procedimento interno sobre excursao internacional com hospedagem para o ensino medio?",
+      "status": 200,
+      "latency_ms": 218.6,
+      "mode": "deny",
+      "reason": "crewai_protected_auth_required",
+      "graph_path": [
+        "flow_router",
+        "auth_required_deterministic"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Essa consulta depende de autenticacao e vinculo da sua conta no Telegram. Use o portal da escola para gerar o codigo de vinculacao e depois envie o comando /start link_<codigo> ao bot."
+    },
+    {
+      "id": "Q219",
+      "stack": "llamaindex",
+      "slice": "restricted",
+      "category": "restricted_doc_no_match",
+      "retrieval_type": "restricted_doc_no_match",
+      "thread_id": "retrieval_restricted_no_match",
+      "turn_index": 1,
+      "prompt": "Existe algum procedimento interno sobre excursao internacional com hospedagem para o ensino medio?",
+      "status": 200,
+      "latency_ms": 362.6,
+      "mode": "hybrid_retrieval",
+      "reason": "llamaindex_restricted_doc_fast_path",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "structured_tool_call",
+        "llamaindex:restricted",
+        "llamaindex:restricted_doc_fast_path",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "qdrant_hybrid",
+      "evidence_strategy": "hybrid_retrieval",
+      "support_count": 3,
+      "citation_count": 3,
+      "risk_flags": [],
+      "keyword_pass": true,
+      "quality_score": 100,
+      "error_types": [],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": null
+      },
+      "answer_text": "Nos documentos internos consultados, a orientacao mais relevante aparece em Procedimento interno para transferencia no meio do ano:\nTransferencias no meio do ano exigem conferencia documental, historico parcial e alinhamento de pendencias academicas e financeiras. A secretaria registra protocolo e acompanha a emissao dos documentos finais.\nPlaybook interno de negociacao financeira: Em casos de atraso, a equipe financeira deve registrar contexto, verificar historico recente de pagamentos e orientar proposta de regularizacao antes de prometer condicao excepcional.\nManual interno do professor: Professores devem registrar frequencia ate o fechamento do turno e comunicar ocorrencias relevantes a coordenacao."
+    },
+    {
+      "id": "Q220",
+      "stack": "langgraph",
+      "slice": "restricted",
+      "category": "restricted_doc_denied",
+      "retrieval_type": "restricted_doc_denied",
+      "thread_id": "retrieval_restricted_denied",
+      "turn_index": 1,
+      "prompt": "Como responsavel, quero ver o manual interno do professor.",
+      "status": 200,
+      "latency_ms": 2431.1,
+      "mode": "clarify",
+      "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "clarify"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "clarify",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 23,
+      "error_types": [
+        "forbidden_entity_or_value",
+        "missing_expected_keyword",
+        "unnecessary_clarification"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Olá! Como responsável, entendo seu interesse em conhecer melhor os materiais da escola. No entanto, o manual interno do professor é um documento de uso exclusivo dos nossos educadores.\n\nSe você tiver alguma dúvida específica sobre a metodologia de ensino, o currículo ou o dia a dia pedagógico, posso te ajudar a encontrar as informações em nossos documentos públicos ou direcionar sua pergunta para a coordenação pedagógica.\n\nCom quem você gostaria de falar sobre o assunto?"
+    },
+    {
+      "id": "Q220",
+      "stack": "crewai",
+      "slice": "restricted",
+      "category": "restricted_doc_denied",
+      "retrieval_type": "restricted_doc_denied",
+      "thread_id": "retrieval_restricted_denied",
+      "turn_index": 1,
+      "prompt": "Como responsavel, quero ver o manual interno do professor.",
+      "status": 200,
+      "latency_ms": 23000.0,
+      "mode": "structured_tool",
+      "reason": "crewai_public_flow_completed",
+      "graph_path": [
+        "flow_state",
+        "pydantic_output",
+        "judge",
+        "deterministic_backstop",
+        "public_planning",
+        "public_composition",
+        "public_judging"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": null,
+      "support_count": null,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 23,
+      "error_types": [
+        "forbidden_entity_or_value",
+        "missing_expected_keyword",
+        "unnecessary_clarification"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Olá! Não encontrei informações sobre o manual interno do professor nos documentos disponíveis. Você gostaria de saber sobre outro tópico relacionado a professores ou à escola?"
+    },
+    {
+      "id": "Q220",
+      "stack": "llamaindex",
+      "slice": "restricted",
+      "category": "restricted_doc_denied",
+      "retrieval_type": "restricted_doc_denied",
+      "thread_id": "retrieval_restricted_denied",
+      "turn_index": 1,
+      "prompt": "Como responsavel, quero ver o manual interno do professor.",
+      "status": 200,
+      "latency_ms": 17704.6,
+      "mode": "clarify",
+      "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+      "graph_path": [
+        "classify_request",
+        "security_gate",
+        "route_request",
+        "select_slice",
+        "clarify",
+        "kernel:llamaindex"
+      ],
+      "retrieval_backend": "none",
+      "evidence_strategy": "clarify",
+      "support_count": 1,
+      "citation_count": 0,
+      "risk_flags": [],
+      "keyword_pass": false,
+      "quality_score": 68,
+      "error_types": [
+        "missing_expected_keyword",
+        "unnecessary_clarification"
+      ],
+      "quality_signals": {
+        "repair_ack": null,
+        "followup_adaptation": null,
+        "personalization": false
+      },
+      "answer_text": "Posso ajudar com informacoes publicas da escola, como calendario, matricula, documentos exigidos e regras de atendimento digital. Se quiser, pergunte por exemplo: \"quais documentos preciso para a matricula?\" ou \"quando acontece a reuniao de pais?\"."
+    }
+  ]
+}
