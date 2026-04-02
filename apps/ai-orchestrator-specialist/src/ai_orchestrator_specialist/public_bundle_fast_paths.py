@@ -43,13 +43,24 @@ def _looks_like_family_new_calendar_enrollment_query(message: str) -> bool:
                 "responsável novo",
                 "familia entrando agora",
                 "família entrando agora",
+                "familia entrando este ano",
+                "família entrando este ano",
                 "familia chegando agora",
                 "família chegando agora",
+                "primeira vez",
+                "vai entrar este ano",
+                "vai entrar pela primeira vez",
+                "pais estreando",
+                "pais estreando na escola",
+                "pais entrando agora",
                 "entrando agora",
                 "chegando agora",
+                "primeiro filho",
+                "comeco das aulas",
+                "começo das aulas",
             }
         )
-        and any(term in normalized for term in {"calendario", "calendário", "rotina", "datas", "inicio do ano", "início do ano", "primeiro bimestre"})
+        and any(term in normalized for term in {"calendario", "calendário", "rotina", "datas", "inicio do ano", "início do ano", "primeiro bimestre", "aulas"})
         and any(term in normalized for term in {"matricula", "matrícula", "avaliacao", "avaliação", "provas"})
     )
 
@@ -89,14 +100,20 @@ def _looks_like_health_authorization_bridge_query(message: str) -> bool:
 
 def _looks_like_first_month_risks_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    return "primeiro mes" in normalized and any(term in normalized for term in {"riscos", "esquecido", "prazo"})
+    return (
+        any(term in normalized for term in {"primeiro mes", "primeiro mês", "comeco do ano", "começo do ano", "primeiras semanas"})
+        and any(term in normalized for term in {"riscos", "esquecido", "prazo", "deslizes", "erros", "problema", "problemas", "comprometem", "baguncam", "bagunçam"})
+        and any(term in normalized for term in {"credenciais", "documentos", "documentacao", "rotina"})
+    )
 
 
 def _looks_like_process_compare_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    return any(term in normalized for term in {"rematricula", "rematrícula"}) and any(
-        term in normalized for term in {"transferencia", "transferência", "cancelamento"}
-    ) and any(term in normalized for term in {"compare", "destacando", "o que muda"})
+    return (
+        any(term in normalized for term in {"rematricula", "rematrícula"})
+        and any(term in normalized for term in {"transferencia", "transferência", "cancelamento"})
+        and any(term in normalized for term in {"compare", "destacando", "o que muda", "na pratica", "na prática", "se diferenciam"})
+    )
 
 
 def _looks_like_conduct_frequency_recovery_query(message: str) -> bool:

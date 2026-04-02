@@ -2214,11 +2214,15 @@ async def maybe_execute_llamaindex_native_plan(
         calendar_events = await rt._fetch_public_calendar_events(settings=settings)
         if calendar_events:
             school_profile['public_calendar_events'] = calendar_events
+    early_public_canonical_lane = (
+        match_public_canonical_lane(analysis_message)
+        or match_public_canonical_lane(request.message)
+    )
     fast_public_channel_answer = rt._try_public_channel_fast_answer(
         message=request.message,
         profile=school_profile,
     )
-    if fast_public_channel_answer:
+    if fast_public_channel_answer and not early_public_canonical_lane:
         preview = plan.preview.model_copy(deep=True)
         preview.mode = OrchestrationMode.structured_tool
         preview.classification = IntentClassification(

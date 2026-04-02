@@ -67,6 +67,12 @@ ACADEMIC_TERMS = {
     'vulneravel',
     'vulnerável',
     'componentes',
+    'materia',
+    'materias',
+    'fragilizada',
+    'fragilizado',
+    'exposta',
+    'exposto',
 }
 ACADEMIC_IDENTITY_TERMS = {
     'qual a matricula',
@@ -539,7 +545,10 @@ RESTRICTED_DOCUMENT_TERMS = {
     'procedimento interno',
     'protocolo interno',
     'manual interno',
+    'material interno',
     'playbook interno',
+    'orientacao interna',
+    'orientação interna',
     'documento interno',
     'documentos internos',
     'por dentro',
@@ -1164,7 +1173,12 @@ def _is_authenticated_personal_finance_query(message: str, *, authenticated: boo
             'situação financeira atual da família',
             'resuma a situacao financeira',
             'resuma a situação financeira',
+            'quadro financeiro da familia',
+            'quadro financeiro da família',
             'vencimentos',
+            'por vencer',
+            'vence',
+            'venceu',
             'atrasos',
             'proximos passos',
             'próximos passos',
@@ -1392,7 +1406,16 @@ def _is_public_family_new_calendar_enrollment_query(message: str) -> bool:
         return False
     return any(
         _message_matches_term(lowered, term)
-        for term in {'familia nova', 'família nova', 'aluno novo', 'responsavel novo', 'responsável novo'}
+        for term in {
+            'familia nova',
+            'família nova',
+            'aluno novo',
+            'responsavel novo',
+            'responsável novo',
+            'primeira vez',
+            'vai entrar este ano',
+            'vai entrar pela primeira vez',
+        }
     ) or (
         any(_message_matches_term(lowered, term) for term in {'familia', 'família', 'responsaveis', 'responsáveis'})
         and any(_message_matches_term(lowered, term) for term in {'entrando agora', 'chegando agora', 'inicio do ano', 'início do ano', 'primeiro bimestre'})
@@ -1443,9 +1466,15 @@ def _is_public_permanence_family_query(message: str) -> bool:
 
 def _is_public_first_month_risks_query(message: str) -> bool:
     lowered = _normalize_text(message)
-    return 'primeiro mes' in lowered and any(
+    return any(
         _message_matches_term(lowered, term)
-        for term in {'riscos', 'esquecido', 'prazo', 'prazos'}
+        for term in {'primeiro mes', 'primeiro mês', 'comeco do ano', 'começo do ano', 'primeiras semanas'}
+    ) and any(
+        _message_matches_term(lowered, term)
+        for term in {'riscos', 'esquecido', 'prazo', 'prazos', 'deslizes', 'erros', 'baguncam', 'bagunçam', 'problemas'}
+    ) and any(
+        _message_matches_term(lowered, term)
+        for term in {'credenciais', 'documentos', 'documentacao', 'documentação', 'rotina'}
     )
 
 
@@ -1455,6 +1484,14 @@ def _is_public_process_compare_query(message: str) -> bool:
         _message_matches_term(lowered, term) for term in {'transferencia', 'transferência', 'cancelamento'}
     ) and any(
         _message_matches_term(lowered, term) for term in {'compare', 'comparar', 'destacando', 'o que muda'}
+    )
+
+
+def _is_public_health_second_call_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    return (
+        any(_message_matches_term(lowered, term) for term in {'saude', 'saúde', 'atestado', 'atestado medico', 'atestado médico'})
+        and any(_message_matches_term(lowered, term) for term in {'segunda chamada', 'segunda', 'recuperacao', 'recuperação'})
     )
 
 
@@ -1491,7 +1528,7 @@ def _is_public_calendar_visibility_bundle_query(message: str) -> bool:
     lowered = _normalize_text(message)
     if not any(
         _message_matches_term(lowered, term)
-        for term in {'portal', 'canais digitais', 'canais oficiais', 'calendario', 'calendário'}
+        for term in {'portal', 'canais digitais', 'canais da escola', 'canais oficiais', 'calendario', 'calendário'}
     ):
         return False
     return any(
@@ -1505,9 +1542,14 @@ def _is_public_calendar_visibility_bundle_query(message: str) -> bool:
             'senha',
             'publico',
             'público',
+            'conteudo publico',
+            'conteúdo público',
             'publica',
             'pública',
             'aparece depois',
+            'onde termina',
+            'onde comeca',
+            'onde começa',
             'sem autenticacao',
             'sem autenticação',
         }
@@ -1523,6 +1565,7 @@ def _is_known_public_doc_bundle_query(message: str) -> bool:
         or _is_public_permanence_family_query(message)
         or _is_public_first_month_risks_query(message)
         or _is_public_process_compare_query(message)
+        or _is_public_health_second_call_query(message)
         or _is_public_conduct_frequency_recovery_query(message)
         or _is_public_transversal_year_query(message)
         or _is_public_facilities_study_query(message)
@@ -1553,6 +1596,7 @@ def _is_public_school_profile_request(message: str) -> bool:
         or _is_public_permanence_family_query(lowered)
         or _is_public_first_month_risks_query(lowered)
         or _is_public_process_compare_query(lowered)
+        or _is_public_health_second_call_query(lowered)
         or _is_public_conduct_frequency_recovery_query(lowered)
         or _is_public_transversal_year_query(lowered)
         or _is_public_facilities_study_query(lowered)
@@ -1697,11 +1741,7 @@ def _is_authenticated_admin_query(message: str, *, authenticated: bool) -> bool:
     lowered = _normalize_text(message)
     if _is_public_contact_phrase_query(lowered) or _is_public_contact_channel_query(lowered):
         return False
-    if any(_message_matches_term(lowered, term) for term in FINANCE_TERMS):
-        return False
-    if _message_matches_term(lowered, 'matricula') or _message_matches_term(lowered, 'matrícula'):
-        return False
-    if any(
+    admin_markers_present = any(
         _message_matches_term(lowered, term)
         for term in {
             'documentacao',
@@ -1714,16 +1754,29 @@ def _is_authenticated_admin_query(message: str, *, authenticated: bool) -> bool:
             'pendência documental',
             'pendencias documentais',
             'pendências documentais',
+            'pendencia administrativa',
+            'pendência administrativa',
+            'pendencias administrativas',
+            'pendências administrativas',
             'cadastro',
             'dados cadastrais',
             'email',
             'telefone',
+            'proximo passo',
+            'próximo passo',
             'proximo passo recomendado',
             'próximo passo recomendado',
+            'exige acao',
+            'exigem acao',
         }
-    ):
+    ) or any(_message_matches_term(lowered, term) for term in PERSONAL_ADMIN_TERMS)
+    if any(_message_matches_term(lowered, term) for term in FINANCE_TERMS) and not admin_markers_present:
+        return False
+    if (_message_matches_term(lowered, 'matricula') or _message_matches_term(lowered, 'matrícula')) and not admin_markers_present:
+        return False
+    if admin_markers_present:
         return True
-    return any(_message_matches_term(lowered, term) for term in PERSONAL_ADMIN_TERMS)
+    return False
 
 
 def _is_authenticated_actor_identity_query(message: str, *, authenticated: bool) -> bool:
@@ -1762,6 +1815,8 @@ def _is_authenticated_student_assessment_query(message: str, *, authenticated: b
             'panorama acadêmico',
             'quadro academico',
             'quadro acadêmico',
+            'situacao academica',
+            'situação acadêmica',
             'media minima',
             'média mínima',
             'limite de aprovacao',
@@ -1769,6 +1824,8 @@ def _is_authenticated_student_assessment_query(message: str, *, authenticated: b
             'mais perto da media',
             'mais perto da média',
             'mais perto do limite',
+            'mais proximo do limite',
+            'mais próximo do limite',
             'mais perto da aprovacao',
             'mais perto da aprovação',
             'componentes',
@@ -1776,6 +1833,8 @@ def _is_authenticated_student_assessment_query(message: str, *, authenticated: b
             'mais vulnerável',
             'mais exposto',
             'mais exposta',
+            'maior risco',
+            'pontos de maior risco',
             'esta mais vulneravel',
             'está mais vulnerável',
             'meus dois filhos',
@@ -2049,6 +2108,9 @@ def route_request(state: OrchestrationState, runtime: GraphRuntimeConfig) -> Orc
     elif _is_restricted_document_query(message):
         route = OrchestrationMode.hybrid_retrieval.value
         reason = 'consulta autenticada de documento interno deve usar retrieval restrito com grounding'
+    elif _is_known_public_doc_bundle_query(message):
+        route = OrchestrationMode.structured_tool.value
+        reason = 'bundle publico canonico deve seguir lane publica mesmo se a classificacao superestimar autenticacao'
     elif classification.domain is QueryDomain.unknown:
         route = OrchestrationMode.clarify.value
         reason = 'a intencao esta ambigua e exige clarificacao antes de recuperar contexto'

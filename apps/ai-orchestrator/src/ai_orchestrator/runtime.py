@@ -207,6 +207,10 @@ FINANCE_SECOND_COPY_TERMS = {
     'emitir boleto novamente',
 }
 PERSONAL_ADMIN_STATUS_TERMS = {
+    'pendencia administrativa',
+    'pendência administrativa',
+    'pendencias administrativas',
+    'pendências administrativas',
     'documentacao atualizada',
     'documentação atualizada',
     'documentacao completa',
@@ -224,6 +228,10 @@ PERSONAL_ADMIN_STATUS_TERMS = {
     'documentação',
     'documental',
     'documentais',
+    'exige acao',
+    'exigem acao',
+    'proximo passo',
+    'próximo passo',
 }
 FAMILY_FINANCE_AGGREGATE_TERMS = {
     'situacao financeira da familia',
@@ -245,6 +253,10 @@ FAMILY_ACADEMIC_AGGREGATE_TERMS = {
     'panorama acadêmico',
     'quadro academico',
     'quadro acadêmico',
+    'situacao academica',
+    'situação acadêmica',
+    'situacao academica dos meus dois filhos',
+    'situação acadêmica dos meus dois filhos',
     'meus dois filhos',
     'meus filhos',
     'dos meus filhos',
@@ -252,8 +264,12 @@ FAMILY_ACADEMIC_AGGREGATE_TERMS = {
     'da minha família',
     'quem esta mais perto do limite',
     'quem está mais perto do limite',
+    'quem esta mais proximo do limite',
+    'quem está mais próximo do limite',
     'quem esta mais perto da aprovacao',
     'quem está mais perto da aprovação',
+    'mais proximo do limite de aprovacao',
+    'mais próximo do limite de aprovação',
 }
 FAMILY_REFERENCE_TERMS = {
     'familia',
@@ -1042,6 +1058,11 @@ COMPARATIVE_TERMS = {
 }
 FOLLOW_UP_OPENERS = {
     'depois disso',
+    'mantendo o contexto anterior',
+    'continuando o panorama',
+    'seguindo o panorama',
+    'agora foque',
+    'agora quero apenas',
     'e ',
     'e se',
     'e qual',
@@ -2386,6 +2407,35 @@ def _detect_academic_attribute_request(message: str) -> ProtectedAttributeReques
         return None
     if _wants_academic_grade_requirement(message):
         return ProtectedAttributeRequest(domain='academic', attribute='grade_requirement')
+    if (
+        any(_message_matches_term(normalized, term) for term in {'materia', 'materias', 'disciplina', 'disciplinas', 'componente', 'componentes'})
+        and any(
+            _message_matches_term(normalized, term)
+            for term in {
+                'fragilizada',
+                'fragilizado',
+                'mais fragilizada',
+                'mais fragilizado',
+                'mais exposta',
+                'mais exposto',
+                'vulneravel',
+                'vulnerável',
+                'mais vulneravel',
+                'mais vulnerável',
+            }
+        )
+    ) or any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'fragilizada academicamente',
+            'fragilizado academicamente',
+            'mais fragilizada academicamente',
+            'mais fragilizado academicamente',
+            'mais exposta academicamente',
+            'mais exposto academicamente',
+        }
+    ):
+        return ProtectedAttributeRequest(domain='academic', attribute='grades')
     if _contains_any(message, ATTENDANCE_TERMS) and not _contains_any(message, GRADE_TERMS):
         return ProtectedAttributeRequest(domain='academic', attribute='attendance')
     if _contains_any(message, GRADE_TERMS):
@@ -4174,9 +4224,15 @@ def _is_public_health_authorization_bridge_query(message: str) -> bool:
 
 def _is_public_first_month_risks_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    return 'primeiro mes' in normalized and any(
+    return any(
         _message_matches_term(normalized, term)
-        for term in {'riscos', 'esquecido', 'prazo', 'prazos'}
+        for term in {'primeiro mes', 'primeiro mês', 'comeco do ano', 'começo do ano', 'primeiras semanas'}
+    ) and any(
+        _message_matches_term(normalized, term)
+        for term in {'riscos', 'esquecido', 'prazo', 'prazos', 'deslizes', 'erros', 'baguncam', 'bagunçam', 'problemas'}
+    ) and any(
+        _message_matches_term(normalized, term)
+        for term in {'credenciais', 'documentos', 'documentacao', 'documentação', 'rotina'}
     )
 
 
@@ -8691,6 +8747,7 @@ def _explicit_protected_domain_hint(
     actor: dict[str, Any] | None = None,
     conversation_context: dict[str, Any] | None = None,
 ) -> QueryDomain | None:
+    normalized = _normalize_text(message)
     if (
         _is_service_routing_query(message)
         or _matches_public_contact_rule(message)
@@ -8703,6 +8760,22 @@ def _explicit_protected_domain_hint(
         or _matches_public_highlight_rule(message)
     ):
         return None
+    academic_risk_follow_up = any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'maior risco',
+            'pontos de maior risco',
+            'pontos mais sensiveis',
+            'pontos mais sensíveis',
+            'mais perto do limite',
+            'mais perto da media',
+            'mais perto da média',
+            'mais proximo do limite',
+            'mais próximo do limite',
+            'mais vulneravel',
+            'mais vulnerável',
+        }
+    )
     if _detect_academic_attribute_request(message) is not None or _detect_academic_focus_kind(message) is not None:
         return QueryDomain.academic
     if (
@@ -8719,10 +8792,34 @@ def _explicit_protected_domain_hint(
     linked_students = _linked_students(actor)
     if not linked_students:
         return None
-    normalized = _normalize_text(message)
     recent_focus = _recent_trace_focus(conversation_context) or {}
     mentions_linked_student = bool(_matching_students_in_text(linked_students, message))
     protected_follow_up = _is_follow_up_query(message) and bool(recent_focus)
+    recent_focus_kind = str(recent_focus.get('kind', '') or '')
+    recent_active_task = str(recent_focus.get('active_task', '') or '')
+    if (
+        any(
+            _message_matches_term(normalized, term)
+            for term in PERSONAL_ADMIN_STATUS_TERMS
+        )
+        and (
+            mentions_linked_student
+            or protected_follow_up
+            or recent_focus_kind in {'academic', 'finance', 'secretaria'}
+            or recent_active_task.startswith(('admin:', 'academic:', 'finance:'))
+        )
+    ):
+        return QueryDomain.institution
+    if (
+        academic_risk_follow_up
+        and (
+            mentions_linked_student
+            or protected_follow_up
+            or recent_focus_kind == 'academic'
+            or recent_active_task.startswith('academic:')
+        )
+    ):
+        return QueryDomain.academic
     if (
         any(
             _message_matches_term(normalized, term)
@@ -8740,7 +8837,7 @@ def _explicit_protected_domain_hint(
             }
         )
         and not _is_public_pricing_navigation_query(message)
-        and (mentions_linked_student or protected_follow_up or str(recent_focus.get('kind', '') or '') in {'academic', 'finance'})
+        and (mentions_linked_student or protected_follow_up or recent_focus_kind in {'academic', 'finance'})
     ):
         return QueryDomain.finance
     return None
@@ -12216,6 +12313,43 @@ def _detect_academic_focus_kind(message: str) -> str | None:
         return 'attendance_timeline'
     if _wants_academic_grade_requirement(message):
         return 'grades'
+    normalized = _normalize_text(message)
+    if (
+        any(_message_matches_term(normalized, term) for term in {'materia', 'materias', 'disciplina', 'disciplinas', 'componente', 'componentes'})
+        and any(
+            _message_matches_term(normalized, term)
+            for term in {
+                'fragilizada',
+                'fragilizado',
+                'mais fragilizada',
+                'mais fragilizado',
+                'mais exposta',
+                'mais exposto',
+                'vulneravel',
+                'vulnerável',
+                'mais vulneravel',
+                'mais vulnerável',
+            }
+        )
+    ) or any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'fragilizada academicamente',
+            'fragilizado academicamente',
+            'mais fragilizada academicamente',
+            'mais fragilizado academicamente',
+            'mais exposta academicamente',
+            'mais exposto academicamente',
+            'maior risco',
+            'pontos de maior risco',
+            'mais perto do limite',
+            'mais perto da media',
+            'mais perto da média',
+            'mais proximo do limite',
+            'mais próximo do limite',
+        }
+    ):
+        return 'grades'
     if _contains_any(message, ATTENDANCE_TERMS) and not _contains_any(message, GRADE_TERMS):
         return 'attendance'
     if _contains_any(message, GRADE_TERMS):
@@ -12902,7 +13036,10 @@ def _format_student_administrative_status(
     if requested_attribute == 'next_step':
         next_step = str(summary.get('next_step') or '').strip()
         if next_step:
-            return [f'Hoje, o proximo passo da documentacao de {student_name} e este: {next_step}']
+            return [
+                f'Hoje {student_name} ainda tem pendencias na documentacao.',
+                f'Proximo passo: {next_step}',
+            ]
         return [f'Hoje eu nao encontrei um proximo passo pendente na documentacao de {student_name}.']
     if requested_attribute == 'status':
         return [f'Situacao documental de {student_name} hoje: {overall_status}.']
@@ -13448,6 +13585,9 @@ async def _execute_protected_records_specialist(
     )
     force_family_finance_aggregate = _looks_like_family_finance_aggregate_query(message)
     force_family_academic_aggregate = _looks_like_family_academic_aggregate_query(message)
+    explicit_academic_student = len(_matching_students_in_text(_eligible_students(actor, capability='academic'), message)) == 1
+    if explicit_academic_student:
+        force_family_academic_aggregate = False
     explicit_student_admin_request = (
         requested_admin_attribute is not None
         and not any(_message_matches_term(normalized_message, term) for term in {'financeiro', 'boleto', 'boletos', 'fatura', 'faturas', 'mensalidade'})
@@ -14111,9 +14251,13 @@ async def _compose_structured_tool_answer(
             actor,
             school_name=str((school_profile or {}).get('school_name', 'Colegio Horizonte')),
         )
-    if school_profile is not None and _base_profile_supports_fast_public_answer(
-        message=request.message,
-        profile=school_profile,
+    if (
+        school_profile is not None
+        and preview.classification.access_tier is AccessTier.public
+        and _base_profile_supports_fast_public_answer(
+            message=request.message,
+            profile=school_profile,
+        )
     ):
         fast_public_channel_answer = _try_public_channel_fast_answer(
             message=request.message,

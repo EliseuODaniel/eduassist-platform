@@ -659,10 +659,19 @@ def _compose_internal_doc_no_match_answer(message: str, profile: dict[str, Any] 
                 f"{public_answer}"
             )
     school_name = _school_name(profile)
+    quoted_message = str(message or "").strip().rstrip(' ?!.')
+    normalized = _normalize_text(quoted_message)
+    if (
+        any(term in normalized for term in ("viagem internacional", "excursao internacional", "excursão internacional"))
+        and any(term in normalized for term in ("hospedagem", "pernoite"))
+    ):
+        return (
+            f"Consultei os documentos internos disponiveis do {school_name}, mas nao encontrei uma orientacao restrita "
+            "especifica sobre excursao ou viagem internacional com hospedagem para o ensino medio."
+        )
     return (
-        f"Consultei os documentos internos disponiveis do {school_name}, mas nao encontrei uma orientacao restrita "
-        "especifica para esse pedido. Se quiser, eu posso te orientar pelo material publico correspondente ou abrir "
-        "um handoff para validacao humana."
+        f'Consultei os documentos internos disponiveis do {school_name}, mas nao encontrei uma orientacao restrita '
+        f'especifica para: "{quoted_message}".'
     )
 
 
@@ -1686,6 +1695,38 @@ def _compose_named_grade_answer(summary: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _looks_like_academic_risk_followup(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(
+        term in normalized
+        for term in {
+            "maior risco",
+            "pontos de maior risco",
+            "pontos mais sensiveis",
+            "pontos mais sensíveis",
+            "mais perto do limite",
+            "mais perto da media",
+            "mais perto da média",
+            "mais proximo do limite",
+            "mais próximo do limite",
+            "mais vulneravel",
+            "mais vulnerável",
+        }
+    )
+
+
+def _compose_academic_risk_answer(summary: dict[str, Any]) -> str | None:
+    student_name = str(summary.get("student_name") or "Aluno").strip()
+    snapshots = _subject_grade_snapshot(summary)
+    if not snapshots:
+        return None
+    lines = [f"Os pontos de maior risco academico de {student_name} hoje sao:"]
+    for name, avg in snapshots[:3]:
+        lines.append(f"- {name}: media parcial {str(avg).replace('.', ',')}")
+    lines.append("Esses componentes merecem acompanhamento primeiro no proximo ciclo de estudo.")
+    return "\n".join(lines)
+
+
 def _compose_named_subject_grade_answer(summary: dict[str, Any], *, subject_hint: str | None) -> str | None:
     subject_code, subject_name = _subject_code_from_hint(summary, subject_hint)
     if not subject_code and not subject_name:
@@ -2469,16 +2510,37 @@ def _looks_like_policy_compare_query(message: str) -> bool:
 
 def _looks_like_family_new_calendar_enrollment_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    if not any(term in normalized for term in {"compare", "comparar", "comparacao", "comparação", "do ponto de vista"}):
+    has_family_anchor = any(
+        term in normalized
+        for term in {
+            "familia nova",
+            "família nova",
+            "aluno novo",
+            "responsavel novo",
+            "responsável novo",
+            "familia entrando agora",
+            "família entrando agora",
+            "familia entrando este ano",
+            "família entrando este ano",
+            "primeira vez",
+            "vai entrar este ano",
+            "vai entrar pela primeira vez",
+            "pais estreando",
+            "pais estreando na escola",
+            "pais entrando agora",
+            "primeiro filho",
+            "entrando agora",
+            "chegando agora",
+        }
+    )
+    if not has_family_anchor:
         return False
     groups = (
-        {"calendario letivo", "calendário letivo", "calendario", "calendário"},
+        {"calendario letivo", "calendário letivo", "calendario", "calendário", "inicio das aulas", "início das aulas", "comeco das aulas", "começo das aulas"},
         {"agenda de avaliacoes", "agenda de avaliações", "avaliacoes", "avaliações", "simulados"},
         {"manual de matricula", "manual de matrícula", "matricula", "matrícula", "ingresso"},
     )
-    return all(any(term in normalized for term in group) for group in groups) and any(
-        term in normalized for term in {"familia nova", "família nova", "aluno novo", "responsavel novo", "responsável novo"}
-    )
+    return all(any(term in normalized for term in group) for group in groups)
 
 
 def _compose_policy_compare_answer(profile: dict[str, Any] | None) -> str | None:
@@ -2512,6 +2574,12 @@ def _compose_policy_compare_answer(profile: dict[str, Any] | None) -> str | None
 
 def _looks_like_service_credentials_bundle_query(message: str) -> bool:
     normalized = _normalize_text(message)
+    if (
+        _looks_like_family_new_calendar_enrollment_query(message)
+        or _looks_like_first_month_risks_query(message)
+        or _looks_like_process_compare_query(message)
+    ):
+        return False
     has_credentials = any(term in normalized for term in {"credenciais", "credencial", "login", "senha"})
     has_service_anchor = any(term in normalized for term in {"secretaria", "portal", "documentos", "documentacao", "documentação"})
     return has_credentials and has_service_anchor
@@ -5627,6 +5695,7 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
     if ctx.request.user.authenticated and (
         "nota" in normalized
         or "notas" in normalized
+        or _looks_like_academic_risk_followup(ctx.request.message)
         or _looks_like_family_academic_aggregate_query(ctx.request.message)
         or str(preview.get("classification", {}).get("domain") or "") == "academic"
     ) and not _looks_like_passing_policy_query(ctx.request.message) and not _looks_like_public_doc_bundle_request(
@@ -5646,7 +5715,11 @@ async def _tool_first_structured_answer(ctx: SupervisorRunContext) -> Supervisor
             payload = await _fetch_academic_summary_payload(ctx, student_name_hint=student_hint)
             summary = payload.get("summary") if isinstance(payload, dict) else None
             if isinstance(summary, dict):
-                answer_text = _compose_named_subject_grade_answer(summary, subject_hint=subject_hint) or _compose_named_grade_answer(summary)
+                answer_text = (
+                    _compose_academic_risk_answer(summary)
+                    if _looks_like_academic_risk_followup(ctx.request.message)
+                    else _compose_named_subject_grade_answer(summary, subject_hint=subject_hint) or _compose_named_grade_answer(summary)
+                )
                 return SupervisorAnswerPayload(
                     message_text=answer_text,
                     mode="structured_tool",
@@ -5967,7 +6040,11 @@ async def _resolved_academic_student_grades_answer(
         payload = await _fetch_academic_summary_payload(ctx, student_name_hint=target_name)
         summary = payload.get("summary") if isinstance(payload, dict) else None
         if isinstance(summary, dict):
-            answer_text = _compose_named_subject_grade_answer(summary, subject_hint=subject_hint) or _compose_named_grade_answer(summary)
+            answer_text = (
+                _compose_academic_risk_answer(summary)
+                if _looks_like_academic_risk_followup(ctx.request.message)
+                else _compose_named_subject_grade_answer(summary, subject_hint=subject_hint) or _compose_named_grade_answer(summary)
+            )
             support_label = str(summary.get("student_name") or "Aluno")
             support_detail = _safe_excerpt(answer_text, limit=180)
             return SupervisorAnswerPayload(
@@ -6762,6 +6839,48 @@ async def _operational_memory_follow_up_answer(ctx: SupervisorRunContext) -> Sup
                     suggested_replies=_default_suggested_replies("academic"),
                     graph_path=["specialist_supervisor", "operational_memory", "subject_followup"],
                     reason="specialist_supervisor_memory:subject_followup",
+                )
+
+    target_risk_student = (
+        _student_hint_from_message(ctx.actor, ctx.request.message)
+        or _is_student_name_only_followup(ctx.actor, ctx.request.message)
+        or memory.active_student_name
+    )
+    if (
+        target_risk_student
+        and memory.active_domain == "academic"
+        and _looks_like_academic_risk_followup(ctx.request.message)
+    ):
+        payload = await _fetch_academic_summary_payload(ctx, student_name_hint=target_risk_student)
+        summary = payload.get("summary") if isinstance(payload, dict) else None
+        if isinstance(summary, dict):
+            answer_text = _compose_academic_risk_answer(summary)
+            if answer_text:
+                return SupervisorAnswerPayload(
+                    message_text=answer_text,
+                    mode="structured_tool",
+                    classification=MessageIntentClassification(
+                        domain="academic",
+                        access_tier="authenticated",
+                        confidence=0.98,
+                        reason="specialist_supervisor_memory:academic_risk_followup",
+                    ),
+                    evidence_pack=MessageEvidencePack(
+                        strategy="structured_tools",
+                        summary="Follow-up academico deterministico destacando os componentes com maior risco.",
+                        source_count=1,
+                        support_count=1,
+                        supports=[
+                            MessageEvidenceSupport(
+                                kind="academic_summary",
+                                label=str(summary.get("student_name") or "Aluno"),
+                                detail=_safe_excerpt(answer_text, limit=180),
+                            )
+                        ],
+                    ),
+                    suggested_replies=_default_suggested_replies("academic"),
+                    graph_path=["specialist_supervisor", "operational_memory", "academic_risk_followup"],
+                    reason="specialist_supervisor_memory:academic_risk_followup",
                 )
 
     if _looks_like_other_student_followup(ctx.request.message):

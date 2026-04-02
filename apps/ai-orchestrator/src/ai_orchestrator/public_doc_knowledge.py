@@ -464,14 +464,21 @@ def match_public_canonical_lane(message: str) -> str | None:
         "família nova",
         "familia entrando agora",
         "família entrando agora",
+        "familia entrando este ano",
+        "família entrando este ano",
         "familia chegando agora",
         "família chegando agora",
+        "primeira vez",
+        "vai entrar este ano",
+        "vai entrar pela primeira vez",
         "entrando agora",
         "chegando agora",
         "primeiro filho",
         "primeiro bimestre",
         "inicio do ano",
         "início do ano",
+        "comeco das aulas",
+        "começo das aulas",
     )
     if (
         any(term in normalized for term in family_entry_terms)
@@ -490,13 +497,14 @@ def match_public_canonical_lane(message: str) -> str | None:
         )
     ):
         return "public_bundle.timeline_lifecycle"
-    if (
-        any(term in normalized for term in ("secretaria", "portal", "credenciais", "login", "senha"))
-        and any(term in normalized for term in ("documentos", "documentacao", "documentação", "envio"))
-    ):
-        return "public_bundle.secretaria_portal_credentials"
-    has_visibility_channel = any(term in normalized for term in ("canais digitais", "portal", "calendario", "calendário", "canais oficiais"))
-    has_public_visibility = any(term in normalized for term in ("publico", "público", "publica", "pública", "aberto", "aberta"))
+    has_visibility_channel = any(
+        term in normalized
+        for term in ("canais digitais", "canais da escola", "portal", "calendario", "calendário", "canais oficiais")
+    )
+    has_public_visibility = any(
+        term in normalized
+        for term in ("publico", "público", "publica", "pública", "conteudo publico", "conteúdo público", "aberto", "aberta")
+    )
     has_auth_visibility = any(
         term in normalized
         for term in (
@@ -516,7 +524,10 @@ def match_public_canonical_lane(message: str) -> str | None:
         has_visibility_channel
         and (
             (has_public_visibility and has_auth_visibility)
-            or any(term in normalized for term in ("fronteira", "limite", "o que fica publico", "o que e publico"))
+            or any(
+                term in normalized
+                for term in ("fronteira", "limite", "o que fica publico", "o que e publico", "onde termina", "onde comeca", "onde começa")
+            )
         )
     ):
         return "public_bundle.visibility_boundary"
@@ -552,10 +563,19 @@ def match_public_canonical_lane(message: str) -> str | None:
     ):
         return "public_bundle.health_authorizations_bridge"
     if (
-        any(term in normalized for term in ("primeiro mes", "primeiro mês"))
-        and any(term in normalized for term in ("prazo", "prazos", "credenciais", "documentos"))
+        any(term in normalized for term in ("primeiro mes", "primeiro mês", "comeco do ano", "começo do ano", "primeiras semanas"))
+        and any(
+            term in normalized
+            for term in ("prazo", "prazos", "credenciais", "documentos", "deslizes", "erros", "problema", "problemas", "comprometem", "baguncam", "bagunçam")
+        )
+        and any(term in normalized for term in ("credenciais", "documentos", "documentacao", "documentação", "rotina"))
     ):
         return "public_bundle.first_month_risks"
+    if (
+        any(term in normalized for term in ("secretaria", "portal", "credenciais", "login", "senha"))
+        and any(term in normalized for term in ("documentos", "documentacao", "documentação", "envio"))
+    ):
+        return "public_bundle.secretaria_portal_credentials"
     if (
         any(term in normalized for term in ("disciplina", "disciplinar", "regulamentos", "regulamento", "convivencia", "convivência"))
         and any(term in normalized for term in ("frequencia", "frequência"))

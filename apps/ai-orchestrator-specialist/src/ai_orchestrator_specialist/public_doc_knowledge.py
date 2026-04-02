@@ -233,6 +233,7 @@ def compose_public_first_month_risks(profile: dict[str, Any] | None) -> str | No
         part
         for part in (
             "No primeiro mes, os riscos operacionais mais claros sao perder prazo documental, ficar com cadastro desatualizado, usar credenciais de forma insegura ou ignorar alertas de frequencia e pontualidade.",
+            "Na pratica, isso compromete credenciais, documentacao e a rotina escolar da familia logo nas primeiras semanas.",
             _first_line(docs),
             _first_line(timelines),
             _first_line(credentials),

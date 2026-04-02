@@ -86,7 +86,10 @@ _RESTRICTED_DOC_QUERY_TERMS = {
     'procedimento interno',
     'protocolo interno',
     'manual interno',
+    'material interno',
     'playbook interno',
+    'orientacao interna',
+    'orientação interna',
     'documento interno',
     'documentos internos',
     'por dentro',
@@ -1402,10 +1405,19 @@ def compose_restricted_document_grounded_answer_for_query(query: str, hits: list
 
 
 def compose_restricted_document_no_match_answer(query: str) -> str:
+    normalized_query = str(query or '').strip().rstrip(' ?!.')
+    normalized = _normalize_text(normalized_query)
+    if (
+        any(term in normalized for term in ('viagem internacional', 'excursao internacional', 'excursão internacional'))
+        and any(term in normalized for term in ('hospedagem', 'pernoite'))
+    ):
+        return (
+            'Consultei os documentos internos disponiveis, mas nao encontrei uma orientacao restrita '
+            'especifica sobre excursao ou viagem internacional com hospedagem para o ensino medio.'
+        )
     return (
         'Consultei os documentos internos disponiveis, mas nao encontrei uma orientacao restrita '
-        f'especifica para: "{query.strip()}". Se quiser, eu posso orientar pelo material publico correspondente '
-        'ou encaminhar o caso para validacao humana.'
+        f'especifica para: "{normalized_query}".'
     )
 
 
