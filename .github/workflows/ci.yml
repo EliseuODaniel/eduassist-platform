@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  python-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+          enable-cache: true
+
+      - name: Sync dev dependencies
+        run: uv sync --group dev
+
+      - name: Ruff
+        run: |
+          uv run ruff check --select F,B,E402 \
+            apps/ai-orchestrator/src/ai_orchestrator/engine_selector.py \
+            apps/ai-orchestrator/src/ai_orchestrator/graph.py \
+            apps/ai-orchestrator/src/ai_orchestrator/kernel_runtime.py \
+            apps/ai-orchestrator/src/ai_orchestrator/llamaindex_native_runtime.py \
+            apps/ai-orchestrator/src/ai_orchestrator/main.py \
+            apps/ai-orchestrator/src/ai_orchestrator/public_doc_knowledge.py \
+            apps/ai-orchestrator/src/ai_orchestrator/python_functions_native_runtime.py \
+            apps/ai-orchestrator/src/ai_orchestrator/retrieval.py \
+            apps/ai-orchestrator/src/ai_orchestrator/runtime.py \
+            apps/ai-orchestrator/src/ai_orchestrator/slice_inference.py \
+            apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/execution_budget.py \
+            apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/public_bundle_fast_paths.py \
+            apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/public_doc_knowledge.py \
+            apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/public_query_patterns.py \
+            apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/restricted_doc_matching.py \
+            apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/runtime.py \
+            apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/session_memory.py \
+            tests/unit \
+            tools/evals/eval_quality_utils.py \
+            tools/evals/compare_five_chatbot_paths.py \
+            tools/evals/compare_four_chatbot_paths.py \
+            tools/evals/compare_retrieval_20q_paths.py \
+            tools/evals/observe_nextgen_stack_runtime.py
+
+      - name: Compile
+        run: |
+          uv run python -m compileall \
+            apps/api-core/src \
+            apps/ai-orchestrator/src \
+            apps/ai-orchestrator-specialist/src \
+            apps/telegram-gateway/src \
+            apps/worker/src \
+            tools/evals \
+            tests/unit
+
+      - name: Unit tests
+        run: uv run pytest -q tests/unit

@@ -26,7 +26,6 @@ def derive_execution_budget(ctx: Any, plan: SupervisorPlan) -> ExecutionBudget:
         "resuma",
         "resumo",
         "sintese",
-        "sintese",
         "junto com",
         "alem de",
         "além de",

@@ -988,7 +988,7 @@ def _intent_for_query(query: str) -> str:
         return 'policy_lookup'
     if {'rematricula', 'transferencia', 'cancelamento', 'admissao', 'acolhimento', 'entrevista'} & terms:
         return 'admissions_lookup'
-    if {'calendario', 'aulas', 'reuniao', 'reuniao', 'formatura', 'datas', 'quando'} & terms:
+    if {'calendario', 'aulas', 'reuniao', 'formatura', 'datas', 'quando'} & terms:
         return 'timeline_lookup'
     if {'documentacao', 'documentos', 'documento', 'portal', 'secretaria', 'email'} & terms:
         return 'document_lookup'

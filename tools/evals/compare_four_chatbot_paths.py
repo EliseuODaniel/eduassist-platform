@@ -17,24 +17,30 @@ AI_ORCHESTRATOR_SRC = REPO_ROOT / 'apps/ai-orchestrator/src'
 if str(AI_ORCHESTRATOR_SRC) not in sys.path:
     sys.path.insert(0, str(AI_ORCHESTRATOR_SRC))
 
-from ai_orchestrator.engine_selector import build_engine_bundle
-from ai_orchestrator.main import Settings
-from ai_orchestrator.models import ConversationChannel, MessageResponseRequest, UserContext, UserRole
-from tools.evals.compare_orchestrator_stacks import (
+from tools.evals.eval_quality_utils import (  # noqa: E402
     _contains_expected_keywords,
     _contains_forbidden_keywords,
     _detect_error_types,
     _detect_quality_signals,
-    _extract_answer_text,
     _expand_entries,
+    _extract_answer_text,
     _normalize_prompt_entries,
     _quality_score,
+)
+
+from ai_orchestrator.engine_selector import build_engine_bundle  # noqa: E402
+from ai_orchestrator.main import Settings  # noqa: E402
+from ai_orchestrator.models import (  # noqa: E402
+    ConversationChannel,
+    MessageResponseRequest,
+    UserContext,
+    UserRole,
 )
 
 DEFAULT_PROMPTS = REPO_ROOT / 'artifacts/two_stack_random_strict_llm_live_20260327_v1_dataset.json'
 DEFAULT_REPORT = REPO_ROOT / 'docs/architecture/four-path-chatbot-comparison-report.md'
 DEFAULT_JSON_REPORT = REPO_ROOT / 'docs/architecture/four-path-chatbot-comparison-report.json'
-STACKS = ('langgraph', 'crewai', 'python_functions', 'llamaindex')
+STACKS = ('langgraph', 'python_functions', 'llamaindex', 'specialist_supervisor')
 
 
 def _load_four_path_prompts(path: str) -> list[dict[str, Any]]:
@@ -45,7 +51,7 @@ def _load_four_path_prompts(path: str) -> list[dict[str, Any]]:
 
 
 def _build_settings(*, stack: str) -> Settings:
-    fallback = 'langgraph' if stack != 'langgraph' else 'crewai'
+    fallback = 'langgraph' if stack != 'langgraph' else 'python_functions'
     return Settings(
         orchestrator_engine=fallback,
         feature_flag_primary_orchestration_stack=stack,
@@ -55,7 +61,7 @@ def _build_settings(*, stack: str) -> Settings:
         api_core_url='http://127.0.0.1:8001',
         qdrant_url='http://127.0.0.1:6333',
         database_url='postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist',
-        crewai_pilot_url='http://127.0.0.1:8004',
+        specialist_supervisor_pilot_url='http://127.0.0.1:8005',
     )
 
 

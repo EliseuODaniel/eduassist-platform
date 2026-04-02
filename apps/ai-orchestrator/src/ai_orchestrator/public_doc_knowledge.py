@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 from pathlib import Path
-import re
 from typing import Any
 
 
@@ -86,6 +86,38 @@ def _render_decimal(value: Any, fallback: str) -> str:
     return rendered.replace(".", ",")
 
 
+def _school_name(profile: dict[str, Any] | None) -> str:
+    rendered = str((profile or {}).get("school_name") or "Colegio Horizonte").strip()
+    return rendered or "Colegio Horizonte"
+
+
+def _timeline_entry_from_profile(profile: dict[str, Any] | None, topic_fragment: str) -> dict[str, Any] | None:
+    entries = (profile or {}).get("public_timeline") if isinstance(profile, dict) else None
+    if not isinstance(entries, list):
+        return None
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        if topic_fragment in str(item.get("topic_key", "") or ""):
+            return item
+    return None
+
+
+def _timeline_summary(entry: dict[str, Any] | None) -> str:
+    if not isinstance(entry, dict):
+        return ""
+    return _normalize_space(
+        " ".join(
+            part
+            for part in (
+                entry.get("summary"),
+                entry.get("notes"),
+            )
+            if str(part or "").strip()
+        )
+    )
+
+
 def compose_public_academic_policy_overview(profile: dict[str, Any] | None) -> str | None:
     policy = (profile or {}).get("academic_policy") if isinstance(profile, dict) else None
     evaluation = _section("politica-avaliacao-recuperacao-e-promocao.md", "Avaliacao continua")
@@ -126,6 +158,7 @@ def compose_public_conduct_frequency_punctuality(profile: dict[str, Any] | None)
     return " ".join(
         part
         for part in (
+            "Pontualidade, frequencia e convivencia aparecem juntas nos documentos publicos da escola.",
             _first_line(manual_punctuality),
             _first_line(manual_conduct),
             _first_line(manual_justifications),
@@ -134,6 +167,14 @@ def compose_public_conduct_frequency_punctuality(profile: dict[str, Any] | None)
         )
         if part
     ).strip()
+
+
+def compose_public_teacher_directory_boundary(profile: dict[str, Any] | None) -> str | None:
+    school_name = _school_name(profile)
+    return (
+        f"O {school_name} nao divulga nome, telefone nem contato direto de professor individual por disciplina. "
+        "Quando a familia precisa tratar esse tipo de assunto, o caminho publico correto e a coordenacao pedagogica."
+    )
 
 
 def compose_public_bolsas_and_processes(profile: dict[str, Any] | None) -> str | None:
@@ -396,6 +437,30 @@ def compose_public_calendar_visibility(profile: dict[str, Any] | None) -> str | 
     return " ".join(part for part in parts if part).strip()
 
 
+def compose_public_calendar_week(profile: dict[str, Any] | None) -> str | None:
+    public_events = (profile or {}).get("public_calendar_events") if isinstance(profile, dict) else None
+    visible_titles: list[str] = []
+    if isinstance(public_events, list):
+        for item in public_events:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("title") or "").strip()
+            if title and title not in visible_titles:
+                visible_titles.append(title)
+    communication = _section("agenda-avaliacoes-recuperacoes-e-simulados-2026.md", "Comunicacao com as familias")
+    parts = [
+        "Nesta semana, o calendario publico da escola prioriza eventos coletivos para familias e responsaveis."
+    ]
+    if visible_titles:
+        parts.append(f"Os marcos mais visiveis para familias nesta semana costumam aparecer como {', '.join(visible_titles[:4])}.")
+    if communication:
+        parts.append(_first_line(communication))
+    parts.append(
+        "Quando algum detalhe depende de turma, aluno ou ajuste fino de agenda, a comunicacao segue para responsaveis pelos canais autenticados e oficiais."
+    )
+    return " ".join(part for part in parts if part).strip()
+
+
 def compose_public_family_new_calendar_assessment_enrollment() -> str | None:
     school_calendar = {
         "start": _section("calendario-letivo-2026.md", "Inicio das aulas"),
@@ -454,10 +519,48 @@ def compose_public_timeline_lifecycle_bundle() -> str | None:
     ).strip()
 
 
+def compose_public_year_three_phases(profile: dict[str, Any] | None) -> str | None:
+    admissions = _timeline_summary(_timeline_entry_from_profile(profile, "admissions_opening"))
+    school_year = _timeline_summary(_timeline_entry_from_profile(profile, "school_year_start"))
+    graduation = _timeline_summary(_timeline_entry_from_profile(profile, "graduation"))
+    parts = []
+    if admissions:
+        parts.append(f"Admissao: {admissions}")
+    if school_year:
+        parts.append(f"Rotina academica: {school_year}")
+    if graduation:
+        parts.append(f"Fechamento: {graduation}")
+    return " ".join(parts).strip() or None
+
+
 def match_public_canonical_lane(message: str) -> str | None:
     normalized = _normalize_space(message).lower()
     if not normalized:
         return None
+    if (
+        any(term in normalized for term in ("professor", "professora", "docente"))
+        and any(term in normalized for term in ("contato", "telefone", "canal", "como falar", "como falo"))
+    ):
+        return "public_bundle.teacher_directory_boundary"
+    if (
+        "desta semana" in normalized
+        and any(term in normalized for term in ("calendario", "calendário", "agenda", "eventos"))
+        and any(term in normalized for term in ("familias", "famílias", "responsaveis", "responsáveis"))
+    ):
+        return "public_bundle.calendar_week"
+    if (
+        "tres fases" in normalized
+        and all(term in normalized for term in ("admiss", "rotina", "fechamento"))
+    ):
+        return "public_bundle.year_three_phases"
+    if (
+        any(term in normalized for term in ("politica de avaliacao", "política de avaliação", "recuperacao", "recuperação", "promocao", "promoção"))
+        and any(term in normalized for term in ("escola", "manual", "criterios", "critérios", "media", "média", "frequencia", "frequência"))
+    ):
+        return "public_bundle.academic_policy_overview"
+    if any(term in normalized for term in ("convivencia", "convivência", "frequencia", "frequência", "pontualidade")):
+        if any(term in normalized for term in ("regra", "regras", "manual", "politica", "política", "escola")):
+            return "public_bundle.conduct_frequency_punctuality"
 
     family_entry_terms = (
         "familia nova",
@@ -606,6 +709,16 @@ def compose_public_canonical_lane_answer(
     *,
     profile: dict[str, Any] | None = None,
 ) -> str | None:
+    if lane == "public_bundle.teacher_directory_boundary":
+        return compose_public_teacher_directory_boundary(profile)
+    if lane == "public_bundle.calendar_week":
+        return compose_public_calendar_week(profile)
+    if lane == "public_bundle.year_three_phases":
+        return compose_public_year_three_phases(profile)
+    if lane == "public_bundle.academic_policy_overview":
+        return compose_public_academic_policy_overview(profile)
+    if lane == "public_bundle.conduct_frequency_punctuality":
+        return compose_public_conduct_frequency_punctuality(profile)
     if lane == "public_bundle.family_new_calendar_assessment_enrollment":
         return compose_public_family_new_calendar_assessment_enrollment()
     if lane == "public_bundle.timeline_lifecycle":

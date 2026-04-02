@@ -24,10 +24,6 @@ _PROFILES: dict[str, PathExecutionProfile] = {
         name='langgraph',
         notes=('path_family:langgraph', 'state_owner:langgraph'),
     ),
-    'crewai': PathExecutionProfile(
-        name='crewai',
-        notes=('path_family:crewai', 'agent_flow:crewai'),
-    ),
     'python_functions': PathExecutionProfile(
         name='python_functions',
         prefer_fast_public_path=True,
@@ -60,10 +56,6 @@ _PROFILES: dict[str, PathExecutionProfile] = {
             'judge_loop:enabled',
             'session_memory:enabled',
         ),
-    ),
-    'shadow': PathExecutionProfile(
-        name='shadow',
-        notes=('path_family:shadow',),
     ),
 }
 

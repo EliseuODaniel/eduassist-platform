@@ -9,34 +9,48 @@ from typing import Any
 from fastembed import TextEmbedding
 from llama_index.core import VectorStoreIndex
 from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
-from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.base.base_retriever import BaseRetriever
 from llama_index.core.base.embeddings.base import BaseEmbedding
-from llama_index.core.indices.vector_store.retrievers import VectorIndexAutoRetriever
+from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.base.response.schema import Response
-from llama_index.core.query_engine import CitationQueryEngine, CustomQueryEngine, RouterQueryEngine, SubQuestionQueryEngine
+from llama_index.core.indices.vector_store.retrievers import VectorIndexAutoRetriever
+from llama_index.core.memory import Memory
+from llama_index.core.prompts import PromptTemplate
+from llama_index.core.query_engine import (
+    CitationQueryEngine,
+    CustomQueryEngine,
+    RouterQueryEngine,
+    SubQuestionQueryEngine,
+)
 from llama_index.core.response_synthesizers import get_response_synthesizer
 from llama_index.core.response_synthesizers.type import ResponseMode
 from llama_index.core.schema import NodeWithScore, QueryBundle, TextNode
 from llama_index.core.selectors import EmbeddingSingleSelector, PydanticSingleSelector
 from llama_index.core.tools import FunctionTool, QueryEngineTool
-from llama_index.core.memory import Memory
-from llama_index.core.prompts import PromptTemplate
-from llama_index.core.vector_stores.types import FilterOperator, MetadataFilter, MetadataFilters, MetadataInfo, VectorStoreInfo
+from llama_index.core.vector_stores.types import (
+    FilterOperator,
+    MetadataFilter,
+    MetadataFilters,
+    MetadataInfo,
+    VectorStoreInfo,
+)
 from pydantic import BaseModel, Field, PrivateAttr
 from qdrant_client import AsyncQdrantClient, QdrantClient
 
 from . import runtime as rt
 from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult
+from .entity_resolution import resolve_entity_hints
 from .evidence_pack import (
     build_direct_answer_evidence_pack,
     build_retrieval_evidence_pack,
     build_structured_tool_evidence_pack,
 )
-from .entity_resolution import resolve_entity_hints
 from .kernel_runtime import _maybe_hypothetical_public_pricing_answer
+from .llamaindex_public_intent_registry import (
+    LLAMAINDEX_PUBLIC_INTENT_RULES,
+    LlamaIndexPublicIntentRule,
+)
 from .llm_provider import _google_model_candidates
-from .llamaindex_public_intent_registry import LLAMAINDEX_PUBLIC_INTENT_RULES, LlamaIndexPublicIntentRule
 from .models import (
     AccessTier,
     IntentClassification,
@@ -50,10 +64,12 @@ from .models import (
 )
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
 from .public_doc_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
-from .public_known_unknowns import compose_public_known_unknown_answer, detect_public_known_unknown_key
+from .public_known_unknowns import (
+    compose_public_known_unknown_answer,
+    detect_public_known_unknown_key,
+)
 from .retrieval import (
     can_read_restricted_documents,
-    compose_restricted_document_grounded_answer,
     compose_restricted_document_grounded_answer_for_query,
     compose_restricted_document_no_match_answer,
     get_retrieval_service,
@@ -1262,7 +1278,6 @@ def _native_llamaindex_public_unpublished_answer(
     message: str,
     school_profile: dict[str, Any],
 ) -> str | None:
-    normalized = rt._normalize_text(message)
     school_reference = str(school_profile.get('school_name', 'Colegio Horizonte')).strip() or 'Colegio Horizonte'
     unpublished_key = str(getattr(decision, 'unpublished_key', '') or '').strip()
     if not unpublished_key:
@@ -1360,7 +1375,6 @@ def _route_public_query_tool(
     hints = resolve_entity_hints(request.message)
     if hints.domain_hint == 'public_pricing' and hints.is_hypothetical and hints.quantity_hint:
         return tools['pricing_projection']
-    normalized = rt._normalize_text(request.message)
     if _has_documentary_retrieval_cues(request.message):
         return tools['public_retrieval']
 
@@ -1819,12 +1833,12 @@ def _extract_router_selected_tool_names(*, response: Response, tool_names: tuple
     selected_indexes: list[int] = []
     if hasattr(selector_result, 'inds'):
         try:
-            selected_indexes.extend(int(index) for index in getattr(selector_result, 'inds'))
+            selected_indexes.extend(int(index) for index in selector_result.inds)
         except Exception:
             selected_indexes = []
     elif hasattr(selector_result, 'ind'):
         try:
-            selected_indexes.append(int(getattr(selector_result, 'ind')))
+            selected_indexes.append(int(selector_result.ind))
         except Exception:
             selected_indexes = []
     selected_names = [
@@ -2608,14 +2622,32 @@ async def maybe_execute_llamaindex_native_plan(
         selected_tool_names = ('public_profile',)
         execution_reason = 'llamaindex_public_unpublished_fact'
     elif native_public_decision is not None and native_public_decision.answer_mode == 'profile':
-        selected_tool_names = ('public_profile',)
-        try:
-            tool_response = await _await_with_llamaindex_timeout(
-                tools['public_profile'].query_engine.aquery(effective_analysis_message),
-                settings=settings,
-            )
-        except Exception:
-            return None
+        direct_profile_answer = rt._compose_public_profile_answer(
+            school_profile,
+            request.message,
+            actor=actor,
+            original_message=request.message,
+            conversation_context=conversation_context,
+            semantic_plan=public_plan,
+        )
+        direct_profile_answer = str(direct_profile_answer or '').strip()
+        if direct_profile_answer and not direct_profile_answer.startswith('Ainda nao encontrei evidencia publica suficiente'):
+            preview.mode = OrchestrationMode.structured_tool
+            preview.reason = 'llamaindex_public_profile_fast_path'
+            preview.needs_authentication = False
+            preview.selected_tools = list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile']))
+            answer_text = direct_profile_answer
+            selected_tool_names = ('public_profile',)
+            execution_reason = 'llamaindex_public_profile_fast_path'
+        else:
+            selected_tool_names = ('public_profile',)
+            try:
+                tool_response = await _await_with_llamaindex_timeout(
+                    tools['public_profile'].query_engine.aquery(effective_analysis_message),
+                    settings=settings,
+                )
+            except Exception:
+                return None
     elif documentary_direct_retrieval:
         selected_tool_names = ('public_retrieval',)
         try:

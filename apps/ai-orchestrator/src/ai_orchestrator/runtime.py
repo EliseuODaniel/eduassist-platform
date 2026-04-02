@@ -5,7 +5,7 @@ import base64
 import io
 import re
 import unicodedata
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from time import monotonic
@@ -23,19 +23,6 @@ from eduassist_observability import (
 )
 from PIL import Image, ImageDraw, ImageFont
 
-from .graph_rag_runtime import graph_rag_workspace_ready, run_graph_rag_query
-from .langgraph_trace import build_langgraph_trace_sections
-from .llm_provider import (
-    compose_with_provider,
-    compose_public_grounded_with_provider,
-    judge_answer_relevance_with_provider,
-    polish_structured_with_provider,
-    resolve_public_semantic_with_provider,
-    revise_with_provider,
-)
-from .graph import to_preview
-from .crewai_trace import build_crewai_trace_sections
-from .specialist_trace import build_specialist_trace_sections
 from .entity_resolution import resolve_entity_hints
 from .evidence_pack import (
     build_direct_answer_evidence_pack,
@@ -43,11 +30,22 @@ from .evidence_pack import (
     build_retrieval_evidence_pack,
     build_structured_tool_evidence_pack,
 )
+from .graph import to_preview
+from .graph_rag_runtime import graph_rag_workspace_ready, run_graph_rag_query
 from .langgraph_runtime import (
     get_langgraph_artifacts,
     get_orchestration_state_snapshot,
     invoke_orchestration_graph,
     resolve_langgraph_thread_id,
+)
+from .langgraph_trace import build_langgraph_trace_sections
+from .llm_provider import (
+    compose_public_grounded_with_provider,
+    compose_with_provider,
+    judge_answer_relevance_with_provider,
+    polish_structured_with_provider,
+    resolve_public_semantic_with_provider,
+    revise_with_provider,
 )
 from .models import (
     AccessTier,
@@ -69,11 +67,10 @@ from .models import (
     UserRole,
 )
 from .public_agentic_engine import build_public_evidence_bundle
-from .public_known_unknowns import detect_public_known_unknown_key
 from .public_doc_knowledge import (
-    compose_public_canonical_lane_answer,
     compose_public_bolsas_and_processes,
     compose_public_calendar_visibility,
+    compose_public_canonical_lane_answer,
     compose_public_family_new_calendar_assessment_enrollment,
     compose_public_first_month_risks,
     compose_public_health_authorizations_bridge,
@@ -82,16 +79,16 @@ from .public_doc_knowledge import (
     compose_public_process_compare,
     match_public_canonical_lane,
 )
-from .retrieval import get_retrieval_service
+from .public_known_unknowns import detect_public_known_unknown_key
 from .retrieval import (
     can_read_restricted_documents,
-    compose_restricted_document_grounded_answer,
     compose_restricted_document_grounded_answer_for_query,
     compose_restricted_document_no_match_answer,
+    get_retrieval_service,
     looks_like_restricted_document_query,
     select_relevant_restricted_hits,
 )
-
+from .specialist_trace import build_specialist_trace_sections
 
 DEFAULT_PUBLIC_HELP = (
     'Posso ajudar com informacoes publicas da escola, como calendario, matricula, '
@@ -344,7 +341,6 @@ PUBLIC_PRICING_TERMS = {
     'valores',
     'preco',
     'preços',
-    'preco',
     'precos',
     'bolsa',
     'bolsas',
@@ -809,7 +805,6 @@ PUBLIC_ENRICHMENT_TERMS = {
     'monitorias',
     'monitoria',
     'plantoes',
-    'plantoes',
     'plantões',
     'estudo orientado',
     'trilhas academicas',
@@ -865,7 +860,6 @@ PUBLIC_ENTITY_HINTS = {
     'espaco maker': 'maker',
     'secretaria': 'secretaria',
     'portaria': 'portaria',
-    'cantina': 'cantina',
     'orientacao educacional': 'orientacao educacional',
     'orientação educacional': 'orientacao educacional',
 }
@@ -1325,7 +1319,6 @@ HIGH_RISK_REASONING_TERMS = {
     'exceto',
     'excecao',
     'exceções',
-    'excecao',
     'dispensa',
     'dispensavel',
     'dispensaveis',
@@ -1355,7 +1348,7 @@ HIGH_RISK_REASONING_PHRASES = {
     'ha excecao',
     'tem excecao',
 }
-VISUAL_TERMS = {'grafico', 'gráfico', 'visual', 'grafica', 'gráfico', 'barra', 'comparativo', 'evolucao', 'evolução'}
+VISUAL_TERMS = {'grafico', 'gráfico', 'visual', 'grafica', 'barra', 'comparativo', 'evolucao', 'evolução'}
 
 
 @dataclass(frozen=True)
@@ -1867,11 +1860,38 @@ def _is_admin_finance_combined_query(message: str) -> bool:
     normalized = _normalize_text(message)
     mentions_admin = any(
         _message_matches_term(normalized, term)
-        for term in {'documentacao', 'documentação', 'documentos', 'cadastro', 'regular', 'pendencia', 'pendência'}
+        for term in {
+            'documentacao',
+            'documentação',
+            'documentos',
+            'cadastro',
+            'regular',
+            'regularidade',
+            'pendencia',
+            'pendência',
+            'administrativo',
+            'administrativa',
+            'documental',
+        }
     )
     mentions_finance = any(
         _message_matches_term(normalized, term)
-        for term in {'financeiro', 'boleto', 'boletos', 'mensalidade', 'fatura', 'faturas', 'bloqueando atendimento', 'bloqueio'}
+        for term in {
+            'financeiro',
+            'situacao financeira',
+            'situação financeira',
+            'boleto',
+            'boletos',
+            'mensalidade',
+            'mensalidades',
+            'fatura',
+            'faturas',
+            'bloqueando atendimento',
+            'bloqueio',
+            'vencimento',
+            'atraso',
+            'atrasos',
+        }
     )
     return mentions_admin and mentions_finance
 
@@ -4001,7 +4021,7 @@ def _extract_teacher_subject(message: str) -> str | None:
         match = re.search(pattern, normalized)
         if not match:
             continue
-        subject = match.group(1).strip(' ?.')
+        subject = re.split(r'\b(?:ou|e|mas|pela?|pelo)\b|[?!,;.]', match.group(1), maxsplit=1)[0].strip(' ?.')
         if subject:
             return subject
     return None
@@ -5007,7 +5027,6 @@ def _select_leadership_member(profile: dict[str, Any], message: str) -> dict[str
         return None
     for member in members:
         title = _normalize_text(str(member.get('title', '')))
-        focus = _normalize_text(str(member.get('focus', '')))
         name = _normalize_text(str(member.get('name', '')))
         if any(
             phrase in normalized
@@ -5197,7 +5216,6 @@ def _compose_public_profile_answer_legacy(
         schedule_context_normalized = analysis_normalized
     shift_offers = profile.get('shift_offers') if isinstance(profile.get('shift_offers'), list) else []
     tuition_reference = profile.get('tuition_reference') if isinstance(profile.get('tuition_reference'), list) else []
-    feature_map = _feature_inventory_map(profile)
     semantic_act = semantic_plan.conversation_act if semantic_plan else None
     contact_reference_message = _public_contact_reference_message(
         profile=profile,
@@ -7370,6 +7388,12 @@ def _build_analysis_message(message: str, conversation_context: ConversationCont
     if _is_discourse_repair_reset_query(message, context_payload):
         return message
     recent_focus = _recent_conversation_focus(context_payload)
+    recent_student_name = str(
+        (recent_focus or {}).get('academic_student_name')
+        or (recent_focus or {}).get('finance_student_name')
+        or (recent_focus or {}).get('student_name')
+        or ''
+    ).strip()
     if (
         _recent_trace_used_tool(context_payload, 'get_administrative_status')
         and _detect_admin_attribute_request(message, context_payload) is not None
@@ -7389,6 +7413,13 @@ def _build_analysis_message(message: str, conversation_context: ConversationCont
 
     if recent_focus:
         active_task = str(recent_focus.get('active_task', '') or '').strip()
+        normalized_message = _normalize_text(message)
+        normalized_student_name = _normalize_text(recent_student_name)
+        if recent_student_name and normalized_student_name and normalized_student_name in normalized_message:
+            if active_task.startswith('academic:') or str(recent_focus.get('kind') or '') == 'academic':
+                return f'{message} sobre panorama academico de {recent_student_name}'
+            if active_task.startswith('finance:') or str(recent_focus.get('kind') or '') == 'finance':
+                return f'{message} sobre panorama financeiro de {recent_student_name}'
         if active_task == 'public:document_submission':
             return f'{message} sobre envio de documentos pela secretaria ou portal institucional'
         if active_task == 'workflow:human_handoff' and any(
@@ -7636,6 +7667,8 @@ def _foreign_school_reference(
     school_profile: dict[str, Any] | None,
     conversation_context: dict[str, Any] | None,
 ) -> str | None:
+    if _is_public_teacher_identity_query(message):
+        return None
     if _is_comparative_query(message):
         return None
     normalized = _normalize_text(message)
@@ -8019,11 +8052,6 @@ async def _persist_operational_trace(
         )
         if langgraph_trace_sections.get('request'):
             trace_request_payload['langgraph'] = langgraph_trace_sections['request']
-    if engine_name == 'crewai':
-        crewai_trace_sections = build_crewai_trace_sections(engine_trace_metadata)
-        if crewai_trace_sections.get('request'):
-            trace_request_payload['crewai'] = crewai_trace_sections['request']
-
     trace_response_payload = {
         'mode': preview.mode.value,
         'domain': preview.classification.domain.value,
@@ -8055,10 +8083,6 @@ async def _persist_operational_trace(
         )
         if langgraph_trace_sections.get('response'):
             trace_response_payload['langgraph'] = langgraph_trace_sections['response']
-    if engine_name == 'crewai':
-        crewai_trace_sections = build_crewai_trace_sections(engine_trace_metadata)
-        if crewai_trace_sections.get('response'):
-            trace_response_payload['crewai'] = crewai_trace_sections['response']
     if engine_name == 'specialist_supervisor':
         specialist_trace_sections = build_specialist_trace_sections(
             engine_trace_metadata,
@@ -10396,7 +10420,7 @@ def _compose_workflow_status_answer(
             lines.append('No momento, a equipe comercial ainda precisa validar a janela antes da confirmacao.')
             return '\n'.join(lines)
         if asks_next_step:
-            lines = [f'Proximo passo da sua visita: admissions valida a janela antes de confirmar o horario.', f'- Protocolo: {protocol_code}']
+            lines = ['Proximo passo da sua visita: admissions valida a janela antes de confirmar o horario.', f'- Protocolo: {protocol_code}']
             if updated_at_label:
                 lines.append(f'- Ultima movimentacao registrada: {updated_at_label}')
             if slot_label:
@@ -13545,7 +13569,6 @@ async def _execute_teacher_protected_specialist(
         )
 
     summary = payload.get('summary', {})
-    teacher_name = summary.get('teacher_name', actor.get('full_name', 'Professor'))
     if not isinstance(summary, dict):
         return 'Nao consegui interpretar o retorno da grade docente.'
     if any(term in normalized_message for term in {'rotina docente', 'resuma minha rotina docente', 'resumo enxuto', 'alocacao', 'alocação'}):
@@ -13629,10 +13652,6 @@ async def _execute_protected_records_specialist(
         return (
             'Para enviar documentos hoje, use portal institucional, email da secretaria ou secretaria presencial.'
         )
-    should_force_student_admin_path = (
-        preview.classification.domain is QueryDomain.institution
-        and explicit_student_admin_request
-    )
     linked_students = _linked_students(actor)
     unmatched_student_name = None
     if not force_family_finance_aggregate and not force_family_academic_aggregate:
@@ -15511,7 +15530,7 @@ async def generate_message_response(
                     school_profile=school_profile,
                     actor=actor,
                     conversation_context=context_payload,
-                    public_plan=public_plan,
+                    public_plan=None,
                     retrieval_backend=preview.retrieval_backend,
                 )
                 return MessageResponse(
@@ -16114,7 +16133,11 @@ async def generate_message_response(
                         }
                     )
                     citations = []
-                    message_text = INSTITUTIONAL_GREETING
+                    message_text = _compose_concierge_greeting(
+                        school_profile,
+                        request.message,
+                        context_payload,
+                    )
                     deterministic_answer_candidate = message_text
                 elif preview.mode is OrchestrationMode.hybrid_retrieval and restricted_document_query:
                     set_span_attributes(

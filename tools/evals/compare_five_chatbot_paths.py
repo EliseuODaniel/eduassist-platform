@@ -26,10 +26,7 @@ if str(SPECIALIST_SUPERVISOR_SRC) not in sys.path:
     sys.path.insert(0, str(SPECIALIST_SUPERVISOR_SRC))
 SPECIALIST_SOURCE_SERVER = REPO_ROOT / 'tools/evals/run_specialist_supervisor_source_server.py'
 
-from ai_orchestrator.engine_selector import build_engine_bundle
-from ai_orchestrator.main import Settings
-from ai_orchestrator.models import ConversationChannel, MessageResponseRequest, UserContext, UserRole
-from tools.evals.compare_orchestrator_stacks import (
+from tools.evals.eval_quality_utils import (  # noqa: E402
     _contains_expected_keywords,
     _contains_forbidden_keywords,
     _detect_error_types,
@@ -40,10 +37,19 @@ from tools.evals.compare_orchestrator_stacks import (
     _quality_score,
 )
 
+from ai_orchestrator.engine_selector import build_engine_bundle  # noqa: E402
+from ai_orchestrator.main import Settings  # noqa: E402
+from ai_orchestrator.models import (  # noqa: E402
+    ConversationChannel,
+    MessageResponseRequest,
+    UserContext,
+    UserRole,
+)
+
 DEFAULT_PROMPTS = REPO_ROOT / 'tests/evals/datasets/five_path_random_probe_cases.json'
 DEFAULT_REPORT = REPO_ROOT / 'docs/architecture/five-path-chatbot-comparison-report.md'
 DEFAULT_JSON_REPORT = REPO_ROOT / 'docs/architecture/five-path-chatbot-comparison-report.json'
-STACKS = ('langgraph', 'crewai', 'python_functions', 'llamaindex', 'specialist_supervisor')
+STACKS = ('langgraph', 'python_functions', 'llamaindex', 'specialist_supervisor')
 
 
 class _SpecialistSourceClient:
@@ -102,17 +108,14 @@ def _normalize_local_service_url(value: str, *, kind: str) -> str:
         defaults = {
             'api_core': 'http://127.0.0.1:8001',
             'ai_orchestrator': 'http://127.0.0.1:8002',
-            'crewai_pilot': 'http://127.0.0.1:8004',
             'specialist_pilot': 'http://127.0.0.1:8005',
         }
         return defaults[kind]
     replacements = {
         'http://api-core:8000': 'http://127.0.0.1:8001',
         'http://ai-orchestrator:8000': 'http://127.0.0.1:8002',
-        'http://ai-orchestrator-crewai:8000': 'http://127.0.0.1:8004',
         'http://ai-orchestrator-specialist:8000': 'http://127.0.0.1:8005',
         'http://localhost:8000': {
-            'crewai_pilot': 'http://127.0.0.1:8004',
             'specialist_pilot': 'http://127.0.0.1:8005',
         }.get(kind, normalized),
     }
@@ -172,7 +175,7 @@ def _normalize_local_qdrant_url(value: str) -> str:
 def _exception_reason(*, stack: str, exc: Exception) -> str:
     details = f'{type(exc).__name__}: {exc}'.lower()
     if 'connecttimeout' in details or 'connecterror' in details or 'allconnectionattemptsfailed' in details:
-        if stack in {'crewai', 'specialist_supervisor'}:
+        if stack == 'specialist_supervisor':
             return f'{stack}_pilot_unavailable'
         return 'dependency_unavailable'
     if 'llm_unconfigured' in details:
@@ -185,7 +188,6 @@ def _benchmark_context() -> dict[str, Any]:
         'specialist_supervisor_benchmark_mode': _specialist_benchmark_mode(),
         'api_core_url': _normalize_local_service_url(os.getenv('API_CORE_URL', ''), kind='api_core'),
         'ai_orchestrator_url': _normalize_local_service_url(os.getenv('AI_ORCHESTRATOR_URL', ''), kind='ai_orchestrator'),
-        'crewai_pilot_url': _normalize_local_service_url(os.getenv('CREWAI_PILOT_URL', ''), kind='crewai_pilot'),
         'specialist_supervisor_pilot_url': _normalize_local_service_url(
             os.getenv('SPECIALIST_SUPERVISOR_PILOT_URL', ''),
             kind='specialist_pilot',
@@ -209,7 +211,7 @@ def _load_prompts(path: str) -> list[dict[str, Any]]:
 
 
 def _build_settings(*, stack: str) -> Settings:
-    fallback = 'langgraph' if stack != 'langgraph' else 'crewai'
+    fallback = 'langgraph' if stack != 'langgraph' else 'python_functions'
     return Settings(
         orchestrator_engine=fallback,
         feature_flag_primary_orchestration_stack=stack,
@@ -224,7 +226,6 @@ def _build_settings(*, stack: str) -> Settings:
             or os.getenv('DATABASE_URL')
             or ''
         ),
-        crewai_pilot_url=_normalize_local_service_url(os.getenv('CREWAI_PILOT_URL', ''), kind='crewai_pilot'),
         specialist_supervisor_pilot_url=_normalize_local_service_url(
             os.getenv('SPECIALIST_SUPERVISOR_PILOT_URL', ''),
             kind='specialist_pilot',
@@ -357,7 +358,6 @@ def _render_markdown(payload: dict[str, Any], *, stacks: tuple[str, ...]) -> str
         lines.append(f"- specialist benchmark mode: `{benchmark_context.get('specialist_supervisor_benchmark_mode', 'unknown')}`")
         lines.append(f"- api-core: `{benchmark_context.get('api_core_url', '')}`")
         lines.append(f"- ai-orchestrator: `{benchmark_context.get('ai_orchestrator_url', '')}`")
-        lines.append(f"- crewai pilot: `{benchmark_context.get('crewai_pilot_url', '')}`")
         lines.append(f"- specialist pilot: `{benchmark_context.get('specialist_supervisor_pilot_url', '')}`")
         lines.append('')
     lines.append('## Stack Summary')

@@ -1,41 +1,39 @@
 from __future__ import annotations
 
 import asyncio
-from functools import lru_cache
 import json
 import logging
 import secrets
+from functools import lru_cache
 from pathlib import Path
 from time import monotonic
 from typing import Any
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
-from fastapi import FastAPI, Header, HTTPException
-from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from eduassist_observability import (
     build_runtime_diagnostics,
     canonicalize_evidence_strategy,
     canonicalize_risk_flags,
     configure_observability,
 )
+from fastapi import FastAPI, Header, HTTPException
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .engine_selector import (
     SUPPORTED_PRIMARY_STACKS,
     build_engine_bundle,
-    clear_runtime_targeted_stack_override,
     clear_runtime_primary_stack_override,
+    clear_runtime_targeted_stack_override,
     get_experiment_live_promotion_summary,
     get_experiment_rollout_readiness,
     get_primary_stack_resolution,
     get_runtime_targeted_stack_override,
-    get_runtime_primary_stack_override,
     get_scorecard_gate_status,
-    maybe_run_shadow,
     resolve_primary_stack,
-    set_runtime_targeted_stack_override,
     set_runtime_primary_stack_override,
+    set_runtime_targeted_stack_override,
 )
 from .engines.llamaindex_workflow_engine import LLAMAINDEX_WORKFLOW_AVAILABLE
 from .graph import get_graph_blueprint, to_preview
@@ -43,17 +41,15 @@ from .graph_rag_runtime import graph_rag_workspace_ready, run_graph_rag_query
 from .langgraph_runtime import (
     close_langgraph_runtime,
     get_langgraph_artifacts,
-    get_orchestration_state_snapshot,
     get_langgraph_runtime_status,
+    get_orchestration_state_snapshot,
     invoke_orchestration_graph,
-    resume_orchestration_graph,
     resolve_langgraph_thread_id,
+    resume_orchestration_graph,
     warm_langgraph_runtime,
 )
 from .models import (
     ConversationChannel,
-    AccessTier,
-    QueryDomain,
     MessageResponse,
     MessageResponseRequest,
     OrchestrationMode,
@@ -65,8 +61,6 @@ from .models import (
     UserContext,
 )
 from .retrieval import get_retrieval_service
-from .runtime import generate_message_response
-from .trace_bridge import persist_shadow_trace
 from .tools import get_tool_contracts
 
 logger = logging.getLogger(__name__)
@@ -123,12 +117,10 @@ class Settings(BaseSettings):
     orchestrator_engine: str = 'langgraph'
     feature_flag_primary_orchestration_stack: str | None = None
     feature_flag_telegram_debug_trace_footer_enabled: bool = False
-    crewai_pilot_url: str | None = None
-    crewai_pilot_timeout_seconds: float = 30.0
     specialist_supervisor_pilot_url: str | None = None
     specialist_supervisor_pilot_timeout_seconds: float = 18.0
     orchestrator_experiment_enabled: bool = False
-    orchestrator_experiment_primary_engine: str = 'crewai'
+    orchestrator_experiment_primary_engine: str = 'python_functions'
     orchestrator_experiment_slices: str = ''
     orchestrator_experiment_rollout_percent: int = 0
     orchestrator_experiment_slice_rollouts: str = ''
@@ -292,13 +284,6 @@ def _probe_remote_status_payload(
 
 def _pilot_diagnostics(settings: Settings) -> dict[str, dict[str, Any]]:
     ttl_seconds = max(1, int(settings.orchestrator_experiment_health_ttl_seconds or 15))
-    crewai_status = _probe_remote_status_payload(
-        name='crewai',
-        url=settings.crewai_pilot_url,
-        token=settings.internal_api_token,
-        ttl_seconds=ttl_seconds,
-        timeout_seconds=3.0,
-    )
     specialist_status = _probe_remote_status_payload(
         name='specialist_supervisor',
         url=settings.specialist_supervisor_pilot_url,
@@ -307,11 +292,6 @@ def _pilot_diagnostics(settings: Settings) -> dict[str, dict[str, Any]]:
         timeout_seconds=4.0,
     )
     return {
-        'crewai': {
-            'configured': bool(str(settings.crewai_pilot_url or '').strip()),
-            'ready': bool(isinstance(crewai_status, dict) and crewai_status.get('ready')),
-            'status': crewai_status,
-        },
         'specialist_supervisor': {
             'configured': bool(str(settings.specialist_supervisor_pilot_url or '').strip()),
             'ready': bool(isinstance(specialist_status, dict) and specialist_status.get('ready')),
@@ -333,25 +313,6 @@ def _orchestrator_runtime_diagnostics(settings: Settings) -> dict[str, Any]:
                 'message': 'GraphRAG esta habilitado, mas o workspace nao esta pronto.',
             }
         )
-
-    if resolved_stack == 'crewai':
-        crewai = pilot_diagnostics['crewai']
-        if not crewai['configured']:
-            extra_findings.append(
-                {
-                    'level': 'blocker',
-                    'code': 'crewai_primary_without_pilot',
-                    'message': 'CrewAI esta resolvido como stack primario, mas o pilot URL nao esta configurado.',
-                }
-            )
-        elif not crewai['ready']:
-            extra_findings.append(
-                {
-                    'level': 'blocker',
-                    'code': 'crewai_primary_pilot_unready',
-                    'message': 'CrewAI esta resolvido como stack primario, mas o piloto remoto nao esta pronto.',
-                }
-            )
 
     if resolved_stack == 'specialist_supervisor':
         specialist = pilot_diagnostics['specialist_supervisor']
@@ -385,7 +346,6 @@ def _orchestrator_runtime_diagnostics(settings: Settings) -> dict[str, Any]:
                 'allow_localhost_in_container': False,
                 'allow_service_dns_in_source': False,
             },
-            {'name': 'crewai_pilot', 'endpoint': settings.crewai_pilot_url, 'required': False},
             {'name': 'specialist_supervisor_pilot', 'endpoint': settings.specialist_supervisor_pilot_url, 'required': False},
             {
                 'name': 'graph_rag_local_chat',
@@ -713,7 +673,7 @@ def _hitl_thread_id(
 
 def _serialize_interrupt_entry(item: object) -> dict[str, object]:
     if hasattr(item, 'value'):
-        value = getattr(item, 'value')
+        value = item.value
     else:
         value = item
     entry: dict[str, object] = {'value': value}
@@ -901,7 +861,6 @@ async def meta(
         'service': 'ai-orchestrator',
         'environment': settings.app_env,
         **_runtime_primary_stack_payload(settings),
-        'crewaiPilotConfigured': bool(settings.crewai_pilot_url),
         'specialistSupervisorPilotConfigured': bool(settings.specialist_supervisor_pilot_url),
         'experimentEnabled': settings.orchestrator_experiment_enabled,
         'experimentPrimaryEngine': settings.orchestrator_experiment_primary_engine,
@@ -955,7 +914,6 @@ async def status() -> dict[str, object]:
         'service': 'ai-orchestrator',
         'ready': True,
         **_runtime_primary_stack_payload(settings),
-        'crewaiPilotConfigured': bool(settings.crewai_pilot_url),
         'specialistSupervisorPilotConfigured': bool(settings.specialist_supervisor_pilot_url),
         'experimentEnabled': settings.orchestrator_experiment_enabled,
         'experimentPrimaryEngine': settings.orchestrator_experiment_primary_engine,
@@ -1273,15 +1231,6 @@ async def message_response(
     settings = get_settings()
     bundle = build_engine_bundle(settings, request=request)
     response = await bundle.primary.respond(request=request, settings=settings, engine_mode=bundle.mode)
-    shadow_result = await maybe_run_shadow(bundle=bundle, request=request, settings=settings)
-    if shadow_result is not None:
-        await persist_shadow_trace(
-            settings=settings,
-            request=request,
-            primary_engine_name=bundle.primary.name,
-            primary_engine_mode=bundle.mode,
-            shadow_result=shadow_result,
-        )
     return _attach_telegram_debug_trace(
         request=request,
         response=response,

@@ -15,7 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from tools.evals.compare_orchestrator_stacks import (
+from tools.evals.eval_quality_utils import (  # noqa: E402
     _contains_expected_keywords,
     _contains_forbidden_keywords,
     _detect_error_types,
@@ -25,7 +25,7 @@ from tools.evals.compare_orchestrator_stacks import (
     _normalize_prompt_entries,
     _quality_score,
 )
-from tools.evals.preflight_nextgen_stack_runtime import (
+from tools.evals.preflight_nextgen_stack_runtime import (  # noqa: E402
     SUPPORTED_STACKS,
     _get_runtime_primary_stack,
     _restore_previous_override,

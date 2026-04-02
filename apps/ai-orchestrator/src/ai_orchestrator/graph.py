@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from functools import lru_cache
 import re
-from typing import TypedDict
 import unicodedata
+from functools import lru_cache
+from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
@@ -19,6 +19,7 @@ from .models import (
     RetrievalBackend,
     UserRole,
 )
+from .public_doc_knowledge import match_public_canonical_lane
 
 
 class OrchestrationState(TypedDict, total=False):
@@ -67,8 +68,6 @@ ACADEMIC_TERMS = {
     'vulneravel',
     'vulnerável',
     'componentes',
-    'materia',
-    'materias',
     'fragilizada',
     'fragilizado',
     'exposta',
@@ -456,7 +455,6 @@ INSTITUTIONAL_REQUEST_UPDATE_TERMS = {
     'complementar meu pedido',
     'complementar protocolo',
     'complementar minha solicitacao',
-    'complementar minha solicitacao',
     'acrescentar ao protocolo',
     'adicionar ao protocolo',
     'incluir no protocolo',
@@ -620,7 +618,6 @@ PUBLIC_SERVICE_TERMS = {
     'esportes',
     'aula de danca',
     'aulas de danca',
-    'danca',
     'danca',
     'atividade extracurricular',
     'atividades extracurriculares',
@@ -1558,6 +1555,8 @@ def _is_public_calendar_visibility_bundle_query(message: str) -> bool:
 
 def _is_known_public_doc_bundle_query(message: str) -> bool:
     return (
+        match_public_canonical_lane(message) is not None
+        or (
         _is_public_policy_compare_query(message)
         or _is_public_family_new_calendar_enrollment_query(message)
         or _is_public_calendar_visibility_bundle_query(message)
@@ -1569,7 +1568,21 @@ def _is_known_public_doc_bundle_query(message: str) -> bool:
         or _is_public_conduct_frequency_recovery_query(message)
         or _is_public_transversal_year_query(message)
         or _is_public_facilities_study_query(message)
+        )
     )
+
+
+def _is_admin_finance_combined_query(message: str) -> bool:
+    lowered = _normalize_text(message)
+    mentions_admin = any(_message_matches_term(lowered, term) for term in PERSONAL_ADMIN_TERMS) or any(
+        _message_matches_term(lowered, term)
+        for term in {'regular', 'regularidade', 'administrativo', 'administrativa'}
+    )
+    mentions_finance = any(_message_matches_term(lowered, term) for term in FINANCE_TERMS) or any(
+        _message_matches_term(lowered, term)
+        for term in PERSONAL_FINANCE_CONTEXT_TERMS
+    )
+    return mentions_admin and mentions_finance
 
 
 def _is_public_school_profile_request(message: str) -> bool:
@@ -1902,6 +1915,13 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
             access_tier=AccessTier.sensitive,
             confidence=0.91,
             reason='mensagem autenticada pede situacao financeira pessoal, vencimentos ou proximos passos da familia',
+        )
+    elif _is_admin_finance_combined_query(message) and request.user.authenticated:
+        classification = IntentClassification(
+            domain=QueryDomain.finance,
+            access_tier=AccessTier.sensitive,
+            confidence=0.95,
+            reason='mensagem autenticada combina pendencias administrativas e situacao financeira no mesmo pedido',
         )
     elif _is_authenticated_student_assessment_query(message, authenticated=request.user.authenticated):
         classification = IntentClassification(
@@ -2368,8 +2388,9 @@ def structured_tool_call(state: OrchestrationState) -> OrchestrationState:
             output_contract = 'dados academicos autorizados, auditaveis e minimizados'
     else:
         selected_tools = ['get_financial_summary']
-        if request.user.authenticated and any(
-            _message_matches_term(normalized_message, term) for term in PERSONAL_ADMIN_TERMS
+        if request.user.authenticated and (
+            _is_admin_finance_combined_query(normalized_message)
+            or any(_message_matches_term(normalized_message, term) for term in PERSONAL_ADMIN_TERMS)
         ):
             selected_tools.append('get_administrative_status')
         output_contract = 'dados financeiros autorizados, auditaveis e com trilha reforcada'

@@ -280,10 +280,9 @@ services:
       LANGGRAPH_HITL_DEFAULT_SLICES: ${LANGGRAPH_HITL_DEFAULT_SLICES:-support}
       LANGGRAPH_HITL_USER_TRAFFIC_ENABLED: ${LANGGRAPH_HITL_USER_TRAFFIC_ENABLED:-false}
       LANGGRAPH_HITL_USER_TRAFFIC_SLICES: ${LANGGRAPH_HITL_USER_TRAFFIC_SLICES:-support}
-      CREWAI_PILOT_URL: ${CREWAI_PILOT_URL:-http://ai-orchestrator-crewai:8000}
       SPECIALIST_SUPERVISOR_PILOT_URL: ${SPECIALIST_SUPERVISOR_PILOT_URL:-http://ai-orchestrator-specialist:8000}
       ORCHESTRATOR_EXPERIMENT_ENABLED: ${ORCHESTRATOR_EXPERIMENT_ENABLED:-false}
-      ORCHESTRATOR_EXPERIMENT_PRIMARY_ENGINE: ${ORCHESTRATOR_EXPERIMENT_PRIMARY_ENGINE:-crewai}
+      ORCHESTRATOR_EXPERIMENT_PRIMARY_ENGINE: ${ORCHESTRATOR_EXPERIMENT_PRIMARY_ENGINE:-python_functions}
       ORCHESTRATOR_EXPERIMENT_SLICES: ${ORCHESTRATOR_EXPERIMENT_SLICES:-}
       ORCHESTRATOR_EXPERIMENT_ROLLOUT_PERCENT: ${ORCHESTRATOR_EXPERIMENT_ROLLOUT_PERCENT:-0}
       ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS: ${ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS:-}
@@ -310,37 +309,6 @@ services:
         condition: service_started
       otel-collector:
         condition: service_started
-    healthcheck:
-      test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
-  ai-orchestrator-crewai:
-    profiles: ['crewai-shadow']
-    env_file:
-      - ../../.env
-    build:
-      context: ../..
-      dockerfile: apps/ai-orchestrator-crewai/Dockerfile
-      args:
-        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-ghcr.io/astral-sh/uv:python3.12-bookworm-slim}
-    container_name: eduassist-ai-orchestrator-crewai
-    environment:
-      APP_ENV: ${APP_ENV:-development}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      PORT: 8000
-      API_CORE_URL: ${API_CORE_URL:-http://api-core:8000}
-      GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-flash-preview}
-      CREWAI_HITL_ENABLED: ${CREWAI_HITL_ENABLED:-true}
-      CREWAI_HITL_DEFAULT_SLICES: ${CREWAI_HITL_DEFAULT_SLICES:-protected}
-      CREWAI_HITL_USER_TRAFFIC_ENABLED: ${CREWAI_HITL_USER_TRAFFIC_ENABLED:-false}
-      CREWAI_HITL_USER_TRAFFIC_SLICES: ${CREWAI_HITL_USER_TRAFFIC_SLICES:-protected}
-    ports:
-      - '${AI_ORCHESTRATOR_CREWAI_PORT:-8004}:8000'
-    volumes:
-      - ../../.env:/workspace/.env:ro
     healthcheck:
       test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
       interval: 10s

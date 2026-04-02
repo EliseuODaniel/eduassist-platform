@@ -1,34 +1,57 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
-from decimal import Decimal
 import json
 import logging
 import os
 import re
-from time import monotonic
+from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 import httpx
-from agents import Agent, ModelSettings, RunConfig, RunContextWrapper, RunHooks, Runner, function_tool, set_tracing_disabled
+from agents import (
+    Agent,
+    ModelSettings,
+    RunConfig,
+    RunContextWrapper,
+    RunHooks,
+    Runner,
+    function_tool,
+    set_tracing_disabled,
+)
 from agents.extensions.models.litellm_model import LitellmModel
 
 from .answer_payloads import (
     access_tier_for_domain as _access_tier_for_domain,
+)
+from .answer_payloads import (
     aggregate_citations as _aggregate_citations,
+)
+from .answer_payloads import (
     build_answer_payload as _build_answer_payload,
-    build_evidence_pack as _build_evidence_pack,
+)
+from .answer_payloads import (
     default_suggested_replies as _default_suggested_replies,
+)
+from .answer_payloads import (
     grounding_gate_answer as _grounding_gate_answer,
+)
+from .answer_payloads import (
     mode_from_strategy as _mode_from_strategy,
+)
+from .answer_payloads import (
     retrieval_backend_from_strategy as _retrieval_backend_from_strategy,
+)
+from .answer_payloads import (
     safe_supervisor_fallback_answer as _safe_supervisor_fallback_answer,
 )
 from .execution_budget import ExecutionBudget
 from .guardrail_runtime import run_input_guardrail as _run_input_guardrail_stage
-from .manager_flow import needs_manager as _needs_manager, run_manager_stack as _run_manager_stack
+from .intent_registry import get_intent_registry, has_registered_school_signal
+from .manager_flow import needs_manager as _needs_manager
+from .manager_flow import run_manager_stack as _run_manager_stack
 from .models import (
     IntentRouteSpec,
     JudgeVerdict,
@@ -48,9 +71,11 @@ from .models import (
     SupervisorAnswerPayload,
     SupervisorInputGuardrail,
     SupervisorPlan,
+    UserContext,
 )
-from .intent_registry import get_intent_registry, has_registered_school_signal
-from .planner_policy import execution_budget_metadata as _execution_budget_metadata, resolve_plan_and_budget as _resolve_plan_and_budget, run_retrieval_planner as _run_retrieval_planner_stage
+from .planner_policy import execution_budget_metadata as _execution_budget_metadata
+from .planner_policy import resolve_plan_and_budget as _resolve_plan_and_budget
+from .planner_policy import run_retrieval_planner as _run_retrieval_planner_stage
 from .public_bundle_fast_paths import (
     _looks_like_family_new_calendar_enrollment_query,
     _looks_like_first_month_risks_query,
@@ -71,20 +96,66 @@ from .public_doc_knowledge import (
     compose_public_permanence_and_family_support,
     compose_public_process_compare,
 )
+from .public_query_patterns import (
+    _extract_teacher_subject,
+    _looks_like_access_scope_query,
+    _looks_like_actor_admin_status_query,
+    _looks_like_admin_finance_combo_query,
+    _looks_like_attendance_policy_query,
+    _looks_like_bolsas_and_processes_query,
+    _looks_like_calendar_week_query,
+    _looks_like_conduct_frequency_punctuality_query,
+    _looks_like_cross_document_public_query,
+    _looks_like_enrollment_documents_query,
+    _looks_like_eval_calendar_query,
+    _looks_like_first_bimester_timeline_query,
+    _looks_like_health_second_call_query,
+    _looks_like_passing_policy_query,
+    _looks_like_policy_compare_query,
+    _looks_like_project_of_life_query,
+    _looks_like_public_academic_policy_overview_query,
+    _looks_like_public_doc_bundle_request,
+    _looks_like_public_teacher_identity_query,
+    _looks_like_service_credentials_bundle_query,
+    _looks_like_service_routing_query,
+    _looks_like_travel_planning_query,
+    _looks_like_year_three_phases_query,
+)
 from .registry import get_specialist_registry
+from .restricted_doc_matching import (
+    _internal_doc_hit_score,
+    _looks_like_internal_document_query,
+)
 from .restricted_doc_tool_first import maybe_restricted_document_tool_first_answer
 from .runtime_io import (
     fetch_actor_context as _fetch_actor_context,
+)
+from .runtime_io import (
     fetch_conversation_context as _fetch_conversation_context,
+)
+from .runtime_io import (
     fetch_public_payload as _fetch_public_payload,
+)
+from .runtime_io import (
     fetch_public_school_profile as _fetch_public_school_profile,
+)
+from .runtime_io import (
     orchestrator_graph_rag_query as _orchestrator_graph_rag_query,
+)
+from .runtime_io import (
     orchestrator_preview as _orchestrator_preview,
+)
+from .runtime_io import (
     orchestrator_retrieval_search as _orchestrator_retrieval_search,
+)
+from .runtime_io import (
     persist_final_answer as _persist_final_answer_io,
 )
+from .session_memory import build_supervisor_session
 from .specialist_executor import (
     build_execution_specialists as _build_budgeted_execution_specialists,
+)
+from .specialist_executor import (
     execute_planned_specialists as _execute_budgeted_specialists,
 )
 from .teacher_fast_paths import maybe_teacher_scope_fast_path_answer
@@ -266,88 +337,6 @@ def _normalize_text(value: str | None) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip().lower())
 
 
-_INTERNAL_DOC_STOPWORDS = {
-    "a",
-    "as",
-    "o",
-    "os",
-    "ao",
-    "aos",
-    "da",
-    "das",
-    "de",
-    "do",
-    "dos",
-    "e",
-    "em",
-    "na",
-    "nas",
-    "no",
-    "nos",
-    "para",
-    "por",
-    "que",
-    "qual",
-    "quais",
-    "como",
-    "com",
-    "uma",
-    "um",
-    "mais",
-    "alem",
-    "além",
-    "texto",
-    "publico",
-    "público",
-    "interna",
-    "interna?",
-    "interno",
-    "internos",
-    "orientacao",
-    "orientação",
-}
-_INTERNAL_DOC_GENERIC_TERMS = {
-    "aluno",
-    "alunos",
-    "ensino",
-    "medio",
-    "médio",
-    "ano",
-    "anos",
-    "escola",
-    "procedimento",
-    "protocolo",
-    "manual",
-    "playbook",
-    "interno",
-    "interna",
-    "internos",
-    "orientacao",
-    "orientação",
-    "documento",
-    "documentos",
-    "existe",
-    "algum",
-    "alguma",
-    "especifica",
-    "específica",
-}
-_INTERNAL_DOC_RARE_TERMS = {
-    "telegram",
-    "escopo",
-    "avaliac",
-    "professor",
-    "negoci",
-    "familia",
-    "família",
-    "hospedagem",
-    "internacional",
-    "excursao",
-    "excursão",
-    "viagem",
-}
-
-
 def _strip_none(payload: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in payload.items() if value is not None}
 
@@ -374,111 +363,6 @@ def _can_read_restricted_documents(user: UserContext) -> bool:
         or "documents:restricted:read" in scopes
         or role in {"staff", "teacher"}
     )
-
-
-def _looks_like_internal_document_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    strong_terms = (
-        "interno",
-        "interna",
-        "internos",
-        "procedimento interno",
-        "protocolo interno",
-        "manual interno",
-        "playbook interno",
-        "por dentro",
-    )
-    return any(term in normalized for term in strong_terms)
-
-
-def _internal_doc_query_tokens(message: str) -> list[str]:
-    tokens = re.findall(r"[a-z0-9]+", _normalize_text(message))
-    return [token for token in tokens if len(token) >= 4 and token not in _INTERNAL_DOC_STOPWORDS]
-
-
-def _internal_doc_anchor_terms(message: str) -> set[str]:
-    return {
-        token
-        for token in _internal_doc_query_tokens(message)
-        if token not in _INTERNAL_DOC_GENERIC_TERMS
-    }
-
-
-def _internal_doc_rare_terms(message: str) -> set[str]:
-    return {
-        token
-        for token in _internal_doc_query_tokens(message)
-        if any(token.startswith(marker) or marker.startswith(token) for marker in _INTERNAL_DOC_RARE_TERMS)
-    }
-
-
-def _internal_doc_hit_score(query: str, hit: dict[str, Any]) -> float:
-    query_terms = set(_internal_doc_query_tokens(query))
-    if not query_terms:
-        return 0.0
-    title = _normalize_text(str(hit.get('document_title') or ''))
-    summary = _normalize_text(str(hit.get('contextual_summary') or ''))
-    excerpt = _normalize_text(str(hit.get('text_excerpt') or ''))
-    section = _normalize_text(
-        ' '.join(
-            part
-            for part in (
-                hit.get('section_title'),
-                hit.get('section_parent'),
-                hit.get('section_path'),
-                hit.get('category'),
-                hit.get('document_set_slug'),
-            )
-            if part
-        )
-    )
-    labels = hit.get('labels') if isinstance(hit.get('labels'), dict) else {}
-    label_terms = _normalize_text(
-        ' '.join(
-            value
-            for values in labels.values()
-            if isinstance(values, list)
-            for value in values
-            if isinstance(value, str)
-        )
-    )
-    title_terms = {token for token in re.findall(r"[a-z0-9]+", title) if len(token) >= 4 and token not in _INTERNAL_DOC_STOPWORDS}
-    title_overlap = len(query_terms & title_terms)
-    haystack = ' '.join(part for part in (summary, excerpt, section, label_terms) if part)
-    anchor_terms = _internal_doc_anchor_terms(query)
-    if anchor_terms and not any(term in title or term in haystack for term in anchor_terms):
-        return 0.0
-    rare_terms = _internal_doc_rare_terms(query)
-    if rare_terms and not any(term in title or term in haystack for term in rare_terms):
-        return 0.0
-    evidence_overlap = sum(1 for token in query_terms if token in haystack)
-    score = 0.0
-    if title and title in _normalize_text(query):
-        score += 1.2
-    elif title_terms:
-        score += min(0.8, 0.3 * (title_overlap / max(1, len(title_terms))) + 0.2 * title_overlap)
-    if evidence_overlap:
-        score += min(0.7, 0.18 * evidence_overlap)
-    if 'telegram' in query_terms and 'telegram' in haystack:
-        score += 0.2
-    if 'professor' in query_terms and 'professor' in title:
-        score += 0.2
-    if 'financeira' in query_terms or 'financeiro' in query_terms:
-        if any(term in haystack for term in ('finance', 'inadimplencia', 'negociacao', 'negociacao financeira')):
-            score += 0.2
-    if any(term.startswith('avaliac') for term in query_terms) and any(term.startswith('avaliac') for term in haystack.split()):
-        score += 0.25
-    if 'escopo' in query_terms and 'escopo' in haystack:
-        score += 0.25
-    if any(term in query_terms for term in {'telegram', 'hospedagem', 'internacional', 'excursao', 'excursões', 'viagem'}):
-        score += 0.35 * sum(
-            1
-            for term in {'telegram', 'hospedagem', 'internacional', 'excursao', 'excursões', 'viagem'}
-            if term in query_terms and term in haystack
-        )
-    retrieval_score = float(hit.get('document_score') or hit.get('rerank_score') or hit.get('fused_score') or 0.0)
-    score += min(0.2, max(0.0, retrieval_score))
-    return round(score, 6)
 
 
 def _select_relevant_internal_doc_hits(query: str, hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -2178,111 +2062,6 @@ def _compose_human_handoff_answer(profile: dict[str, Any] | None) -> str:
     return "\n".join(parts)
 
 
-def _looks_like_access_scope_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    terms = {
-        "estou logado como",
-        "estou logado como quem",
-        "quem sou eu aqui",
-        "quais alunos eu tenho vinculados",
-        "quais alunos tenho vinculados",
-        "alunos vinculados",
-        "qual meu acesso",
-        "qual e o meu escopo",
-        "qual é o meu escopo",
-        "meu escopo",
-        "escopo da minha conta",
-        "que dados eu posso ver",
-        "que dados posso ver",
-        "o que eu consigo ver",
-        "o que consigo ver",
-        "o que posso consultar aqui",
-        "qual e exatamente o meu escopo",
-        "qual é exatamente o meu escopo",
-        "academico, financeiro",
-        "acadêmico, financeiro",
-        "academico, financeiro ou os dois",
-        "acadêmico, financeiro ou os dois",
-        "academico e financeiro",
-        "acadêmico e financeiro",
-        "quais dados eu consigo acessar",
-        "quais dados consigo acessar",
-        "quais dados dos meus alunos eu consigo acessar",
-        "quais dados dos meus dois alunos eu consigo acessar",
-        "quais dados dos meus filhos eu consigo acessar",
-    }
-    return any(term in normalized for term in terms)
-
-
-def _looks_like_actor_admin_status_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    admin_anchor = any(
-        term in normalized
-        for term in {
-            "documentacao",
-            "documentação",
-            "documental",
-            "documentais",
-            "cadastro",
-            "cadastral",
-            "administrativo",
-            "administrativa",
-        }
-    )
-    if not admin_anchor:
-        return False
-    return any(
-        term in normalized
-        for term in {
-            "atualizado",
-            "atualizados",
-            "regular",
-            "regularizado",
-            "situacao",
-            "situação",
-            "ok",
-            "checklist",
-            "o que falta",
-            "falta",
-            "pendenc",
-            "resuma",
-            "resumo",
-            "proximo passo",
-            "próximo passo",
-            "acao recomendada",
-            "ação recomendada",
-        }
-    )
-
-
-def _looks_like_admin_finance_combo_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    admin_terms = {
-        "documentacao",
-        "documentação",
-        "documental",
-        "administrativo",
-        "administrativa",
-        "cadastro",
-        "regular",
-        "regularidade",
-        "pendencia",
-        "pendência",
-    }
-    finance_terms = {
-        "financeiro",
-        "bloque",
-        "bloqueando atendimento",
-        "boleto",
-        "boletos",
-        "mensalidade",
-        "mensalidades",
-        "fatura",
-        "faturas",
-    }
-    return any(term in normalized for term in admin_terms) and any(term in normalized for term in finance_terms)
-
-
 def _compose_authenticated_scope_answer(actor: dict[str, Any] | None) -> str:
     academic_students = _linked_students(actor, capability="academic")
     finance_students = _linked_students(actor, capability="finance")
@@ -2324,27 +2103,6 @@ def _compose_support_process_boundary_answer() -> str:
         "Hoje eu trato esses tres fluxos de forma diferente: protocolo registra uma solicitacao institucional rastreavel; "
         "chamado costuma ser o ticket operacional associado ao atendimento; e handoff humano e o encaminhamento real para uma fila ou equipe, "
         "normalmente com protocolo e status para acompanhamento."
-    )
-
-
-def _looks_like_service_routing_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return any(
-        term in normalized
-        for term in {
-            "com quem eu falo sobre",
-            "quem responde por",
-            "qual setor",
-            "qual area",
-            "qual área",
-            "como falo com",
-            "como falar com",
-            "como entro em contato",
-            "como entrar em contato",
-            "como faco para entrar em contato",
-            "como faço para entrar em contato",
-            "por qual canal",
-        }
     )
 
 
@@ -2393,29 +2151,6 @@ def _compose_service_routing_fast_answer(profile: dict[str, Any] | None, message
     if not lines:
         return None
     return "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n" + "\n".join(lines)
-
-
-def _looks_like_public_teacher_identity_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    if not any(term in normalized for term in {"prof", "professor", "professora", "docente"}):
-        return False
-    return any(term in normalized for term in {"nome", "telefone", "contato", "canal", "como falar", "como falo"})
-
-
-def _extract_teacher_subject(message: str) -> str | None:
-    normalized = _normalize_text(message)
-    patterns = [
-        r"prof(?:essor|essora)?\s+de\s+(.+)",
-        r"docente\s+de\s+(.+)",
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, normalized)
-        if not match:
-            continue
-        subject = match.group(1).strip(" ?.")
-        if subject:
-            return subject
-    return None
 
 
 def _compose_public_teacher_directory_answer(profile: dict[str, Any] | None, message: str) -> str | None:
@@ -2499,50 +2234,6 @@ def _compose_timeline_bundle_answer(profile: dict[str, Any] | None, message: str
     return "\n".join(lines) if lines else None
 
 
-def _looks_like_policy_compare_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return (
-        any(term in normalized for term in {"compare", "comparar", "comparacao", "comparação"})
-        and any(term in normalized for term in {"regulamentos gerais", "manual geral", "manual de regulamentos"})
-        and any(term in normalized for term in {"politica de avaliacao", "política de avaliação", "avaliacao e promocao"})
-    )
-
-
-def _looks_like_family_new_calendar_enrollment_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    has_family_anchor = any(
-        term in normalized
-        for term in {
-            "familia nova",
-            "família nova",
-            "aluno novo",
-            "responsavel novo",
-            "responsável novo",
-            "familia entrando agora",
-            "família entrando agora",
-            "familia entrando este ano",
-            "família entrando este ano",
-            "primeira vez",
-            "vai entrar este ano",
-            "vai entrar pela primeira vez",
-            "pais estreando",
-            "pais estreando na escola",
-            "pais entrando agora",
-            "primeiro filho",
-            "entrando agora",
-            "chegando agora",
-        }
-    )
-    if not has_family_anchor:
-        return False
-    groups = (
-        {"calendario letivo", "calendário letivo", "calendario", "calendário", "inicio das aulas", "início das aulas", "comeco das aulas", "começo das aulas"},
-        {"agenda de avaliacoes", "agenda de avaliações", "avaliacoes", "avaliações", "simulados"},
-        {"manual de matricula", "manual de matrícula", "matricula", "matrícula", "ingresso"},
-    )
-    return all(any(term in normalized for term in group) for group in groups)
-
-
 def _compose_policy_compare_answer(profile: dict[str, Any] | None) -> str | None:
     policy = (profile or {}).get("academic_policy")
     if not isinstance(policy, dict):
@@ -2570,19 +2261,6 @@ def _compose_policy_compare_answer(profile: dict[str, Any] | None) -> str | None
         "enquanto a politica academica mostra como a escola trata recuperacao e aprovacao quando a meta nao e atingida."
     )
     return " ".join((attendance_line, passing_line, closing))
-
-
-def _looks_like_service_credentials_bundle_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    if (
-        _looks_like_family_new_calendar_enrollment_query(message)
-        or _looks_like_first_month_risks_query(message)
-        or _looks_like_process_compare_query(message)
-    ):
-        return False
-    has_credentials = any(term in normalized for term in {"credenciais", "credencial", "login", "senha"})
-    has_service_anchor = any(term in normalized for term in {"secretaria", "portal", "documentos", "documentacao", "documentação"})
-    return has_credentials and has_service_anchor
 
 
 def _compose_service_credentials_bundle_answer(profile: dict[str, Any] | None) -> str:
@@ -2698,79 +2376,6 @@ def _compose_public_pitch_answer(profile: dict[str, Any] | None) -> str | None:
         "Se eu tivesse 30 segundos para resumir esta escola, eu diria isto: "
         "ela combina aprendizagem por projetos, acompanhamento mais proximo e trilhas academicas no contraturno. "
         f"{pedagogical}"
-    )
-
-
-def _looks_like_cross_document_public_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    has_synthesis_signal = any(
-        term in normalized
-        for term in {
-            "compare",
-            "comparar",
-            "comparacao",
-            "comparação",
-            "comparativo",
-            "sintetize",
-            "relacione",
-            "pilares",
-            "ponto de vista",
-            "quando cruzamos",
-            "de ponta a ponta",
-            "o que muda",
-            "destacando",
-        }
-    ) or any(
-        phrase in normalized
-        for phrase in {
-            "o que uma familia precisa entender",
-            "o que uma família precisa entender",
-            "uma unica explicacao coerente",
-            "uma única explicação coerente",
-            "guia de sobrevivencia do primeiro mes",
-            "guia de sobrevivência do primeiro mês",
-        }
-    )
-    if not has_synthesis_signal:
-        return False
-    return any(
-        term in normalized
-        for term in {
-            "calendario",
-            "calendário",
-            "agenda",
-            "manual",
-            "regulamentos",
-            "politica",
-            "política",
-            "proposta pedagogica",
-            "proposta pedagógica",
-            "portal",
-            "credenciais",
-            "documentos",
-            "rematricula",
-            "rematrícula",
-            "transferencia",
-            "transferência",
-            "cancelamento",
-            "avaliacao",
-            "avaliação",
-            "recuperacao",
-            "recuperação",
-            "vida escolar",
-            "inclusao",
-            "inclusão",
-        }
-    )
-
-
-def _looks_like_public_doc_bundle_request(message: str) -> bool:
-    return (
-        _looks_like_cross_document_public_query(message)
-        or _looks_like_family_new_calendar_enrollment_query(message)
-        or _looks_like_public_graph_rag_query(message)
-        or _looks_like_service_credentials_bundle_query(message)
-        or _looks_like_policy_compare_query(message)
     )
 
 
@@ -3094,55 +2699,6 @@ def _academic_policy(profile: dict[str, Any] | None) -> dict[str, Any] | None:
     return policy if isinstance(policy, dict) else None
 
 
-def _looks_like_project_of_life_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return "projeto de vida" in normalized
-
-
-def _looks_like_attendance_policy_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    if not any(term in normalized for term in {"falta", "faltas", "frequencia", "frequência", "presenca", "presença"}):
-        return False
-    return any(
-        term in normalized
-        for term in {
-            "primeira aula",
-            "metade das aulas",
-            "limite de faltas",
-            "limite de frequencia",
-            "limite de frequência",
-            "frequencia minima",
-            "frequência mínima",
-            "frequencia minima",
-            "o que acontece",
-            "quantas faltas",
-            "abaixo de 75",
-            "75%",
-        }
-    )
-
-
-def _looks_like_passing_policy_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    if any(
-        term in normalized
-        for term in {
-            "nota de aprovacao",
-            "nota de aprovação",
-            "media de aprovacao",
-            "média de aprovação",
-            "media para passar",
-            "média para passar",
-            "qual a nota de aprovacao",
-            "qual a nota de aprovação",
-            "qual nota preciso tirar para aprovacao",
-            "qual nota preciso tirar para aprovação",
-        }
-    ):
-        return True
-    return False
-
-
 def _render_decimal_label(value: Any, *, suffix: str = "") -> str:
     amount = Decimal(str(value or "0")).quantize(Decimal("0.1"))
     rendered = str(amount).replace(".", ",")
@@ -3216,60 +2772,6 @@ def _compose_passing_policy_answer(profile: dict[str, Any] | None, *, authentica
     if authenticated:
         answer += " Se quiser, eu posso calcular quanto falta para Lucas ou Ana em uma disciplina especifica."
     return answer
-
-
-def _looks_like_calendar_week_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return "desta semana" in normalized and any(term in normalized for term in {"eventos", "familias", "responsaveis", "responsáveis"})
-
-
-def _looks_like_first_bimester_timeline_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return "primeiro bimestre" in normalized and any(term in normalized for term in {"linha do tempo", "datas", "importam"})
-
-
-def _looks_like_eval_calendar_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return any(term in normalized for term in {"reunioes de pais", "reuniões de pais", "simulados", "semanas de prova", "semana de prova"})
-
-
-def _looks_like_travel_planning_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return "viagem" in normalized and any(term in normalized for term in {"calendario", "calendário", "vida escolar", "marcos"})
-
-
-def _looks_like_year_three_phases_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return "tres fases" in normalized and all(term in normalized for term in {"admiss", "rotina", "fechamento"})
-
-
-def _looks_like_enrollment_documents_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return any(term in normalized for term in {"documentos exigidos", "documentos sao exigidos", "documentos são exigidos"}) and "matricula" in normalized
-
-
-def _looks_like_public_academic_policy_overview_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return any(term in normalized for term in {"politica de avaliacao", "política de avaliação", "recuperacao", "promoção", "promocao"}) and "escola" in normalized
-
-
-def _looks_like_conduct_frequency_punctuality_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return any(term in normalized for term in {"convivencia", "convivência", "frequencia", "frequência", "pontualidade"})
-
-
-def _looks_like_bolsas_and_processes_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return any(term in normalized for term in {"bolsas", "descontos"}) and any(
-        term in normalized for term in {"rematricula", "rematrícula", "transferencia", "transferência", "cancelamento"}
-    )
-
-
-def _looks_like_health_second_call_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return any(term in normalized for term in {"saude", "saúde", "atestado", "motivo de saude", "motivo de saúde"}) and any(
-        term in normalized for term in {"perder uma prova", "perdi uma prova", "segunda chamada"}
-    )
 
 
 def _parse_public_datetime(value: Any) -> datetime | None:

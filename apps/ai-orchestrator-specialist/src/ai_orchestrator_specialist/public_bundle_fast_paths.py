@@ -13,6 +13,7 @@ from .models import (
 )
 from .public_doc_knowledge import (
     compose_public_calendar_visibility,
+    compose_public_canonical_lane_answer,
     compose_public_conduct_frequency_recovery_bridge,
     compose_public_facilities_and_study_support,
     compose_public_family_new_calendar_assessment_enrollment,
@@ -21,6 +22,7 @@ from .public_doc_knowledge import (
     compose_public_permanence_and_family_support,
     compose_public_process_compare,
     compose_public_transversal_year_bundle,
+    match_public_canonical_lane,
 )
 
 
@@ -256,6 +258,59 @@ def _institution_preflight_answer(
 
 def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message: str) -> SupervisorAnswerPayload | None:
     normalized = _normalize_text(message)
+    canonical_lane = match_public_canonical_lane(message)
+    canonical_supports: dict[str, tuple[str, str, list[MessageEvidenceSupport]]] = {
+        "public_bundle.teacher_directory_boundary": (
+            "specialist_supervisor_preflight:teacher_directory_boundary",
+            "teacher_directory_boundary",
+            [
+                MessageEvidenceSupport(kind="profile", label="Diretorio publico", detail="leadership_team / service_catalog"),
+            ],
+        ),
+        "public_bundle.calendar_week": (
+            "specialist_supervisor_preflight:calendar_week",
+            "calendar_week",
+            [
+                MessageEvidenceSupport(kind="timeline", label="Timeline publica", detail="v1/public/timeline"),
+                MessageEvidenceSupport(kind="calendar", label="Calendario publico", detail="v1/calendar/public"),
+            ],
+        ),
+        "public_bundle.year_three_phases": (
+            "specialist_supervisor_preflight:year_three_phases",
+            "year_three_phases",
+            [
+                MessageEvidenceSupport(kind="timeline", label="Timeline publica", detail="v1/public/timeline"),
+                MessageEvidenceSupport(kind="calendar", label="Calendario publico", detail="v1/calendar/public"),
+            ],
+        ),
+        "public_bundle.academic_policy_overview": (
+            "specialist_supervisor_preflight:academic_policy_overview",
+            "academic_policy_overview",
+            [
+                MessageEvidenceSupport(kind="policy", label="Academic policy", detail="academic_policy"),
+                MessageEvidenceSupport(kind="document", label="Politica de Avaliacao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
+            ],
+        ),
+        "public_bundle.conduct_frequency_punctuality": (
+            "specialist_supervisor_preflight:conduct_frequency_punctuality",
+            "conduct_frequency_punctuality",
+            [
+                MessageEvidenceSupport(kind="document", label="Manual de Regulamentos Gerais", detail="data/corpus/public/manual-regulamentos-gerais.md"),
+                MessageEvidenceSupport(kind="policy", label="Attendance policy", detail="academic_policy.attendance_policy"),
+            ],
+        ),
+    }
+    if canonical_lane in canonical_supports:
+        answer_text = compose_public_canonical_lane_answer(canonical_lane, profile=profile)
+        if answer_text:
+            reason, graph_leaf, supports = canonical_supports[canonical_lane]
+            return _institution_preflight_answer(
+                answer_text=answer_text,
+                reason=reason,
+                graph_leaf=graph_leaf,
+                summary="Resposta deterministica por canonical public lane antes do loop premium.",
+                supports=supports,
+            )
 
     if _looks_like_family_new_calendar_enrollment_query(message):
         answer_text = compose_public_family_new_calendar_assessment_enrollment()

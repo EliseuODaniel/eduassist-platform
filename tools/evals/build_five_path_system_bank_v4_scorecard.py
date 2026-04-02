@@ -116,7 +116,7 @@ def _build_payload() -> dict[str, Any]:
         "latency_ranking": _latency_rank(matrix),
         "stacks": stacks,
         "notes": [
-            "CrewAI permanece no scorecard como baseline comparativa funcional, sem novos investimentos de arquitetura.",
+            "O caminho legado do CrewAI foi arquivado; os caminhos ativos em evolucao sao langgraph, python_functions, llamaindex e specialist_supervisor.",
             "Os caminhos ativos em evolucao sao langgraph, python_functions, llamaindex e specialist_supervisor.",
             "Se um stack tiver request_failed ou *_pilot_unavailable, trate isso como sinal operacional separado de qualidade semantica.",
             "No protected_ops v4, a anomalia residual do specialist_supervisor vem do artifacto anterior ao carregamento automatico do .env no harness source-mode.",

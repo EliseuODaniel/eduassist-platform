@@ -25,7 +25,7 @@ from ai_orchestrator.models import MessageResponseRequest, UserContext
 DEFAULT_DATASET = REPO_ROOT / 'tests/evals/datasets/four_path_chatbot_smoke_cases.json'
 DEFAULT_REPORT = REPO_ROOT / 'docs/architecture/five-path-chatbot-smoke-report.md'
 DEFAULT_JSON_REPORT = REPO_ROOT / 'docs/architecture/five-path-chatbot-smoke-report.json'
-STACKS = ('langgraph', 'crewai', 'python_functions', 'llamaindex', 'specialist_supervisor')
+STACKS = ('langgraph', 'python_functions', 'llamaindex', 'specialist_supervisor')
 
 
 @dataclass
@@ -43,7 +43,7 @@ class CaseResult:
 
 
 def _make_settings(*, stack: str) -> Settings:
-    fallback = 'langgraph' if stack != 'langgraph' else 'crewai'
+    fallback = 'langgraph' if stack != 'langgraph' else 'python_functions'
     return Settings(
         orchestrator_engine=fallback,
         feature_flag_primary_orchestration_stack=stack,
@@ -53,7 +53,6 @@ def _make_settings(*, stack: str) -> Settings:
         api_core_url='http://127.0.0.1:8001',
         qdrant_url='http://127.0.0.1:6333',
         database_url='postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist',
-        crewai_pilot_url='http://127.0.0.1:8004',
         specialist_supervisor_pilot_url='http://127.0.0.1:8005',
     )
 
@@ -142,7 +141,7 @@ def _write_reports(*, dataset: Path, run_prefix: str, results: list[CaseResult],
     json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
     lines = [
-        '# Five-Path Chatbot Smoke Report',
+        '# Active-Path Chatbot Smoke Report',
         '',
         f'Date: {generated_at}',
         '',
@@ -152,10 +151,9 @@ def _write_reports(*, dataset: Path, run_prefix: str, results: list[CaseResult],
         '',
         '## Goal',
         '',
-        'Validate the first five chatbot paths side by side under strict framework isolation:',
+        'Validate the active chatbot paths side by side under strict framework isolation:',
         '',
         '- `langgraph`',
-        '- `crewai`',
         '- `python_functions`',
         '- `llamaindex`',
         '- `specialist_supervisor`',
@@ -192,7 +190,7 @@ def _write_reports(*, dataset: Path, run_prefix: str, results: list[CaseResult],
             '- `python_functions` is the lean code-first baseline with a planner/executor/reflection loop.',
             '- `llamaindex` pushes native workflow, retrieval, citation, and document lifecycle capabilities further.',
             '- `specialist_supervisor` is the quality-first path with manager pattern and specialists-as-tools on top of the shared truth sources.',
-            '- `langgraph` and `crewai` remain the original framework-native paths, which keeps the comparison fair.',
+            '- `langgraph` is the graph-native reference path for more stateful orchestration.',
             '',
         ]
     )

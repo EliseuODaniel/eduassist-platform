@@ -9,12 +9,11 @@ import sys
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
+from statistics import median
 from time import perf_counter
 from typing import Any
-from statistics import median
 
 from dotenv import load_dotenv
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(REPO_ROOT / '.env', override=False)
@@ -24,16 +23,14 @@ AI_ORCHESTRATOR_SRC = REPO_ROOT / 'apps/ai-orchestrator/src'
 if str(AI_ORCHESTRATOR_SRC) not in sys.path:
     sys.path.insert(0, str(AI_ORCHESTRATOR_SRC))
 
-from ai_orchestrator.engine_selector import build_engine_bundle
-from ai_orchestrator.models import ConversationChannel, MessageResponseRequest, UserContext
-from tools.evals.compare_five_chatbot_paths import (
+from tools.evals.compare_five_chatbot_paths import (  # noqa: E402
     STACKS,
-    _SpecialistSourceClient,
     _build_settings,
     _normalize_local_service_url,
     _specialist_benchmark_mode,
+    _SpecialistSourceClient,
 )
-from tools.evals.compare_orchestrator_stacks import (
+from tools.evals.eval_quality_utils import (  # noqa: E402
     _contains_expected_keywords,
     _contains_forbidden_keywords,
     _detect_error_types,
@@ -42,6 +39,8 @@ from tools.evals.compare_orchestrator_stacks import (
     _quality_score,
 )
 
+from ai_orchestrator.engine_selector import build_engine_bundle  # noqa: E402
+from ai_orchestrator.models import ConversationChannel, MessageResponseRequest, UserContext  # noqa: E402
 
 DEFAULT_DATASET = REPO_ROOT / 'tests/evals/datasets/retrieval_20q_probe_cases.json'
 DEFAULT_REPORT = REPO_ROOT / 'docs/architecture/retrieval-20q-cross-path-report.md'

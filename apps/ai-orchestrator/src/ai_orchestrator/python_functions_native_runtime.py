@@ -30,7 +30,6 @@ from .public_doc_knowledge import compose_public_canonical_lane_answer, match_pu
 from .retrieval import get_retrieval_service
 from .retrieval import (
     can_read_restricted_documents,
-    compose_restricted_document_grounded_answer,
     compose_restricted_document_grounded_answer_for_query,
     compose_restricted_document_no_match_answer,
     looks_like_restricted_document_query,

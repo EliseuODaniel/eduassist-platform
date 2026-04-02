@@ -1,31 +1,31 @@
 from __future__ import annotations
 
-from collections import OrderedDict
 import hashlib
 import json
 import logging
+from collections import OrderedDict
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from threading import Lock
 from time import monotonic
-from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from .engines.base import ResponseEngine, ShadowRunResult
-from .engines.crewai_engine import CrewAIEngine, infer_request_slice
-from .engines.llamaindex_workflow_engine import LlamaIndexWorkflowEngine
 from .engines.langgraph_engine import LangGraphEngine
+from .engines.llamaindex_workflow_engine import LlamaIndexWorkflowEngine
 from .engines.python_functions_engine import PythonFunctionsEngine
 from .engines.specialist_supervisor_engine import SpecialistSupervisorEngine
+from .slice_inference import infer_request_slice
 
 logger = logging.getLogger(__name__)
 
 _EXPERIMENT_AFFINITY: OrderedDict[str, dict[str, Any]] = OrderedDict()
 _EXPERIMENT_AFFINITY_LIMIT = 2048
 _EXPERIMENT_AFFINITY_TTL_SECONDS = 60 * 60 * 6
-_PILOT_STATUS_CACHE: dict[str, Any] = {'timestamp': 0.0, 'ready': None, 'payload': None}
+_REMOTE_STATUS_CACHE: dict[str, dict[str, Any]] = {}
 _RUNTIME_PRIMARY_STACK_OVERRIDE: dict[str, Any] = {
     'value': None,
     'reason': None,
@@ -45,7 +45,7 @@ _RUNTIME_TARGETED_STACK_OVERRIDE: dict[str, Any] = {
     'conversation_allowlist': [],
 }
 _RUNTIME_TARGETED_STACK_LOCK = Lock()
-SUPPORTED_PRIMARY_STACKS = {'langgraph', 'crewai', 'python_functions', 'llamaindex', 'specialist_supervisor', 'shadow'}
+SUPPORTED_PRIMARY_STACKS = {'langgraph', 'python_functions', 'llamaindex', 'specialist_supervisor'}
 
 
 @dataclass(frozen=True)
@@ -54,6 +54,49 @@ class EngineBundle:
     primary: ResponseEngine
     shadow: ResponseEngine | None = None
     experiment: dict[str, Any] | None = None
+
+
+def _probe_remote_status_payload(
+    *,
+    name: str,
+    url: str | None,
+    token: str,
+    ttl_seconds: int,
+    timeout_seconds: float = 3.0,
+) -> dict[str, Any] | None:
+    normalized_url = str(url or '').strip()
+    if not normalized_url:
+        return None
+    cache_key = f'{name}:{normalized_url}'
+    now = monotonic()
+    cached = _REMOTE_STATUS_CACHE.get(cache_key) or {}
+    cached_timestamp = float(cached.get('timestamp', 0.0) or 0.0)
+    if cached and now - cached_timestamp < max(1, ttl_seconds):
+        payload = cached.get('payload')
+        return dict(payload) if isinstance(payload, dict) else None
+
+    payload: dict[str, Any] | None = None
+    request = Request(
+        f'{normalized_url.rstrip("/")}/v1/status',
+        headers={'X-Internal-Api-Token': token},
+    )
+    try:
+        with urlopen(request, timeout=timeout_seconds) as response:
+            if response.status == 200:
+                loaded = json.load(response)
+                if isinstance(loaded, dict):
+                    payload = loaded
+    except URLError:
+        payload = None
+    except Exception:
+        logger.exception('remote_status_probe_failed', extra={'target': name, 'url': normalized_url})
+        payload = None
+
+    _REMOTE_STATUS_CACHE[cache_key] = {
+        'timestamp': now,
+        'payload': payload,
+    }
+    return dict(payload) if isinstance(payload, dict) else None
 
 
 def _normalized_primary_stack(value: str | None) -> str | None:
@@ -147,8 +190,6 @@ def set_runtime_targeted_stack_override(
     conversation_allowlist: list[str] | None = None,
 ) -> dict[str, Any]:
     normalized_stack = _normalized_primary_stack(stack)
-    if normalized_stack == 'shadow':
-        raise ValueError('unsupported_targeted_stack:shadow')
     normalized_ttl_seconds: int | None = None
     if ttl_seconds is not None:
         normalized_ttl_seconds = int(ttl_seconds)
@@ -419,7 +460,9 @@ def get_scorecard_gate_status(*, settings: Any, primary_engine: str | None = Non
 
 
 def get_experiment_rollout_readiness(*, settings: Any) -> dict[str, Any]:
-    candidate_engine = str(getattr(settings, 'orchestrator_experiment_primary_engine', 'crewai') or 'crewai').strip().lower()
+    candidate_engine = str(getattr(settings, 'orchestrator_experiment_primary_engine', 'python_functions') or 'python_functions').strip().lower()
+    if candidate_engine not in SUPPORTED_PRIMARY_STACKS:
+        candidate_engine = 'python_functions'
     configured_slices = sorted(_parse_csv_items(getattr(settings, 'orchestrator_experiment_slices', '')))
     allowlist_scoped_slices = sorted(_parse_csv_items(getattr(settings, 'orchestrator_experiment_allowlist_slices', '')))
     gate_status = get_scorecard_gate_status(settings=settings, primary_engine=candidate_engine)
@@ -427,8 +470,17 @@ def get_experiment_rollout_readiness(*, settings: Any) -> dict[str, Any]:
     slice_eligibility = promotion_gate.get('slice_eligibility') if isinstance(promotion_gate, dict) else None
     if not isinstance(slice_eligibility, dict):
         slice_eligibility = {}
-    pilot_status = _get_pilot_status_payload(settings=settings) if candidate_engine == 'crewai' else None
-    pilot_ready = bool(isinstance(pilot_status, dict) and pilot_status.get('ready'))
+    pilot_status = None
+    pilot_ready = True
+    if candidate_engine == 'specialist_supervisor':
+        pilot_status = _probe_remote_status_payload(
+            name='specialist_supervisor',
+            url=str(getattr(settings, 'specialist_supervisor_pilot_url', '') or '').strip(),
+            token=str(getattr(settings, 'internal_api_token', '') or ''),
+            ttl_seconds=max(1, int(getattr(settings, 'orchestrator_experiment_health_ttl_seconds', 15) or 15)),
+            timeout_seconds=4.0,
+        )
+        pilot_ready = bool(isinstance(pilot_status, dict) and pilot_status.get('ready'))
     allowlist_counts = _allowlist_identifier_counts(settings=settings)
 
     known_slices = {'public', 'protected', 'support', 'workflow'}
@@ -444,10 +496,8 @@ def get_experiment_rollout_readiness(*, settings: Any) -> dict[str, Any]:
         eligibility = slice_eligibility.get(slice_name) if isinstance(slice_eligibility.get(slice_name), dict) else {}
         scorecard_eligible = bool(eligibility.get('eligible', False))
         reason = str(eligibility.get('reason', '') or '').strip()
-        pilot_live_gate_ok = True
-        pilot_live_gate_reason = ''
-        if candidate_engine == 'crewai':
-            pilot_live_gate_ok, pilot_live_gate_reason, _ = _pilot_live_gate_for_slice(settings=settings, slice_name=slice_name)
+        pilot_live_gate_ok = True if candidate_engine != 'specialist_supervisor' else pilot_ready
+        pilot_live_gate_reason = '' if pilot_live_gate_ok else 'Specialist Supervisor pilot is not healthy right now.'
         eligible = scorecard_eligible and pilot_live_gate_ok
         effective_reason = reason
         if scorecard_eligible and not pilot_live_gate_ok:
@@ -500,17 +550,25 @@ def get_experiment_rollout_readiness(*, settings: Any) -> dict[str, Any]:
 
 def get_experiment_live_promotion_summary(*, settings: Any) -> dict[str, Any]:
     resolved_primary_stack = resolve_primary_stack(settings)
-    candidate_engine = str(getattr(settings, 'orchestrator_experiment_primary_engine', 'crewai') or 'crewai').strip().lower()
+    candidate_engine = str(getattr(settings, 'orchestrator_experiment_primary_engine', 'python_functions') or 'python_functions').strip().lower()
+    if candidate_engine not in SUPPORTED_PRIMARY_STACKS:
+        candidate_engine = 'python_functions'
     readiness = get_experiment_rollout_readiness(settings=settings)
     experiment_enabled = bool(getattr(settings, 'orchestrator_experiment_enabled', False))
-    pilot_url = str(getattr(settings, 'crewai_pilot_url', '') or '').strip()
+    pilot_url = str(getattr(settings, 'specialist_supervisor_pilot_url', '') or '').strip() if candidate_engine == 'specialist_supervisor' else ''
     pilot_configured = bool(pilot_url)
     pilot_status = readiness.get('pilot_status') if isinstance(readiness, dict) else None
-    if candidate_engine == 'crewai' and pilot_configured and not isinstance(pilot_status, dict):
-        pilot_status = _get_pilot_status_payload(settings=settings)
+    if candidate_engine == 'specialist_supervisor' and pilot_configured and not isinstance(pilot_status, dict):
+        pilot_status = _probe_remote_status_payload(
+            name='specialist_supervisor',
+            url=pilot_url,
+            token=str(getattr(settings, 'internal_api_token', '') or ''),
+            ttl_seconds=max(1, int(getattr(settings, 'orchestrator_experiment_health_ttl_seconds', 15) or 15)),
+            timeout_seconds=4.0,
+        )
     pilot_ready = bool(isinstance(pilot_status, dict) and pilot_status.get('ready'))
 
-    experiment_active = experiment_enabled and resolved_primary_stack == 'langgraph' and candidate_engine == 'crewai'
+    experiment_active = experiment_enabled and resolved_primary_stack == 'langgraph'
 
     advisory_by_slice: dict[str, Any] = {}
     promotable_now: list[str] = []
@@ -541,14 +599,12 @@ def get_experiment_live_promotion_summary(*, settings: Any) -> dict[str, Any]:
             blocked_reasons.append('Experiment is disabled in runtime settings.')
         if resolved_primary_stack != 'langgraph':
             blocked_reasons.append('Live experiment routing only applies while LangGraph remains the resolved primary stack.')
-        if candidate_engine != 'crewai':
-            blocked_reasons.append('Current experiment summary only supports CrewAI as the candidate engine.')
-        if candidate_engine == 'crewai' and not pilot_configured:
-            blocked_reasons.append('CrewAI pilot URL is not configured.')
-        if candidate_engine == 'crewai' and pilot_configured and not pilot_ready:
-            blocked_reasons.append('CrewAI pilot is not healthy right now.')
-        if candidate_engine == 'crewai' and pilot_ready and not pilot_live_gate_ok:
-            live_gate_reason = pilot_live_gate_reason or 'CrewAI pilot live gate is not open for this slice.'
+        if candidate_engine == 'specialist_supervisor' and not pilot_configured:
+            blocked_reasons.append('Specialist Supervisor pilot URL is not configured.')
+        if candidate_engine == 'specialist_supervisor' and pilot_configured and not pilot_ready:
+            blocked_reasons.append('Specialist Supervisor pilot is not healthy right now.')
+        if candidate_engine == 'specialist_supervisor' and pilot_ready and not pilot_live_gate_ok:
+            live_gate_reason = pilot_live_gate_reason or 'Specialist Supervisor pilot live gate is not open for this slice.'
             if live_gate_reason not in blocked_reasons:
                 blocked_reasons.append(live_gate_reason)
         if blocked_reasons:
@@ -641,75 +697,17 @@ def _slice_allowed_by_scorecard(*, settings: Any, slice_name: str, primary_engin
 
 
 def _probe_pilot_health(*, settings: Any) -> bool:
-    payload = _get_pilot_status_payload(settings=settings)
-    return bool(isinstance(payload, dict) and payload.get('ready'))
-
-
-def _apply_pilot_status_overrides(*, payload: dict[str, Any], settings: Any) -> dict[str, Any]:
-    if not isinstance(payload, dict):
-        return payload
-    overridden = dict(payload)
-    user_traffic_enabled = getattr(settings, 'crewai_hitl_user_traffic_enabled', None)
-    if user_traffic_enabled is not None:
-        overridden['crewaiHitlUserTrafficEnabled'] = bool(user_traffic_enabled)
-    user_traffic_slices = getattr(settings, 'crewai_hitl_user_traffic_slices', None)
-    if user_traffic_slices is not None:
-        overridden['crewaiHitlUserTrafficSlices'] = str(user_traffic_slices)
-    return overridden
-
-
-def _get_pilot_status_payload(*, settings: Any) -> dict[str, Any] | None:
-    pilot_url = str(getattr(settings, 'crewai_pilot_url', '') or '').strip()
-    if not pilot_url:
-        return None
-    ttl_seconds = max(1, int(getattr(settings, 'orchestrator_experiment_health_ttl_seconds', 15) or 15))
-    now = monotonic()
-    cached_ready = _PILOT_STATUS_CACHE.get('ready')
-    cached_payload = _PILOT_STATUS_CACHE.get('payload')
-    cached_timestamp = float(_PILOT_STATUS_CACHE.get('timestamp', 0.0) or 0.0)
-    if cached_ready is not None and now - cached_timestamp < ttl_seconds:
-        return _apply_pilot_status_overrides(payload=dict(cached_payload), settings=settings) if isinstance(cached_payload, dict) else None
-    request = Request(
-        f'{pilot_url.rstrip("/")}/v1/status',
-        headers={'X-Internal-Api-Token': str(getattr(settings, 'internal_api_token', '') or '')},
+    candidate_engine = str(getattr(settings, 'orchestrator_experiment_primary_engine', 'python_functions') or 'python_functions').strip().lower()
+    if candidate_engine != 'specialist_supervisor':
+        return True
+    payload = _probe_remote_status_payload(
+        name='specialist_supervisor',
+        url=str(getattr(settings, 'specialist_supervisor_pilot_url', '') or '').strip(),
+        token=str(getattr(settings, 'internal_api_token', '') or ''),
+        ttl_seconds=max(1, int(getattr(settings, 'orchestrator_experiment_health_ttl_seconds', 15) or 15)),
+        timeout_seconds=4.0,
     )
-    payload: dict[str, Any] | None = None
-    ready = False
-    try:
-        with urlopen(request, timeout=3.0) as response:
-            if response.status == 200:
-                loaded = json.load(response)
-                if isinstance(loaded, dict):
-                    payload = loaded
-                    ready = bool(payload.get('ready'))
-    except URLError:
-        ready = False
-    except Exception:
-        logger.exception('experiment_pilot_health_probe_failed')
-        ready = False
-    _PILOT_STATUS_CACHE.update({'timestamp': now, 'ready': ready, 'payload': payload})
-    return _apply_pilot_status_overrides(payload=dict(payload), settings=settings) if isinstance(payload, dict) else None
-
-
-def _pilot_live_gate_for_slice(*, settings: Any, slice_name: str) -> tuple[bool, str, dict[str, Any] | None]:
-    payload = _get_pilot_status_payload(settings=settings)
-    if not isinstance(payload, dict):
-        return False, 'CrewAI pilot status is not available right now.', None
-    if not bool(payload.get('ready')):
-        return False, 'CrewAI pilot is not healthy right now.', payload
-    if slice_name != 'protected':
-        return True, '', payload
-
-    capabilities = {str(item).strip() for item in (payload.get('capabilities') or []) if str(item).strip()}
-    if 'crewai-hitl-user-traffic' not in capabilities:
-        return False, 'CrewAI pilot does not advertise user-traffic HITL capability for protected traffic.', payload
-    if not bool(payload.get('crewaiHitlUserTrafficEnabled')):
-        return False, 'CrewAI protected live routing requires `CREWAI_HITL_USER_TRAFFIC_ENABLED=true` in the pilot.', payload
-
-    user_traffic_slices = _parse_csv_items(str(payload.get('crewaiHitlUserTrafficSlices', '') or ''))
-    if user_traffic_slices and 'protected' not in user_traffic_slices:
-        return False, 'CrewAI protected live routing requires `protected` in `CREWAI_HITL_USER_TRAFFIC_SLICES`.', payload
-    return True, '', payload
+    return bool(isinstance(payload, dict) and payload.get('ready'))
 
 
 def _pilot_ready(*, settings: Any) -> bool:
@@ -770,7 +768,10 @@ def _should_route_to_experiment(*, request: Any, settings: Any) -> tuple[bool, d
         return False, None
     if resolve_primary_stack(settings) != 'langgraph':
         return False, None
-    if not str(getattr(settings, 'crewai_pilot_url', '') or '').strip():
+    candidate_engine = str(getattr(settings, 'orchestrator_experiment_primary_engine', 'python_functions') or 'python_functions').strip().lower()
+    if candidate_engine not in SUPPORTED_PRIMARY_STACKS or candidate_engine == 'langgraph':
+        return False, None
+    if candidate_engine == 'specialist_supervisor' and not str(getattr(settings, 'specialist_supervisor_pilot_url', '') or '').strip():
         return False, None
     inferred_slice = infer_request_slice(request)
     configured_slices = _parse_csv_items(getattr(settings, 'orchestrator_experiment_slices', ''))
@@ -828,7 +829,7 @@ def _should_route_to_experiment(*, request: Any, settings: Any) -> tuple[bool, d
         'inferred_slice': inferred_slice,
         'bucket': bucket,
         'rollout_percent': rollout_percent,
-        'engine': str(getattr(settings, 'orchestrator_experiment_primary_engine', 'crewai') or 'crewai'),
+        'engine': candidate_engine,
         'enrolled': enrolled,
         'selection_source': selection_source,
     }
@@ -838,9 +839,21 @@ def _should_route_to_experiment(*, request: Any, settings: Any) -> tuple[bool, d
         primary_engine=str(metadata['engine']),
     ):
         return False, None
-    pilot_slice_ok, _, _ = _pilot_live_gate_for_slice(settings=settings, slice_name=slice_name)
-    if not pilot_slice_ok:
-        return False, None
+    if candidate_engine == 'specialist_supervisor':
+        specialist_ready = bool(
+            isinstance(
+                _probe_remote_status_payload(
+                    name='specialist_supervisor',
+                    url=str(getattr(settings, 'specialist_supervisor_pilot_url', '') or '').strip(),
+                    token=str(getattr(settings, 'internal_api_token', '') or ''),
+                    ttl_seconds=max(1, int(getattr(settings, 'orchestrator_experiment_health_ttl_seconds', 15) or 15)),
+                    timeout_seconds=4.0,
+                ),
+                dict,
+            )
+        )
+        if not specialist_ready:
+            return False, None
     if not _pilot_ready(settings=settings):
         return False, None
     if enrolled:
@@ -851,7 +864,7 @@ def _should_route_to_experiment(*, request: Any, settings: Any) -> tuple[bool, d
 def _targeted_runtime_stack_for_request(*, request: Any) -> dict[str, Any] | None:
     override = get_runtime_targeted_stack_override()
     stack_value = _normalized_primary_stack(override.get('value'))
-    if not stack_value or stack_value == 'shadow':
+    if not stack_value:
         return None
     slice_name = infer_request_slice(request)
     if not _request_matches_targeted_allowlist(request=request, override=override, slice_name=slice_name):
@@ -871,7 +884,6 @@ def _targeted_runtime_stack_for_request(*, request: Any) -> dict[str, Any] | Non
 def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBundle:
     mode = resolve_primary_stack(settings)
     langgraph_engine = LangGraphEngine()
-    crewai_engine = CrewAIEngine(fallback_engine=langgraph_engine)
     python_functions_engine = PythonFunctionsEngine()
     llamaindex_engine = LlamaIndexWorkflowEngine()
     specialist_supervisor_engine = SpecialistSupervisorEngine()
@@ -881,8 +893,6 @@ def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBund
         targeted = _targeted_runtime_stack_for_request(request=request)
         if targeted is not None:
             targeted_stack = str(targeted['stack'])
-            if targeted_stack == 'crewai':
-                return EngineBundle(mode=f"targeted:{targeted['slice']}:{targeted_stack}", primary=crewai_engine, experiment=targeted)
             if targeted_stack == 'python_functions':
                 return EngineBundle(mode=f"targeted:{targeted['slice']}:{targeted_stack}", primary=python_functions_engine, experiment=targeted)
             if targeted_stack == 'llamaindex':
@@ -898,7 +908,7 @@ def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBund
     if request is not None and not strict_mode:
         should_experiment, experiment = _should_route_to_experiment(request=request, settings=settings)
         if should_experiment:
-            experiment_engine = str(experiment.get('engine') or 'crewai')
+            experiment_engine = str(experiment.get('engine') or 'python_functions')
             if experiment_engine == 'python_functions':
                 return EngineBundle(
                     mode=f"experiment:{experiment['slice']}:{experiment_engine}",
@@ -920,40 +930,16 @@ def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBund
                     shadow=None,
                     experiment=experiment,
                 )
-            return EngineBundle(
-                mode=f"experiment:{experiment['slice']}:{experiment_engine}",
-                primary=crewai_engine,
-                shadow=None,
-                experiment=experiment,
-            )
+            return EngineBundle(mode=f"experiment:{experiment['slice']}:langgraph", primary=langgraph_engine, shadow=None, experiment=experiment)
 
-    if mode == 'crewai':
-        return EngineBundle(mode='crewai', primary=crewai_engine)
     if mode == 'python_functions':
         return EngineBundle(mode='python_functions', primary=python_functions_engine)
     if mode == 'llamaindex':
         return EngineBundle(mode='llamaindex', primary=llamaindex_engine)
     if mode == 'specialist_supervisor':
         return EngineBundle(mode='specialist_supervisor', primary=specialist_supervisor_engine)
-    if mode == 'shadow':
-        if strict_mode:
-            return EngineBundle(mode='langgraph', primary=langgraph_engine)
-        return EngineBundle(mode='shadow', primary=langgraph_engine, shadow=crewai_engine)
     return EngineBundle(mode='langgraph', primary=langgraph_engine)
 
 
 async def maybe_run_shadow(*, bundle: EngineBundle, request: Any, settings: Any) -> ShadowRunResult | None:
-    if strict_framework_isolation_enabled(settings):
-        return None
-    if bundle.shadow is None:
-        return None
-    try:
-        return await bundle.shadow.shadow_compare(request=request, settings=settings)
-    except Exception as exc:  # pragma: no cover - defensive guard
-        logger.exception('shadow_engine_failed')
-        return ShadowRunResult(
-            engine_name=getattr(bundle.shadow, 'name', 'shadow'),
-            executed=False,
-            reason='shadow_failed',
-            error=str(exc),
-        )
+    return None

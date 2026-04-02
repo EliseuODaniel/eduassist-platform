@@ -29,7 +29,6 @@ from .public_known_unknowns import detect_public_known_unknown_key, resolve_publ
 from .retrieval import get_retrieval_service
 from .retrieval import (
     can_read_restricted_documents,
-    compose_restricted_document_grounded_answer,
     compose_restricted_document_grounded_answer_for_query,
     compose_restricted_document_no_match_answer,
     looks_like_restricted_document_query,

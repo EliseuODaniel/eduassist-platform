@@ -25,7 +25,7 @@ from ai_orchestrator.models import MessageResponseRequest, UserContext
 DEFAULT_DATASET = REPO_ROOT / 'tests/evals/datasets/four_path_chatbot_smoke_cases.json'
 DEFAULT_REPORT = REPO_ROOT / 'docs/architecture/four-path-chatbot-smoke-report.md'
 DEFAULT_JSON_REPORT = REPO_ROOT / 'docs/architecture/four-path-chatbot-smoke-report.json'
-STACKS = ('langgraph', 'crewai', 'python_functions', 'llamaindex')
+STACKS = ('langgraph', 'python_functions', 'llamaindex', 'specialist_supervisor')
 
 
 @dataclass
@@ -43,7 +43,7 @@ class CaseResult:
 
 
 def _make_settings(*, stack: str) -> Settings:
-    fallback = 'langgraph' if stack != 'langgraph' else 'crewai'
+    fallback = 'langgraph' if stack != 'langgraph' else 'python_functions'
     return Settings(
         orchestrator_engine=fallback,
         feature_flag_primary_orchestration_stack=stack,
@@ -53,7 +53,7 @@ def _make_settings(*, stack: str) -> Settings:
         api_core_url='http://127.0.0.1:8001',
         qdrant_url='http://127.0.0.1:6333',
         database_url='postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist',
-        crewai_pilot_url='http://127.0.0.1:8004',
+        specialist_supervisor_pilot_url='http://127.0.0.1:8005',
     )
 
 
@@ -147,9 +147,9 @@ def _write_reports(*, results: list[CaseResult], markdown_path: Path, json_path:
         'Validate the first four chatbot paths side by side under strict framework isolation:',
         '',
         '- `langgraph`',
-        '- `crewai`',
         '- `python_functions`',
         '- `llamaindex`',
+        '- `specialist_supervisor`',
         '',
         '## Stack Summary',
         '',
@@ -182,7 +182,7 @@ def _write_reports(*, results: list[CaseResult], markdown_path: Path, json_path:
             '',
             '- `python_functions` is the lean baseline: shared planner and executor, no heavy orchestration framework around the control loop.',
             '- `llamaindex` uses the same planner/executor kernel but runs it inside a native LlamaIndex Workflow with explicit `plan -> execute -> reflect` steps.',
-            '- `langgraph` and `crewai` remain the original framework-native paths, which keeps the comparison fair.',
+            '- `langgraph` remains the graph-native reference path for stateful orchestration.',
             '',
         ]
     )

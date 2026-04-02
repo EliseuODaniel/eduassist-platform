@@ -121,7 +121,7 @@ def _build_payload(version: str, wave_paths: dict[str, Path]) -> dict[str, Any]:
         "latency_ranking": _latency_rank(matrix),
         "stacks": stacks,
         "notes": [
-            "CrewAI permanece no scorecard como baseline comparativa funcional, sem novos investimentos de arquitetura.",
+            "O caminho legado do CrewAI foi arquivado; os caminhos ativos em evolucao sao langgraph, python_functions, llamaindex e specialist_supervisor.",
             "Os caminhos ativos em evolucao sao langgraph, python_functions, llamaindex e specialist_supervisor.",
             "Erros operacionais como *_pilot_unavailable e runtime_unconfigured devem ser lidos separadamente de qualidade semantica.",
             "O benchmark context de cada onda deve ser consultado junto com o scorecard para interpretar drift de ambiente e modo de execucao.",

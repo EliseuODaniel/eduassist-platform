@@ -86,6 +86,38 @@ def _render_decimal(value: Any, fallback: str) -> str:
     return rendered.replace(".", ",")
 
 
+def _school_name(profile: dict[str, Any] | None) -> str:
+    rendered = str((profile or {}).get("school_name") or "Colegio Horizonte").strip()
+    return rendered or "Colegio Horizonte"
+
+
+def _timeline_entry_from_profile(profile: dict[str, Any] | None, topic_fragment: str) -> dict[str, Any] | None:
+    entries = (profile or {}).get("public_timeline") if isinstance(profile, dict) else None
+    if not isinstance(entries, list):
+        return None
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        if topic_fragment in str(item.get("topic_key", "") or ""):
+            return item
+    return None
+
+
+def _timeline_summary(entry: dict[str, Any] | None) -> str:
+    if not isinstance(entry, dict):
+        return ""
+    return _normalize_space(
+        " ".join(
+            part
+            for part in (
+                entry.get("summary"),
+                entry.get("notes"),
+            )
+            if str(part or "").strip()
+        )
+    )
+
+
 def compose_public_academic_policy_overview(profile: dict[str, Any] | None) -> str | None:
     policy = (profile or {}).get("academic_policy") if isinstance(profile, dict) else None
     evaluation = _section("politica-avaliacao-recuperacao-e-promocao.md", "Avaliacao continua")
@@ -126,6 +158,7 @@ def compose_public_conduct_frequency_punctuality(profile: dict[str, Any] | None)
     return " ".join(
         part
         for part in (
+            "Pontualidade, frequencia e convivencia aparecem juntas nos documentos publicos da escola.",
             _first_line(manual_punctuality),
             _first_line(manual_conduct),
             _first_line(manual_justifications),
@@ -134,6 +167,14 @@ def compose_public_conduct_frequency_punctuality(profile: dict[str, Any] | None)
         )
         if part
     ).strip()
+
+
+def compose_public_teacher_directory_boundary(profile: dict[str, Any] | None) -> str | None:
+    school_name = _school_name(profile)
+    return (
+        f"O {school_name} nao divulga nome, telefone nem contato direto de professor individual por disciplina. "
+        "Quando a familia precisa tratar esse tipo de assunto, o caminho publico correto e a coordenacao pedagogica."
+    )
 
 
 def compose_public_bolsas_and_processes(profile: dict[str, Any] | None) -> str | None:
@@ -185,18 +226,15 @@ def compose_public_permanence_and_family_support(profile: dict[str, Any] | None)
     project = str((((profile or {}).get("academic_policy") or {}).get("project_of_life_summary")) or "").strip()
     if not any((support, mentoring, family, attendance, project)):
         return None
-    return " ".join(
-        part
-        for part in (
-            "Para a familia acompanhar permanencia, apoio e vida escolar sem se perder, a escola combina orientacao, monitorias, comunicacao recorrente e acompanhamento de frequencia.",
-            _first_line(support),
-            _first_line(mentoring),
-            _first_line(family),
-            _first_line(attendance),
-            _first_line(project),
-        )
-        if part
-    ).strip()
+    parts = [
+        "Para a familia acompanhar permanencia, apoio e vida escolar sem se perder, a escola combina orientacao, monitorias, comunicacao recorrente e acompanhamento de frequencia.",
+        _first_line(support),
+        _first_line(mentoring),
+        _first_line(family),
+        _first_line(attendance),
+        _first_line(project),
+    ]
+    return " ".join(part for part in parts if part).strip()
 
 
 def compose_public_health_authorizations_bridge() -> str | None:
@@ -215,6 +253,32 @@ def compose_public_health_authorizations_bridge() -> str | None:
             _first_line(authorization),
             _first_line(restrictions),
             _first_line(emergencies),
+        )
+        if part
+    ).strip()
+
+
+def compose_public_secretaria_portal_credentials() -> str | None:
+    documents = _section("secretaria-documentacao-e-prazos.md", "Canais para documentos")
+    timelines = _section("secretaria-documentacao-e-prazos.md", "Prazos tipicos")
+    declarations = _section("secretaria-documentacao-e-prazos.md", "Declaracoes e comprovantes")
+    credentials = _section("politica-uso-do-portal-aplicativo-e-credenciais.md", "Credenciais pessoais")
+    portal = _section("politica-uso-do-portal-aplicativo-e-credenciais.md", "Portal e aplicativo")
+    linkage = _section("politica-uso-do-portal-aplicativo-e-credenciais.md", "Vinculo com o Telegram")
+    support = _section("politica-uso-do-portal-aplicativo-e-credenciais.md", "Recuperacao e suporte")
+    if not any((documents, timelines, declarations, credentials, portal, linkage, support)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            "Para documentos, portal e credenciais, a familia precisa tratar secretaria, canais digitais e suporte como um fluxo unico.",
+            _first_line(documents),
+            _first_line(timelines),
+            _first_line(declarations),
+            _first_line(credentials),
+            _first_line(portal),
+            _first_line(linkage),
+            _first_line(support),
         )
         if part
     ).strip()
@@ -316,38 +380,6 @@ def compose_public_transversal_year_bundle() -> str | None:
     ).strip()
 
 
-def compose_public_calendar_visibility(profile: dict[str, Any] | None) -> str | None:
-    public_events = (profile or {}).get("public_calendar_events") if isinstance(profile, dict) else None
-    visible_titles: list[str] = []
-    if isinstance(public_events, list):
-        for item in public_events:
-            if not isinstance(item, dict):
-                continue
-            title = str(item.get("title") or "").strip()
-            if title and title not in visible_titles:
-                visible_titles.append(title)
-    communication = _section("agenda-avaliacoes-recuperacoes-e-simulados-2026.md", "Comunicacao com as familias")
-    digital_limits = _section("politica-uso-do-portal-aplicativo-e-credenciais.md", "Limites do canal digital")
-    visible_preview = ", ".join(visible_titles[:3])
-    parts: list[str] = []
-    if visible_preview:
-        parts.append(
-            f"No calendario publico, o que costuma ficar aberto para familias sao marcos gerais como {visible_preview}."
-        )
-    else:
-        parts.append(
-            "No calendario publico, o que costuma ficar aberto para familias sao marcos institucionais gerais e eventos coletivos."
-        )
-    parts.append(
-        "O que depende de autenticacao ou contexto interno sao detalhes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos."
-    )
-    if communication:
-        parts.append(_first_line(communication))
-    if digital_limits:
-        parts.append(_first_line(digital_limits))
-    return " ".join(part for part in parts if part).strip()
-
-
 def compose_public_facilities_and_study_support() -> str | None:
     library = _section("servicos-e-espacos-escolares.md", "Nome oficial e atendimento")
     library_services = _section("servicos-e-espacos-escolares.md", "Servicos disponiveis")
@@ -371,6 +403,62 @@ def compose_public_facilities_and_study_support() -> str | None:
         )
         if part
     ).strip()
+
+
+def compose_public_calendar_visibility(profile: dict[str, Any] | None) -> str | None:
+    public_events = (profile or {}).get("public_calendar_events") if isinstance(profile, dict) else None
+    visible_titles: list[str] = []
+    if isinstance(public_events, list):
+        for item in public_events:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("title") or "").strip()
+            if title and title not in visible_titles:
+                visible_titles.append(title)
+    communication = _section("agenda-avaliacoes-recuperacoes-e-simulados-2026.md", "Comunicacao com as familias")
+    digital_limits = _section("politica-uso-do-portal-aplicativo-e-credenciais.md", "Limites do canal digital")
+    visible_preview = ", ".join(visible_titles[:3])
+    parts = []
+    if visible_preview:
+        parts.append(
+            f"No calendario publico, o que costuma ficar aberto para familias sao marcos gerais como {visible_preview}."
+        )
+    else:
+        parts.append(
+            "No calendario publico, o que costuma ficar aberto para familias sao marcos institucionais gerais e eventos coletivos."
+        )
+    parts.append(
+        "O que depende de autenticacao ou contexto interno sao detalhes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos."
+    )
+    if communication:
+        parts.append(_first_line(communication))
+    if digital_limits:
+        parts.append(_first_line(digital_limits))
+    return " ".join(part for part in parts if part).strip()
+
+
+def compose_public_calendar_week(profile: dict[str, Any] | None) -> str | None:
+    public_events = (profile or {}).get("public_calendar_events") if isinstance(profile, dict) else None
+    visible_titles: list[str] = []
+    if isinstance(public_events, list):
+        for item in public_events:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("title") or "").strip()
+            if title and title not in visible_titles:
+                visible_titles.append(title)
+    communication = _section("agenda-avaliacoes-recuperacoes-e-simulados-2026.md", "Comunicacao com as familias")
+    parts = [
+        "Nesta semana, o calendario publico da escola prioriza eventos coletivos para familias e responsaveis."
+    ]
+    if visible_titles:
+        parts.append(f"Os marcos mais visiveis para familias nesta semana costumam aparecer como {', '.join(visible_titles[:4])}.")
+    if communication:
+        parts.append(_first_line(communication))
+    parts.append(
+        "Quando algum detalhe depende de turma, aluno ou ajuste fino de agenda, a comunicacao segue para responsaveis pelos canais autenticados e oficiais."
+    )
+    return " ".join(part for part in parts if part).strip()
 
 
 def compose_public_family_new_calendar_assessment_enrollment() -> str | None:
@@ -410,3 +498,251 @@ def compose_public_family_new_calendar_assessment_enrollment() -> str | None:
         )
         if part
     ).strip()
+
+
+def compose_public_timeline_lifecycle_bundle() -> str | None:
+    school_calendar = {
+        "entry": _section("calendario-letivo-2026.md", "Matricula e ingresso"),
+        "start": _section("calendario-letivo-2026.md", "Inicio das aulas"),
+        "family": _section("calendario-letivo-2026.md", "Reunioes com responsaveis"),
+    }
+    if not any(school_calendar.values()):
+        return None
+    return " ".join(
+        part
+        for part in (
+            f"Antes da confirmacao da vaga: {_first_line(school_calendar['entry'])}",
+            f"Depois do inicio das aulas: {_first_line(school_calendar['start'])}",
+            f"Primeira reuniao com responsaveis: {_first_line(school_calendar['family'])}",
+        )
+        if part
+    ).strip()
+
+
+def compose_public_year_three_phases(profile: dict[str, Any] | None) -> str | None:
+    admissions = _timeline_summary(_timeline_entry_from_profile(profile, "admissions_opening"))
+    school_year = _timeline_summary(_timeline_entry_from_profile(profile, "school_year_start"))
+    graduation = _timeline_summary(_timeline_entry_from_profile(profile, "graduation"))
+    parts = []
+    if admissions:
+        parts.append(f"Admissao: {admissions}")
+    if school_year:
+        parts.append(f"Rotina academica: {school_year}")
+    if graduation:
+        parts.append(f"Fechamento: {graduation}")
+    return " ".join(parts).strip() or None
+
+
+def match_public_canonical_lane(message: str) -> str | None:
+    normalized = _normalize_space(message).lower()
+    if not normalized:
+        return None
+    if (
+        any(term in normalized for term in ("professor", "professora", "docente"))
+        and any(term in normalized for term in ("contato", "telefone", "canal", "como falar", "como falo"))
+    ):
+        return "public_bundle.teacher_directory_boundary"
+    if (
+        "desta semana" in normalized
+        and any(term in normalized for term in ("calendario", "calendário", "agenda", "eventos"))
+        and any(term in normalized for term in ("familias", "famílias", "responsaveis", "responsáveis"))
+    ):
+        return "public_bundle.calendar_week"
+    if (
+        "tres fases" in normalized
+        and all(term in normalized for term in ("admiss", "rotina", "fechamento"))
+    ):
+        return "public_bundle.year_three_phases"
+    if (
+        any(term in normalized for term in ("politica de avaliacao", "política de avaliação", "recuperacao", "recuperação", "promocao", "promoção"))
+        and any(term in normalized for term in ("escola", "manual", "criterios", "critérios", "media", "média", "frequencia", "frequência"))
+    ):
+        return "public_bundle.academic_policy_overview"
+    if any(term in normalized for term in ("convivencia", "convivência", "frequencia", "frequência", "pontualidade")):
+        if any(term in normalized for term in ("regra", "regras", "manual", "politica", "política", "escola")):
+            return "public_bundle.conduct_frequency_punctuality"
+
+    family_entry_terms = (
+        "familia nova",
+        "família nova",
+        "familia entrando agora",
+        "família entrando agora",
+        "familia entrando este ano",
+        "família entrando este ano",
+        "familia chegando agora",
+        "família chegando agora",
+        "primeira vez",
+        "vai entrar este ano",
+        "vai entrar pela primeira vez",
+        "entrando agora",
+        "chegando agora",
+        "primeiro filho",
+        "primeiro bimestre",
+        "inicio do ano",
+        "início do ano",
+        "comeco das aulas",
+        "começo das aulas",
+    )
+    if (
+        any(term in normalized for term in family_entry_terms)
+        and any(term in normalized for term in ("calendario", "calendário", "inicio do ano", "início do ano", "primeiro bimestre"))
+        and any(term in normalized for term in ("avaliacao", "avaliações", "avaliacoes"))
+        and "matricula" in normalized
+    ):
+        return "public_bundle.family_new_calendar_assessment_enrollment"
+    if (
+        any(term in normalized for term in ("antes da confirmacao da vaga", "antes da confirmação da vaga", "depois do inicio das aulas", "depois do início das aulas"))
+        or (
+            any(term in normalized for term in ("sequencia", "sequência", "ordem", "linha do tempo", "passo a passo"))
+            and any(term in normalized for term in ("vaga", "matricula", "matrícula"))
+            and any(term in normalized for term in ("inicio das aulas", "início das aulas", "aulas"))
+            and any(term in normalized for term in ("responsaveis", "responsáveis", "reuniao", "reunião", "familia", "família"))
+        )
+    ):
+        return "public_bundle.timeline_lifecycle"
+    has_visibility_channel = any(
+        term in normalized
+        for term in ("canais digitais", "canais da escola", "portal", "calendario", "calendário", "canais oficiais")
+    )
+    has_public_visibility = any(
+        term in normalized
+        for term in ("publico", "público", "publica", "pública", "conteudo publico", "conteúdo público", "aberto", "aberta")
+    )
+    has_auth_visibility = any(
+        term in normalized
+        for term in (
+            "autenticacao",
+            "autenticação",
+            "autenticado",
+            "autenticada",
+            "login",
+            "senha",
+            "depende de autenticacao",
+            "depende de autenticação",
+            "so aparece depois",
+            "só aparece depois",
+        )
+    )
+    if (
+        has_visibility_channel
+        and (
+            (has_public_visibility and has_auth_visibility)
+            or any(
+                term in normalized
+                for term in ("fronteira", "limite", "o que fica publico", "o que e publico", "onde termina", "onde comeca", "onde começa")
+            )
+        )
+    ):
+        return "public_bundle.visibility_boundary"
+    family_terms = (
+        "familia",
+        "família",
+        "responsaveis",
+        "responsáveis",
+        "acompanhamento da familia",
+        "acompanhamento da família",
+        "acompanhe",
+    )
+    permanence_terms = (
+        "permanencia",
+        "permanência",
+        "vida escolar",
+        "apoio",
+        "orientacao",
+        "orientação",
+    )
+    if any(term in normalized for term in family_terms) and sum(1 for term in permanence_terms if term in normalized) >= 2:
+        return "public_bundle.permanence_family_support"
+    if all(term in normalized for term in ("rematricula", "transferencia", "cancelamento")):
+        return "public_bundle.process_compare"
+    if (
+        any(term in normalized for term in ("saude", "saúde", "medicacao", "medicação"))
+        and any(term in normalized for term in ("segunda chamada", "segunda", "chamada"))
+    ):
+        return "public_bundle.health_second_call"
+    if (
+        any(term in normalized for term in ("autorizacao", "autorização", "saidas", "saídas"))
+        and any(term in normalized for term in ("saude", "saúde", "medicacao", "medicação"))
+    ):
+        return "public_bundle.health_authorizations_bridge"
+    if (
+        any(term in normalized for term in ("primeiro mes", "primeiro mês", "comeco do ano", "começo do ano", "primeiras semanas"))
+        and any(
+            term in normalized
+            for term in ("prazo", "prazos", "credenciais", "documentos", "deslizes", "erros", "problema", "problemas", "comprometem", "baguncam", "bagunçam")
+        )
+        and any(term in normalized for term in ("credenciais", "documentos", "documentacao", "documentação", "rotina"))
+    ):
+        return "public_bundle.first_month_risks"
+    if (
+        any(term in normalized for term in ("secretaria", "portal", "credenciais", "login", "senha"))
+        and any(term in normalized for term in ("documentos", "documentacao", "documentação", "envio"))
+    ):
+        return "public_bundle.secretaria_portal_credentials"
+    if (
+        any(term in normalized for term in ("disciplina", "disciplinar", "regulamentos", "regulamento", "convivencia", "convivência"))
+        and any(term in normalized for term in ("frequencia", "frequência"))
+        and any(term in normalized for term in ("recuperacao", "recuperação"))
+    ):
+        return "public_bundle.conduct_frequency_recovery"
+    if (
+        any(term in normalized for term in ("bolsas", "bolsa", "descontos", "desconto"))
+        and any(term in normalized for term in ("rematricula", "transferencia", "cancelamento", "matricula"))
+    ):
+        return "public_bundle.bolsas_and_processes"
+    if (
+        any(term in normalized for term in ("responsaveis", "responsáveis", "familia", "família"))
+        and any(term in normalized for term in ("avaliacoes", "avaliações", "avaliacao", "avaliação"))
+        and any(term in normalized for term in ("estudo orientado", "canais digitais", "portal", "telegram", "digitais"))
+    ):
+        return "public_bundle.transversal_year"
+    if (
+        any(term in normalized for term in ("biblioteca", "laboratorios", "laboratórios", "laboratorio", "laboratório"))
+        and any(term in normalized for term in ("estudo", "apoio", "ensino medio", "ensino médio"))
+    ):
+        return "public_bundle.facilities_study_support"
+    return None
+
+
+def compose_public_canonical_lane_answer(
+    lane: str,
+    *,
+    profile: dict[str, Any] | None = None,
+) -> str | None:
+    if lane == "public_bundle.teacher_directory_boundary":
+        return compose_public_teacher_directory_boundary(profile)
+    if lane == "public_bundle.calendar_week":
+        return compose_public_calendar_week(profile)
+    if lane == "public_bundle.year_three_phases":
+        return compose_public_year_three_phases(profile)
+    if lane == "public_bundle.academic_policy_overview":
+        return compose_public_academic_policy_overview(profile)
+    if lane == "public_bundle.conduct_frequency_punctuality":
+        return compose_public_conduct_frequency_punctuality(profile)
+    if lane == "public_bundle.family_new_calendar_assessment_enrollment":
+        return compose_public_family_new_calendar_assessment_enrollment()
+    if lane == "public_bundle.timeline_lifecycle":
+        return compose_public_timeline_lifecycle_bundle()
+    if lane == "public_bundle.visibility_boundary":
+        return compose_public_calendar_visibility(profile)
+    if lane == "public_bundle.permanence_family_support":
+        return compose_public_permanence_and_family_support(profile)
+    if lane == "public_bundle.process_compare":
+        return compose_public_process_compare()
+    if lane == "public_bundle.health_second_call":
+        return compose_public_health_second_call()
+    if lane == "public_bundle.health_authorizations_bridge":
+        return compose_public_health_authorizations_bridge()
+    if lane == "public_bundle.first_month_risks":
+        return compose_public_first_month_risks(profile)
+    if lane == "public_bundle.conduct_frequency_recovery":
+        return compose_public_conduct_frequency_recovery_bridge(profile)
+    if lane == "public_bundle.secretaria_portal_credentials":
+        return compose_public_secretaria_portal_credentials()
+    if lane == "public_bundle.bolsas_and_processes":
+        return compose_public_bolsas_and_processes(profile)
+    if lane == "public_bundle.transversal_year":
+        return compose_public_transversal_year_bundle()
+    if lane == "public_bundle.facilities_study_support":
+        return compose_public_facilities_and_study_support()
+    return None
