@@ -53,7 +53,7 @@ def _load_four_path_prompts(path: str) -> list[dict[str, Any]]:
     return _expand_entries(_normalize_prompt_entries(payload))
 
 
-def _build_settings(*, stack: str) -> Settings:
+def _build_settings(*, stack: str, llm_forced: bool = False) -> Settings:
     fallback = 'langgraph' if stack != 'langgraph' else 'python_functions'
     return Settings(
         orchestrator_engine=fallback,
@@ -65,6 +65,7 @@ def _build_settings(*, stack: str) -> Settings:
         qdrant_url='http://127.0.0.1:6333',
         database_url='postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist',
         specialist_supervisor_pilot_url='http://127.0.0.1:8005',
+        feature_flag_final_polish_force_llm=llm_forced,
     )
 
 
@@ -95,8 +96,8 @@ def _user_for_slice(entry: dict[str, Any]) -> UserContext:
     return UserContext(role=UserRole.anonymous, authenticated=False)
 
 
-async def _run_turn(*, stack: str, entry: dict[str, Any]) -> dict[str, Any]:
-    settings = _build_settings(stack=stack)
+async def _run_turn(*, stack: str, entry: dict[str, Any], llm_forced: bool = False) -> dict[str, Any]:
+    settings = _build_settings(stack=stack, llm_forced=llm_forced)
     run_prefix = str(entry.get('run_prefix') or 'debug:four-path')
     conversation_id = f"{run_prefix}:{entry.get('thread_id') or 'single'}:{stack}"
     request = MessageResponseRequest(
@@ -107,6 +108,7 @@ async def _run_turn(*, stack: str, entry: dict[str, Any]) -> dict[str, Any]:
         user=_user_for_slice(entry),
         allow_graph_rag=True,
         allow_handoff=True,
+        debug_options={'llm_forced_mode': llm_forced},
     )
     bundle = build_engine_bundle(settings, request=request)
     started = perf_counter()
@@ -124,6 +126,8 @@ async def _run_turn(*, stack: str, entry: dict[str, Any]) -> dict[str, Any]:
             'mode': response.mode.value,
             'reason': response.reason,
             'graph_path': list(response.graph_path),
+            'used_llm': bool(getattr(response, 'used_llm', False)),
+            'llm_stages': list(getattr(response, 'llm_stages', []) or []),
         }
     except Exception as exc:
         latency_ms = round((perf_counter() - started) * 1000, 1)
@@ -134,6 +138,8 @@ async def _run_turn(*, stack: str, entry: dict[str, Any]) -> dict[str, Any]:
             'mode': 'error',
             'reason': 'exception',
             'graph_path': [],
+            'used_llm': False,
+            'llm_stages': [],
         }
 
 
@@ -142,6 +148,8 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     lines.append(f"Date: {payload['generated_at']}")
     lines.append('')
     lines.append(f"Dataset: `{payload['dataset']}`")
+    lines.append('')
+    lines.append(f"LLM forced: `{payload.get('llm_forced', False)}`")
     lines.append('')
     lines.append(f"Run prefix: `{payload.get('run_prefix', '')}`")
     lines.append('')
@@ -183,7 +191,7 @@ def _render_markdown(payload: dict[str, Any]) -> str:
         for stack in STACKS:
             item = result[stack]
             lines.append(
-                f"- `{stack}`: status {item['status']}, latency {item['latency_ms']}ms, keyword pass `{item['keyword_pass']}`, quality `{item['quality_score']}`, reason `{item['reason']}`"
+                f"- `{stack}`: status {item['status']}, latency {item['latency_ms']}ms, keyword pass `{item['keyword_pass']}`, quality `{item['quality_score']}`, used_llm `{item['used_llm']}`, llm_stages `{', '.join(item['llm_stages']) or 'none'}`, reason `{item['reason']}`"
             )
             if item.get('error_types'):
                 lines.append(f"  errors: {', '.join(item['error_types'])}")
@@ -192,8 +200,9 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     return '\n'.join(lines).replace('\n  - ', '\n  - ')
 
 
-async def _run_all(entries: list[dict[str, Any]]) -> dict[str, Any]:
-    run_prefix = f"debug:four-path:{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
+async def _run_all(entries: list[dict[str, Any]], *, llm_forced: bool = False) -> dict[str, Any]:
+    run_kind = 'llm-forced' if llm_forced else 'normal'
+    run_prefix = f"debug:four-path:{run_kind}:{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
     previous_answers: dict[str, dict[str, str]] = {stack: {} for stack in STACKS}
     results: list[dict[str, Any]] = []
 
@@ -209,7 +218,7 @@ async def _run_all(entries: list[dict[str, Any]]) -> dict[str, Any]:
             'run_prefix': run_prefix,
         }
         for stack in STACKS:
-            raw = await _run_turn(stack=stack, entry=entry_with_run_prefix)
+            raw = await _run_turn(stack=stack, entry=entry_with_run_prefix, llm_forced=llm_forced)
             answer_text = _extract_answer_text(raw['body'])
             thread_key = str(entry.get('thread_id') or '')
             previous_answer = previous_answers[stack].get(thread_key, '') if thread_key else ''
@@ -244,6 +253,8 @@ async def _run_all(entries: list[dict[str, Any]]) -> dict[str, Any]:
                 'mode': raw['mode'],
                 'reason': raw['reason'],
                 'graph_path': raw['graph_path'],
+                'used_llm': bool(raw.get('used_llm', False)),
+                'llm_stages': [str(item).strip() for item in (raw.get('llm_stages') or []) if str(item).strip()],
                 'answer_text': answer_text,
                 'keyword_pass': keyword_pass,
                 'quality_score': quality_score,
@@ -283,6 +294,7 @@ async def _run_all(entries: list[dict[str, Any]]) -> dict[str, Any]:
             }
     return {
         'generated_at': datetime.now(UTC).isoformat(),
+        'llm_forced': bool(llm_forced),
         'run_prefix': run_prefix,
         'summary': {
             'by_stack': summary_by_stack,
@@ -298,10 +310,11 @@ def main() -> int:
     parser.add_argument('--prompt-file', default=str(DEFAULT_PROMPTS))
     parser.add_argument('--report', default=str(DEFAULT_REPORT))
     parser.add_argument('--json-report', default=str(DEFAULT_JSON_REPORT))
+    parser.add_argument('--llm-forced', action='store_true')
     args = parser.parse_args()
 
     entries = _load_four_path_prompts(args.prompt_file)
-    payload = asyncio.run(_run_all(entries))
+    payload = asyncio.run(_run_all(entries, llm_forced=bool(args.llm_forced)))
     payload['dataset'] = str(Path(args.prompt_file).resolve())
 
     report_path = Path(args.report)

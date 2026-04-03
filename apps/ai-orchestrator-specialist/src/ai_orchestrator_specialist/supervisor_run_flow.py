@@ -66,14 +66,25 @@ def _provider_metadata(
     deps: SupervisorRunFlowDeps,
     settings: Any,
     *,
+    used_llm: bool = False,
+    llm_stages: list[str] | None = None,
     extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = {
         "provider": deps.resolve_llm_provider(settings),
         "model": deps.effective_llm_model_name(settings),
     }
+    normalized_llm_stages = [str(item).strip() for item in (llm_stages or []) if str(item).strip()]
+    if used_llm:
+        payload["used_llm"] = True
+    if normalized_llm_stages:
+        payload["llm_stages"] = normalized_llm_stages
     payload.update(extra or {})
     return payload
+
+
+def _llm_forced_mode(request: SpecialistSupervisorRequest) -> bool:
+    return bool((request.debug_options or {}).get('llm_forced_mode'))
 
 
 async def _persist_and_dump(
@@ -87,6 +98,33 @@ async def _persist_and_dump(
     repair_payload: tuple[Any, Any] | None = None,
     timeout_seconds: float | None = None,
 ) -> dict[str, Any]:
+    if metadata is not None:
+        metadata = dict(metadata)
+        answer_used_llm = bool(metadata['used_llm']) if 'used_llm' in metadata else bool(getattr(answer, 'used_llm', False))
+        answer_llm_stages = [
+            str(item).strip()
+            for item in (metadata['llm_stages'] if 'llm_stages' in metadata else getattr(answer, 'llm_stages', []))
+            if str(item).strip()
+        ]
+        answer = answer.model_copy(update={
+            'used_llm': answer_used_llm,
+            'llm_stages': list(dict.fromkeys(answer_llm_stages)),
+            'final_polish_eligible': bool(metadata['final_polish_eligible']) if 'final_polish_eligible' in metadata else bool(getattr(answer, 'final_polish_eligible', False)),
+            'final_polish_applied': bool(metadata['final_polish_applied']) if 'final_polish_applied' in metadata else bool(getattr(answer, 'final_polish_applied', False)),
+            'final_polish_mode': str(metadata['final_polish_mode']) if 'final_polish_mode' in metadata else (getattr(answer, 'final_polish_mode', None) or 'skip'),
+            'final_polish_reason': str(metadata['final_polish_reason']) if 'final_polish_reason' in metadata else (getattr(answer, 'final_polish_reason', None) or 'quality_first_path'),
+            'final_polish_changed_text': bool(metadata['final_polish_changed_text']) if 'final_polish_changed_text' in metadata else bool(getattr(answer, 'final_polish_changed_text', False)),
+            'final_polish_preserved_fallback': bool(metadata['final_polish_preserved_fallback']) if 'final_polish_preserved_fallback' in metadata else bool(getattr(answer, 'final_polish_preserved_fallback', False)),
+        })
+    else:
+        answer = answer.model_copy(update={
+            'final_polish_eligible': bool(getattr(answer, 'final_polish_eligible', False)),
+            'final_polish_applied': bool(getattr(answer, 'final_polish_applied', False)),
+            'final_polish_mode': getattr(answer, 'final_polish_mode', None) or 'skip',
+            'final_polish_reason': getattr(answer, 'final_polish_reason', None) or 'quality_first_path',
+            'final_polish_changed_text': bool(getattr(answer, 'final_polish_changed_text', False)),
+            'final_polish_preserved_fallback': bool(getattr(answer, 'final_polish_preserved_fallback', False)),
+        })
     await deps.persist_final_answer(
         context,
         answer=answer,
@@ -127,7 +165,9 @@ async def run_specialist_supervisor(
             specialist_registry=deps.get_specialist_registry(),
         )
 
-        preflight_answer = deps.preflight_public_doc_bundle_answer(None, request.message)
+        llm_forced_mode = _llm_forced_mode(request)
+
+        preflight_answer = None if llm_forced_mode else deps.preflight_public_doc_bundle_answer(None, request.message)
         if preflight_answer is not None:
             metadata = _provider_metadata(
                 deps,
@@ -238,7 +278,7 @@ async def run_specialist_supervisor(
                 ),
             )
 
-        fast_answer = deps.fast_path_answer(context)
+        fast_answer = None if llm_forced_mode and not context.request.user.authenticated else deps.fast_path_answer(context)
         if fast_answer is not None:
             return await _persist_and_dump(
                 deps,
@@ -267,7 +307,7 @@ async def run_specialist_supervisor(
                     ),
                 )
 
-        resolved_intent_answer = await deps.resolved_intent_answer(context)
+        resolved_intent_answer = None if llm_forced_mode and not context.request.user.authenticated else await deps.resolved_intent_answer(context)
         if resolved_intent_answer is not None:
             return await _persist_and_dump(
                 deps,
@@ -299,7 +339,7 @@ async def run_specialist_supervisor(
                 ),
             )
 
-        general_knowledge_answer = await deps.general_knowledge_fast_path_answer(context)
+        general_knowledge_answer = None if llm_forced_mode and not context.request.user.authenticated else await deps.general_knowledge_fast_path_answer(context)
         if general_knowledge_answer is not None:
             return await _persist_and_dump(
                 deps,
@@ -356,7 +396,7 @@ async def run_specialist_supervisor(
                 context,
                 answer=answer,
                 route="input_guardrail",
-                metadata={"blocked": True},
+                metadata=_provider_metadata(deps, settings, used_llm=True, llm_stages=['input_guardrail'], extra={"blocked": True}),
             )
 
         try:
@@ -409,7 +449,7 @@ async def run_specialist_supervisor(
                 context,
                 answer=answer,
                 route="planner_denied",
-                metadata=observed_plan_metadata,
+                metadata={**observed_plan_metadata, 'used_llm': True, 'llm_stages': ['planner']},
             )
 
         if plan.requires_clarification and plan.clarification_question:
@@ -432,7 +472,7 @@ async def run_specialist_supervisor(
                 context,
                 answer=answer,
                 route="planner_clarify",
-                metadata=observed_plan_metadata,
+                metadata={**observed_plan_metadata, 'used_llm': True, 'llm_stages': ['planner']},
             )
 
         try:
@@ -464,7 +504,7 @@ async def run_specialist_supervisor(
                         context,
                         answer=multi_direct_answer,
                         route="multi_specialist_direct",
-                        metadata=observed_direct_metadata,
+                        metadata={**observed_direct_metadata, 'used_llm': True, 'llm_stages': ['specialist_execution']},
                     )
                 direct_result = deps.direct_compose_candidate(
                     context,
@@ -478,7 +518,7 @@ async def run_specialist_supervisor(
                         context,
                         answer=answer,
                         route="specialist_direct",
-                        metadata=observed_direct_metadata,
+                        metadata={**observed_direct_metadata, 'used_llm': True, 'llm_stages': ['specialist_execution']},
                     )
 
             requires_manager = deps.needs_manager(
@@ -498,7 +538,7 @@ async def run_specialist_supervisor(
                         context,
                         answer=multi_direct_answer,
                         route="multi_specialist_direct",
-                        metadata=observed_direct_metadata,
+                        metadata={**observed_direct_metadata, 'used_llm': True, 'llm_stages': ['specialist_execution']},
                     )
                 direct_result = direct_result or deps.direct_compose_candidate(
                     context,
@@ -512,7 +552,7 @@ async def run_specialist_supervisor(
                         context,
                         answer=answer,
                         route="specialist_direct",
-                        metadata=observed_direct_metadata,
+                        metadata={**observed_direct_metadata, 'used_llm': True, 'llm_stages': ['specialist_execution']},
                     )
                 budgeted_result = deps.budgeted_no_manager_candidate(
                     context,
@@ -532,7 +572,7 @@ async def run_specialist_supervisor(
                         context,
                         answer=answer,
                         route="budget_direct",
-                        metadata=observed_direct_metadata,
+                        metadata={**observed_direct_metadata, 'used_llm': True, 'llm_stages': ['specialist_execution']},
                     )
                 answer = deps.safe_supervisor_fallback_answer(
                     preview_hint=context.preview_hint,
@@ -544,7 +584,7 @@ async def run_specialist_supervisor(
                     context,
                     answer=answer,
                     route="budget_safe_fallback",
-                    metadata=deps.metadata_with_runtime_observability(context, {**direct_metadata, "fallback": True}),
+                    metadata=deps.metadata_with_runtime_observability(context, {**direct_metadata, "fallback": True, 'used_llm': True, 'llm_stages': ['specialist_execution']}),
                 )
 
             draft, judge, repair_payload = await deps.run_manager_stack(
@@ -598,7 +638,7 @@ async def run_specialist_supervisor(
             context,
             answer=answer,
             route="manager_judge",
-            metadata=final_metadata,
+            metadata={**final_metadata, 'used_llm': True, 'llm_stages': ['planner', 'specialist_execution', 'manager_judge']},
             trace_payload=(plan, draft, judge),
             repair_payload=repair_payload,
         )

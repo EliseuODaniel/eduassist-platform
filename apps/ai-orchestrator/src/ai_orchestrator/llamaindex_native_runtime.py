@@ -47,12 +47,14 @@ from .evidence_pack import (
     build_retrieval_evidence_pack,
     build_structured_tool_evidence_pack,
 )
-from .kernel_runtime import _maybe_hypothetical_public_pricing_answer
+from .final_polish_policy import build_final_polish_decision
+from .kernel_runtime import _maybe_contextual_public_direct_answer, _maybe_hypothetical_public_pricing_answer
 from .llamaindex_public_intent_registry import (
     LLAMAINDEX_PUBLIC_INTENT_RULES,
     LlamaIndexPublicIntentRule,
 )
 from .llm_provider import _google_model_candidates
+from .llm_provider import polish_structured_with_provider, revise_with_provider
 from .models import (
     AccessTier,
     IntentClassification,
@@ -124,6 +126,53 @@ class LlamaIndexNativePublicDecision(BaseModel):
     focus_hint: str | None = None
     unpublished_key: str | None = None
     use_conversation_context: bool = False
+
+
+def _llamaindex_execution_llm_stages(*, execution_reason: str, semantic_judge_used: bool) -> list[str]:
+    stages: list[str] = []
+    llm_execution_prefixes = (
+        'llamaindex_public_',
+        'llamaindex_router_',
+        'llamaindex_subquestion_',
+        'llamaindex_function_agent',
+    )
+    explicit_deterministic_reasons = {
+        'llamaindex deterministic public fast path',
+        'llamaindex deterministic external-live guardrail',
+        'llamaindex protected records deterministic fast path',
+        'llamaindex restricted-doc retrieval fast path',
+        'teacher deterministic native answer',
+    }
+    normalized = str(execution_reason or '').strip()
+    if normalized and normalized not in explicit_deterministic_reasons:
+        if normalized.startswith(llm_execution_prefixes) or normalized in {
+            'llamaindex_public_profile',
+            'llamaindex_public_direct_retrieval',
+            'llamaindex_public_citation_query_engine',
+        }:
+            stages.append('answer_composition')
+    if semantic_judge_used:
+        stages.append('answer_verifier_judge')
+    return stages
+
+
+def _should_avoid_llamaindex_public_profile_fast_path(
+    *,
+    message: str,
+    public_plan: Any,
+    native_decision: LlamaIndexNativePublicDecision | None,
+) -> bool:
+    if match_public_canonical_lane(message):
+        return False
+    if rt._looks_like_public_documentary_open_query(message):  # type: ignore[attr-defined]
+        return True
+    if _has_documentary_retrieval_cues(message) or _looks_like_open_documentary_bundle_query(message):
+        return True
+    if rt._looks_like_public_explanatory_bundle_query(message):  # type: ignore[attr-defined]
+        return True
+    if native_decision is not None and native_decision.answer_mode == 'documentary':
+        return True
+    return bool(public_plan.conversation_act in {'comparative', 'highlight', 'curriculum', 'features'})
 
 
 def _looks_like_external_live_query(message: str) -> bool:
@@ -1873,6 +1922,13 @@ def _looks_like_open_documentary_bundle_query(message: str) -> bool:
             'atravessam',
             'temas em comum',
             'como se influenciam',
+            'quero entender',
+            'qual imagem institucional',
+            'que leitura integrada',
+            'quais evidencias',
+            'quais evidências',
+            'que evidencias',
+            'que evidências',
         )
     ):
         return False
@@ -1899,6 +1955,22 @@ def _looks_like_open_documentary_bundle_query(message: str) -> bool:
         'comunicacao',
         'comunicação',
         'documentos',
+        'seguranca',
+        'segurança',
+        'saude',
+        'saúde',
+        'autorizacoes',
+        'autorizações',
+        'transporte',
+        'uniforme',
+        'refeicao',
+        'refeição',
+        'governanca',
+        'governança',
+        'direcao',
+        'direção',
+        'coordenacao',
+        'coordenação',
     )
     hits = sum(1 for marker in document_markers if marker in normalized)
     return hits >= 2
@@ -1963,6 +2035,12 @@ def _has_documentary_retrieval_cues(message: str) -> bool:
         'cite as fontes',
         'cite os documentos',
         'mostre as fontes',
+        'material publico',
+        'material público',
+        'base publica',
+        'base pública',
+        'documentacao publica',
+        'documentação pública',
     )
     return any(cue in normalized for cue in documentary_cues)
 
@@ -3045,7 +3123,8 @@ async def maybe_execute_llamaindex_native_plan(
             response=response.model_dump(mode='json'),
         )
 
-    public_canonical_lane = match_public_canonical_lane(analysis_message) or match_public_canonical_lane(request.message)
+    llm_forced_mode = rt._llm_forced_mode_enabled(settings=settings, request=request)
+    public_canonical_lane = None if llm_forced_mode else (match_public_canonical_lane(analysis_message) or match_public_canonical_lane(request.message))
     public_canonical_answer = (
         compose_public_canonical_lane_answer(public_canonical_lane, profile=school_profile)
         if public_canonical_lane
@@ -3197,7 +3276,7 @@ async def maybe_execute_llamaindex_native_plan(
             match_public_canonical_lane(effective_analysis_message)
             or match_public_canonical_lane(request.message)
         )
-        if not skip_fast_paths
+        if not skip_fast_paths and not llm_forced_mode
         else None
     )
     public_canonical_answer = (
@@ -3305,7 +3384,16 @@ async def maybe_execute_llamaindex_native_plan(
             semantic_plan=public_plan,
         )
         direct_profile_answer = str(direct_profile_answer or '').strip()
-        if direct_profile_answer and not direct_profile_answer.startswith('Ainda nao encontrei evidencia publica suficiente'):
+        if (
+            direct_profile_answer
+            and not llm_forced_mode
+            and not direct_profile_answer.startswith('Ainda nao encontrei evidencia publica suficiente')
+            and not _should_avoid_llamaindex_public_profile_fast_path(
+                message=request.message,
+                public_plan=public_plan,
+                native_decision=native_public_decision,
+            )
+        ):
             preview.mode = OrchestrationMode.structured_tool
             preview.reason = 'llamaindex_public_profile_fast_path'
             preview.needs_authentication = False
@@ -3321,7 +3409,7 @@ async def maybe_execute_llamaindex_native_plan(
                     settings=settings,
                 )
             except Exception:
-                return None
+                tool_response = None
     elif documentary_direct_retrieval:
         selected_tool_names = ('public_retrieval',)
         try:
@@ -3330,7 +3418,7 @@ async def maybe_execute_llamaindex_native_plan(
                 settings=settings,
             )
         except Exception:
-            return None
+            tool_response = None
     elif (
         effective_path_profile.prefer_native_llamaindex_function_agent
         and _should_use_llamaindex_function_agent(request=request, public_plan=public_plan)
@@ -3415,7 +3503,7 @@ async def maybe_execute_llamaindex_native_plan(
                     settings=settings,
                 )
             except Exception:
-                return None
+                tool_response = None
     if tool_response is not None:
         answer_text = str(getattr(tool_response, 'response', '') or str(tool_response)).strip()
         citations = list(_extract_response_citations(tool_response))
@@ -3450,9 +3538,79 @@ async def maybe_execute_llamaindex_native_plan(
             retrieval_backend = RetrievalBackend.none
             execution_reason = 'llamaindex_public_retrieval_profile_fallback'
     if not answer_text:
+        fallback_text = await _maybe_contextual_public_direct_answer(
+            request=request,
+            analysis_message=analysis_message,
+            preview=preview,
+            settings=settings,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+        )
+        if fallback_text:
+            answer_text = fallback_text
+            citations = []
+            retrieval_backend = RetrievalBackend.none
+            execution_reason = 'contextual_public_direct_answer'
+    if not answer_text:
         return None
 
     message_text = answer_text
+    llm_stages = _llamaindex_execution_llm_stages(
+        execution_reason=execution_reason,
+        semantic_judge_used=False,
+    )
+    final_polish_decision = build_final_polish_decision(
+        settings=settings,
+        stack_name=engine_name,
+        request=request,
+        preview=preview,
+        response_reason=execution_reason,
+        llm_stages=llm_stages,
+        citations_count=len(citations),
+        support_count=0,
+        retrieval_backend=retrieval_backend,
+    )
+    final_polish_applied = False
+    final_polish_changed_text = False
+    final_polish_preserved_fallback = False
+    if final_polish_decision.apply_polish:
+        original_text = message_text
+        raw_polished_text = await polish_structured_with_provider(
+            settings=settings,
+            request_message=request.message,
+            preview=preview,
+            draft_text=message_text,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
+        polished_text = rt._preserve_capability_anchor_terms(
+            original_text=original_text,
+            polished_text=raw_polished_text,
+            request_message=request.message,
+        )
+        final_polish_preserved_fallback = bool(
+            raw_polished_text
+            and polished_text == original_text
+            and rt._normalize_text(raw_polished_text) != rt._normalize_text(original_text)
+        )
+        if polished_text:
+            llm_stages.append('structured_polish')
+            final_polish_applied = True
+            final_polish_changed_text = rt._normalize_text(polished_text) != rt._normalize_text(original_text)
+            message_text = polished_text
+    if final_polish_decision.run_response_critic:
+        revised_text = await revise_with_provider(
+            settings=settings,
+            request_message=request.message,
+            preview=preview,
+            draft_text=message_text,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
+        if revised_text:
+            llm_stages.append('response_critic')
+            message_text = revised_text
+
     verification_slot_memory = rt._build_conversation_slot_memory(
         actor=actor,
         profile=school_profile,
@@ -3560,6 +3718,11 @@ async def maybe_execute_llamaindex_native_plan(
             ]
         )
     )
+    llm_stages = _llamaindex_execution_llm_stages(
+        execution_reason=execution_reason,
+        semantic_judge_used=semantic_judge_used,
+    ) + [stage for stage in llm_stages if stage in {'structured_polish', 'response_critic'}]
+    llm_stages = list(dict.fromkeys(llm_stages))
     response = MessageResponse(
         message_text=message_text,
         mode=preview.mode,
@@ -3581,6 +3744,14 @@ async def maybe_execute_llamaindex_native_plan(
         ],
         risk_flags=preview.risk_flags,
         reason=execution_reason,
+        used_llm=bool(llm_stages),
+        llm_stages=llm_stages,
+        final_polish_eligible=final_polish_decision.eligible,
+        final_polish_applied=final_polish_applied,
+        final_polish_mode=final_polish_decision.mode,
+        final_polish_reason=final_polish_decision.reason,
+        final_polish_changed_text=final_polish_changed_text,
+        final_polish_preserved_fallback=final_polish_preserved_fallback,
     )
     reflection = KernelReflection(
         grounded=verification.valid,

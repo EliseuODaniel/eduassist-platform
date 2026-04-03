@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 import httpx
 from eduassist_observability import canonicalize_evidence_strategy, canonicalize_risk_flags
 
 from ..models import AccessTier, IntentClassification, MessageResponse, OrchestrationMode, QueryDomain, RetrievalBackend
+from ..public_doc_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
 from .base import ResponseEngine, ShadowRunResult
 
 logger = logging.getLogger(__name__)
 _REMOTE_PILOT_CLIENTS: dict[tuple[str, float], httpx.AsyncClient] = {}
+_REMOTE_PILOT_FAILURES: dict[str, tuple[int, float]] = {}
 
 
 def _strict_safe_response_text(*, request: Any) -> str:
@@ -75,6 +78,14 @@ def _normalize_remote_answer(answer: dict[str, Any]) -> dict[str, Any]:
         )
         normalized["evidence_pack"] = evidence_pack
     normalized["risk_flags"] = canonicalize_risk_flags(normalized.get("risk_flags"))
+    normalized['used_llm'] = bool(normalized.get('used_llm', False))
+    normalized['llm_stages'] = [str(item).strip() for item in (normalized.get('llm_stages') or []) if str(item).strip()]
+    normalized['final_polish_eligible'] = bool(normalized.get('final_polish_eligible', False))
+    normalized['final_polish_applied'] = bool(normalized.get('final_polish_applied', False))
+    normalized['final_polish_mode'] = str(normalized.get('final_polish_mode') or '')
+    normalized['final_polish_reason'] = str(normalized.get('final_polish_reason') or '')
+    normalized['final_polish_changed_text'] = bool(normalized.get('final_polish_changed_text', False))
+    normalized['final_polish_preserved_fallback'] = bool(normalized.get('final_polish_preserved_fallback', False))
     return normalized
 
 
@@ -97,6 +108,48 @@ def _mark_cross_stack_fallback(response: MessageResponse) -> MessageResponse:
     )
 
 
+def _lane_domain(lane: str) -> QueryDomain:
+    if any(marker in lane for marker in {'calendar', 'timeline'}):
+        return QueryDomain.calendar
+    return QueryDomain.institution
+
+
+def _local_public_canonical_lane_response(*, request: Any, lane: str) -> MessageResponse | None:
+    answer_text = compose_public_canonical_lane_answer(lane, profile=None)
+    if not answer_text:
+        return None
+    domain = _lane_domain(lane)
+    return MessageResponse(
+        message_text=answer_text,
+        mode=OrchestrationMode.structured_tool,
+        classification=IntentClassification(
+            domain=domain,
+            access_tier=AccessTier.public,
+            confidence=1.0,
+            reason=f"specialist_supervisor_local_public_canonical_lane:{lane}",
+        ),
+        retrieval_backend=RetrievalBackend.none,
+        selected_tools=['get_public_school_profile'],
+        citations=[],
+        visual_assets=[],
+        suggested_replies=[],
+        calendar_events=[],
+        evidence_pack=None,
+        needs_authentication=False,
+        graph_path=["specialist_supervisor", "local_public_canonical_lane", lane],
+        risk_flags=[],
+        reason=f"specialist_supervisor_local_public_canonical_lane:{lane}",
+        used_llm=False,
+        llm_stages=[],
+        final_polish_eligible=False,
+        final_polish_applied=False,
+        final_polish_mode='skip',
+        final_polish_reason='deterministic_answer',
+        final_polish_changed_text=False,
+        final_polish_preserved_fallback=False,
+    )
+
+
 def _pilot_client(*, pilot_url: str, timeout_seconds: float) -> httpx.AsyncClient:
     cache_key = (pilot_url.rstrip("/"), round(float(timeout_seconds), 3))
     client = _REMOTE_PILOT_CLIENTS.get(cache_key)
@@ -116,6 +169,27 @@ def _pilot_client(*, pilot_url: str, timeout_seconds: float) -> httpx.AsyncClien
     return client
 
 
+def _pilot_is_temporarily_open_circuit(pilot_url: str) -> bool:
+    failure_state = _REMOTE_PILOT_FAILURES.get(pilot_url.rstrip("/"))
+    if failure_state is None:
+        return False
+    _count, blocked_until = failure_state
+    return blocked_until > time.monotonic()
+
+
+def _record_pilot_failure(pilot_url: str) -> None:
+    key = pilot_url.rstrip("/")
+    count, blocked_until = _REMOTE_PILOT_FAILURES.get(key, (0, 0.0))
+    now = time.monotonic()
+    new_count = count + 1 if blocked_until <= now else count + 1
+    cooldown = 10.0 if new_count == 1 else 20.0 if new_count == 2 else 30.0
+    _REMOTE_PILOT_FAILURES[key] = (new_count, now + cooldown if cooldown else 0.0)
+
+
+def _clear_pilot_failure_state(pilot_url: str) -> None:
+    _REMOTE_PILOT_FAILURES.pop(pilot_url.rstrip("/"), None)
+
+
 class SpecialistSupervisorEngine(ResponseEngine):
     name = "specialist_supervisor"
     ready = False
@@ -123,6 +197,8 @@ class SpecialistSupervisorEngine(ResponseEngine):
     async def _call_remote_pilot(self, *, request: Any, settings: Any) -> dict[str, Any] | None:
         pilot_url = str(getattr(settings, "specialist_supervisor_pilot_url", "") or "").strip()
         if not pilot_url:
+            return None
+        if _pilot_is_temporarily_open_circuit(pilot_url):
             return None
         timeout_seconds = float(getattr(settings, "specialist_supervisor_pilot_timeout_seconds", 18.0) or 18.0)
         client = _pilot_client(pilot_url=pilot_url, timeout_seconds=timeout_seconds)
@@ -139,25 +215,41 @@ class SpecialistSupervisorEngine(ResponseEngine):
                 ),
                 "allow_graph_rag": bool(getattr(request, "allow_graph_rag", True)),
                 "allow_handoff": bool(getattr(request, "allow_handoff", True)),
+                "debug_options": dict(getattr(request, "debug_options", {}) or {}),
             },
         )
         response.raise_for_status()
         payload = response.json()
+        _clear_pilot_failure_state(pilot_url)
         return payload if isinstance(payload, dict) else None
 
     async def respond(self, *, request: Any, settings: Any, engine_mode: str | None = None) -> Any:
         strict_isolation = bool(getattr(settings, "strict_framework_isolation_enabled", False))
+        pilot_url = str(getattr(settings, "specialist_supervisor_pilot_url", "") or "").strip()
+        request_user = getattr(request, "user", None)
+        is_effectively_public = not bool(getattr(request_user, "authenticated", False))
+        llm_forced_mode = bool(getattr(settings, 'feature_flag_final_polish_force_llm', False)) or bool(
+            (getattr(request, 'debug_options', {}) or {}).get('llm_forced_mode')
+        )
+        if is_effectively_public and not llm_forced_mode:
+            canonical_lane = match_public_canonical_lane(str(getattr(request, "message", "") or ""))
+            if canonical_lane:
+                local_public_answer = _local_public_canonical_lane_response(request=request, lane=canonical_lane)
+                if local_public_answer is not None:
+                    return local_public_answer
         try:
             payload = await self._call_remote_pilot(request=request, settings=settings)
         except Exception:
             logger.exception("specialist_supervisor_http_failed")
+            if pilot_url:
+                _record_pilot_failure(pilot_url)
             payload = None
 
         answer = payload.get("answer") if isinstance(payload, dict) and isinstance(payload.get("answer"), dict) else None
         if isinstance(answer, dict):
             return MessageResponse.model_validate(_normalize_remote_answer(answer))
 
-        if strict_isolation:
+        if strict_isolation and not is_effectively_public:
             return MessageResponse(
                 message_text=_strict_safe_response_text(request=request),
                 mode=OrchestrationMode.clarify,
@@ -178,6 +270,8 @@ class SpecialistSupervisorEngine(ResponseEngine):
                 graph_path=["specialist_supervisor", "safe_fallback"],
                 risk_flags=["dependency_unavailable"],
                 reason="specialist_supervisor_strict_safe_fallback",
+                used_llm=False,
+                llm_stages=[],
             )
 
         from ..runtime import generate_message_response

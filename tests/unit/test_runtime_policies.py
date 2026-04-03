@@ -3,7 +3,13 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from ai_orchestrator.models import AccessTier, OrchestrationMode, QueryDomain
-from ai_orchestrator.runtime import _apply_protected_domain_rescue, _should_polish_structured_answer
+from ai_orchestrator.runtime import (
+    _apply_protected_domain_rescue,
+    _explicit_protected_domain_hint,
+    _is_public_support_navigation_query,
+    _looks_like_public_documentary_open_query,
+    _should_polish_structured_answer,
+)
 
 
 def _preview(*, reason: str, domain: QueryDomain = QueryDomain.institution) -> SimpleNamespace:
@@ -135,3 +141,46 @@ def test_protected_domain_rescue_does_not_steal_restricted_document_query() -> N
     )
     assert applied is False
     assert preview.mode is OrchestrationMode.clarify
+
+
+def test_public_explanatory_bundle_query_does_not_trigger_support_navigation_rescue() -> None:
+    assert _is_public_support_navigation_query(
+        'Se eu quiser entender o suporte ao aluno alem da sala regular, como periodo integral e estudo orientado se completam no material publico da escola?'
+    ) is False
+
+
+def test_explicit_protected_domain_hint_ignores_public_canonical_conduct_prompt() -> None:
+    hinted = _explicit_protected_domain_hint(
+        'Como frequencia, pontualidade e convivencia aparecem como um mesmo eixo de acompanhamento estudantil no regulamento publico?',
+        actor=_guardian_actor(),
+        conversation_context=None,
+    )
+    assert hinted is None
+
+
+def test_public_documentary_open_query_blocks_generic_profile_leak() -> None:
+    assert _looks_like_public_documentary_open_query(
+        'Quero entender como a escola costura atividade externa, autorizacoes de familia e saude do estudante na base publica.'
+    ) is True
+
+
+from ai_orchestrator.models import IntentClassification, MessageResponse, RetrievalBackend
+
+
+def test_message_response_supports_explicit_llm_debug_fields() -> None:
+    response = MessageResponse(
+        message_text='ok',
+        mode=OrchestrationMode.structured_tool,
+        classification=IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=1.0,
+            reason='test',
+        ),
+        retrieval_backend=RetrievalBackend.none,
+        reason='test_reason',
+        used_llm=True,
+        llm_stages=['answer_composition'],
+    )
+    assert response.used_llm is True
+    assert response.llm_stages == ['answer_composition']

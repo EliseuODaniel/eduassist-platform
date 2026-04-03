@@ -9,12 +9,13 @@ from .evidence_pack import (
     build_retrieval_evidence_pack,
     build_structured_tool_evidence_pack,
 )
+from .final_polish_policy import build_final_polish_decision
 from .kernel_runtime import (
     _maybe_contextual_public_direct_answer,
     _maybe_hypothetical_public_pricing_answer,
     _maybe_public_unpublished_direct_answer,
 )
-from .llm_provider import compose_with_provider
+from .llm_provider import compose_with_provider, polish_structured_with_provider, revise_with_provider
 from .models import (
     AccessTier,
     IntentClassification,
@@ -100,6 +101,7 @@ async def maybe_execute_python_functions_native_plan(
     deterministic_fallback_text: str | None = None
     query_hints: set[str] = set()
     semantic_judge_used = False
+    llm_stages: list[str] = []
     answer_verifier_fallback_used = False
     evidence_pack = None
 
@@ -448,6 +450,8 @@ async def maybe_execute_python_functions_native_plan(
                     school_profile=school_profile,
                     context_pack=retrieval_context_pack,
                 )
+                if llm_text:
+                    llm_stages.append('answer_composition')
                 message_text = llm_text or deterministic_fallback_text
             execution_reason = 'python_functions_native_public_retrieval'
             evidence_pack = build_retrieval_evidence_pack(
@@ -458,6 +462,62 @@ async def maybe_execute_python_functions_native_plan(
             )
     else:  # pragma: no cover - native path is intentionally bounded
         return None
+
+    retrieval_backend = preview.retrieval_backend
+    if preview.mode is OrchestrationMode.hybrid_retrieval:
+        retrieval_backend = RetrievalBackend.qdrant_hybrid
+
+    final_polish_decision = build_final_polish_decision(
+        settings=settings,
+        stack_name=engine_name,
+        request=request,
+        preview=preview,
+        response_reason=execution_reason,
+        llm_stages=llm_stages,
+        citations_count=len(citations),
+        support_count=0,
+        retrieval_backend=retrieval_backend,
+    )
+    final_polish_applied = False
+    final_polish_changed_text = False
+    final_polish_preserved_fallback = False
+    if final_polish_decision.apply_polish:
+        original_text = message_text
+        raw_polished_text = await polish_structured_with_provider(
+            settings=settings,
+            request_message=request.message,
+            preview=preview,
+            draft_text=message_text,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
+        polished_text = rt._preserve_capability_anchor_terms(
+            original_text=original_text,
+            polished_text=raw_polished_text,
+            request_message=request.message,
+        )
+        final_polish_preserved_fallback = bool(
+            raw_polished_text
+            and polished_text == original_text
+            and rt._normalize_text(raw_polished_text) != rt._normalize_text(original_text)
+        )
+        if polished_text:
+            llm_stages.append('structured_polish')
+            final_polish_applied = True
+            final_polish_changed_text = rt._normalize_text(polished_text) != rt._normalize_text(original_text)
+            message_text = polished_text
+    if final_polish_decision.run_response_critic:
+        revised_text = await revise_with_provider(
+            settings=settings,
+            request_message=request.message,
+            preview=preview,
+            draft_text=message_text,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
+        if revised_text:
+            llm_stages.append('response_critic')
+            message_text = revised_text
 
     verifier_slot_memory = rt._build_conversation_slot_memory(
         actor=actor,
@@ -476,6 +536,8 @@ async def maybe_execute_python_functions_native_plan(
         public_plan=public_plan,
         slot_memory=verifier_slot_memory,
     )
+    if semantic_judge_used and 'answer_verifier_judge' not in llm_stages:
+        llm_stages.append('answer_verifier_judge')
     if not verification.valid and deterministic_fallback_text:
         message_text = deterministic_fallback_text
         answer_verifier_fallback_used = True
@@ -537,10 +599,6 @@ async def maybe_execute_python_functions_native_plan(
             ]
         )
     )
-    retrieval_backend = preview.retrieval_backend
-    if preview.mode is OrchestrationMode.hybrid_retrieval:
-        retrieval_backend = RetrievalBackend.qdrant_hybrid
-
     response = MessageResponse(
         message_text=message_text,
         mode=preview.mode,
@@ -560,6 +618,14 @@ async def maybe_execute_python_functions_native_plan(
         ],
         risk_flags=preview.risk_flags,
         reason=execution_reason,
+        used_llm=bool(llm_stages),
+        llm_stages=list(dict.fromkeys(llm_stages)),
+        final_polish_eligible=final_polish_decision.eligible,
+        final_polish_applied=final_polish_applied,
+        final_polish_mode=final_polish_decision.mode,
+        final_polish_reason=final_polish_decision.reason,
+        final_polish_changed_text=final_polish_changed_text,
+        final_polish_preserved_fallback=final_polish_preserved_fallback,
     )
     reflection = KernelReflection(
         grounded=verification.valid,

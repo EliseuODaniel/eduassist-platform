@@ -127,6 +127,15 @@ class Settings(BaseSettings):
     orchestrator_engine: str = 'langgraph'
     feature_flag_primary_orchestration_stack: str | None = None
     feature_flag_telegram_debug_trace_footer_enabled: bool = False
+    feature_flag_final_polish_enabled: bool = True
+    feature_flag_final_polish_public_enabled: bool = True
+    feature_flag_final_polish_protected_enabled: bool = False
+    feature_flag_final_polish_stacks: str = 'langgraph,llamaindex,python_functions'
+    feature_flag_final_polish_budget_ms: int = 600
+    feature_flag_final_polish_max_delta_ratio: float = 0.25
+    feature_flag_final_polish_telegram_only: bool = False
+    feature_flag_final_polish_force_llm: bool = False
+    feature_flag_final_polish_debug_metadata_enabled: bool = True
     specialist_supervisor_pilot_url: str | None = None
     specialist_supervisor_pilot_timeout_seconds: float = 18.0
     orchestrator_experiment_enabled: bool = False
@@ -546,6 +555,14 @@ def _build_debug_trace(
         'risk_flags': canonicalize_risk_flags(response.risk_flags),
         'retrieval': retrieval,
         'reason': response.reason,
+        'used_llm': bool(response.used_llm),
+        'llm_stages': [str(item).strip() for item in (response.llm_stages or []) if str(item).strip()],
+        'final_polish_eligible': bool(getattr(response, 'final_polish_eligible', False)),
+        'final_polish_applied': bool(getattr(response, 'final_polish_applied', False)),
+        'final_polish_mode': str(getattr(response, 'final_polish_mode', '') or ''),
+        'final_polish_reason': str(getattr(response, 'final_polish_reason', '') or ''),
+        'final_polish_changed_text': bool(getattr(response, 'final_polish_changed_text', False)),
+        'final_polish_preserved_fallback': bool(getattr(response, 'final_polish_preserved_fallback', False)),
     }
     if isinstance(getattr(bundle, 'experiment', None), dict):
         trace['experiment'] = dict(bundle.experiment)
@@ -564,16 +581,32 @@ def _format_telegram_debug_footer(trace: dict[str, Any]) -> str:
         f"supports={int(retrieval.get('support_count') or 0)}",
         f"citations={int(retrieval.get('citation_count') or 0)}",
     ]
+    llm_stages = [str(item).strip() for item in trace.get('llm_stages', []) if str(item).strip()]
+    llm_value = 'yes' if bool(trace.get('used_llm')) else 'no'
+    if llm_stages:
+        llm_value = f"{llm_value} ({', '.join(llm_stages)})"
+    polish_mode = str(trace.get('final_polish_mode') or 'skip')
+    polish_reason = str(trace.get('final_polish_reason') or 'none')
+    polish_value = polish_mode
+    if bool(trace.get('final_polish_applied')):
+        polish_value = f"{polish_value} (applied)"
+    elif bool(trace.get('final_polish_eligible')):
+        polish_value = f"{polish_value} (eligible)"
+    if bool(trace.get('final_polish_preserved_fallback')):
+        polish_value = f"{polish_value}, rollback"
     lines = [
         '',
         '[debug]',
         f"stack: {trace.get('stack') or 'unknown'}",
         f"bundle: {trace.get('bundle_mode') or 'unknown'}",
         f"path: {' > '.join(path) if path else 'none'}",
+        f"llm: {llm_value}",
+        f"final_polish: {polish_value}",
         f"agents: {_truncate_debug_list(agents)}",
         f"resources: {_truncate_debug_list(resources)}",
         f"retrieval: {', '.join(retrieval_parts)}",
         f"reason: {str(trace.get('reason') or 'none')}",
+        f"final_polish_reason: {polish_reason}",
     ]
     return '\n'.join(lines)
 

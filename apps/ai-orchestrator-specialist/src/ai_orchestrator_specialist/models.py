@@ -30,6 +30,7 @@ class SpecialistSupervisorRequest(BaseModel):
     user: UserContext = Field(default_factory=UserContext)
     allow_graph_rag: bool = True
     allow_handoff: bool = True
+    debug_options: dict[str, Any] = Field(default_factory=dict)
 
 
 class MessageResponseCitation(BaseModel):
@@ -81,6 +82,14 @@ class SupervisorAnswerPayload(BaseModel):
     graph_path: list[str] = Field(default_factory=list)
     risk_flags: list[str] = Field(default_factory=list)
     reason: str
+    used_llm: bool = False
+    llm_stages: list[str] = Field(default_factory=list)
+    final_polish_eligible: bool = False
+    final_polish_applied: bool = False
+    final_polish_mode: str | None = None
+    final_polish_reason: str | None = None
+    final_polish_changed_text: bool = False
+    final_polish_preserved_fallback: bool = False
 
     @model_validator(mode="after")
     def _normalize_contract(self) -> "SupervisorAnswerPayload":

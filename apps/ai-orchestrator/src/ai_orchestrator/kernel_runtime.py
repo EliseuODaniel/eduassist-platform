@@ -10,6 +10,7 @@ from .evidence_pack import (
     build_retrieval_evidence_pack,
     build_structured_tool_evidence_pack,
 )
+from .final_polish_policy import build_final_polish_decision
 from .graph_rag_runtime import run_graph_rag_query
 from .llm_provider import compose_with_provider, polish_structured_with_provider, revise_with_provider
 from .models import (
@@ -215,6 +216,8 @@ async def _maybe_contextual_public_direct_answer(
     school_profile: dict[str, Any],
     conversation_context: dict[str, Any] | None,
 ) -> str | None:
+    if rt._llm_forced_mode_enabled(settings=settings, request=request):
+        return None
     is_public_context = preview.classification.access_tier is AccessTier.public or not request.user.authenticated
     if not is_public_context:
         return None
@@ -555,6 +558,7 @@ async def execute_kernel_plan(
     deterministic_fallback_text: str | None = None
     query_hints: set[str] = set()
     semantic_judge_used = False
+    llm_stages: list[str] = []
     answer_verifier_fallback_used = False
     contextual_public_answer = await _maybe_contextual_public_direct_answer(
         request=request,
@@ -837,13 +841,28 @@ async def execute_kernel_plan(
         )
         deterministic_fallback_text = message_text
 
+    final_polish_decision = build_final_polish_decision(
+        settings=settings,
+        stack_name=effective_plan.stack_name,
+        request=request,
+        preview=preview,
+        response_reason=preview.reason,
+        llm_stages=llm_stages,
+        citations_count=len(citations),
+        support_count=0,
+        retrieval_backend=preview.retrieval_backend,
+    )
+    final_polish_applied = False
+    final_polish_changed_text = False
+    final_polish_preserved_fallback = False
+
     if not (
         prefer_fast_public_path
         and preview.mode is OrchestrationMode.structured_tool
         and preview.classification.access_tier is AccessTier.public
         and preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar}
-    ) and rt._should_polish_structured_answer(preview=preview, request=request):
-        polished_text = await polish_structured_with_provider(
+    ) and final_polish_decision.apply_polish:
+        raw_polished_text = await polish_structured_with_provider(
             settings=settings,
             request_message=request.message,
             preview=preview,
@@ -853,10 +872,18 @@ async def execute_kernel_plan(
         )
         polished_text = rt._preserve_capability_anchor_terms(
             original_text=message_text,
-            polished_text=polished_text,
+            polished_text=raw_polished_text,
             request_message=request.message,
         )
+        final_polish_preserved_fallback = bool(
+            raw_polished_text
+            and polished_text == message_text
+            and rt._normalize_text(raw_polished_text) != rt._normalize_text(message_text)
+        )
         if polished_text:
+            llm_stages.append('structured_polish')
+            final_polish_applied = True
+            final_polish_changed_text = rt._normalize_text(polished_text) != rt._normalize_text(message_text)
             message_text = polished_text
 
     if (
@@ -865,8 +892,7 @@ async def execute_kernel_plan(
             and preview.classification.access_tier is AccessTier.public
             and preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar}
         )
-        and settings.llm_provider == 'openai'
-        and rt._should_run_response_critic(preview=preview, request=request)
+        and final_polish_decision.run_response_critic
     ):
         revised_text = await revise_with_provider(
             settings=settings,
@@ -877,6 +903,7 @@ async def execute_kernel_plan(
             school_profile=school_profile,
         )
         if revised_text:
+            llm_stages.append('response_critic')
             message_text = revised_text
 
     verifier_slot_memory = rt._build_conversation_slot_memory(
@@ -896,6 +923,8 @@ async def execute_kernel_plan(
         public_plan=public_plan,
         slot_memory=verifier_slot_memory,
     )
+    if semantic_judge_used and 'answer_verifier_judge' not in llm_stages:
+        llm_stages.append('answer_verifier_judge')
     if not verification.valid and deterministic_fallback_text:
         message_text = deterministic_fallback_text
         answer_verifier_fallback_used = True
@@ -990,6 +1019,14 @@ async def execute_kernel_plan(
             *(["valid_but_unpublished"] if unpublished_public_answer and "valid_but_unpublished" not in preview.risk_flags else []),
         ],
         reason=preview.reason,
+        used_llm=bool(llm_stages),
+        llm_stages=list(dict.fromkeys(llm_stages)),
+        final_polish_eligible=final_polish_decision.eligible,
+        final_polish_applied=final_polish_applied,
+        final_polish_mode=final_polish_decision.mode,
+        final_polish_reason=final_polish_decision.reason,
+        final_polish_changed_text=final_polish_changed_text,
+        final_polish_preserved_fallback=final_polish_preserved_fallback,
     )
     reflection = KernelReflection(
         grounded=verification.valid,

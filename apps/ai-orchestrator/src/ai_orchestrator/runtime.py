@@ -30,6 +30,7 @@ from .evidence_pack import (
     build_retrieval_evidence_pack,
     build_structured_tool_evidence_pack,
 )
+from .final_polish_policy import build_final_polish_decision
 from .graph import to_preview
 from .graph_rag_runtime import graph_rag_workspace_ready, run_graph_rag_query
 from .langgraph_runtime import (
@@ -96,6 +97,15 @@ DEFAULT_PUBLIC_HELP = (
 )
 _PUBLIC_RESOURCE_CACHE_TTL_SECONDS = 120.0
 _PUBLIC_RESOURCE_CACHE: dict[str, dict[str, Any]] = {}
+
+
+def _llm_forced_mode_enabled(*, settings: Any, request: MessageResponseRequest | Any | None = None) -> bool:
+    if bool(getattr(settings, 'feature_flag_final_polish_force_llm', False)):
+        return True
+    debug_options = getattr(request, 'debug_options', None)
+    if isinstance(debug_options, dict):
+        return bool(debug_options.get('llm_forced_mode'))
+    return False
 
 ATTENDANCE_TERMS = {'frequencia', 'falta', 'faltas', 'presenca', 'presencas'}
 GRADE_TERMS = {'nota', 'notas', 'boletim', 'avaliacao', 'avaliacoes', 'prova', 'provas'}
@@ -5782,10 +5792,22 @@ def _build_public_profile_context(
 def _resolve_public_profile_act(context: PublicProfileContext) -> str:
     if _is_acknowledgement_query(context.source_message):
         return 'acknowledgement'
+    if _looks_like_public_documentary_open_query(context.source_message):
+        return 'canonical_fact'
     if context.semantic_act and context.semantic_act != 'canonical_fact':
+        if (
+            context.semantic_act in {'comparative', 'highlight', 'features', 'curriculum'}
+            and _looks_like_public_documentary_open_query(context.source_message)
+        ):
+            return 'canonical_fact'
         return context.semantic_act
     matched_rule = _match_public_act_rule(context.source_message)
     if matched_rule is not None:
+        if (
+            matched_rule.name in {'comparative', 'highlight', 'features', 'curriculum'}
+            and _looks_like_public_documentary_open_query(context.source_message)
+        ):
+            return 'canonical_fact'
         return matched_rule.name
     return 'canonical_fact'
 
@@ -7021,6 +7043,7 @@ async def _compose_public_profile_answer_agentic(
     semantic_plan: PublicInstitutionPlan | None = None,
     deterministic_text_sink: dict[str, Any] | None = None,
 ) -> str:
+    llm_forced_mode = _llm_forced_mode_enabled(settings=settings)
     deterministic_text = _compose_public_profile_answer(
         profile,
         message,
@@ -7040,7 +7063,7 @@ async def _compose_public_profile_answer_agentic(
         semantic_plan=semantic_plan,
     )
     resolved_act = _resolve_public_profile_act(context)
-    if resolved_act not in AGENTIC_PUBLIC_COMPOSITION_ACTS:
+    if resolved_act not in AGENTIC_PUBLIC_COMPOSITION_ACTS and not llm_forced_mode:
         return deterministic_text
 
     evidence_bundle = build_public_evidence_bundle(
@@ -7089,6 +7112,13 @@ def _compose_public_profile_answer(
         conversation_context=conversation_context,
         semantic_plan=semantic_plan,
     )
+    canonical_lane = match_public_canonical_lane(context.source_message) or match_public_canonical_lane(
+        original_message or message
+    )
+    if canonical_lane:
+        lane_answer = compose_public_canonical_lane_answer(canonical_lane, profile=profile)
+        if lane_answer:
+            return lane_answer
     fast_public_channel_answer = _try_public_channel_fast_answer(
         message=context.source_message,
         profile=profile,
@@ -8612,6 +8642,11 @@ def _prioritize_public_act_rules(
 ) -> tuple[PublicActRule, ...]:
     if len(matched_rules) < 2:
         return matched_rules
+    if _looks_like_public_documentary_open_query(message):
+        blocked = {'comparative', 'highlight', 'features', 'curriculum'}
+        filtered_rules = tuple(rule for rule in matched_rules if rule.name not in blocked)
+        if filtered_rules:
+            matched_rules = filtered_rules
 
     feature_requested = bool(_requested_public_features(message))
     channel_requested = _requested_contact_channel(message) is not None
@@ -8861,6 +8896,8 @@ def _explicit_protected_domain_hint(
     normalized = _normalize_text(message)
     if looks_like_restricted_document_query(message):
         return None
+    if match_public_canonical_lane(message):
+        return None
     if (
         _is_service_routing_query(message)
         or _matches_public_contact_rule(message)
@@ -9017,6 +9054,8 @@ def _is_public_support_navigation_query(message: str) -> bool:
     }
     if any(_message_matches_term(normalized, term) for term in explicit_handoff_terms):
         return False
+    if _looks_like_public_explanatory_bundle_query(message):
+        return False
     return any(
         matcher(message)
         for matcher in (
@@ -9030,6 +9069,117 @@ def _is_public_support_navigation_query(message: str) -> bool:
             _matches_public_highlight_rule,
         )
     )
+
+
+def _looks_like_public_explanatory_bundle_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if match_public_canonical_lane(message):
+        return True
+    explanatory_terms = {
+        'como',
+        'quais evidencias',
+        'que evidencias',
+        'quero entender',
+        'quero uma leitura ampla',
+        'como se completam',
+        'como aparecem combinados',
+        'como o material publico liga',
+        'como a escola costura',
+        'como a familia sai',
+        'como frequência',
+        'como frequencia',
+    }
+    topic_terms = {
+        'inclus',
+        'acessib',
+        'integral',
+        'estudo orientado',
+        'medic',
+        'emerg',
+        'saida',
+        'autoriz',
+        'transporte',
+        'uniforme',
+        'alimenta',
+        'direcao',
+        'direção',
+        'coordenacao',
+        'coordenação',
+        'pontualidade',
+        'convivencia',
+        'convivência',
+        'frequencia',
+        'frequência',
+    }
+    topic_count = sum(1 for term in topic_terms if term in normalized)
+    return topic_count >= 2 and any(term in normalized for term in explanatory_terms)
+
+
+def _looks_like_public_documentary_open_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if match_public_canonical_lane(message):
+        return True
+    documentary_verbs = {
+        'quero entender',
+        'me explique',
+        'explique',
+        'como a escola',
+        'como a familia',
+        'como a família',
+        'como isso se organiza',
+        'como isso se conecta',
+        'como isso se articula',
+        'qual imagem institucional',
+        'qual a imagem institucional',
+        'que leitura ampla',
+        'que leitura integrada',
+        'quais evidencias',
+        'quais evidências',
+        'que evidencias',
+        'que evidências',
+    }
+    documentary_topics = {
+        'inclus',
+        'acessib',
+        'seguran',
+        'apoio',
+        'estudo orientado',
+        'turno estendido',
+        'contraturno',
+        'saude',
+        'saúde',
+        'emerg',
+        'avali',
+        'saida',
+        'saída',
+        'autoriz',
+        'atividade externa',
+        'transporte',
+        'uniforme',
+        'alimenta',
+        'cantina',
+        'refeicao',
+        'refeição',
+        'deslocamento',
+        'identificacao',
+        'identificação',
+        'governan',
+        'protocolo',
+        'lideranca',
+        'liderança',
+        'coordenacao',
+        'coordenação',
+        'direcao',
+        'direção',
+        'responsaveis',
+        'responsáveis',
+        'devolut',
+        'recompos',
+        'atendimento digital',
+        'encaminhamento',
+    }
+    topic_hits = sum(1 for term in documentary_topics if term in normalized)
+    return topic_hits >= 2 and any(term in normalized for term in documentary_verbs)
 
 
 def _apply_public_support_rescue(
@@ -14568,7 +14718,8 @@ async def _compose_structured_tool_answer(
             )
             or plan.conversation_act in {'curriculum', 'comparative'}
         )
-        if (prefer_fast_public_path or should_prefer_deterministic_public_answer) and profile:
+        llm_forced_mode = _llm_forced_mode_enabled(settings=settings, request=request)
+        if not llm_forced_mode and (prefer_fast_public_path or should_prefer_deterministic_public_answer) and profile:
             deterministic_public_answer = _compose_public_profile_answer(
                 profile,
                 analysis_message,
@@ -14581,15 +14732,17 @@ async def _compose_structured_tool_answer(
                 if public_plan_sink is not None:
                     public_plan_sink['deterministic_text'] = deterministic_public_answer
                 return deterministic_public_answer
-        fast_public_channel_answer = _try_public_channel_fast_answer(
-            message=request.message,
-            profile=profile,
-        )
+        fast_public_channel_answer = None
+        if not llm_forced_mode:
+            fast_public_channel_answer = _try_public_channel_fast_answer(
+                message=request.message,
+                profile=profile,
+            )
         if fast_public_channel_answer:
             if public_plan_sink is not None:
                 public_plan_sink['deterministic_text'] = fast_public_channel_answer
             return fast_public_channel_answer
-        if prefer_fast_public_path and profile:
+        if not llm_forced_mode and prefer_fast_public_path and profile:
             deterministic_public_answer = _compose_public_profile_answer(
                 profile,
                 analysis_message,
@@ -15720,6 +15873,8 @@ async def generate_message_response(
                         preview=preview,
                     ),
                     suggested_replies=suggested_replies,
+                    used_llm=False,
+                    llm_stages=[],
                 )
             preview = to_preview(state)
         langgraph_trace_metadata = _capture_langgraph_trace_metadata(
@@ -15962,14 +16117,18 @@ async def generate_message_response(
                     preview=preview,
                 ),
                 suggested_replies=suggested_replies,
+                used_llm=False,
+                llm_stages=[],
             )
 
+        llm_forced_mode = _llm_forced_mode_enabled(settings=settings, request=request)
         fast_public_channel_answer = None
-        public_canonical_lane_request = match_public_canonical_lane(request.message)
+        public_canonical_lane_request = None if llm_forced_mode else match_public_canonical_lane(request.message)
         if (
             preview.classification.domain is QueryDomain.institution
             and preview.classification.access_tier is AccessTier.public
             and not public_canonical_lane_request
+            and not llm_forced_mode
             and _base_profile_supports_fast_public_answer(
                 message=request.message,
                 profile=school_profile,
@@ -16057,6 +16216,8 @@ async def generate_message_response(
                     preview=preview,
                 ),
                 suggested_replies=suggested_replies,
+                used_llm=False,
+                llm_stages=[],
             )
 
         if preview.mode is OrchestrationMode.hybrid_retrieval:
@@ -16199,6 +16360,7 @@ async def generate_message_response(
                     )
 
         llm_text: str | None = None
+        llm_stages: list[str] = []
 
         if preview.mode is OrchestrationMode.structured_tool:
             with start_span('eduassist.orchestration.structured_tool', tracer_name='eduassist.ai_orchestrator.runtime'):
@@ -16457,6 +16619,8 @@ async def generate_message_response(
                                 conversation_context=context_payload,
                                 school_profile=school_profile,
                             )
+                            if llm_text:
+                                llm_stages.append('answer_composition')
                             set_span_attributes(
                                 **{
                                     'eduassist.orchestration.used_llm': bool(llm_text),
@@ -16483,6 +16647,8 @@ async def generate_message_response(
                         conversation_context=context_payload,
                         school_profile=school_profile,
                     )
+                    if llm_text:
+                        llm_stages.append('answer_composition')
                     set_span_attributes(
                         **{
                             'eduassist.orchestration.used_llm': bool(llm_text),
@@ -16492,9 +16658,28 @@ async def generate_message_response(
                     message_text = llm_text or deterministic_answer_candidate
                 deterministic_fallback_text = deterministic_answer_candidate
 
-        if _should_polish_structured_answer(preview=preview, request=request):
+        retrieval_backend = preview.retrieval_backend
+        if preview.mode is OrchestrationMode.hybrid_retrieval:
+            retrieval_backend = RetrievalBackend.qdrant_hybrid
+
+        final_polish_decision = build_final_polish_decision(
+            settings=settings,
+            stack_name=engine_name,
+            request=request,
+            preview=preview,
+            response_reason=preview.reason,
+            llm_stages=llm_stages,
+            citations_count=len(citations),
+            support_count=0,
+            retrieval_backend=retrieval_backend,
+        )
+        final_polish_applied = False
+        final_polish_changed_text = False
+        final_polish_preserved_fallback = False
+
+        if final_polish_decision.apply_polish:
             original_structured_text = message_text
-            polished_text = await polish_structured_with_provider(
+            raw_polished_text = await polish_structured_with_provider(
                 settings=settings,
                 request_message=request.message,
                 preview=preview,
@@ -16504,18 +16689,26 @@ async def generate_message_response(
             )
             set_span_attributes(
                 **{
-                    'eduassist.orchestration.structured_polish_used': bool(polished_text),
+                    'eduassist.orchestration.structured_polish_used': bool(raw_polished_text),
                 }
             )
             polished_text = _preserve_capability_anchor_terms(
                 original_text=original_structured_text,
-                polished_text=polished_text,
+                polished_text=raw_polished_text,
                 request_message=request.message,
             )
+            final_polish_preserved_fallback = bool(
+                raw_polished_text
+                and polished_text == original_structured_text
+                and _normalize_text(raw_polished_text) != _normalize_text(original_structured_text)
+            )
             if polished_text:
+                llm_stages.append('structured_polish')
+                final_polish_applied = True
+                final_polish_changed_text = _normalize_text(polished_text) != _normalize_text(original_structured_text)
                 message_text = polished_text
 
-        if settings.llm_provider == 'openai' and _should_run_response_critic(preview=preview, request=request):
+        if final_polish_decision.run_response_critic:
             revised_text = await revise_with_provider(
                 settings=settings,
                 request_message=request.message,
@@ -16530,6 +16723,7 @@ async def generate_message_response(
                 }
             )
             if revised_text:
+                llm_stages.append('response_critic')
                 message_text = revised_text
 
         verifier_slot_memory = _build_conversation_slot_memory(
@@ -16549,6 +16743,8 @@ async def generate_message_response(
             public_plan=public_plan,
             slot_memory=verifier_slot_memory,
         )
+        if semantic_judge_used and 'answer_verifier_judge' not in llm_stages:
+            llm_stages.append('answer_verifier_judge')
         set_span_attributes(
             **{
                 'eduassist.orchestration.answer_verifier_valid': verification.valid,
@@ -16667,9 +16863,6 @@ async def generate_message_response(
             if 'get_public_school_profile' not in selected_tools:
                 selected_tools = [*selected_tools, 'get_public_school_profile']
         selected_tools = list(selected_tools)
-        retrieval_backend = preview.retrieval_backend
-        if preview.mode is OrchestrationMode.hybrid_retrieval:
-            retrieval_backend = RetrievalBackend.qdrant_hybrid
         evidence_pack = _build_runtime_evidence_pack(
             request_message=request.message,
             message_text=message_text,
@@ -16701,4 +16894,12 @@ async def generate_message_response(
                 preview=preview,
             ),
             reason=preview.reason,
+            used_llm=bool(llm_stages),
+            llm_stages=list(dict.fromkeys(llm_stages)),
+            final_polish_eligible=final_polish_decision.eligible,
+            final_polish_applied=final_polish_applied,
+            final_polish_mode=final_polish_decision.mode,
+            final_polish_reason=final_polish_decision.reason,
+            final_polish_changed_text=final_polish_changed_text,
+            final_polish_preserved_fallback=final_polish_preserved_fallback,
         )

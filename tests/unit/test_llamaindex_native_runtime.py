@@ -13,6 +13,7 @@ from ai_orchestrator.llamaindex_native_runtime import (
     _extract_public_summary_store_parent_ref_keys,
     _filter_search_to_document_keys,
     _looks_like_open_documentary_bundle_query,
+    _should_avoid_llamaindex_public_profile_fast_path,
     _run_public_hybrid_search,
     _should_skip_llamaindex_public_fast_paths,
     _should_use_llamaindex_llm_public_resolver,
@@ -258,9 +259,13 @@ def test_open_documentary_bundle_query_skips_fast_paths_without_explicit_citatio
         'e explique como esses documentos se influenciam ao longo do ano.'
     )
     assert _looks_like_open_documentary_bundle_query(message)
-    assert _should_skip_llamaindex_public_fast_paths(
-        message,
-        heuristic_decision=heuristic_decision,
+
+
+def test_documentary_open_query_avoids_llamaindex_public_profile_fast_path() -> None:
+    assert _should_avoid_llamaindex_public_profile_fast_path(
+        message='Quero entender qual imagem institucional surge quando junto autoridade escolar, atendimento digital e encaminhamento de impasses na base publica.',
+        public_plan=SimpleNamespace(conversation_act='highlight'),
+        native_decision=LlamaIndexNativePublicDecision(answer_mode='profile', conversation_act='highlight'),
     )
 
 
