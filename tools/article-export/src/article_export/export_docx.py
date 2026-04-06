@@ -13,8 +13,8 @@ from docx.shared import Pt
 
 
 ROOT_DIR = Path(__file__).resolve().parents[4]
-DEFAULT_SOURCE = ROOT_DIR / 'docs' / 'article' / 'eduassist-platform-academic-article.md'
-DEFAULT_METADATA = ROOT_DIR / 'docs' / 'article' / 'article-export-metadata.yaml'
+DEFAULT_SOURCE = ROOT_DIR / 'tmp' / 'tcc' / 'article' / 'eduassist-platform-academic-article.md'
+DEFAULT_METADATA = ROOT_DIR / 'tmp' / 'tcc' / 'article' / 'article-export-metadata.yaml'
 DEFAULT_OUTPUT = ROOT_DIR / 'artifacts' / 'article' / 'eduassist-platform-academic-article.docx'
 
 

@@ -1,202 +1,252 @@
 # EduAssist Platform
 
-Plataforma de atendimento escolar com IA, Telegram, dados mockados sobre infraestrutura real e foco explícito em segurança da informação.
+Plataforma de atendimento escolar com IA conversacional, integrada ao Telegram, desenvolvida sobre infraestrutura real e dados integralmente simulados. O projeto foi construído para um cenário escolar sensível: responder perguntas institucionais, consultar dados protegidos, negar acessos indevidos com segurança e manter trilha técnica suficiente para auditoria, avaliação e evolução contínua.
 
-## Status
+O repositório compara quatro caminhos de orquestração sobre a mesma base compartilhada de domínio, segurança, armazenamento, recuperação de informação e observabilidade:
 
-Este repositório nasce como um `greenfield rebuild`. O objetivo é substituir integralmente o protótipo anterior por uma plataforma nova, com arquitetura adequada para:
+- `langgraph`
+- `python_functions`
+- `llamaindex`
+- `specialist_supervisor`
 
-- atendimento de `pais`, `alunos`, `professores`, `secretaria`, `financeiro`, `coordenação` e `direção`;
-- uso de `Telegram` como canal principal;
-- consulta segura a dados escolares reais em bancos reais, mas com conteúdo `100% mockado`;
-- uso de IA generativa com `RAG`, `GraphRAG` seletivo, tool calling, grounding, citações e forte governança;
-- execução local via `Docker Compose`, com caminho opcional para `k3d` depois.
+## O que o projeto faz
 
-## Nome do projeto
+- atende perguntas públicas sobre calendário, matrícula, bolsas, secretaria e rotinas escolares;
+- responde consultas protegidas sobre notas, frequência, financeiro e situação administrativa;
+- protege dados sensíveis com autenticação, autorização contextual e negação segura;
+- compara quatro arquiteturas agênticas sob a mesma superfície experimental;
+- registra evidências, métricas e rastros técnicos para depuração e auditoria.
 
-Nome adotado para o novo repositório: `eduassist-platform`
+## Como a resposta é produzida
 
-Justificativa:
+O fluxo principal é simples de entender:
 
-- preserva continuidade semântica com o domínio do projeto;
-- é mais preciso do que `studio`;
-- comunica que o escopo é uma plataforma, não só um protótipo ou bot isolado.
+1. o usuário envia a pergunta pelo Telegram;
+2. o `telegram-gateway` recebe e normaliza a mensagem;
+3. o `ai-orchestrator` classifica o tipo de pergunta e decide qual caminho usar;
+4. perguntas estruturadas seguem para serviços internos confiáveis no `api-core`;
+5. perguntas documentais passam pela camada de recuperação de informação;
+6. se faltar contexto, o sistema pode pedir esclarecimento ou tentar nova busca com mais contexto;
+7. a camada final organiza a resposta em linguagem natural, sem perder o vínculo com a evidência;
+8. o Telegram recebe a resposta final.
 
-## Visão
+```mermaid
+flowchart LR
+    U["Usuário no Telegram"] --> TG["telegram-gateway"]
+    TG --> ORQ["ai-orchestrator"]
+    ORQ --> DEC["Decisão de estratégia"]
+    DEC -->|Dado estruturado| API["api-core"]
+    DEC -->|Pergunta documental| RET["Recuperação de informação"]
+    API --> PG["PostgreSQL"]
+    API --> POL["OPA + RLS"]
+    RET --> QD["Qdrant"]
+    RET --> FTS["PostgreSQL FTS"]
+    RET --> OBJ["MinIO"]
+    API --> EXP["Camada final de resposta"]
+    RET --> EXP
+    EXP --> TG
+    TG --> U
+```
 
-Construir uma plataforma robusta e funcional de atendimento escolar com IA para uma escola fictícia de ensino médio, capaz de responder perguntas institucionais, consultar dados acadêmicos e financeiros mockados, intermediar processos internos e operar com autenticação, autorização, auditoria e observabilidade desde o início.
+## Componentes principais
 
-## Objetivos estratégicos
+### Aplicações
 
-- Prover atendimento conversacional confiável via Telegram.
-- Separar rigorosamente conteúdo público, autenticado e sensível.
-- Garantir que o LLM nunca acesse o banco diretamente.
-- Tornar todo acesso a dados sensíveis auditável.
-- Manter ambiente local completo, reproduzível e utilizável em máquina pessoal.
-- Criar uma base documental e arquitetural apta a orientar implementação, pesquisa e redação acadêmica.
+- `api-core`: regras de negócio, identidade, autorização contextual, serviços estruturados e trilha de auditoria.
+- `ai-orchestrator`: classificação da pergunta, escolha do caminho, recuperação de informação, reparo de contexto e composição final da resposta.
+- `ai-orchestrator-specialist`: caminho premium, orientado à qualidade, usado no comparativo dos quatro caminhos.
+- `telegram-gateway`: webhook, idempotência, retentativa e entrega da resposta final no Telegram.
+- `admin-web`: interface operacional com autenticação via Keycloak.
+- `worker`: sincronização documental, sementes de dados e tarefas de apoio.
 
-## Decisões de alto nível
+### Infraestrutura
 
-- `Python + FastAPI` no backend principal.
-- `LangGraph` como motor principal de orquestração controlada, com trilha OpenAI nativa em `Responses API` e padrões do `Agents SDK` quando fizer sentido.
-- `Next.js` para painel administrativo.
-- `PostgreSQL` como source of truth transacional.
-- `Qdrant + PostgreSQL Full Text Search` como plano principal de retrieval para documentos e conhecimento institucional.
-- `Docling` para parsing, normalização e enriquecimento documental.
-- `pgvector` apenas como fallback de experimentação local e não como plano principal de retrieval.
-- `Keycloak + OPA + PostgreSQL RLS` para identidade e autorização.
-- `MinIO` para documentos e objetos.
-- `Redis` para cache, locks, idempotência e filas leves.
-- `OpenTelemetry + Grafana + Tempo + Loki` para tracing distribuido, logs centralizados e investigacao operacional.
-- quando a trilha OpenAI for adotada, `Responses API` como interface preferencial para fluxos agentic e tool-using.
-- camada de provider de LLM remoto com suporte atual a `Google Gemini` e `OpenAI`.
-- no ambiente local atual, `Google Gemini` pode operar como compositora/orquestradora via `GOOGLE_API_KEY`, com fallback deterministico quando a chave nao estiver presente.
+- `PostgreSQL`: fonte principal da verdade para dados estruturados.
+- `Qdrant`: índice vetorial para busca semântica.
+- `MinIO`: armazenamento de objetos e documentos.
+- `Redis`: apoio operacional e estado efêmero.
+- `Keycloak`: autenticação e identidade.
+- `OPA`: políticas contextuais de acesso.
+- `OpenTelemetry`, `Tempo`, `Loki`, `Prometheus` e `Grafana`: observabilidade distribuída.
 
-## Índice da documentação
+## Os quatro caminhos ativos
 
-- [PRD](/home/edann/projects/eduassist-platform/docs/prd/product-requirements.md)
-- [Arquitetura do sistema](/home/edann/projects/eduassist-platform/docs/architecture/system-architecture.md)
-- [Segurança da informação](/home/edann/projects/eduassist-platform/docs/security/security-architecture.md)
-- [Modelo de dados](/home/edann/projects/eduassist-platform/docs/data/data-model.md)
-- [Operação local](/home/edann/projects/eduassist-platform/docs/operations/local-development.md)
-- [Workflow de Codex e MCP](/home/edann/projects/eduassist-platform/docs/operations/codex-workflow.md)
-- [Pesquisa de tecnologias de IA](/home/edann/projects/eduassist-platform/docs/research/ai-technology-review.md)
-- [Roadmap de implementação](/home/edann/projects/eduassist-platform/docs/roadmap/implementation-roadmap.md)
-- [ADR 0001 - Rebuild do zero](/home/edann/projects/eduassist-platform/docs/adr/0001-greenfield-rebuild.md)
-- [ADR 0002 - Retrieval e runtime agentic](/home/edann/projects/eduassist-platform/docs/adr/0002-retrieval-and-agent-runtime.md)
-- [Plano de refatoração do documento acadêmico](/home/edann/projects/eduassist-platform/docs/article/refactor-outline.md)
-- [Versão formal de artigo](/home/edann/projects/eduassist-platform/docs/article/eduassist-platform-academic-article.md)
+### `langgraph`
 
-## Estrutura inicial do repositório
+Mais forte em governança, clareza de fluxo e auditabilidade. É o caminho mais fácil de inspecionar quando o foco está em explicar por que o sistema respondeu de determinada forma.
+
+### `python_functions`
+
+É o caminho mais enxuto e mais previsível. Usa rotas determinísticas de forma explícita e terminou como o melhor resultado agregado e a menor latência média na rodada final de referência.
+
+### `llamaindex`
+
+É o caminho mais orientado à recuperação documental. Ganha força quando a pergunta exige leitura, combinação e síntese do acervo institucional.
+
+### `specialist_supervisor`
+
+É o caminho premium. Prioriza qualidade em casos mais exigentes, sobretudo no recorte protegido, mas com maior custo operacional.
+
+## Recuperação de informação
+
+No projeto, recuperação de informação significa buscar evidência antes de responder. Isso evita depender apenas da memória paramétrica do modelo.
+
+O desenho atual combina:
+
+- busca textual com `PostgreSQL Full Text Search`;
+- busca semântica com `Qdrant`;
+- fusão híbrida dos resultados;
+- filtragem por visibilidade e agrupamento por documento;
+- resumo documental e recuperação recursiva em caminhos específicos;
+- `GraphRAG` seletivo, usado apenas quando faz sentido.
+
+Perguntas sobre notas, frequência, financeiro e protocolos estruturados não dependem prioritariamente dessa camada. Nesses casos, o sistema prefere serviços determinísticos no `api-core`.
+
+## Arquitetura de dados
+
+O armazenamento segue a natureza do dado:
+
+- `PostgreSQL` guarda usuários, vínculos, alunos, turmas, matrículas, notas, frequência, contratos, faturas, pagamentos, calendário, conversas e auditoria.
+- `MinIO` guarda regulamentos, manuais, comunicados e demais documentos institucionais.
+- `Qdrant` indexa representações vetoriais do corpus documental.
+- `Redis` apoia cache, coordenação operacional e estado efêmero.
+
+Essa separação permite responder cada tipo de pergunta a partir da fonte mais confiável.
+
+## Início rápido
+
+### Pré-requisitos
+
+- Docker e Docker Compose
+- Python 3.12 com `uv`
+- Node.js para o `admin-web`
+- opcionalmente:
+  - `GOOGLE_API_KEY` ou `OPENAI_API_KEY`
+  - `TELEGRAM_BOT_TOKEN`
+  - `TELEGRAM_WEBHOOK_SECRET`
+
+### Bootstrap básico
+
+```bash
+make bootstrap
+make compose-up
+make db-upgrade
+make db-seed-foundation
+make db-seed-school-expansion
+make db-seed-deep-population
+make db-seed-benchmark-scenarios
+make keycloak-sync-runtime-users
+make db-seed-auth-bindings
+make documents-sync
+```
+
+### Telegram ponta a ponta
+
+Para o Telegram funcionar de verdade, `postgres`, `api-core`, `ai-orchestrator` e `telegram-gateway` precisam estar online e saudáveis, e o webhook precisa apontar para uma URL pública válida.
+
+```bash
+make telegram-public-up
+make telegram-webhook-info
+```
+
+### Observabilidade
+
+```bash
+make observability-up
+make observability-logs
+```
+
+Serviços principais:
+
+- Grafana: `http://localhost:3004`
+- Prometheus: `http://localhost:9090`
+- Tempo: `http://localhost:3200`
+- Loki: `http://localhost:3100`
+
+## Testes e avaliação
+
+### Smokes
+
+```bash
+make smoke-local
+make smoke-authz
+make smoke-adversarial
+make smoke-all
+```
+
+### Readiness
+
+```bash
+make release-readiness
+```
+
+### Rodada comparativa de referência
+
+A bateria final de referência do repositório público é a `50Q`, com `50` perguntas inéditas distribuídas entre cenários `public`, `protected` e `restricted`.
+
+| Caminho | OK | Keyword pass | Quality avg | Avg latency |
+| --- | --- | --- | --- | --- |
+| `langgraph` | `50/50` | `38/50` | `91.8` | `1251.2 ms` |
+| `python_functions` | `50/50` | `41/50` | `93.0` | `1082.2 ms` |
+| `llamaindex` | `50/50` | `38/50` | `92.0` | `1184.4 ms` |
+| `specialist_supervisor` | `50/50` | `39/50` | `92.4` | `1955.2 ms` |
+
+Leitura rápida das métricas:
+
+- `OK`: respostas concluídas sem falha de runtime.
+- `Keyword pass`: verificação lexical mínima por caso.
+- `Quality avg`: média de score heurístico ponderado por tipo de erro.
+- `Avg latency`: tempo médio fim a fim, já incluindo a camada final de resposta ancorada em evidências.
+
+Artefatos públicos da rodada:
+
+- [Relatório quantitativo 50Q](docs/architecture/retrieval-50q-cross-path-report-20260406.md)
+- [Relatório quantitativo 50Q em JSON](docs/architecture/retrieval-50q-cross-path-report-20260406.json)
+- [Análise qualitativa da 50Q](docs/architecture/retrieval-50q-human-analysis-20260406.md)
+
+Exemplo de execução manual:
+
+```bash
+uv run --project apps/ai-orchestrator \
+  python tools/evals/compare_four_chatbot_paths.py \
+  --prompt-file tests/evals/datasets/retrieval_50q_probe_cases.generated.20260406.json \
+  --report docs/architecture/retrieval-50q-cross-path-report-20260406.md \
+  --json-report docs/architecture/retrieval-50q-cross-path-report-20260406.json
+```
+
+## Estrutura do repositório
 
 ```text
 eduassist-platform/
 ├── apps/
 ├── docs/
-│   ├── adr/
-│   ├── architecture/
-│   ├── article/
-│   ├── data/
-│   ├── operations/
-│   ├── prd/
-│   ├── research/
-│   ├── roadmap/
-│   └── security/
-├── .agents/
-├── .codex/
-├── .vscode/
 ├── infra/
 ├── packages/
 ├── tests/
-└── tools/
+├── tools/
+└── tmp/
 ```
 
-## Componentes planejados
+## Documentação principal
 
-- `admin-web`: painel de operação, auditoria, curadoria documental e acompanhamento de qualidade.
-- `api-core`: regras de negócio, autenticação, autorização, workflows e integração entre domínio, IA e dados.
-- `telegram-gateway`: webhook do Telegram, normalização de mensagens, idempotência e rate limiting.
-- `ai-orchestrator`: orquestração LangGraph, retrieval, tool calling, grounding e composição de respostas.
-- `worker`: jobs assíncronos, mock data generation, ingestão documental, embeddings e evals.
-- `AGENTS.md`, skills, custom agents e Docs MCP: governança de desenvolvimento e pesquisa para manter o projeto alinhado às práticas atuais do ecossistema Codex/OpenAI.
+- [Índice de documentação](docs/README.md)
+- [Arquitetura do sistema](docs/architecture/system-architecture.md)
+- [ADR 0001 - Rebuild do zero](docs/adr/0001-greenfield-rebuild.md)
+- [ADR 0002 - Retrieval e runtime agêntico](docs/adr/0002-retrieval-and-agent-runtime.md)
+- [Segurança da informação](docs/security/security-architecture.md)
+- [Modelo de dados](docs/data/data-model.md)
+- [Operação local](docs/operations/local-development.md)
 
-## Fluxos principais planejados
+## Materiais locais
 
-- FAQ institucional pública com citações.
-- Calendário escolar público e autenticado.
-- Consulta acadêmica protegida por vínculo de acesso.
-- Consulta financeira protegida por vínculo de acesso.
-- Handoff para atendimento humano.
-- Trilha de auditoria para acessos sensíveis.
+Textos acadêmicos, rascunhos de TCC, artigos de banca, anotações da ZAI e materiais correlatos são mantidos apenas no ambiente local de desenvolvimento e não fazem parte do espelho público do repositório.
 
-## Ambiente local alvo
+## Limites conhecidos
 
-Ambiente observado durante o planejamento:
+- o recorte `restricted` ainda é o mais fraco da superfície experimental;
+- alguns casos compostos de preço público, agregados protegidos e diferenciação entre `deny`, `no-match` e `allowed but unavailable` ainda concentram backlog residual;
+- o `specialist_supervisor` entrega boa qualidade no recorte protegido, mas continua com maior custo médio.
 
-- `Ubuntu 24.04` em `WSL2`
-- `32 vCPUs`
-- `~15 GiB` de RAM visível no Linux
-- `RTX 4070 Laptop GPU` com `8 GiB` de VRAM
-- `~893 GiB` livres
+## Repositório público
 
-Estratégia:
-
-- `Docker Compose` como padrão de desenvolvimento.
-- `k3d` ou `kind` apenas em etapa posterior.
-- Perfil `core` e perfil `full` para caber com folga na RAM disponível.
-
-## Estado atual
-
-Este repositório já contém o bootstrap técnico inicial do projeto:
-
-- stack local em [compose.yaml](/home/edann/projects/eduassist-platform/infra/compose/compose.yaml);
-- `Qdrant` já integrado ao ambiente local para a fundação do retrieval;
-- esqueletos executáveis para `api-core`, `ai-orchestrator`, `telegram-gateway`, `worker` e `admin-web`;
-- `ai-orchestrator` já expõe preview do grafo, capabilities e contratos de tools;
-- `api-core` já possui foundation transacional com `SQLAlchemy + Alembic`, migração inicial e endpoint de resumo;
-- `api-core` já resolve contexto de identidade, consulta o `OPA`, aplica autorização contextual e registra trilha de auditoria básica para acessos protegidos;
-- `api-core` já valida `JWT` do `Keycloak` via `JWKS`, resolve sessão autenticada por identidade federada e emite challenges de vínculo com Telegram;
-- `telegram-gateway` já consome `/start link_<codigo>` e conclui o vínculo via endpoint interno autenticado;
-- `api-core` já expõe calendário público estruturado e resolução interna de ator por `telegram_chat_id` para uso seguro do gateway;
-- `Keycloak` já sobe com import automático do realm `eduassist` e usuários mockados para testes locais;
-- o `worker` já sincroniza corpus documental mockado para `MinIO`, `Postgres` e `Qdrant`;
-- o `worker` agora publica o índice vetorial do `Qdrant` por alias, reduzindo a janela de indisponibilidade durante `documents-sync`;
-- o `ai-orchestrator` já expõe busca híbrida real via `Qdrant + PostgreSQL FTS` com citações;
-- o `ai-orchestrator` já responde mensagens reais com FAQ pública, calendário público, negação segura de fluxos protegidos, composição por `Gemini` ou `OpenAI` quando configurados e fallback determinístico quando não houver chave de LLM configurada;
-- o `ai-orchestrator` agora também mantém memória curta de conversa por `conversation_id` e por `telegram_chat_id`, contextualizando follow-ups curtos sem abrir acesso adicional a dados sensíveis;
-- o `ai-orchestrator` agora combina fatos canônicos públicos vindos do `api-core` com retrieval documental, reduzindo respostas frouxas para perguntas simples como nome da escola e horário de serviços institucionais;
-- o runtime público agora aplica abstenção específica para perguntas negativas, condicionais e comparativas quando a base não sustenta a afirmação, em vez de completar a resposta por inferência;
-- o `ai-orchestrator` já executa o caminho `GraphRAG` no runtime principal quando o modo avançado estiver habilitado;
-- o `telegram-gateway` já encaminha mensagens públicas ao `ai-orchestrator` e devolve respostas úteis no formato do Telegram;
-- o `telegram-gateway`, o `ai-orchestrator` e o `api-core` agora trocam chamadas internas protegidas por `X-Internal-Api-Token`;
-- o `telegram-gateway` já responde consultas protegidas reais para contas vinculadas: resumo acadêmico com filtros por disciplina e bimestre, resumo financeiro com filtros por status e panorama multi-aluno para responsáveis, além de grade docente com consultas por turmas, disciplinas e horário para professores;
-- o `admin-web` já expõe login real via `Keycloak` com OIDC + PKCE, leitura de sessão autenticada no `api-core`, emissão de challenge de vínculo para o Telegram e overview operacional autenticado com visão pessoal ou global conforme o papel;
-- o `api-core` já expõe `GET /v1/operations/overview` com métricas, feed de auditoria, feed de decisões de acesso, contagens estruturais e agregados operacionais de handoff para papéis internos;
-- o `api-core` já expõe a fila de `handoffs` humanos com escopo pessoal ou global, incluindo prioridade, SLA mockado e atribuição operacional;
-- o `ai-orchestrator` já cria handoffs reais ao entrar em modo `handoff`, devolvendo protocolo e fila ao usuário no Telegram;
-- o `admin-web` já roda em modo estável de produção dentro do `Docker Compose`, renderiza a fila de handoffs com filtros por status, fila, atribuição, SLA e texto livre, abre o detalhe completo da conversa e mostra saúde operacional da fila humana com visão por setor, operador, exceções críticas, atalhos diretos de drill-down e uma leitura temporal de volume/tempo operacional;
-- a fila operacional do `admin-web` agora também suporta paginação, navegação por página e controle de densidade por quantidade de tickets exibidos;
-- o detalhe do handoff no `admin-web` agora oferece exploração mais rica do transcript, com filtros por remetente, busca textual, janelas de navegação e atalhos operacionais mais claros para triagem;
-- o overview global da fila humana agora também mostra mix de prioridade, envelhecimento do backlog e o ticket aberto mais antigo para acelerar triagem operacional;
-- o stack local já inclui `OpenTelemetry Collector`, `Tempo` e `Grafana`, com propagacao de trace context entre `telegram-gateway`, `ai-orchestrator` e `api-core`;
-- o stack local agora também inclui `Prometheus`, alimentado por metricas OTEL exportadas via collector;
-- o tracing distribuido já foi validado ponta a ponta via webhook do Telegram, incluindo spans HTTP entre serviços, spans SQLAlchemy no `api-core` e consulta direta do trace no `Tempo`;
-- os serviços Python instrumentados já devolvem `X-Trace-Id` e `X-Span-Id` nas respostas, facilitando o drill-down operacional no ambiente local;
-- o tracing agora também inclui spans de dominio para policy, retrieval híbrido e operacoes de handoff, com dashboard provisionado em `Grafana` para cribsheet de TraceQL e runbook local;
-- a stack de observabilidade agora também expõe metricas de dominio para `policy`, `retrieval`, `handoff` e `orquestracao`, com dashboard provisionado em `Grafana` para acompanhamento analitico;
-- a stack de observabilidade agora também expõe gauges operacionais vivos da fila humana, incluindo backlog atual, tickets sem responsavel, saturacao por fila e carga por operador;
-- a stack de observabilidade agora também expõe gauges operacionais vivos para envelhecimento do backlog e distribuicao de prioridade por fila humana;
-- o `Grafana` agora também conta com o dashboard `EduAssist Ops Control Tower`, focado em backlog, breaches, envelhecimento, prioridade e carga da equipe humana;
-- o stack local agora também inclui `Loki + Promtail`, com ingestao dos logs dos containers do Compose para investigacao centralizada no `Grafana`;
-- o runtime dos serviços que acessam o banco agora pode ser executado com um papel dedicado de aplicação (`eduassist_app`), separado do superuser administrativo usado para migrações e seeds;
-- o `api-core` agora aplica contexto de ator por sessão e o banco já reforça acesso sensível com `PostgreSQL RLS` ativo em tabelas acadêmicas, financeiras e tabelas auxiliares de apoio como classes, vínculos familiares, atribuições docentes, itens de nota e calendário restrito;
-- o banco agora também reforça o domínio de atendimento humano com `RLS` em conversas, mensagens, tool calls e handoffs, preservando visão global só para papéis internos;
-- o detalhe de handoff em escopo pessoal não expõe notas internas de operador para o usuário final autenticado;
-- endpoints `/meta` e diagnósticos sensíveis agora exigem `X-Internal-Api-Token` e não devolvem URLs internas completas;
-- `ALLOW_TEST_IDENTITY_OVERRIDES` agora fica desabilitado por padrão, e o uso de `user_external_code` permanece restrito a chamadas internas autenticadas;
-- o projeto agora também possui ciclo operacional local de `backup + restore drill` para `Postgres`, `Qdrant` e `MinIO`, sem restaurar por cima da base principal;
-- existe uma suite de smoke local em `tests/e2e/local_smoke.py` para validar os fluxos principais e a pilha de observabilidade;
-- existe uma suite de regressao de autorizacao em `tests/e2e/authz_regression.py` para validar negativas, ambiguidades, bearer ausente e segredos invalidos;
-- existe uma suite adversarial em `tests/e2e/adversarial_regression.py` para validar tentativas de exfiltracao, prompt disclosure e resistencia operacional a consultas maliciosas;
-- existe uma suite formal de evals do `ai-orchestrator` em `tests/evals/orchestrator_quality.py`, com dataset versionado em `tests/evals/datasets/orchestrator_cases.json`, para validar grounding publico, calendario, negacao segura, ambiguidade controlada, handoff e retrieval documental;
-- existe uma trilha experimental em `tools/graphrag-benchmark` para benchmark seletivo de `GraphRAG` sobre o corpus institucional publico, com workspace bootstrapado, dataset de comparacao, runtime local hibrido com `llama.cpp` em Docker para chat com GPU e `Ollama` para embeddings, e runner que salva baseline hibrido e consultas `basic/local/global/drift` em artefatos, aceitando tanto provider remoto quanto endpoint local compativel com OpenAI;
-- o runtime principal tambem ja consegue executar consultas `GraphRAG` reais quando `GRAPH_RAG_ENABLED=true` e o workspace local estiver pronto;
-- existe um gate operacional final em `make release-readiness`, com relatorio salvo em `artifacts/readiness`, para consolidar runtime role, `RLS`, evals, smoke completo e baseline do benchmark seletivo;
-- existe um pipeline de exportacao do artigo academico para `.docx` via `make article-docx`, com metadados versionados no repositório;
-- seed foundation idempotente já disponível em `tools/mockgen`;
-- seed incremental de expansão da escola com fundamental II e ensino médio disponível em `tools/mockgen/seed_school_expansion.py`;
-- seed operacional incremental para carga mais realista de handoffs disponível em `tools/mockgen/seed_operational_load.py`;
-- sincronização de identidades federadas disponível em `tools/mockgen/sync_auth_bindings.py`;
-- `Makefile`, `.env.example`, Dockerfiles e healthchecks;
-- base documental sincronizada com a direção arquitetural atual.
-
-Expansões já aprovadas para a próxima etapa:
-
-- preparar modo avançado de retrieval com `GraphRAG` somente após baseline híbrido estar medido.
-
-## Próximos passos imediatos
-
-1. Medir custo e qualidade entre `Gemini` e `OpenAI` no runtime principal com evals comparativas.
-2. Expandir o catálogo de fatos canônicos públicos e os playbooks conversacionais para perguntas competitivas, ambíguas e de exceção.
-3. Expandir o drill de backup/restore para politicas mais ricas de retenção e cenarios de recuperação.
-4. Ampliar ainda mais as seeds e os cenarios operacionais de carga humana.
+- GitHub: <https://github.com/EliseuODaniel/eduassist-platform>

@@ -1,11 +1,11 @@
 # Article Export
 
-Tooling simples para exportar o artigo academico do projeto para `.docx`.
+Tooling simples para exportar o artigo academico local do projeto para `.docx`.
 
 Arquivos de entrada:
 
-- `docs/article/eduassist-platform-academic-article.md`
-- `docs/article/article-export-metadata.yaml`
+- `tmp/tcc/article/eduassist-platform-academic-article.md`
+- `tmp/tcc/article/article-export-metadata.yaml`
 
 Saida padrao:
 
@@ -18,5 +18,5 @@ Comando principal:
 Observacoes:
 
 - o exportador cobre headings, paragrafos e listas;
-- a capa usa os metadados versionados no repositório;
-- caso necessario, os campos de autor, instituicao e orientacao podem ser ajustados no arquivo YAML antes de gerar o `.docx`.
+- a capa usa os metadados mantidos localmente em `tmp/tcc/article`;
+- esse fluxo existe para uso local e nao implica publicacao dos textos academicos no repositorio remoto.
