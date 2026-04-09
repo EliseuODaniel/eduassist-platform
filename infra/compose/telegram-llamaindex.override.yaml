@@ -1,0 +1,4 @@
+services:
+  telegram-gateway:
+    environment:
+      AI_ORCHESTRATOR_URL: http://ai-orchestrator-llamaindex:8000

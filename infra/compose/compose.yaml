@@ -109,21 +109,23 @@ services:
     restart: unless-stopped
 
   otel-collector:
+    profiles: ['observability']
     image: ${OTEL_COLLECTOR_IMAGE:-otel/opentelemetry-collector-contrib:0.122.1}
     container_name: eduassist-otel-collector
-    command: ['--config=/etc/otelcol-contrib/config.yaml']
+    command: ['--config=/etc/otelcol-contrib/otel-collector-config.yaml']
     ports:
       - '${OTEL_GRPC_PORT:-4317}:4317'
       - '${OTEL_HTTP_PORT:-4318}:4318'
       - '${OTEL_PROMETHEUS_PORT:-9464}:9464'
     volumes:
-      - ./otel/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+      - ./otel:/etc/otelcol-contrib:ro
     depends_on:
       tempo:
         condition: service_started
     restart: unless-stopped
 
   prometheus:
+    profiles: ['observability']
     image: ${PROMETHEUS_IMAGE:-prom/prometheus:v3.3.1}
     container_name: eduassist-prometheus
     command:
@@ -141,6 +143,7 @@ services:
     restart: unless-stopped
 
   tempo:
+    profiles: ['observability']
     image: ${TEMPO_IMAGE:-grafana/tempo:2.7.2}
     user: '0:0'
     command: ['-config.file=/etc/tempo.yaml']
@@ -152,6 +155,7 @@ services:
     restart: unless-stopped
 
   loki:
+    profiles: ['observability']
     image: ${LOKI_IMAGE:-grafana/loki:3.5.5}
     container_name: eduassist-loki
     command: ['-config.file=/etc/loki/config.yaml']
@@ -163,6 +167,7 @@ services:
     restart: unless-stopped
 
   promtail:
+    profiles: ['observability']
     image: ${PROMTAIL_IMAGE:-grafana/promtail:3.5.5}
     container_name: eduassist-promtail
     command: ['-config.file=/etc/promtail/config.yaml']
@@ -176,6 +181,7 @@ services:
     restart: unless-stopped
 
   grafana:
+    profiles: ['observability']
     image: ${GRAFANA_IMAGE:-grafana/grafana:11.6.0}
     container_name: eduassist-grafana
     environment:
@@ -210,6 +216,8 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN in .env or shell}
+      ALLOW_INSECURE_INTERNAL_API_TOKEN: ${ALLOW_INSECURE_INTERNAL_API_TOKEN:-false}
       DATABASE_URL: ${DATABASE_APP_URL:-postgresql://eduassist_app:eduassist_app@postgres:5432/eduassist}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       OPA_URL: ${OPA_URL:-http://opa:8181}
@@ -220,7 +228,7 @@ services:
       ALLOW_TEST_IDENTITY_OVERRIDES: ${ALLOW_TEST_IDENTITY_OVERRIDES:-false}
       TELEGRAM_LINK_TTL_MINUTES: ${TELEGRAM_LINK_TTL_MINUTES:-15}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
-      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_ENABLED: ${OTEL_ENABLED:-false}
       OTEL_SERVICE_NAMESPACE: ${OTEL_SERVICE_NAMESPACE:-eduassist-platform}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
     ports:
@@ -234,13 +242,12 @@ services:
         condition: service_healthy
       opa:
         condition: service_started
-      otel-collector:
-        condition: service_started
     healthcheck:
       test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 25s
     restart: unless-stopped
 
   ai-orchestrator:
@@ -256,6 +263,9 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN in .env or shell}
+      ALLOW_INSECURE_INTERNAL_API_TOKEN: ${ALLOW_INSECURE_INTERNAL_API_TOKEN:-false}
+      CONTROL_PLANE_ALLOW_DIRECT_SERVING: ${CONTROL_PLANE_ALLOW_DIRECT_SERVING:-false}
       LLM_PROVIDER: ${LLM_PROVIDER:-google}
       API_CORE_URL: http://api-core:8000
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
@@ -266,6 +276,12 @@ services:
       QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
       QDRANT_DOCUMENTS_COLLECTION: ${QDRANT_DOCUMENTS_COLLECTION:-school_documents}
       DOCUMENT_EMBEDDING_MODEL: ${DOCUMENT_EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      HF_TOKEN: ${HF_TOKEN:-}
+      XDG_CACHE_HOME: ${XDG_CACHE_HOME:-/workspace/.cache}
+      HF_HOME: ${HF_HOME:-/workspace/.cache/huggingface}
+      HF_HUB_CACHE: ${HF_HUB_CACHE:-/workspace/.cache/huggingface/hub}
+      HUGGINGFACE_HUB_CACHE: ${HF_HUB_CACHE:-/workspace/.cache/huggingface/hub}
+      FASTEMBED_CACHE_PATH: ${FASTEMBED_CACHE_PATH:-/workspace/.cache/fastembed}
       WARM_RETRIEVAL_ON_STARTUP: ${WARM_RETRIEVAL_ON_STARTUP:-true}
       GRAPH_RAG_ENABLED: ${GRAPH_RAG_ENABLED:-true}
       GRAPH_RAG_WORKSPACE: ${GRAPH_RAG_WORKSPACE:-/workspace/artifacts/graphrag/eduassist-public-benchmark}
@@ -275,6 +291,9 @@ services:
       GRAPH_RAG_LOCAL_CHAT_API_KEY: ${GRAPH_RAG_LOCAL_CHAT_API_KEY:-llama.cpp}
       GRAPH_RAG_LOCAL_EMBEDDING_API_KEY: ${GRAPH_RAG_LOCAL_EMBEDDING_API_KEY:-ollama}
       FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK: ${FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK:-}
+      LANGGRAPH_ORCHESTRATOR_URL: ${LANGGRAPH_ORCHESTRATOR_URL:-http://ai-orchestrator-langgraph:8000}
+      PYTHON_FUNCTIONS_ORCHESTRATOR_URL: ${PYTHON_FUNCTIONS_ORCHESTRATOR_URL:-http://ai-orchestrator-python-functions:8000}
+      LLAMAINDEX_ORCHESTRATOR_URL: ${LLAMAINDEX_ORCHESTRATOR_URL:-http://ai-orchestrator-llamaindex:8000}
       FEATURE_FLAG_TELEGRAM_DEBUG_TRACE_FOOTER_ENABLED: ${FEATURE_FLAG_TELEGRAM_DEBUG_TRACE_FOOTER_ENABLED:-true}
       LANGGRAPH_HITL_ENABLED: ${LANGGRAPH_HITL_ENABLED:-false}
       LANGGRAPH_HITL_DEFAULT_SLICES: ${LANGGRAPH_HITL_DEFAULT_SLICES:-support}
@@ -289,7 +308,7 @@ services:
       ORCHESTRATOR_EXPERIMENT_TELEGRAM_CHAT_ALLOWLIST: ${ORCHESTRATOR_EXPERIMENT_TELEGRAM_CHAT_ALLOWLIST:-}
       ORCHESTRATOR_EXPERIMENT_CONVERSATION_ALLOWLIST: ${ORCHESTRATOR_EXPERIMENT_CONVERSATION_ALLOWLIST:-}
       ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES: ${ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES:-}
-      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_ENABLED: ${OTEL_ENABLED:-false}
       OTEL_SERVICE_NAMESPACE: ${OTEL_SERVICE_NAMESPACE:-eduassist-platform}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
     ports:
@@ -298,6 +317,7 @@ services:
       - ../../.env:/workspace/.env:ro
       - ../../artifacts/graphrag:/workspace/artifacts/graphrag
       - ../../data:/workspace/data:ro
+      - model-cache:/workspace/.cache
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     depends_on:
@@ -307,7 +327,221 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
-      otel-collector:
+      ai-orchestrator-langgraph:
+        condition: service_healthy
+      ai-orchestrator-python-functions:
+        condition: service_healthy
+      ai-orchestrator-llamaindex:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  ai-orchestrator-langgraph:
+    env_file:
+      - ../../.env
+    build:
+      context: ../..
+      dockerfile: apps/ai-orchestrator/Dockerfile
+      args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-ghcr.io/astral-sh/uv:python3.12-bookworm-slim}
+    container_name: eduassist-ai-orchestrator-langgraph
+    command: ['uv', 'run', 'uvicorn', 'ai_orchestrator.main_langgraph:app', '--host', '0.0.0.0', '--port', '8000']
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      PORT: 8000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN in .env or shell}
+      ALLOW_INSECURE_INTERNAL_API_TOKEN: ${ALLOW_INSECURE_INTERNAL_API_TOKEN:-false}
+      LLM_PROVIDER: ${LLM_PROVIDER:-google}
+      API_CORE_URL: http://api-core:8000
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4}
+      GOOGLE_API_BASE_URL: ${GOOGLE_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
+      GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-flash}
+      DATABASE_URL: ${DATABASE_APP_URL:-postgresql://eduassist_app:eduassist_app@postgres:5432/eduassist}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_DOCUMENTS_COLLECTION: ${QDRANT_DOCUMENTS_COLLECTION:-school_documents}
+      DOCUMENT_EMBEDDING_MODEL: ${DOCUMENT_EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      HF_TOKEN: ${HF_TOKEN:-}
+      XDG_CACHE_HOME: ${XDG_CACHE_HOME:-/workspace/.cache}
+      HF_HOME: ${HF_HOME:-/workspace/.cache/huggingface}
+      HF_HUB_CACHE: ${HF_HUB_CACHE:-/workspace/.cache/huggingface/hub}
+      HUGGINGFACE_HUB_CACHE: ${HF_HUB_CACHE:-/workspace/.cache/huggingface/hub}
+      FASTEMBED_CACHE_PATH: ${FASTEMBED_CACHE_PATH:-/workspace/.cache/fastembed}
+      WARM_RETRIEVAL_ON_STARTUP: ${WARM_RETRIEVAL_ON_STARTUP:-true}
+      GRAPH_RAG_ENABLED: ${GRAPH_RAG_ENABLED:-true}
+      GRAPH_RAG_WORKSPACE: ${GRAPH_RAG_WORKSPACE:-/workspace/artifacts/graphrag/eduassist-public-benchmark}
+      GRAPH_RAG_RESPONSE_TYPE: ${GRAPH_RAG_RESPONSE_TYPE:-List of 3-5 concise bullet points in Brazilian Portuguese}
+      GRAPH_RAG_LOCAL_CHAT_API_BASE: ${GRAPH_RAG_LOCAL_CHAT_API_BASE:-http://host.docker.internal:18080/v1}
+      GRAPH_RAG_LOCAL_EMBEDDING_API_BASE: ${GRAPH_RAG_LOCAL_EMBEDDING_API_BASE:-http://host.docker.internal:11435/v1}
+      GRAPH_RAG_LOCAL_CHAT_API_KEY: ${GRAPH_RAG_LOCAL_CHAT_API_KEY:-llama.cpp}
+      GRAPH_RAG_LOCAL_EMBEDDING_API_KEY: ${GRAPH_RAG_LOCAL_EMBEDDING_API_KEY:-ollama}
+      FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK: langgraph
+      FEATURE_FLAG_TELEGRAM_DEBUG_TRACE_FOOTER_ENABLED: ${FEATURE_FLAG_TELEGRAM_DEBUG_TRACE_FOOTER_ENABLED:-true}
+      STRICT_FRAMEWORK_ISOLATION_ENABLED: true
+      ORCHESTRATOR_EXPERIMENT_ENABLED: false
+      OTEL_ENABLED: ${OTEL_ENABLED:-false}
+      OTEL_SERVICE_NAMESPACE: ${OTEL_SERVICE_NAMESPACE:-eduassist-platform}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+    ports:
+      - '${AI_ORCHESTRATOR_LANGGRAPH_PORT:-8006}:8000'
+    volumes:
+      - ../../.env:/workspace/.env:ro
+      - ../../artifacts/graphrag:/workspace/artifacts/graphrag
+      - ../../data:/workspace/data:ro
+      - model-cache:/workspace/.cache
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    healthcheck:
+      test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  ai-orchestrator-python-functions:
+    env_file:
+      - ../../.env
+    build:
+      context: ../..
+      dockerfile: apps/ai-orchestrator/Dockerfile
+      args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-ghcr.io/astral-sh/uv:python3.12-bookworm-slim}
+    container_name: eduassist-ai-orchestrator-python-functions
+    command: ['uv', 'run', 'uvicorn', 'ai_orchestrator.main_python_functions:app', '--host', '0.0.0.0', '--port', '8000']
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      PORT: 8000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN in .env or shell}
+      ALLOW_INSECURE_INTERNAL_API_TOKEN: ${ALLOW_INSECURE_INTERNAL_API_TOKEN:-false}
+      LLM_PROVIDER: ${LLM_PROVIDER:-google}
+      API_CORE_URL: http://api-core:8000
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4}
+      GOOGLE_API_BASE_URL: ${GOOGLE_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
+      GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-flash}
+      DATABASE_URL: ${DATABASE_APP_URL:-postgresql://eduassist_app:eduassist_app@postgres:5432/eduassist}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_DOCUMENTS_COLLECTION: ${QDRANT_DOCUMENTS_COLLECTION:-school_documents}
+      DOCUMENT_EMBEDDING_MODEL: ${DOCUMENT_EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      HF_TOKEN: ${HF_TOKEN:-}
+      XDG_CACHE_HOME: ${XDG_CACHE_HOME:-/workspace/.cache}
+      HF_HOME: ${HF_HOME:-/workspace/.cache/huggingface}
+      HF_HUB_CACHE: ${HF_HUB_CACHE:-/workspace/.cache/huggingface/hub}
+      HUGGINGFACE_HUB_CACHE: ${HF_HUB_CACHE:-/workspace/.cache/huggingface/hub}
+      FASTEMBED_CACHE_PATH: ${FASTEMBED_CACHE_PATH:-/workspace/.cache/fastembed}
+      WARM_RETRIEVAL_ON_STARTUP: ${WARM_RETRIEVAL_ON_STARTUP:-true}
+      GRAPH_RAG_ENABLED: ${GRAPH_RAG_ENABLED:-true}
+      GRAPH_RAG_WORKSPACE: ${GRAPH_RAG_WORKSPACE:-/workspace/artifacts/graphrag/eduassist-public-benchmark}
+      GRAPH_RAG_RESPONSE_TYPE: ${GRAPH_RAG_RESPONSE_TYPE:-List of 3-5 concise bullet points in Brazilian Portuguese}
+      GRAPH_RAG_LOCAL_CHAT_API_BASE: ${GRAPH_RAG_LOCAL_CHAT_API_BASE:-http://host.docker.internal:18080/v1}
+      GRAPH_RAG_LOCAL_EMBEDDING_API_BASE: ${GRAPH_RAG_LOCAL_EMBEDDING_API_BASE:-http://host.docker.internal:11435/v1}
+      GRAPH_RAG_LOCAL_CHAT_API_KEY: ${GRAPH_RAG_LOCAL_CHAT_API_KEY:-llama.cpp}
+      GRAPH_RAG_LOCAL_EMBEDDING_API_KEY: ${GRAPH_RAG_LOCAL_EMBEDDING_API_KEY:-ollama}
+      FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK: python_functions
+      FEATURE_FLAG_TELEGRAM_DEBUG_TRACE_FOOTER_ENABLED: ${FEATURE_FLAG_TELEGRAM_DEBUG_TRACE_FOOTER_ENABLED:-true}
+      STRICT_FRAMEWORK_ISOLATION_ENABLED: true
+      ORCHESTRATOR_EXPERIMENT_ENABLED: false
+      OTEL_ENABLED: ${OTEL_ENABLED:-false}
+      OTEL_SERVICE_NAMESPACE: ${OTEL_SERVICE_NAMESPACE:-eduassist-platform}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+    ports:
+      - '${AI_ORCHESTRATOR_PYTHON_FUNCTIONS_PORT:-8007}:8000'
+    volumes:
+      - ../../.env:/workspace/.env:ro
+      - ../../artifacts/graphrag:/workspace/artifacts/graphrag
+      - ../../data:/workspace/data:ro
+      - model-cache:/workspace/.cache
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    healthcheck:
+      test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  ai-orchestrator-llamaindex:
+    env_file:
+      - ../../.env
+    build:
+      context: ../..
+      dockerfile: apps/ai-orchestrator/Dockerfile
+      args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-ghcr.io/astral-sh/uv:python3.12-bookworm-slim}
+    container_name: eduassist-ai-orchestrator-llamaindex
+    command: ['uv', 'run', 'uvicorn', 'ai_orchestrator.main_llamaindex:app', '--host', '0.0.0.0', '--port', '8000']
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      PORT: 8000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN in .env or shell}
+      ALLOW_INSECURE_INTERNAL_API_TOKEN: ${ALLOW_INSECURE_INTERNAL_API_TOKEN:-false}
+      LLM_PROVIDER: ${LLM_PROVIDER:-google}
+      API_CORE_URL: http://api-core:8000
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4}
+      GOOGLE_API_BASE_URL: ${GOOGLE_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
+      GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-flash}
+      DATABASE_URL: ${DATABASE_APP_URL:-postgresql://eduassist_app:eduassist_app@postgres:5432/eduassist}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_DOCUMENTS_COLLECTION: ${QDRANT_DOCUMENTS_COLLECTION:-school_documents}
+      DOCUMENT_EMBEDDING_MODEL: ${DOCUMENT_EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      HF_TOKEN: ${HF_TOKEN:-}
+      XDG_CACHE_HOME: ${XDG_CACHE_HOME:-/workspace/.cache}
+      HF_HOME: ${HF_HOME:-/workspace/.cache/huggingface}
+      HF_HUB_CACHE: ${HF_HUB_CACHE:-/workspace/.cache/huggingface/hub}
+      HUGGINGFACE_HUB_CACHE: ${HF_HUB_CACHE:-/workspace/.cache/huggingface/hub}
+      FASTEMBED_CACHE_PATH: ${FASTEMBED_CACHE_PATH:-/workspace/.cache/fastembed}
+      WARM_RETRIEVAL_ON_STARTUP: ${WARM_RETRIEVAL_ON_STARTUP:-true}
+      GRAPH_RAG_ENABLED: ${GRAPH_RAG_ENABLED:-true}
+      GRAPH_RAG_WORKSPACE: ${GRAPH_RAG_WORKSPACE:-/workspace/artifacts/graphrag/eduassist-public-benchmark}
+      GRAPH_RAG_RESPONSE_TYPE: ${GRAPH_RAG_RESPONSE_TYPE:-List of 3-5 concise bullet points in Brazilian Portuguese}
+      GRAPH_RAG_LOCAL_CHAT_API_BASE: ${GRAPH_RAG_LOCAL_CHAT_API_BASE:-http://host.docker.internal:18080/v1}
+      GRAPH_RAG_LOCAL_EMBEDDING_API_BASE: ${GRAPH_RAG_LOCAL_EMBEDDING_API_BASE:-http://host.docker.internal:11435/v1}
+      GRAPH_RAG_LOCAL_CHAT_API_KEY: ${GRAPH_RAG_LOCAL_CHAT_API_KEY:-llama.cpp}
+      GRAPH_RAG_LOCAL_EMBEDDING_API_KEY: ${GRAPH_RAG_LOCAL_EMBEDDING_API_KEY:-ollama}
+      FEATURE_FLAG_PRIMARY_ORCHESTRATION_STACK: llamaindex
+      FEATURE_FLAG_TELEGRAM_DEBUG_TRACE_FOOTER_ENABLED: ${FEATURE_FLAG_TELEGRAM_DEBUG_TRACE_FOOTER_ENABLED:-true}
+      STRICT_FRAMEWORK_ISOLATION_ENABLED: true
+      ORCHESTRATOR_EXPERIMENT_ENABLED: false
+      OTEL_ENABLED: ${OTEL_ENABLED:-false}
+      OTEL_SERVICE_NAMESPACE: ${OTEL_SERVICE_NAMESPACE:-eduassist-platform}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+    ports:
+      - '${AI_ORCHESTRATOR_LLAMAINDEX_PORT:-8008}:8000'
+    volumes:
+      - ../../.env:/workspace/.env:ro
+      - ../../artifacts/graphrag:/workspace/artifacts/graphrag
+      - ../../data:/workspace/data:ro
+      - model-cache:/workspace/.cache
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
         condition: service_started
     healthcheck:
       test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
@@ -330,19 +564,30 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN in .env or shell}
+      ALLOW_INSECURE_INTERNAL_API_TOKEN: ${ALLOW_INSECURE_INTERNAL_API_TOKEN:-false}
       LLM_PROVIDER: ${LLM_PROVIDER:-auto}
       API_CORE_URL: ${API_CORE_URL:-http://api-core:8000}
-      ORCHESTRATOR_URL: ${ORCHESTRATOR_URL:-http://ai-orchestrator:8000}
+      CONTROL_PLANE_ORCHESTRATOR_URL: ${CONTROL_PLANE_ORCHESTRATOR_URL:-${ORCHESTRATOR_URL:-http://ai-orchestrator:8000}}
+      ORCHESTRATOR_URL: ${CONTROL_PLANE_ORCHESTRATOR_URL:-${ORCHESTRATOR_URL:-http://ai-orchestrator:8000}}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4}
       GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-flash}
-      DATABASE_URL: ${SPECIALIST_SUPERVISOR_DATABASE_URL:-sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db}
+      DATABASE_URL: ${DATABASE_APP_URL:-postgresql://eduassist_app:eduassist_app@postgres:5432/eduassist}
+      AGENT_MEMORY_URL: ${SPECIALIST_SUPERVISOR_DATABASE_URL:-sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db}
+      HF_TOKEN: ${HF_TOKEN:-}
+      XDG_CACHE_HOME: ${XDG_CACHE_HOME:-/workspace/.cache}
+      HF_HOME: ${HF_HOME:-/workspace/.cache/huggingface}
+      HF_HUB_CACHE: ${HF_HUB_CACHE:-/workspace/.cache/huggingface/hub}
+      HUGGINGFACE_HUB_CACHE: ${HF_HUB_CACHE:-/workspace/.cache/huggingface/hub}
+      FASTEMBED_CACHE_PATH: ${FASTEMBED_CACHE_PATH:-/workspace/.cache/fastembed}
     ports:
       - '${AI_ORCHESTRATOR_SPECIALIST_PORT:-8005}:8000'
     volumes:
       - ../../.env:/workspace/.env:ro
       - specialist-supervisor-data:/workspace/.runtime
       - ../../data:/workspace/data:ro
+      - model-cache:/workspace/.cache
     depends_on:
       api-core:
         condition: service_healthy
@@ -368,9 +613,11 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN in .env or shell}
+      ALLOW_INSECURE_INTERNAL_API_TOKEN: ${ALLOW_INSECURE_INTERNAL_API_TOKEN:-false}
       API_CORE_URL: http://api-core:8000
-      AI_ORCHESTRATOR_URL: http://ai-orchestrator:8000
-      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      AI_ORCHESTRATOR_URL: ${TELEGRAM_ORCHESTRATOR_URL:-http://ai-orchestrator-python-functions:8000}
+      OTEL_ENABLED: ${OTEL_ENABLED:-false}
       OTEL_SERVICE_NAMESPACE: ${OTEL_SERVICE_NAMESPACE:-eduassist-platform}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
     ports:
@@ -382,8 +629,6 @@ services:
         condition: service_healthy
       ai-orchestrator:
         condition: service_healthy
-      otel-collector:
-        condition: service_started
     healthcheck:
       test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/healthz\")"']
       interval: 10s
@@ -395,8 +640,13 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: eduassist-cloudflared
     profiles: ['telegram-public']
-    command:
-      ['tunnel', '--no-autoupdate', '--url', 'http://telegram-gateway:8000']
+    environment:
+      CLOUDFLARED_TARGET_URL: ${CLOUDFLARED_TARGET_URL:-http://telegram-gateway:8000}
+      CLOUDFLARED_TUNNEL_TOKEN: ${CLOUDFLARED_TUNNEL_TOKEN:-}
+      CLOUDFLARED_ALLOW_QUICK_TUNNEL: ${CLOUDFLARED_ALLOW_QUICK_TUNNEL:-true}
+    command: ['/bin/sh', '/etc/cloudflared/run-cloudflared.sh']
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
     depends_on:
       telegram-gateway:
         condition: service_healthy
@@ -412,6 +662,12 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      HF_TOKEN: ${HF_TOKEN:-}
+      XDG_CACHE_HOME: ${XDG_CACHE_HOME:-/workspace/.cache}
+      HF_HOME: ${HF_HOME:-/workspace/.cache/huggingface}
+      HF_HUB_CACHE: ${HF_HUB_CACHE:-/workspace/.cache/huggingface/hub}
+      HUGGINGFACE_HUB_CACHE: ${HF_HUB_CACHE:-/workspace/.cache/huggingface/hub}
+      FASTEMBED_CACHE_PATH: ${FASTEMBED_CACHE_PATH:-/workspace/.cache/fastembed}
       DATABASE_URL: ${DATABASE_APP_URL:-postgresql://eduassist_app:eduassist_app@postgres:5432/eduassist}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
@@ -433,6 +689,8 @@ services:
         condition: service_started
       minio:
         condition: service_started
+    volumes:
+      - model-cache:/workspace/.cache
     healthcheck:
       test: ['CMD-SHELL', 'test -f /tmp/worker-ready']
       interval: 10s
@@ -487,3 +745,4 @@ volumes:
   grafana-data:
   prometheus-data:
   specialist-supervisor-data:
+  model-cache:

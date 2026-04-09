@@ -42,6 +42,10 @@ def _env(name: str, default: str) -> str:
 class Settings:
     api_core_url: str = _env("SMOKE_API_CORE_URL", "http://127.0.0.1:8001")
     ai_orchestrator_url: str = _env("SMOKE_AI_ORCHESTRATOR_URL", "http://127.0.0.1:8002")
+    langgraph_orchestrator_url: str = _env("SMOKE_LANGGRAPH_ORCHESTRATOR_URL", "http://127.0.0.1:8006")
+    python_functions_orchestrator_url: str = _env("SMOKE_PYTHON_FUNCTIONS_ORCHESTRATOR_URL", "http://127.0.0.1:8007")
+    llamaindex_orchestrator_url: str = _env("SMOKE_LLAMAINDEX_ORCHESTRATOR_URL", "http://127.0.0.1:8008")
+    specialist_supervisor_url: str = _env("SMOKE_SPECIALIST_SUPERVISOR_URL", "http://127.0.0.1:8005")
     telegram_gateway_url: str = _env("SMOKE_TELEGRAM_GATEWAY_URL", "http://127.0.0.1:8003")
     keycloak_url: str = _env("SMOKE_KEYCLOAK_URL", "http://127.0.0.1:8080")
     grafana_url: str = _env("SMOKE_GRAFANA_URL", "http://127.0.0.1:3004")
@@ -52,10 +56,24 @@ class Settings:
     username: str = _env("SMOKE_USERNAME", "maria.oliveira")
     password: str = _env("SMOKE_PASSWORD", "Eduassist123!")
     client_id: str = _env("SMOKE_CLIENT_ID", "eduassist-cli")
-    internal_api_token: str = _env("SMOKE_INTERNAL_API_TOKEN", "dev-internal-token")
+    internal_api_token: str = _env("SMOKE_INTERNAL_API_TOKEN", _env("INTERNAL_API_TOKEN", "dev-internal-token"))
     telegram_secret: str = _env("SMOKE_TELEGRAM_SECRET", _env("TELEGRAM_WEBHOOK_SECRET", "change-me"))
     grafana_user: str = _env("SMOKE_GRAFANA_USER", "admin")
     grafana_password: str = _env("SMOKE_GRAFANA_PASSWORD", "admin123")
+
+    def stack_runtime_url(self, stack: str) -> str:
+        normalized = str(stack or "").strip().lower().replace("-", "_")
+        if normalized == "langgraph":
+            return self.langgraph_orchestrator_url
+        if normalized == "python_functions":
+            return self.python_functions_orchestrator_url
+        if normalized == "llamaindex":
+            return self.llamaindex_orchestrator_url
+        if normalized in {"specialist", "specialist_supervisor"}:
+            return self.specialist_supervisor_url
+        if normalized in {"router", "ai_orchestrator", "central"}:
+            return self.ai_orchestrator_url
+        raise KeyError(f"unknown_stack:{stack}")
 
 
 def request(
@@ -98,9 +116,60 @@ def request(
         raise RuntimeError(f"request_failed:{method}:{url}:{exc.reason}") from exc
 
 
+def internal_headers(settings: Settings) -> dict[str, str]:
+    return {"X-Internal-Api-Token": settings.internal_api_token}
+
+
 def assert_condition(condition: bool, message: str) -> None:
     if not condition:
         raise AssertionError(message)
+
+
+def fetch_internal_conversation_context(
+    settings: Settings,
+    *,
+    conversation_external_id: str,
+    channel: str = "telegram",
+    limit: int = 6,
+) -> dict[str, Any]:
+    status, _, payload = request(
+        "GET",
+        (
+            f"{settings.api_core_url}/v1/internal/conversations/context"
+            f"?conversation_external_id={quote(conversation_external_id, safe='')}"
+            f"&channel={quote(channel, safe='')}"
+            f"&limit={limit}"
+        ),
+        headers=internal_headers(settings),
+        timeout=15.0,
+    )
+    assert_condition(status == 200 and isinstance(payload, dict), f"context_fetch_failed:{conversation_external_id}:{channel}")
+    return payload
+
+
+def wait_for_internal_conversation_context(
+    settings: Settings,
+    *,
+    conversation_external_id: str,
+    channel: str = "telegram",
+    limit: int = 6,
+    attempts: int = 10,
+    delay_seconds: float = 1.5,
+    predicate: Any | None = None,
+) -> dict[str, Any]:
+    last_payload: dict[str, Any] | None = None
+    for _ in range(attempts):
+        payload = fetch_internal_conversation_context(
+            settings,
+            conversation_external_id=conversation_external_id,
+            channel=channel,
+            limit=limit,
+        )
+        last_payload = payload
+        if predicate is None or bool(predicate(payload)):
+            return payload
+        time.sleep(delay_seconds)
+    raise AssertionError(f"context_predicate_not_satisfied:{conversation_external_id}:{channel}:{last_payload}")
 
 
 def fetch_token(settings: Settings, *, username: str | None = None, password: str | None = None) -> str:

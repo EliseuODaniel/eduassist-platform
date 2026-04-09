@@ -2,8 +2,11 @@ SHELL := /bin/bash
 
 COMPOSE_FILE := infra/compose/compose.yaml
 ENV_FILE := .env
+SPECIALIST_PROFILE := --profile specialist-supervisor
+TELEGRAM_PROFILE := --profile telegram-public
+DEDICATED_CORE_SERVICES := postgres redis qdrant minio minio-init keycloak opa api-core ai-orchestrator ai-orchestrator-langgraph ai-orchestrator-python-functions ai-orchestrator-llamaindex ai-orchestrator-specialist telegram-gateway
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-authz smoke-adversarial smoke-all eval-orchestrator eval-all graphrag-benchmark-bootstrap graphrag-benchmark-bootstrap-local graphrag-benchmark-local-check graphrag-benchmark-index graphrag-benchmark-index-dry-run graphrag-benchmark-baseline graphrag-benchmark-run graphrag-benchmark-run-smoke graphrag-local-runtime-up graphrag-local-runtime-down graphrag-local-runtime-logs release-readiness release-readiness-strict article-docx db-upgrade db-downgrade db-seed-foundation db-seed-school-expansion db-seed-operational-load db-seed-deep-population db-seed-benchmark-scenarios db-seed-auth-bindings keycloak-sync-runtime-users db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install telegram-public-up telegram-webhook-info
+.PHONY: env bootstrap compose-config compose-build compose-up compose-up-dedicated-core compose-up-telegram-langgraph compose-up-telegram-python-functions compose-up-telegram-llamaindex compose-up-telegram-specialist compose-up-control-plane-compat compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-control-plane-compat smoke-authz smoke-adversarial smoke-all smoke-dedicated smoke-dedicated-langgraph smoke-dedicated-python-functions smoke-dedicated-llamaindex smoke-dedicated-specialist smoke-dedicated-multiturn smoke-dedicated-multiturn-langgraph smoke-dedicated-multiturn-python-functions smoke-dedicated-multiturn-llamaindex smoke-dedicated-multiturn-specialist smoke-telegram-dedicated runtime-parity-check eval-dedicated eval-orchestrator eval-control-plane-compat eval-all graphrag-benchmark-bootstrap graphrag-benchmark-bootstrap-local graphrag-benchmark-local-check graphrag-benchmark-index graphrag-benchmark-index-dry-run graphrag-benchmark-baseline graphrag-benchmark-run graphrag-benchmark-run-smoke graphrag-local-runtime-up graphrag-local-runtime-down graphrag-local-runtime-logs release-readiness release-readiness-strict article-docx db-upgrade db-downgrade db-seed-foundation db-seed-school-expansion db-seed-operational-load db-seed-deep-population db-seed-benchmark-scenarios db-seed-auth-bindings keycloak-sync-runtime-users db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install telegram-public-up telegram-public-up-stable telegram-webhook-info telegram-webhook-health
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -21,6 +24,33 @@ compose-build: env
 compose-up: env
 	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build
 
+compose-up-dedicated-core: env
+	docker compose $(SPECIALIST_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build $(DEDICATED_CORE_SERVICES)
+
+compose-up-telegram-langgraph: env
+	docker rm -f eduassist-cloudflared >/dev/null 2>&1 || true
+	docker compose $(SPECIALIST_PROFILE) $(TELEGRAM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f infra/compose/telegram-langgraph.override.yaml up -d --build $(DEDICATED_CORE_SERVICES) cloudflared
+	python3 tools/ops/telegram_webhook.py register
+
+compose-up-telegram-python-functions: env
+	docker rm -f eduassist-cloudflared >/dev/null 2>&1 || true
+	docker compose $(SPECIALIST_PROFILE) $(TELEGRAM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f infra/compose/telegram-python-functions.override.yaml up -d --build $(DEDICATED_CORE_SERVICES) cloudflared
+	python3 tools/ops/telegram_webhook.py register
+
+compose-up-telegram-llamaindex: env
+	docker rm -f eduassist-cloudflared >/dev/null 2>&1 || true
+	docker compose $(SPECIALIST_PROFILE) $(TELEGRAM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f infra/compose/telegram-llamaindex.override.yaml up -d --build $(DEDICATED_CORE_SERVICES) cloudflared
+	python3 tools/ops/telegram_webhook.py register
+
+compose-up-telegram-specialist: env
+	docker rm -f eduassist-cloudflared >/dev/null 2>&1 || true
+	docker compose $(SPECIALIST_PROFILE) $(TELEGRAM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f infra/compose/telegram-specialist.override.yaml up -d --build $(DEDICATED_CORE_SERVICES) cloudflared
+	python3 tools/ops/telegram_webhook.py register
+
+compose-up-control-plane-compat: env
+	CONTROL_PLANE_ALLOW_DIRECT_SERVING=true docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build ai-orchestrator
+	@echo "Control plane compatibility mode enabled for ai-orchestrator (/v1/messages/respond)."
+
 compose-down: env
 	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) down --remove-orphans
 
@@ -32,8 +62,16 @@ telegram-public-up: env
 	docker compose --profile telegram-public --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d telegram-gateway cloudflared
 	python3 tools/ops/telegram_webhook.py register
 
+telegram-public-up-stable: env
+	docker rm -f eduassist-cloudflared >/dev/null 2>&1 || true
+	CLOUDFLARED_ALLOW_QUICK_TUNNEL=false docker compose --profile telegram-public --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d telegram-gateway cloudflared
+	python3 tools/ops/telegram_webhook.py register
+
 telegram-webhook-info: env
 	python3 tools/ops/telegram_webhook.py info
+
+telegram-webhook-health: env
+	python3 tools/ops/telegram_webhook.py health
 
 observability-up: env
 	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d otel-collector tempo loki promtail prometheus grafana
@@ -44,7 +82,10 @@ observability-down: env
 observability-logs: env
 	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs -f --tail=200 otel-collector tempo loki promtail prometheus grafana
 
-smoke-local: env
+smoke-local: smoke-control-plane-compat
+
+smoke-control-plane-compat: env
+	@echo "Compatibility smoke for the central control plane; requires ai-orchestrator started with CONTROL_PLANE_ALLOW_DIRECT_SERVING=true."
 	python3 tests/e2e/local_smoke.py
 
 smoke-authz: env
@@ -53,12 +94,54 @@ smoke-authz: env
 smoke-adversarial: env
 	python3 tests/e2e/adversarial_regression.py
 
-smoke-all: smoke-local smoke-authz smoke-adversarial
+smoke-all: smoke-dedicated smoke-authz smoke-adversarial
 
-eval-orchestrator: env
+smoke-dedicated: env
+	python3 tests/e2e/dedicated_stack_smoke.py --stack $${STACK:-all}
+
+smoke-dedicated-langgraph: env
+	python3 tests/e2e/dedicated_stack_smoke.py --stack langgraph
+
+smoke-dedicated-python-functions: env
+	python3 tests/e2e/dedicated_stack_smoke.py --stack python_functions
+
+smoke-dedicated-llamaindex: env
+	python3 tests/e2e/dedicated_stack_smoke.py --stack llamaindex
+
+smoke-dedicated-specialist: env
+	python3 tests/e2e/dedicated_stack_smoke.py --stack specialist_supervisor
+
+smoke-dedicated-multiturn: env
+	python3 tests/e2e/dedicated_stack_multiturn.py --stack $${STACK:-all}
+
+smoke-dedicated-multiturn-langgraph: env
+	python3 tests/e2e/dedicated_stack_multiturn.py --stack langgraph
+
+smoke-dedicated-multiturn-python-functions: env
+	python3 tests/e2e/dedicated_stack_multiturn.py --stack python_functions
+
+smoke-dedicated-multiturn-llamaindex: env
+	python3 tests/e2e/dedicated_stack_multiturn.py --stack llamaindex
+
+smoke-dedicated-multiturn-specialist: env
+	python3 tests/e2e/dedicated_stack_multiturn.py --stack specialist_supervisor
+
+smoke-telegram-dedicated: env
+	python3 tests/e2e/telegram_gateway_dedicated_smoke.py $${TELEGRAM_GATEWAY_SMOKE_ARGS:-}
+
+runtime-parity-check: env
+	python3 tests/e2e/dedicated_runtime_parity.py --stack $${STACK:-all} $${RUNTIME_PARITY_ARGS:-}
+
+eval-dedicated: env
+	python3 tests/evals/dedicated_runtime_quality.py
+
+eval-orchestrator: eval-control-plane-compat
+
+eval-control-plane-compat: env
+	@echo "Compatibility eval for the central control plane; requires ai-orchestrator started with CONTROL_PLANE_ALLOW_DIRECT_SERVING=true."
 	python3 tests/evals/orchestrator_quality.py
 
-eval-all: eval-orchestrator
+eval-all: eval-dedicated
 
 graphrag-benchmark-bootstrap: env
 	uv run --project tools/graphrag-benchmark python -m graphrag_benchmark.bootstrap_workspace --profile $${GRAPHRAG_BENCHMARK_PROFILE:-openai-remote} $${GRAPHRAG_BENCHMARK_BOOTSTRAP_ARGS:-}
