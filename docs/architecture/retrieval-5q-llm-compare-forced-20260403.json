@@ -1,0 +1,757 @@
+{
+  "generated_at": "2026-04-03T19:25:46.233422+00:00",
+  "llm_forced": true,
+  "run_prefix": "debug:four-path:llm-forced:20260403T192231Z",
+  "summary": {
+    "by_stack": {
+      "langgraph": {
+        "count": 5,
+        "ok": 5,
+        "keyword_pass": 2,
+        "quality_avg": 88.0,
+        "avg_latency_ms": 7506.5,
+        "final_polish_applied": 5
+      },
+      "python_functions": {
+        "count": 5,
+        "ok": 5,
+        "keyword_pass": 3,
+        "quality_avg": 92.0,
+        "avg_latency_ms": 4061.4,
+        "final_polish_applied": 0
+      },
+      "llamaindex": {
+        "count": 5,
+        "ok": 4,
+        "keyword_pass": 3,
+        "quality_avg": 76.0,
+        "avg_latency_ms": 15071.7,
+        "final_polish_applied": 3
+      },
+      "specialist_supervisor": {
+        "count": 5,
+        "ok": 4,
+        "keyword_pass": 1,
+        "quality_avg": 68.0,
+        "avg_latency_ms": 12311.6,
+        "final_polish_applied": 0
+      }
+    },
+    "by_slice": {
+      "public": {
+        "count": 5,
+        "langgraph": {
+          "ok": 5,
+          "keyword_pass": 2,
+          "quality_avg": 88.0,
+          "avg_latency_ms": 7506.5,
+          "final_polish_applied": 5
+        },
+        "python_functions": {
+          "ok": 5,
+          "keyword_pass": 3,
+          "quality_avg": 92.0,
+          "avg_latency_ms": 4061.4,
+          "final_polish_applied": 0
+        },
+        "llamaindex": {
+          "ok": 4,
+          "keyword_pass": 3,
+          "quality_avg": 76.0,
+          "avg_latency_ms": 15071.7,
+          "final_polish_applied": 3
+        },
+        "specialist_supervisor": {
+          "ok": 4,
+          "keyword_pass": 1,
+          "quality_avg": 68.0,
+          "avg_latency_ms": 12311.6,
+          "final_polish_applied": 0
+        }
+      }
+    },
+    "error_types": {
+      "langgraph": {
+        "missing_expected_keyword": 3
+      },
+      "python_functions": {
+        "missing_expected_keyword": 2
+      },
+      "llamaindex": {
+        "request_failed": 1,
+        "missing_expected_keyword": 1
+      },
+      "specialist_supervisor": {
+        "missing_expected_keyword": 3,
+        "request_failed": 1
+      }
+    }
+  },
+  "results": [
+    {
+      "prompt": "Olhando apenas para a base publica da escola, que continuidade de apoio aparece quando se cruzam orientacao educacional, mediacao de convivio, estudo guiado e relacao com a familia?",
+      "slice": "public",
+      "category": "public_support_continuum_open",
+      "thread_id": "retrieval_5q_llm_compare_support_continuum_open",
+      "turn_index": 1,
+      "note": "fresh llm-comparison prompt about support, mediation and family continuity",
+      "run_prefix": "debug:four-path:llm-forced:20260403T192231Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 3725.7,
+        "mode": "structured_tool",
+        "reason": "bundle publico canonico deve seguir lane publica mesmo se a classificacao superestimar autenticacao",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "structured_polish"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "light_polish",
+        "final_polish_reason": "langgraph_public_noncanonical",
+        "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 484.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "python_functions_prefers_deterministic",
+        "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 599,
+        "latency_ms": 31202.1,
+        "mode": "error",
+        "reason": "exception",
+        "graph_path": [],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_text": "",
+        "keyword_pass": false,
+        "quality_score": 0,
+        "error_types": [
+          "request_failed"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2031.0,
+        "mode": "structured_tool",
+        "reason": "bundle publico canonico deve seguir lane publica mesmo se a classificacao superestimar autenticacao",
+        "graph_path": [
+          "specialist_supervisor",
+          "remote_unavailable",
+          "langgraph_fallback",
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "stack_not_enabled",
+        "answer_text": "Estudar em uma escola publica pode ser uma boa escolha para muitas familias, e eu nao vou te vender uma comparacao vazia. No que esta publicado aqui, os diferenciais desta escola passam por Tutoria academica e projeto de vida, Espaco Maker integrado ao curriculo, Acolhimento estruturado para familias e estudantes. A proposta pedagogica publicada hoje combina Projeto pedagogico laico, com foco em aprendizagem por projetos, cultura digital responsavel, acompanhamento socioemocional e preparacao academica progressiva.. Na pratica, isso aparece em acompanhamento mais proximo da aprendizagem, projeto de vida e combinados pedagogicos mais claros. Escola laica com Ensino Fundamental II e Ensino Medio, acompanhamento tutorial e trilhas academicas no contraturno. Se quiser, eu posso te mostrar isso de forma mais pratica na rotina, na proposta pedagogica ou no contraturno.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Sem repetir slogans, que arquitetura de rotina escolar aparece quando se combinam turno estendido, oficinas, refeicao, estudo acompanhado e permanencia no contraturno?",
+      "slice": "public",
+      "category": "public_extended_day_ecosystem_open",
+      "thread_id": "retrieval_5q_llm_compare_extended_day_ecosystem_open",
+      "turn_index": 1,
+      "note": "fresh llm-comparison prompt about extended day and operational routine",
+      "run_prefix": "debug:four-path:llm-forced:20260403T192231Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 8261.1,
+        "mode": "structured_tool",
+        "reason": "bundle publico canonico deve seguir lane publica mesmo se a classificacao superestimar autenticacao",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "structured_polish",
+          "answer_verifier_judge"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "light_polish",
+        "final_polish_reason": "langgraph_public_noncanonical",
+        "answer_text": "No Colégio Horizonte, a combinação de turno estendido, oficinas, refeição, estudo acompanhado e permanência no contraturno forma uma rotina de período integral. Essa opção complementar oferece aos estudantes um acompanhamento mais próximo, uma rotina organizada e atividades formativas adicionais. A tarde é composta por acolhimento, almoço ou lanche, um bloco de estudo e atividades complementares, como oficinas de leitura, projetos maker, cultura digital, práticas artísticas, monitorias e recomposição de aprendizagem.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 3919.6,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_verifier_judge"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "python_functions_prefers_deterministic",
+        "answer_text": "No Colégio Horizonte, a combinação de turno estendido, oficinas, refeição, estudo acompanhado e permanência no contraturno forma uma rotina de período integral. Essa opção complementar oferece aos estudantes um acompanhamento mais próximo, uma rotina organizada e atividades formativas adicionais. A tarde geralmente inclui acolhimento, almoço ou lanche, um bloco de estudo e uma atividade complementar, como oficinas de leitura, projetos maker, cultura digital, práticas artísticas ou monitorias.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 4658.5,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_composition",
+          "structured_polish"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "light_polish",
+        "final_polish_reason": "llamaindex_documentary_synthesis",
+        "answer_text": "Fora da sala regular, o material publico mostra que periodo integral e estudo orientado se completam como camadas de apoio ao estudante. O periodo integral e uma opcao complementar destinada a familias que desejam ampliar a permanencia do estudante na escola com acompanhamento, rotina organizada e atividades formativas adicionais. O estudo orientado oferece apoio para organizacao de tarefas, acompanhamento de prazos, leitura orientada e consolidacao de habitos academicos. Em geral, a rotina da tarde combina acolhimento, almoco ou lanche conforme o plano contratado, bloco de estudo, atividade complementar e horario de saida definido. Entre as atividades possiveis estao oficinas de leitura, projetos maker, cultura digital, praticas artisticas, monitorias e recomposicao de aprendizagem. O estudo orientado ajuda o aluno a manter rotina e prioridade, mas nao garante, por si so, desempenho academico especifico.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 14613.3,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_budget_safe_fallback",
+        "graph_path": [
+          "specialist_supervisor",
+          "safe_fallback"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "specialist_execution"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_text": "Nao consegui concluir essa resposta premium agora. Se quiser, reformule em uma frase mais direta ou repita em instantes.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Se uma familia precisa entender por onde um tema caminha dentro da escola, que trilha institucional os documentos publicos sugerem entre secretaria, coordenacao, direcao e canais oficiais?",
+      "slice": "public",
+      "category": "public_governance_channels_open",
+      "thread_id": "retrieval_5q_llm_compare_governance_channels_open",
+      "turn_index": 1,
+      "note": "fresh llm-comparison prompt about governance and official escalation channels",
+      "run_prefix": "debug:four-path:llm-forced:20260403T192231Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 9089.9,
+        "mode": "structured_tool",
+        "reason": "bundle publico canonico deve seguir lane publica mesmo se a classificacao superestimar autenticacao",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "structured_polish",
+          "answer_verifier_judge"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "light_polish",
+        "final_polish_reason": "langgraph_public_noncanonical",
+        "answer_text": "Para entender o andamento de um tema, a trilha institucional do Colégio Horizonte sugere que as famílias busquem a coordenação pedagógica como primeiro contato. Você pode falar com a Coordenadora Luciana Ferraz para o Ensino Médio (ensinomedio@colegiohorizonte.edu.br) ou com o Coordenador Ricardo Paiva para o Ensino Fundamental II (fundamental2@colegiohorizonte.edu.br). A Diretora Geral, Helena Martins (direcao@colegiohorizonte.edu.br), atende por agenda e participa dos encontros bimestrais, sendo o contato para questões de governança e relacionamento institucional.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 4722.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_verifier_judge"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "python_functions_prefers_deterministic",
+        "answer_text": "Na base publica do Colegio Horizonte, coordenacao e direcao aparecem em uma trilha clara de governanca e protocolo. A diretora geral do Colegio Horizonte e Helena Martins. A lideranca atende familias por agenda institucional. Direcao geral: direcao@colegiohorizonte.edu.br Coordenacao Fundamental II: fundamental2@colegiohorizonte.edu.br Coordenacao Ensino Medio: ensinomedio@colegiohorizonte.edu.br. A diretora participa de encontros institucionais com familias ao longo do ano, especialmente nas reunioes de acolhimento, eventos gerais e marcos bimestrais de acompanhamento da comunidade escolar.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 14200.5,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_retrieval",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_composition",
+          "structured_polish"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "light_polish",
+        "final_polish_reason": "llamaindex_documentary_synthesis",
+        "answer_text": "Na base publica do Colegio Horizonte, coordenacao e direcao aparecem em uma trilha clara de governanca e protocolo. A diretora geral do Colegio Horizonte e Helena Martins. A lideranca atende familias por agenda institucional. Direcao geral: direcao@colegiohorizonte.edu.br Coordenacao Fundamental II: fundamental2@colegiohorizonte.edu.br Coordenacao Ensino Medio: ensinomedio@colegiohorizonte.edu.br. A diretora participa de encontros institucionais com familias ao longo do ano, especialmente nas reunioes de acolhimento, eventos gerais e marcos bimestrais de acompanhamento da comunidade escolar.\n\nFontes:\n- Governanca e Lideranca Institucional (v2026.2)\n- FAQ de Secretaria e Vida Academica (v2026.3)",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 7062.8,
+        "mode": "structured_tool",
+        "reason": "bundle publico canonico deve seguir lane publica mesmo se a classificacao superestimar autenticacao",
+        "graph_path": [
+          "specialist_supervisor",
+          "remote_unavailable",
+          "langgraph_fallback",
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_verifier_judge"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "stack_not_enabled",
+        "answer_text": "Na base publica do Colegio Horizonte, coordenacao e direcao aparecem em uma trilha clara de governanca e protocolo. A diretora geral do Colegio Horizonte e Helena Martins. A lideranca atende familias por agenda institucional. Direcao geral: direcao@colegiohorizonte.edu.br Coordenacao Fundamental II: fundamental2@colegiohorizonte.edu.br Coordenacao Ensino Medio: ensinomedio@colegiohorizonte.edu.br. A diretora participa de encontros institucionais com familias ao longo do ano, especialmente nas reunioes de acolhimento, eventos gerais e marcos bimestrais de acompanhamento da comunidade escolar.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        }
+      }
+    },
+    {
+      "prompt": "Que logica institucional aparece quando a escola conecta comprovacao de saude, ausencia em atividade avaliativa, comunicacao com a familia e reorganizacao pedagogica?",
+      "slice": "public",
+      "category": "public_health_reorganization_open",
+      "thread_id": "retrieval_5q_llm_compare_health_reorganization_open",
+      "turn_index": 1,
+      "note": "fresh llm-comparison prompt about health documentation, absence and academic reorganization",
+      "run_prefix": "debug:four-path:llm-forced:20260403T192231Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 8491.0,
+        "mode": "structured_tool",
+        "reason": "bundle publico canonico deve seguir lane publica mesmo se a classificacao superestimar autenticacao",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "structured_polish",
+          "answer_verifier_judge"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "light_polish",
+        "final_polish_reason": "langgraph_public_noncanonical",
+        "answer_text": "No Colégio Horizonte, quando um estudante precisa se ausentar por motivos de saúde, é importante que a família apresente a comprovação. Isso nos permite justificar a falta, organizar uma segunda chamada para atividades avaliativas e, se necessário, adaptar o plano pedagógico para que o aprendizado não seja prejudicado. Nosso objetivo é sempre garantir o bem-estar do aluno e o acompanhamento de seu desenvolvimento.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 4407.7,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_verifier_judge"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "python_functions_prefers_deterministic",
+        "answer_text": "No Colégio Horizonte, a lógica institucional conecta a comprovação de saúde, a comunicação com a família e a reorganização pedagógica para garantir o bem-estar e o acompanhamento do estudante. Atestados médicos e justificativas formais são importantes para analisar ausências, solicitar segunda chamada ou adaptar temporariamente a rotina. Em casos de desempenho abaixo do esperado, a escola pode oferecer recuperação paralela, atividades orientadas ou avaliações substitutivas, sempre com a família informada.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 13370.6,
+        "mode": "structured_tool",
+        "reason": "bundle publico canonico deve seguir lane publica mesmo se a classificacao superestimar autenticacao",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_verifier_judge"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "llamaindex_not_eligible",
+        "answer_text": "No Colégio Horizonte, a lógica institucional conecta a comprovação de saúde, a comunicação com a família e a reorganização pedagógica para garantir o bem-estar e o acompanhamento do estudante. Atestados médicos e justificativas formais são importantes para analisar ausências, solicitar segunda chamada ou adaptar temporariamente a rotina. Em casos de desempenho abaixo do esperado, a escola pode oferecer recuperação paralela, atividades orientadas ou avaliações substitutivas, sempre com a família informada.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 599,
+        "latency_ms": 20002.2,
+        "mode": "error",
+        "reason": "exception",
+        "graph_path": [],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_text": "",
+        "keyword_pass": false,
+        "quality_score": 0,
+        "error_types": [
+          "request_failed"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Para uma familia que ainda esta conhecendo a escola, como a base publica deixa clara a fronteira entre o que ja se entende por calendarios e orientacoes abertas e o que so aparece com portal, login e conta vinculada?",
+      "slice": "public",
+      "category": "public_visibility_boundary_onboarding_open",
+      "thread_id": "retrieval_5q_llm_compare_visibility_boundary_onboarding_open",
+      "turn_index": 1,
+      "note": "fresh llm-comparison prompt about public versus authenticated informational boundary",
+      "run_prefix": "debug:four-path:llm-forced:20260403T192231Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 7964.8,
+        "mode": "structured_tool",
+        "reason": "bundle publico canonico deve seguir lane publica mesmo se a classificacao superestimar autenticacao",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "structured_polish",
+          "answer_verifier_judge"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "light_polish",
+        "final_polish_reason": "langgraph_public_noncanonical",
+        "answer_text": "Olá! Para as famílias que estão nos conhecendo, é importante saber que temos algumas frentes de comunicação. A Secretaria cuida de declarações, históricos e orientações administrativas. Já o Portal Institucional é o lugar para protocolos e envio digital de documentos.\n\nPara acessar informações mais específicas, como calendários detalhados e orientações personalizadas, você precisará das credenciais de login e senha do portal. Se precisar de ajuda para recuperar o acesso, a Secretaria ou o suporte digital estão à disposição.\n\nLembre-se que o envio inicial de documentos pode ser feito pelo portal, e-mail da secretaria ou presencialmente. Por segurança, o chat aberto não deve ser usado para documentos completos ou dados sensíveis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 6773.7,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "python_functions_prefers_deterministic",
+        "answer_text": "Hoje a familia precisa entender quatro frentes publicas deste fluxo:\n- Secretaria: recebe declaracoes, historico, atualizacoes cadastrais e orientacoes administrativas.\n- Portal institucional: centraliza protocolo e envio digital inicial de documentos.\n- Credenciais: login e senha do portal continuam sendo a base de acesso; se precisar recuperar acesso, o melhor caminho e a secretaria ou o suporte digital.\n- Documentos: o envio inicial pode ser feito por portal institucional, email da secretaria ou secretaria presencial.\nO chat aberto nao deve receber documentos completos ou dados sensiveis. Quando possivel, use o portal autenticado ou o email institucional.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 11926.6,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_profile",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:workflow",
+          "llamaindex:llamaindex_public_profile",
+          "llamaindex:tool:public_profile",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_composition",
+          "structured_polish"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "light_polish",
+        "final_polish_reason": "llamaindex_documentary_synthesis",
+        "answer_text": "No calendario publico, o que costuma ficar aberto para familias sao marcos institucionais gerais e eventos coletivos. A fronteira pratica aparece assim: orientacoes abertas circulam no calendario publico, no portal institucional aberto e nos canais oficiais; o que so ganha detalhe depois do login e da conta vinculada no portal sao informacoes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos. Sempre que houver ajuste relevante no calendario de avaliacao, a escola atualiza o portal e reforca a comunicacao pelos canais oficiais. O ambiente digital amplia o atendimento, mas nao substitui todos os processos formais.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 17848.8,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_direct:institution_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "institution_specialist"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "specialist_execution"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_text": "Para uma família que está conhecendo o Colégio Horizonte, a fronteira entre as informações públicas e aquelas que exigem portal, login e conta vinculada é clara.\n\n**Informações Públicas e Abertas:**\n\nA base pública do Colégio Horizonte, acessível através de seu website, contatos de admissão, visitas guiadas e canais de atendimento comercial (telefone, WhatsApp, e-mail e Instagram), disponibiliza um panorama abrangente da escola. Isso inclui:\n\n*   **Perfil Institucional:** Nome, endereço, modelo educacional, currículo, segmentos de ensino (Fundamental II e Ensino Médio), turnos de funcionamento, valores de mensalidade de referência, diferenciais pedagógicos (tutoria, espaço maker, acolhimento de famílias) e infraestrutura.\n*   **Calendários e Orientação Geral:** Datas importantes do ano letivo (início das aulas, reuniões gerais de pais e responsáveis, eventos culturais e esportivos abertos ao público), política acadêmica resumida (média de aprovação, política de frequência mínima, sumário do projeto de vida) e canais de contato para diversos setores.\n*   **Processo de Admissão:** Detalhes sobre o processo de matrícula, documentos necessários para inscrição, ofertas de visita guiada e informações sobre bolsas e descontos.\n*   **Equipe de Liderança:** Nomes e contatos de e-mail da direção e coordenações.\n\n**Informações Acessíveis com Portal, Login e Conta Vinculada:**\n\nUma vez que a família se torna parte da comunidade escolar, com a matrícula efetivada, o acesso a um portal e conta vinculada se torna necessário para informações e serviços personalizados e seguros. Isso abrange:\n\n*   **Dados Acadêmicos Individuais:** Notas, boletins, frequência detalhada do estudante em cada disciplina, comunicados pedagógicos específicos e acompanhamento individualizado.\n*   **Informações Financeiras Pessoais:** Boletos de mensalidade, histórico de pagamentos, contratos financeiros e detalhes de acordos. O serviço de \"Financeiro escolar e contratos\" menciona explicitamente o \"portal autenticado\" para essas interações.\n*   **Documentação e Processos Administrativos:** Envio seguro de documentos pessoais e administrativos (além da fase inicial de matrícula), solicitação de declarações e históricos escolares, e interação com a secretaria digital para assuntos que requerem identificação e confidencialidade.\n*   **Comunicações Diretas e Restritas:** Mensagens e avisos da coordenação pedagógica, professores e orientação educacional específicos para o estudante ou sua família.\n*   **Suporte Digital:** O serviço de \"Suporte de portal, acesso e atendimento digital\" é dedicado a auxiliar no acesso e uso do portal escolar, indicando a existência de uma plataforma que requer credenciais.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    }
+  ],
+  "dataset": "/home/edann/projects/eduassist-platform/tests/evals/datasets/retrieval_5q_llm_compare.generated.20260403.json"
+}

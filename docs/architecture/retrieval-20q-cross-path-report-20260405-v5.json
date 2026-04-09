@@ -1,0 +1,3420 @@
+{
+  "generated_at": "2026-04-05T07:28:56.137039+00:00",
+  "llm_forced": false,
+  "run_prefix": "debug:four-path:normal:20260405T072626Z",
+  "summary": {
+    "by_stack": {
+      "langgraph": {
+        "count": 20,
+        "ok": 20,
+        "keyword_pass": 19,
+        "quality_avg": 99.0,
+        "avg_latency_ms": 1738.6,
+        "final_polish_applied": 1
+      },
+      "python_functions": {
+        "count": 20,
+        "ok": 20,
+        "keyword_pass": 17,
+        "quality_avg": 97.0,
+        "avg_latency_ms": 1490.0,
+        "final_polish_applied": 0
+      },
+      "llamaindex": {
+        "count": 20,
+        "ok": 20,
+        "keyword_pass": 20,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 1726.2,
+        "final_polish_applied": 0
+      },
+      "specialist_supervisor": {
+        "count": 20,
+        "ok": 20,
+        "keyword_pass": 18,
+        "quality_avg": 98.0,
+        "avg_latency_ms": 2441.5,
+        "final_polish_applied": 0
+      }
+    },
+    "by_slice": {
+      "protected": {
+        "count": 6,
+        "langgraph": {
+          "ok": 6,
+          "keyword_pass": 6,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 599.9,
+          "final_polish_applied": 0
+        },
+        "python_functions": {
+          "ok": 6,
+          "keyword_pass": 6,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 600.5,
+          "final_polish_applied": 0
+        },
+        "llamaindex": {
+          "ok": 6,
+          "keyword_pass": 6,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 622.5,
+          "final_polish_applied": 0
+        },
+        "specialist_supervisor": {
+          "ok": 6,
+          "keyword_pass": 5,
+          "quality_avg": 96.7,
+          "avg_latency_ms": 446.1,
+          "final_polish_applied": 0
+        }
+      },
+      "public": {
+        "count": 13,
+        "langgraph": {
+          "ok": 13,
+          "keyword_pass": 12,
+          "quality_avg": 98.5,
+          "avg_latency_ms": 2227.8,
+          "final_polish_applied": 1
+        },
+        "python_functions": {
+          "ok": 13,
+          "keyword_pass": 10,
+          "quality_avg": 95.4,
+          "avg_latency_ms": 1786.7,
+          "final_polish_applied": 0
+        },
+        "llamaindex": {
+          "ok": 13,
+          "keyword_pass": 13,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 2159.1,
+          "final_polish_applied": 0
+        },
+        "specialist_supervisor": {
+          "ok": 13,
+          "keyword_pass": 12,
+          "quality_avg": 98.5,
+          "avg_latency_ms": 3286.8,
+          "final_polish_applied": 0
+        }
+      },
+      "restricted": {
+        "count": 1,
+        "langgraph": {
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 2211.8,
+          "final_polish_applied": 0
+        },
+        "python_functions": {
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 2969.4,
+          "final_polish_applied": 0
+        },
+        "llamaindex": {
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 2720.0,
+          "final_polish_applied": 0
+        },
+        "specialist_supervisor": {
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 3425.1,
+          "final_polish_applied": 0
+        }
+      }
+    },
+    "error_types": {
+      "langgraph": {
+        "missing_expected_keyword": 1
+      },
+      "python_functions": {
+        "missing_expected_keyword": 3
+      },
+      "llamaindex": {},
+      "specialist_supervisor": {
+        "missing_expected_keyword": 2
+      }
+    }
+  },
+  "results": [
+    {
+      "prompt": "Ordene matricula, comeco das aulas e primeira reuniao com responsaveis no ciclo publico de 2026. Traga a resposta de forma concreta.",
+      "slice": "public",
+      "category": "public_timeline",
+      "thread_id": "retrieval_public_timeline_sequence",
+      "turn_index": 1,
+      "note": "public timeline sequencing",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 4068.6,
+        "mode": "structured_tool",
+        "reason": "datas institucionais publicas devem vir de leitura estruturada e auditavel",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "structured_polish",
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "light_polish",
+        "final_polish_reason": "langgraph_public_noncanonical",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "fast_public_channel_answer",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "As datas importantes para o ciclo de 2026 são: - Matrícula: O ciclo de matrícula para 2026 foi aberto em 6 de outubro de 2025. - Início das aulas: As aulas do Ensino Fundamental II e do Ensino Médio começam em 2 de fevereiro de 2026. - Primeira reunião com responsáveis: A primeira reunião geral com responsáveis de 2026 acontece em 28 de março de 2026.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 1603.8,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "deterministic_candidate_selected",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "A matrícula para o ciclo público de 2026 foi aberta em 6 de outubro de 2025. As aulas para o Ensino Fundamental II e Ensino Médio começam em 2 de fevereiro de 2026. A primeira reunião geral com os responsáveis em 2026 ocorrerá em 28 de março de 2026.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 1661.7,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "contextual_public_direct_answer",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "A matrícula para o ciclo de 2026 iniciou em 6 de outubro de 2025. As aulas começam em 2 de fevereiro de 2026, com a semana de acolhimento para o 6º ano e a primeira série ocorrendo entre 2 e 6 de fevereiro. A primeira reunião geral com os responsáveis está agendada para 28 de março de 2026.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1601.2,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_preflight:family_new_calendar_enrollment",
+        "graph_path": [
+          "specialist_supervisor",
+          "preflight",
+          "family_new_calendar_enrollment"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": "structured_grounded_answer:fallback_to_original",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Para uma familia nova, os tres documentos cumprem papeis diferentes e complementares. Matricula: o manual orienta a entrada correta e a documentacao inicial. Calendario: o calendario letivo organiza o comeco do ano e os primeiros marcos escolares. Avaliacoes: a agenda avaliativa mostra quando entram devolutivas, provas e recuperacoes. Calendario letivo: As aulas do ensino fundamental II e do ensino medio comecam em 2 de fevereiro de 2026. Ingresso e marcos do ano: O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita guiada opcional e triagem documental inicial. Relacao com a familia: As reunioes gerais com responsaveis acontecem em 28 de março, 27 de junho, 19 de setembro e 12 de dezembro de 2026. Agenda de avaliacoes: As avaliacoes bimestrais seguem o planejamento pedagogico de cada segmento e sao publicadas com antecedencia no portal academico. Recuperacao e ajustes: A recuperacao paralela acontece ao longo do bimestre, com reforco, devolutiva e atividades de recomposicao de aprendizagem. Comunicacao com responsaveis: Sempre que houver ajuste relevante no calendario de avaliacao, a escola atualiza o portal e reforca a comunicacao pelos canais oficiais. Manual de matricula: O processo de matricula ocorre em quatro etapas: pre-cadastro, envio de documentos, validacao pela secretaria e assinatura contratual. Documentos e envio: Sao exigidos documento de identidade do aluno, CPF quando houver, historico escolar, comprovante de residencia atualizado, documento de identificacao do responsavel legal e formulario cadastral preenchido. O envio inicial dos documentos pode ser feito pelo portal institucional ou pelo e-mail oficial da secretaria para triagem e validacao. Em periodos de alta demanda, o atendimento inicial prioriza orientacao documental e agendamento. Na pratica, uma familia nova usa o manual para entrar corretamente, o calendario para se orientar no ano e a agenda de avaliacoes para nao perder janelas pedagogicas e comunicados importantes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Pensando no caso pratico, estou chegando agora com meu primeiro filho: como matricula, calendario e agenda de avaliacoes se encaixam no primeiro bimestre?",
+      "slice": "public",
+      "category": "public_family_new_bundle",
+      "thread_id": "retrieval_public_family_new_bundle",
+      "turn_index": 1,
+      "note": "canonical family-new bundle",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1654.9,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.family_new_calendar_assessment_enrollment",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.family_new_calendar_assessment_enrollment",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Para uma família nova no Colégio Horizonte, a matrícula, o calendário e a agenda de avaliações se complementam para organizar o início do ano letivo, especialmente no primeiro bimestre. O **manual de matrícula** é o seu guia inicial. Ele detalha as quatro etapas do processo: pré-cadastro, envio de documentos, validação pela secretaria e assinatura contratual. Os documentos necessários incluem identidade do aluno, CPF (se houver), histórico escolar, comprovante de residência e identificação do responsável legal, além do formulário cadastral. O envio pode ser feito pelo portal institucional ou e-mail da secretaria. O **calendário letivo** organiza o ano. Para o Ensino Fundamental II e Ensino Médio, as aulas começam em 2 de fevereiro de 2026. O ciclo de matrícula para 2026 já foi aberto em 6 de outubro de 2025, com opções de pré-cadastro e visita guiada. As reuniões gerais com os responsáveis estão agendadas para 28 de março, 27 de junho, 19 de setembro e 12 de dezembro de 2026. A **agenda de avaliações** informa sobre as devolutivas, provas e recuperações. As avaliações bimestrais seguem o planejamento pedagógico de cada segmento e são divulgadas com antecedência no portal acadêmico. A recuperação paralela ocorre ao longo do bimestre, com reforço e atividades de recomposição de aprendizagem. Qualquer ajuste",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 1694.7,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "deterministic_candidate_selected",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Para uma família nova no Colégio Horizonte, a matrícula, o calendário e a agenda de avaliações se complementam para organizar o início do ano letivo. A **matrícula** é o primeiro passo. O manual de matrícula detalha as quatro etapas: pré-cadastro, envio de documentos (como identidade do aluno, histórico escolar e comprovante de residência), validação pela secretaria e assinatura contratual. Essa documentação inicial pode ser enviada pelo portal institucional ou e-mail da secretaria. O **calendário letivo** organiza o ano. As aulas para o Ensino Fundamental II e Ensino Médio começam em 2 de fevereiro de 2026. Ele também informa as datas importantes, como as reuniões gerais com os responsáveis, que ocorrem em 28 de março, 27 de junho, 19 de setembro e 12 de dezembro de 2026. A **agenda de avaliações** informa sobre as atividades acadêmicas. As avaliações bimestrais são planejadas pedagogicamente e divulgadas com antecedência no portal acadêmico. Além disso, a recuperação paralela acontece ao longo do bimestre, com reforço e atividades específicas. Qualquer ajuste relevante no calendário de avaliações é comunicado pelos canais oficiais da escola. Em resumo, você usará o manual para realizar a matrícula, o calendário para se orientar nas datas importantes do ano e a agenda de avaliações para acompanhar as atividades acadêmicas e avaliativas do seu filho.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 2116.0,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.family_new_calendar_assessment_enrollment",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.family_new_calendar_assessment_enrollment",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.family_new_calendar_assessment_enrollment",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Para você que está chegando agora com seu primeiro filho, a matrícula, o calendário e a agenda de avaliações se encaixam da seguinte forma no primeiro bimestre: A matrícula é o primeiro passo. O manual de matrícula explica todo o processo, que envolve quatro etapas: pré-cadastro, envio de documentos (como identidade do aluno, CPF, histórico escolar, comprovante de residência e documento do responsável), validação pela secretaria e assinatura contratual. Você pode enviar os documentos inicialmente pelo portal institucional ou pelo e-mail oficial da secretaria. O calendário letivo organiza o início do ano. As aulas para o Ensino Fundamental II e Ensino Médio começam em 2 de fevereiro de 2026. A agenda de avaliações mostra quando ocorrerão as devolutivas, provas e recuperações. As avaliações bimestrais seguem o planejamento pedagógico de cada segmento e são divulgadas com antecedência no portal acadêmico. A recuperação paralela acontece durante o bimestre, com reforço e atividades para recomposição da aprendizagem. Em resumo, você usará o manual para realizar a matrícula corretamente, o calendário para se orientar sobre o início das aulas e os marcos do ano, e a agenda de avaliações para acompanhar as atividades pedagógicas e comunicados importantes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2124.1,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_local_public_canonical_lane:public_bundle.family_new_calendar_assessment_enrollment",
+        "graph_path": [
+          "specialist_supervisor",
+          "local_public_canonical_lane",
+          "public_bundle.family_new_calendar_assessment_enrollment"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.family_new_calendar_assessment_enrollment",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Para uma família nova no Colégio Horizonte, a matrícula, o calendário e a agenda de avaliações se complementam para organizar o início do ano letivo. A matrícula é o primeiro passo, guiada pelo manual que orienta sobre a documentação inicial e o processo, que envolve quatro etapas: pré-cadastro, envio de documentos, validação pela secretaria e assinatura contratual. Documentos como identidade do aluno, CPF, histórico escolar, comprovante de residência e identificação do responsável legal são necessários. O calendário letivo organiza o ano, indicando que as aulas para o Ensino Fundamental II e Ensino Médio começam em 2 de fevereiro de 2026. As reuniões gerais com os responsáveis estão marcadas para 28 de março, 27 de junho, 19 de setembro e 12 de dezembro de 2026. A agenda de avaliações detalha os momentos importantes de feedback e acompanhamento. As avaliações bimestrais seguem o planejamento pedagógico de cada segmento e são divulgadas com antecedência no portal acadêmico. A recuperação paralela ocorre ao longo do bimestre, com reforço e atividades de recomposição de aprendizagem. Qualquer ajuste relevante no calendário de avaliação é comunicado oficialmente pela escola.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Sem sair do escopo do projeto, que mecanismos publicos ajudam a familia a acompanhar permanencia, apoio e vida escolar sem depender de informacao interna?",
+      "slice": "public",
+      "category": "public_permanence_support",
+      "thread_id": "retrieval_public_permanence_support",
+      "turn_index": 1,
+      "note": "canonical permanence/family support bundle",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1307.9,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.permanence_family_support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.permanence_family_support",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "O Colégio Horizonte oferece diversos mecanismos para que as famílias acompanhem a vida escolar dos estudantes sem depender de informações internas. A escola combina orientação, monitorias, comunicação recorrente e acompanhamento de frequência. A equipe de orientação auxilia na adaptação, rotina de estudo, organização da agenda e desenvolvimento de hábitos de aprendizagem. Há monitorias agendadas e plantões de dúvidas para apoio em disciplinas com maior dificuldade. A comunicação com as famílias é feita por meio de comunicados digitais, reuniões periódicas e chamadas de acompanhamento, especialmente quando o estudante necessita de suporte adicional. A promoção do estudante considera não apenas o desempenho acadêmico, mas também o cumprimento da frequência mínima institucional e legal. Para o Ensino Médio, o Projeto de Vida é um componente curricular e um eixo de tutoria, com trilhas de acompanhamento ao longo do ano.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 2058.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "deterministic_candidate_selected:topic_coverage=0.25",
+        "retrieval_probe_topic": "extended_day_ecosystem",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Acompanhar a vida escolar do estudante é um processo contínuo que envolve a escola e a família. Para auxiliar nesse acompanhamento, o Colégio Horizonte oferece alguns mecanismos que não dependem exclusivamente de informações internas. A escola promove a orientação pedagógica, onde a equipe acompanha a adaptação do aluno, sua rotina de estudos, organização da agenda e o desenvolvimento de hábitos de aprendizagem. Além disso, há monitorias agendadas e plantões de dúvidas para oferecer suporte em disciplinas com maior dificuldade. A comunicação recorrente é mantida através de comunicados digitais e reuniões periódicas. Em casos onde o estudante necessita de um suporte adicional, a escola realiza chamadas de acompanhamento. É importante lembrar que a promoção do estudante considera não apenas o desempenho acadêmico, mas também o cumprimento da frequência mínima exigida pela instituição e pela legislação. No Ensino Médio, o Projeto de Vida atua como um componente curricular e um eixo de tutoria, auxiliando os alunos a planejarem seu futuro.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 1835.6,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.permanence_family_support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.permanence_family_support",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.permanence_family_support",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "A família pode acompanhar a permanência, o apoio e a vida escolar dos estudantes através de alguns mecanismos públicos oferecidos pela escola. A equipe de orientação escolar auxilia na adaptação, rotina de estudos, organização da agenda e desenvolvimento de hábitos de aprendizagem. Além disso, há monitorias agendadas e plantões de dúvidas para oferecer suporte em disciplinas com maior incidência de dificuldade. A comunicação recorrente é feita por meio de comunicados digitais e reuniões periódicas. Em casos onde o estudante necessita de suporte adicional, são realizadas chamadas de acompanhamento. A frequência mínima institucional e legal é um fator importante para a promoção do estudante, assim como o desempenho acadêmico. No Ensino Médio, o Projeto de Vida atua como um componente curricular e eixo de tutoria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1657.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_local_public_canonical_lane:public_bundle.permanence_family_support",
+        "graph_path": [
+          "specialist_supervisor",
+          "local_public_canonical_lane",
+          "public_bundle.permanence_family_support"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.permanence_family_support",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "A escola oferece diversos canais para que as famílias acompanhem a vida escolar dos estudantes sem depender de informações internas. A equipe de orientação escolar auxilia na adaptação, rotina de estudos, organização da agenda e desenvolvimento de hábitos de aprendizagem. Além disso, há monitorias agendadas e plantões de dúvidas para oferecer suporte em disciplinas específicas. A comunicação com as famílias é feita por meio de comunicados digitais e reuniões periódicas. Em casos de necessidade de suporte adicional, são realizadas chamadas de acompanhamento. É importante ressaltar que a promoção do estudante considera não apenas o desempenho acadêmico, mas também o cumprimento da frequência mínima exigida pela instituição e pela legislação.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        }
+      }
+    },
+    {
+      "prompt": "Pensando no caso pratico, no primeiro mes, que erros mais comprometem credenciais, documentacao e rotina da familia?",
+      "slice": "public",
+      "category": "public_first_month_risks",
+      "thread_id": "retrieval_public_first_month_risks",
+      "turn_index": 1,
+      "note": "canonical first-month risks bundle",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1680.8,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.first_month_risks",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.first_month_risks",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No primeiro mês, os erros que mais comprometem credenciais, documentação e a rotina da família são: - Perder prazos para entrega de documentos. - Manter o cadastro desatualizado. - Utilizar credenciais de acesso de forma insegura. - Ignorar alertas sobre frequência e pontualidade. Esses descuidos podem afetar a documentação escolar, o acesso a informações importantes e a organização do dia a dia da família logo nas primeiras semanas.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 1741.2,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "deterministic_candidate_selected",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No primeiro mês, os erros que mais comprometem credenciais, documentação e a rotina da família são: - Perder prazos para envio de documentos. - Manter o cadastro desatualizado. - Utilizar credenciais de forma insegura. - Ignorar alertas sobre frequência e pontualidade. Esses problemas podem afetar o acesso a informações importantes e a organização das atividades escolares logo nas primeiras semanas.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 1251.2,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.first_month_risks",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.first_month_risks",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.first_month_risks",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No primeiro mês, os principais riscos que podem comprometer credenciais, documentação e a rotina da família estão relacionados a prazos documentais, cadastros desatualizados, uso inseguro de credenciais e a negligência com alertas de frequência e pontualidade. O envio inicial de documentos pode ser feito pelo portal institucional, e-mail da secretaria ou presencialmente, dependendo da complexidade e sensibilidade da informação. Declarações mais simples geralmente têm prazos mais curtos do que históricos escolares, transferências e regularizações documentais. É importante que cada usuário utilize suas próprias credenciais para acessar o portal, o aplicativo e outros canais autenticados da escola. Para o atendimento seguro via Telegram, é necessária a vinculação da conta de mensagens ao cadastro institucional. Problemas de acesso, como esquecimento de senha, falhas na vinculação ou inconsistências cadastrais, podem ser reportados à secretaria ou ao suporte institucional. O estudante deve comparecer às atividades letivas no horário e cumprir a frequência mínima exigida pela escola e pela legislação.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1792.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_local_public_canonical_lane:public_bundle.first_month_risks",
+        "graph_path": [
+          "specialist_supervisor",
+          "local_public_canonical_lane",
+          "public_bundle.first_month_risks"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.first_month_risks",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No primeiro mês, os erros que mais comprometem credenciais, documentação e a rotina da família são: - Perder prazos para envio de documentos. - Manter o cadastro desatualizado. - Utilizar credenciais de forma insegura. - Ignorar alertas sobre frequência e pontualidade. Esses problemas podem afetar a rotina escolar logo nas primeiras semanas. O envio de documentos pode ser feito pelo portal institucional, e-mail da secretaria ou presencialmente, dependendo do tipo de documento. É importante que cada usuário utilize suas próprias credenciais para acessar o portal e o aplicativo. O atendimento no Telegram requer a vinculação da conta de mensagens ao cadastro institucional. Caso ocorram problemas de acesso, esquecimento de senha ou inconsistências cadastrais, é possível registrar com a secretaria ou o suporte institucional. O estudante também deve comparecer pontualmente às atividades e cumprir a frequência mínima exigida.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "O que qualquer familia ve no calendario e portal sem login, e o que so surge depois da autenticacao. Seja objetivo e grounded.",
+      "slice": "public",
+      "category": "public_visibility_boundary",
+      "thread_id": "retrieval_public_visibility_boundary",
+      "turn_index": 1,
+      "note": "known-unknown / visibility boundary",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1152.1,
+        "mode": "structured_tool",
+        "reason": "bundle publico canonico deve seguir lane publica mesmo se a classificacao superestimar autenticacao",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No calendário e portal abertos ao público, as famílias podem encontrar informações gerais sobre a escola, como marcos institucionais e eventos coletivos. Orientações abertas também circulam nesses canais e nos oficiais da escola. Após a autenticação e login no portal, surgem informações mais detalhadas e personalizadas, como dados individuais de cada aluno, convites específicos, protocolos, informações financeiras e acompanhamentos protegidos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 1193.6,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "deterministic_candidate_selected",
+        "retrieval_probe_topic": "visibility_boundary",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No calendário e portal sem login, as famílias podem ver informações gerais sobre a escola, como marcos institucionais e eventos coletivos. Orientações abertas também circulam nesses canais públicos e nos canais oficiais da escola. Após a autenticação, com o login e a conta vinculada ao portal, surgem informações mais detalhadas e personalizadas, como: - Informações individuais por aluno. - Convites direcionados. - Protocolos específicos. - Situações financeiras. - Acompanhamentos protegidos. A escola sempre atualiza o portal e reforça a comunicação pelos canais oficiais quando há algum ajuste relevante no calendário de avaliação.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 1855.1,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "contextual_public_direct_answer",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No calendário e portal abertos ao público, as famílias podem ver informações gerais como datas de visita guiada para interessados, plantões pedagógicos e oficinas sobre bolsas e descontos. Essas orientações gerais ficam disponíveis no calendário público, no portal institucional aberto e nos canais oficiais da escola. Após a autenticação e login no portal, surgem informações mais detalhadas e personalizadas, como dados individuais de cada aluno, convites específicos, protocolos escolares, informações financeiras e acompanhamentos protegidos.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1645.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:service_credentials_bundle",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "service_credentials_bundle"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No calendário e portal do Colégio Horizonte, o que qualquer família pode ver sem login são informações gerais sobre a escola, como eventos públicos e comunicados institucionais. Informações que só aparecem após a autenticação incluem detalhes específicos sobre o desempenho acadêmico dos alunos, como notas e frequência, além de informações financeiras e acesso a documentos pessoais.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "De forma bem objetiva, me de um panorama academico dos meus filhos e diga qual deles aparece mais perto da media minima agora.",
+      "slice": "protected",
+      "category": "protected_structured_academic",
+      "thread_id": "retrieval_protected_family_panorama",
+      "turn_index": 1,
+      "note": "protected structured academic summary",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 394.3,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Panorama academico das contas vinculadas: - Lucas Oliveira: Biologia 7,9; Educacao Fisica 6,5; Filosofia 7,1; Fisica 5,9 - Ana Oliveira: Biologia 8,0; Educacao Fisica 7,0; Filosofia 7,5; Fisica 6,4 Quem hoje aparece mais perto da media minima e Ana Oliveira, principalmente em Educacao Fisica.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 415.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_structured:academic",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Panorama academico das contas vinculadas: - Lucas Oliveira: Biologia 7,9; Educacao Fisica 6,5; Filosofia 7,1; Fisica 5,9 - Ana Oliveira: Biologia 8,0; Educacao Fisica 7,0; Filosofia 7,5; Fisica 6,4 Quem hoje aparece mais perto da media minima e Ana Oliveira, principalmente em Educacao Fisica.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 409.3,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Panorama academico das contas vinculadas: - Lucas Oliveira: Biologia 7,9; Educacao Fisica 6,5; Filosofia 7,1; Fisica 5,9 - Ana Oliveira: Biologia 8,0; Educacao Fisica 7,0; Filosofia 7,5; Fisica 6,4 Quem hoje aparece mais perto da media minima e Ana Oliveira, principalmente em Educacao Fisica.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 270.6,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:academic_student_clarify",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "academic_student_clarify"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Panorama academico das contas vinculadas: - Lucas Oliveira: Biologia 7,9; Educacao Fisica 6,5; Filosofia 7,1; Fisica 5,9 - Ana Oliveira: Biologia 8,0; Educacao Fisica 7,0; Filosofia 7,5; Fisica 6,4 Quem hoje aparece mais perto da media minima e Ana Oliveira, principalmente em Educacao Fisica.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Continuando o panorama, olhe so a Ana e diga em quais componentes ela corre mais risco agora. Responda de forma direta.",
+      "slice": "protected",
+      "category": "protected_structured_followup",
+      "thread_id": "retrieval_protected_family_panorama",
+      "turn_index": 1,
+      "note": "follow-up context retention",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 335.2,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Em Educacao Fisica, Ana Oliveira está com média parcial de 7,0/10.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 330.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_structured:academic",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Em Educacao Fisica, Ana Oliveira está com média parcial de 7,0/10.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 370.0,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Em Educacao Fisica, Ana Oliveira está com média parcial de 7,0/10.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 258.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:academic_summary",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "academic_summary"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Em Matematica, Ana Oliveira está com média parcial de 7,4/10.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Resuma a situacao financeira atual da familia, com vencimentos, atrasos e proximos passos. Responda de forma direta.",
+      "slice": "protected",
+      "category": "protected_structured_finance",
+      "thread_id": "retrieval_protected_finance_panorama",
+      "turn_index": 1,
+      "note": "protected structured finance summary",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 390.1,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Resumo financeiro das contas vinculadas: - Total de faturas em aberto: 3 - Total de faturas vencidas: 0 - Lucas Oliveira: 1 em aberto, 0 vencida(s), proximo vencimento 10 de abril de 2026 (1450.00). - Ana Oliveira: 2 em aberto, 0 vencida(s), proximo vencimento 10 de março de 2026 (1450.00).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 372.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_structured:finance",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Resumo financeiro das contas vinculadas: - Total de faturas em aberto: 3 - Total de faturas vencidas: 0 - Lucas Oliveira: 1 em aberto, 0 vencida(s), proximo vencimento 10 de abril de 2026 (1450.00). - Ana Oliveira: 2 em aberto, 0 vencida(s), proximo vencimento 10 de março de 2026 (1450.00).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 408.3,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Resumo financeiro das contas vinculadas: - Total de faturas em aberto: 3 - Total de faturas vencidas: 0 - Lucas Oliveira: 1 em aberto, 0 vencida(s), proximo vencimento 10 de abril de 2026 (1450.00). - Ana Oliveira: 2 em aberto, 0 vencida(s), proximo vencimento 10 de março de 2026 (1450.00).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 334.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:financial_summary_aggregate",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "financial_summary_aggregate"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Resumo financeiro das contas vinculadas: - Total de faturas em aberto: 3 - Total de faturas vencidas: 0 - Lucas Oliveira: 1 em aberto, 0 vencida(s), proximo vencimento 10 de abril de 2026 (1450.00). - Ana Oliveira: 2 em aberto, 0 vencida(s), proximo vencimento 10 de março de 2026 (1450.00).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Pensando no caso pratico, sobre a Ana, quais pendencias administrativas ou documentais ainda exigem acao e qual e o proximo passo?",
+      "slice": "protected",
+      "category": "protected_structured_admin",
+      "thread_id": "retrieval_protected_admin_docs",
+      "turn_index": 1,
+      "note": "protected administrative/documentation status",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1624.2,
+        "mode": "structured_tool",
+        "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call",
+          "protected_domain_rescue"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Ana Oliveira ainda possui pendências na documentação. O próximo passo é enviar o comprovante atualizado pelo portal autenticado ou diretamente na secretaria escolar para que a análise seja concluída.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 1600.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "protected_domain_rescue",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_structured:institution",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Ana Oliveira ainda possui pendências na documentação. Para regularizar a situação, o próximo passo é enviar o comprovante atualizado através do portal autenticado ou diretamente na secretaria escolar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 1634.2,
+        "mode": "structured_tool",
+        "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "protected_domain_rescue",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Ana Oliveira ainda tem pendências na documentação. Para regularizar, por favor, envie o comprovante atualizado pelo portal autenticado ou diretamente na secretaria escolar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 882.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:administrative_status",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "administrative_status"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Ana Oliveira ainda precisa apresentar um comprovante de residência atualizado. O próximo passo é enviar este documento pelo portal autenticado ou diretamente na secretaria escolar.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        }
+      }
+    },
+    {
+      "prompt": "Pelo playbook interno de negociacao financeira, quais criterios a equipe usa para conduzir uma conversa com a familia. Traga a resposta de forma concreta.",
+      "slice": "restricted",
+      "category": "restricted_doc_positive",
+      "thread_id": "retrieval_restricted_finance_playbook",
+      "turn_index": 1,
+      "note": "restricted positive finance playbook",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 2211.8,
+        "mode": "hybrid_retrieval",
+        "reason": "langgraph_restricted_document_no_match",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "context_repair_planner"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:context_repair_unavailable",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Não encontrei informações sobre os critérios para conduzir conversas com famílias no playbook interno de negociação financeira.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 2969.4,
+        "mode": "hybrid_retrieval",
+        "reason": "python_functions_native_restricted_document_no_match",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_restricted_document_no_match",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Ainda não localizei informações específicas sobre os critérios utilizados pela equipe para conduzir conversas com as famílias, com base no playbook interno de negociação financeira.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 2720.0,
+        "mode": "hybrid_retrieval",
+        "reason": "llamaindex_restricted_doc_no_match",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "llamaindex:restricted",
+          "llamaindex:restricted_doc_fast_path",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Não encontrei informações específicas sobre os critérios utilizados pela equipe para conduzir conversas com as famílias, de acordo com o playbook interno de negociação financeira.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 3425.1,
+        "mode": "hybrid_retrieval",
+        "reason": "specialist_supervisor_tool_first:restricted_document_no_match",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "restricted_document_no_match"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Não encontrei informações específicas sobre os critérios utilizados pela equipe para conduzir conversas com as famílias, de acordo com o playbook interno de negociação financeira do Colégio Horizonte.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Como falar com o professor de matematica? A escola divulga esse contato ou encaminha para outro setor?",
+      "slice": "public",
+      "category": "public_teacher_directory",
+      "thread_id": "retrieval_public_teacher_directory",
+      "turn_index": 1,
+      "note": "public teacher contact boundary",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 3398.5,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.teacher_directory_boundary",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.teacher_directory_boundary",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Para falar com um professor de matemática, o contato direto não é divulgado. A escola encaminha para a coordenação pedagógica, que é o setor responsável por fazer essa ponte institucional.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 3161.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "deterministic_candidate_selected",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Para falar com o professor de matemática, o contato direto não é divulgado. O procedimento correto é procurar a coordenação pedagógica, que fará o encaminhamento necessário.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 3038.3,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.teacher_directory_boundary",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.teacher_directory_boundary",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.teacher_directory_boundary",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Para falar com o professor de matemática, o caminho é através da coordenação pedagógica. A escola não divulga o contato direto dos professores.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 2317.1,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_local_public_canonical_lane:public_bundle.teacher_directory_boundary",
+        "graph_path": [
+          "specialist_supervisor",
+          "local_public_canonical_lane",
+          "public_bundle.teacher_directory_boundary"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.teacher_directory_boundary",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Para falar com o professor de matemática, o caminho correto é através da coordenação pedagógica. O colégio não divulga contatos diretos de professores individuais. A coordenação irá intermediar o contato.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "No calendario publico atual, quais sao os eventos mais relevantes para familias e responsaveis?",
+      "slice": "public",
+      "category": "public_calendar_week",
+      "thread_id": "retrieval_public_calendar_week",
+      "turn_index": 1,
+      "note": "public calendar weekly family events",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1046.5,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.calendar_week",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.calendar_week",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No calendário público do Colégio Horizonte, os eventos mais relevantes para famílias e responsáveis geralmente incluem marcos coletivos e comunicados institucionais importantes. A escola se compromete a manter o portal atualizado com quaisquer ajustes significativos no calendário de avaliações e a reforçar essas informações pelos canais oficiais. Detalhes específicos que dependem de turma, aluno ou ajustes finos de agenda são comunicados diretamente aos responsáveis através dos canais autenticados e oficiais.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 1636.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "deterministic_candidate_selected",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No calendário público, os eventos mais relevantes para famílias e responsáveis são os marcos coletivos e os comunicados institucionais. Ajustes importantes no calendário de avaliações são comunicados pelo portal e pelos canais oficiais. Detalhes específicos de turma ou aluno são enviados aos responsáveis por meio dos canais autenticados.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 1484.1,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.calendar_week",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.calendar_week",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.calendar_week",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No calendário público da escola, os eventos mais relevantes para famílias e responsáveis são os marcos coletivos e os comunicados institucionais. Sempre que houver alguma alteração importante no calendário de avaliações, a escola atualiza o portal e reforça a comunicação pelos canais oficiais.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1466.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_local_public_canonical_lane:public_bundle.calendar_week",
+        "graph_path": [
+          "specialist_supervisor",
+          "local_public_canonical_lane",
+          "public_bundle.calendar_week"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.calendar_week",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No calendário público, os eventos mais relevantes para famílias e responsáveis são os marcos coletivos e os comunicados institucionais. Ajustes importantes no calendário de avaliações são sempre atualizados no portal e comunicados pelos canais oficiais.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Pelos documentos publicos, como a escola organiza medicacao, acompanhamento de saude e emergencias?",
+      "slice": "public",
+      "category": "public_health_emergency_bundle",
+      "thread_id": "retrieval_public_health_emergency_bundle",
+      "turn_index": 1,
+      "note": "public health, medication and emergencies bundle",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1318.2,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.health_emergency_bundle",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.health_emergency_bundle",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "O Colégio Horizonte organiza a medicação, o acompanhamento de saúde e as emergências dentro de um mesmo protocolo escolar. Para a medicação, é fundamental que as famílias mantenham as informações sobre alergias, restrições médicas e uso contínuo de medicamentos sempre atualizadas. A administração de qualquer medicação pela escola requer orientação formal da família e, quando necessário, prescrição ou instrução adequada. Casos de uso contínuo devem ser previamente alinhados com a equipe responsável, com registro detalhado no cadastro, incluindo horário, dose e condições de armazenamento. Em relação ao acompanhamento de saúde, quando um aluno apresenta mal-estar, a equipe escolar acolhe a situação, realiza uma avaliação inicial conforme o protocolo institucional e aciona os responsáveis quando for necessário. Para emergências, a prioridade máxima é proteger o estudante e acionar rapidamente os contatos de emergência indicados pelos responsáveis. Embora os canais digitais possam fornecer orientações sobre o protocolo público, eles não substituem o contato direto em situações urgentes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 1275.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "deterministic_candidate_selected:topic_coverage=0.75",
+        "retrieval_probe_topic": "health_reorganization",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "A escola organiza a administração de medicamentos, o acompanhamento de saúde e as emergências dentro de um mesmo protocolo. As famílias são orientadas a manterem as informações sobre alergias, restrições médicas, uso contínuo de medicação, contatos de emergência e recomendações clínicas sempre atualizadas. A administração de qualquer medicação pela escola requer uma orientação formal da família, que pode incluir prescrição ou instrução médica adequada. Para casos de uso contínuo, é necessário um alinhamento prévio com a equipe responsável, com registro no cadastro da escola contendo detalhes sobre horário, dose e condições de armazenamento. Quando um aluno apresenta mal-estar, a equipe escolar realiza uma avaliação inicial seguindo o protocolo institucional e, se necessário, aciona os responsáveis. Em situações de emergência, a prioridade é a proteção do estudante e o contato imediato com os responsáveis indicados.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 1206.1,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.health_emergency_bundle",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.health_emergency_bundle",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.health_emergency_bundle",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "A escola organiza a administração de medicamentos, o acompanhamento de saúde e as emergências através de um protocolo institucional unificado. As famílias são responsáveis por manter atualizadas as informações sobre alergias, restrições médicas, uso contínuo de medicação, contatos de emergência e recomendações clínicas. Para a administração de medicamentos pela escola, é necessária uma orientação formal da família e, quando aplicável, uma prescrição ou instrução médica. Casos de uso contínuo de medicação devem ser previamente alinhados com a equipe responsável, com registro detalhado de horário, dose e condições de armazenamento. Em situações de mal-estar do aluno, a equipe escolar realiza uma avaliação inicial de acordo com o protocolo institucional e aciona os responsáveis, se necessário. Em casos de emergência, a prioridade é a proteção do estudante e o acionamento rápido dos contatos indicados.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1778.8,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_local_public_canonical_lane:public_bundle.health_emergency_bundle",
+        "graph_path": [
+          "specialist_supervisor",
+          "local_public_canonical_lane",
+          "public_bundle.health_emergency_bundle"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.health_emergency_bundle",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "A escola organiza a administração de medicação, o acompanhamento de saúde e as emergências através de um protocolo escolar unificado. As famílias são responsáveis por manterem atualizadas as informações sobre alergias, restrições médicas, uso contínuo de medicação, contatos de emergência e recomendações clínicas. Para a administração de medicação pela escola, é necessária uma orientação formal da família e, quando aplicável, uma prescrição ou instrução médica adequada. Casos de uso contínuo de medicação devem ser previamente alinhados com a equipe responsável, com registro no cadastro da escola, incluindo informações sobre horário, dose e condições de armazenamento. Em situações de mal-estar do aluno, a equipe escolar realiza uma avaliação inicial de acordo com o protocolo institucional e aciona os responsáveis quando necessário. Em casos de emergência, a prioridade é a proteção do estudante e o acionamento rápido dos contatos indicados. Os canais digitais podem fornecer orientações sobre o protocolo público, mas não substituem o contato direto em situações urgentes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Como periodo integral e estudo orientado se conectam no apoio ao estudante segundo a base publica?",
+      "slice": "public",
+      "category": "public_integral_study_support",
+      "thread_id": "retrieval_public_integral_study_support",
+      "turn_index": 1,
+      "note": "public integral and study support bridge",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 2217.0,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.integral_study_support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.integral_study_support",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No Colégio Horizonte, o período integral e o estudo orientado se complementam para oferecer um suporte robusto aos estudantes. O período integral é uma opção adicional para as famílias que buscam estender a permanência do aluno na escola, garantindo acompanhamento, uma rotina estruturada e atividades formativas extras. Já o estudo orientado foca em auxiliar o estudante na organização de suas tarefas, no cumprimento de prazos, na leitura direcionada e no desenvolvimento de hábitos de estudo eficazes. A rotina no período da tarde geralmente inclui acolhimento, refeição (almoço ou lanche, dependendo do plano contratado), um bloco dedicado ao estudo, atividades complementares e o horário de saída. As atividades oferecidas podem abranger oficinas de leitura, projetos maker, cultura digital, artes, monitorias e reforço de aprendizagem. O estudo orientado é uma ferramenta valiosa para ajudar o aluno a manter uma rotina e definir prioridades, mas é importante notar que ele, por si só, não assegura um desempenho acadêmico específico. Em resumo, a rotina estendida do contraturno no Colégio Horizonte combina permanência supervisionada, estudo com acompanhamento, oficinas diversas e momentos de refeição.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 1958.6,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "deterministic_candidate_selected:topic_coverage=1.00",
+        "retrieval_probe_topic": "extended_day_ecosystem",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "O período integral e o estudo orientado se complementam como formas de apoio ao estudante. O período integral é uma opção para famílias que buscam estender a permanência do aluno na escola, oferecendo acompanhamento, rotina estruturada e atividades formativas extras. Já o estudo orientado foca em auxiliar na organização de tarefas, acompanhamento de prazos, leitura e desenvolvimento de hábitos de estudo. A rotina no período integral geralmente inclui acolhimento, refeição (almoço ou lanche, dependendo do plano), um bloco dedicado ao estudo, atividades complementares e um horário de saída definido. As atividades complementares podem abranger oficinas de leitura, projetos maker, cultura digital, artes, monitorias e reforço de aprendizagem. O estudo orientado é uma ferramenta importante para ajudar o aluno a manter uma rotina e definir prioridades, mas é importante notar que ele, por si só, não garante um desempenho acadêmico específico. Na prática, a rotina ampliada do contraturno combina a permanência orientada, o estudo acompanhado, as oficinas complementares e os momentos de refeição.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 2019.3,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.integral_study_support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.integral_study_support",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.integral_study_support",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No Colégio Horizonte, o período integral e o estudo orientado funcionam juntos para oferecer um suporte completo ao estudante. O período integral é uma opção para as famílias que buscam estender a permanência do aluno na escola, com um acompanhamento mais próximo, uma rotina estruturada e atividades formativas extras. Já o estudo orientado foca em auxiliar o aluno na organização de suas tarefas, no cumprimento de prazos, na leitura e na construção de bons hábitos de estudo. A rotina da tarde, dentro do período integral, geralmente inclui acolhimento, uma refeição (almoço ou lanche, dependendo do plano), um bloco dedicado ao estudo acompanhado, atividades complementares e, por fim, o horário de saída. As atividades complementares podem abranger oficinas de leitura, projetos maker, cultura digital, artes, monitorias e atividades para reforço da aprendizagem. O estudo orientado é uma ferramenta importante para ajudar o aluno a gerenciar sua rotina e definir prioridades, mas é importante notar que ele, por si só, não garante um desempenho acadêmico específico.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1142.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_local_public_canonical_lane:public_bundle.integral_study_support",
+        "graph_path": [
+          "specialist_supervisor",
+          "local_public_canonical_lane",
+          "public_bundle.integral_study_support"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.integral_study_support",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "O período integral e o estudo orientado se complementam no apoio ao estudante. O período integral é uma opção para famílias que buscam estender a permanência do aluno na escola, oferecendo acompanhamento, rotina organizada e atividades formativas adicionais. Já o estudo orientado foca em auxiliar na organização de tarefas, acompanhamento de prazos, leitura e consolidação de hábitos acadêmicos. A rotina da tarde, dentro do período integral, geralmente inclui acolhimento, refeição (almoço ou lanche), um bloco de estudo, atividades complementares e um horário de saída definido. As atividades complementares podem abranger oficinas de leitura, projetos maker, cultura digital, artes e recomposição de aprendizagem. O estudo orientado contribui para a manutenção da rotina e priorização de estudos, mas não assegura, por si só, um desempenho acadêmico específico.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "No material publico, como a escola organiza transporte, uniforme e refeicoes para as familias?",
+      "slice": "public",
+      "category": "public_transport_uniform_bundle",
+      "thread_id": "retrieval_public_transport_uniform_bundle",
+      "turn_index": 1,
+      "note": "public transport, food and uniform bundle",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 7027.7,
+        "mode": "hybrid_retrieval",
+        "reason": "retrieval hibrido e o caminho padrao para faq e documentos",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "hybrid_retrieval"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "light_polish",
+        "final_polish_reason": "langgraph_public_noncanonical",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "retrieval_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Ainda não encontrei informações públicas detalhadas sobre como o Colégio Horizonte organiza o transporte, o uniforme e as refeições para as famílias. Se desejar, posso verificar se há políticas institucionais específicas ou canais oficiais de comunicação que abordem esses temas.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 3808.8,
+        "mode": "hybrid_retrieval",
+        "reason": "python_functions_native_public_retrieval",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "context_repair_planner",
+          "retrieval_retry_answer"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "light_polish",
+        "final_polish_reason": "python_functions_public_multidoc",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "context_repair:second_retrieval_retry",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "deterministic_candidate_selected",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "O Colégio Horizonte oferece transporte escolar. Para informações detalhadas sobre a organização e funcionamento do transporte, assim como sobre o uniforme e as refeições, é necessário consultar a seção específica sobre \"Transporte escolar\" ou entrar em contato com a escola.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 4969.8,
+        "mode": "hybrid_retrieval",
+        "reason": "llamaindex_cache:deterministic_candidate_selected",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "hybrid_retrieval",
+          "llamaindex:cache",
+          "semantic"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "context_repair_planner",
+          "retrieval_retry_answer"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "cache_hit",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "context_repair:second_retrieval_retry",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "cache:deterministic_candidate_selected",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": true,
+        "response_cache_kind": "semantic",
+        "answer_text": "O Colégio Horizonte oferece informações sobre transporte, alimentação e uniforme em seu material público. Para detalhes específicos sobre como a escola organiza esses serviços para as famílias, seria necessário consultar as seções de \"Transporte escolar\" e \"Indicadores e Diferenciais do Colegio Horizonte\".",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 10919.5,
+        "mode": "hybrid_retrieval",
+        "reason": "specialist_supervisor_direct:institution_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "institution_specialist"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "specialist_execution",
+          "context_repair_planner",
+          "retrieval_retry_answer"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "context_repair:second_retrieval_retry",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Não foram encontrados detalhes sobre a organização de transporte, uniforme e refeições para as famílias nos materiais públicos disponíveis. Para obter essas informações, sugiro que entre em contato diretamente com a secretaria do Colégio Horizonte.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Na base publica, como se articulam eventos escolares, saidas pedagogicas e autorizacoes das familias?",
+      "slice": "public",
+      "category": "public_outings_authorizations",
+      "thread_id": "retrieval_public_outings_authorizations",
+      "turn_index": 1,
+      "note": "public outings and authorizations",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1563.5,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.outings_authorizations",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.outings_authorizations",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Na base pública, as saídas pedagógicas, eventos escolares e autorizações das famílias são articulados como um fluxo operacional integrado. As saídas pedagógicas, que incluem feiras, mostras e visitas externas, fazem parte do projeto formativo da escola. Elas podem envolver preparação em sala de aula, definição de regras de conduta e a necessidade de uma autorização formal da família. A participação em atividades externas depende do envio da autorização dentro do prazo estabelecido. Os comunicados sobre essas saídas geralmente informam a data, horário, objetivo pedagógico, série atendida, itens necessários, orientações sobre o uniforme e os procedimentos de retorno. Estudantes que não apresentarem autorização válida, tiverem impedimentos médicos relevantes não conciliados ou pendências operacionais específicas podem ter sua participação reavaliada pela coordenação, caso a caso. Já os eventos escolares, como feiras de ciências, semana da família e apresentações institucionais, podem ter cronogramas próprios e orientações específicas para a entrada de visitantes e responsáveis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 1125.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "deterministic_candidate_selected",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "A base pública indica que saídas pedagógicas e eventos escolares são integrados ao projeto formativo da escola e requerem autorização formal da família. A participação em atividades externas, como feiras, mostras e visitas, depende do envio da autorização dentro do prazo estabelecido. Os comunicados sobre essas atividades geralmente incluem data, horário, objetivo pedagógico, série atendida, itens necessários, orientações de uniforme e procedimentos de retorno. Casos de estudantes sem autorização válida, com impedimentos médicos não conciliados ou pendências operacionais podem ter a participação reavaliada pela coordenação. Eventos como feira de ciências, semana da família e apresentações institucionais podem ter cronogramas e orientações específicas para visitantes e responsáveis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 1818.6,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.outings_authorizations",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.outings_authorizations",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.outings_authorizations",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Na base pública, as saídas pedagógicas e eventos escolares são articulados com as autorizações das famílias como um fluxo operacional integrado. As saídas pedagógicas, feiras, mostras e visitas externas fazem parte do projeto formativo da escola e exigem autorização formal da família, enviada dentro do prazo estabelecido. Os comunicados sobre essas atividades geralmente incluem data, horário, objetivo pedagógico, série atendida, itens necessários, orientações de uniforme e procedimentos de retorno. A participação de estudantes sem autorização válida, com impedimentos médicos não conciliados ou pendências operacionais pode ser reavaliada pela coordenação. Eventos escolares, como feiras de ciências e apresentações institucionais, possuem cronogramas próprios e orientações específicas para visitantes e responsáveis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 1674.4,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_local_public_canonical_lane:public_bundle.outings_authorizations",
+        "graph_path": [
+          "specialist_supervisor",
+          "local_public_canonical_lane",
+          "public_bundle.outings_authorizations"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.outings_authorizations",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Na base pública, as saídas pedagógicas e eventos escolares são vistos como parte do projeto formativo da escola. A participação em atividades externas, como visitas e feiras, requer uma autorização formal da família, que deve ser enviada dentro do prazo estabelecido. Os comunicados sobre essas saídas geralmente incluem informações sobre a data, horário, objetivo pedagógico, série atendida, itens necessários, orientações sobre o uniforme e procedimentos de retorno. A participação de alunos com autorização inválida, impedimento médico não resolvido ou pendências operacionais pode ser reavaliada pela coordenação. Eventos como feiras de ciências e apresentações institucionais também possuem cronogramas e orientações específicas para visitantes e responsáveis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quero saber se a escola publica a quantidade total de professores ou se esse dado nao esta disponivel.",
+      "slice": "public",
+      "category": "public_known_unknown_total_teachers",
+      "thread_id": "retrieval_public_known_unknown_total_teachers",
+      "turn_index": 1,
+      "note": "public known unknown total teachers",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 859.4,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Os canais públicos do Colégio Horizonte não informam a quantidade total de professores.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 1774.6,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "context_repair_planner"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer:context_repair_unavailable",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "deterministic_candidate_selected",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No momento, não encontrei informações sobre a quantidade total de professores em nossos canais públicos.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 4333.7,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:contextual_public_direct",
+          "kernel:llamaindex"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "grounded_answer_experience"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "contextual_public_direct_answer",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Hoje os canais públicos do Colégio Horizonte não informam a quantidade total de professores.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 7477.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_direct:institution_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "institution_specialist"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "specialist_execution"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Hoje os canais publicos de Colegio Horizonte nao informam a quantidade total de professores. Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Nos canais publicos, aparece o numero de livros da biblioteca ou isso nao esta informado?",
+      "slice": "public",
+      "category": "public_known_unknown_library_books",
+      "thread_id": "retrieval_public_known_unknown_library_books",
+      "turn_index": 1,
+      "note": "public known unknown library books",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 1666.0,
+        "mode": "structured_tool",
+        "reason": "fato institucional canonico deve vir de fonte estruturada",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "light_polish",
+        "final_polish_reason": "langgraph_public_noncanonical",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "documentary_synthesis",
+        "candidate_reason": "documentary_candidate_selected",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Hoje os canais publicos de Colegio Horizonte nao informam a quantidade total de livros da biblioteca. Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 194.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_public_unpublished_fact",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "python_functions_prefers_deterministic",
+        "answer_experience_applied": false,
+        "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "deterministic_candidate_selected",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Hoje os canais publicos de Colegio Horizonte nao informam a quantidade total de livros da biblioteca. Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 478.9,
+        "mode": "structured_tool",
+        "reason": "llamaindex_cache:documentary_candidate_selected",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:cache",
+          "semantic"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "cache_hit",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "documentary_synthesis",
+        "candidate_reason": "cache:documentary_candidate_selected",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": true,
+        "response_cache_kind": "semantic",
+        "answer_text": "Hoje os canais publicos de Colegio Horizonte nao informam a quantidade total de livros da biblioteca. Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 7131.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_direct:institution_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "institution_specialist"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "specialist_execution"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Hoje os canais publicos de Colegio Horizonte nao informam a quantidade total de livros da biblioteca. Entao a pergunta e valida, mas esse dado nao esta publicado oficialmente.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Resuma as proximas provas e avaliacoes previstas para Lucas e Ana.",
+      "slice": "protected",
+      "category": "protected_structured_upcoming_assessments",
+      "thread_id": "retrieval_protected_upcoming_assessments",
+      "turn_index": 1,
+      "note": "protected upcoming assessments family summary",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 428.3,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Próximas avaliações das contas vinculadas: - Lucas Oliveira (1o Ano A) - Biologia: Avaliacao B1 em 10/04/2026 - Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026 - Historia: Avaliacao B1 em 10/04/2026 - Ingles: Avaliacao B1 em 10/04/2026 - Ana Oliveira (1o Ano A) - Biologia: Avaliacao B1 em 10/04/2026 - Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026 - Historia: Avaliacao B1 em 10/04/2026 - Ingles: Avaliacao B1 em 10/04/2026",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 416.6,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_structured:academic",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Próximas avaliações das contas vinculadas: - Lucas Oliveira (1o Ano A) - Biologia: Avaliacao B1 em 10/04/2026 - Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026 - Historia: Avaliacao B1 em 10/04/2026 - Ingles: Avaliacao B1 em 10/04/2026 - Ana Oliveira (1o Ano A) - Biologia: Avaliacao B1 em 10/04/2026 - Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026 - Historia: Avaliacao B1 em 10/04/2026 - Ingles: Avaliacao B1 em 10/04/2026",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 445.7,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Próximas avaliações das contas vinculadas: - Lucas Oliveira (1o Ano A) - Biologia: Avaliacao B1 em 10/04/2026 - Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026 - Historia: Avaliacao B1 em 10/04/2026 - Ingles: Avaliacao B1 em 10/04/2026 - Ana Oliveira (1o Ano A) - Biologia: Avaliacao B1 em 10/04/2026 - Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026 - Historia: Avaliacao B1 em 10/04/2026 - Ingles: Avaliacao B1 em 10/04/2026",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 532.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:upcoming_assessments",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "upcoming_assessments"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Próximas avaliações das contas vinculadas: - Lucas Oliveira (1o Ano A) - Biologia: Avaliacao B1 em 10/04/2026 - Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026 - Historia: Avaliacao B1 em 10/04/2026 - Ingles: Avaliacao B1 em 10/04/2026 - Ana Oliveira (1o Ano A) - Biologia: Avaliacao B1 em 10/04/2026 - Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026 - Historia: Avaliacao B1 em 10/04/2026 - Ingles: Avaliacao B1 em 10/04/2026",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Agora filtre so a Ana e diga as proximas avaliacoes dela.",
+      "slice": "protected",
+      "category": "protected_structured_upcoming_assessments_followup",
+      "thread_id": "retrieval_protected_upcoming_assessments",
+      "turn_index": 1,
+      "note": "protected upcoming assessments follow-up",
+      "run_prefix": "debug:four-path:normal:20260405T072626Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 427.2,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Próximas avaliações de Ana Oliveira: - Biologia: Avaliacao B1 em 10/04/2026 - Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026 - Historia: Avaliacao B1 em 10/04/2026 - Ingles: Avaliacao B1 em 10/04/2026 - Matematica: Avaliacao 2026-B1 - MAT em 10/04/2026",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 466.8,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_structured:academic",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Próximas avaliações de Ana Oliveira: - Biologia: Avaliacao B1 em 10/04/2026 - Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026 - Historia: Avaliacao B1 em 10/04/2026 - Ingles: Avaliacao B1 em 10/04/2026 - Matematica: Avaliacao 2026-B1 - MAT em 10/04/2026",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 467.5,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Próximas avaliações de Ana Oliveira: - Biologia: Avaliacao B1 em 10/04/2026 - Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026 - Historia: Avaliacao B1 em 10/04/2026 - Ingles: Avaliacao B1 em 10/04/2026 - Matematica: Avaliacao 2026-B1 - MAT em 10/04/2026",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 399.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:upcoming_assessments",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "upcoming_assessments"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": true,
+        "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+        "answer_experience_provider": "google",
+        "answer_experience_model": "gemini-2.5-flash-lite",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Próximas avaliações de Ana Oliveira: - Biologia: Avaliacao B1 em 10/04/2026 - Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026 - Historia: Avaliacao B1 em 10/04/2026 - Ingles: Avaliacao B1 em 10/04/2026 - Matematica: Avaliacao 2026-B1 - MAT em 10/04/2026",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    }
+  ],
+  "dataset": "/home/edann/projects/eduassist-platform/tests/evals/datasets/retrieval_20q_probe_cases.generated.20260405.json"
+}

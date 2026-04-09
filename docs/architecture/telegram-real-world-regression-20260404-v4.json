@@ -1,0 +1,857 @@
+{
+  "generated_at": "2026-04-04T18:33:00.372298",
+  "telegram_chat_id": 1649845499,
+  "scenarios": {
+    "academic_finance_followup": [
+      {
+        "label": "student_activation",
+        "text": "do lucas oliveira então"
+      },
+      {
+        "label": "all_grades",
+        "text": "quais as notas do lucas"
+      },
+      {
+        "label": "subject_grade",
+        "text": "qual a nota de história do lucas?"
+      },
+      {
+        "label": "justification_followup",
+        "text": "é atestado de ficar dormindo, serve?"
+      },
+      {
+        "label": "finance_followup",
+        "text": "e o financeiro do lucas como está?"
+      }
+    ],
+    "public_pricing_followup": [
+      {
+        "label": "pricing_reference",
+        "text": "Qual a mensalidade do ensino medio?"
+      },
+      {
+        "label": "pricing_projection",
+        "text": "Quanto seria a matricula para 20 filhos?"
+      },
+      {
+        "label": "pricing_grade_followup",
+        "text": "3o"
+      },
+      {
+        "label": "pricing_quantity_followup",
+        "text": "E para 20 filhos?"
+      }
+    ]
+  },
+  "results": {
+    "langgraph": {
+      "academic_finance_followup": [
+        {
+          "label": "student_activation",
+          "question": "do lucas oliveira então",
+          "message_text": "Com qual informação sobre Lucas Oliveira você gostaria de ajuda? (Notas, faltas, próximas provas, matrícula, financeiro, boletos)",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "all_grades",
+          "question": "quais as notas do lucas",
+          "message_text": "As notas parciais de Lucas Oliveira são:\n- Biologia: 7,9/10\n- Educação Física: 6,5/10\n- Filosofia: 7,1/10\n- Física: 5,9/10\n- Geografia: 6,5/10\n- História: 6,8/10\n- Inglês: 8,1/10\n- Matemática: 7,7/10\n- Português: 8,3/10\n- Química: 6,9/10\n- Redação: 6,7/10\n- Sociologia: 7,3/10\n- Tecnologia e Cultura Digital: 6,8/10",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "grounded_answer_experience"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "subject_grade",
+          "question": "qual a nota de história do lucas?",
+          "message_text": "Em Historia, Lucas Oliveira está com média parcial de 6,8/10.",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "justification_followup",
+          "question": "é atestado de ficar dormindo, serve?",
+          "message_text": "Para justificar faltas, a escola aceita atestado médico ou odontológico formal. Um atestado de \"ficar dormindo\" não serve como justificativa válida. Se houver dúvida, o documento deve ser apresentado à secretaria da escola.",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "answer_composition"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "finance_followup",
+          "question": "e o financeiro do lucas como está?",
+          "message_text": "Lucas Oliveira está com 1 fatura(s) em aberto. A mais próxima está em R$ 1.450,00 e vence em 10/04/2026.",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "public_pricing_followup": [
+        {
+          "label": "pricing_reference",
+          "question": "Qual a mensalidade do ensino medio?",
+          "message_text": "Para Ensino Medio no turno Manha, a mensalidade pública de referência é R$ 1.450,00 e a taxa de matrícula é R$ 350,00.",
+          "mode": "structured_tool",
+          "reason": "fato institucional canonico deve vir de fonte estruturada",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "public_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "structured_polish",
+            "answer_verifier_judge"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_projection",
+          "question": "Quanto seria a matricula para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.",
+          "mode": "structured_tool",
+          "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "public_slice",
+            "hybrid_retrieval",
+            "protected_domain_rescue"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_grade_followup",
+          "question": "3o",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_quantity_followup",
+          "question": "E para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "answer_composition"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ]
+    },
+    "python_functions": {
+      "academic_finance_followup": [
+        {
+          "label": "student_activation",
+          "question": "do lucas oliveira então",
+          "message_text": "Sobre qual informação específica do Lucas Oliveira você gostaria de saber?",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "kernel:python_functions"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "all_grades",
+          "question": "quais as notas do lucas",
+          "message_text": "Notas parciais de Lucas Oliveira:\n- Biologia: 7,9/10\n- Educacao Fisica: 6,5/10\n- Filosofia: 7,1/10\n- Fisica: 5,9/10\n- Geografia: 6,5/10\n- Historia: 6,8/10\n- Ingles: 8,1/10\n- Matematica: 7,7/10\n- Portugues: 8,3/10\n- Quimica: 6,9/10\n- Redacao: 6,7/10\n- Sociologia: 7,3/10\n- Tecnologia e Cultura Digital: 6,8/10",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "grounded_answer_experience"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "subject_grade",
+          "question": "qual a nota de história do lucas?",
+          "message_text": "Em Historia, Lucas Oliveira está com média parcial de 6,8/10.",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "justification_followup",
+          "question": "é atestado de ficar dormindo, serve?",
+          "message_text": "Para justificar faltas, a escola aceita atestado médico ou odontológico formal. Um atestado de \"ficar dormindo\" não serve como justificativa válida. Se houver dúvida, o documento deve ser apresentado à secretaria da escola.",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "finance_followup",
+          "question": "e o financeiro do lucas como está?",
+          "message_text": "Lucas Oliveira está com 1 fatura(s) em aberto. A mais próxima está em R$ 1.450,00 e vence em 10/04/2026.",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:finance",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "public_pricing_followup": [
+        {
+          "label": "pricing_reference",
+          "question": "Qual a mensalidade do ensino medio?",
+          "message_text": "Para Ensino Medio no turno Manha, a mensalidade pública de referência é R$ 1.450,00 e a taxa de matrícula é R$ 350,00.",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:institution",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_projection",
+          "question": "Quanto seria a matricula para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "hybrid_retrieval",
+            "protected_domain_rescue",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_grade_followup",
+          "question": "3o",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_quantity_followup",
+          "question": "E para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ]
+    },
+    "llamaindex": {
+      "academic_finance_followup": [
+        {
+          "label": "student_activation",
+          "question": "do lucas oliveira então",
+          "message_text": "Perfeito, seguimos com Lucas Oliveira. Posso te ajudar com notas, faltas, próximas provas, matrícula, financeiro ou boletos. O que você gostaria de verificar primeiro?",
+          "mode": "structured_tool",
+          "reason": "llamaindex_student_focus_fast_path",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "llamaindex:protected",
+            "llamaindex:student_focus_fast_path",
+            "kernel:llamaindex"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "grounded_answer_experience"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "all_grades",
+          "question": "quais as notas do lucas",
+          "message_text": "As notas parciais de Lucas Oliveira são:\n- Biologia: 7,9/10\n- Educação Física: 6,5/10\n- Filosofia: 7,1/10\n- Física: 5,9/10\n- Geografia: 6,5/10\n- História: 6,8/10\n- Inglês: 8,1/10\n- Matemática: 7,7/10\n- Português: 8,3/10\n- Química: 6,9/10\n- Redação: 6,7/10\n- Sociologia: 7,3/10\n- Tecnologia e Cultura Digital: 6,8/10",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:llamaindex"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "grounded_answer_experience"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "subject_grade",
+          "question": "qual a nota de história do lucas?",
+          "message_text": "Em Historia, Lucas Oliveira está com média parcial de 6,8/10.",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "justification_followup",
+          "question": "é atestado de ficar dormindo, serve?",
+          "message_text": "Para justificar faltas, a escola aceita atestado médico ou odontológico formal. Um atestado de \"ficar dormindo\" não serve como justificativa válida. Se houver dúvida, o documento deve ser apresentado à secretaria da escola.",
+          "mode": "structured_tool",
+          "reason": "llamaindex_cache:deterministic_candidate_selected:topic_coverage=0.00",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "llamaindex:cache",
+            "exact"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "finance_followup",
+          "question": "e o financeiro do lucas como está?",
+          "message_text": "Lucas Oliveira está com 1 fatura(s) em aberto. A mais próxima está em R$ 1.450,00 e vence em 10/04/2026.",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "public_pricing_followup": [
+        {
+          "label": "pricing_reference",
+          "question": "Qual a mensalidade do ensino medio?",
+          "message_text": "Para Ensino Medio no turno Manha, a mensalidade pública de referência é R$ 1.450,00 e a taxa de matrícula é R$ 350,00.",
+          "mode": "structured_tool",
+          "reason": "llamaindex_cache:deterministic_candidate_selected",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "llamaindex:cache",
+            "semantic"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_projection",
+          "question": "Quanto seria a matricula para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.",
+          "mode": "structured_tool",
+          "reason": "llamaindex_protected_records_fast_path",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "hybrid_retrieval",
+            "protected_domain_rescue",
+            "llamaindex:protected",
+            "llamaindex:protected_records_fast_path",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_grade_followup",
+          "question": "3o",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.",
+          "mode": "structured_tool",
+          "reason": "llamaindex_cache:deterministic_candidate_selected",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "llamaindex:cache",
+            "exact"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_quantity_followup",
+          "question": "E para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.",
+          "mode": "structured_tool",
+          "reason": "llamaindex_cache:deterministic_candidate_selected",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "llamaindex:cache",
+            "exact"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ]
+    },
+    "specialist_supervisor": {
+      "academic_finance_followup": [
+        {
+          "label": "student_activation",
+          "question": "do lucas oliveira então",
+          "message_text": "O que você gostaria de saber ou fazer sobre Lucas Oliveira?",
+          "mode": "clarify",
+          "reason": "A mensagem do usuário é muito vaga e carece de intenção específica. É necessário esclarecer qual informação ou ação é solicitada em relação a 'Lucas Oliveira'.",
+          "graph_path": [
+            "specialist_supervisor",
+            "planner"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "planner",
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "all_grades",
+          "question": "quais as notas do lucas",
+          "message_text": "As notas parciais de Lucas Oliveira são:\n- Biologia: 7,9\n- Educação Física: 6,5\n- Filosofia: 7,1\n- Física: 5,9\n- Geografia: 6,5\n- História: 6,8\n- Inglês: 8,1\n- Matemática: 7,7\n- Português: 8,3\n- Química: 6,9\n- Redação: 6,7\n- Sociologia: 7,3\n- Tecnologia e Cultura Digital: 6,8",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_resolved_intent:student_grades",
+          "graph_path": [
+            "specialist_supervisor",
+            "resolved_intent",
+            "student_grades"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "grounded_answer_experience"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "subject_grade",
+          "question": "qual a nota de história do lucas?",
+          "message_text": "Em Historia, Lucas Oliveira está com média parcial de 6,8/10.",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_memory:subject_followup",
+          "graph_path": [
+            "specialist_supervisor",
+            "operational_memory",
+            "subject_followup"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "justification_followup",
+          "question": "é atestado de ficar dormindo, serve?",
+          "message_text": "Para justificar faltas, a escola aceita atestado médico ou odontológico formal. Um atestado de \"ficar dormindo\" não serve como justificativa válida. Se houver dúvida, o documento deve ser apresentado à secretaria da escola.",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "specialist_supervisor",
+            "remote_unavailable",
+            "langgraph_fallback",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "answer_composition"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "finance_followup",
+          "question": "e o financeiro do lucas como está?",
+          "message_text": "Lucas Oliveira está com 1 fatura(s) em aberto. A mais próxima está em R$ 1.450,00 e vence em 10/04/2026.",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "specialist_supervisor",
+            "remote_unavailable",
+            "langgraph_fallback",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "public_pricing_followup": [
+        {
+          "label": "pricing_reference",
+          "question": "Qual a mensalidade do ensino medio?",
+          "message_text": "Para Ensino Medio no turno Manha, a mensalidade pública de referência é R$ 1.450,00 e a taxa de matrícula é R$ 350,00.",
+          "mode": "structured_tool",
+          "reason": "fato institucional canonico deve vir de fonte estruturada",
+          "graph_path": [
+            "specialist_supervisor",
+            "remote_unavailable",
+            "langgraph_fallback",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "public_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_projection",
+          "question": "Quanto seria a matricula para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_fast_path:pricing_projection",
+          "graph_path": [
+            "specialist_supervisor",
+            "fast_path",
+            "pricing_projection"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_grade_followup",
+          "question": "3o",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_fast_path:public_pricing_reference",
+          "graph_path": [
+            "specialist_supervisor",
+            "fast_path",
+            "public_pricing_reference"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_quantity_followup",
+          "question": "E para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_fast_path:general_knowledge",
+          "graph_path": [
+            "specialist_supervisor",
+            "fast_path",
+            "general_knowledge"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "general_knowledge_fast_path"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ]
+    }
+  }
+}

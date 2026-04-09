@@ -1,0 +1,2508 @@
+{
+  "generated_at": "2026-04-04T23:28:05.542422",
+  "telegram_chat_id": 1649845499,
+  "scenarios": {
+    "academic_finance_followup": [
+      {
+        "label": "student_activation",
+        "text": "do lucas oliveira então"
+      },
+      {
+        "label": "all_grades",
+        "text": "quais as notas do lucas"
+      },
+      {
+        "label": "subject_grade",
+        "text": "qual a nota de história do lucas?"
+      },
+      {
+        "label": "justification_followup",
+        "text": "é atestado de ficar dormindo, serve?"
+      },
+      {
+        "label": "finance_followup",
+        "text": "e o financeiro do lucas como está?"
+      }
+    ],
+    "public_pricing_followup": [
+      {
+        "label": "pricing_reference",
+        "text": "Qual a mensalidade do ensino medio?"
+      },
+      {
+        "label": "pricing_projection",
+        "text": "Quanto seria a matricula para 20 filhos?"
+      },
+      {
+        "label": "pricing_grade_followup",
+        "text": "3o"
+      },
+      {
+        "label": "pricing_quantity_followup",
+        "text": "E para 20 filhos?"
+      }
+    ],
+    "entity_and_subject_repair": [
+      {
+        "label": "unknown_student",
+        "text": "qual a nota da laura"
+      },
+      {
+        "label": "ambiguous_student_followup",
+        "text": "do lucas serve"
+      },
+      {
+        "label": "student_grades",
+        "text": "não quero justificar, quero saber a nota do lucas"
+      },
+      {
+        "label": "single_subject",
+        "text": "só de geografia"
+      },
+      {
+        "label": "repair_meta",
+        "text": "por que não falou antes a nota de geografia?"
+      }
+    ],
+    "subject_alias_and_unsupported_subject": [
+      {
+        "label": "english_short",
+        "text": "e de english"
+      },
+      {
+        "label": "english_explicit",
+        "text": "quero saber a nota de english do lucas"
+      },
+      {
+        "label": "unknown_subject",
+        "text": "e as notas de dança"
+      },
+      {
+        "label": "unknown_subject_correction",
+        "text": "não é física, é aulas de dança, as notas"
+      }
+    ],
+    "upcoming_assessments_repair": [
+      {
+        "label": "upcoming_all",
+        "text": "e quais as próximas provas do lucas"
+      },
+      {
+        "label": "upcoming_history",
+        "text": "e de história quais as próximas provas dele"
+      },
+      {
+        "label": "resume_student",
+        "text": "do lucas, estou falando dele"
+      },
+      {
+        "label": "upcoming_dates",
+        "text": "datas das provas"
+      },
+      {
+        "label": "repair_previous_answer",
+        "text": "mas você falou as próximas datas das provas dele de física"
+      },
+      {
+        "label": "repair_scope_question",
+        "text": "e essa resposta aqui era sobre o que então?"
+      }
+    ]
+  },
+  "results": {
+    "langgraph": {
+      "academic_finance_followup": [
+        {
+          "label": "student_activation",
+          "question": "do lucas oliveira então",
+          "message_text": "Perfeito, seguimos com Lucas Oliveira. O que você gostaria de saber sobre ele?\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > clarify\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: langgraph\nresources: support:clarify:needs_clarification\nretrieval: backend=none, strategy=clarify, sources=1, supports=1, citations=0\nreason: a intencao esta ambigua e exige clarificacao antes de recuperar contexto\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:context_repair_clarify\ncontext_repair_reason: A pergunta do usuário 'do lucas oliveira então' é uma confirmação, mas não especifica o que ele quer saber sobre o Lucas. É necessário pedir mais detalhes para prosseguir.",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "all_grades",
+          "question": "quais as notas do lucas",
+          "message_text": "As notas parciais do Lucas Oliveira são:\n- Biologia: 7,9/10\n- Educação Física: 6,5/10\n- Filosofia: 7,1/10\n- Física: 5,9/10\n- Geografia: 6,5/10\n- História: 6,8/10\n- Inglês: 8,1/10\n- Matemática: 7,7/10\n- Português: 8,3/10\n- Química: 6,9/10\n- Redação: 6,7/10\n- Sociologia: 7,3/10\n- Tecnologia e Cultura Digital: 6,8/10\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > protected_slice > structured_tool_call\nllm: yes (grounded_answer_experience)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "grounded_answer_experience"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "subject_grade",
+          "question": "qual a nota de história do lucas?",
+          "message_text": "Em Historia, Lucas Oliveira está com média parcial de 6,8/10.\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > protected_slice > structured_tool_call\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "justification_followup",
+          "question": "é atestado de ficar dormindo, serve?",
+          "message_text": "Para justificar faltas, a escola aceita atestado médico ou odontológico formal. Um atestado de \"ficar dormindo\" não serve como justificativa válida. Se houver dúvida, o documento deve ser apresentado à secretaria da escola.\n[debug]\nstack: langgraph\nbundle: targeted:public:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > clarify\nllm: yes (answer_composition)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: support:clarify:needs_clarification\nretrieval: backend=none, strategy=clarify, sources=1, supports=1, citations=0\nreason: a intencao esta ambigua e exige clarificacao antes de recuperar contexto\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "answer_composition"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "finance_followup",
+          "question": "e o financeiro do lucas como está?",
+          "message_text": "Lucas Oliveira está com 1 fatura(s) em aberto. A mais próxima está em R$ 1.450,00 e vence em 10/04/2026.\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > protected_slice > structured_tool_call\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_financial_summary, support:tool:get_financial_summary\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "public_pricing_followup": [
+        {
+          "label": "pricing_reference",
+          "question": "Qual a mensalidade do ensino medio?",
+          "message_text": "Para Ensino Medio no turno Manha, a mensalidade pública de referência é R$ 1.450,00 e a taxa de matrícula é R$ 350,00.\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > public_slice > structured_tool_call\nllm: yes (structured_polish, answer_verifier_judge)\nfinal_polish: light_polish (applied)\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_public_school_profile, support:scope:public_school_profile, support:profile_fact:school_name, support:profile_fact:tuition_reference, support:tool:get_public_school_profile\nretrieval: backend=none, strategy=direct_answer, sources=6, supports=6, citations=0\nreason: fato institucional canonico deve vir de fonte estruturada\nfinal_polish_reason: langgraph_public_noncanonical\nanswer_experience_reason: structured_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "fato institucional canonico deve vir de fonte estruturada",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "public_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "structured_polish",
+            "answer_verifier_judge"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_projection",
+          "question": "Quanto seria a matricula para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > public_slice > hybrid_retrieval > protected_domain_rescue\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "public_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "public_slice",
+            "hybrid_retrieval",
+            "protected_domain_rescue"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_grade_followup",
+          "question": "3o",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.\n[debug]\nstack: langgraph\nbundle: targeted:public:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > clarify\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: support:clarify:needs_clarification\nretrieval: backend=none, strategy=clarify, sources=1, supports=1, citations=0\nreason: a intencao esta ambigua e exige clarificacao antes de recuperar contexto\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "public_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "public_slice",
+            "hybrid_retrieval",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_quantity_followup",
+          "question": "E para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.\n[debug]\nstack: langgraph\nbundle: targeted:public:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > clarify\nllm: yes (answer_composition)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: support:clarify:needs_clarification\nretrieval: backend=none, strategy=clarify, sources=1, supports=1, citations=0\nreason: a intencao esta ambigua e exige clarificacao antes de recuperar contexto\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "public_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "public_slice",
+            "hybrid_retrieval",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "answer_composition"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "entity_and_subject_repair": [
+        {
+          "label": "unknown_student",
+          "question": "qual a nota da laura",
+          "message_text": "Não encontrei Laura entre os alunos vinculados. Você quer consultar Lucas Oliveira ou Ana Oliveira?\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > protected_slice > structured_tool_call\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:context_repair_clarify\ncontext_repair_reason: unknown_student_reference",
+          "mode": "clarify",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "ambiguous_student_followup",
+          "question": "do lucas serve",
+          "message_text": "Você quer a nota, as próximas provas ou a frequência de Lucas Oliveira?\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > clarify\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: langgraph\nresources: support:clarify:needs_clarification\nretrieval: backend=none, strategy=clarify, sources=1, supports=1, citations=0\nreason: a intencao esta ambigua e exige clarificacao antes de recuperar contexto\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:context_repair_clarify\ncontext_repair_reason: ambiguous_followup",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "student_grades",
+          "question": "não quero justificar, quero saber a nota do lucas",
+          "message_text": "Você quer o boletim completo de Lucas Oliveira, ou a nota de uma disciplina específica?\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > protected_slice > structured_tool_call\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:context_repair_clarify\ncontext_repair_reason: repair_followup",
+          "mode": "clarify",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "single_subject",
+          "question": "só de geografia",
+          "message_text": "Em Geografia, Lucas Oliveira está com média parcial de 6,5/10.\n[debug]\nstack: langgraph\nbundle: targeted:public:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > clarify\nllm: yes (answer_composition)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: support:clarify:needs_clarification\nretrieval: backend=none, strategy=clarify, sources=1, supports=1, citations=0\nreason: a intencao esta ambigua e exige clarificacao antes de recuperar contexto\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "answer_composition"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "repair_meta",
+          "question": "por que não falou antes a nota de geografia?",
+          "message_text": "Em Geografia, Lucas Oliveira está com média parcial de 6,5/10.\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > protected_slice > structured_tool_call\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "subject_alias_and_unsupported_subject": [
+        {
+          "label": "english_short",
+          "question": "e de english",
+          "message_text": "Você quer consultar Lingua Inglesa de qual aluno: Lucas Oliveira ou Ana Oliveira?\n[debug]\nstack: langgraph\nbundle: targeted:public:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > clarify\nllm: yes (answer_composition, context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: langgraph\nresources: support:clarify:needs_clarification\nretrieval: backend=none, strategy=clarify, sources=1, supports=1, citations=0\nreason: a intencao esta ambigua e exige clarificacao antes de recuperar contexto\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:context_repair_clarify\ncontext_repair_reason: ambiguous_followup",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "answer_composition",
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "english_explicit",
+          "question": "quero saber a nota de english do lucas",
+          "message_text": "Em Lingua Inglesa, Lucas Oliveira está com média parcial de 8,1/10.\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > protected_slice > structured_tool_call\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "unknown_subject",
+          "question": "e as notas de dança",
+          "message_text": "Não encontrei a disciplina Danca para Lucas Oliveira neste registro. As disciplinas disponíveis aqui incluem: Biologia, Educacao Fisica, Filosofia, Fisica, Geografia, Historia.\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > public_slice > structured_tool_call > protected_domain_rescue\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "public_slice",
+            "structured_tool_call",
+            "protected_domain_rescue"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "unknown_subject_correction",
+          "question": "não é física, é aulas de dança, as notas",
+          "message_text": "Não encontrei a disciplina Danca para Lucas Oliveira neste registro. As disciplinas disponíveis aqui incluem: Biologia, Educacao Fisica, Filosofia, Fisica, Geografia, Historia.\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > public_slice > structured_tool_call > protected_domain_rescue\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "o turno atual trouxe pistas explicitas de outro dominio protegido e o roteamento foi corrigido",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "public_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "public_slice",
+            "structured_tool_call",
+            "protected_domain_rescue"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "upcoming_assessments_repair": [
+        {
+          "label": "upcoming_all",
+          "question": "e quais as próximas provas do lucas",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Matematica: Avaliacao 2026-B1 - MAT em 10/04/2026\n- Matematica: Avaliacao B1 em 10/04/2026\n- Matematica: Prova 1 de Matematica em 10/04/2026\n- Matematica: Trabalho B1 em 18/04/2026\n- Matematica: Avaliacao B2 em 12/06/2026\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > protected_slice > structured_tool_call\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "upcoming_history",
+          "question": "e de história quais as próximas provas dele",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Historia: Avaliacao B1 em 10/04/2026\n- Historia: Avaliacao 2026-B1 - HIS em 12/04/2026\n- Historia: Trabalho B1 em 18/04/2026\n- Historia: Avaliacao B2 em 12/06/2026\n- Historia: Avaliacao 2026-B2 - HIS em 21/06/2026\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > protected_slice > structured_tool_call\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "resume_student",
+          "question": "do lucas, estou falando dele",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Historia: Avaliacao B1 em 10/04/2026\n- Historia: Avaliacao 2026-B1 - HIS em 12/04/2026\n- Historia: Trabalho B1 em 18/04/2026\n- Historia: Avaliacao B2 em 12/06/2026\n- Historia: Avaliacao 2026-B2 - HIS em 21/06/2026\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > protected_slice > structured_tool_call\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "upcoming_dates",
+          "question": "datas das provas",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Biologia: Avaliacao B1 em 10/04/2026\n- Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026\n- Historia: Avaliacao B1 em 10/04/2026\n- Ingles: Avaliacao B1 em 10/04/2026\n- Matematica: Avaliacao 2026-B1 - MAT em 10/04/2026\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > protected_slice > structured_tool_call\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "repair_previous_answer",
+          "question": "mas você falou as próximas datas das provas dele de física",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026\n- Fisica: Avaliacao 2026-B2 - FIS em 19/06/2026\n[debug]\nstack: langgraph\nbundle: targeted:protected:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > protected_slice > structured_tool_call\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "repair_scope_question",
+          "question": "e essa resposta aqui era sobre o que então?",
+          "message_text": "A resposta anterior estava falando de próximas avaliações. Se quiser, eu reformulo agora só no foco certo.\n[debug]\nstack: langgraph\nbundle: targeted:public:langgraph\npath: langgraph > classify_request > security_gate > route_request > select_slice > protected_slice > structured_tool_call\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: langgraph\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:context_repair_clarify\ncontext_repair_reason: repair_followup",
+          "mode": "clarify",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call",
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "protected_slice",
+            "structured_tool_call"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        }
+      ]
+    },
+    "python_functions": {
+      "academic_finance_followup": [
+        {
+          "label": "student_activation",
+          "question": "do lucas oliveira então",
+          "message_text": "O que você gostaria de saber sobre o Lucas Oliveira?\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > clarify > kernel:python_functions\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: python_functions\nresources: support:contract:clarify\nretrieval: backend=none, strategy=clarify, sources=1, supports=1, citations=0\nreason: a intencao esta ambigua e exige clarificacao antes de recuperar contexto\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:context_repair_clarify\ncontext_repair_reason: A pergunta do usuário 'do lucas oliveira então' é ambígua. Embora o foco tenha sido resolvido para 'aluno=Lucas Oliveira', a intenção do usuário ainda não está clara. Ele pode querer saber sobre o desempenho acadêmico, informações de matrícula, eventos relacionados a ele, etc. É necessário pedir ao usuário para especificar o que ele deseja saber sobre o Lucas Oliveira.",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "kernel:python_functions"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "all_grades",
+          "question": "quais as notas do lucas",
+          "message_text": "As notas parciais de Lucas Oliveira são:\n- Biologia: 7,9/10\n- Educação Física: 6,5/10\n- Filosofia: 7,1/10\n- Física: 5,9/10\n- Geografia: 6,5/10\n- História: 6,8/10\n- Inglês: 8,1/10\n- Matemática: 7,7/10\n- Português: 8,3/10\n- Química: 6,9/10\n- Redação: 6,7/10\n- Sociologia: 7,3/10\n- Tecnologia e Cultura Digital: 6,8/10\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > python_functions:native_runtime > kernel:python_functions\nllm: yes (grounded_answer_experience)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:python_functions_native_runtime, +5 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: python_functions_native_structured:academic\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "grounded_answer_experience"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "subject_grade",
+          "question": "qual a nota de história do lucas?",
+          "message_text": "Em Historia, Lucas Oliveira está com média parcial de 6,8/10.\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > python_functions:native_runtime > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:python_functions_native_runtime, +5 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: python_functions_native_structured:academic\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "justification_followup",
+          "question": "é atestado de ficar dormindo, serve?",
+          "message_text": "Para justificar faltas, a escola aceita atestado médico ou odontológico formal. Um atestado de \"ficar dormindo\" não serve como justificativa válida. Se houver dúvida, o documento deve ser apresentado à secretaria da escola.\n[debug]\nstack: python_functions\nbundle: targeted:public:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > clarify > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: support:contract:clarify\nretrieval: backend=none, strategy=clarify, sources=1, supports=1, citations=0\nreason: a intencao esta ambigua e exige clarificacao antes de recuperar contexto\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "finance_followup",
+          "question": "e o financeiro do lucas como está?",
+          "message_text": "Lucas Oliveira está com 1 fatura(s) em aberto. A mais próxima está em R$ 1.450,00 e vence em 10/04/2026.\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > python_functions:native_runtime > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_financial_summary, tool:python_functions_native_runtime, support:tool:get_financial_summary\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: python_functions_native_structured:finance\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:finance",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "public_pricing_followup": [
+        {
+          "label": "pricing_reference",
+          "question": "Qual a mensalidade do ensino medio?",
+          "message_text": "Para Ensino Medio no turno Manha, a mensalidade pública de referência é R$ 1.450,00 e a taxa de matrícula é R$ 350,00.\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > python_functions:native_runtime > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_public_school_profile, tool:python_functions_native_runtime, support:tool:get_public_school_profile\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: python_functions_native_structured:institution\nfinal_polish_reason: python_functions_prefers_deterministic\nanswer_experience_reason: structured_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:institution",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_projection",
+          "question": "Quanto seria a matricula para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > hybrid_retrieval > protected_domain_rescue > python_functions:native_runtime > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:python_functions_native_runtime, +5 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: python_functions_native_structured:academic\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "hybrid_retrieval",
+            "protected_domain_rescue",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_grade_followup",
+          "question": "3o",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.\n[debug]\nstack: python_functions\nbundle: targeted:public:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > clarify > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: support:contract:clarify\nretrieval: backend=none, strategy=clarify, sources=1, supports=1, citations=0\nreason: a intencao esta ambigua e exige clarificacao antes de recuperar contexto\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_quantity_followup",
+          "question": "E para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.\n[debug]\nstack: python_functions\nbundle: targeted:public:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > clarify > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: support:contract:clarify\nretrieval: backend=none, strategy=clarify, sources=1, supports=1, citations=0\nreason: a intencao esta ambigua e exige clarificacao antes de recuperar contexto\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "entity_and_subject_repair": [
+        {
+          "label": "unknown_student",
+          "question": "qual a nota da laura",
+          "message_text": "Não encontrei Laura entre os alunos vinculados. Você quer consultar Lucas Oliveira ou Ana Oliveira?\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > python_functions:native_runtime > kernel:python_functions\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:python_functions_native_runtime, +5 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: python_functions_native_structured:academic\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:context_repair_clarify\ncontext_repair_reason: unknown_student_reference",
+          "mode": "clarify",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "ambiguous_student_followup",
+          "question": "do lucas serve",
+          "message_text": "Você quer a nota, as próximas provas ou a frequência de Lucas Oliveira?\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > clarify > kernel:python_functions\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: python_functions\nresources: support:contract:clarify\nretrieval: backend=none, strategy=clarify, sources=1, supports=1, citations=0\nreason: a intencao esta ambigua e exige clarificacao antes de recuperar contexto\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:context_repair_clarify\ncontext_repair_reason: ambiguous_followup",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "kernel:python_functions"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "student_grades",
+          "question": "não quero justificar, quero saber a nota do lucas",
+          "message_text": "Você quer o boletim completo de Lucas Oliveira, ou a nota de uma disciplina específica?\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > python_functions:native_runtime > kernel:python_functions\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:python_functions_native_runtime, +5 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: python_functions_native_structured:academic\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:context_repair_clarify\ncontext_repair_reason: repair_followup",
+          "mode": "clarify",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "single_subject",
+          "question": "só de geografia",
+          "message_text": "Em Geografia, Lucas Oliveira está com média parcial de 6,5/10.\n[debug]\nstack: python_functions\nbundle: targeted:public:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > clarify > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: support:contract:clarify\nretrieval: backend=none, strategy=clarify, sources=1, supports=1, citations=0\nreason: a intencao esta ambigua e exige clarificacao antes de recuperar contexto\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "repair_meta",
+          "question": "por que não falou antes a nota de geografia?",
+          "message_text": "Em Geografia, Lucas Oliveira está com média parcial de 6,5/10.\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > python_functions:native_runtime > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:python_functions_native_runtime, +5 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: python_functions_native_structured:academic\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "subject_alias_and_unsupported_subject": [
+        {
+          "label": "english_short",
+          "question": "e de english",
+          "message_text": "Você quer consultar Lingua Inglesa de qual aluno: Lucas Oliveira ou Ana Oliveira?\n[debug]\nstack: python_functions\nbundle: targeted:public:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > clarify > kernel:python_functions\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: python_functions\nresources: support:contract:clarify\nretrieval: backend=none, strategy=clarify, sources=1, supports=1, citations=0\nreason: a intencao esta ambigua e exige clarificacao antes de recuperar contexto\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:context_repair_clarify\ncontext_repair_reason: ambiguous_followup",
+          "mode": "clarify",
+          "reason": "a intencao esta ambigua e exige clarificacao antes de recuperar contexto",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "kernel:python_functions"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "english_explicit",
+          "question": "quero saber a nota de english do lucas",
+          "message_text": "Em Lingua Inglesa, Lucas Oliveira está com média parcial de 8,1/10.\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > python_functions:native_runtime > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:python_functions_native_runtime, +5 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: python_functions_native_structured:academic\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "unknown_subject",
+          "question": "e as notas de dança",
+          "message_text": "Não encontrei a disciplina Danca para Lucas Oliveira neste registro. As disciplinas disponíveis aqui incluem: Biologia, Educacao Fisica, Filosofia, Fisica, Geografia, Historia.\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > protected_domain_rescue > python_functions:native_runtime > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:python_functions_native_runtime, +5 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: python_functions_native_structured:academic\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "protected_domain_rescue",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "unknown_subject_correction",
+          "question": "não é física, é aulas de dança, as notas",
+          "message_text": "Não encontrei a disciplina Danca para Lucas Oliveira neste registro. As disciplinas disponíveis aqui incluem: Biologia, Educacao Fisica, Filosofia, Fisica, Geografia, Historia.\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > protected_domain_rescue > python_functions:native_runtime > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:python_functions_native_runtime, +5 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: python_functions_native_structured:academic\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "protected_domain_rescue",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "upcoming_assessments_repair": [
+        {
+          "label": "upcoming_all",
+          "question": "e quais as próximas provas do lucas",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Matematica: Avaliacao 2026-B1 - MAT em 10/04/2026\n- Matematica: Avaliacao B1 em 10/04/2026\n- Matematica: Prova 1 de Matematica em 10/04/2026\n- Matematica: Trabalho B1 em 18/04/2026\n- Matematica: Avaliacao B2 em 12/06/2026\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > python_functions:native_runtime > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:python_functions_native_runtime, +5 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: python_functions_native_structured:academic\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "upcoming_history",
+          "question": "e de história quais as próximas provas dele",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Historia: Avaliacao B1 em 10/04/2026\n- Historia: Avaliacao 2026-B1 - HIS em 12/04/2026\n- Historia: Trabalho B1 em 18/04/2026\n- Historia: Avaliacao B2 em 12/06/2026\n- Historia: Avaliacao 2026-B2 - HIS em 21/06/2026\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > python_functions:native_runtime > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:python_functions_native_runtime, +5 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: python_functions_native_structured:academic\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "resume_student",
+          "question": "do lucas, estou falando dele",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Historia: Avaliacao B1 em 10/04/2026\n- Historia: Avaliacao 2026-B1 - HIS em 12/04/2026\n- Historia: Trabalho B1 em 18/04/2026\n- Historia: Avaliacao B2 em 12/06/2026\n- Historia: Avaliacao 2026-B2 - HIS em 21/06/2026\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "upcoming_dates",
+          "question": "datas das provas",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Biologia: Avaliacao B1 em 10/04/2026\n- Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026\n- Historia: Avaliacao B1 em 10/04/2026\n- Ingles: Avaliacao B1 em 10/04/2026\n- Matematica: Avaliacao 2026-B1 - MAT em 10/04/2026\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > python_functions:native_runtime > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:python_functions_native_runtime, +5 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: python_functions_native_structured:academic\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "repair_previous_answer",
+          "question": "mas você falou as próximas datas das provas dele de física",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026\n- Fisica: Avaliacao 2026-B2 - FIS em 19/06/2026\n[debug]\nstack: python_functions\nbundle: targeted:protected:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > python_functions:native_runtime > kernel:python_functions\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:python_functions_native_runtime, +5 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: python_functions_native_structured:academic\nfinal_polish_reason: protected_disabled\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "python_functions_native_structured:academic",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "python_functions:native_runtime",
+            "kernel:python_functions"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "repair_scope_question",
+          "question": "e essa resposta aqui era sobre o que então?",
+          "message_text": "A resposta anterior estava falando de próximas avaliações. Se quiser, eu reformulo agora só no foco certo.\n[debug]\nstack: python_functions\nbundle: targeted:public:python_functions\npath: python_functions > classify_request > security_gate > route_request > select_slice > structured_tool_call > kernel:python_functions\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: python_functions\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:context_repair_clarify\ncontext_repair_reason: repair_followup",
+          "mode": "clarify",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:python_functions"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        }
+      ]
+    },
+    "llamaindex": {
+      "academic_finance_followup": [
+        {
+          "label": "student_activation",
+          "question": "do lucas oliveira então",
+          "message_text": "Perfeito, seguimos com Lucas Oliveira. Posso te ajudar com notas, faltas, próximas provas, matrícula, financeiro ou boletos. Se quiser, já me diga o que você quer ver primeiro.\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > clarify > llamaindex:protected > llamaindex:student_focus_fast_path > kernel:llamaindex\nllm: yes (grounded_answer_experience)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_grades, tool:get_student_academic_summary, support:tool:get_student_grades, support:tool:get_student_academic_summary\nretrieval: backend=none, strategy=structured_tool, sources=2, supports=2, citations=0\nreason: llamaindex_student_focus_fast_path\nfinal_polish_reason: none\nanswer_experience_reason: protected_grounded_answer\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "llamaindex_student_focus_fast_path",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "llamaindex:protected",
+            "llamaindex:student_focus_fast_path",
+            "kernel:llamaindex"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "grounded_answer_experience"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "all_grades",
+          "question": "quais as notas do lucas",
+          "message_text": "As notas parciais de Lucas Oliveira são:\n- Biologia: 7,9/10\n- Educação Física: 6,5/10\n- Filosofia: 7,1/10\n- Física: 5,9/10\n- Geografia: 6,5/10\n- História: 6,8/10\n- Inglês: 8,1/10\n- Matemática: 7,7/10\n- Português: 8,3/10\n- Química: 6,9/10\n- Redação: 6,7/10\n- Sociologia: 7,3/10\n- Tecnologia e Cultura Digital: 6,8/10\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > structured_tool_call > kernel:llamaindex\nllm: yes (grounded_answer_experience)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:llamaindex"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "grounded_answer_experience"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "subject_grade",
+          "question": "qual a nota de história do lucas?",
+          "message_text": "Em Historia, Lucas Oliveira está com média parcial de 6,8/10.\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > structured_tool_call > kernel:llamaindex\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "justification_followup",
+          "question": "é atestado de ficar dormindo, serve?",
+          "message_text": "Para justificar faltas, a escola aceita atestado médico ou odontológico formal. Um atestado de \"ficar dormindo\" não serve como justificativa válida. Se houver dúvida, o documento deve ser apresentado à secretaria da escola.\n[debug]\nstack: llamaindex\nbundle: targeted:public:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > clarify > llamaindex:workflow > llamaindex:llamaindex_public_canonical_lane:public_bundle.health_second_call > llamaindex:tool:public_retrieval > kernel:llamaindex\nllm: yes (answer_composition)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_public_school_profile, tool:llamaindex_selector_router, tool:public_retrieval, support:tool:public_retrieval\nretrieval: backend=qdrant_hybrid, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: llamaindex_public_canonical_lane:public_bundle.health_second_call\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: structured_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "llamaindex_public_canonical_lane:public_bundle.health_second_call",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "llamaindex:workflow",
+            "llamaindex:llamaindex_public_canonical_lane:public_bundle.health_second_call",
+            "llamaindex:tool:public_retrieval",
+            "kernel:llamaindex"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "answer_composition"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "finance_followup",
+          "question": "e o financeiro do lucas como está?",
+          "message_text": "Lucas Oliveira está com 1 fatura(s) em aberto. A mais próxima está em R$ 1.450,00 e vence em 10/04/2026.\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > structured_tool_call > kernel:llamaindex\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_financial_summary, support:tool:get_financial_summary\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "public_pricing_followup": [
+        {
+          "label": "pricing_reference",
+          "question": "Qual a mensalidade do ensino medio?",
+          "message_text": "Para Ensino Medio no turno Manha, a mensalidade pública de referência é R$ 1.450,00 e a taxa de matrícula é R$ 350,00.\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > structured_tool_call > llamaindex:cache > semantic\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_public_school_profile, tool:llamaindex_selector_router, support:tool:get_public_school_profile\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: llamaindex_cache:documentary_candidate_selected\nfinal_polish_reason: cache_hit\nanswer_experience_reason: structured_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "llamaindex_cache:documentary_candidate_selected",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "llamaindex:cache",
+            "semantic"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_projection",
+          "question": "Quanto seria a matricula para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > hybrid_retrieval > protected_domain_rescue > llamaindex:protected > llamaindex:protected_records_fast_path > kernel:llamaindex\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:get_administrative_status, +7 more\nretrieval: backend=none, strategy=structured_tool, sources=7, supports=7, citations=0\nreason: llamaindex_protected_records_fast_path\nfinal_polish_reason: none\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "llamaindex_protected_records_fast_path",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "hybrid_retrieval",
+            "protected_domain_rescue",
+            "llamaindex:protected",
+            "llamaindex:protected_records_fast_path",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_grade_followup",
+          "question": "3o",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.\n[debug]\nstack: llamaindex\nbundle: targeted:public:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > clarify > llamaindex:workflow > llamaindex:llamaindex_public_profile > llamaindex:tool:public_profile > kernel:llamaindex\nllm: yes (answer_composition)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_public_school_profile, tool:llamaindex_selector_router, tool:public_profile, support:tool:public_profile\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: llamaindex_public_profile\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "clarify",
+          "reason": "llamaindex_public_profile",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "llamaindex:workflow",
+            "llamaindex:llamaindex_public_profile",
+            "llamaindex:tool:public_profile",
+            "kernel:llamaindex"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "answer_composition"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_quantity_followup",
+          "question": "E para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.\n[debug]\nstack: llamaindex\nbundle: targeted:public:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > clarify > llamaindex:workflow > llamaindex:llamaindex_public_profile > llamaindex:tool:public_profile > kernel:llamaindex\nllm: yes (answer_composition)\nfinal_polish: light_polish (eligible)\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_public_school_profile, tool:llamaindex_selector_router, tool:public_profile, support:tool:public_profile\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: llamaindex_public_profile\nfinal_polish_reason: llamaindex_documentary_synthesis\nanswer_experience_reason: structured_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "llamaindex_public_profile",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "llamaindex:workflow",
+            "llamaindex:llamaindex_public_profile",
+            "llamaindex:tool:public_profile",
+            "kernel:llamaindex"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "answer_composition"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "entity_and_subject_repair": [
+        {
+          "label": "unknown_student",
+          "question": "qual a nota da laura",
+          "message_text": "Não encontrei Laura entre os alunos vinculados. Você quer consultar Lucas Oliveira ou Ana Oliveira?\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > structured_tool_call > kernel:llamaindex\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:context_repair_clarify\ncontext_repair_reason: unknown_student_reference",
+          "mode": "clarify",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:llamaindex"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "ambiguous_student_followup",
+          "question": "do lucas serve",
+          "message_text": "Você quer a nota, as próximas provas ou a frequência de Lucas Oliveira?\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > clarify > llamaindex:protected > llamaindex:student_focus_fast_path > kernel:llamaindex\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_grades, tool:get_student_academic_summary, support:tool:get_student_grades, support:tool:get_student_academic_summary\nretrieval: backend=none, strategy=structured_tool, sources=2, supports=2, citations=0\nreason: llamaindex_student_focus_fast_path\nfinal_polish_reason: none\nanswer_experience_reason: protected_grounded_answer:context_repair_clarify\ncontext_repair_reason: ambiguous_followup",
+          "mode": "clarify",
+          "reason": "llamaindex_student_focus_fast_path",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "llamaindex:protected",
+            "llamaindex:student_focus_fast_path",
+            "kernel:llamaindex"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "student_grades",
+          "question": "não quero justificar, quero saber a nota do lucas",
+          "message_text": "Você quer o boletim completo de Lucas Oliveira, ou a nota de uma disciplina específica?\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > structured_tool_call > kernel:llamaindex\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:context_repair_clarify\ncontext_repair_reason: repair_followup",
+          "mode": "clarify",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:llamaindex"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "single_subject",
+          "question": "só de geografia",
+          "message_text": "Em Geografia, Lucas Oliveira está com média parcial de 6,5/10.\n[debug]\nstack: llamaindex\nbundle: targeted:public:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > clarify > llamaindex:workflow > llamaindex:llamaindex_public_profile > llamaindex:tool:public_profile > kernel:llamaindex\nllm: yes (answer_composition, structured_polish)\nfinal_polish: light_polish (applied), rollback\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_public_school_profile, tool:llamaindex_selector_router, tool:public_profile, support:tool:public_profile\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: llamaindex_public_profile\nfinal_polish_reason: llamaindex_documentary_synthesis\nanswer_experience_reason: structured_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "llamaindex_public_profile",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "llamaindex:workflow",
+            "llamaindex:llamaindex_public_profile",
+            "llamaindex:tool:public_profile",
+            "kernel:llamaindex"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "answer_composition",
+            "structured_polish"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "repair_meta",
+          "question": "por que não falou antes a nota de geografia?",
+          "message_text": "Em Geografia, Lucas Oliveira está com média parcial de 6,5/10.\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > structured_tool_call > kernel:llamaindex\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "subject_alias_and_unsupported_subject": [
+        {
+          "label": "english_short",
+          "question": "e de english",
+          "message_text": "Você quer consultar Lingua Inglesa de qual aluno: Lucas Oliveira ou Ana Oliveira?\n[debug]\nstack: llamaindex\nbundle: targeted:public:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > clarify > llamaindex:workflow > llamaindex:llamaindex_public_profile > llamaindex:tool:public_profile > kernel:llamaindex\nllm: yes (answer_composition, answer_verifier_judge, structured_polish, context_repair_planner)\nfinal_polish: light_polish (applied)\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_public_school_profile, tool:llamaindex_selector_router, tool:public_profile, support:tool:public_profile\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: llamaindex_public_profile\nfinal_polish_reason: llamaindex_documentary_synthesis\nanswer_experience_reason: structured_grounded_answer:context_repair_clarify\ncontext_repair_reason: ambiguous_followup",
+          "mode": "clarify",
+          "reason": "llamaindex_public_profile",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "llamaindex:workflow",
+            "llamaindex:llamaindex_public_profile",
+            "llamaindex:tool:public_profile",
+            "kernel:llamaindex"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "answer_composition",
+            "answer_verifier_judge",
+            "structured_polish",
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "english_explicit",
+          "question": "quero saber a nota de english do lucas",
+          "message_text": "Em Lingua Inglesa, Lucas Oliveira está com média parcial de 8,1/10.\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > structured_tool_call > kernel:llamaindex\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "unknown_subject",
+          "question": "e as notas de dança",
+          "message_text": "Não encontrei a disciplina Danca para Lucas Oliveira neste registro. As disciplinas disponíveis aqui incluem: Biologia, Educacao Fisica, Filosofia, Fisica, Geografia, Historia.\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > structured_tool_call > protected_domain_rescue > llamaindex:protected > llamaindex:protected_records_fast_path > kernel:llamaindex\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:get_administrative_status, +7 more\nretrieval: backend=none, strategy=structured_tool, sources=7, supports=7, citations=0\nreason: llamaindex_protected_records_fast_path\nfinal_polish_reason: none\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "llamaindex_protected_records_fast_path",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "protected_domain_rescue",
+            "llamaindex:protected",
+            "llamaindex:protected_records_fast_path",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "unknown_subject_correction",
+          "question": "não é física, é aulas de dança, as notas",
+          "message_text": "Não encontrei a disciplina Danca para Lucas Oliveira neste registro. As disciplinas disponíveis aqui incluem: Biologia, Educacao Fisica, Filosofia, Fisica, Geografia, Historia.\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > structured_tool_call > protected_domain_rescue > llamaindex:protected > llamaindex:protected_records_fast_path > kernel:llamaindex\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, tool:get_administrative_status, +7 more\nretrieval: backend=none, strategy=structured_tool, sources=7, supports=7, citations=0\nreason: llamaindex_protected_records_fast_path\nfinal_polish_reason: none\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "llamaindex_protected_records_fast_path",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "protected_domain_rescue",
+            "llamaindex:protected",
+            "llamaindex:protected_records_fast_path",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "upcoming_assessments_repair": [
+        {
+          "label": "upcoming_all",
+          "question": "e quais as próximas provas do lucas",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Matematica: Avaliacao 2026-B1 - MAT em 10/04/2026\n- Matematica: Avaliacao B1 em 10/04/2026\n- Matematica: Prova 1 de Matematica em 10/04/2026\n- Matematica: Trabalho B1 em 18/04/2026\n- Matematica: Avaliacao B2 em 12/06/2026\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > structured_tool_call > kernel:llamaindex\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "upcoming_history",
+          "question": "e de história quais as próximas provas dele",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Historia: Avaliacao B1 em 10/04/2026\n- Historia: Avaliacao 2026-B1 - HIS em 12/04/2026\n- Historia: Trabalho B1 em 18/04/2026\n- Historia: Avaliacao B2 em 12/06/2026\n- Historia: Avaliacao 2026-B2 - HIS em 21/06/2026\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > structured_tool_call > kernel:llamaindex\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "resume_student",
+          "question": "do lucas, estou falando dele",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Historia: Avaliacao B1 em 10/04/2026\n- Historia: Avaliacao 2026-B1 - HIS em 12/04/2026\n- Historia: Trabalho B1 em 18/04/2026\n- Historia: Avaliacao B2 em 12/06/2026\n- Historia: Avaliacao 2026-B2 - HIS em 21/06/2026\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > clarify > llamaindex:protected > llamaindex:student_focus_fast_path > kernel:llamaindex\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_grades, tool:get_student_academic_summary, support:tool:get_student_grades, support:tool:get_student_academic_summary\nretrieval: backend=none, strategy=structured_tool, sources=2, supports=2, citations=0\nreason: llamaindex_student_focus_fast_path\nfinal_polish_reason: none\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "llamaindex_student_focus_fast_path",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "llamaindex:protected",
+            "llamaindex:student_focus_fast_path",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "upcoming_dates",
+          "question": "datas das provas",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Biologia: Avaliacao B1 em 10/04/2026\n- Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026\n- Historia: Avaliacao B1 em 10/04/2026\n- Ingles: Avaliacao B1 em 10/04/2026\n- Matematica: Avaliacao 2026-B1 - MAT em 10/04/2026\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > structured_tool_call > kernel:llamaindex\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "repair_previous_answer",
+          "question": "mas você falou as próximas datas das provas dele de física",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026\n- Fisica: Avaliacao 2026-B2 - FIS em 19/06/2026\n[debug]\nstack: llamaindex\nbundle: targeted:protected:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > structured_tool_call > kernel:llamaindex\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_student_academic_summary, tool:get_student_attendance, tool:get_student_grades, tool:get_student_upcoming_assessments, tool:get_student_attendance_timeline, support:tool:get_student_academic_summary, +4 more\nretrieval: backend=none, strategy=structured_tool, sources=5, supports=5, citations=0\nreason: dados estruturados devem passar por service deterministico\nfinal_polish_reason: deterministic_answer\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "dados estruturados devem passar por service deterministico",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "structured_tool_call",
+            "kernel:llamaindex"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "repair_scope_question",
+          "question": "e essa resposta aqui era sobre o que então?",
+          "message_text": "A resposta anterior estava falando de próximas avaliações. Se quiser, eu reformulo agora só no foco certo.\n[debug]\nstack: llamaindex\nbundle: targeted:public:llamaindex\npath: llamaindex > classify_request > security_gate > route_request > select_slice > clarify > llamaindex:workflow > llamaindex:llamaindex_public_profile > llamaindex:tool:public_profile > kernel:llamaindex\nllm: yes (answer_composition, context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: llamaindex\nresources: tool:get_public_school_profile, tool:llamaindex_selector_router, tool:public_profile, support:tool:public_profile\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: llamaindex_public_profile\nfinal_polish_reason: mode_not_polishable\nanswer_experience_reason: clarify_repair_grounded_answer:context_repair_clarify\ncontext_repair_reason: repair_followup",
+          "mode": "clarify",
+          "reason": "llamaindex_public_profile",
+          "graph_path": [
+            "classify_request",
+            "security_gate",
+            "route_request",
+            "select_slice",
+            "clarify",
+            "llamaindex:workflow",
+            "llamaindex:llamaindex_public_profile",
+            "llamaindex:tool:public_profile",
+            "kernel:llamaindex"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "answer_composition",
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        }
+      ]
+    },
+    "specialist_supervisor": {
+      "academic_finance_followup": [
+        {
+          "label": "student_activation",
+          "question": "do lucas oliveira então",
+          "message_text": "O que você gostaria de saber sobre Lucas Oliveira?\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > planner\nllm: yes (planner, grounded_answer_experience)\nfinal_polish: skip\nanswer_experience: eligible (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor, planner\nresources: none\nretrieval: backend=none, strategy=none, sources=0, supports=0, citations=0\nreason: A mensagem é ambígua e não fornece contexto suficiente para determinar a intenção do usuário. É necessário pedir mais informações para entender o que o usuário deseja saber sobre Lucas Oliveira.\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: clarify_repair_grounded_answer\ncontext_repair_reason: none",
+          "mode": "clarify",
+          "reason": "A mensagem é ambígua e não fornece contexto suficiente para determinar a intenção do usuário. É necessário pedir mais informações para entender o que o usuário deseja saber sobre Lucas Oliveira.",
+          "graph_path": [
+            "specialist_supervisor",
+            "planner"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "planner",
+            "grounded_answer_experience"
+          ],
+          "answer_experience_applied": false,
+          "answer_experience_reason": "clarify_repair_grounded_answer",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "all_grades",
+          "question": "quais as notas do lucas",
+          "message_text": "As notas parciais de Lucas Oliveira são:\n- Biologia: 7,9\n- Educação Física: 6,5\n- Filosofia: 7,1\n- Física: 5,9\n- Geografia: 6,5\n- História: 6,8\n- Inglês: 8,1\n- Matemática: 7,7\n- Português: 8,3\n- Química: 6,9\n- Redação: 6,7\n- Sociologia: 7,3\n- Tecnologia e Cultura Digital: 6,8\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > resolved_intent > student_grades\nllm: yes (grounded_answer_experience)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:academic_summary:Lucas Oliveira\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: specialist_supervisor_resolved_intent:student_grades\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_resolved_intent:student_grades",
+          "graph_path": [
+            "specialist_supervisor",
+            "resolved_intent",
+            "student_grades"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "grounded_answer_experience"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "subject_grade",
+          "question": "qual a nota de história do lucas?",
+          "message_text": "Em Historia, Lucas Oliveira está com média parcial de 6,8/10.\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > operational_memory > subject_followup\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:academic_summary:Lucas Oliveira\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: specialist_supervisor_memory:subject_followup\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_memory:subject_followup",
+          "graph_path": [
+            "specialist_supervisor",
+            "operational_memory",
+            "subject_followup"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "justification_followup",
+          "question": "é atestado de ficar dormindo, serve?",
+          "message_text": "Para justificar faltas, a escola aceita atestado médico ou odontológico formal. Um atestado de \"ficar dormindo\" não serve como justificativa válida. Se houver dúvida, o documento deve ser apresentado à secretaria da escola.\n[debug]\nstack: specialist_supervisor\nbundle: targeted:public:specialist_supervisor\npath: specialist_supervisor > planner\nllm: yes (planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor, planner\nresources: none\nretrieval: backend=none, strategy=none, sources=0, supports=0, citations=0\nreason: A mensagem do usuário é ambígua e informal, não sendo possível determinar a intenção ou o tipo de atestado a que se refere. É necessário clarificar o que significa 'atestado de ficar dormindo' e qual a sua finalidade para poder direcionar a consulta corretamente, possivelmente para políticas de ausência ou justificativas.\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: clarify_repair_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "clarify",
+          "reason": "A mensagem do usuário é ambígua e informal, não sendo possível determinar a intenção ou o tipo de atestado a que se refere. É necessário clarificar o que significa 'atestado de ficar dormindo' e qual a sua finalidade para poder direcionar a consulta corretamente, possivelmente para políticas de ausência ou justificativas.",
+          "graph_path": [
+            "specialist_supervisor",
+            "planner"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "finance_followup",
+          "question": "e o financeiro do lucas como está?",
+          "message_text": "Lucas Oliveira está com 1 fatura(s) em aberto. A mais próxima está em R$ 1.450,00 e vence em 10/04/2026.\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > operational_memory > academic_finance_combo\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:academic_summary:Lucas Oliveira, support:finance_summary:Lucas Oliveira\nretrieval: backend=none, strategy=structured_tool, sources=2, supports=2, citations=0\nreason: specialist_supervisor_memory:academic_finance_combo\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_memory:academic_finance_combo",
+          "graph_path": [
+            "specialist_supervisor",
+            "operational_memory",
+            "academic_finance_combo"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "public_pricing_followup": [
+        {
+          "label": "pricing_reference",
+          "question": "Qual a mensalidade do ensino medio?",
+          "message_text": "Para Ensino Medio no turno Manha, a mensalidade pública de referência é R$ 1.450,00 e a taxa de matrícula é R$ 350,00.\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > fast_path > public_pricing_reference\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:pricing_reference:Ensino Medio\nretrieval: backend=none, strategy=direct_answer, sources=1, supports=1, citations=0\nreason: specialist_supervisor_fast_path:public_pricing_reference\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: structured_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_fast_path:public_pricing_reference",
+          "graph_path": [
+            "specialist_supervisor",
+            "fast_path",
+            "public_pricing_reference"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_projection",
+          "question": "Quanto seria a matricula para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > fast_path > pricing_projection\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:pricing_reference:Ensino Medio, support:pricing_reference:Quantidade simulada\nretrieval: backend=none, strategy=direct_answer, sources=2, supports=2, citations=0\nreason: specialist_supervisor_fast_path:pricing_projection\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: structured_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_fast_path:pricing_projection",
+          "graph_path": [
+            "specialist_supervisor",
+            "fast_path",
+            "pricing_projection"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_grade_followup",
+          "question": "3o",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.\n[debug]\nstack: specialist_supervisor\nbundle: targeted:public:specialist_supervisor\npath: specialist_supervisor > fast_path > public_pricing_reference\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:pricing_reference:Ensino Medio\nretrieval: backend=none, strategy=direct_answer, sources=1, supports=1, citations=0\nreason: specialist_supervisor_fast_path:public_pricing_reference\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: structured_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_fast_path:public_pricing_reference",
+          "graph_path": [
+            "specialist_supervisor",
+            "fast_path",
+            "public_pricing_reference"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "pricing_quantity_followup",
+          "question": "E para 20 filhos?",
+          "message_text": "Para 20 aluno(s) em Ensino Medio, usando o valor público de referência de taxa de matrícula, a simulação fica 20 x R$ 350,00 = R$ 7.000,00.\n[debug]\nstack: specialist_supervisor\nbundle: targeted:public:specialist_supervisor\npath: specialist_supervisor > fast_path > pricing_projection\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:pricing_reference:Ensino Medio, support:pricing_reference:Quantidade simulada\nretrieval: backend=none, strategy=direct_answer, sources=2, supports=2, citations=0\nreason: specialist_supervisor_fast_path:pricing_projection\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: structured_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_fast_path:pricing_projection",
+          "graph_path": [
+            "specialist_supervisor",
+            "fast_path",
+            "pricing_projection"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "structured_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "entity_and_subject_repair": [
+        {
+          "label": "unknown_student",
+          "question": "qual a nota da laura",
+          "message_text": "Não encontrei Laura entre os alunos vinculados. Você quer consultar Lucas Oliveira ou Ana Oliveira?\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > resolved_intent > student_grades_clarify\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:student_context:Alunos vinculados\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: specialist_supervisor_resolved_intent:student_grades_clarify\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: clarify_repair_grounded_answer:context_repair_clarify\ncontext_repair_reason: unknown_student_reference",
+          "mode": "clarify",
+          "reason": "specialist_supervisor_resolved_intent:student_grades_clarify",
+          "graph_path": [
+            "specialist_supervisor",
+            "resolved_intent",
+            "student_grades_clarify"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "ambiguous_student_followup",
+          "question": "do lucas serve",
+          "message_text": "Você quer a nota, as próximas provas ou a frequência de Lucas Oliveira?\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > operational_memory > student_selection_academic\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:academic_summary:Lucas Oliveira\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: specialist_supervisor_memory:student_selection_academic\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:context_repair_clarify\ncontext_repair_reason: ambiguous_followup",
+          "mode": "clarify",
+          "reason": "specialist_supervisor_memory:student_selection_academic",
+          "graph_path": [
+            "specialist_supervisor",
+            "operational_memory",
+            "student_selection_academic"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "student_grades",
+          "question": "não quero justificar, quero saber a nota do lucas",
+          "message_text": "Você quer o boletim completo de Lucas Oliveira, ou a nota de uma disciplina específica?\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > resolved_intent > student_grades\nllm: yes (context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:academic_summary:Lucas Oliveira\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: specialist_supervisor_resolved_intent:student_grades\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:context_repair_clarify\ncontext_repair_reason: repair_followup",
+          "mode": "clarify",
+          "reason": "specialist_supervisor_resolved_intent:student_grades",
+          "graph_path": [
+            "specialist_supervisor",
+            "resolved_intent",
+            "student_grades"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "single_subject",
+          "question": "só de geografia",
+          "message_text": "Em Geografia, Lucas Oliveira está com média parcial de 6,5/10.\n[debug]\nstack: specialist_supervisor\nbundle: targeted:public:specialist_supervisor\npath: specialist_supervisor > operational_memory > subject_followup\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:academic_summary:Lucas Oliveira\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: specialist_supervisor_memory:subject_followup\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_memory:subject_followup",
+          "graph_path": [
+            "specialist_supervisor",
+            "operational_memory",
+            "subject_followup"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "repair_meta",
+          "question": "por que não falou antes a nota de geografia?",
+          "message_text": "Em Geografia, Lucas Oliveira está com média parcial de 6,5/10.\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > resolved_intent > student_grades\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:academic_summary:Lucas Oliveira\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: specialist_supervisor_resolved_intent:student_grades\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_resolved_intent:student_grades",
+          "graph_path": [
+            "specialist_supervisor",
+            "resolved_intent",
+            "student_grades"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "subject_alias_and_unsupported_subject": [
+        {
+          "label": "english_short",
+          "question": "e de english",
+          "message_text": "Você quer consultar Lingua Inglesa de qual aluno: Lucas Oliveira ou Ana Oliveira?\n[debug]\nstack: specialist_supervisor\nbundle: targeted:public:specialist_supervisor\npath: specialist_supervisor > planner\nllm: yes (planner, context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: specialist_supervisor, planner\nresources: none\nretrieval: backend=none, strategy=none, sources=0, supports=0, citations=0\nreason: A mensagem do usuário é muito ambígua ('e de english') e não fornece contexto suficiente para determinar a intenção. É necessário pedir clarificação para entender se a pergunta se refere à disciplina de inglês, a um curso, a um professor, etc. O domínio 'academic' é o mais provável, mas a intenção precisa ser confirmada.\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: clarify_repair_grounded_answer:context_repair_clarify\ncontext_repair_reason: ambiguous_followup",
+          "mode": "clarify",
+          "reason": "A mensagem do usuário é muito ambígua ('e de english') e não fornece contexto suficiente para determinar a intenção. É necessário pedir clarificação para entender se a pergunta se refere à disciplina de inglês, a um curso, a um professor, etc. O domínio 'academic' é o mais provável, mas a intenção precisa ser confirmada.",
+          "graph_path": [
+            "specialist_supervisor",
+            "planner"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "planner",
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "clarify_repair_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        },
+        {
+          "label": "english_explicit",
+          "question": "quero saber a nota de english do lucas",
+          "message_text": "Em Lingua Inglesa, Lucas Oliveira está com média parcial de 8,1/10.\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > resolved_intent > student_grades\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:academic_summary:Lucas Oliveira\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: specialist_supervisor_resolved_intent:student_grades\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_resolved_intent:student_grades",
+          "graph_path": [
+            "specialist_supervisor",
+            "resolved_intent",
+            "student_grades"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "unknown_subject",
+          "question": "e as notas de dança",
+          "message_text": "Não encontrei a disciplina Danca para Lucas Oliveira neste registro. As disciplinas disponíveis aqui incluem: Biologia, Educacao Fisica, Filosofia, Fisica, Geografia, Historia.\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > resolved_intent > student_grades\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:academic_summary:Lucas Oliveira\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: specialist_supervisor_resolved_intent:student_grades\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_resolved_intent:student_grades",
+          "graph_path": [
+            "specialist_supervisor",
+            "resolved_intent",
+            "student_grades"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "unknown_subject_correction",
+          "question": "não é física, é aulas de dança, as notas",
+          "message_text": "Não encontrei a disciplina Danca para Lucas Oliveira neste registro. As disciplinas disponíveis aqui incluem: Biologia, Educacao Fisica, Filosofia, Fisica, Geografia, Historia.\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > resolved_intent > student_grades\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:academic_summary:Lucas Oliveira\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: specialist_supervisor_resolved_intent:student_grades\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_resolved_intent:student_grades",
+          "graph_path": [
+            "specialist_supervisor",
+            "resolved_intent",
+            "student_grades"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        }
+      ],
+      "upcoming_assessments_repair": [
+        {
+          "label": "upcoming_all",
+          "question": "e quais as próximas provas do lucas",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Matematica: Avaliacao 2026-B1 - MAT em 10/04/2026\n- Matematica: Avaliacao B1 em 10/04/2026\n- Matematica: Prova 1 de Matematica em 10/04/2026\n- Matematica: Trabalho B1 em 18/04/2026\n- Matematica: Avaliacao B2 em 12/06/2026\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > tool_first > upcoming_assessments\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:upcoming_assessments:Lucas Oliveira\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: specialist_supervisor_tool_first:upcoming_assessments\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_tool_first:upcoming_assessments",
+          "graph_path": [
+            "specialist_supervisor",
+            "tool_first",
+            "upcoming_assessments"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "upcoming_history",
+          "question": "e de história quais as próximas provas dele",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Historia: Avaliacao B1 em 10/04/2026\n- Historia: Avaliacao 2026-B1 - HIS em 12/04/2026\n- Historia: Trabalho B1 em 18/04/2026\n- Historia: Avaliacao B2 em 12/06/2026\n- Historia: Avaliacao 2026-B2 - HIS em 21/06/2026\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > operational_memory > subject_followup\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:academic_summary:Lucas Oliveira\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: specialist_supervisor_memory:subject_followup\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_memory:subject_followup",
+          "graph_path": [
+            "specialist_supervisor",
+            "operational_memory",
+            "subject_followup"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "resume_student",
+          "question": "do lucas, estou falando dele",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Historia: Avaliacao B1 em 10/04/2026\n- Historia: Avaliacao 2026-B1 - HIS em 12/04/2026\n- Historia: Trabalho B1 em 18/04/2026\n- Historia: Avaliacao B2 em 12/06/2026\n- Historia: Avaliacao 2026-B2 - HIS em 21/06/2026\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > retrieval_planner > specialist_direct > academic_specialist\nllm: yes (specialist_execution)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor, retrieval_planner, specialist_direct, academic_specialist\nresources: tool:fetch_upcoming_assessments, support:specialist:academic_specialist, support:support_point:academic_specialist\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=3, citations=0\nreason: specialist_supervisor_direct:academic_specialist\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_direct:academic_specialist",
+          "graph_path": [
+            "specialist_supervisor",
+            "retrieval_planner",
+            "specialist_direct",
+            "academic_specialist"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "specialist_execution"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "upcoming_dates",
+          "question": "datas das provas",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Biologia: Avaliacao B1 em 10/04/2026\n- Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026\n- Historia: Avaliacao B1 em 10/04/2026\n- Ingles: Avaliacao B1 em 10/04/2026\n- Matematica: Avaliacao 2026-B1 - MAT em 10/04/2026\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > tool_first > upcoming_assessments_aggregate\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:upcoming_assessments:Lucas Oliveira, support:upcoming_assessments:Ana Oliveira\nretrieval: backend=none, strategy=structured_tool, sources=2, supports=2, citations=0\nreason: specialist_supervisor_tool_first:upcoming_assessments_aggregate\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_tool_first:upcoming_assessments_aggregate",
+          "graph_path": [
+            "specialist_supervisor",
+            "tool_first",
+            "upcoming_assessments_aggregate"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "repair_previous_answer",
+          "question": "mas você falou as próximas datas das provas dele de física",
+          "message_text": "Próximas avaliações de Lucas Oliveira:\n- Fisica: Avaliacao 2026-B1 - FIS em 10/04/2026\n- Fisica: Avaliacao 2026-B2 - FIS em 19/06/2026\n[debug]\nstack: specialist_supervisor\nbundle: targeted:protected:specialist_supervisor\npath: specialist_supervisor > tool_first > upcoming_assessments\nllm: no\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: off\nretrieval_retry: no\nagents: specialist_supervisor\nresources: support:upcoming_assessments:Lucas Oliveira\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=1, citations=0\nreason: specialist_supervisor_tool_first:upcoming_assessments\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:supplemental_focus_direct\ncontext_repair_reason: none",
+          "mode": "structured_tool",
+          "reason": "specialist_supervisor_tool_first:upcoming_assessments",
+          "graph_path": [
+            "specialist_supervisor",
+            "tool_first",
+            "upcoming_assessments"
+          ],
+          "used_llm": false,
+          "llm_stages": [],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:supplemental_focus_direct",
+          "context_repair_applied": false,
+          "context_repair_action": null
+        },
+        {
+          "label": "repair_scope_question",
+          "question": "e essa resposta aqui era sobre o que então?",
+          "message_text": "A resposta anterior estava falando de próximas avaliações. Se quiser, eu reformulo agora só no foco certo.\n[debug]\nstack: specialist_supervisor\nbundle: targeted:public:specialist_supervisor\npath: specialist_supervisor > retrieval_planner > specialist_direct > academic_specialist\nllm: yes (specialist_execution, context_repair_planner)\nfinal_polish: skip\nanswer_experience: applied (google/gemini-2.5-flash)\ncontext_repair: applied\nretrieval_retry: no\nagents: specialist_supervisor, retrieval_planner, specialist_direct, academic_specialist\nresources: tool:fetch_upcoming_assessments, support:specialist:academic_specialist, support:support_point:academic_specialist\nretrieval: backend=none, strategy=structured_tool, sources=1, supports=3, citations=0\nreason: specialist_supervisor_direct:academic_specialist\nfinal_polish_reason: quality_first_path\nanswer_experience_reason: protected_grounded_answer:context_repair_clarify\ncontext_repair_reason: repair_followup",
+          "mode": "clarify",
+          "reason": "specialist_supervisor_direct:academic_specialist",
+          "graph_path": [
+            "specialist_supervisor",
+            "retrieval_planner",
+            "specialist_direct",
+            "academic_specialist"
+          ],
+          "used_llm": true,
+          "llm_stages": [
+            "specialist_execution",
+            "context_repair_planner"
+          ],
+          "answer_experience_applied": true,
+          "answer_experience_reason": "protected_grounded_answer:context_repair_clarify",
+          "context_repair_applied": true,
+          "context_repair_action": "clarify"
+        }
+      ]
+    }
+  }
+}

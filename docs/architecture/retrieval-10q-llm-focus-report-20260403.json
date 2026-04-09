@@ -1,0 +1,1168 @@
+{
+  "generated_at": "2026-04-03T16:44:24.607138+00:00",
+  "run_prefix": "debug:four-path:20260403T164410Z",
+  "summary": {
+    "by_stack": {
+      "langgraph": {
+        "count": 10,
+        "ok": 10,
+        "keyword_pass": 10,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 619.7
+      },
+      "python_functions": {
+        "count": 10,
+        "ok": 10,
+        "keyword_pass": 10,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 304.5
+      },
+      "llamaindex": {
+        "count": 10,
+        "ok": 10,
+        "keyword_pass": 10,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 182.9
+      },
+      "specialist_supervisor": {
+        "count": 10,
+        "ok": 10,
+        "keyword_pass": 10,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 207.5
+      }
+    },
+    "by_slice": {
+      "public": {
+        "count": 10,
+        "langgraph": {
+          "ok": 10,
+          "keyword_pass": 10,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 619.7
+        },
+        "python_functions": {
+          "ok": 10,
+          "keyword_pass": 10,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 304.5
+        },
+        "llamaindex": {
+          "ok": 10,
+          "keyword_pass": 10,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 182.9
+        },
+        "specialist_supervisor": {
+          "ok": 10,
+          "keyword_pass": 10,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 207.5
+        }
+      }
+    },
+    "error_types": {
+      "langgraph": {},
+      "python_functions": {},
+      "llamaindex": {},
+      "specialist_supervisor": {}
+    }
+  },
+  "results": [
+    {
+      "prompt": "Quais evidencias publicas mostram que a escola tenta acolher inclusao, acessibilidade e protecao do estudante como um mesmo compromisso institucional?",
+      "slice": "public",
+      "category": "public_inclusion_accessibility",
+      "thread_id": "retrieval_10q_llm_focus_inclusion_accessibility",
+      "turn_index": 1,
+      "note": "llm-focused public synthesis on inclusion and accessibility",
+      "run_prefix": "debug:four-path:20260403T164410Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 2684.1,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.inclusion_accessibility",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "A base publica trata inclusao, acessibilidade e protecao do estudante como um mesmo compromisso institucional. # Inclusao e acessibilidade O Colegio Horizonte adota rotinas de atendimento inclusivo com apoio pedagogico, adequacoes de material quando necessario e canal para comunicacao de necessidades especificas. Nos recursos de apoio, a escola cita atendimento educacional especializado quando previsto - mediacao de rotina para estudantes com necessidades especificas - orientacao com equipe pedagogica - priorizacao de acessibilidade em eventos e comunicacoes. O colegio possui normas contra bullying, assedio e uso indevido de imagem. Ha protocolo para ocorrencias leves, contato imediato com responsaveis e acionamento de apoio externo quando necessario.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 480.8,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "A base publica trata inclusao, acessibilidade e protecao do estudante como um mesmo compromisso institucional. # Inclusao e acessibilidade O Colegio Horizonte adota rotinas de atendimento inclusivo com apoio pedagogico, adequacoes de material quando necessario e canal para comunicacao de necessidades especificas. Nos recursos de apoio, a escola cita atendimento educacional especializado quando previsto - mediacao de rotina para estudantes com necessidades especificas - orientacao com equipe pedagogica - priorizacao de acessibilidade em eventos e comunicacoes. O colegio possui normas contra bullying, assedio e uso indevido de imagem. Ha protocolo para ocorrencias leves, contato imediato com responsaveis e acionamento de apoio externo quando necessario.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 144.1,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.inclusion_accessibility",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.inclusion_accessibility",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "A base publica trata inclusao, acessibilidade e protecao do estudante como um mesmo compromisso institucional. # Inclusao e acessibilidade O Colegio Horizonte adota rotinas de atendimento inclusivo com apoio pedagogico, adequacoes de material quando necessario e canal para comunicacao de necessidades especificas. Nos recursos de apoio, a escola cita atendimento educacional especializado quando previsto - mediacao de rotina para estudantes com necessidades especificas - orientacao com equipe pedagogica - priorizacao de acessibilidade em eventos e comunicacoes. O colegio possui normas contra bullying, assedio e uso indevido de imagem. Ha protocolo para ocorrencias leves, contato imediato com responsaveis e acionamento de apoio externo quando necessario.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 277.1,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_preflight:inclusion_accessibility",
+        "graph_path": [
+          "specialist_supervisor",
+          "preflight",
+          "inclusion_accessibility"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "A base publica trata inclusao, acessibilidade e protecao do estudante como um mesmo compromisso institucional. # Inclusao e acessibilidade O Colegio Horizonte adota rotinas de atendimento inclusivo com apoio pedagogico, adequacoes de material quando necessario e canal para comunicacao de necessidades especificas. Nos recursos de apoio, a escola cita atendimento educacional especializado quando previsto - mediacao de rotina para estudantes com necessidades especificas - orientacao com equipe pedagogica - priorizacao de acessibilidade em eventos e comunicacoes. O colegio possui normas contra bullying, assedio e uso indevido de imagem. Ha protocolo para ocorrencias leves, contato imediato com responsaveis e acionamento de apoio externo quando necessario.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Se eu quiser entender o suporte ao aluno alem da sala regular, como periodo integral e estudo orientado se completam no material publico da escola?",
+      "slice": "public",
+      "category": "public_integral_study_support",
+      "thread_id": "retrieval_10q_llm_focus_integral_support",
+      "turn_index": 1,
+      "note": "llm-focused public synthesis on integral and study support",
+      "run_prefix": "debug:four-path:20260403T164410Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 184.0,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.integral_study_support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Fora da sala regular, o material publico mostra que periodo integral e estudo orientado se completam como camadas de apoio ao estudante. O periodo integral e uma opcao complementar destinada a familias que desejam ampliar a permanencia do estudante na escola com acompanhamento, rotina organizada e atividades formativas adicionais. O estudo orientado oferece apoio para organizacao de tarefas, acompanhamento de prazos, leitura orientada e consolidacao de habitos academicos. Em geral, a rotina da tarde combina acolhimento, almoco ou lanche conforme o plano contratado, bloco de estudo, atividade complementar e horario de saida definido. Entre as atividades possiveis estao oficinas de leitura, projetos maker, cultura digital, praticas artisticas, monitorias e recomposicao de aprendizagem. O estudo orientado ajuda o aluno a manter rotina e prioridade, mas nao garante, por si so, desempenho academico especifico.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 200.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Fora da sala regular, o material publico mostra que periodo integral e estudo orientado se completam como camadas de apoio ao estudante. O periodo integral e uma opcao complementar destinada a familias que desejam ampliar a permanencia do estudante na escola com acompanhamento, rotina organizada e atividades formativas adicionais. O estudo orientado oferece apoio para organizacao de tarefas, acompanhamento de prazos, leitura orientada e consolidacao de habitos academicos. Em geral, a rotina da tarde combina acolhimento, almoco ou lanche conforme o plano contratado, bloco de estudo, atividade complementar e horario de saida definido. Entre as atividades possiveis estao oficinas de leitura, projetos maker, cultura digital, praticas artisticas, monitorias e recomposicao de aprendizagem. O estudo orientado ajuda o aluno a manter rotina e prioridade, mas nao garante, por si so, desempenho academico especifico.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 225.6,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Fora da sala regular, o material publico mostra que periodo integral e estudo orientado se completam como camadas de apoio ao estudante. O periodo integral e uma opcao complementar destinada a familias que desejam ampliar a permanencia do estudante na escola com acompanhamento, rotina organizada e atividades formativas adicionais. O estudo orientado oferece apoio para organizacao de tarefas, acompanhamento de prazos, leitura orientada e consolidacao de habitos academicos. Em geral, a rotina da tarde combina acolhimento, almoco ou lanche conforme o plano contratado, bloco de estudo, atividade complementar e horario de saida definido. Entre as atividades possiveis estao oficinas de leitura, projetos maker, cultura digital, praticas artisticas, monitorias e recomposicao de aprendizagem. O estudo orientado ajuda o aluno a manter rotina e prioridade, mas nao garante, por si so, desempenho academico especifico.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 283.1,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_preflight:integral_study_support",
+        "graph_path": [
+          "specialist_supervisor",
+          "preflight",
+          "integral_study_support"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Fora da sala regular, o material publico mostra que periodo integral e estudo orientado se completam como camadas de apoio ao estudante. O periodo integral e uma opcao complementar destinada a familias que desejam ampliar a permanencia do estudante na escola com acompanhamento, rotina organizada e atividades formativas adicionais. O estudo orientado oferece apoio para organizacao de tarefas, acompanhamento de prazos, leitura orientada e consolidacao de habitos academicos. Em geral, a rotina da tarde combina acolhimento, almoco ou lanche conforme o plano contratado, bloco de estudo, atividade complementar e horario de saida definido. Entre as atividades possiveis estao oficinas de leitura, projetos maker, cultura digital, praticas artisticas, monitorias e recomposicao de aprendizagem. O estudo orientado ajuda o aluno a manter rotina e prioridade, mas nao garante, por si so, desempenho academico especifico.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Sem entrar em dados privados, como a escola costura uso de medicacao, monitoramento de saude e resposta a emergencia no dia a dia escolar?",
+      "slice": "public",
+      "category": "public_health_emergency_bundle",
+      "thread_id": "retrieval_10q_llm_focus_health_emergency",
+      "turn_index": 1,
+      "note": "llm-focused public synthesis on health and emergency procedures",
+      "run_prefix": "debug:four-path:20260403T164410Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 214.4,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.health_emergency_bundle",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "No material publico, uso de medicacao, monitoramento de saude e resposta a emergencia aparecem como partes do mesmo protocolo escolar. As familias devem manter atualizadas as informacoes sobre alergias, restricoes medicas, uso continuo de medicacao, contatos de emergencia e recomendacoes clinicas relevantes. A administracao de medicacao pela escola depende de orientacao formal da familia e, quando cabivel, de prescricao ou instrucao adequada. Casos de uso continuo devem ser alinhados previamente com a equipe responsavel, com registro em cadastro e informacoes sobre horario, dose e condicoes de armazenamento. Quando o aluno apresenta mal-estar, a equipe acolhe a ocorrencia, realiza avaliacao inicial compativel com o protocolo institucional e aciona os responsaveis quando necessario. Em situacoes de emergencia, a prioridade e proteger o estudante e acionar rapidamente os contatos indicados. O bot e os canais digitais podem orientar sobre o protocolo publico, mas nao substituem o contato direto em situacoes urgentes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 188.4,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "No material publico, uso de medicacao, monitoramento de saude e resposta a emergencia aparecem como partes do mesmo protocolo escolar. As familias devem manter atualizadas as informacoes sobre alergias, restricoes medicas, uso continuo de medicacao, contatos de emergencia e recomendacoes clinicas relevantes. A administracao de medicacao pela escola depende de orientacao formal da familia e, quando cabivel, de prescricao ou instrucao adequada. Casos de uso continuo devem ser alinhados previamente com a equipe responsavel, com registro em cadastro e informacoes sobre horario, dose e condicoes de armazenamento. Quando o aluno apresenta mal-estar, a equipe acolhe a ocorrencia, realiza avaliacao inicial compativel com o protocolo institucional e aciona os responsaveis quando necessario. Em situacoes de emergencia, a prioridade e proteger o estudante e acionar rapidamente os contatos indicados. O bot e os canais digitais podem orientar sobre o protocolo publico, mas nao substituem o contato direto em situacoes urgentes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 217.4,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.health_emergency_bundle",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.health_emergency_bundle",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "No material publico, uso de medicacao, monitoramento de saude e resposta a emergencia aparecem como partes do mesmo protocolo escolar. As familias devem manter atualizadas as informacoes sobre alergias, restricoes medicas, uso continuo de medicacao, contatos de emergencia e recomendacoes clinicas relevantes. A administracao de medicacao pela escola depende de orientacao formal da familia e, quando cabivel, de prescricao ou instrucao adequada. Casos de uso continuo devem ser alinhados previamente com a equipe responsavel, com registro em cadastro e informacoes sobre horario, dose e condicoes de armazenamento. Quando o aluno apresenta mal-estar, a equipe acolhe a ocorrencia, realiza avaliacao inicial compativel com o protocolo institucional e aciona os responsaveis quando necessario. Em situacoes de emergencia, a prioridade e proteger o estudante e acionar rapidamente os contatos indicados. O bot e os canais digitais podem orientar sobre o protocolo publico, mas nao substituem o contato direto em situacoes urgentes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 210.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_preflight:health_emergency_bundle",
+        "graph_path": [
+          "specialist_supervisor",
+          "preflight",
+          "health_emergency_bundle"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "No material publico, uso de medicacao, monitoramento de saude e resposta a emergencia aparecem como partes do mesmo protocolo escolar. As familias devem manter atualizadas as informacoes sobre alergias, restricoes medicas, uso continuo de medicacao, contatos de emergencia e recomendacoes clinicas relevantes. A administracao de medicacao pela escola depende de orientacao formal da familia e, quando cabivel, de prescricao ou instrucao adequada. Casos de uso continuo devem ser alinhados previamente com a equipe responsavel, com registro em cadastro e informacoes sobre horario, dose e condicoes de armazenamento. Quando o aluno apresenta mal-estar, a equipe acolhe a ocorrencia, realiza avaliacao inicial compativel com o protocolo institucional e aciona os responsaveis quando necessario. Em situacoes de emergencia, a prioridade e proteger o estudante e acionar rapidamente os contatos indicados. O bot e os canais digitais podem orientar sobre o protocolo publico, mas nao substituem o contato direto em situacoes urgentes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Como o material publico liga participacao em eventos externos, saidas pedagogicas e autorizacao previa das familias?",
+      "slice": "public",
+      "category": "public_outings_authorizations",
+      "thread_id": "retrieval_10q_llm_focus_outings_authorizations",
+      "turn_index": 1,
+      "note": "llm-focused public synthesis on outings and authorizations",
+      "run_prefix": "debug:four-path:20260403T164410Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 886.7,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.outings_authorizations",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "A base publica liga saidas pedagogicas, eventos e autorizacao previa da familia como um mesmo fluxo operacional. Saidas pedagogicas, feiras, mostras e visitas externas integram o projeto formativo da escola e podem envolver preparacao previa em sala, regras de conduta e autorizacao formal da familia. A participacao em atividades externas depende do envio da autorizacao no prazo estabelecido. Comunicados de saida costumam indicar data, horario, objetivo pedagogico, serie atendida, itens necessarios, orientacoes de uniforme e procedimentos de retorno. Estudantes sem autorizacao valida, com impedimento medico relevante nao conciliado ou com pendencia operacional especifica podem ter a participacao reavaliada caso a caso pela coordenacao. Eventos escolares, como feira de ciencias, semana da familia e apresentacoes institucionais, podem envolver cronogramas proprios e orientacoes especificas para entrada de visitantes e responsaveis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 546.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "A base publica liga saidas pedagogicas, eventos e autorizacao previa da familia como um mesmo fluxo operacional. Saidas pedagogicas, feiras, mostras e visitas externas integram o projeto formativo da escola e podem envolver preparacao previa em sala, regras de conduta e autorizacao formal da familia. A participacao em atividades externas depende do envio da autorizacao no prazo estabelecido. Comunicados de saida costumam indicar data, horario, objetivo pedagogico, serie atendida, itens necessarios, orientacoes de uniforme e procedimentos de retorno. Estudantes sem autorizacao valida, com impedimento medico relevante nao conciliado ou com pendencia operacional especifica podem ter a participacao reavaliada caso a caso pela coordenacao. Eventos escolares, como feira de ciencias, semana da familia e apresentacoes institucionais, podem envolver cronogramas proprios e orientacoes especificas para entrada de visitantes e responsaveis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 142.8,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.outings_authorizations",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.outings_authorizations",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "A base publica liga saidas pedagogicas, eventos e autorizacao previa da familia como um mesmo fluxo operacional. Saidas pedagogicas, feiras, mostras e visitas externas integram o projeto formativo da escola e podem envolver preparacao previa em sala, regras de conduta e autorizacao formal da familia. A participacao em atividades externas depende do envio da autorizacao no prazo estabelecido. Comunicados de saida costumam indicar data, horario, objetivo pedagogico, serie atendida, itens necessarios, orientacoes de uniforme e procedimentos de retorno. Estudantes sem autorizacao valida, com impedimento medico relevante nao conciliado ou com pendencia operacional especifica podem ter a participacao reavaliada caso a caso pela coordenacao. Eventos escolares, como feira de ciencias, semana da familia e apresentacoes institucionais, podem envolver cronogramas proprios e orientacoes especificas para entrada de visitantes e responsaveis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 465.1,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_preflight:outings_authorizations",
+        "graph_path": [
+          "specialist_supervisor",
+          "preflight",
+          "outings_authorizations"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "A base publica liga saidas pedagogicas, eventos e autorizacao previa da familia como um mesmo fluxo operacional. Saidas pedagogicas, feiras, mostras e visitas externas integram o projeto formativo da escola e podem envolver preparacao previa em sala, regras de conduta e autorizacao formal da familia. A participacao em atividades externas depende do envio da autorizacao no prazo estabelecido. Comunicados de saida costumam indicar data, horario, objetivo pedagogico, serie atendida, itens necessarios, orientacoes de uniforme e procedimentos de retorno. Estudantes sem autorizacao valida, com impedimento medico relevante nao conciliado ou com pendencia operacional especifica podem ter a participacao reavaliada caso a caso pela coordenacao. Eventos escolares, como feira de ciencias, semana da familia e apresentacoes institucionais, podem envolver cronogramas proprios e orientacoes especificas para entrada de visitantes e responsaveis.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Se eu olhar o ano escolar como uma jornada completa, onde comecam admissao, rotina academica e fechamento segundo a documentacao publica?",
+      "slice": "public",
+      "category": "public_year_three_phases",
+      "thread_id": "retrieval_10q_llm_focus_year_three_phases",
+      "turn_index": 1,
+      "note": "llm-focused public synthesis on year phases",
+      "run_prefix": "debug:four-path:20260403T164410Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 497.8,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.year_three_phases",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Admissao: O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita guiada opcional e triagem documental inicial. Rotina academica: As aulas do ensino fundamental II e do ensino medio comecam em 2 de fevereiro de 2026. Fechamento: O recesso escolar de meio de ano acontece entre 13 e 24 de julho de 2026.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 303.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Admissao: O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita guiada opcional e triagem documental inicial. Rotina academica: As aulas do ensino fundamental II e do ensino medio comecam em 2 de fevereiro de 2026. Fechamento: O recesso escolar de meio de ano acontece entre 13 e 24 de julho de 2026.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 132.0,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.year_three_phases",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.year_three_phases",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Admissao: O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita guiada opcional e triagem documental inicial. Rotina academica: As aulas do ensino fundamental II e do ensino medio comecam em 2 de fevereiro de 2026. Fechamento: O recesso escolar de meio de ano acontece entre 13 e 24 de julho de 2026.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 189.7,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_preflight:year_three_phases",
+        "graph_path": [
+          "specialist_supervisor",
+          "preflight",
+          "year_three_phases"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Admissao: O ciclo publico de matricula para 2026 foi aberto em 6 de outubro de 2025, com pre-cadastro, visita guiada opcional e triagem documental inicial. Rotina academica: As aulas do ensino fundamental II e do ensino medio comecam em 2 de fevereiro de 2026. Fechamento: O recesso escolar de meio de ano acontece entre 13 e 24 de julho de 2026.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Para visualizar a rotina fora da sala, como transporte, uniforme e alimentacao aparecem combinados nas orientacoes publicas?",
+      "slice": "public",
+      "category": "public_transport_uniform_bundle",
+      "thread_id": "retrieval_10q_llm_focus_transport_uniform",
+      "turn_index": 1,
+      "note": "llm-focused public synthesis on transport, uniform and routine",
+      "run_prefix": "debug:four-path:20260403T164410Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 344.0,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.transport_uniform_bundle",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Para a rotina fora da sala, o material publico combina transporte, alimentacao e uniforme como orientacoes operacionais da vida escolar. # Transporte escolar O Colegio Horizonte nao opera frota propria, mas publica uma lista de transportadores parceiros credenciados para familias interessadas. A escola possui cantina com opcoes de lanches, refeicoes leves e agua filtrada. Restricoes ou alergias devem ser informadas na matricula ou na secretaria para orientacao de rotina e comunicacao com a equipe responsavel. O uniforme e de uso diario no fundamental II e no ensino medio. A compra pode ser feita com fornecedores credenciados ou na loja parceira indicada pela secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 296.2,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Para a rotina fora da sala, o material publico combina transporte, alimentacao e uniforme como orientacoes operacionais da vida escolar. # Transporte escolar O Colegio Horizonte nao opera frota propria, mas publica uma lista de transportadores parceiros credenciados para familias interessadas. A escola possui cantina com opcoes de lanches, refeicoes leves e agua filtrada. Restricoes ou alergias devem ser informadas na matricula ou na secretaria para orientacao de rotina e comunicacao com a equipe responsavel. O uniforme e de uso diario no fundamental II e no ensino medio. A compra pode ser feita com fornecedores credenciados ou na loja parceira indicada pela secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 204.4,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.transport_uniform_bundle",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.transport_uniform_bundle",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Para a rotina fora da sala, o material publico combina transporte, alimentacao e uniforme como orientacoes operacionais da vida escolar. # Transporte escolar O Colegio Horizonte nao opera frota propria, mas publica uma lista de transportadores parceiros credenciados para familias interessadas. A escola possui cantina com opcoes de lanches, refeicoes leves e agua filtrada. Restricoes ou alergias devem ser informadas na matricula ou na secretaria para orientacao de rotina e comunicacao com a equipe responsavel. O uniforme e de uso diario no fundamental II e no ensino medio. A compra pode ser feita com fornecedores credenciados ou na loja parceira indicada pela secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 227.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_preflight:transport_uniform_bundle",
+        "graph_path": [
+          "specialist_supervisor",
+          "preflight",
+          "transport_uniform_bundle"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Para a rotina fora da sala, o material publico combina transporte, alimentacao e uniforme como orientacoes operacionais da vida escolar. # Transporte escolar O Colegio Horizonte nao opera frota propria, mas publica uma lista de transportadores parceiros credenciados para familias interessadas. A escola possui cantina com opcoes de lanches, refeicoes leves e agua filtrada. Restricoes ou alergias devem ser informadas na matricula ou na secretaria para orientacao de rotina e comunicacao com a equipe responsavel. O uniforme e de uso diario no fundamental II e no ensino medio. A compra pode ser feita com fornecedores credenciados ou na loja parceira indicada pela secretaria.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quando um assunto foge do cotidiano, como a familia sai da coordenacao e chega a direcao com protocolo formal segundo a base publica?",
+      "slice": "public",
+      "category": "public_governance_protocol",
+      "thread_id": "retrieval_10q_llm_focus_governance_protocol",
+      "turn_index": 1,
+      "note": "llm-focused public synthesis on governance and protocol",
+      "run_prefix": "debug:four-path:20260403T164410Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 635.0,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.governance_protocol",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Na base publica do Colegio Horizonte, coordenacao e direcao aparecem em uma trilha clara de governanca e protocolo. A diretora geral do Colegio Horizonte e Helena Martins. A lideranca atende familias por agenda institucional. Direcao geral: direcao@colegiohorizonte.edu.br Coordenacao Fundamental II: fundamental2@colegiohorizonte.edu.br Coordenacao Ensino Medio: ensinomedio@colegiohorizonte.edu.br. A diretora participa de encontros institucionais com familias ao longo do ano, especialmente nas reunioes de acolhimento, eventos gerais e marcos bimestrais de acompanhamento da comunidade escolar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 300.1,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Na base publica do Colegio Horizonte, coordenacao e direcao aparecem em uma trilha clara de governanca e protocolo. A diretora geral do Colegio Horizonte e Helena Martins. A lideranca atende familias por agenda institucional. Direcao geral: direcao@colegiohorizonte.edu.br Coordenacao Fundamental II: fundamental2@colegiohorizonte.edu.br Coordenacao Ensino Medio: ensinomedio@colegiohorizonte.edu.br. A diretora participa de encontros institucionais com familias ao longo do ano, especialmente nas reunioes de acolhimento, eventos gerais e marcos bimestrais de acompanhamento da comunidade escolar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 282.9,
+        "mode": "structured_tool",
+        "reason": "contextual_public_direct_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Na base publica do Colegio Horizonte, coordenacao e direcao aparecem em uma trilha clara de governanca e protocolo. A diretora geral do Colegio Horizonte e Helena Martins. A lideranca atende familias por agenda institucional. Direcao geral: direcao@colegiohorizonte.edu.br Coordenacao Fundamental II: fundamental2@colegiohorizonte.edu.br Coordenacao Ensino Medio: ensinomedio@colegiohorizonte.edu.br. A diretora participa de encontros institucionais com familias ao longo do ano, especialmente nas reunioes de acolhimento, eventos gerais e marcos bimestrais de acompanhamento da comunidade escolar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 109.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_preflight:governance_protocol",
+        "graph_path": [
+          "specialist_supervisor",
+          "preflight",
+          "governance_protocol"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Na base publica do Colegio Horizonte, coordenacao e direcao aparecem em uma trilha clara de governanca e protocolo. A diretora geral do Colegio Horizonte e Helena Martins. A lideranca atende familias por agenda institucional. Direcao geral: direcao@colegiohorizonte.edu.br Coordenacao Fundamental II: fundamental2@colegiohorizonte.edu.br Coordenacao Ensino Medio: ensinomedio@colegiohorizonte.edu.br. A diretora participa de encontros institucionais com familias ao longo do ano, especialmente nas reunioes de acolhimento, eventos gerais e marcos bimestrais de acompanhamento da comunidade escolar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quero uma leitura ampla da politica publica que conecte avaliacao, recuperacao, media e frequencia minima sem usar area autenticada.",
+      "slice": "public",
+      "category": "public_academic_policy_overview",
+      "thread_id": "retrieval_10q_llm_focus_academic_policy_overview",
+      "turn_index": 1,
+      "note": "llm-focused public synthesis on academic policy",
+      "run_prefix": "debug:four-path:20260403T164410Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 217.5,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.academic_policy_overview",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "O processo avaliativo combina instrumentos formativos e somativos, como atividades em aula, projetos, producoes textuais, simulados e provas bimestrais. Resultados parciais sao apresentados ao estudante e a familia por meio do portal academico, reunioes e devolutivas pedagogicas. Quando houver desempenho abaixo do esperado, a escola pode oferecer recuperacao paralela, atividades orientadas, monitoria, estudo dirigido ou avaliacao substitutiva, conforme o componente e o periodo do ano. Pedidos de segunda chamada exigem justificativa no prazo orientado pela escola. Na referencia publica atual, a escola trabalha com media 7,0/10 e frequencia minima de 75,0% por componente. A promocao considera desempenho global, trajetoria do estudante, recuperacao realizada e frequencia.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 211.6,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "O processo avaliativo combina instrumentos formativos e somativos, como atividades em aula, projetos, producoes textuais, simulados e provas bimestrais. Resultados parciais sao apresentados ao estudante e a familia por meio do portal academico, reunioes e devolutivas pedagogicas. Quando houver desempenho abaixo do esperado, a escola pode oferecer recuperacao paralela, atividades orientadas, monitoria, estudo dirigido ou avaliacao substitutiva, conforme o componente e o periodo do ano. Pedidos de segunda chamada exigem justificativa no prazo orientado pela escola. Na referencia publica atual, a escola trabalha com media 7,0/10 e frequencia minima de 75,0% por componente. A promocao considera desempenho global, trajetoria do estudante, recuperacao realizada e frequencia.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 139.6,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.academic_policy_overview",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.academic_policy_overview",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "O processo avaliativo combina instrumentos formativos e somativos, como atividades em aula, projetos, producoes textuais, simulados e provas bimestrais. Resultados parciais sao apresentados ao estudante e a familia por meio do portal academico, reunioes e devolutivas pedagogicas. Quando houver desempenho abaixo do esperado, a escola pode oferecer recuperacao paralela, atividades orientadas, monitoria, estudo dirigido ou avaliacao substitutiva, conforme o componente e o periodo do ano. Pedidos de segunda chamada exigem justificativa no prazo orientado pela escola. Na referencia publica atual, a escola trabalha com media 7,0/10 e frequencia minima de 75,0% por componente. A promocao considera desempenho global, trajetoria do estudante, recuperacao realizada e frequencia.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 82.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_preflight:academic_policy_overview",
+        "graph_path": [
+          "specialist_supervisor",
+          "preflight",
+          "academic_policy_overview"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "O processo avaliativo combina instrumentos formativos e somativos, como atividades em aula, projetos, producoes textuais, simulados e provas bimestrais. Resultados parciais sao apresentados ao estudante e a familia por meio do portal academico, reunioes e devolutivas pedagogicas. Quando houver desempenho abaixo do esperado, a escola pode oferecer recuperacao paralela, atividades orientadas, monitoria, estudo dirigido ou avaliacao substitutiva, conforme o componente e o periodo do ano. Pedidos de segunda chamada exigem justificativa no prazo orientado pela escola. Na referencia publica atual, a escola trabalha com media 7,0/10 e frequencia minima de 75,0% por componente. A promocao considera desempenho global, trajetoria do estudante, recuperacao realizada e frequencia.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Como frequencia, pontualidade e convivencia aparecem como um mesmo eixo de acompanhamento estudantil no regulamento publico?",
+      "slice": "public",
+      "category": "public_conduct_frequency_punctuality",
+      "thread_id": "retrieval_10q_llm_focus_conduct_frequency",
+      "turn_index": 1,
+      "note": "llm-focused public synthesis on conduct, frequency and punctuality",
+      "run_prefix": "debug:four-path:20260403T164410Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 225.2,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.conduct_frequency_punctuality",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Pontualidade, frequencia e convivencia aparecem juntas nos documentos publicos da escola. O estudante deve comparecer pontualmente as atividades letivas e cumprir a frequencia minima definida pela escola e pela legislacao aplicavel. A convivencia escolar deve observar respeito mutuo, cuidado com o patrimonio e linguagem adequada. Faltas em dias de avaliacao seguem a politica especifica de segunda chamada e recuperacao. A politica publica de frequencia reforca presenca minima de 75,0% por componente e alerta academico quando a recorrencia de faltas compromete a aprovacao. Se a frequencia de um componente cair abaixo de 75%, o estudante entra em alerta academico e a coordenacao pode acionar a familia.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 271.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Pontualidade, frequencia e convivencia aparecem juntas nos documentos publicos da escola. O estudante deve comparecer pontualmente as atividades letivas e cumprir a frequencia minima definida pela escola e pela legislacao aplicavel. A convivencia escolar deve observar respeito mutuo, cuidado com o patrimonio e linguagem adequada. Faltas em dias de avaliacao seguem a politica especifica de segunda chamada e recuperacao. A politica publica de frequencia reforca presenca minima de 75,0% por componente e alerta academico quando a recorrencia de faltas compromete a aprovacao. Se a frequencia de um componente cair abaixo de 75%, o estudante entra em alerta academico e a coordenacao pode acionar a familia.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 159.9,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.conduct_frequency_punctuality",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.conduct_frequency_punctuality",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Pontualidade, frequencia e convivencia aparecem juntas nos documentos publicos da escola. O estudante deve comparecer pontualmente as atividades letivas e cumprir a frequencia minima definida pela escola e pela legislacao aplicavel. A convivencia escolar deve observar respeito mutuo, cuidado com o patrimonio e linguagem adequada. Faltas em dias de avaliacao seguem a politica especifica de segunda chamada e recuperacao. A politica publica de frequencia reforca presenca minima de 75,0% por componente e alerta academico quando a recorrencia de faltas compromete a aprovacao. Se a frequencia de um componente cair abaixo de 75%, o estudante entra em alerta academico e a coordenacao pode acionar a familia.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 130.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_preflight:conduct_frequency_punctuality",
+        "graph_path": [
+          "specialist_supervisor",
+          "preflight",
+          "conduct_frequency_punctuality"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Pontualidade, frequencia e convivencia aparecem juntas nos documentos publicos da escola. O estudante deve comparecer pontualmente as atividades letivas e cumprir a frequencia minima definida pela escola e pela legislacao aplicavel. A convivencia escolar deve observar respeito mutuo, cuidado com o patrimonio e linguagem adequada. Faltas em dias de avaliacao seguem a politica especifica de segunda chamada e recuperacao. A politica publica de frequencia reforca presenca minima de 75,0% por componente e alerta academico quando a recorrencia de faltas compromete a aprovacao.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Quero uma sintese transversal mostrando como avaliacoes, apoio ao estudo, comunicacao com responsaveis e canais digitais se retroalimentam ao longo do ano letivo.",
+      "slice": "public",
+      "category": "public_deep_multi_doc",
+      "thread_id": "retrieval_10q_llm_focus_transversal_year",
+      "turn_index": 1,
+      "note": "llm-focused public transversal multi-document synthesis",
+      "run_prefix": "debug:four-path:20260403T164410Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 308.4,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.transversal_year",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Ao longo do ano, comunicacao com responsaveis, avaliacoes, estudo orientado e canais digitais se reforcam mutuamente. Sempre que houver ajuste relevante no calendario de avaliacao, a escola atualiza o portal e reforca a comunicacao pelos canais oficiais. A escola utiliza comunicados digitais, reunioes periodicas e chamadas de acompanhamento quando o estudante precisa de suporte adicional. O estudo orientado oferece apoio para organizacao de tarefas, acompanhamento de prazos, leitura orientada e consolidacao de habitos academicos. Entre as atividades possiveis estao oficinas de leitura, projetos maker, cultura digital, praticas artisticas, monitorias e recomposicao de aprendizagem. O atendimento protegido no Telegram depende de vinculacao entre a conta de mensageria e o cadastro institucional. O ambiente digital amplia o atendimento, mas nao substitui todos os processos formais. Quando ha ajuste de calendario, reforco pedagogico ou nova orientacao, a escola tende a publicar no portal, reforcar pelos canais oficiais e acionar a familia quando o caso exige acompanhamento mais proximo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 244.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Ao longo do ano, comunicacao com responsaveis, avaliacoes, estudo orientado e canais digitais se reforcam mutuamente. Sempre que houver ajuste relevante no calendario de avaliacao, a escola atualiza o portal e reforca a comunicacao pelos canais oficiais. A escola utiliza comunicados digitais, reunioes periodicas e chamadas de acompanhamento quando o estudante precisa de suporte adicional. O estudo orientado oferece apoio para organizacao de tarefas, acompanhamento de prazos, leitura orientada e consolidacao de habitos academicos. Entre as atividades possiveis estao oficinas de leitura, projetos maker, cultura digital, praticas artisticas, monitorias e recomposicao de aprendizagem. O atendimento protegido no Telegram depende de vinculacao entre a conta de mensageria e o cadastro institucional. O ambiente digital amplia o atendimento, mas nao substitui todos os processos formais. Quando ha ajuste de calendario, reforco pedagogico ou nova orientacao, a escola tende a publicar no portal, reforcar pelos canais oficiais e acionar a familia quando o caso exige acompanhamento mais proximo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 180.8,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.transversal_year",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.transversal_year",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Ao longo do ano, comunicacao com responsaveis, avaliacoes, estudo orientado e canais digitais se reforcam mutuamente. Sempre que houver ajuste relevante no calendario de avaliacao, a escola atualiza o portal e reforca a comunicacao pelos canais oficiais. A escola utiliza comunicados digitais, reunioes periodicas e chamadas de acompanhamento quando o estudante precisa de suporte adicional. O estudo orientado oferece apoio para organizacao de tarefas, acompanhamento de prazos, leitura orientada e consolidacao de habitos academicos. Entre as atividades possiveis estao oficinas de leitura, projetos maker, cultura digital, praticas artisticas, monitorias e recomposicao de aprendizagem. O atendimento protegido no Telegram depende de vinculacao entre a conta de mensageria e o cadastro institucional. O ambiente digital amplia o atendimento, mas nao substitui todos os processos formais. Quando ha ajuste de calendario, reforco pedagogico ou nova orientacao, a escola tende a publicar no portal, reforcar pelos canais oficiais e acionar a familia quando o caso exige acompanhamento mais proximo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 100.1,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_preflight:transversal_year_bundle",
+        "graph_path": [
+          "specialist_supervisor",
+          "preflight",
+          "transversal_year_bundle"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "answer_text": "Ao longo do ano, comunicacao com responsaveis, avaliacoes, estudo orientado e canais digitais se reforcam mutuamente. Sempre que houver ajuste relevante no calendario de avaliacao, a escola atualiza o portal e reforca a comunicacao pelos canais oficiais. A escola utiliza comunicados digitais, reunioes periodicas e chamadas de acompanhamento quando o estudante precisa de suporte adicional. O estudo orientado oferece apoio para organizacao de tarefas, acompanhamento de prazos, leitura orientada e consolidacao de habitos academicos. Entre as atividades possiveis estao oficinas de leitura, projetos maker, cultura digital, praticas artisticas, monitorias e recomposicao de aprendizagem. O atendimento protegido no Telegram depende de vinculacao entre a conta de mensageria e o cadastro institucional. O ambiente digital amplia o atendimento, mas nao substitui todos os processos formais. Quando ha ajuste de calendario, reforco pedagogico ou nova orientacao, a escola tende a publicar no portal, reforcar pelos canais oficiais e acionar a familia quando o caso exige acompanhamento mais proximo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    }
+  ],
+  "dataset": "/home/edann/projects/eduassist-platform/tests/evals/datasets/retrieval_10q_llm_focus.generated.20260403.json"
+}

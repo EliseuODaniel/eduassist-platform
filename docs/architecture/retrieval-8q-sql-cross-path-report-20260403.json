@@ -1,0 +1,1195 @@
+{
+  "generated_at": "2026-04-03T22:32:24.287342+00:00",
+  "llm_forced": false,
+  "run_prefix": "debug:four-path:normal:20260403T223206Z",
+  "summary": {
+    "by_stack": {
+      "langgraph": {
+        "count": 8,
+        "ok": 8,
+        "keyword_pass": 8,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 567.8,
+        "final_polish_applied": 0
+      },
+      "python_functions": {
+        "count": 8,
+        "ok": 8,
+        "keyword_pass": 8,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 517.4,
+        "final_polish_applied": 0
+      },
+      "llamaindex": {
+        "count": 8,
+        "ok": 8,
+        "keyword_pass": 8,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 585.8,
+        "final_polish_applied": 0
+      },
+      "specialist_supervisor": {
+        "count": 8,
+        "ok": 8,
+        "keyword_pass": 8,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 480.9,
+        "final_polish_applied": 0
+      }
+    },
+    "by_slice": {
+      "protected": {
+        "count": 8,
+        "langgraph": {
+          "ok": 8,
+          "keyword_pass": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 567.8,
+          "final_polish_applied": 0
+        },
+        "python_functions": {
+          "ok": 8,
+          "keyword_pass": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 517.4,
+          "final_polish_applied": 0
+        },
+        "llamaindex": {
+          "ok": 8,
+          "keyword_pass": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 585.8,
+          "final_polish_applied": 0
+        },
+        "specialist_supervisor": {
+          "ok": 8,
+          "keyword_pass": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 480.9,
+          "final_polish_applied": 0
+        }
+      }
+    },
+    "error_types": {
+      "langgraph": {},
+      "python_functions": {},
+      "llamaindex": {},
+      "specialist_supervisor": {}
+    }
+  },
+  "results": [
+    {
+      "prompt": "Sem sair do escopo do projeto, quero um panorama academico dos meus filhos com quem esta mais perto da media minima.",
+      "slice": "protected",
+      "category": "protected_structured_academic",
+      "thread_id": "retrieval_protected_family_panorama",
+      "turn_index": 1,
+      "note": "protected structured academic summary",
+      "run_prefix": "debug:four-path:normal:20260403T223206Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 550.4,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Panorama academico das contas vinculadas:\n- Lucas Oliveira: Fisica 5,9; Historia 6,8; Matematica 7,7; Portugues 8,3\n- Ana Oliveira: Fisica 6,4; Historia 7,3; Matematica 7,4; Portugues 8,4\nQuem hoje aparece mais perto do limite de aprovacao e Lucas Oliveira, principalmente em Quimica.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 498.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_structured:academic",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Panorama academico das contas vinculadas:\n- Lucas Oliveira: Fisica 5,9; Historia 6,8; Matematica 7,7; Portugues 8,3\n- Ana Oliveira: Fisica 6,4; Historia 7,3; Matematica 7,4; Portugues 8,4\nQuem hoje aparece mais perto do limite de aprovacao e Lucas Oliveira, principalmente em Quimica.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 618.1,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Panorama academico das contas vinculadas:\n- Lucas Oliveira: Fisica 5,9; Historia 6,8; Matematica 7,7; Portugues 8,3\n- Ana Oliveira: Fisica 6,4; Historia 7,3; Matematica 7,4; Portugues 8,4\nQuem hoje aparece mais perto do limite de aprovacao e Lucas Oliveira, principalmente em Quimica.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 557.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:academic_summary_aggregate",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "academic_summary_aggregate"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Panorama academico das contas vinculadas:\n- Lucas Oliveira: Historia 6,8; Fisica 5,9; Matematica 7,7; Portugues 8,3\n- Ana Oliveira: Historia 7,3; Fisica 6,4; Matematica 7,4; Portugues 8,4",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Pensando no caso pratico, mantendo o contexto dos meus filhos, filtre para a Ana e mostre as materias em que ela esta mais vulneravel.",
+      "slice": "protected",
+      "category": "protected_structured_followup",
+      "thread_id": "retrieval_protected_family_panorama",
+      "turn_index": 1,
+      "note": "follow-up context retention",
+      "run_prefix": "debug:four-path:normal:20260403T223206Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 597.2,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Notas de Ana Oliveira:\n- Biologia - Avaliacao B1: 8.20/10.00\n- Educacao Fisica - Avaliacao 2026-B1 - EF: 6.90/10.00\n- Filosofia - Avaliacao 2026-B1 - FIL: 7.40/10.00\n- Fisica - Avaliacao 2026-B1 - FIS: 6.30/10.00\n- Geografia - Avaliacao 2026-B1 - GEO: 6.90/10.00\n- Historia - Avaliacao 2026-B1 - HIS: 7.20/10.00\n- Ingles - Avaliacao B1: 9.30/10.00\n- Matematica - Avaliacao B1: 7.80/10.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 630.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_structured:academic",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Notas de Ana Oliveira:\n- Biologia - Avaliacao B1: 8.20/10.00\n- Educacao Fisica - Avaliacao 2026-B1 - EF: 6.90/10.00\n- Filosofia - Avaliacao 2026-B1 - FIL: 7.40/10.00\n- Fisica - Avaliacao 2026-B1 - FIS: 6.30/10.00\n- Geografia - Avaliacao 2026-B1 - GEO: 6.90/10.00\n- Historia - Avaliacao 2026-B1 - HIS: 7.20/10.00\n- Ingles - Avaliacao B1: 9.30/10.00\n- Matematica - Avaliacao B1: 7.80/10.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 677.7,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Notas de Ana Oliveira:\n- Biologia - Avaliacao B1: 8.20/10.00\n- Educacao Fisica - Avaliacao 2026-B1 - EF: 6.90/10.00\n- Filosofia - Avaliacao 2026-B1 - FIL: 7.40/10.00\n- Fisica - Avaliacao 2026-B1 - FIS: 6.30/10.00\n- Geografia - Avaliacao 2026-B1 - GEO: 6.90/10.00\n- Historia - Avaliacao 2026-B1 - HIS: 7.20/10.00\n- Ingles - Avaliacao B1: 9.30/10.00\n- Matematica - Avaliacao B1: 7.80/10.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 390.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_memory:academic_risk_followup",
+        "graph_path": [
+          "specialist_supervisor",
+          "operational_memory",
+          "academic_risk_followup"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Os pontos de maior risco academico de Ana Oliveira hoje sao:\n- Historia: media parcial 7,3\n- Fisica: media parcial 6,4\n- Matematica: media parcial 7,4\nEsses componentes merecem acompanhamento primeiro no proximo ciclo de estudo.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Minha documentacao ou cadastro esta bloqueando atendimento financeiro? Quero um panorama combinado de documentacao e financeiro.",
+      "slice": "protected",
+      "category": "protected_admin_finance_combo",
+      "thread_id": "retrieval_protected_admin_finance_combo",
+      "turn_index": 1,
+      "note": "combined admin and finance overview",
+      "run_prefix": "debug:four-path:normal:20260403T223206Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 899.3,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Cadastro e documentacao:\nSituacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.\n\nFinanceiro:\nResumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 3\n- Total de faturas vencidas: 0\n- Lucas Oliveira: 1 em aberto, 0 vencida(s), proximo vencimento 10 de abril de 2026 (1450.00).\n- Ana Oliveira: 2 em aberto, 0 vencida(s), proximo vencimento 10 de marco de 2026 (1450.00).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 822.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:institution",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_structured:institution",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Cadastro e documentacao:\nSituacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.\n\nFinanceiro:\nResumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 3\n- Total de faturas vencidas: 0\n- Lucas Oliveira: 1 em aberto, 0 vencida(s), proximo vencimento 10 de abril de 2026 (1450.00).\n- Ana Oliveira: 2 em aberto, 0 vencida(s), proximo vencimento 10 de marco de 2026 (1450.00).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 1001.9,
+        "mode": "structured_tool",
+        "reason": "status administrativo autenticado exige service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Cadastro e documentacao:\nSituacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.\n\nFinanceiro:\nResumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 3\n- Total de faturas vencidas: 0\n- Lucas Oliveira: 1 em aberto, 0 vencida(s), proximo vencimento 10 de abril de 2026 (1450.00).\n- Ana Oliveira: 2 em aberto, 0 vencida(s), proximo vencimento 10 de marco de 2026 (1450.00).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 962.7,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:admin_finance_overview",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "admin_finance_overview"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Situacao administrativa do seu cadastro hoje: com pendencias.\nSituacao documental do seu cadastro hoje:\n- Email cadastral: regular. maria.oliveira@mock.eduassist.local\n- Telefone cadastral: regular. +55 11 98888-1001\n- Documentacao administrativa: com pendencias. Ainda falta reenviar um comprovante de residencia atualizado para concluir a conferência documental.\nProximo passo: Envie o comprovante atualizado pela secretaria ou pelo canal de documentos para concluir a conferência.\n\nFinanceiro:\n- Lucas Oliveira: 1 fatura(s) em aberto e 0 vencida(s).\n- Ana Oliveira: 2 fatura(s) em aberto e 0 vencida(s).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Quero ver as proximas avaliacoes dos meus filhos em um resumo unico.",
+      "slice": "protected",
+      "category": "protected_structured_upcoming_assessments",
+      "thread_id": "retrieval_protected_upcoming_assessments",
+      "turn_index": 1,
+      "note": "protected upcoming assessments family summary",
+      "run_prefix": "debug:four-path:normal:20260403T223206Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 794.3,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Proximas avaliacoes das contas vinculadas:\n- Lucas Oliveira (1o Ano A)\n  - Biologia - Avaliacao B1: 2026-04-10\n  - Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n  - Historia - Avaliacao B1: 2026-04-10\n  - Ingles - Avaliacao B1: 2026-04-10\n- Ana Oliveira (1o Ano A)\n  - Biologia - Avaliacao B1: 2026-04-10\n  - Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n  - Historia - Avaliacao B1: 2026-04-10\n  - Ingles - Avaliacao B1: 2026-04-10",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 573.7,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_structured:academic",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Proximas avaliacoes das contas vinculadas:\n- Lucas Oliveira (1o Ano A)\n  - Biologia - Avaliacao B1: 2026-04-10\n  - Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n  - Historia - Avaliacao B1: 2026-04-10\n  - Ingles - Avaliacao B1: 2026-04-10\n- Ana Oliveira (1o Ano A)\n  - Biologia - Avaliacao B1: 2026-04-10\n  - Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n  - Historia - Avaliacao B1: 2026-04-10\n  - Ingles - Avaliacao B1: 2026-04-10",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 623.9,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Proximas avaliacoes das contas vinculadas:\n- Lucas Oliveira (1o Ano A)\n  - Biologia - Avaliacao B1: 2026-04-10\n  - Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n  - Historia - Avaliacao B1: 2026-04-10\n  - Ingles - Avaliacao B1: 2026-04-10\n- Ana Oliveira (1o Ano A)\n  - Biologia - Avaliacao B1: 2026-04-10\n  - Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n  - Historia - Avaliacao B1: 2026-04-10\n  - Ingles - Avaliacao B1: 2026-04-10",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 676.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:upcoming_assessments_aggregate",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "upcoming_assessments_aggregate"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Proximas avaliacoes das contas vinculadas:\n- Lucas Oliveira (1o Ano A)\n  - Biologia - Avaliacao B1: 2026-04-10\n  - Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n  - Historia - Avaliacao B1: 2026-04-10\n  - Ingles - Avaliacao B1: 2026-04-10\n- Ana Oliveira (1o Ano A)\n  - Biologia - Avaliacao B1: 2026-04-10\n  - Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n  - Historia - Avaliacao B1: 2026-04-10\n  - Ingles - Avaliacao B1: 2026-04-10",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Mantendo o contexto, quero apenas a Ana com as proximas provas e entregas.",
+      "slice": "protected",
+      "category": "protected_structured_upcoming_assessments_followup",
+      "thread_id": "retrieval_protected_upcoming_assessments",
+      "turn_index": 1,
+      "note": "protected upcoming assessments follow-up",
+      "run_prefix": "debug:four-path:normal:20260403T223206Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 553.4,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Proximas avaliacoes de Ana Oliveira:\n- Turma: 1o Ano A\n- Biologia - Avaliacao B1: 2026-04-10\n- Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n- Historia - Avaliacao B1: 2026-04-10\n- Ingles - Avaliacao B1: 2026-04-10\n- Matematica - Avaliacao 2026-B1 - MAT: 2026-04-10\n- Matematica - Avaliacao B1: 2026-04-10",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 523.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_structured:academic",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Proximas avaliacoes de Ana Oliveira:\n- Turma: 1o Ano A\n- Biologia - Avaliacao B1: 2026-04-10\n- Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n- Historia - Avaliacao B1: 2026-04-10\n- Ingles - Avaliacao B1: 2026-04-10\n- Matematica - Avaliacao 2026-B1 - MAT: 2026-04-10\n- Matematica - Avaliacao B1: 2026-04-10",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 470.4,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Proximas avaliacoes de Ana Oliveira:\n- Turma: 1o Ano A\n- Biologia - Avaliacao B1: 2026-04-10\n- Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n- Historia - Avaliacao B1: 2026-04-10\n- Ingles - Avaliacao B1: 2026-04-10\n- Matematica - Avaliacao 2026-B1 - MAT: 2026-04-10\n- Matematica - Avaliacao B1: 2026-04-10",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 358.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:upcoming_assessments",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "upcoming_assessments"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Proximas avaliacoes de Ana Oliveira:\n- Turma: 1o Ano A\n- Biologia - Avaliacao B1: 2026-04-10\n- Fisica - Avaliacao 2026-B1 - FIS: 2026-04-10\n- Historia - Avaliacao B1: 2026-04-10\n- Ingles - Avaliacao B1: 2026-04-10\n- Matematica - Avaliacao 2026-B1 - MAT: 2026-04-10\n- Matematica - Avaliacao B1: 2026-04-10",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Traga as disciplinas ou componentes em que a Ana aparece com as menores medias agora.",
+      "slice": "protected",
+      "category": "protected_structured_grade_components",
+      "thread_id": "retrieval_protected_grade_components",
+      "turn_index": 1,
+      "note": "protected sql-backed grade/component detail",
+      "run_prefix": "debug:four-path:normal:20260403T223206Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 307.9,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Os componentes em que Ana Oliveira aparece com as menores medias agora sao:\n- Fisica: media parcial 6,4\n- Educacao Fisica: media parcial 7,0\n- Geografia: media parcial 7,0\n- Redacao: media parcial 7,1",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 321.9,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_structured:academic",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Os componentes em que Ana Oliveira aparece com as menores medias agora sao:\n- Fisica: media parcial 6,4\n- Educacao Fisica: media parcial 7,0\n- Geografia: media parcial 7,0\n- Redacao: media parcial 7,1",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 390.0,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Os componentes em que Ana Oliveira aparece com as menores medias agora sao:\n- Fisica: media parcial 6,4\n- Educacao Fisica: media parcial 7,0\n- Geografia: media parcial 7,0\n- Redacao: media parcial 7,1",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 341.6,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:academic_summary",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "academic_summary"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Notas de Ana Oliveira:\n- Historia: media parcial 7,3\n- Fisica: media parcial 6,4\n- Matematica: media parcial 7,4\n- Portugues: media parcial 8,4",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "No financeiro da familia, separe para mim o que esta vencido, o que esta parcialmente quitado e o que vem a seguir.",
+      "slice": "protected",
+      "category": "protected_structured_finance_detail",
+      "thread_id": "retrieval_protected_finance_detail",
+      "turn_index": 1,
+      "note": "protected sql-backed finance detail",
+      "run_prefix": "debug:four-path:normal:20260403T223206Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 449.6,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Resumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 3\n- Total de faturas vencidas: 0\n- Lucas Oliveira: 1 em aberto, 0 vencida(s), proximo vencimento 10 de abril de 2026 (1450.00).\n- Ana Oliveira: 2 em aberto, 0 vencida(s), proximo vencimento 10 de marco de 2026 (1450.00).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 389.5,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:finance",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_structured:finance",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Resumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 3\n- Total de faturas vencidas: 0\n- Lucas Oliveira: 1 em aberto, 0 vencida(s), proximo vencimento 10 de abril de 2026 (1450.00).\n- Ana Oliveira: 2 em aberto, 0 vencida(s), proximo vencimento 10 de marco de 2026 (1450.00).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 370.8,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Resumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 3\n- Total de faturas vencidas: 0\n- Lucas Oliveira: 1 em aberto, 0 vencida(s), proximo vencimento 10 de abril de 2026 (1450.00).\n- Ana Oliveira: 2 em aberto, 0 vencida(s), proximo vencimento 10 de marco de 2026 (1450.00).",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 286.2,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:financial_summary_aggregate",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "financial_summary_aggregate"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Resumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 3\n- Total de faturas vencidas: 0\n- Lucas Oliveira: 1 em aberto, 0 vencidas\n  2026-01: vencimento 2026-01-10, status paid, valor 1450.00\n  2026-02: vencimento 2026-02-10, status paid, valor 1450.00\n- Ana Oliveira: 2 em aberto, 0 vencidas\n  2026-01: vencimento 2026-01-10, status paid, valor 1450.00\n  2026-02: vencimento 2026-02-10, status paid, valor 1450.00",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Recorte so o Lucas e diga onde a frequencia dele esta mais sensivel por faltas recentes.",
+      "slice": "protected",
+      "category": "protected_structured_attendance_detail",
+      "thread_id": "retrieval_protected_attendance_detail",
+      "turn_index": 1,
+      "note": "protected sql-backed attendance detail",
+      "run_prefix": "debug:four-path:normal:20260403T223206Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 390.2,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "protected_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Na frequencia de Lucas Oliveira, o ponto mais sensivel hoje aparece em Biologia: 1 falta(s), 0 atraso(s) e 3 presenca(s) neste recorte.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 380.3,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_structured:academic",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "protected_disabled",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_structured:academic",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Na frequencia de Lucas Oliveira, o ponto mais sensivel hoje aparece em Biologia: 1 falta(s), 0 atraso(s) e 3 presenca(s) neste recorte.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 533.5,
+        "mode": "structured_tool",
+        "reason": "dados estruturados devem passar por service deterministico",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Na frequencia de Lucas Oliveira, o ponto mais sensivel hoje aparece em Biologia: 1 falta(s), 0 atraso(s) e 3 presenca(s) neste recorte.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 273.1,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:attendance_summary",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "attendance_summary"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "candidate_chosen": "",
+        "candidate_reason": "",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Na frequencia de Lucas Oliveira em Tecnologia e Cultura Digital, eu encontrei 6 faltas, 7 atraso(s) e 19 presenca(s) neste recorte.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    }
+  ],
+  "dataset": "/home/edann/projects/eduassist-platform/tests/evals/datasets/retrieval_8q_sql_probe_cases.generated.20260403.json"
+}

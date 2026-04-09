@@ -1,0 +1,102 @@
+[
+  {
+    "category": "public_inclusion_accessibility",
+    "slice": "public",
+    "expected_keywords": ["inclus", "acess"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_focus_inclusion_accessibility",
+    "telegram_chat_id": 778301,
+    "note": "llm-focused public synthesis on inclusion and accessibility",
+    "prompt": "Quais evidencias publicas mostram que a escola tenta acolher inclusao, acessibilidade e protecao do estudante como um mesmo compromisso institucional?"
+  },
+  {
+    "category": "public_integral_study_support",
+    "slice": "public",
+    "expected_keywords": ["integral", "estudo orientado"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_focus_integral_support",
+    "telegram_chat_id": 778302,
+    "note": "llm-focused public synthesis on integral and study support",
+    "prompt": "Se eu quiser entender o suporte ao aluno alem da sala regular, como periodo integral e estudo orientado se completam no material publico da escola?"
+  },
+  {
+    "category": "public_health_emergency_bundle",
+    "slice": "public",
+    "expected_keywords": ["medicacao", "emerg"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_focus_health_emergency",
+    "telegram_chat_id": 778303,
+    "note": "llm-focused public synthesis on health and emergency procedures",
+    "prompt": "Sem entrar em dados privados, como a escola costura uso de medicacao, monitoramento de saude e resposta a emergencia no dia a dia escolar?"
+  },
+  {
+    "category": "public_outings_authorizations",
+    "slice": "public",
+    "expected_keywords": ["autoriz", "saida"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_focus_outings_authorizations",
+    "telegram_chat_id": 778304,
+    "note": "llm-focused public synthesis on outings and authorizations",
+    "prompt": "Como o material publico liga participacao em eventos externos, saidas pedagogicas e autorizacao previa das familias?"
+  },
+  {
+    "category": "public_year_three_phases",
+    "slice": "public",
+    "expected_keywords": ["Admissao", "Rotina academica", "Fechamento"],
+    "forbidden_keywords": ["nao encontrei"],
+    "thread_id": "retrieval_10q_llm_focus_year_three_phases",
+    "telegram_chat_id": 778305,
+    "note": "llm-focused public synthesis on year phases",
+    "prompt": "Se eu olhar o ano escolar como uma jornada completa, onde comecam admissao, rotina academica e fechamento segundo a documentacao publica?"
+  },
+  {
+    "category": "public_transport_uniform_bundle",
+    "slice": "public",
+    "expected_keywords": ["transporte", "uniforme"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_focus_transport_uniform",
+    "telegram_chat_id": 778306,
+    "note": "llm-focused public synthesis on transport, uniform and routine",
+    "prompt": "Para visualizar a rotina fora da sala, como transporte, uniforme e alimentacao aparecem combinados nas orientacoes publicas?"
+  },
+  {
+    "category": "public_governance_protocol",
+    "slice": "public",
+    "expected_keywords": ["direcao", "protocolo"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_focus_governance_protocol",
+    "telegram_chat_id": 778307,
+    "note": "llm-focused public synthesis on governance and protocol",
+    "prompt": "Quando um assunto foge do cotidiano, como a familia sai da coordenacao e chega a direcao com protocolo formal segundo a base publica?"
+  },
+  {
+    "category": "public_academic_policy_overview",
+    "slice": "public",
+    "expected_keywords": ["media", "frequencia"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_focus_academic_policy_overview",
+    "telegram_chat_id": 778308,
+    "note": "llm-focused public synthesis on academic policy",
+    "prompt": "Quero uma leitura ampla da politica publica que conecte avaliacao, recuperacao, media e frequencia minima sem usar area autenticada."
+  },
+  {
+    "category": "public_conduct_frequency_punctuality",
+    "slice": "public",
+    "expected_keywords": ["frequencia", "pontualidade"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_focus_conduct_frequency",
+    "telegram_chat_id": 778309,
+    "note": "llm-focused public synthesis on conduct, frequency and punctuality",
+    "prompt": "Como frequencia, pontualidade e convivencia aparecem como um mesmo eixo de acompanhamento estudantil no regulamento publico?"
+  },
+  {
+    "category": "public_deep_multi_doc",
+    "slice": "public",
+    "expected_keywords": ["responsaveis", "avaliac", "digit"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_focus_transversal_year",
+    "telegram_chat_id": 778310,
+    "note": "llm-focused public transversal multi-document synthesis",
+    "prompt": "Quero uma sintese transversal mostrando como avaliacoes, apoio ao estudo, comunicacao com responsaveis e canais digitais se retroalimentam ao longo do ano letivo."
+  }
+]

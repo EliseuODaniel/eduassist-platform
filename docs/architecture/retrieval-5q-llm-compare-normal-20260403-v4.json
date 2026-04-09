@@ -1,0 +1,809 @@
+{
+  "generated_at": "2026-04-03T20:18:12.874749+00:00",
+  "llm_forced": false,
+  "run_prefix": "debug:four-path:normal:20260403T201809Z",
+  "summary": {
+    "by_stack": {
+      "langgraph": {
+        "count": 5,
+        "ok": 5,
+        "keyword_pass": 4,
+        "quality_avg": 96.0,
+        "avg_latency_ms": 238.2,
+        "final_polish_applied": 0
+      },
+      "python_functions": {
+        "count": 5,
+        "ok": 5,
+        "keyword_pass": 4,
+        "quality_avg": 96.0,
+        "avg_latency_ms": 209.3,
+        "final_polish_applied": 0
+      },
+      "llamaindex": {
+        "count": 5,
+        "ok": 5,
+        "keyword_pass": 4,
+        "quality_avg": 96.0,
+        "avg_latency_ms": 134.7,
+        "final_polish_applied": 0
+      },
+      "specialist_supervisor": {
+        "count": 5,
+        "ok": 5,
+        "keyword_pass": 4,
+        "quality_avg": 96.0,
+        "avg_latency_ms": 0.3,
+        "final_polish_applied": 0
+      }
+    },
+    "by_slice": {
+      "public": {
+        "count": 5,
+        "langgraph": {
+          "ok": 5,
+          "keyword_pass": 4,
+          "quality_avg": 96.0,
+          "avg_latency_ms": 238.2,
+          "final_polish_applied": 0
+        },
+        "python_functions": {
+          "ok": 5,
+          "keyword_pass": 4,
+          "quality_avg": 96.0,
+          "avg_latency_ms": 209.3,
+          "final_polish_applied": 0
+        },
+        "llamaindex": {
+          "ok": 5,
+          "keyword_pass": 4,
+          "quality_avg": 96.0,
+          "avg_latency_ms": 134.7,
+          "final_polish_applied": 0
+        },
+        "specialist_supervisor": {
+          "ok": 5,
+          "keyword_pass": 4,
+          "quality_avg": 96.0,
+          "avg_latency_ms": 0.3,
+          "final_polish_applied": 0
+        }
+      }
+    },
+    "error_types": {
+      "langgraph": {
+        "missing_expected_keyword": 1
+      },
+      "python_functions": {
+        "missing_expected_keyword": 1
+      },
+      "llamaindex": {
+        "missing_expected_keyword": 1
+      },
+      "specialist_supervisor": {
+        "missing_expected_keyword": 1
+      }
+    }
+  },
+  "results": [
+    {
+      "prompt": "Olhando apenas para a base publica da escola, que continuidade de apoio aparece quando se cruzam orientacao educacional, mediacao de convivio, estudo guiado e relacao com a familia?",
+      "slice": "public",
+      "category": "public_support_continuum_open",
+      "thread_id": "retrieval_5q_llm_compare_support_continuum_open",
+      "turn_index": 1,
+      "note": "fresh llm-comparison prompt about support, mediation and family continuity",
+      "run_prefix": "debug:four-path:normal:20260403T201809Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 277.9,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.permanence_family_support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.permanence_family_support",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Para a familia acompanhar permanencia, apoio e vida escolar sem se perder, a escola combina orientacao, monitorias, comunicacao recorrente e acompanhamento de frequencia. A equipe de orientacao acompanha adaptacao, rotina de estudo, organizacao de agenda e desenvolvimento de habitos de aprendizagem. Ha monitorias agendadas, plantao de duvidas e apoio em componentes com maior incidencia de dificuldade. A escola utiliza comunicados digitais, reunioes periodicas e chamadas de acompanhamento quando o estudante precisa de suporte adicional. A promocao do estudante depende nao apenas do desempenho academico, mas tambem do cumprimento da frequencia minima institucional e legal. Projeto de vida funciona como componente curricular e eixo de tutoria do Ensino Medio.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 221.0,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_contextual_public_answer",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Para a familia acompanhar permanencia, apoio e vida escolar sem se perder, a escola combina orientacao, monitorias, comunicacao recorrente e acompanhamento de frequencia. A equipe de orientacao acompanha adaptacao, rotina de estudo, organizacao de agenda e desenvolvimento de habitos de aprendizagem. Ha monitorias agendadas, plantao de duvidas e apoio em componentes com maior incidencia de dificuldade. A escola utiliza comunicados digitais, reunioes periodicas e chamadas de acompanhamento quando o estudante precisa de suporte adicional. A promocao do estudante depende nao apenas do desempenho academico, mas tambem do cumprimento da frequencia minima institucional e legal. Projeto de vida funciona como componente curricular e eixo de tutoria do Ensino Medio.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 135.0,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.permanence_family_support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.permanence_family_support",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.permanence_family_support",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Para a familia acompanhar permanencia, apoio e vida escolar sem se perder, a escola combina orientacao, monitorias, comunicacao recorrente e acompanhamento de frequencia. A equipe de orientacao acompanha adaptacao, rotina de estudo, organizacao de agenda e desenvolvimento de habitos de aprendizagem. Ha monitorias agendadas, plantao de duvidas e apoio em componentes com maior incidencia de dificuldade. A escola utiliza comunicados digitais, reunioes periodicas e chamadas de acompanhamento quando o estudante precisa de suporte adicional. A promocao do estudante depende nao apenas do desempenho academico, mas tambem do cumprimento da frequencia minima institucional e legal. Projeto de vida funciona como componente curricular e eixo de tutoria do Ensino Medio.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 0.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_local_public_canonical_lane:public_bundle.permanence_family_support",
+        "graph_path": [
+          "specialist_supervisor",
+          "local_public_canonical_lane",
+          "public_bundle.permanence_family_support"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.permanence_family_support",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Para a familia acompanhar permanencia, apoio e vida escolar sem se perder, a escola combina orientacao, monitorias, comunicacao recorrente e acompanhamento de frequencia. A equipe de orientacao acompanha adaptacao, rotina de estudo, organizacao de agenda e desenvolvimento de habitos de aprendizagem. Ha monitorias agendadas, plantao de duvidas e apoio em componentes com maior incidencia de dificuldade. A escola utiliza comunicados digitais, reunioes periodicas e chamadas de acompanhamento quando o estudante precisa de suporte adicional. A promocao do estudante depende nao apenas do desempenho academico, mas tambem do cumprimento da frequencia minima institucional e legal.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Sem repetir slogans, que arquitetura de rotina escolar aparece quando se combinam turno estendido, oficinas, refeicao, estudo acompanhado e permanencia no contraturno?",
+      "slice": "public",
+      "category": "public_extended_day_ecosystem_open",
+      "thread_id": "retrieval_5q_llm_compare_extended_day_ecosystem_open",
+      "turn_index": 1,
+      "note": "fresh llm-comparison prompt about extended day and operational routine",
+      "run_prefix": "debug:four-path:normal:20260403T201809Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 231.8,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.integral_study_support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.integral_study_support",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Fora da sala regular, o material publico mostra que periodo integral e estudo orientado se completam como camadas de apoio ao estudante. O periodo integral e uma opcao complementar destinada a familias que desejam ampliar a permanencia do estudante na escola com acompanhamento, rotina organizada e atividades formativas adicionais. O estudo orientado oferece apoio para organizacao de tarefas, acompanhamento de prazos, leitura orientada e consolidacao de habitos academicos. Em geral, a rotina da tarde combina acolhimento, almoco ou lanche conforme o plano contratado, bloco de estudo, atividade complementar e horario de saida definido. Entre as atividades possiveis estao oficinas de leitura, projetos maker, cultura digital, praticas artisticas, monitorias e recomposicao de aprendizagem. O estudo orientado ajuda o aluno a manter rotina e prioridade, mas nao garante, por si so, desempenho academico especifico.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 227.8,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_contextual_public_answer",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Fora da sala regular, o material publico mostra que periodo integral e estudo orientado se completam como camadas de apoio ao estudante. O periodo integral e uma opcao complementar destinada a familias que desejam ampliar a permanencia do estudante na escola com acompanhamento, rotina organizada e atividades formativas adicionais. O estudo orientado oferece apoio para organizacao de tarefas, acompanhamento de prazos, leitura orientada e consolidacao de habitos academicos. Em geral, a rotina da tarde combina acolhimento, almoco ou lanche conforme o plano contratado, bloco de estudo, atividade complementar e horario de saida definido. Entre as atividades possiveis estao oficinas de leitura, projetos maker, cultura digital, praticas artisticas, monitorias e recomposicao de aprendizagem. O estudo orientado ajuda o aluno a manter rotina e prioridade, mas nao garante, por si so, desempenho academico especifico.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 151.1,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.integral_study_support",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.integral_study_support",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.integral_study_support",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Fora da sala regular, o material publico mostra que periodo integral e estudo orientado se completam como camadas de apoio ao estudante. O periodo integral e uma opcao complementar destinada a familias que desejam ampliar a permanencia do estudante na escola com acompanhamento, rotina organizada e atividades formativas adicionais. O estudo orientado oferece apoio para organizacao de tarefas, acompanhamento de prazos, leitura orientada e consolidacao de habitos academicos. Em geral, a rotina da tarde combina acolhimento, almoco ou lanche conforme o plano contratado, bloco de estudo, atividade complementar e horario de saida definido. Entre as atividades possiveis estao oficinas de leitura, projetos maker, cultura digital, praticas artisticas, monitorias e recomposicao de aprendizagem. O estudo orientado ajuda o aluno a manter rotina e prioridade, mas nao garante, por si so, desempenho academico especifico.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 0.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_local_public_canonical_lane:public_bundle.integral_study_support",
+        "graph_path": [
+          "specialist_supervisor",
+          "local_public_canonical_lane",
+          "public_bundle.integral_study_support"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.integral_study_support",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Fora da sala regular, o material publico mostra que periodo integral e estudo orientado se completam como camadas de apoio ao estudante. O periodo integral e uma opcao complementar destinada a familias que desejam ampliar a permanencia do estudante na escola com acompanhamento, rotina organizada e atividades formativas adicionais. O estudo orientado oferece apoio para organizacao de tarefas, acompanhamento de prazos, leitura orientada e consolidacao de habitos academicos. Em geral, a rotina da tarde combina acolhimento, almoco ou lanche conforme o plano contratado, bloco de estudo, atividade complementar e horario de saida definido. Entre as atividades possiveis estao oficinas de leitura, projetos maker, cultura digital, praticas artisticas, monitorias e recomposicao de aprendizagem. O estudo orientado ajuda o aluno a manter rotina e prioridade, mas nao garante, por si so, desempenho academico especifico.",
+        "keyword_pass": false,
+        "quality_score": 80,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Se uma familia precisa entender por onde um tema caminha dentro da escola, que trilha institucional os documentos publicos sugerem entre secretaria, coordenacao, direcao e canais oficiais?",
+      "slice": "public",
+      "category": "public_governance_channels_open",
+      "thread_id": "retrieval_5q_llm_compare_governance_channels_open",
+      "turn_index": 1,
+      "note": "fresh llm-comparison prompt about governance and official escalation channels",
+      "run_prefix": "debug:four-path:normal:20260403T201809Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 268.2,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.governance_protocol",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.governance_protocol",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Na base publica do Colegio Horizonte, a trilha institucional fica mais clara quando secretaria, coordenacao, direcao e canais oficiais aparecem como etapas complementares de encaminhamento e protocolo. Na pratica, a secretaria funciona como porta de entrada operacional para documentos, orientacoes iniciais e registros; a coordenacao assume o acompanhamento pedagogico e de convivio; e a direcao aparece como instancia de escalonamento institucional quando o tema exige alinhamento maior. O envio inicial de documentos pode ocorrer pelo portal institucional, pelo email da secretaria ou presencialmente, conforme o tipo de documento e o grau de sensibilidade da informacao. A diretora geral do Colegio Horizonte e Helena Martins. A lideranca atende familias por agenda institucional. Direcao geral: direcao@colegiohorizonte.edu.br Coordenacao Fundamental II: fundamental2@colegiohorizonte.edu.br Coordenacao Ensino Medio: ensinomedio@colegiohorizonte.edu.br. A diretora participa de encontros institucionais com familias ao longo do ano, especialmente nas reunioes de acolhimento, eventos gerais e marcos bimestrais de acompanhamento da comunidade escolar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 189.4,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_contextual_public_answer",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Na base publica do Colegio Horizonte, a trilha institucional fica mais clara quando secretaria, coordenacao, direcao e canais oficiais aparecem como etapas complementares de encaminhamento e protocolo. Na pratica, a secretaria funciona como porta de entrada operacional para documentos, orientacoes iniciais e registros; a coordenacao assume o acompanhamento pedagogico e de convivio; e a direcao aparece como instancia de escalonamento institucional quando o tema exige alinhamento maior. O envio inicial de documentos pode ocorrer pelo portal institucional, pelo email da secretaria ou presencialmente, conforme o tipo de documento e o grau de sensibilidade da informacao. A diretora geral do Colegio Horizonte e Helena Martins. A lideranca atende familias por agenda institucional. Direcao geral: direcao@colegiohorizonte.edu.br Coordenacao Fundamental II: fundamental2@colegiohorizonte.edu.br Coordenacao Ensino Medio: ensinomedio@colegiohorizonte.edu.br. A diretora participa de encontros institucionais com familias ao longo do ano, especialmente nas reunioes de acolhimento, eventos gerais e marcos bimestrais de acompanhamento da comunidade escolar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 119.9,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.governance_protocol",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.governance_protocol",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.governance_protocol",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Na base publica do Colegio Horizonte, a trilha institucional fica mais clara quando secretaria, coordenacao, direcao e canais oficiais aparecem como etapas complementares de encaminhamento e protocolo. Na pratica, a secretaria funciona como porta de entrada operacional para documentos, orientacoes iniciais e registros; a coordenacao assume o acompanhamento pedagogico e de convivio; e a direcao aparece como instancia de escalonamento institucional quando o tema exige alinhamento maior. O envio inicial de documentos pode ocorrer pelo portal institucional, pelo e-mail da secretaria ou presencialmente, conforme o tipo de documento e o grau de sensibilidade da informacao. A diretora geral do Colegio Horizonte e Helena Martins. A lideranca atende familias por agenda institucional. Direcao geral: direcao@colegiohorizonte.edu.br Coordenacao Fundamental II: fundamental2@colegiohorizonte.edu.br Coordenacao Ensino Medio: ensinomedio@colegiohorizonte.edu.br. A diretora participa de encontros institucionais com familias ao longo do ano, especialmente nas reunioes de acolhimento, eventos gerais e marcos bimestrais de acompanhamento da comunidade escolar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 0.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_local_public_canonical_lane:public_bundle.governance_protocol",
+        "graph_path": [
+          "specialist_supervisor",
+          "local_public_canonical_lane",
+          "public_bundle.governance_protocol"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.governance_protocol",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "Na base publica do Colegio Horizonte, a trilha institucional fica mais clara quando secretaria, coordenacao, direcao e canais oficiais aparecem como etapas complementares de encaminhamento e protocolo. Na pratica, a secretaria funciona como porta de entrada operacional para documentos, orientacoes iniciais e registros; a coordenacao assume o acompanhamento pedagogico e de convivio; e a direcao aparece como instancia de escalonamento institucional quando o tema exige alinhamento maior. O envio inicial de documentos pode ocorrer pelo portal institucional, pelo e-mail da secretaria ou presencialmente, conforme o tipo de documento e o grau de sensibilidade da informacao. A diretora geral do Colegio Horizonte e Helena Martins. A lideranca atende familias por agenda institucional. Direcao geral: direcao@colegiohorizonte.edu.br Coordenacao Fundamental II: fundamental2@colegiohorizonte.edu.br Coordenacao Ensino Medio: ensinomedio@colegiohorizonte.edu.br. A diretora participa de encontros institucionais com familias ao longo do ano, especialmente nas reunioes de acolhimento, eventos gerais e marcos bimestrais de acompanhamento da comunidade escolar.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        }
+      }
+    },
+    {
+      "prompt": "Que logica institucional aparece quando a escola conecta comprovacao de saude, ausencia em atividade avaliativa, comunicacao com a familia e reorganizacao pedagogica?",
+      "slice": "public",
+      "category": "public_health_reorganization_open",
+      "thread_id": "retrieval_5q_llm_compare_health_reorganization_open",
+      "turn_index": 1,
+      "note": "fresh llm-comparison prompt about health documentation, absence and academic reorganization",
+      "run_prefix": "debug:four-path:normal:20260403T201809Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 203.4,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.health_emergency_bundle",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.health_emergency_bundle",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No material publico, uso de medicacao, justificativa de ausencia, reorganizacao avaliativa e resposta a emergencia aparecem como partes do mesmo protocolo escolar. As familias devem manter atualizadas as informacoes sobre alergias, restricoes medicas, uso continuo de medicacao, contatos de emergencia e recomendacoes clinicas relevantes. Atestados medicos e justificativas formais podem ser usados para apoiar analise de ausencia, segunda chamada ou adaptacao temporaria de rotina. A administracao de medicacao pela escola depende de orientacao formal da familia e, quando cabivel, de prescricao ou instrucao adequada. Casos de uso continuo devem ser alinhados previamente com a equipe responsavel, com registro em cadastro e informacoes sobre horario, dose e condicoes de armazenamento. Quando o aluno apresenta mal-estar, a equipe acolhe a ocorrencia, realiza avaliacao inicial compativel com o protocolo institucional e aciona os responsaveis quando necessario. Pedidos de segunda chamada exigem justificativa no prazo orientado pela escola. Quando houver desempenho abaixo do esperado, a escola pode oferecer recuperacao paralela, atividades orientadas, monitoria, estudo dirigido ou avaliacao substitutiva, conforme o componente e o periodo do ano. Em situacoes de emergencia, a prioridade e proteger o estudante e acionar rapidamente os contatos indicados. O bot e os canais digitais podem orientar sobre o protocolo publico, mas nao substituem o contato direto em situacoes urgentes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 181.8,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_contextual_public_answer",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No material publico, uso de medicacao, justificativa de ausencia, reorganizacao avaliativa e resposta a emergencia aparecem como partes do mesmo protocolo escolar. As familias devem manter atualizadas as informacoes sobre alergias, restricoes medicas, uso continuo de medicacao, contatos de emergencia e recomendacoes clinicas relevantes. Atestados medicos e justificativas formais podem ser usados para apoiar analise de ausencia, segunda chamada ou adaptacao temporaria de rotina. A administracao de medicacao pela escola depende de orientacao formal da familia e, quando cabivel, de prescricao ou instrucao adequada. Casos de uso continuo devem ser alinhados previamente com a equipe responsavel, com registro em cadastro e informacoes sobre horario, dose e condicoes de armazenamento. Quando o aluno apresenta mal-estar, a equipe acolhe a ocorrencia, realiza avaliacao inicial compativel com o protocolo institucional e aciona os responsaveis quando necessario. Pedidos de segunda chamada exigem justificativa no prazo orientado pela escola. Quando houver desempenho abaixo do esperado, a escola pode oferecer recuperacao paralela, atividades orientadas, monitoria, estudo dirigido ou avaliacao substitutiva, conforme o componente e o periodo do ano. Em situacoes de emergencia, a prioridade e proteger o estudante e acionar rapidamente os contatos indicados. O bot e os canais digitais podem orientar sobre o protocolo publico, mas nao substituem o contato direto em situacoes urgentes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 142.3,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.health_emergency_bundle",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.health_emergency_bundle",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.health_emergency_bundle",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No material publico, uso de medicacao, justificativa de ausencia, reorganizacao avaliativa e resposta a emergencia aparecem como partes do mesmo protocolo escolar. As familias devem manter atualizadas as informacoes sobre alergias, restricoes medicas, uso continuo de medicacao, contatos de emergencia e recomendacoes clinicas relevantes. Atestados medicos e justificativas formais podem ser usados para apoiar analise de ausencia, segunda chamada ou adaptacao temporaria de rotina. A administracao de medicacao pela escola depende de orientacao formal da familia e, quando cabivel, de prescricao ou instrucao adequada. Casos de uso continuo devem ser alinhados previamente com a equipe responsavel, com registro em cadastro e informacoes sobre horario, dose e condicoes de armazenamento. Quando o aluno apresenta mal-estar, a equipe acolhe a ocorrencia, realiza avaliacao inicial compativel com o protocolo institucional e aciona os responsaveis quando necessario. Pedidos de segunda chamada exigem justificativa no prazo orientado pela escola. Quando houver desempenho abaixo do esperado, a escola pode oferecer recuperacao paralela, atividades orientadas, monitoria, estudo dirigido ou avaliacao substitutiva, conforme o componente e o periodo do ano. Em situacoes de emergencia, a prioridade e proteger o estudante e acionar rapidamente os contatos indicados. O bot e os canais digitais podem orientar sobre o protocolo publico, mas nao substituem o contato direto em situacoes urgentes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 0.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_local_public_canonical_lane:public_bundle.health_emergency_bundle",
+        "graph_path": [
+          "specialist_supervisor",
+          "local_public_canonical_lane",
+          "public_bundle.health_emergency_bundle"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.health_emergency_bundle",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No material publico, uso de medicacao, justificativa de ausencia, reorganizacao avaliativa e resposta a emergencia aparecem como partes do mesmo protocolo escolar. As familias devem manter atualizadas as informacoes sobre alergias, restricoes medicas, uso continuo de medicacao, contatos de emergencia e recomendacoes clinicas relevantes. Atestados medicos e justificativas formais podem ser usados para apoiar analise de ausencia, segunda chamada ou adaptacao temporaria de rotina. A administracao de medicacao pela escola depende de orientacao formal da familia e, quando cabivel, de prescricao ou instrucao adequada. Casos de uso continuo devem ser alinhados previamente com a equipe responsavel, com registro em cadastro e informacoes sobre horario, dose e condicoes de armazenamento. Quando o aluno apresenta mal-estar, a equipe acolhe a ocorrencia, realiza avaliacao inicial compativel com o protocolo institucional e aciona os responsaveis quando necessario. Pedidos de segunda chamada exigem justificativa no prazo orientado pela escola. Quando houver desempenho abaixo do esperado, a escola pode oferecer recuperacao paralela, atividades orientadas, monitoria, estudo dirigido ou avaliacao substitutiva, conforme o componente e o periodo do ano. Em situacoes de emergencia, a prioridade e proteger o estudante e acionar rapidamente os contatos indicados. O bot e os canais digitais podem orientar sobre o protocolo publico, mas nao substituem o contato direto em situacoes urgentes.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    },
+    {
+      "prompt": "Para uma familia que ainda esta conhecendo a escola, como a base publica deixa clara a fronteira entre o que ja se entende por calendarios e orientacoes abertas e o que so aparece com portal, login e conta vinculada?",
+      "slice": "public",
+      "category": "public_visibility_boundary_onboarding_open",
+      "thread_id": "retrieval_5q_llm_compare_visibility_boundary_onboarding_open",
+      "turn_index": 1,
+      "note": "fresh llm-comparison prompt about public versus authenticated informational boundary",
+      "run_prefix": "debug:four-path:normal:20260403T201809Z",
+      "langgraph": {
+        "status": 200,
+        "latency_ms": 209.9,
+        "mode": "structured_tool",
+        "reason": "langgraph_public_canonical_lane:public_bundle.visibility_boundary",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "public_slice",
+          "structured_tool_call"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.visibility_boundary",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No calendario publico, o que costuma ficar aberto para familias sao marcos institucionais gerais e eventos coletivos. A fronteira pratica aparece assim: orientacoes abertas circulam no calendario publico, no portal institucional aberto e nos canais oficiais; o que so ganha detalhe depois do login e da conta vinculada no portal sao informacoes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos. Sempre que houver ajuste relevante no calendario de avaliacao, a escola atualiza o portal e reforca a comunicacao pelos canais oficiais. O ambiente digital amplia o atendimento, mas nao substitui todos os processos formais.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "python_functions": {
+        "status": 200,
+        "latency_ms": 226.7,
+        "mode": "structured_tool",
+        "reason": "python_functions_native_contextual_public_answer",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "python_functions:native_runtime",
+          "kernel:python_functions"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "python_functions_native_contextual_public_answer",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No calendario publico, o que costuma ficar aberto para familias sao marcos institucionais gerais e eventos coletivos. A fronteira pratica aparece assim: orientacoes abertas circulam no calendario publico, no portal institucional aberto e nos canais oficiais; o que so ganha detalhe depois do login e da conta vinculada no portal sao informacoes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos. Sempre que houver ajuste relevante no calendario de avaliacao, a escola atualiza o portal e reforca a comunicacao pelos canais oficiais. O ambiente digital amplia o atendimento, mas nao substitui todos os processos formais.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "llamaindex": {
+        "status": 200,
+        "latency_ms": 125.1,
+        "mode": "structured_tool",
+        "reason": "llamaindex_public_canonical_lane:public_bundle.visibility_boundary",
+        "graph_path": [
+          "classify_request",
+          "security_gate",
+          "route_request",
+          "select_slice",
+          "structured_tool_call",
+          "llamaindex:public",
+          "llamaindex:canonical_lane",
+          "public_bundle.visibility_boundary",
+          "kernel:llamaindex"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "",
+        "final_polish_reason": "",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.visibility_boundary",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No calendario publico, o que costuma ficar aberto para familias sao marcos institucionais gerais e eventos coletivos. A fronteira pratica aparece assim: orientacoes abertas circulam no calendario publico, no portal institucional aberto e nos canais oficiais; o que so ganha detalhe depois do login e da conta vinculada no portal sao informacoes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos. Sempre que houver ajuste relevante no calendario de avaliacao, a escola atualiza o portal e reforca a comunicacao pelos canais oficiais. O ambiente digital amplia o atendimento, mas nao substitui todos os processos formais.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      },
+      "specialist_supervisor": {
+        "status": 200,
+        "latency_ms": 0.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_local_public_canonical_lane:public_bundle.visibility_boundary",
+        "graph_path": [
+          "specialist_supervisor",
+          "local_public_canonical_lane",
+          "public_bundle.visibility_boundary"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "deterministic_answer",
+        "candidate_chosen": "deterministic",
+        "candidate_reason": "public_canonical_lane:public_bundle.visibility_boundary",
+        "retrieval_probe_topic": "",
+        "response_cache_hit": false,
+        "response_cache_kind": "",
+        "answer_text": "No calendario publico, o que costuma ficar aberto para familias sao marcos institucionais gerais e eventos coletivos. A fronteira pratica aparece assim: orientacoes abertas circulam no calendario publico, no portal institucional aberto e nos canais oficiais; o que so ganha detalhe depois do login e da conta vinculada no portal sao informacoes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos. Sempre que houver ajuste relevante no calendario de avaliacao, a escola atualiza o portal e reforca a comunicacao pelos canais oficiais. O ambiente digital amplia o atendimento, mas nao substitui todos os processos formais.",
+        "keyword_pass": true,
+        "quality_score": 100,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        }
+      }
+    }
+  ],
+  "dataset": "/home/edann/projects/eduassist-platform/tests/evals/datasets/retrieval_5q_llm_compare.generated.20260403.json"
+}

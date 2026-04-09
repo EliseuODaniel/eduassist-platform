@@ -1,0 +1,52 @@
+[
+  {
+    "category": "public_support_continuum_open",
+    "slice": "public",
+    "expected_keywords": ["apoio", "famil"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_5q_llm_compare_support_continuum_open",
+    "telegram_chat_id": 778501,
+    "note": "fresh llm-comparison prompt about support, mediation and family continuity",
+    "prompt": "Olhando apenas para a base publica da escola, que continuidade de apoio aparece quando se cruzam orientacao educacional, mediacao de convivio, estudo guiado e relacao com a familia?"
+  },
+  {
+    "category": "public_extended_day_ecosystem_open",
+    "slice": "public",
+    "expected_keywords": ["rotina", "contraturno"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_5q_llm_compare_extended_day_ecosystem_open",
+    "telegram_chat_id": 778502,
+    "note": "fresh llm-comparison prompt about extended day and operational routine",
+    "prompt": "Sem repetir slogans, que arquitetura de rotina escolar aparece quando se combinam turno estendido, oficinas, refeicao, estudo acompanhado e permanencia no contraturno?"
+  },
+  {
+    "category": "public_governance_channels_open",
+    "slice": "public",
+    "expected_keywords": ["secret", "coorden"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_5q_llm_compare_governance_channels_open",
+    "telegram_chat_id": 778503,
+    "note": "fresh llm-comparison prompt about governance and official escalation channels",
+    "prompt": "Se uma familia precisa entender por onde um tema caminha dentro da escola, que trilha institucional os documentos publicos sugerem entre secretaria, coordenacao, direcao e canais oficiais?"
+  },
+  {
+    "category": "public_health_reorganization_open",
+    "slice": "public",
+    "expected_keywords": ["atestado", "avali"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_5q_llm_compare_health_reorganization_open",
+    "telegram_chat_id": 778504,
+    "note": "fresh llm-comparison prompt about health documentation, absence and academic reorganization",
+    "prompt": "Que logica institucional aparece quando a escola conecta comprovacao de saude, ausencia em atividade avaliativa, comunicacao com a familia e reorganizacao pedagogica?"
+  },
+  {
+    "category": "public_visibility_boundary_onboarding_open",
+    "slice": "public",
+    "expected_keywords": ["portal", "login"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_5q_llm_compare_visibility_boundary_onboarding_open",
+    "telegram_chat_id": 778505,
+    "note": "fresh llm-comparison prompt about public versus authenticated informational boundary",
+    "prompt": "Para uma familia que ainda esta conhecendo a escola, como a base publica deixa clara a fronteira entre o que ja se entende por calendarios e orientacoes abertas e o que so aparece com portal, login e conta vinculada?"
+  }
+]

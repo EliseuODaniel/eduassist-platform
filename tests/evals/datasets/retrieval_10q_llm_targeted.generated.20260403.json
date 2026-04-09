@@ -1,0 +1,102 @@
+[
+  {
+    "category": "public_support_safety_balance",
+    "slice": "public",
+    "expected_keywords": ["necessidades", "segur"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_targeted_support_safety_balance",
+    "telegram_chat_id": 778401,
+    "note": "llm-targeted synthesis on support, accessibility and safety without canonical wording",
+    "prompt": "Que sinais a base publica da escola da de que necessidades especificas do aluno, mediacao de rotina e seguranca fazem parte da mesma postura institucional?"
+  },
+  {
+    "category": "public_extended_day_design",
+    "slice": "public",
+    "expected_keywords": ["rotina", "oficin"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_targeted_extended_day_design",
+    "telegram_chat_id": 778402,
+    "note": "llm-targeted synthesis on extended day design",
+    "prompt": "Sem repetir texto comercial, que desenho de rotina ampliada aparece quando voce junta turno estendido, estudo guiado, refeicao e oficinas no contraturno?"
+  },
+  {
+    "category": "public_external_activity_risk_management",
+    "slice": "public",
+    "expected_keywords": ["famil", "restri"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_targeted_external_activity_risk_management",
+    "telegram_chat_id": 778403,
+    "note": "llm-targeted synthesis on external activity risk management",
+    "prompt": "O que os documentos publicos deixam claro sobre como a escola administra risco em atividades fora da sala, desde anuencia da familia ate impedimentos de saude e retorno?"
+  },
+  {
+    "category": "public_governance_escalation_path",
+    "slice": "public",
+    "expected_keywords": ["coorden", "dire"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_targeted_governance_escalation_path",
+    "telegram_chat_id": 778404,
+    "note": "llm-targeted synthesis on governance escalation path",
+    "prompt": "Quando um impasse deixa de ser rotina normal, que trilha institucional a base publica sugere entre secretaria, coordenacao e lideranca maior?"
+  },
+  {
+    "category": "public_health_assessment_reorganization",
+    "slice": "public",
+    "expected_keywords": ["atestado", "avali"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_targeted_health_assessment_reorganization",
+    "telegram_chat_id": 778405,
+    "note": "llm-targeted synthesis on health, absence and academic reorganization",
+    "prompt": "Como a escola costura comprovacao de saude, falta em dia avaliativo e reorganizacao pedagogica sem tratar isso como evento isolado?"
+  },
+  {
+    "category": "public_visibility_boundary_open",
+    "slice": "public",
+    "expected_keywords": ["portal", "login"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_targeted_visibility_boundary_open",
+    "telegram_chat_id": 778406,
+    "note": "llm-targeted synthesis on public versus authenticated information boundary",
+    "prompt": "Para quem chegou agora, que fronteira aparece entre orientacoes abertas nos canais da escola e aquilo que so ganha detalhe depois da conta vinculada?"
+  },
+  {
+    "category": "public_student_support_ecosystem",
+    "slice": "public",
+    "expected_keywords": ["famil", "apoio"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_targeted_student_support_ecosystem",
+    "telegram_chat_id": 778407,
+    "note": "llm-targeted synthesis on support ecosystem",
+    "prompt": "Que ecossistema de apoio ao estudante aparece quando voce cruza orientacao educacional, monitorias, estudo guiado e conversa com a familia?"
+  },
+  {
+    "category": "public_operational_experience_bundle",
+    "slice": "public",
+    "expected_keywords": ["desloc", "ident"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_targeted_operational_experience_bundle",
+    "telegram_chat_id": 778408,
+    "note": "llm-targeted synthesis on operational school experience",
+    "prompt": "No cotidiano fora da aula, que experiencia operacional do aluno aparece quando a base publica fala de deslocamento, refeicao, identificacao e uso diario de itens institucionais?"
+  },
+  {
+    "category": "public_family_time_architecture",
+    "slice": "public",
+    "expected_keywords": ["reun", "avali"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_targeted_family_time_architecture",
+    "telegram_chat_id": 778409,
+    "note": "llm-targeted synthesis on family-facing time architecture",
+    "prompt": "Se eu montar o ano do ponto de vista da familia, como entrada, encontros com responsaveis, devolutivas e recomposicao academica se encadeiam?"
+  },
+  {
+    "category": "public_authority_channels_image",
+    "slice": "public",
+    "expected_keywords": ["canais", "famil"],
+    "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+    "thread_id": "retrieval_10q_llm_targeted_authority_channels_image",
+    "telegram_chat_id": 778410,
+    "note": "llm-targeted synthesis on authority and communication channels",
+    "prompt": "Que imagem de autoridade institucional e de canais de fala emerge quando voce cruza lideranca, atendimento digital e regras de encaminhamento com familias?"
+  }
+]

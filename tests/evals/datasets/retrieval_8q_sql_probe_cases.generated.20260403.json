@@ -1,0 +1,229 @@
+[
+  {
+    "category": "protected_structured_academic",
+    "slice": "protected",
+    "expected_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "forbidden_keywords": [],
+    "thread_id": "retrieval_protected_family_panorama",
+    "telegram_chat_id": 1649845499,
+    "note": "protected structured academic summary",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "id": "Q201",
+    "prompt": "Sem sair do escopo do projeto, quero um panorama academico dos meus filhos com quem esta mais perto da media minima."
+  },
+  {
+    "category": "protected_structured_followup",
+    "slice": "protected",
+    "expected_keywords": [
+      "Ana Oliveira"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira"
+    ],
+    "thread_id": "retrieval_protected_family_panorama",
+    "telegram_chat_id": 1649845499,
+    "note": "follow-up context retention",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "id": "Q202",
+    "prompt": "Pensando no caso pratico, mantendo o contexto dos meus filhos, filtre para a Ana e mostre as materias em que ela esta mais vulneravel."
+  },
+  {
+    "category": "protected_admin_finance_combo",
+    "slice": "protected",
+    "expected_keywords": [
+      "Financeiro",
+      "document"
+    ],
+    "forbidden_keywords": [],
+    "thread_id": "retrieval_protected_admin_finance_combo",
+    "telegram_chat_id": 1649845499,
+    "note": "combined admin and finance overview",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "id": "Q203",
+    "prompt": "Minha documentacao ou cadastro esta bloqueando atendimento financeiro? Quero um panorama combinado de documentacao e financeiro."
+  },
+  {
+    "category": "protected_structured_upcoming_assessments",
+    "slice": "protected",
+    "expected_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira",
+      "avali"
+    ],
+    "forbidden_keywords": [],
+    "thread_id": "retrieval_protected_upcoming_assessments",
+    "telegram_chat_id": 1649845499,
+    "note": "protected upcoming assessments family summary",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "id": "Q204",
+    "prompt": "Quero ver as proximas avaliacoes dos meus filhos em um resumo unico."
+  },
+  {
+    "category": "protected_structured_upcoming_assessments_followup",
+    "slice": "protected",
+    "expected_keywords": [
+      "Ana Oliveira"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira"
+    ],
+    "thread_id": "retrieval_protected_upcoming_assessments",
+    "telegram_chat_id": 1649845499,
+    "note": "protected upcoming assessments follow-up",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "id": "Q205",
+    "prompt": "Mantendo o contexto, quero apenas a Ana com as proximas provas e entregas."
+  },
+  {
+    "category": "protected_structured_grade_components",
+    "slice": "protected",
+    "expected_keywords": [
+      "Ana Oliveira",
+      "media"
+    ],
+    "forbidden_keywords": [],
+    "thread_id": "retrieval_protected_grade_components",
+    "telegram_chat_id": 1649845499,
+    "note": "protected sql-backed grade/component detail",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "id": "Q206",
+    "prompt": "Traga as disciplinas ou componentes em que a Ana aparece com as menores medias agora."
+  },
+  {
+    "category": "protected_structured_finance_detail",
+    "slice": "protected",
+    "expected_keywords": [
+      "venc",
+      "Financeiro"
+    ],
+    "forbidden_keywords": [],
+    "thread_id": "retrieval_protected_finance_detail",
+    "telegram_chat_id": 1649845499,
+    "note": "protected sql-backed finance detail",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "id": "Q207",
+    "prompt": "No financeiro da familia, separe para mim o que esta vencido, o que esta parcialmente quitado e o que vem a seguir."
+  },
+  {
+    "category": "protected_structured_attendance_detail",
+    "slice": "protected",
+    "expected_keywords": [
+      "Lucas Oliveira",
+      "frequencia"
+    ],
+    "forbidden_keywords": [],
+    "thread_id": "retrieval_protected_attendance_detail",
+    "telegram_chat_id": 1649845499,
+    "note": "protected sql-backed attendance detail",
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": [
+        "stu-lucas",
+        "stu-ana"
+      ],
+      "scopes": [
+        "students:read",
+        "administrative:read",
+        "financial:read",
+        "academic:read"
+      ]
+    },
+    "id": "Q208",
+    "prompt": "Recorte so o Lucas e diga onde a frequencia dele esta mais sensivel por faltas recentes."
+  }
+]

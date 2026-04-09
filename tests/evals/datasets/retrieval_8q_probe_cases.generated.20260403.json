@@ -1,0 +1,191 @@
+[
+  {
+    "category": "public_policy_bridge",
+    "slice": "public",
+    "expected_keywords": [
+      "atestado",
+      "segunda chamada"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_policy_bridge",
+    "telegram_chat_id": 777201,
+    "note": "public section-aware policy bridge",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q201",
+    "prompt": "Pensando no caso pratico, quando a ausencia por saude coincide com prova, como a escola conecta comprovacao, segunda chamada e recuperacao na politica publica?"
+  },
+  {
+    "category": "public_timeline",
+    "slice": "public",
+    "expected_keywords": [
+      "matricula",
+      "aulas",
+      "responsaveis"
+    ],
+    "forbidden_keywords": [
+      "nao encontrei"
+    ],
+    "thread_id": "retrieval_public_timeline_sequence",
+    "telegram_chat_id": 777202,
+    "note": "public timeline sequencing",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q202",
+    "prompt": "Pensando no caso pratico, se eu olhar so a linha do tempo publica de 2026, como se distribuem matricula, inicio das aulas e reuniao inicial com as familias?"
+  },
+  {
+    "category": "public_documents_credentials",
+    "slice": "public",
+    "expected_keywords": [
+      "portal",
+      "credenciais",
+      "secretaria"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_docs_credentials",
+    "telegram_chat_id": 777203,
+    "note": "canonical docs+credentials lane candidate",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q203",
+    "prompt": "Sem sair do escopo do projeto, se eu ficar sem acesso e ainda precisar mandar documentos, qual e a ordem mais segura entre portal, credenciais e secretaria?"
+  },
+  {
+    "category": "public_family_new_bundle",
+    "slice": "public",
+    "expected_keywords": [
+      "matricula",
+      "calendario",
+      "avaliac"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_family_new_bundle",
+    "telegram_chat_id": 777204,
+    "note": "canonical family-new bundle",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q204",
+    "prompt": "Sem sair do escopo do projeto, minha familia vai entrar este ano pela primeira vez: como matricula, calendario e agenda de avaliacoes se conectam logo no inicio das aulas?"
+  },
+  {
+    "category": "public_permanence_support",
+    "slice": "public",
+    "expected_keywords": [
+      "familia",
+      "apoio",
+      "vida escolar"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_permanence_support",
+    "telegram_chat_id": 777205,
+    "note": "canonical permanence/family support bundle",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q205",
+    "prompt": "Pensando no caso pratico, que mecanismos publicos ajudam a familia a acompanhar permanencia, apoio e vida escolar sem depender de informacao interna?"
+  },
+  {
+    "category": "public_process_compare",
+    "slice": "public",
+    "expected_keywords": [
+      "rematricula",
+      "transferencia",
+      "cancelamento"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_process_compare",
+    "telegram_chat_id": 777206,
+    "note": "canonical admissions/process compare",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q206",
+    "prompt": "Sem sair do escopo do projeto, na pratica, o que muda entre rematricula, transferencia de entrada e cancelamento quando olho prazos e documentos?"
+  },
+  {
+    "category": "public_first_month_risks",
+    "slice": "public",
+    "expected_keywords": [
+      "credenciais",
+      "document",
+      "rotina"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_first_month_risks",
+    "telegram_chat_id": 777207,
+    "note": "canonical first-month risks bundle",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q207",
+    "prompt": "Pensando no caso pratico, quais erros do inicio do ano mais desorganizam credenciais, documentos e a rotina da familia logo no primeiro mes?"
+  },
+  {
+    "category": "public_deep_multi_doc",
+    "slice": "public",
+    "expected_keywords": [
+      "frequencia",
+      "recupera"
+    ],
+    "forbidden_keywords": [
+      "Lucas Oliveira",
+      "Ana Oliveira"
+    ],
+    "thread_id": "retrieval_public_discipline_recovery",
+    "telegram_chat_id": 777208,
+    "note": "deep multi-doc synthesis outside canonical lane",
+    "user": {
+      "role": "anonymous",
+      "authenticated": false,
+      "linked_student_ids": [],
+      "scopes": []
+    },
+    "id": "Q208",
+    "prompt": "Sem sair do escopo do projeto, junte regulamento, frequencia e recuperacao para explicar o que a escola faz quando o aluno entra em zona de risco academico."
+  }
+]
