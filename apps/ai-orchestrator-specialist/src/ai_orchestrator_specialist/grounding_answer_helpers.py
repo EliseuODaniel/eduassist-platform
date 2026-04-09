@@ -145,10 +145,18 @@ def compose_internal_doc_no_match_answer(
         and any(term in normalized for term in ("hospedagem", "pernoite"))
     ):
         return (
-            f"Consultei os documentos internos disponiveis do {school_name}, mas nao encontrei uma orientacao restrita "
-            "especifica sobre excursao ou viagem internacional com hospedagem para o ensino medio."
+            f"Nao encontrei uma orientacao restrita especifica sobre excursao ou viagem internacional com hospedagem para o ensino medio nos documentos internos disponiveis do {school_name}. "
+            "Na pratica, o proximo passo e consultar o setor responsavel por esse protocolo interno ou pedir apenas o correspondente publico."
+        )
+    if "professor" in normalized and any(term in normalized for term in ("avaliac", "pedagog", "devolutiva", "aprendizagem")):
+        return (
+            f'Consultei o material interno do professor do {school_name}, mas nao encontrei uma orientacao restrita '
+            f'especifica para: "{quoted_message}". '
+            'Na pratica, o proximo passo e confirmar se voce quer o recorte por avaliacao, comunicacao pedagogica ou devolutiva de aprendizagem, '
+            'para eu tentar uma busca interna mais focal.'
         )
     return (
         f'Consultei os documentos internos disponiveis do {school_name}, mas nao encontrei uma orientacao restrita '
-        f'especifica para: "{quoted_message}".'
+        f'especifica para: "{quoted_message}". '
+        'Na pratica, o proximo passo e consultar o setor responsavel ou pedir apenas o material publico correspondente.'
     )

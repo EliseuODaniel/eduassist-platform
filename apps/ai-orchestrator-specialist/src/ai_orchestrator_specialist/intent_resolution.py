@@ -19,6 +19,7 @@ class IntentResolutionDeps:
     topic_from_reason: Callable[[str | None], str | None]
     effective_multi_intent_domains: Callable[[Any, str], list[str]]
     student_hint_from_message: Callable[..., str | None]
+    unknown_explicit_student_reference: Callable[..., str | None]
     is_student_name_only_followup: Callable[..., str | None]
     find_student_by_hint: Callable[..., dict[str, Any] | None]
     looks_like_other_student_followup: Callable[[str], bool]
@@ -142,7 +143,16 @@ def build_operational_memory(
     active_domains = list(
         dict.fromkeys(multi_domains or previous.multi_intent_domains or ([active_domain] if active_domain else []))
     )
-    subject_hint = deps.subject_hint_from_text(ctx.request.message) or previous.active_subject
+    explicit_subject_hint = deps.subject_hint_from_text(ctx.request.message)
+    carry_subject_from_previous = (
+        previous.active_domain == "academic"
+        and previous.active_subject is not None
+        and (
+            deps.looks_like_subject_followup(ctx.request.message)
+            or previous.pending_kind in {"academic_subject", "academic_student_selection"}
+        )
+    )
+    subject_hint = explicit_subject_hint or (previous.active_subject if carry_subject_from_previous else None)
     capability = "finance" if active_domain == "finance" else "academic"
     student_hint = deps.student_hint_from_message(ctx.actor, ctx.request.message) or deps.is_student_name_only_followup(
         ctx.actor,
@@ -177,7 +187,7 @@ def build_operational_memory(
             "alternate_student_name": str(alternate_student.get("full_name") or "").strip() or previous.alternate_student_name
             if isinstance(alternate_student, dict)
             else previous.alternate_student_name,
-            "active_subject": subject_hint or previous.active_subject,
+            "active_subject": subject_hint,
             "active_topic": active_topic,
             "pending_kind": deps.pending_kind_from_answer(answer),
             "pending_prompt": answer.message_text if answer.mode == "clarify" else None,
@@ -239,6 +249,18 @@ def _resolve_student_reference_for_spec(
     deps: IntentResolutionDeps,
 ) -> tuple[dict[str, Any] | None, bool]:
     capability = "finance" if spec.domain == "finance" else "academic"
+    alternate_name = str(getattr(ctx.resolved_turn, "alternate_student_name", "") or "").strip()
+    if not alternate_name:
+        alternate_name = str(getattr(ctx.operational_memory, "alternate_student_name", "") or "").strip()
+    if alternate_name:
+        normalized_message = deps.normalize_text(ctx.request.message)
+        alternate_tokens = [deps.normalize_text(token) for token in alternate_name.split() if token.strip()]
+        if any(token and token in normalized_message for token in alternate_tokens):
+            student = deps.find_student_by_hint(ctx.actor, capability=capability, hint=alternate_name)
+            if student is not None:
+                return student, False
+    if deps.unknown_explicit_student_reference(ctx.actor, ctx.request.message):
+        return None, False
     explicit_hint = deps.student_hint_from_message(ctx.actor, ctx.request.message) or deps.is_student_name_only_followup(
         ctx.actor,
         ctx.request.message,

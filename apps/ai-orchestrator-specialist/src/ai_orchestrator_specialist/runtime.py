@@ -118,6 +118,7 @@ from .protected_answer_helpers import (
     build_academic_finance_combo_payload as _build_academic_finance_combo_payload_module,
     build_academic_student_selection_clarify as _build_academic_student_selection_clarify_module,
     build_third_party_student_data_denial as _build_third_party_student_data_denial_module,
+    compose_academic_aggregate_answer as _compose_academic_aggregate_answer_module,
     compose_finance_aggregate_answer as _compose_finance_aggregate_answer_module,
     compose_finance_installments_answer as _compose_finance_installments_answer_module,
     compose_academic_risk_answer as _compose_academic_risk_answer_module,
@@ -128,6 +129,7 @@ from .protected_answer_helpers import (
     compose_named_subject_grade_answer as _compose_named_subject_grade_answer_module,
     looks_like_academic_risk_followup as _looks_like_academic_risk_followup_module,
     looks_like_family_academic_aggregate_query as _looks_like_family_academic_aggregate_query_module,
+    looks_like_family_attendance_aggregate_query as _looks_like_family_attendance_aggregate_query_module,
     looks_like_family_finance_aggregate_query as _looks_like_family_finance_aggregate_query_module,
     looks_like_third_party_student_data_request as _looks_like_third_party_student_data_request_module,
     needs_specific_academic_student_clarification as _needs_specific_academic_student_clarification_module,
@@ -246,6 +248,7 @@ from .student_context_helpers import (
     student_hint_from_message as _student_hint_from_message_module,
     subject_code_from_hint as _subject_code_from_hint_module,
     subject_hint_from_text as _subject_hint_from_text_module,
+    unknown_explicit_student_reference as _unknown_explicit_student_reference_module,
 )
 from .teacher_fast_paths import maybe_teacher_scope_fast_path_answer
 from .tool_first_answers import (
@@ -613,6 +616,7 @@ def _intent_resolution_deps() -> IntentResolutionDeps:
         topic_from_reason=_topic_from_reason,
         effective_multi_intent_domains=_effective_multi_intent_domains,
         student_hint_from_message=_student_hint_from_message,
+        unknown_explicit_student_reference=_unknown_explicit_student_reference,
         is_student_name_only_followup=_is_student_name_only_followup,
         find_student_by_hint=_find_student_by_hint,
         looks_like_other_student_followup=_looks_like_other_student_followup,
@@ -694,11 +698,116 @@ async def _fetch_financial_summary_payload(
     )
 
 
+async def _fetch_upcoming_assessments_payload(
+    ctx: SupervisorRunContext,
+    *,
+    student_name_hint: str | None = None,
+) -> dict[str, Any]:
+    academic_payload = await _fetch_academic_summary_payload(
+        ctx,
+        student_name_hint=student_name_hint,
+    )
+    student = academic_payload.get("student") if isinstance(academic_payload, dict) else None
+    if not isinstance(student, dict):
+        return academic_payload if isinstance(academic_payload, dict) else {"error": "student_not_found"}
+    payload = await _http_get(
+        ctx.http_client,
+        base_url=ctx.settings.api_core_url,
+        path=f"/v1/students/{student['student_id']}/upcoming-assessments",
+        token=ctx.settings.internal_api_token,
+        params={"telegram_chat_id": ctx.request.telegram_chat_id},
+    )
+    return {
+        "student": student,
+        "summary": payload.get("summary") if isinstance(payload, dict) else None,
+        "decision": payload.get("decision") if isinstance(payload, dict) else None,
+    }
+
+
+async def _fetch_attendance_timeline_payload(
+    ctx: SupervisorRunContext,
+    *,
+    student_name_hint: str | None = None,
+) -> dict[str, Any]:
+    academic_payload = await _fetch_academic_summary_payload(
+        ctx,
+        student_name_hint=student_name_hint,
+    )
+    student = academic_payload.get("student") if isinstance(academic_payload, dict) else None
+    if not isinstance(student, dict):
+        return academic_payload if isinstance(academic_payload, dict) else {"error": "student_not_found"}
+    payload = await _http_get(
+        ctx.http_client,
+        base_url=ctx.settings.api_core_url,
+        path=f"/v1/students/{student['student_id']}/attendance-timeline",
+        token=ctx.settings.internal_api_token,
+        params={"telegram_chat_id": ctx.request.telegram_chat_id},
+    )
+    return {
+        "student": student,
+        "summary": payload.get("summary") if isinstance(payload, dict) else None,
+        "decision": payload.get("decision") if isinstance(payload, dict) else None,
+    }
+
+
+def _compose_upcoming_assessments_lines(summary: dict[str, Any]) -> list[str]:
+    assessments = summary.get("assessments")
+    if not isinstance(assessments, list) or not assessments:
+        return ["- Nao encontrei proximas avaliacoes registradas neste recorte."]
+    lines: list[str] = []
+    for assessment in assessments[:6]:
+        if not isinstance(assessment, dict):
+            continue
+        lines.append(
+            "- {subject_name} - {item_title}: {due_date}".format(
+                subject_name=assessment.get("subject_name", "Disciplina"),
+                item_title=assessment.get("item_title", "Avaliacao"),
+                due_date=assessment.get("due_date", "data nao informada"),
+            )
+        )
+    return lines or ["- Nao encontrei proximas avaliacoes registradas neste recorte."]
+
+
+def _compose_attendance_timeline_lines(summary: dict[str, Any]) -> list[str]:
+    records = summary.get("records")
+    if not isinstance(records, list) or not records:
+        return ["- Nao encontrei faltas ou registros recentes com data neste recorte."]
+    lines: list[str] = []
+    for record in records[:8]:
+        if not isinstance(record, dict):
+            continue
+        status = str(record.get("status", "nao informado")).lower()
+        status_label = {
+            "present": "presenca",
+            "late": "atraso",
+            "absent": "falta",
+        }.get(status, status)
+        suffix = ""
+        minutes_absent = int(record.get("minutes_absent", 0) or 0)
+        if minutes_absent > 0:
+            suffix = f" ({minutes_absent} min)"
+        lines.append(
+            "- {record_date} - {subject_name}: {status_label}{suffix}".format(
+                record_date=record.get("record_date", "data nao informada"),
+                subject_name=record.get("subject_name", "Disciplina"),
+                status_label=status_label,
+                suffix=suffix,
+            )
+        )
+    return lines or ["- Nao encontrei faltas ou registros recentes com data neste recorte."]
+
+
 def _pending_kind_from_answer(answer: SupervisorAnswerPayload) -> str | None:
     normalized_reason = _normalize_text(answer.reason)
     normalized_text = _normalize_text(answer.message_text)
     if "academic_subject_clarify" in normalized_reason:
         return "academic_subject"
+    if "upcoming_assessments_student_clarify" in normalized_reason:
+        return "upcoming_assessments_student_selection"
+    if "attendance_student_clarify" in normalized_reason:
+        return "attendance_student_selection"
+    if "academic_student_clarify" in normalized_reason:
+        return "academic_student_selection"
     if "clarify" in normalized_reason and any(term in normalized_text for term in {"qual aluno", "qual deles", "confirme o aluno"}):
         return "student_selection"
     if "workflow_date_clarify" in normalized_reason:
@@ -797,6 +906,10 @@ def _student_hint_from_message(actor: dict[str, Any] | None, message: str) -> st
     return _student_hint_from_message_module(actor, message, deps=_student_context_deps())
 
 
+def _unknown_explicit_student_reference(actor: dict[str, Any] | None, message: str) -> str | None:
+    return _unknown_explicit_student_reference_module(actor, message, deps=_student_context_deps())
+
+
 def _resolve_student(
     actor: dict[str, Any] | None,
     *,
@@ -827,9 +940,11 @@ def _looks_like_subject_followup(message: str) -> bool:
     subject_hint = _subject_hint_from_text(message)
     if not subject_hint:
         return False
+    if any(term in normalized for term in {"por que", "porque", "essa resposta", "resposta aqui", "nao e", "não é"}):
+        return False
     if normalized.startswith("e de ") or normalized.startswith("e em "):
         return True
-    if len(normalized.split()) <= 4:
+    if len(normalized.split()) <= 3 and not any(term in normalized for term in {"qual", "quais", "quando", "data", "datas", "provas", "avaliac"}):
         return True
     return bool(re.search(r"\b(de historia|de matemática|de matematica|de fisica|de física|de portugues|de português)\b", normalized))
 
@@ -932,6 +1047,10 @@ def _topic_from_reason(reason: str) -> str | None:
     normalized = _normalize_text(reason)
     if "academic_grade_requirement" in normalized:
         return "grade_requirement"
+    if "upcoming_assessments" in normalized:
+        return "upcoming_assessments"
+    if "attendance_timeline" in normalized:
+        return "attendance"
     if "attendance_policy" in normalized:
         return "attendance_policy"
     if "passing_policy" in normalized:
@@ -1030,7 +1149,9 @@ def _looks_like_other_student_followup(message: str) -> bool:
 
 def _is_student_name_only_followup(actor: dict[str, Any] | None, message: str) -> str | None:
     normalized = _normalize_text(message)
-    if not normalized or len(normalized.split()) > 3:
+    if not normalized or len(normalized.split()) > 4:
+        return None
+    if not re.fullmatch(r"(?:do|da|de)?\s*[a-zà-ÿ]+(?:\s+[a-zà-ÿ]+)?", normalized):
         return None
     return _student_hint_from_message(actor, message)
 
@@ -1055,6 +1176,7 @@ def _protected_answer_deps() -> ProtectedAnswerDeps:
         access_tier_for_domain=_access_tier_for_domain,
         default_suggested_replies=_default_suggested_replies,
         student_hint_from_message=_student_hint_from_message,
+        unknown_explicit_student_reference=_unknown_explicit_student_reference,
         is_student_name_only_followup=_is_student_name_only_followup,
         looks_like_student_pronoun_followup=_looks_like_student_pronoun_followup,
         looks_like_subject_followup=_looks_like_subject_followup,
@@ -1158,12 +1280,20 @@ def _compose_finance_aggregate_answer(summaries: list[dict[str, Any]]) -> str:
     return _compose_finance_aggregate_answer_module(summaries, deps=_protected_answer_deps())
 
 
+def _compose_academic_aggregate_answer(summaries: list[dict[str, Any]]) -> str:
+    return _compose_academic_aggregate_answer_module(summaries, deps=_protected_answer_deps())
+
+
 def _looks_like_family_finance_aggregate_query(message: str) -> bool:
     return _looks_like_family_finance_aggregate_query_module(message, deps=_protected_answer_deps())
 
 
 def _looks_like_family_academic_aggregate_query(message: str) -> bool:
     return _looks_like_family_academic_aggregate_query_module(message, deps=_protected_answer_deps())
+
+
+def _looks_like_family_attendance_aggregate_query(message: str) -> bool:
+    return _looks_like_family_attendance_aggregate_query_module(message, deps=_protected_answer_deps())
 
 
 def _compose_finance_installments_answer(summary: dict[str, Any]) -> str:
@@ -1176,8 +1306,10 @@ def _resolved_intent_deps():
         looks_like_subject_followup=_looks_like_subject_followup,
         looks_like_academic_risk_followup=_looks_like_academic_risk_followup,
         looks_like_family_finance_aggregate_query=_looks_like_family_finance_aggregate_query,
+        looks_like_family_attendance_aggregate_query=_looks_like_family_attendance_aggregate_query,
         fetch_academic_summary_payload=_fetch_academic_summary_payload,
         fetch_financial_summary_payload=_fetch_financial_summary_payload,
+        fetch_upcoming_assessments_payload=_fetch_upcoming_assessments_payload,
         resolved_academic_target_name=_resolved_academic_target_name,
         needs_specific_academic_student_clarification=_needs_specific_academic_student_clarification,
         build_academic_student_selection_clarify=_build_academic_student_selection_clarify,
@@ -1186,6 +1318,7 @@ def _resolved_intent_deps():
         compose_named_grade_answer=_compose_named_grade_answer,
         compose_named_attendance_answer=_compose_named_attendance_answer,
         compose_academic_snapshot_lines=_compose_academic_snapshot_lines,
+        compose_academic_aggregate_answer=_compose_academic_aggregate_answer,
         compose_finance_aggregate_answer=_compose_finance_aggregate_answer,
         compose_finance_installments_answer=_compose_finance_installments_answer,
         linked_students=_linked_students,
@@ -1194,6 +1327,8 @@ def _resolved_intent_deps():
         recent_subject_from_context=_recent_subject_from_context,
         subject_code_from_hint=_subject_code_from_hint,
         student_hint_from_message=_student_hint_from_message,
+        is_student_name_only_followup=_is_student_name_only_followup,
+        compose_upcoming_assessments_lines=_compose_upcoming_assessments_lines,
     )
 
 
@@ -1316,6 +1451,7 @@ def _fast_path_answer(ctx: SupervisorRunContext) -> SupervisorAnswerPayload | No
             compose_assistant_identity_answer=_compose_assistant_identity_answer,
             school_name=_school_name,
             safe_excerpt=_safe_excerpt,
+            format_brl=_format_brl,
             hypothetical_children_quantity=_hypothetical_children_quantity,
             pricing_projection=_pricing_projection,
             compose_public_bolsas_and_processes=compose_public_bolsas_and_processes,
@@ -1351,6 +1487,7 @@ def _tool_first_structured_deps():
             workflow_status_payload=_workflow_status_payload,
         ),
         protected_kwargs=dict(
+            normalize_text=_normalize_text,
             contains_any=_contains_any,
             looks_like_admin_finance_combo_query=_looks_like_admin_finance_combo_query,
             looks_like_family_finance_aggregate_query=_looks_like_family_finance_aggregate_query,
@@ -1362,16 +1499,59 @@ def _tool_first_structured_deps():
             compose_finance_aggregate_answer=_compose_finance_aggregate_answer,
             looks_like_academic_risk_followup=_looks_like_academic_risk_followup,
             looks_like_family_academic_aggregate_query=_looks_like_family_academic_aggregate_query,
+            looks_like_family_attendance_aggregate_query=_looks_like_family_attendance_aggregate_query,
+            looks_like_upcoming_assessments_query=lambda message: any(
+                term in _normalize_text(message)
+                for term in {
+                    "proxima prova",
+                    "próxima prova",
+                    "proxima avaliacao",
+                    "próxima avaliação",
+                    "proximas avaliacoes",
+                    "próximas avaliações",
+                    "proximas provas",
+                    "próximas provas",
+                    "provas e entregas",
+                    "entregas",
+                    "datas das provas",
+                    "data das provas",
+                    "datas das avaliacoes",
+                    "datas das avaliações",
+                    "datas das entregas",
+                    "quando sao as proximas provas",
+                    "quando são as próximas provas",
+                    "quais as proximas datas",
+                    "quais as próximas datas",
+                }
+            ),
+            looks_like_attendance_timeline_query=lambda message: any(
+                term in _normalize_text(message)
+                for term in {
+                    "faltas recentes",
+                    "ausencias recentes",
+                    "ausências recentes",
+                    "frequencia dele",
+                    "frequência dele",
+                    "frequencia dela",
+                    "frequência dela",
+                }
+            ),
             subject_hint_from_text=_subject_hint_from_text,
             looks_like_subject_followup=_looks_like_subject_followup,
             resolved_academic_target_name=_resolved_academic_target_name,
             needs_specific_academic_student_clarification=_needs_specific_academic_student_clarification,
             build_academic_student_selection_clarify=_build_academic_student_selection_clarify,
             fetch_academic_summary_payload=_fetch_academic_summary_payload,
+            fetch_upcoming_assessments_payload=_fetch_upcoming_assessments_payload,
+            fetch_attendance_timeline_payload=_fetch_attendance_timeline_payload,
             compose_academic_risk_answer=_compose_academic_risk_answer,
             compose_named_subject_grade_answer=_compose_named_subject_grade_answer,
             compose_named_grade_answer=_compose_named_grade_answer,
+            compose_named_attendance_answer=_compose_named_attendance_answer,
             compose_academic_snapshot_lines=_compose_academic_snapshot_lines,
+            compose_academic_aggregate_answer=_compose_academic_aggregate_answer,
+            compose_upcoming_assessments_lines=_compose_upcoming_assessments_lines,
+            compose_attendance_timeline_lines=_compose_attendance_timeline_lines,
             safe_excerpt=_safe_excerpt,
             http_get=_http_get,
             compose_actor_admin_status_answer=_compose_actor_admin_status_answer,
@@ -1441,18 +1621,22 @@ def _specialist_tools():
 
 def _operational_memory_deps() -> OperationalMemoryDeps:
     return OperationalMemoryDeps(
+        normalize_text=_normalize_text,
         looks_like_public_doc_bundle_request=_looks_like_public_doc_bundle_request,
         is_student_name_only_followup=_is_student_name_only_followup,
         effective_multi_intent_domains=_effective_multi_intent_domains,
         subject_hint_from_text=_subject_hint_from_text,
         looks_like_subject_followup=_looks_like_subject_followup,
+        looks_like_student_pronoun_followup=_looks_like_student_pronoun_followup,
         student_hint_from_message=_student_hint_from_message,
         fetch_academic_summary_payload=_fetch_academic_summary_payload,
         fetch_financial_summary_payload=_fetch_financial_summary_payload,
+        fetch_upcoming_assessments_payload=_fetch_upcoming_assessments_payload,
         build_academic_finance_combo_payload=_build_academic_finance_combo_payload,
         build_grade_requirement_answer=_build_grade_requirement_answer,
         compose_academic_risk_answer=_compose_academic_risk_answer,
         compose_named_subject_grade_answer=_compose_named_subject_grade_answer,
+        compose_upcoming_assessments_lines=_compose_upcoming_assessments_lines,
         safe_excerpt=_safe_excerpt,
         looks_like_academic_risk_followup=_looks_like_academic_risk_followup,
         looks_like_other_student_followup=_looks_like_other_student_followup,

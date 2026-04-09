@@ -147,7 +147,21 @@ async def maybe_tool_first_workflow_answer(
                 graph_leaf="support_status",
             )
 
-    visit_followup_hint = any(
+    visit_reschedule_hint = any(
+        term in normalized
+        for term in {
+            "remarcar",
+            "remarco",
+            "reagendar",
+            "trocar horario",
+            "trocar o horario",
+            "mudar horario",
+            "mudar o horario",
+            "se eu precisar remarcar",
+            "por onde remarco",
+        }
+    )
+    visit_followup_hint = visit_reschedule_hint or any(
         term in normalized for term in {"pode ser", "quinta", "terça", "terca", "quarta", "sexta", "sabado", "sábado", "manha", "tarde", "noite"}
     )
     if visit_followup_hint:
@@ -251,7 +265,7 @@ async def maybe_tool_first_workflow_answer(
                 graph_leaf="visit_status",
             )
 
-    if "visita" in normalized and any(term in normalized for term in {"agendar", "marcar"}):
+    if any(term in normalized for term in {"visita", "visitar", "tour"}) and any(term in normalized for term in {"agendar", "marcar", "visitar", "conhecer"}):
         payload = await deps.create_visit_booking_payload(ctx)
         item = payload.get("item") if isinstance(payload, dict) else None
         if isinstance(item, dict):
@@ -274,7 +288,7 @@ async def maybe_tool_first_workflow_answer(
                 graph_leaf="visit_booking",
             )
 
-    if "remarcar" in normalized:
+    if visit_reschedule_hint:
         payload = await deps.workflow_status_payload(ctx, workflow_kind="visit_booking")
         item = payload.get("item") if isinstance(payload, dict) else None
         if isinstance(item, dict):

@@ -8,8 +8,11 @@ dependencies = [
   "eduassist-observability",
   "fastapi>=0.115.0",
   "httpx>=0.28.0",
+  "numpy>=2.3.0",
   "openai-agents[sqlalchemy,litellm]>=0.13.2,<0.14.0",
+  "psycopg[binary]>=3.2.0",
   "pydantic-settings>=2.8.0",
+  "qdrant-client[fastembed]>=1.14.2",
   "uvicorn[standard]>=0.34.0",
 ]
 

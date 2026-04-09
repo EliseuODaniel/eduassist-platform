@@ -12,7 +12,20 @@ def _normalize_text(value: str | None) -> str:
 
 def _looks_like_human_handoff_request(message: str) -> bool:
     normalized = _normalize_text(message)
-    if "bloqueando atendimento" in normalized or "bloqueia atendimento" in normalized:
+    if any(
+        marker in normalized
+        for marker in (
+            "bloqueando atendimento",
+            "bloqueia atendimento",
+            "bloqueio de atendimento",
+            "ha bloqueio de atendimento",
+            "há bloqueio de atendimento",
+            "se ha bloqueio de atendimento",
+            "se há bloqueio de atendimento",
+        )
+    ):
+        return False
+    if any(term in normalized for term in ("playbook interno", "manual interno", "protocolo interno", "documento interno", "material interno")):
         return False
     queue_signals = (
         "financeir",

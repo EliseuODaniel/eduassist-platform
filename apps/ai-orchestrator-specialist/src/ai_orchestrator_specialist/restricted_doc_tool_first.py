@@ -34,6 +34,14 @@ async def maybe_restricted_document_tool_first_answer(
     authorized_for_restricted = _can_read_restricted_documents(ctx.request.user)
     domain_hint = _internal_doc_domain_hint(ctx.request.message)
     if not authorized_for_restricted:
+        normalized_message = ctx.request.message.casefold()
+        topic_hint = 'sobre esse tema'
+        if 'playbook' in normalized_message or 'negoci' in normalized_message:
+            topic_hint = 'sobre playbook interno ou negociacao com familias'
+        elif 'viagem internacional' in normalized_message:
+            topic_hint = 'sobre viagem internacional de alunos'
+        elif 'manual interno do professor' in normalized_message:
+            topic_hint = 'sobre manual interno do professor'
         public_bridge = ""
         if _looks_like_health_second_call_query(ctx.request.message):
             public_answer = compose_public_health_second_call()
@@ -41,8 +49,8 @@ async def maybe_restricted_document_tool_first_answer(
                 public_bridge = f"\n\nPosso, no entanto, te orientar pelo material publico:\n{public_answer}"
         return SupervisorAnswerPayload(
             message_text=(
-                "Nao posso compartilhar procedimentos, protocolos, manuais ou playbooks internos da escola. "
-                "Se voce precisa de orientacao oficial, eu posso explicar a politica publica correspondente ou abrir um handoff."
+                f"Nao posso compartilhar procedimentos, protocolos, manuais ou playbooks internos da escola {topic_hint}. "
+                "Seu perfil nao tem acesso a esse material restrito. Se voce quiser, eu posso explicar apenas o que e publico sobre esse mesmo tema ou abrir um handoff."
             )
             + public_bridge,
             mode="deny",
