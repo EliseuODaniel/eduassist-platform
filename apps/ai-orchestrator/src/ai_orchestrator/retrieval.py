@@ -1469,6 +1469,11 @@ def compose_restricted_document_no_match_answer(query: str) -> str:
             'Consultei os documentos internos disponiveis, mas nao encontrei uma orientacao restrita '
             'especifica sobre excursao ou viagem internacional com hospedagem para o ensino medio.'
         )
+    if ('negoci' in normalized or 'financeir' in normalized) and ('familia' in normalized or 'família' in normalized):
+        return (
+            'Consultei os documentos internos disponiveis, mas nao encontrei um criterio interno especifico '
+            'de negociacao financeira com a familia para esse recorte.'
+        )
     return (
         'Consultei os documentos internos disponiveis, mas nao encontrei uma orientacao restrita '
         f'especifica para: "{normalized_query}".'

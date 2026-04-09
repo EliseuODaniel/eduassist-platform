@@ -356,6 +356,48 @@ def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message:
                 MessageEvidenceSupport(kind="profile", label="Diretorio publico", detail="leadership_team / service_catalog"),
             ],
         ),
+        "public_bundle.inclusion_accessibility": (
+            "specialist_supervisor_preflight:inclusion_accessibility",
+            "inclusion_accessibility",
+            [
+                MessageEvidenceSupport(kind="document", label="Inclusao, Acessibilidade e Seguranca", detail="data/corpus/public/inclusao-acessibilidade-e-seguranca.md"),
+            ],
+        ),
+        "public_bundle.integral_study_support": (
+            "specialist_supervisor_preflight:integral_study_support",
+            "integral_study_support",
+            [
+                MessageEvidenceSupport(kind="document", label="Periodo Integral e Estudo Orientado", detail="data/corpus/public/programa-periodo-integral-e-estudo-orientado.md"),
+            ],
+        ),
+        "public_bundle.health_emergency_bundle": (
+            "specialist_supervisor_preflight:health_emergency_bundle",
+            "health_emergency_bundle",
+            [
+                MessageEvidenceSupport(kind="document", label="Protocolo de Saude, Medicacao e Emergencias", detail="data/corpus/public/protocolo-saude-medicacao-e-emergencias.md"),
+            ],
+        ),
+        "public_bundle.outings_authorizations": (
+            "specialist_supervisor_preflight:outings_authorizations",
+            "outings_authorizations",
+            [
+                MessageEvidenceSupport(kind="document", label="Saidas Pedagogicas, Eventos e Autorizacoes", detail="data/corpus/public/saidas-pedagogicas-eventos-e-autorizacoes.md"),
+            ],
+        ),
+        "public_bundle.transport_uniform_bundle": (
+            "specialist_supervisor_preflight:transport_uniform_bundle",
+            "transport_uniform_bundle",
+            [
+                MessageEvidenceSupport(kind="document", label="Transporte, Alimentacao e Uniforme", detail="data/corpus/public/transporte-alimentacao-uniforme.md"),
+            ],
+        ),
+        "public_bundle.governance_protocol": (
+            "specialist_supervisor_preflight:governance_protocol",
+            "governance_protocol",
+            [
+                MessageEvidenceSupport(kind="document", label="Governanca e Lideranca Institucional", detail="data/corpus/public/governanca-e-lideranca.md"),
+            ],
+        ),
         "public_bundle.calendar_week": (
             "specialist_supervisor_preflight:calendar_week",
             "calendar_week",

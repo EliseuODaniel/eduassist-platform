@@ -260,12 +260,63 @@ def _looks_like_cross_document_public_query(message: str) -> bool:
 
 
 def _looks_like_public_doc_bundle_request(message: str) -> bool:
+    normalized = _normalize_text(message)
+    documentary_open = (
+        any(
+            phrase in normalized
+            for phrase in {
+                'quero entender',
+                'me explique',
+                'como a escola',
+                'como a familia',
+                'como a família',
+                'qual imagem institucional',
+                'quais evidencias',
+                'quais evidências',
+                'que evidencias',
+                'que evidências',
+                'que leitura integrada',
+            }
+        )
+        and sum(
+            1
+            for term in {
+                'inclus',
+                'acessib',
+                'seguran',
+                'apoio',
+                'estudo orientado',
+                'contraturno',
+                'turno estendido',
+                'atividade externa',
+                'autoriz',
+                'transporte',
+                'uniforme',
+                'refeicao',
+                'refeição',
+                'governan',
+                'lideranca maior',
+                'liderança maior',
+                'direcao',
+                'direção',
+                'coordenacao',
+                'coordenação',
+                'impasse',
+                'devolut',
+                'recompos',
+                'responsaveis',
+                'responsáveis',
+            }
+            if term in normalized
+        ) >= 2
+    )
     return (
         _looks_like_cross_document_public_query(message)
         or _looks_like_family_new_calendar_enrollment_query(message)
         or _looks_like_public_graph_rag_query(message)
         or _looks_like_service_credentials_bundle_query(message)
         or _looks_like_policy_compare_query(message)
+        or documentary_open
     )
 
 

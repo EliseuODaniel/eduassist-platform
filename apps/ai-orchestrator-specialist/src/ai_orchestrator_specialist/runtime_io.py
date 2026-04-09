@@ -68,11 +68,17 @@ async def _http_get(
     path: str,
     token: str,
     params: dict[str, Any] | None = None,
+    timeout_seconds: float | None = None,
 ) -> dict[str, Any] | None:
     response = await client.get(
         f"{base_url.rstrip('/')}{path}",
         params=params,
         headers={"X-Internal-Api-Token": token},
+        timeout=(
+            httpx.Timeout(timeout_seconds, connect=min(1.0, max(0.3, timeout_seconds / 2.0)))
+            if timeout_seconds is not None
+            else None
+        ),
     )
     response.raise_for_status()
     payload = response.json()
@@ -114,6 +120,7 @@ async def fetch_actor_context(ctx: Any) -> dict[str, Any] | None:
             path="/v1/internal/identity/context",
             token=ctx.settings.internal_api_token,
             params={"telegram_chat_id": ctx.request.telegram_chat_id},
+            timeout_seconds=float(getattr(ctx.settings, "context_fetch_timeout_seconds", 2.0) or 2.0),
         )
     except httpx.HTTPError as exc:
         logger.warning("specialist_supervisor_actor_context_unavailable", extra={"error": str(exc)})
@@ -137,6 +144,7 @@ async def fetch_conversation_context(ctx: Any) -> dict[str, Any] | None:
                 "channel": ctx.request.channel.value,
                 "limit": 8,
             },
+            timeout_seconds=float(getattr(ctx.settings, "context_fetch_timeout_seconds", 2.0) or 2.0),
         )
     except httpx.HTTPError as exc:
         logger.warning("specialist_supervisor_conversation_context_unavailable", extra={"error": str(exc)})
@@ -151,35 +159,36 @@ async def fetch_public_school_profile(ctx: Any) -> dict[str, Any] | None:
 
 async def fetch_public_payload(ctx: Any, path: str, key: str) -> Any:
     cache_key = f"{path}:{key}"
-    cached = _PUBLIC_RESOURCE_CACHE.get(cache_key)
-    if isinstance(cached, dict):
-        expires_at = float(cached.get("expires_at", 0.0) or 0.0)
-        if expires_at > monotonic():
-            value = cached.get("value")
-            if isinstance(value, dict):
-                return dict(value)
-            if isinstance(value, list):
-                return [dict(item) if isinstance(item, dict) else item for item in value]
-            return value
-        _PUBLIC_RESOURCE_CACHE.pop(cache_key, None)
-    payload = await _http_get(
-        ctx.http_client,
-        base_url=ctx.settings.api_core_url,
-        path=path,
-        token=ctx.settings.internal_api_token,
-    )
+    cached = _cache_get(_PUBLIC_RESOURCE_CACHE, cache_key)
+    if cached is not None:
+        return cached
+    try:
+        payload = await _http_get(
+            ctx.http_client,
+            base_url=ctx.settings.api_core_url,
+            path=path,
+            token=ctx.settings.internal_api_token,
+            timeout_seconds=float(getattr(ctx.settings, "public_resource_timeout_seconds", 2.0) or 2.0),
+        )
+    except httpx.HTTPError as exc:
+        logger.warning(
+            "specialist_public_payload_unavailable",
+            extra={"path": path, "key": key, "error": str(exc)},
+        )
+        stale_payload = _cache_get(_PUBLIC_RESOURCE_CACHE, cache_key, allow_stale=True)
+        if stale_payload is not None:
+            logger.info("specialist_public_payload_stale_cache_hit", extra={"path": path, "key": key})
+            return stale_payload
+        return None
     if not isinstance(payload, dict):
         return None
     value = payload.get(key)
-    _PUBLIC_RESOURCE_CACHE[cache_key] = {
-        "value": value,
-        "expires_at": monotonic() + float(getattr(ctx.settings, "public_resource_cache_ttl_seconds", 120.0) or 120.0),
-    }
-    if isinstance(value, dict):
-        return dict(value)
-    if isinstance(value, list):
-        return [dict(item) if isinstance(item, dict) else item for item in value]
-    return value
+    return _cache_set(
+        _PUBLIC_RESOURCE_CACHE,
+        cache_key,
+        value,
+        ttl_seconds=float(getattr(ctx.settings, "public_resource_cache_ttl_seconds", 120.0) or 120.0),
+    )
 
 
 async def orchestrator_preview(ctx: Any) -> dict[str, Any] | None:

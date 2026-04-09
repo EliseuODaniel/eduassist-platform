@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 from collections import OrderedDict
+from contextlib import asynccontextmanager
 from functools import lru_cache
 import logging
 from pathlib import Path
@@ -21,6 +23,10 @@ _RECENT_TELEGRAM_UPDATE_IDS: OrderedDict[int, float] = OrderedDict()
 _TELEGRAM_UPDATE_DEDUPE_LOCK = Lock()
 _TELEGRAM_UPDATE_DEDUPE_TTL_SECONDS = 60.0 * 15.0
 _TELEGRAM_UPDATE_DEDUPE_LIMIT = 4096
+_LATEST_TELEGRAM_UPDATE_BY_CHAT: OrderedDict[int, tuple[int, float]] = OrderedDict()
+_TELEGRAM_CHAT_LATEST_LOCK = Lock()
+_TELEGRAM_CHAT_LATEST_TTL_SECONDS = 60.0 * 60.0
+_TELEGRAM_CHAT_LATEST_LIMIT = 4096
 
 
 class Settings(BaseSettings):
@@ -57,10 +63,17 @@ class HealthResponse(BaseModel):
     ready: bool
 
 
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    _log_runtime_diagnostics(_telegram_runtime_diagnostics(get_settings()))
+    yield
+
+
 app = FastAPI(
     title='EduAssist Telegram Gateway',
     version='0.2.0',
     summary='Telegram ingress bootstrap for EduAssist Platform.',
+    lifespan=_lifespan,
 )
 
 configure_observability(
@@ -192,6 +205,35 @@ def _consume_telegram_update_id(update_id: int | None) -> bool:
     return True
 
 
+def _mark_latest_chat_update(chat_id: int, update_id: int | None) -> None:
+    if update_id is None:
+        return
+    now = monotonic()
+    with _TELEGRAM_CHAT_LATEST_LOCK:
+        expired = [
+            item
+            for item, (_latest_update_id, seen_at) in _LATEST_TELEGRAM_UPDATE_BY_CHAT.items()
+            if now - seen_at > _TELEGRAM_CHAT_LATEST_TTL_SECONDS
+        ]
+        for item in expired:
+            _LATEST_TELEGRAM_UPDATE_BY_CHAT.pop(item, None)
+        previous = _LATEST_TELEGRAM_UPDATE_BY_CHAT.get(chat_id)
+        if previous is None or update_id >= previous[0]:
+            _LATEST_TELEGRAM_UPDATE_BY_CHAT[chat_id] = (update_id, now)
+        while len(_LATEST_TELEGRAM_UPDATE_BY_CHAT) > _TELEGRAM_CHAT_LATEST_LIMIT:
+            _LATEST_TELEGRAM_UPDATE_BY_CHAT.popitem(last=False)
+
+
+def _is_stale_chat_update(chat_id: int, update_id: int | None) -> bool:
+    if update_id is None:
+        return False
+    with _TELEGRAM_CHAT_LATEST_LOCK:
+        latest = _LATEST_TELEGRAM_UPDATE_BY_CHAT.get(chat_id)
+    if latest is None:
+        return False
+    return update_id < latest[0]
+
+
 def _build_reply_markup(suggested_replies: list[dict[str, object]] | None) -> dict[str, object] | None:
     if not isinstance(suggested_replies, list):
         return None
@@ -317,11 +359,6 @@ async def healthz() -> HealthResponse:
         service='telegram-gateway',
         ready=True,
     )
-
-
-@app.on_event('startup')
-async def log_startup_diagnostics() -> None:
-    _log_runtime_diagnostics(_telegram_runtime_diagnostics(get_settings()))
 
 
 @app.get('/meta')
@@ -509,6 +546,13 @@ async def _process_explicit_graphrag_message(
                 'O GraphRAG real nao concluiu uma sintese final neste modo. '
                 'Tente uma pergunta mais curta ou especifique /graphrag_local ou /graphrag_global.'
             )
+        if _is_stale_chat_update(chat_id, update_id):
+            logger.info(
+                'telegram_stale_graphrag_response_suppressed chat_id=%s update_id=%s',
+                chat_id,
+                update_id,
+            )
+            return
         sent = await _send_telegram_message(chat_id, result_text)
         if not sent:
             logger.error('telegram_graphrag_send_exhausted chat_id=%s update_id=%s', chat_id, update_id)
@@ -571,11 +615,32 @@ async def _process_telegram_text_message(
     update_id: int | None,
 ) -> None:
     try:
-        orchestration = await _orchestrate_message(
-            chat_id=chat_id,
-            text=text,
-            update_id=update_id,
-        )
+        try:
+            orchestration = await _orchestrate_message(
+                chat_id=chat_id,
+                text=text,
+                update_id=update_id,
+            )
+        except httpx.HTTPError as exc:
+            logger.warning(
+                'telegram_orchestrator_retry chat_id=%s update_id=%s error=%s',
+                chat_id,
+                update_id,
+                exc,
+            )
+            await asyncio.sleep(0.4)
+            orchestration = await _orchestrate_message(
+                chat_id=chat_id,
+                text=text,
+                update_id=update_id,
+            )
+        if _is_stale_chat_update(chat_id, update_id):
+            logger.info(
+                'telegram_stale_response_suppressed chat_id=%s update_id=%s',
+                chat_id,
+                update_id,
+            )
+            return
         reply_text = str(orchestration.get('message_text', _default_help_message()))
         reply_markup = _build_reply_markup(orchestration.get('suggested_replies'))
         sent = await _send_telegram_message(chat_id, reply_text, reply_markup=reply_markup)
@@ -615,6 +680,13 @@ async def _process_telegram_text_message(
             'Nao consegui consultar a base da escola agora. '
             'Tente novamente em instantes ou use o portal institucional.'
         )
+        if _is_stale_chat_update(chat_id, update_id):
+            logger.info(
+                'telegram_stale_fallback_suppressed chat_id=%s update_id=%s',
+                chat_id,
+                update_id,
+            )
+            return
         await _send_telegram_message(chat_id, fallback_text)
 
 
@@ -675,6 +747,7 @@ async def telegram_webhook(
                 'service': 'telegram-gateway',
                 'processed': 'missing_chat',
             }
+        _mark_latest_chat_update(chat_id, update_id if isinstance(update_id, int) else None)
 
         graphrag_query, graphrag_method = _extract_explicit_graphrag_request(text)
         if graphrag_query is not None:

@@ -11,6 +11,8 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT = REPO_ROOT / "tests/evals/datasets/retrieval_20q_probe_cases.generated.json"
 DATASETS_DIR = REPO_ROOT / "tests/evals/datasets"
+FOCUS_ALL = "all"
+FOCUS_PROTECTED_SQL = "protected-sql"
 
 
 QUESTION_SPECS: list[dict[str, Any]] = [
@@ -657,7 +659,549 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Resuma junto documentacao administrativa e financeiro das contas vinculadas para eu saber se ha impedimento de atendimento.",
         ],
     },
+    {
+        "category": "public_health_emergency_bundle",
+        "slice": "public",
+        "expected_keywords": ["medicacao", "emerg"],
+        "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "thread_id": "retrieval_public_health_emergency_bundle",
+        "telegram_chat_id": 777229,
+        "note": "public health, medication and emergencies bundle",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Como a escola conecta medicacao, saude e procedimentos de emergencia nos documentos publicos?",
+            "No material publico, como ficam juntas medicacao, cuidado em saude e resposta a emergencias?",
+            "Quero uma sintese publica de como medicacao, protocolo de saude e emergencia se amarram na escola.",
+            "Pelos documentos publicos, como a escola organiza medicacao, acompanhamento de saude e emergencias?",
+            "Como o protocolo publico da escola articula medicacao, ocorrencias de saude e situacoes de emergencia?",
+            "Na base publica, como aparecem conectados medicacao escolar, cuidados de saude e procedimentos de emergencia?",
+        ],
+    },
+    {
+        "category": "public_integral_study_support",
+        "slice": "public",
+        "expected_keywords": ["integral", "estudo orientado"],
+        "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "thread_id": "retrieval_public_integral_study_support",
+        "telegram_chat_id": 777230,
+        "note": "public integral and study support bridge",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Como periodo integral e estudo orientado se conectam no apoio ao estudante segundo a base publica?",
+            "Na documentacao publica, como a escola articula periodo integral, estudo orientado e apoio ao aluno?",
+            "Quero entender como o programa integral conversa com estudo orientado e apoio escolar no material publico.",
+            "Pelos documentos publicos, de que forma periodo integral e estudo orientado se reforcam no suporte ao estudante?",
+            "Como a escola apresenta publicamente a relacao entre periodo integral, estudo orientado e acompanhamento do aluno?",
+            "Na base publica, como aparecem juntos periodo integral, estudo orientado e apoio a rotina de estudos?",
+        ],
+    },
+    {
+        "category": "public_transport_uniform_bundle",
+        "slice": "public",
+        "expected_keywords": ["transporte", "uniforme"],
+        "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "thread_id": "retrieval_public_transport_uniform_bundle",
+        "telegram_chat_id": 777231,
+        "note": "public transport, food and uniform bundle",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Como transporte, alimentacao e uniforme aparecem juntos nas orientacoes publicas da escola?",
+            "No material publico, como a escola organiza transporte, uniforme e refeicoes para as familias?",
+            "Quero uma visao publica de transporte, alimentacao e uniforme para entender a rotina da familia.",
+            "Pelos documentos publicos, como ficam amarrados transporte escolar, uniforme e alimentacao?",
+            "Como a base publica explica, de forma conjunta, transporte, uniforme e alimentacao no dia a dia escolar?",
+            "Na documentacao publica, como a escola apresenta transporte, uniforme e refeicoes como parte da rotina?",
+        ],
+    },
+    {
+        "category": "public_inclusion_accessibility",
+        "slice": "public",
+        "expected_keywords": ["inclus", "acess"],
+        "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "thread_id": "retrieval_public_inclusion_accessibility",
+        "telegram_chat_id": 777232,
+        "note": "public inclusion and accessibility policy",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Como inclusao, acessibilidade e seguranca aparecem articuladas nos documentos publicos da escola?",
+            "Quero um panorama publico de inclusao, acessibilidade e seguranca institucional.",
+            "Na base publica, como a escola conecta acessibilidade, inclusao e protecao do estudante?",
+            "Pelos documentos publicos, como ficam juntas as politicas de inclusao, acessibilidade e seguranca?",
+            "Como a escola apresenta publicamente suas orientacoes de inclusao, acessibilidade e seguranca?",
+            "No material publico, como se articulam inclusao, acessibilidade e cuidado com a seguranca escolar?",
+        ],
+    },
+    {
+        "category": "public_outings_authorizations",
+        "slice": "public",
+        "expected_keywords": ["autoriz", "saida"],
+        "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "thread_id": "retrieval_public_outings_authorizations",
+        "telegram_chat_id": 777233,
+        "note": "public outings and authorizations",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Como saidas pedagogicas, eventos e autorizacoes aparecem conectados na base publica?",
+            "No material publico, como a escola organiza saidas pedagogicas, eventos e autorizacoes das familias?",
+            "Quero entender como a escola conecta eventos externos, saidas pedagogicas e autorizacoes no material publico.",
+            "Pelos documentos publicos, como ficam juntos eventos, saidas pedagogicas e autorizacoes?",
+            "Como a escola descreve publicamente a relacao entre saidas pedagogicas, participacao em eventos e autorizacoes?",
+            "Na base publica, como se articulam eventos escolares, saidas pedagogicas e autorizacoes das familias?",
+        ],
+    },
+    {
+        "category": "public_governance_protocol",
+        "slice": "public",
+        "expected_keywords": ["direcao", "protocolo"],
+        "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "thread_id": "retrieval_public_governance_protocol",
+        "telegram_chat_id": 777234,
+        "note": "public governance and formal protocol routing",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Quando uma questao precisa sair da rotina, como a escola liga direcao, coordenacao e protocolo formal no material publico?",
+            "Na governanca publica da escola, como demandas formais chegam a direcao e viram protocolo?",
+            "Quero entender como coordenacao, direcao e protocolo se conectam quando o assunto deixa de ser rotineiro.",
+            "Pelos documentos publicos, como uma familia deve escalar um tema da rotina para direcao e protocolo formal?",
+            "Como a escola descreve publicamente a passagem entre coordenacao, direcao e protocolo institucional?",
+            "Na base publica, como aparecem conectados direcao, atendimento formal e numero de protocolo?",
+        ],
+    },
+    {
+        "category": "public_known_unknown_total_teachers",
+        "slice": "public",
+        "expected_keywords": ["nao informam", "professores"],
+        "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "thread_id": "retrieval_public_known_unknown_total_teachers",
+        "telegram_chat_id": 777235,
+        "note": "public known unknown total teachers",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Quantos professores a escola tem hoje? Se isso nao estiver publicado, deixe claro.",
+            "A escola informa publicamente a quantidade de professores? Se nao, me diga isso de forma direta.",
+            "Nos canais publicos, aparece o numero total de professores da escola?",
+            "Quero saber se a escola publica a quantidade total de professores ou se esse dado nao esta disponivel.",
+            "Existe numero publico de professores na escola ou esse dado nao e informado oficialmente?",
+            "A base publica mostra quantos professores a escola tem? Se nao mostrar, diga isso sem enrolar.",
+        ],
+    },
+    {
+        "category": "public_known_unknown_library_books",
+        "slice": "public",
+        "expected_keywords": ["nao informam", "livros"],
+        "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "thread_id": "retrieval_public_known_unknown_library_books",
+        "telegram_chat_id": 777236,
+        "note": "public known unknown library books",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "Quantos livros a biblioteca tem hoje? Se esse dado nao for publico, diga isso claramente.",
+            "A escola publica a quantidade total de livros do acervo da biblioteca?",
+            "Nos canais publicos, aparece o numero de livros da biblioteca ou isso nao esta informado?",
+            "Quero saber se o acervo total de livros e publicado oficialmente pela escola.",
+            "Existe numero publico da quantidade de livros da biblioteca?",
+            "A base publica informa quantos livros ha no acervo da biblioteca ou nao?",
+        ],
+    },
+    {
+        "category": "public_known_unknown_minimum_age",
+        "slice": "public",
+        "expected_keywords": ["idade minima", "admissions"],
+        "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "thread_id": "retrieval_public_known_unknown_minimum_age",
+        "telegram_chat_id": 777237,
+        "note": "public known unknown minimum age",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "A escola publica uma idade minima exata para ingresso? Se nao, para onde devo ir?",
+            "Existe idade minima publicada para matricular ou o canal correto e admissions?",
+            "Quero saber se a escola informa idade minima exata para ingresso no material publico.",
+            "Nos canais publicos, aparece uma idade minima precisa para matricula?",
+            "A base publica define idade minima exata para estudar na escola ou orienta procurar admissions?",
+            "Se eu quiser confirmar idade minima para ingresso, isso aparece publicamente ou depende de admissions?",
+        ],
+    },
+    {
+        "category": "public_known_unknown_cafeteria_menu",
+        "slice": "public",
+        "expected_keywords": ["cantina", "cardapio"],
+        "forbidden_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "thread_id": "retrieval_public_known_unknown_cafeteria_menu",
+        "telegram_chat_id": 777238,
+        "note": "public known unknown cafeteria menu",
+        "user": {"role": "anonymous", "authenticated": False, "linked_student_ids": [], "scopes": []},
+        "prompts": [
+            "A escola publica o cardapio detalhado da cantina? Se nao, me diga isso claramente.",
+            "Existe cardapio publico da cantina ou esse detalhe nao fica publicado?",
+            "Nos canais publicos, o cardapio da cantina aparece detalhado ou nao?",
+            "Quero saber se a escola publica o cardapio da cantina ou se isso fica fora dos canais publicos.",
+            "Ha cardapio publico da cantina na escola ou so a confirmacao de que ela existe?",
+            "A base publica mostra o cardapio da cantina em detalhe ou nao chega a esse nivel?",
+        ],
+    },
+    {
+        "category": "protected_structured_attendance_family",
+        "slice": "protected",
+        "expected_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "forbidden_keywords": [],
+        "thread_id": "retrieval_protected_attendance_panorama",
+        "telegram_chat_id": 1649845499,
+        "note": "protected structured attendance family summary",
+        "user": {
+            "role": "guardian",
+            "authenticated": True,
+            "linked_student_ids": ["stu-lucas", "stu-ana"],
+            "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"],
+        },
+        "prompts": [
+            "Quero um panorama de frequencia dos meus filhos e quem esta mais vulneravel por faltas.",
+            "Resuma a frequencia dos meus dois filhos e diga quem preocupa mais por ausencias.",
+            "Entre meus filhos, quem esta mais exposto olhando faltas e frequencia? Me de um panorama.",
+            "Faca um resumo de frequencia dos meus dois filhos e destaque quem inspira mais atencao por faltas.",
+            "Quero comparar a situacao de frequencia dos meus filhos e saber quem esta mais vulneravel por ausencias.",
+            "Me de um panorama de faltas e frequencia dos meus filhos, apontando quem exige maior atencao agora.",
+        ],
+    },
+    {
+        "category": "protected_structured_attendance_followup",
+        "slice": "protected",
+        "expected_keywords": ["Lucas Oliveira"],
+        "forbidden_keywords": ["Ana Oliveira"],
+        "thread_id": "retrieval_protected_attendance_panorama",
+        "telegram_chat_id": 1649845499,
+        "note": "protected attendance follow-up context retention",
+        "user": {
+            "role": "guardian",
+            "authenticated": True,
+            "linked_student_ids": ["stu-lucas", "stu-ana"],
+            "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"],
+        },
+        "prompts": [
+            "Agora foque so no Lucas e diga o que mais preocupa na frequencia dele.",
+            "Mantendo o contexto anterior, quero apenas o Lucas e os pontos de maior risco por faltas.",
+            "Agora olhe so para o Lucas e explique onde a frequencia dele pede mais atencao.",
+            "Seguindo o panorama, filtre apenas o Lucas e diga o que mais chama atencao nas faltas dele.",
+            "Continuando a analise, isole o Lucas e mostre por que a frequencia dele preocupa mais ou menos.",
+            "Sem repetir o quadro inteiro, recorte so o Lucas e diga o principal alerta de frequencia.",
+        ],
+    },
+    {
+        "category": "protected_structured_upcoming_assessments",
+        "slice": "protected",
+        "expected_keywords": ["Lucas Oliveira", "Ana Oliveira", "avali"],
+        "forbidden_keywords": [],
+        "thread_id": "retrieval_protected_upcoming_assessments",
+        "telegram_chat_id": 1649845499,
+        "note": "protected upcoming assessments family summary",
+        "user": {
+            "role": "guardian",
+            "authenticated": True,
+            "linked_student_ids": ["stu-lucas", "stu-ana"],
+            "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"],
+        },
+        "prompts": [
+            "Quero ver as proximas avaliacoes dos meus filhos em um resumo unico.",
+            "Resuma as proximas provas e avaliacoes previstas para Lucas e Ana.",
+            "Me de uma visao rapida das proximas avaliacoes dos meus dois filhos.",
+            "Quero um quadro unico com as proximas avaliacoes dos meus filhos.",
+            "Mostre em resumo as proximas avaliacoes dos meus filhos para eu me organizar.",
+            "Traga um panorama das proximas provas e entregas previstas para meus dois filhos.",
+        ],
+    },
+    {
+        "category": "protected_structured_upcoming_assessments_followup",
+        "slice": "protected",
+        "expected_keywords": ["Ana Oliveira"],
+        "forbidden_keywords": ["Lucas Oliveira"],
+        "thread_id": "retrieval_protected_upcoming_assessments",
+        "telegram_chat_id": 1649845499,
+        "note": "protected upcoming assessments follow-up",
+        "user": {
+            "role": "guardian",
+            "authenticated": True,
+            "linked_student_ids": ["stu-lucas", "stu-ana"],
+            "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"],
+        },
+        "prompts": [
+            "Agora foque so na Ana e mostre as proximas avaliacoes dela.",
+            "Mantendo o contexto, quero apenas a Ana com as proximas provas e entregas.",
+            "Agora filtre so a Ana e diga as proximas avaliacoes dela.",
+            "Continuando a consulta, isole a Ana e me mostre apenas as avaliacoes dela.",
+            "Sem repetir o quadro inteiro, recorte so a Ana e traga as proximas avaliacoes.",
+            "Agora deixe so a Ana no contexto e mostre as provas e entregas que vem pela frente.",
+        ],
+    },
+    {
+        "category": "protected_identity_linked_students",
+        "slice": "protected",
+        "expected_keywords": ["Lucas Oliveira", "Ana Oliveira"],
+        "forbidden_keywords": [],
+        "thread_id": "retrieval_protected_identity_linked_students",
+        "telegram_chat_id": 1649845499,
+        "note": "protected identity and linked students overview",
+        "user": {
+            "role": "guardian",
+            "authenticated": True,
+            "linked_student_ids": ["stu-lucas", "stu-ana"],
+            "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"],
+        },
+        "prompts": [
+            "Confirme quem esta vinculado a esta conta e quais alunos eu consigo acompanhar aqui.",
+            "Quero checar quais alunos estao ligados a esta conta autenticada.",
+            "Quem sao exatamente os alunos vinculados ao meu acesso neste canal?",
+            "Me confirme os alunos associados a esta conta para eu saber quem consigo acompanhar aqui.",
+            "Quero validar os alunos vinculados ao meu acesso no Telegram.",
+            "Diga claramente quais alunos estao conectados a esta conta autenticada.",
+        ],
+    },
+    {
+        "category": "protected_administrative_self_status",
+        "slice": "protected",
+        "expected_keywords": ["cadastro", "pend"],
+        "forbidden_keywords": [],
+        "thread_id": "retrieval_protected_administrative_self_status",
+        "telegram_chat_id": 1649845499,
+        "note": "protected own administrative status",
+        "user": {
+            "role": "guardian",
+            "authenticated": True,
+            "linked_student_ids": ["stu-lucas", "stu-ana"],
+            "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"],
+        },
+        "prompts": [
+            "Meu proprio cadastro de responsavel tem alguma pendencia administrativa hoje?",
+            "Quero saber se ha alguma pendencia no meu cadastro como responsavel.",
+            "Me diga o status administrativo do meu cadastro de responsavel, incluindo pendencias.",
+            "Hoje existe alguma pendencia administrativa no meu cadastro pessoal aqui na escola?",
+            "Quero um resumo do meu status cadastral de responsavel e das pendencias que ainda restam.",
+            "No meu proprio cadastro, ha algo pendente do ponto de vista administrativo?",
+        ],
+    },
+    {
+        "category": "restricted_doc_positive_teacher_feedback",
+        "slice": "restricted",
+        "expected_keywords": ["professor", "pedagog"],
+        "forbidden_keywords": ["nao posso compartilhar"],
+        "thread_id": "retrieval_restricted_teacher_feedback",
+        "telegram_chat_id": 1649845499,
+        "note": "restricted positive teacher manual on pedagogical feedback",
+        "user": {
+            "role": "guardian",
+            "authenticated": True,
+            "linked_student_ids": ["stu-lucas", "stu-ana"],
+            "scopes": [
+                "students:read",
+                "administrative:read",
+                "financial:read",
+                "academic:read",
+                "documents:restricted:read",
+                "documents:private:read",
+            ],
+        },
+        "prompts": [
+            "No manual interno do professor, o que aparece sobre comunicacao pedagogica e devolutiva ao estudante?",
+            "Segundo o manual interno do professor, como a escola trata comunicacao pedagogica e feedback ao aluno?",
+            "Quero o trecho interno do manual do professor sobre devolutiva pedagogica e comunicacao com o estudante.",
+            "No material interno do professor, como ficam comunicacao pedagogica e devolutiva de aprendizagem?",
+            "O manual interno do professor fala o que sobre feedback pedagogico ao estudante e comunicacao docente?",
+            "Pelo manual interno do professor, como a escola orienta a devolutiva pedagogica ao aluno?",
+        ],
+    },
+    {
+        "category": "restricted_doc_positive_scope_protocol_variant",
+        "slice": "restricted",
+        "expected_keywords": ["Telegram", "escopo"],
+        "forbidden_keywords": ["nao posso compartilhar"],
+        "thread_id": "retrieval_restricted_scope_protocol_variant",
+        "telegram_chat_id": 1649845499,
+        "note": "restricted positive protocol variant for partial scope",
+        "user": {
+            "role": "guardian",
+            "authenticated": True,
+            "linked_student_ids": ["stu-lucas", "stu-ana"],
+            "scopes": [
+                "students:read",
+                "administrative:read",
+                "financial:read",
+                "academic:read",
+                "documents:restricted:read",
+                "documents:private:read",
+            ],
+        },
+        "prompts": [
+            "No protocolo interno de escopo parcial, como o Telegram deve se comportar diante de pedidos fora do escopo?",
+            "Quero o trecho interno sobre limites do Telegram quando o responsavel tem escopo parcial.",
+            "Segundo o protocolo interno de escopo parcial, qual e a regra do Telegram para pedidos acima do escopo autorizado?",
+            "No material interno de escopo parcial, como o Telegram deve reagir a consultas fora do escopo?",
+            "Pelo protocolo interno, que limite de escopo o Telegram precisa respeitar para responsavel com acesso parcial?",
+            "No protocolo interno de escopo parcial, como ficam os limites de atendimento do Telegram para pedidos fora do escopo?",
+        ],
+    },
+    {
+        "category": "restricted_doc_negative_exchange_program",
+        "slice": "restricted",
+        "expected_keywords": ["nao encontrei", "internacional"],
+        "forbidden_keywords": ["nao posso compartilhar"],
+        "thread_id": "retrieval_restricted_exchange_no_match",
+        "telegram_chat_id": 1649845499,
+        "note": "restricted no-match exchange program",
+        "user": {
+            "role": "guardian",
+            "authenticated": True,
+            "linked_student_ids": ["stu-lucas", "stu-ana"],
+            "scopes": [
+                "students:read",
+                "administrative:read",
+                "financial:read",
+                "academic:read",
+                "documents:restricted:read",
+                "documents:private:read",
+            ],
+        },
+        "prompts": [
+            "Existe algum procedimento interno sobre intercambio internacional com hospedagem para o ensino medio?",
+            "Ha documento interno sobre intercambio internacional com hospedagem envolvendo turmas do ensino medio?",
+            "Nos documentos internos, existe orientacao sobre programa de intercambio internacional com hospedagem?",
+            "A escola tem algum protocolo interno para intercambio internacional com hospedagem no ensino medio?",
+            "Quero saber se ha material interno sobre intercambio internacional com hospedagem para alunos do ensino medio.",
+            "Existe orientacao interna para intercambio internacional com hospedagem de estudantes do ensino medio?",
+        ],
+    },
+    {
+        "category": "protected_structured_grade_components",
+        "slice": "protected",
+        "expected_keywords": ["Ana Oliveira", "media"],
+        "forbidden_keywords": [],
+        "thread_id": "retrieval_protected_grade_components",
+        "telegram_chat_id": 1649845499,
+        "note": "protected sql-backed grade/component detail",
+        "user": {
+            "role": "guardian",
+            "authenticated": True,
+            "linked_student_ids": ["stu-lucas", "stu-ana"],
+            "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"],
+        },
+        "prompts": [
+            "Quero as menores medias atuais da Ana e em quais componentes ela esta mais pressionada agora.",
+            "Mostre as materias da Ana com menor media neste momento e onde o risco academico dela aparece mais forte.",
+            "Na Ana, quais componentes estao puxando a media para baixo hoje? Quero os pontos de maior atencao.",
+            "Traga as disciplinas ou componentes em que a Ana aparece com as menores medias agora.",
+            "Quais sao hoje as menores medias da Ana e em que componentes isso aparece com mais clareza?",
+            "Recorte a Ana e mostre onde estao as medias mais baixas dela neste momento.",
+        ],
+    },
+    {
+        "category": "protected_structured_finance_detail",
+        "slice": "protected",
+        "expected_keywords": ["venc", "Financeiro"],
+        "forbidden_keywords": [],
+        "thread_id": "retrieval_protected_finance_detail",
+        "telegram_chat_id": 1649845499,
+        "note": "protected sql-backed finance detail",
+        "user": {
+            "role": "guardian",
+            "authenticated": True,
+            "linked_student_ids": ["stu-lucas", "stu-ana"],
+            "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"],
+        },
+        "prompts": [
+            "Quais cobrancas da familia estao vencidas, pagas parcialmente ou vencendo em seguida? Quero um retrato financeiro objetivo.",
+            "Mostre o financeiro da familia separando o que venceu, o que foi pago em parte e o que vence logo.",
+            "Quero ver quais titulos da familia estao atrasados, quais ficaram parciais e quais sao os proximos vencimentos.",
+            "No financeiro da familia, separe para mim o que esta vencido, o que esta parcialmente quitado e o que vem a seguir.",
+            "Traga um resumo financeiro com cobrancas vencidas, parciais e proximos vencimentos da familia.",
+            "Hoje, quais cobrancas da familia estao em atraso, quais tiveram pagamento parcial e quais vencem em seguida?",
+        ],
+    },
+    {
+        "category": "protected_structured_attendance_detail",
+        "slice": "protected",
+        "expected_keywords": ["Lucas Oliveira", "frequencia"],
+        "forbidden_keywords": [],
+        "thread_id": "retrieval_protected_attendance_detail",
+        "telegram_chat_id": 1649845499,
+        "note": "protected sql-backed attendance detail",
+        "user": {
+            "role": "guardian",
+            "authenticated": True,
+            "linked_student_ids": ["stu-lucas", "stu-ana"],
+            "scopes": ["students:read", "administrative:read", "financial:read", "academic:read"],
+        },
+        "prompts": [
+            "Quero um retrato das faltas do Lucas com foco em frequencia, componentes mais afetados e principal alerta atual.",
+            "Mostre a situacao de frequencia do Lucas e onde as faltas dele mais pesam hoje.",
+            "No Lucas, quais faltas ou ausencias mais chamam atencao agora e como isso bate na frequencia dele?",
+            "Recorte so o Lucas e diga onde a frequencia dele esta mais sensivel por faltas recentes.",
+            "Quero ver o ponto mais critico da frequencia do Lucas e em quais componentes as ausencias pesam mais.",
+            "Hoje, qual e o principal alerta de frequencia do Lucas olhando as faltas registradas?",
+        ],
+    },
+    {
+        "category": "restricted_doc_denied_playbook",
+        "slice": "restricted",
+        "expected_keywords": ["nao posso compartilhar", "intern"],
+        "forbidden_keywords": [],
+        "thread_id": "retrieval_restricted_denied_playbook",
+        "telegram_chat_id": 777239,
+        "note": "restricted deny playbook without permission",
+        "user": {
+            "role": "anonymous",
+            "authenticated": False,
+            "linked_student_ids": [],
+            "scopes": [],
+        },
+        "prompts": [
+            "Quero ver o playbook interno de negociacao financeira da escola.",
+            "Pode abrir para mim o playbook interno de negociacao financeira?",
+            "Mostre aqui no chat o playbook interno de negociacao financeira.",
+            "Sou responsavel e quero acessar o playbook interno de negociacao financeira pelo bot.",
+            "Quero que voce me mostre o playbook interno de negociacao financeira agora.",
+            "Preciso do playbook interno de negociacao financeira aqui no Telegram.",
+        ],
+    },
 ]
+
+
+PROTECTED_SQL_CATEGORIES = {
+    "protected_structured_academic",
+    "protected_structured_followup",
+    "protected_structured_finance",
+    "protected_structured_finance_detail",
+    "protected_structured_grade_components",
+    "protected_structured_attendance_family",
+    "protected_structured_attendance_followup",
+    "protected_structured_attendance_detail",
+    "protected_structured_upcoming_assessments",
+    "protected_structured_upcoming_assessments_followup",
+    "protected_admin_finance_combo",
+}
+
+PROTECTED_OTHER_CATEGORIES = {
+    "protected_structured_admin",
+    "protected_access_scope",
+    "protected_identity_linked_students",
+    "protected_administrative_self_status",
+}
+
+PROTECTED_SQL_DOMAIN_CATEGORIES = {
+    "academic": {
+        "protected_structured_academic",
+        "protected_structured_followup",
+        "protected_structured_grade_components",
+    },
+    "finance": {
+        "protected_structured_finance",
+        "protected_structured_finance_detail",
+        "protected_admin_finance_combo",
+    },
+    "attendance": {
+        "protected_structured_attendance_family",
+        "protected_structured_attendance_followup",
+        "protected_structured_attendance_detail",
+        "protected_structured_upcoming_assessments",
+        "protected_structured_upcoming_assessments_followup",
+    },
+}
 
 
 def _collect_existing_prompts(dataset_dir: Path) -> set[str]:
@@ -718,18 +1262,272 @@ def _fresh_prompt_candidates(spec: dict[str, Any], history: set[str]) -> list[st
     return augmented
 
 
-def build_cases(seed: int, existing_prompts: set[str] | None = None, *, count: int = 20) -> list[dict[str, Any]]:
+def _selection_bucket(spec: dict[str, Any]) -> str:
+    slice_name = str(spec.get("slice") or "public")
+    category = str(spec.get("category") or "")
+    if slice_name == "public":
+        return "public"
+    if slice_name == "restricted":
+        return "restricted"
+    if category in PROTECTED_SQL_CATEGORIES:
+        return "protected_sql"
+    if category in PROTECTED_OTHER_CATEGORIES:
+        return "protected_other"
+    return "protected_sql"
+
+
+def _protected_sql_domain(spec: dict[str, Any]) -> str | None:
+    category = str(spec.get("category") or "")
+    for domain, categories in PROTECTED_SQL_DOMAIN_CATEGORIES.items():
+        if category in categories:
+            return domain
+    return None
+
+
+def _build_selection_units(specs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    units: list[dict[str, Any]] = []
+    index = 0
+    while index < len(specs):
+        start_index = index
+        current = specs[index]
+        thread_id = str(current.get("thread_id") or "")
+        grouped = [current]
+        index += 1
+        while index < len(specs) and thread_id and str(specs[index].get("thread_id") or "") == thread_id:
+            grouped.append(specs[index])
+            index += 1
+        units.append(
+            {
+                "thread_id": thread_id or f"unit-{start_index}",
+                "bucket": _selection_bucket(current),
+                "protected_sql_domain": _protected_sql_domain(current),
+                "specs": grouped,
+                "start_index": start_index,
+                "size": len(grouped),
+            }
+        )
+    return units
+
+
+def _focus_filtered_specs(specs: list[dict[str, Any]], *, focus: str) -> list[dict[str, Any]]:
+    if focus == FOCUS_ALL:
+        return list(specs)
+    if focus == FOCUS_PROTECTED_SQL:
+        return [spec for spec in specs if _selection_bucket(spec) == "protected_sql"]
+    raise ValueError(f"unsupported_focus:{focus}")
+
+
+def _minimum_bucket_cases(count: int) -> dict[str, int]:
+    public_min = 1 if count <= 3 else 2
+    if count == 1:
+        protected_sql_min = 0
+    elif count <= 3:
+        protected_sql_min = 1
+    elif count == 4:
+        protected_sql_min = 2
+    elif count <= 8:
+        protected_sql_min = 3
+    elif count <= 14:
+        protected_sql_min = 4
+    else:
+        protected_sql_min = 5
+    minimums = {
+        "public": public_min,
+        "protected_sql": protected_sql_min,
+        "restricted": 1 if count >= 12 else 0,
+        "protected_other": 1 if count >= 16 else 0,
+    }
+    return minimums
+
+
+def _minimum_sql_domains(count: int) -> list[str]:
+    if count <= 1:
+        return []
+    if count <= 3:
+        return ["academic"]
+    if count <= 5:
+        return ["academic", "finance"]
+    return ["academic", "finance", "attendance"]
+
+
+def _pick_unit(
+    units: list[dict[str, Any]],
+    *,
+    remaining: int,
+    max_size: int | None,
+    rng: random.Random,
+    prefer_follow_up: bool,
+) -> dict[str, Any] | None:
+    if remaining <= 0:
+        return None
+    size_cap = remaining if max_size is None else min(remaining, max_size)
+    fitting = [unit for unit in units if int(unit["size"]) <= size_cap]
+    if max_size is not None:
+        pool = fitting
+    else:
+        pool = fitting or units
+    if not pool:
+        return None
+    if prefer_follow_up:
+        paired = [unit for unit in pool if int(unit["size"]) > 1]
+        if paired:
+            pool = paired
+    else:
+        singletons = [unit for unit in pool if int(unit["size"]) == 1]
+        if singletons:
+            pool = singletons
+    return rng.choice(pool)
+
+
+def _select_units_for_count(specs: list[dict[str, Any]], *, count: int, rng: random.Random) -> list[dict[str, Any]]:
+    units = _build_selection_units(specs)
+    if count > sum(int(unit["size"]) for unit in units):
+        raise ValueError(
+            f"Requested {count} cases, but the grouped selection units only cover "
+            f"{sum(int(unit['size']) for unit in units)} cases."
+        )
+
+    by_bucket: dict[str, list[dict[str, Any]]] = {bucket: [] for bucket in ("public", "protected_sql", "restricted", "protected_other")}
+    for unit in units:
+        by_bucket[str(unit["bucket"])].append(unit)
+
+    selected: list[dict[str, Any]] = []
+    selected_ids: set[str] = set()
+    selected_case_count = 0
+    bucket_case_count = {bucket: 0 for bucket in by_bucket}
+    selected_sql_domains: set[str] = set()
+
+    def add_unit(unit: dict[str, Any]) -> None:
+        nonlocal selected_case_count
+        unit_id = str(unit["thread_id"])
+        if unit_id in selected_ids:
+            return
+        selected.append(unit)
+        selected_ids.add(unit_id)
+        bucket_case_count[str(unit["bucket"])] += int(unit["size"])
+        selected_case_count += int(unit["size"])
+        sql_domain = unit.get("protected_sql_domain")
+        if isinstance(sql_domain, str) and sql_domain:
+            selected_sql_domains.add(sql_domain)
+
+    sql_domain_targets = _minimum_sql_domains(count)
+    for domain in sql_domain_targets:
+        if domain in selected_sql_domains or selected_case_count >= count:
+            continue
+        remaining = count - selected_case_count
+        minimums = _minimum_bucket_cases(count)
+        remaining_public = max(0, int(minimums.get("public", 0)) - int(bucket_case_count["public"]))
+        remaining_restricted = max(0, int(minimums.get("restricted", 0)) - int(bucket_case_count["restricted"]))
+        remaining_other = max(0, int(minimums.get("protected_other", 0)) - int(bucket_case_count["protected_other"]))
+        remaining_domains = sum(1 for item in sql_domain_targets if item not in selected_sql_domains and item != domain)
+        unit = _pick_unit(
+            [
+                candidate
+                for candidate in by_bucket["protected_sql"]
+                if str(candidate["thread_id"]) not in selected_ids and candidate.get("protected_sql_domain") == domain
+            ],
+            remaining=remaining,
+            max_size=max(1, remaining - (remaining_public + remaining_restricted + remaining_other + remaining_domains)),
+            rng=rng,
+            prefer_follow_up=True,
+        )
+        if unit is not None:
+            add_unit(unit)
+
+    minimums = _minimum_bucket_cases(count)
+    for bucket in ("protected_sql", "public", "restricted", "protected_other"):
+        while bucket_case_count[bucket] < minimums.get(bucket, 0) and selected_case_count < count:
+            remaining = count - selected_case_count
+            remaining_required_for_others = sum(
+                max(0, int(minimums.get(other_bucket, 0)) - int(bucket_case_count[other_bucket]))
+                for other_bucket in minimums
+                if other_bucket != bucket
+            )
+            unit = _pick_unit(
+                [candidate for candidate in by_bucket[bucket] if str(candidate["thread_id"]) not in selected_ids],
+                remaining=remaining,
+                max_size=max(1, remaining - remaining_required_for_others),
+                rng=rng,
+                prefer_follow_up=(bucket == "protected_sql"),
+            )
+            if unit is None:
+                break
+            add_unit(unit)
+
+    fill_order = (
+        ("public", False),
+        ("protected_sql", True),
+        ("restricted", False),
+        ("protected_other", False),
+    )
+    while selected_case_count < count:
+        remaining = count - selected_case_count
+        picked: dict[str, Any] | None = None
+        for bucket, prefer_follow_up in fill_order:
+            picked = _pick_unit(
+                [candidate for candidate in by_bucket[bucket] if str(candidate["thread_id"]) not in selected_ids],
+                remaining=remaining,
+                max_size=None,
+                rng=rng,
+                prefer_follow_up=prefer_follow_up,
+            )
+            if picked is not None:
+                break
+        if picked is None:
+            raise ValueError("Unable to complete dataset selection with the available question units.")
+        add_unit(picked)
+
+    selected.sort(key=lambda unit: int(unit["start_index"]))
+    return selected
+
+
+def build_cases(
+    seed: int,
+    existing_prompts: set[str] | None = None,
+    *,
+    count: int = 20,
+    focus: str = FOCUS_ALL,
+) -> list[dict[str, Any]]:
     rng = random.Random(seed)
     history = {prompt.strip() for prompt in (existing_prompts or set()) if prompt.strip()}
+    candidate_specs = _focus_filtered_specs(QUESTION_SPECS, focus=focus)
     if count < 1:
         raise ValueError("count_must_be_positive")
-    if count > len(QUESTION_SPECS):
+    total_available_cases = len(candidate_specs)
+    if count > total_available_cases:
         raise ValueError(
-            f"Requested {count} cases, but only {len(QUESTION_SPECS)} question specs are available. "
+            f"Requested {count} cases, but only {total_available_cases} question specs are available. "
             "Add more specs before generating a larger dataset."
         )
     cases: list[dict[str, Any]] = []
-    for index, spec in enumerate(QUESTION_SPECS[:count], start=1):
+    if focus == FOCUS_ALL:
+        selected_units = _select_units_for_count(candidate_specs, count=count, rng=rng)
+    else:
+        selected_units = _build_selection_units(candidate_specs)
+        selected_units.sort(key=lambda unit: int(unit["start_index"]))
+        shuffled_units = list(selected_units)
+        rng.shuffle(shuffled_units)
+        chosen_units: list[dict[str, Any]] = []
+        chosen_count = 0
+        for unit in shuffled_units:
+            if chosen_count + int(unit["size"]) > count:
+                continue
+            chosen_units.append(unit)
+            chosen_count += int(unit["size"])
+            if chosen_count == count:
+                break
+        if chosen_count != count:
+            raise ValueError(
+                f"Unable to satisfy count={count} with focus='{focus}' while preserving grouped thread units."
+            )
+        selected_units = sorted(chosen_units, key=lambda unit: int(unit["start_index"]))
+    selected_specs = [spec for unit in selected_units for spec in unit["specs"]]
+    if len(selected_specs) != count:
+        raise ValueError(
+            f"Selection logic produced {len(selected_specs)} cases for requested count={count}. "
+            "Adjust bucket minimums or grouped units before generating this dataset."
+        )
+    for index, spec in enumerate(selected_specs, start=1):
         available_prompts = _fresh_prompt_candidates(spec, history)
         if not available_prompts:
             raise ValueError(
@@ -751,6 +1549,12 @@ def main() -> int:
     parser.add_argument("--count", type=int, default=20)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument(
+        "--focus",
+        choices=(FOCUS_ALL, FOCUS_PROTECTED_SQL),
+        default=FOCUS_ALL,
+        help="Optional focus profile for selecting a narrower slice of question specs.",
+    )
+    parser.add_argument(
         "--datasets-dir",
         type=Path,
         default=DATASETS_DIR,
@@ -759,7 +1563,12 @@ def main() -> int:
     args = parser.parse_args()
 
     existing_prompts = _collect_existing_prompts(args.datasets_dir)
-    dataset = build_cases(seed=args.seed, existing_prompts=existing_prompts, count=int(args.count))
+    dataset = build_cases(
+        seed=args.seed,
+        existing_prompts=existing_prompts,
+        count=int(args.count),
+        focus=str(args.focus or FOCUS_ALL),
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(dataset, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(

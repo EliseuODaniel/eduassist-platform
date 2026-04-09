@@ -258,6 +258,155 @@ def compose_public_health_authorizations_bridge() -> str | None:
     ).strip()
 
 
+def compose_public_inclusion_accessibility() -> str | None:
+    inclusion = _load_public_doc("inclusao-acessibilidade-e-seguranca.md")
+    support = _section("inclusao-acessibilidade-e-seguranca.md", "Recursos de apoio")
+    convivencia = _section("inclusao-acessibilidade-e-seguranca.md", "Convivencia")
+    health_emergencies = _section("inclusao-acessibilidade-e-seguranca.md", "Saude e emergencias")
+    if not any((inclusion, support, convivencia, health_emergencies)):
+        return None
+    support_line = ""
+    if support:
+        cleaned = _normalize_space(support).lstrip("- ").strip()
+        support_line = _safe_sentence(
+            f"Nos recursos de apoio, a escola cita {cleaned}"
+            if cleaned
+            else ""
+        )
+    return " ".join(
+        part
+        for part in (
+            "A base publica trata inclusao, acessibilidade e protecao do estudante como um mesmo compromisso institucional.",
+            _first_line(inclusion),
+            support_line,
+            _first_line(convivencia),
+            _first_line(health_emergencies),
+        )
+        if part
+    ).strip()
+
+
+def compose_public_integral_study_support() -> str | None:
+    structure = _section("programa-periodo-integral-e-estudo-orientado.md", "Estrutura do programa")
+    guided_study = _section("programa-periodo-integral-e-estudo-orientado.md", "Estudo orientado")
+    afternoon = _section("programa-periodo-integral-e-estudo-orientado.md", "Rotina da tarde")
+    activities = _section("programa-periodo-integral-e-estudo-orientado.md", "Atividades complementares")
+    limits = _section("programa-periodo-integral-e-estudo-orientado.md", "Limites do acompanhamento")
+    if not any((structure, guided_study, afternoon, activities, limits)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            "Fora da sala regular, o material publico mostra que periodo integral e estudo orientado se completam como camadas de apoio ao estudante.",
+            _first_line(structure),
+            _first_line(guided_study),
+            _first_line(afternoon),
+            _first_line(activities),
+            _first_line(limits),
+            "Na pratica, a rotina ampliada do contraturno combina permanencia orientada, estudo acompanhado, oficinas complementares e momentos de refeicao no tempo estendido.",
+        )
+        if part
+    ).strip()
+
+
+def compose_public_health_emergency_bundle() -> str | None:
+    health_info = _section("protocolo-saude-medicacao-e-emergencias.md", "Informacoes de saude no cadastro")
+    medication_eventual = _section("protocolo-saude-medicacao-e-emergencias.md", "Medicacao de uso eventual")
+    medication_continuous = _section("protocolo-saude-medicacao-e-emergencias.md", "Medicacao de uso continuo")
+    malaise = _section("protocolo-saude-medicacao-e-emergencias.md", "Mal-estar durante a rotina escolar")
+    emergencies = _section("protocolo-saude-medicacao-e-emergencias.md", "Emergencias")
+    digital_limits = _section("protocolo-saude-medicacao-e-emergencias.md", "Limites do canal digital")
+    attested = _section("protocolo-saude-medicacao-e-emergencias.md", "Atestados e justificativas")
+    second_call = _section("politica-avaliacao-recuperacao-e-promocao.md", "Segunda chamada")
+    recovery = _section("politica-avaliacao-recuperacao-e-promocao.md", "Recuperacao")
+    if not any((health_info, medication_eventual, medication_continuous, malaise, emergencies, digital_limits, attested, second_call, recovery)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            "No material publico, uso de medicacao, justificativa de ausencia, reorganizacao avaliativa e resposta a emergencia aparecem como partes do mesmo protocolo escolar.",
+            _first_line(health_info),
+            _first_line(attested),
+            _first_line(medication_eventual),
+            _first_line(medication_continuous),
+            _first_line(malaise),
+            _first_line(second_call),
+            _first_line(recovery),
+            _first_line(emergencies),
+            _first_line(digital_limits),
+        )
+        if part
+    ).strip()
+
+
+def compose_public_outings_authorizations() -> str | None:
+    purpose = _section("saidas-pedagogicas-eventos-e-autorizacoes.md", "Finalidade")
+    authorization = _section("saidas-pedagogicas-eventos-e-autorizacoes.md", "Autorizacao")
+    essentials = _section("saidas-pedagogicas-eventos-e-autorizacoes.md", "Informacoes essenciais")
+    restrictions = _section("saidas-pedagogicas-eventos-e-autorizacoes.md", "Restricoes")
+    internal_events = _section("saidas-pedagogicas-eventos-e-autorizacoes.md", "Eventos internos")
+    if not any((purpose, authorization, essentials, restrictions, internal_events)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            "A base publica liga saidas pedagogicas, eventos e autorizacao previa da familia como um mesmo fluxo operacional.",
+            _first_line(purpose),
+            _first_line(authorization),
+            _first_line(essentials),
+            _first_line(restrictions),
+            _first_line(internal_events),
+        )
+        if part
+    ).strip()
+
+
+def compose_public_transport_uniform_bundle() -> str | None:
+    transport = _load_public_doc("transporte-alimentacao-uniforme.md")
+    meal = _section("transporte-alimentacao-uniforme.md", "Cantina e almoco")
+    restrictions = _section("transporte-alimentacao-uniforme.md", "Restricoes alimentares")
+    uniform_use = _section("transporte-alimentacao-uniforme.md", "Uso")
+    uniform_purchase = _section("transporte-alimentacao-uniforme.md", "Compra")
+    if not any((transport, meal, restrictions, uniform_use, uniform_purchase)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            "Para a rotina fora da sala, o material publico combina deslocamento, alimentacao, identificacao visual e uso diario de itens institucionais como orientacoes operacionais da vida escolar.",
+            _first_line(transport),
+            _first_line(meal),
+            _first_line(restrictions),
+            _first_line(uniform_use),
+            _first_line(uniform_purchase),
+        )
+        if part
+    ).strip()
+
+
+def compose_public_governance_protocol(profile: dict[str, Any] | None) -> str | None:
+    leadership = _section("governanca-e-lideranca.md", "Estrutura de lideranca")
+    family_relationship = _section("governanca-e-lideranca.md", "Relacionamento com familias")
+    channels = _section("governanca-e-lideranca.md", "Canais institucionais")
+    meetings = _section("governanca-e-lideranca.md", "Reunioes e acompanhamento")
+    secretaria = _section("secretaria-documentacao-e-prazos.md", "Canais para documentos")
+    school_name = _school_name(profile)
+    if not any((leadership, family_relationship, channels, meetings, secretaria)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            f"Na base publica do {school_name}, a trilha institucional fica mais clara quando secretaria, coordenacao, direcao e canais oficiais aparecem como etapas complementares de encaminhamento e protocolo.",
+            "Na pratica, a secretaria funciona como porta de entrada operacional para documentos, orientacoes iniciais e registros; a coordenacao assume o acompanhamento pedagogico e de convivio; e a direcao aparece como instancia de escalonamento institucional quando o tema exige alinhamento maior.",
+            _first_line(secretaria),
+            _first_line(leadership),
+            _first_line(family_relationship),
+            _first_line(channels),
+            _first_line(meetings),
+        )
+        if part
+    ).strip()
+
+
 def compose_public_secretaria_portal_credentials() -> str | None:
     documents = _section("secretaria-documentacao-e-prazos.md", "Canais para documentos")
     timelines = _section("secretaria-documentacao-e-prazos.md", "Prazos tipicos")
@@ -428,7 +577,7 @@ def compose_public_calendar_visibility(profile: dict[str, Any] | None) -> str | 
             "No calendario publico, o que costuma ficar aberto para familias sao marcos institucionais gerais e eventos coletivos."
         )
     parts.append(
-        "O que depende de autenticacao ou contexto interno sao detalhes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos."
+        "A fronteira pratica aparece assim: orientacoes abertas circulam no calendario publico, no portal institucional aberto e nos canais oficiais; o que so ganha detalhe depois do login, da autenticacao e da conta vinculada no portal sao informacoes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos."
     )
     if communication:
         parts.append(_first_line(communication))
@@ -551,6 +700,103 @@ def match_public_canonical_lane(message: str) -> str | None:
     if not normalized:
         return None
     if (
+        any(term in normalized for term in ("inclus", "acessib"))
+        and any(
+            term in normalized
+            for term in ("acolh", "prote", "seguran", "compromisso institucional", "necessidades especificas", "necessidades específicas")
+        )
+    ):
+        return "public_bundle.inclusion_accessibility"
+    if (
+        any(
+            term in normalized
+            for term in (
+                "necessidades especificas",
+                "necessidades específicas",
+                "mediacao de rotina",
+                "mediação de rotina",
+                "rede de apoio",
+                "equilibrio entre apoio",
+                "equilíbrio entre apoio",
+            )
+        )
+        and any(term in normalized for term in ("seguran", "acolh", "prote", "acessib", "inclus"))
+    ):
+        return "public_bundle.inclusion_accessibility"
+    if (
+        any(term in normalized for term in ("periodo integral", "período integral", "integral"))
+        and any(term in normalized for term in ("estudo orientado", "apoio ao estudo", "suporte ao aluno", "alem da sala", "além da sala"))
+    ):
+        return "public_bundle.integral_study_support"
+    if (
+        any(term in normalized for term in ("turno estendido", "contraturno", "jornada estendida", "tempo estendido"))
+        and any(term in normalized for term in ("estudo guiado", "estudo orientado", "apoio ao estudo", "apoio fora da sala", "desenho"))
+    ):
+        return "public_bundle.integral_study_support"
+    if (
+        sum(
+            1
+            for term in ("turno estendido", "contraturno", "oficinas", "refeicao", "refeição", "permanencia", "permanência", "estudo acompanhado")
+            if term in normalized
+        )
+        >= 3
+        and any(term in normalized for term in ("rotina", "arquitetura", "jornada", "ecossistema", "permanencia no contraturno", "permanência no contraturno"))
+    ):
+        return "public_bundle.integral_study_support"
+    if (
+        any(term in normalized for term in ("medicacao", "medicação", "saude", "saúde"))
+        and any(term in normalized for term in ("emerg", "mal-estar", "mal estar", "monitoramento"))
+    ):
+        return "public_bundle.health_emergency_bundle"
+    if (
+        any(term in normalized for term in ("saude", "saúde", "atestado", "reorganiz", "reorganização"))
+        and any(term in normalized for term in ("avali", "devolut", "recuper", "rotina escolar", "recompos"))
+    ):
+        return "public_bundle.health_emergency_bundle"
+    if (
+        any(term in normalized for term in ("saida", "saída", "eventos externos", "saidas pedagogicas", "saídas pedagógicas"))
+        and any(term in normalized for term in ("autoriz", "familias", "famílias", "previa", "prévia"))
+    ):
+        return "public_bundle.outings_authorizations"
+    if (
+        any(term in normalized for term in ("atividade externa", "atividades externas", "risco", "anuencia", "anuência", "retorno"))
+        and any(term in normalized for term in ("autoriz", "saude", "saúde", "impedimento", "familia", "família"))
+    ):
+        return "public_bundle.outings_authorizations"
+    if (
+        any(term in normalized for term in ("transporte", "uniforme"))
+        and any(term in normalized for term in ("alimentacao", "alimentação", "cantina", "almoco", "almoço", "rotina fora da sala"))
+    ):
+        return "public_bundle.transport_uniform_bundle"
+    if (
+        any(term in normalized for term in ("deslocamento", "refeicao", "refeição", "identificacao", "identificação", "itens institucionais"))
+        and any(
+            term in normalized
+            for term in ("rotina", "entrada", "saida", "saída", "uniforme", "transporte", "cotidiano fora da aula", "experiencia operacional", "experiência operacional", "uso diario", "uso diário")
+        )
+    ):
+        return "public_bundle.transport_uniform_bundle"
+    if (
+        any(term in normalized for term in ("direcao", "direção"))
+        and any(term in normalized for term in ("coordenacao", "coordenação", "cotidiano", "assunto foge", "assunto sair do cotidiano"))
+        and any(term in normalized for term in ("protocolo", "formal"))
+    ):
+        return "public_bundle.governance_protocol"
+    if (
+        any(term in normalized for term in ("lideranca maior", "liderança maior", "escalonamento", "escala de autoridade", "autoridade institucional"))
+        and any(term in normalized for term in ("impasse", "rotina normal", "encaminhamento", "coordenacao", "coordenação", "direcao", "direção"))
+    ):
+        return "public_bundle.governance_protocol"
+    if (
+        sum(
+            1
+            for term in ("secretaria", "coordenacao", "coordenação", "direcao", "direção", "canais oficiais", "trilha institucional", "tema caminha", "escalonamento")
+            if term in normalized
+        )
+        >= 3
+    ):
+        return "public_bundle.governance_protocol"
+    if (
         any(term in normalized for term in ("professor", "professora", "docente"))
         and any(term in normalized for term in ("contato", "telefone", "canal", "como falar", "como falo"))
     ):
@@ -578,13 +824,14 @@ def match_public_canonical_lane(message: str) -> str | None:
     ):
         return "public_bundle.calendar_week"
     if (
-        (
-            "tres fases" in normalized
-            and all(term in normalized for term in ("admiss", "rotina", "fechamento"))
-        )
+        ("tres fases" in normalized and all(term in normalized for term in ("admiss", "rotina", "fechamento")))
         or (
             all(term in normalized for term in ("admiss", "rotina academica", "fechamento"))
             and any(term in normalized for term in ("distribui", "distribui entre", "olhando so a base publica", "olhando apenas a base publica"))
+        )
+        or (
+            all(term in normalized for term in ("admiss", "rotina academica", "fechamento"))
+            and any(term in normalized for term in ("jornada completa", "ano escolar", "documentacao publica", "documentação pública", "segundo a documentacao publica"))
         )
     ):
         return "public_bundle.year_three_phases"
@@ -594,7 +841,7 @@ def match_public_canonical_lane(message: str) -> str | None:
     ):
         return "public_bundle.academic_policy_overview"
     if any(term in normalized for term in ("convivencia", "convivência", "frequencia", "frequência", "pontualidade")):
-        if any(term in normalized for term in ("regra", "regras", "manual", "politica", "política", "escola")):
+        if any(term in normalized for term in ("regra", "regras", "manual", "regulamento", "politica", "política", "escola")):
             return "public_bundle.conduct_frequency_punctuality"
 
     family_entry_terms = (
@@ -640,6 +887,12 @@ def match_public_canonical_lane(message: str) -> str | None:
         )
         and any(term in normalized for term in ("avaliacao", "avaliações", "avaliacoes"))
         and "matricula" in normalized
+    ):
+        return "public_bundle.family_new_calendar_assessment_enrollment"
+    if (
+        any(term in normalized for term in ("entrada", "encontros com responsaveis", "encontros com responsáveis", "devolutivas", "recomposicao academica", "recomposição acadêmica"))
+        and any(term in normalized for term in ("familia", "família", "tempo", "arquitetura do tempo", "ano"))
+        and any(term in normalized for term in ("avali", "reunioes", "reuniões", "rotina", "responsaveis", "responsáveis"))
     ):
         return "public_bundle.family_new_calendar_assessment_enrollment"
     if (
@@ -829,6 +1082,18 @@ def compose_public_canonical_lane_answer(
 ) -> str | None:
     if lane == "public_bundle.teacher_directory_boundary":
         return compose_public_teacher_directory_boundary(profile)
+    if lane == "public_bundle.inclusion_accessibility":
+        return compose_public_inclusion_accessibility()
+    if lane == "public_bundle.integral_study_support":
+        return compose_public_integral_study_support()
+    if lane == "public_bundle.health_emergency_bundle":
+        return compose_public_health_emergency_bundle()
+    if lane == "public_bundle.outings_authorizations":
+        return compose_public_outings_authorizations()
+    if lane == "public_bundle.transport_uniform_bundle":
+        return compose_public_transport_uniform_bundle()
+    if lane == "public_bundle.governance_protocol":
+        return compose_public_governance_protocol(profile)
     if lane == "public_bundle.calendar_week":
         return compose_public_calendar_week(profile)
     if lane == "public_bundle.year_three_phases":

@@ -75,9 +75,56 @@ class FastPathDeps:
     compose_assistant_identity_answer: Callable[[dict[str, Any] | None], str]
     school_name: Callable[[dict[str, Any] | None], str]
     safe_excerpt: Callable[..., str]
+    format_brl: Callable[[Any], str]
     hypothetical_children_quantity: Callable[[str], int | None]
     pricing_projection: Callable[..., dict[str, Any]]
     compose_public_bolsas_and_processes: Callable[[dict[str, Any] | None], str | None]
+
+
+def _looks_like_public_pricing_query(normalized: str) -> bool:
+    if not any(term in normalized for term in {'mensalidade', 'mensalidades', 'matricula', 'matrícula'}):
+        return False
+    return not any(
+        term in normalized
+        for term in {
+            'fatura',
+            'faturas',
+            'boleto',
+            'boletos',
+            'em aberto',
+            'vencimento',
+            'vencida',
+            'vencidas',
+            'do lucas',
+            'da ana',
+            'meu filho',
+            'minha filha',
+        }
+    )
+
+
+def _public_pricing_segment_hint(normalized_messages: list[str]) -> str | None:
+    for message in normalized_messages:
+        if any(term in message for term in {'ensino medio', 'ensino médio', '1o ano', '2o ano', '3o ano'}):
+            return 'Ensino Medio'
+        if any(term in message for term in {'fundamental ii', '6o ano', '7o ano', '8o ano', '9o ano'}):
+            return 'Ensino Fundamental II'
+        if any(term in message for term in {'fundamental i', '1o ano do fundamental', '2o ano do fundamental', '3o ano do fundamental', '4o ano do fundamental', '5o ano do fundamental'}):
+            return 'Ensino Fundamental I'
+    return None
+
+
+def _public_pricing_context_follow_up(normalized: str, recent_user_messages: list[str]) -> bool:
+    if _looks_like_public_pricing_query(normalized):
+        return False
+    pricing_context_active = any(_looks_like_public_pricing_query(message) for message in recent_user_messages)
+    if not pricing_context_active:
+        return False
+    if normalized in {'1o', '2o', '3o', '6o', '7o', '8o', '9o'}:
+        return True
+    if re.fullmatch(r'(1o|2o|3o|6o|7o|8o|9o)\s+ano', normalized):
+        return True
+    return normalized.startswith('e para') or 'filhos' in normalized or 'alunos' in normalized
 
 
 def _build_fast_path_payload(
@@ -120,6 +167,11 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
     profile = ctx.school_profile if isinstance(ctx.school_profile, dict) else {}
     normalized = deps.normalize_text(ctx.request.message)
     recent_user_messages = deps.normalized_recent_user_messages(ctx.conversation_context)
+    pricing_segment_hint = _public_pricing_segment_hint([normalized, *recent_user_messages])
+    pricing_query_active = _looks_like_public_pricing_query(normalized) or _public_pricing_context_follow_up(
+        normalized,
+        recent_user_messages,
+    )
 
     if deps.is_simple_greeting(ctx.request.message):
         return _build_fast_path_payload(
@@ -641,8 +693,11 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
             )
 
     quantity = deps.hypothetical_children_quantity(ctx.request.message)
-    if quantity is not None and any(term in normalized for term in {"matricula", "mensalidade", "pagar", "pagaria"}):
-        projection = deps.pricing_projection(profile, quantity=quantity)
+    if quantity is not None and (
+        any(term in normalized for term in {"matricula", "mensalidade", "pagar", "pagaria"})
+        or pricing_query_active
+    ):
+        projection = deps.pricing_projection(profile, quantity=quantity, segment_hint=pricing_segment_hint)
         total_enrollment = Decimal(str(projection.get("total_enrollment_fee", "0") or "0")).quantize(Decimal("0.01"))
         total_monthly = Decimal(str(projection.get("total_monthly_amount", "0") or "0")).quantize(Decimal("0.01"))
         segment = str(projection.get("segment", "") or "segmento publico de referencia").strip()
@@ -667,5 +722,43 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
             graph_leaf="pricing_projection",
             suggested_domain="finance",
         )
+
+    if profile and pricing_query_active and pricing_segment_hint:
+        rows = profile.get("tuition_reference")
+        if isinstance(rows, list):
+            chosen = next(
+                (
+                    row
+                    for row in rows
+                    if isinstance(row, dict)
+                    and deps.normalize_text(pricing_segment_hint) in deps.normalize_text(row.get("segment"))
+                ),
+                None,
+            )
+            if isinstance(chosen, dict):
+                monthly = deps.format_brl(chosen.get("monthly_amount"))
+                enrollment = deps.format_brl(chosen.get("enrollment_fee"))
+                notes = str(chosen.get("notes") or "").strip()
+                return _build_fast_path_payload(
+                    message_text=(
+                        f"Para {pricing_segment_hint} no turno {chosen.get('shift_label', 'Manha')}, "
+                        f"a mensalidade publica de referencia em 2026 e {monthly} "
+                        f"e a taxa de matricula e {enrollment}. {notes}"
+                    ).strip(),
+                    domain="finance",
+                    access_tier="public",
+                    confidence=0.99,
+                    reason="specialist_supervisor_fast_path:public_pricing_reference",
+                    summary="Resposta publica deterministica baseada na tabela de valores.",
+                    supports=[
+                        MessageEvidenceSupport(
+                            kind="pricing_reference",
+                            label=str(chosen.get("segment") or "Tabela publica"),
+                            detail=f"mensalidade {monthly} · matricula {enrollment}",
+                        ),
+                    ],
+                    graph_leaf="public_pricing_reference",
+                    suggested_domain="finance",
+                )
 
     return None

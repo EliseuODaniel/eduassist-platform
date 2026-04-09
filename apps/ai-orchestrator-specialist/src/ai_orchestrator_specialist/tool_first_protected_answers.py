@@ -35,16 +35,22 @@ class ToolFirstProtectedDeps:
     compose_finance_aggregate_answer: Callable[[list[dict[str, Any]]], str]
     looks_like_academic_risk_followup: Callable[[str], bool]
     looks_like_family_academic_aggregate_query: Callable[[str], bool]
+    looks_like_upcoming_assessments_query: Callable[[str], bool]
+    looks_like_attendance_timeline_query: Callable[[str], bool]
     subject_hint_from_text: Callable[[str], str | None]
     looks_like_subject_followup: Callable[[str], bool]
     resolved_academic_target_name: Callable[..., str | None]
     needs_specific_academic_student_clarification: Callable[..., bool]
     build_academic_student_selection_clarify: Callable[..., SupervisorAnswerPayload]
     fetch_academic_summary_payload: Callable[..., Awaitable[dict[str, Any] | None]]
+    fetch_upcoming_assessments_payload: Callable[..., Awaitable[dict[str, Any] | None]]
+    fetch_attendance_timeline_payload: Callable[..., Awaitable[dict[str, Any] | None]]
     compose_academic_risk_answer: Callable[[dict[str, Any]], str]
     compose_named_subject_grade_answer: Callable[..., str | None]
     compose_named_grade_answer: Callable[[dict[str, Any]], str]
     compose_academic_snapshot_lines: Callable[[dict[str, Any]], list[str]]
+    compose_upcoming_assessments_lines: Callable[[dict[str, Any]], list[str]]
+    compose_attendance_timeline_lines: Callable[[dict[str, Any]], list[str]]
     safe_excerpt: Callable[..., str]
     http_get: Callable[..., Awaitable[dict[str, Any] | None]]
     compose_actor_admin_status_answer: Callable[[dict[str, Any]], str]
@@ -95,6 +101,15 @@ async def maybe_tool_first_protected_answer(
     memory: Any,
     deps: ToolFirstProtectedDeps,
 ) -> SupervisorAnswerPayload | None:
+    def _compose_family_upcoming_answer(rows: list[tuple[str, dict[str, Any], dict[str, Any]]]) -> str:
+        lines = ["Proximas avaliacoes das contas vinculadas:"]
+        for student_name, academic_summary, upcoming_summary in rows:
+            class_name = str(academic_summary.get("class_name") or "nao informada").strip() or "nao informada"
+            lines.append(f"- {student_name} ({class_name})")
+            for item in deps.compose_upcoming_assessments_lines(upcoming_summary)[:4]:
+                lines.append(f"  {item}")
+        return "\n".join(lines)
+
     finance_terms = {
         "pagamento",
         "pagamentos",
@@ -194,6 +209,89 @@ async def maybe_tool_first_protected_answer(
                 graph_leaf="financial_summary_aggregate_fallback",
                 suggested_domain="finance",
             )
+
+    if ctx.request.user.authenticated and deps.looks_like_upcoming_assessments_query(ctx.request.message):
+        student_hint = deps.resolved_academic_target_name(ctx, resolved=ctx.resolved_turn)
+        if deps.needs_specific_academic_student_clarification(ctx, target_name=student_hint, subject_hint=None):
+            return deps.build_academic_student_selection_clarify(
+                ctx,
+                reason="specialist_supervisor_tool_first:upcoming_assessments_student_clarify",
+                graph_path=["specialist_supervisor", "tool_first", "upcoming_assessments_student_clarify"],
+            )
+        if student_hint:
+            payload = await deps.fetch_upcoming_assessments_payload(ctx, student_name_hint=student_hint)
+            student = payload.get("student") if isinstance(payload, dict) else None
+            summary = payload.get("summary") if isinstance(payload, dict) else None
+            if isinstance(student, dict) and isinstance(summary, dict):
+                academic_payload = await deps.fetch_academic_summary_payload(ctx, student_name_hint=student_hint)
+                academic_summary = academic_payload.get("summary") if isinstance(academic_payload, dict) else None
+                student_name = str(student.get("full_name") or student_hint or "Aluno").strip() or "Aluno"
+                lines = [f"Proximas avaliacoes de {student_name}:"]
+                if isinstance(academic_summary, dict):
+                    lines.append(f"- Turma: {academic_summary.get('class_name', 'nao informada')}")
+                lines.extend(deps.compose_upcoming_assessments_lines(summary))
+                return _build_protected_tool_payload(
+                    message_text="\n".join(lines),
+                    domain="academic",
+                    access_tier=_access_tier_for_domain("academic", True),
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:upcoming_assessments",
+                    summary="Proximas avaliacoes deterministicas por aluno vinculado.",
+                    supports=[MessageEvidenceSupport(kind="upcoming_assessments", label=student_name, detail="cronograma avaliativo protegido")],
+                    graph_leaf="upcoming_assessments",
+                    suggested_domain="academic",
+                )
+        rows: list[tuple[str, dict[str, Any], dict[str, Any]]] = []
+        for student in deps.linked_students(ctx.actor, capability="academic"):
+            student_name = str(student.get("full_name") or "").strip()
+            if not student_name:
+                continue
+            academic_payload = await deps.fetch_academic_summary_payload(ctx, student_name_hint=student_name)
+            upcoming_payload = await deps.fetch_upcoming_assessments_payload(ctx, student_name_hint=student_name)
+            academic_summary = academic_payload.get("summary") if isinstance(academic_payload, dict) else None
+            upcoming_summary = upcoming_payload.get("summary") if isinstance(upcoming_payload, dict) else None
+            if isinstance(academic_summary, dict) and isinstance(upcoming_summary, dict):
+                rows.append((student_name, academic_summary, upcoming_summary))
+        if rows:
+            return _build_protected_tool_payload(
+                message_text=_compose_family_upcoming_answer(rows),
+                domain="academic",
+                access_tier=_access_tier_for_domain("academic", True),
+                confidence=0.99,
+                reason="specialist_supervisor_tool_first:upcoming_assessments_aggregate",
+                summary="Proximas avaliacoes deterministicas das contas vinculadas.",
+                supports=[MessageEvidenceSupport(kind="upcoming_assessments", label=student_name, detail="resumo avaliativo por aluno") for student_name, _a, _u in rows[:4]],
+                graph_leaf="upcoming_assessments_aggregate",
+                suggested_domain="academic",
+            )
+
+    if ctx.request.user.authenticated and deps.looks_like_attendance_timeline_query(ctx.request.message):
+        student_hint = deps.resolved_academic_target_name(ctx, resolved=ctx.resolved_turn)
+        if deps.needs_specific_academic_student_clarification(ctx, target_name=student_hint, subject_hint=None):
+            return deps.build_academic_student_selection_clarify(
+                ctx,
+                reason="specialist_supervisor_tool_first:attendance_student_clarify",
+                graph_path=["specialist_supervisor", "tool_first", "attendance_student_clarify"],
+            )
+        if student_hint:
+            payload = await deps.fetch_attendance_timeline_payload(ctx, student_name_hint=student_hint)
+            student = payload.get("student") if isinstance(payload, dict) else None
+            summary = payload.get("summary") if isinstance(payload, dict) else None
+            if isinstance(student, dict) and isinstance(summary, dict):
+                student_name = str(student.get("full_name") or student_hint or "Aluno").strip() or "Aluno"
+                lines = [f"Registros de frequencia de {student_name}:"]
+                lines.extend(deps.compose_attendance_timeline_lines(summary))
+                return _build_protected_tool_payload(
+                    message_text="\n".join(lines),
+                    domain="academic",
+                    access_tier=_access_tier_for_domain("academic", True),
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:attendance_timeline",
+                    summary="Frequencia detalhada deterministica por aluno vinculado.",
+                    supports=[MessageEvidenceSupport(kind="attendance_timeline", label=student_name, detail="faltas e atrasos com data")],
+                    graph_leaf="attendance_timeline",
+                    suggested_domain="academic",
+                )
 
     if ctx.request.user.authenticated and (
         "nota" in normalized

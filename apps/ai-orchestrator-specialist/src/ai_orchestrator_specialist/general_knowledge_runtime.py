@@ -88,4 +88,6 @@ async def general_knowledge_fast_path_answer(
         suggested_replies=deps.default_suggested_replies("institution"),
         graph_path=["specialist_supervisor", "fast_path", "general_knowledge"],
         reason="specialist_supervisor_fast_path:general_knowledge",
+        used_llm=True,
+        llm_stages=['general_knowledge_fast_path'],
     )

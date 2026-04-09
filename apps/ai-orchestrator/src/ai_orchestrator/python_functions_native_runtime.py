@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from time import monotonic
 from typing import Any
 
 from . import runtime as rt
 from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult
+from .candidate_builder import build_response_candidate
+from .candidate_chooser import choose_best_candidate
 from .evidence_pack import (
     build_direct_answer_evidence_pack,
     build_retrieval_evidence_pack,
@@ -15,27 +18,36 @@ from .kernel_runtime import (
     _maybe_hypothetical_public_pricing_answer,
     _maybe_public_unpublished_direct_answer,
 )
-from .llm_provider import compose_with_provider, polish_structured_with_provider, revise_with_provider
+from .llm_provider import (
+    compose_with_provider,
+    polish_structured_with_provider,
+    revise_with_provider,
+)
 from .models import (
     AccessTier,
     IntentClassification,
-    MessageResponse,
     MessageEvidenceSupport,
+    MessageResponse,
     MessageResponseCitation,
     OrchestrationMode,
     QueryDomain,
     RetrievalBackend,
+    RetrievalProfile,
 )
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
 from .public_doc_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
-from .retrieval import get_retrieval_service
+from .response_cache import store_cached_public_response
 from .retrieval import (
     can_read_restricted_documents,
     compose_restricted_document_grounded_answer_for_query,
     compose_restricted_document_no_match_answer,
+    get_retrieval_service,
     looks_like_restricted_document_query,
     select_relevant_restricted_hits,
 )
+from .retrieval_aware_router import build_public_evidence_probe
+from .serving_policy import LoadSnapshot, build_public_serving_policy
+from .serving_telemetry import get_stack_telemetry_snapshot, record_stack_outcome
 
 
 def _should_use_python_functions_native_path(plan: KernelPlan) -> bool:
@@ -70,6 +82,7 @@ async def maybe_execute_python_functions_native_plan(
     engine_mode: str,
     path_profile: PathExecutionProfile | None = None,
 ) -> KernelRunResult | None:
+    started_at = monotonic()
     effective_path_profile = path_profile or get_path_execution_profile(engine_name)
     if not _should_use_python_functions_native_path(plan):
         return None
@@ -132,7 +145,15 @@ async def maybe_execute_python_functions_native_plan(
             actor=actor or {},
             conversation_context=conversation_context,
         )
-    elif has_authenticated_actor and rt._is_access_scope_query(request.message):
+    elif (
+        has_authenticated_actor
+        and rt._is_access_scope_query(request.message)
+        and not rt._should_prioritize_protected_sql_query(
+            request.message,
+            actor=actor,
+            conversation_context=conversation_context,
+        )
+    ):
         authenticated_account_scope_answer = rt._compose_authenticated_access_scope_answer(
             actor,
             school_name=str(school_profile.get('school_name', 'Colegio Horizonte')),
@@ -547,6 +568,117 @@ async def maybe_execute_python_functions_native_plan(
         if sources and sources not in message_text:
             message_text = f'{message_text}\n\n{sources}'
     message_text = rt._normalize_response_wording(message_text)
+    llm_forced_mode = rt._llm_forced_mode_enabled(settings=settings, request=request)
+
+    candidate_chosen = 'documentary_synthesis' if llm_stages else 'deterministic'
+    candidate_reason = execution_reason
+    retrieval_probe_topic = None
+    response_cache_hit = False
+    response_cache_kind = None
+
+    if (
+        getattr(settings, 'candidate_chooser_enabled', True)
+        and preview.classification.access_tier is AccessTier.public
+        and deterministic_fallback_text
+    ):
+        canonical_lane = match_public_canonical_lane(request.message)
+        retrieval_probe_search = None
+        if retrieval_hits:
+            retrieval_probe_search = type('RetrievalProbeSearch', (), {'hits': retrieval_hits, 'document_groups': [], 'query_plan': None})()
+        elif (
+            canonical_lane is None
+            and getattr(settings, 'retrieval_aware_routing_enabled', True)
+            and rt._looks_like_public_documentary_open_query(request.message)
+        ):
+            try:
+                retrieval_service = get_retrieval_service(
+                    database_url=settings.database_url,
+                    qdrant_url=settings.qdrant_url,
+                    collection_name=settings.qdrant_documents_collection,
+                    embedding_model=settings.document_embedding_model,
+                    enable_query_variants=settings.retrieval_enable_query_variants,
+                    enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
+                    late_interaction_model=settings.retrieval_late_interaction_model,
+                    candidate_pool_size=settings.retrieval_candidate_pool_size,
+                    cheap_candidate_pool_size=settings.retrieval_cheap_candidate_pool_size,
+                    deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
+                    rerank_fused_weight=settings.retrieval_rerank_fused_weight,
+                    rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
+                )
+                retrieval_probe_search = retrieval_service.hybrid_search(
+                    query=analysis_message,
+                    top_k=3,
+                    visibility='public',
+                    category='public_docs',
+                    profile=RetrievalProfile.cheap,
+                )
+            except Exception:
+                retrieval_probe_search = None
+        probe = build_public_evidence_probe(
+            message=request.message,
+            canonical_lane=canonical_lane,
+            primary_act=public_plan.conversation_act if public_plan is not None else 'canonical_fact',
+            secondary_acts=public_plan.secondary_acts if public_plan is not None else (),
+            evidence_pack=evidence_pack,
+            retrieval_search=retrieval_probe_search,
+        )
+        retrieval_probe_topic = probe.topic
+        telemetry_snapshot = get_stack_telemetry_snapshot('python_functions')
+        serving_policy = build_public_serving_policy(
+            settings=settings,
+            stack_name='python_functions',
+            request=request,
+            probe=probe,
+            load_snapshot=LoadSnapshot(
+                llm_forced_mode=llm_forced_mode,
+                recent_request_count=telemetry_snapshot.recent_request_count,
+                recent_p95_latency_ms=telemetry_snapshot.recent_p95_latency_ms,
+                recent_timeout_rate=telemetry_snapshot.recent_timeout_rate,
+                recent_error_rate=telemetry_snapshot.recent_error_rate,
+                recent_cache_hit_rate=telemetry_snapshot.recent_cache_hit_rate,
+                recent_used_llm_rate=telemetry_snapshot.recent_used_llm_rate,
+            ),
+        )
+        deterministic_candidate = build_response_candidate(
+            kind='deterministic',
+            text=deterministic_fallback_text,
+            reason='python_functions_deterministic_fallback',
+            retrieval_backend=RetrievalBackend.none,
+            selected_tools=tuple(preview.selected_tools),
+            source_count=max(1, len(citations)),
+            support_count=evidence_pack.support_count if evidence_pack is not None else 0,
+        )
+        current_candidate = build_response_candidate(
+            kind='documentary_synthesis' if llm_stages else 'deterministic',
+            text=message_text,
+            reason=execution_reason,
+            used_llm=bool(llm_stages),
+            llm_stages=tuple(llm_stages),
+            retrieval_backend=retrieval_backend,
+            selected_tools=tuple(preview.selected_tools),
+            source_count=max(1, len(citations)),
+            support_count=evidence_pack.support_count if evidence_pack is not None else 0,
+        )
+        chosen_candidate = choose_best_candidate(
+            candidates=[candidate for candidate in (deterministic_candidate, current_candidate) if candidate is not None],
+            probe=probe,
+            policy=serving_policy,
+        )
+        if chosen_candidate is not None:
+            message_text = chosen_candidate.candidate.text
+            candidate_chosen = chosen_candidate.candidate.kind
+            candidate_reason = chosen_candidate.chooser_reason
+            if getattr(settings, 'public_response_cache_enabled', True) and serving_policy.prefer_cache:
+                store_cached_public_response(
+                    message=request.message,
+                    text=message_text,
+                    canonical_lane=canonical_lane,
+                    topic=probe.topic,
+                    evidence_fingerprint=probe.evidence_fingerprint,
+                    candidate_kind=candidate_chosen,
+                    reason=candidate_reason,
+                    ttl_seconds=float(getattr(settings, 'public_response_cache_ttl_seconds', 300.0)),
+                )
 
     suggested_replies = rt._build_suggested_replies(
         request=request,
@@ -626,6 +758,20 @@ async def maybe_execute_python_functions_native_plan(
         final_polish_reason=final_polish_decision.reason,
         final_polish_changed_text=final_polish_changed_text,
         final_polish_preserved_fallback=final_polish_preserved_fallback,
+        candidate_chosen=candidate_chosen,
+        candidate_reason=candidate_reason,
+        retrieval_probe_topic=retrieval_probe_topic,
+        response_cache_hit=response_cache_hit,
+        response_cache_kind=response_cache_kind,
+    )
+    record_stack_outcome(
+        stack_name='python_functions',
+        latency_ms=(monotonic() - started_at) * 1000,
+        success=True,
+        timeout=False,
+        cache_hit=response_cache_hit,
+        used_llm=bool(llm_stages),
+        candidate_kind=candidate_chosen,
     )
     reflection = KernelReflection(
         grounded=verification.valid,

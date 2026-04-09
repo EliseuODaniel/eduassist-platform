@@ -102,6 +102,14 @@ def build_final_polish_decision(
 
     if normalized_stack == 'langgraph':
         if public_doc_like and preview.mode in {OrchestrationMode.structured_tool, OrchestrationMode.hybrid_retrieval}:
+            if 'answer_composition' in llm_stage_set:
+                return FinalPolishDecision(
+                    True,
+                    False,
+                    False,
+                    'skip',
+                    'langgraph_candidate_synthesis_already_used',
+                )
             return FinalPolishDecision(
                 True,
                 True,

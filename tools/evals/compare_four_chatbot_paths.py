@@ -32,6 +32,7 @@ from tools.evals.eval_quality_utils import (  # noqa: E402
 )
 
 from ai_orchestrator.engine_selector import build_engine_bundle  # noqa: E402
+from ai_orchestrator.grounded_answer_experience import apply_grounded_answer_experience  # noqa: E402
 from ai_orchestrator.main import Settings  # noqa: E402
 from ai_orchestrator.models import (  # noqa: E402
     ConversationChannel,
@@ -70,6 +71,9 @@ def _build_settings(*, stack: str, llm_forced: bool = False) -> Settings:
 
 
 def _user_for_slice(entry: dict[str, Any]) -> UserContext:
+    explicit_user = entry.get('user')
+    if isinstance(explicit_user, dict) and explicit_user:
+        return UserContext.model_validate(explicit_user)
     slice_name = str(entry.get('slice') or 'public')
     category = str(entry.get('category') or '').strip()
     chat_id = entry.get('telegram_chat_id')
@@ -117,6 +121,12 @@ async def _run_turn(*, stack: str, entry: dict[str, Any], llm_forced: bool = Fal
             bundle.primary.respond(request=request, settings=settings, engine_mode=bundle.mode),
             timeout=20.0,
         )
+        response = await apply_grounded_answer_experience(
+            request=request,
+            response=response,
+            settings=settings,
+            stack_name=stack,
+        )
         latency_ms = round((perf_counter() - started) * 1000, 1)
         body = response.model_dump(mode='json')
         return {
@@ -128,6 +138,18 @@ async def _run_turn(*, stack: str, entry: dict[str, Any], llm_forced: bool = Fal
             'graph_path': list(response.graph_path),
             'used_llm': bool(getattr(response, 'used_llm', False)),
             'llm_stages': list(getattr(response, 'llm_stages', []) or []),
+            'final_polish_applied': bool(getattr(response, 'final_polish_applied', False)),
+            'final_polish_mode': getattr(response, 'final_polish_mode', None),
+            'final_polish_reason': getattr(response, 'final_polish_reason', None),
+            'answer_experience_applied': bool(getattr(response, 'answer_experience_applied', False)),
+            'answer_experience_reason': getattr(response, 'answer_experience_reason', None),
+            'answer_experience_provider': getattr(response, 'answer_experience_provider', None),
+            'answer_experience_model': getattr(response, 'answer_experience_model', None),
+            'candidate_chosen': getattr(response, 'candidate_chosen', None),
+            'candidate_reason': getattr(response, 'candidate_reason', None),
+            'retrieval_probe_topic': getattr(response, 'retrieval_probe_topic', None),
+            'response_cache_hit': bool(getattr(response, 'response_cache_hit', False)),
+            'response_cache_kind': getattr(response, 'response_cache_kind', None),
         }
     except Exception as exc:
         latency_ms = round((perf_counter() - started) * 1000, 1)
@@ -140,6 +162,18 @@ async def _run_turn(*, stack: str, entry: dict[str, Any], llm_forced: bool = Fal
             'graph_path': [],
             'used_llm': False,
             'llm_stages': [],
+            'final_polish_applied': False,
+            'final_polish_mode': None,
+            'final_polish_reason': None,
+            'answer_experience_applied': False,
+            'answer_experience_reason': None,
+            'answer_experience_provider': None,
+            'answer_experience_model': None,
+            'candidate_chosen': None,
+            'candidate_reason': None,
+            'retrieval_probe_topic': None,
+            'response_cache_hit': False,
+            'response_cache_kind': None,
         }
 
 
@@ -155,11 +189,11 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     lines.append('')
     lines.append('## Stack Summary')
     lines.append('')
-    lines.append('| Stack | OK | Keyword pass | Quality | Avg latency |')
-    lines.append('| --- | --- | --- | --- | --- |')
+    lines.append('| Stack | OK | Keyword pass | Quality | Avg latency | Final polish |')
+    lines.append('| --- | --- | --- | --- | --- | --- |')
     for stack, bucket in payload['summary']['by_stack'].items():
         lines.append(
-            f"| `{stack}` | `{bucket['ok']}/{bucket['count']}` | `{bucket['keyword_pass']}/{bucket['count']}` | `{bucket['quality_avg']}` | `{bucket['avg_latency_ms']} ms` |"
+            f"| `{stack}` | `{bucket['ok']}/{bucket['count']}` | `{bucket['keyword_pass']}/{bucket['count']}` | `{bucket['quality_avg']}` | `{bucket['avg_latency_ms']} ms` | `{bucket['final_polish_applied']}/{bucket['count']}` |"
         )
     lines.append('')
     lines.append('## By Slice')
@@ -171,7 +205,8 @@ def _render_markdown(payload: dict[str, Any]) -> str:
             lines.append(
                 f"  - `{stack}`: ok {stack_bucket.get('ok', 0)}/{bucket['count']}, "
                 f"keyword pass {stack_bucket.get('keyword_pass', 0)}/{bucket['count']}, "
-                f"quality {stack_bucket.get('quality_avg', 0)}, latency {stack_bucket.get('avg_latency_ms', 0)}ms"
+                f"quality {stack_bucket.get('quality_avg', 0)}, latency {stack_bucket.get('avg_latency_ms', 0)}ms, "
+                f"final polish {stack_bucket.get('final_polish_applied', 0)}/{bucket['count']}"
             )
     lines.append('')
     lines.append('## Error Types')
@@ -191,7 +226,7 @@ def _render_markdown(payload: dict[str, Any]) -> str:
         for stack in STACKS:
             item = result[stack]
             lines.append(
-                f"- `{stack}`: status {item['status']}, latency {item['latency_ms']}ms, keyword pass `{item['keyword_pass']}`, quality `{item['quality_score']}`, used_llm `{item['used_llm']}`, llm_stages `{', '.join(item['llm_stages']) or 'none'}`, reason `{item['reason']}`"
+                f"- `{stack}`: status {item['status']}, latency {item['latency_ms']}ms, keyword pass `{item['keyword_pass']}`, quality `{item['quality_score']}`, used_llm `{item['used_llm']}`, llm_stages `{', '.join(item['llm_stages']) or 'none'}`, final_polish_applied `{item['final_polish_applied']}`, final_polish_mode `{item['final_polish_mode'] or 'none'}`, final_polish_reason `{item['final_polish_reason'] or 'none'}`, answer_experience_applied `{item.get('answer_experience_applied', False)}`, answer_experience_reason `{item.get('answer_experience_reason') or 'none'}`, answer_experience_provider `{item.get('answer_experience_provider') or 'none'}`, answer_experience_model `{item.get('answer_experience_model') or 'none'}`, candidate `{item.get('candidate_chosen') or 'none'}`, candidate_reason `{item.get('candidate_reason') or 'none'}`, probe_topic `{item.get('retrieval_probe_topic') or 'none'}`, cache_hit `{item.get('response_cache_hit', False)}`, cache_kind `{item.get('response_cache_kind') or 'none'}`, reason `{item['reason']}`"
             )
             if item.get('error_types'):
                 lines.append(f"  errors: {', '.join(item['error_types'])}")
@@ -255,6 +290,18 @@ async def _run_all(entries: list[dict[str, Any]], *, llm_forced: bool = False) -
                 'graph_path': raw['graph_path'],
                 'used_llm': bool(raw.get('used_llm', False)),
                 'llm_stages': [str(item).strip() for item in (raw.get('llm_stages') or []) if str(item).strip()],
+                'final_polish_applied': bool(raw.get('final_polish_applied', False)),
+                'final_polish_mode': str(raw.get('final_polish_mode') or ''),
+                'final_polish_reason': str(raw.get('final_polish_reason') or ''),
+                'answer_experience_applied': bool(raw.get('answer_experience_applied', False)),
+                'answer_experience_reason': str(raw.get('answer_experience_reason') or ''),
+                'answer_experience_provider': str(raw.get('answer_experience_provider') or ''),
+                'answer_experience_model': str(raw.get('answer_experience_model') or ''),
+                'candidate_chosen': str(raw.get('candidate_chosen') or ''),
+                'candidate_reason': str(raw.get('candidate_reason') or ''),
+                'retrieval_probe_topic': str(raw.get('retrieval_probe_topic') or ''),
+                'response_cache_hit': bool(raw.get('response_cache_hit', False)),
+                'response_cache_kind': str(raw.get('response_cache_kind') or ''),
                 'answer_text': answer_text,
                 'keyword_pass': keyword_pass,
                 'quality_score': quality_score,
@@ -276,6 +323,7 @@ async def _run_all(entries: list[dict[str, Any]], *, llm_forced: bool = False) -
             'keyword_pass': sum(1 for item in subset if item['keyword_pass']),
             'quality_avg': round(sum(item['quality_score'] for item in subset) / max(1, len(subset)), 1),
             'avg_latency_ms': round(sum(item['latency_ms'] for item in subset) / max(1, len(subset)), 1),
+            'final_polish_applied': sum(1 for item in subset if item.get('final_polish_applied')),
         }
         for item in subset:
             for error in item['error_types']:
@@ -291,6 +339,7 @@ async def _run_all(entries: list[dict[str, Any]], *, llm_forced: bool = False) -
                 'keyword_pass': sum(1 for item in subset if item['keyword_pass']),
                 'quality_avg': round(sum(item['quality_score'] for item in subset) / max(1, len(subset)), 1),
                 'avg_latency_ms': round(sum(item['latency_ms'] for item in subset) / max(1, len(subset)), 1),
+                'final_polish_applied': sum(1 for item in subset if item.get('final_polish_applied')),
             }
     return {
         'generated_at': datetime.now(UTC).isoformat(),

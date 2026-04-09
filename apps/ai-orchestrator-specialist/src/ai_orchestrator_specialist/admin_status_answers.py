@@ -17,7 +17,7 @@ def _compose_admin_status_answer(summary: dict[str, Any]) -> str:
                 break
     next_step = str(summary.get("next_step") or "").strip()
     if overall_status == "pending":
-        lines = [f"Hoje {student_name} esta com pendencias na documentacao."]
+        lines = [f"Hoje {student_name} ainda tem pendencias na documentacao."]
         if pending_note:
             lines.append(pending_note)
         if next_step:

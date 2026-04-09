@@ -241,6 +241,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 25s
     restart: unless-stopped
 
   ai-orchestrator:

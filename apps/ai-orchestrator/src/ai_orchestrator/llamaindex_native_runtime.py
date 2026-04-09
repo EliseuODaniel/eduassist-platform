@@ -4,6 +4,7 @@ import asyncio
 import json
 from dataclasses import dataclass
 from functools import lru_cache
+from time import monotonic
 from typing import Any
 
 from fastembed import TextEmbedding
@@ -41,6 +42,8 @@ from qdrant_client import AsyncQdrantClient, QdrantClient, models
 
 from . import runtime as rt
 from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult
+from .candidate_builder import build_response_candidate
+from .candidate_chooser import choose_best_candidate
 from .entity_resolution import resolve_entity_hints
 from .evidence_pack import (
     build_direct_answer_evidence_pack,
@@ -48,13 +51,19 @@ from .evidence_pack import (
     build_structured_tool_evidence_pack,
 )
 from .final_polish_policy import build_final_polish_decision
-from .kernel_runtime import _maybe_contextual_public_direct_answer, _maybe_hypothetical_public_pricing_answer
+from .kernel_runtime import (
+    _maybe_contextual_public_direct_answer,
+    _maybe_hypothetical_public_pricing_answer,
+)
 from .llamaindex_public_intent_registry import (
     LLAMAINDEX_PUBLIC_INTENT_RULES,
     LlamaIndexPublicIntentRule,
 )
-from .llm_provider import _google_model_candidates
-from .llm_provider import polish_structured_with_provider, revise_with_provider
+from .llm_provider import (
+    _google_model_candidates,
+    polish_structured_with_provider,
+    revise_with_provider,
+)
 from .models import (
     AccessTier,
     IntentClassification,
@@ -72,6 +81,7 @@ from .public_known_unknowns import (
     compose_public_known_unknown_answer,
     detect_public_known_unknown_key,
 )
+from .response_cache import get_cached_public_response, store_cached_public_response
 from .retrieval import (
     can_read_restricted_documents,
     compose_restricted_document_grounded_answer_for_query,
@@ -80,6 +90,9 @@ from .retrieval import (
     looks_like_restricted_document_query,
     select_relevant_restricted_hits,
 )
+from .retrieval_aware_router import build_public_evidence_probe
+from .serving_policy import LoadSnapshot, build_public_serving_policy
+from .serving_telemetry import get_stack_telemetry_snapshot, record_stack_outcome
 
 try:
     from llama_index.llms.openai import OpenAI as LlamaIndexOpenAI
@@ -2583,6 +2596,7 @@ async def maybe_execute_llamaindex_native_plan(
     engine_mode: str,
     path_profile: PathExecutionProfile | None = None,
 ) -> KernelRunResult | None:
+    started_at = monotonic()
     restricted_doc_fast_path = await _maybe_execute_llamaindex_restricted_doc_fast_path(
         request=request,
         settings=settings,
@@ -3044,6 +3058,11 @@ async def maybe_execute_llamaindex_native_plan(
             ],
             risk_flags=preview.risk_flags,
             reason='contextual_public_direct_answer',
+            candidate_chosen='deterministic',
+            candidate_reason='contextual_public_direct_answer',
+            retrieval_probe_topic=None,
+            response_cache_hit=False,
+            response_cache_kind=None,
         )
         reflection = KernelReflection(
             grounded=True,
@@ -3164,6 +3183,11 @@ async def maybe_execute_llamaindex_native_plan(
             ],
             risk_flags=preview.risk_flags,
             reason=f'llamaindex_public_canonical_lane:{public_canonical_lane}',
+            candidate_chosen='deterministic',
+            candidate_reason=f'public_canonical_lane:{public_canonical_lane}',
+            retrieval_probe_topic=None,
+            response_cache_hit=False,
+            response_cache_kind=None,
         )
         reflection = KernelReflection(
             grounded=True,
@@ -3342,11 +3366,132 @@ async def maybe_execute_llamaindex_native_plan(
     citations: list[MessageResponseCitation] = []
     retrieval_backend = RetrievalBackend.none
     execution_reason = 'llamaindex_native_public_router'
+    summary_store_hits = 0
+    if (
+        getattr(settings, 'retrieval_aware_routing_enabled', True)
+        and public_canonical_lane is None
+        and (
+            rt._looks_like_public_documentary_open_query(request.message)
+            or _has_documentary_retrieval_cues(request.message)
+            or _looks_like_open_documentary_bundle_query(request.message)
+        )
+    ):
+        try:
+            summary_store_hits = len(
+                _query_public_summary_store_parent_ref_keys(
+                    query=effective_retrieval_query,
+                    settings=settings,
+                )
+            )
+        except Exception:
+            summary_store_hits = 0
+    llamaindex_probe = build_public_evidence_probe(
+        message=request.message,
+        canonical_lane=public_canonical_lane,
+        primary_act=public_plan.conversation_act,
+        secondary_acts=public_plan.secondary_acts,
+        evidence_pack=None,
+        retrieval_search=None,
+        summary_store_hits=summary_store_hits,
+    )
+    telemetry_snapshot = get_stack_telemetry_snapshot('llamaindex')
+    llamaindex_serving_policy = build_public_serving_policy(
+        settings=settings,
+        stack_name='llamaindex',
+        request=request,
+        probe=llamaindex_probe,
+        load_snapshot=LoadSnapshot(
+            llm_forced_mode=llm_forced_mode,
+            recent_request_count=telemetry_snapshot.recent_request_count,
+            recent_p95_latency_ms=telemetry_snapshot.recent_p95_latency_ms,
+            recent_timeout_rate=telemetry_snapshot.recent_timeout_rate,
+            recent_error_rate=telemetry_snapshot.recent_error_rate,
+            recent_cache_hit_rate=telemetry_snapshot.recent_cache_hit_rate,
+            recent_used_llm_rate=telemetry_snapshot.recent_used_llm_rate,
+        ),
+    )
+    if (
+        getattr(settings, 'public_response_cache_enabled', True)
+        and llamaindex_serving_policy.prefer_cache
+        and not llm_forced_mode
+    ):
+        semantic_threshold = float(
+            getattr(settings, 'public_response_semantic_jaccard_threshold', 0.84)
+            if getattr(settings, 'public_response_semantic_cache_enabled', True)
+            else 1.01
+        )
+        cached_public_response = get_cached_public_response(
+            message=request.message,
+            canonical_lane=public_canonical_lane,
+            topic=llamaindex_probe.topic,
+            evidence_fingerprint=llamaindex_probe.evidence_fingerprint,
+            semantic_threshold=semantic_threshold,
+        )
+        if cached_public_response is not None:
+            response = MessageResponse(
+                message_text=cached_public_response.text,
+                mode=preview.mode,
+                classification=preview.classification,
+                retrieval_backend=RetrievalBackend.none,
+                selected_tools=list(dict.fromkeys([*preview.selected_tools, 'llamaindex_selector_router'])),
+                citations=[],
+                visual_assets=[],
+                suggested_replies=[],
+                calendar_events=[],
+                evidence_pack=build_structured_tool_evidence_pack(
+                    selected_tools=preview.selected_tools,
+                    slice_name=plan.slice_name,
+                    summary='Resposta publica reaproveitada do cache semantico do caminho LlamaIndex.',
+                ),
+                needs_authentication=preview.needs_authentication,
+                graph_path=[*preview.graph_path, 'llamaindex:cache', cached_public_response.cache_kind],
+                risk_flags=preview.risk_flags,
+                reason=f'llamaindex_cache:{cached_public_response.reason or cached_public_response.cache_kind}',
+                used_llm=False,
+                llm_stages=[],
+                final_polish_eligible=False,
+                final_polish_applied=False,
+                final_polish_mode='skip',
+                final_polish_reason='cache_hit',
+                final_polish_changed_text=False,
+                final_polish_preserved_fallback=False,
+                candidate_chosen=cached_public_response.candidate_kind or 'deterministic',
+                candidate_reason=f'cache:{cached_public_response.reason or cached_public_response.cache_kind}',
+                retrieval_probe_topic=llamaindex_probe.topic,
+                response_cache_hit=True,
+                response_cache_kind=cached_public_response.cache_kind,
+            )
+            record_stack_outcome(
+                stack_name='llamaindex',
+                latency_ms=(monotonic() - started_at) * 1000,
+                success=True,
+                timeout=False,
+                cache_hit=True,
+                used_llm=False,
+                candidate_kind=response.candidate_chosen,
+            )
+            return KernelRunResult(
+                plan=plan,
+                reflection=KernelReflection(
+                    grounded=True,
+                    verifier_reason='cache_hit',
+                    fallback_used=False,
+                    answer_judge_used=False,
+                    notes=['route:structured_tool', 'cache:semantic_or_exact', *plan.plan_notes],
+                ),
+                response=response.model_dump(mode='json'),
+            )
     documentary_direct_retrieval = _should_force_llamaindex_documentary_retrieval(
         message=request.message,
         public_plan=public_plan,
         native_decision=native_public_decision,
     )
+    if (
+        getattr(settings, 'retrieval_aware_routing_enabled', True)
+        and not llamaindex_serving_policy.allow_documentary_synthesis
+        and not llm_forced_mode
+    ):
+        documentary_direct_retrieval = False
 
     agent_workflow_result = None
     function_agent_result = None
@@ -3537,6 +3682,25 @@ async def maybe_execute_llamaindex_native_plan(
             citations = []
             retrieval_backend = RetrievalBackend.none
             execution_reason = 'llamaindex_public_retrieval_profile_fallback'
+    if not answer_text and not llm_forced_mode:
+        deterministic_public_fallback = rt._compose_public_profile_answer(
+            school_profile,
+            request.message,
+            actor=actor,
+            original_message=request.message,
+            conversation_context=conversation_context,
+            semantic_plan=public_plan,
+        )
+        deterministic_public_fallback = str(deterministic_public_fallback or '').strip()
+        if (
+            deterministic_public_fallback
+            and not deterministic_public_fallback.startswith('Ainda nao encontrei evidencia publica suficiente')
+        ):
+            answer_text = deterministic_public_fallback
+            selected_tool_names = tuple(dict.fromkeys([*selected_tool_names, 'public_profile']))
+            citations = []
+            retrieval_backend = RetrievalBackend.none
+            execution_reason = 'llamaindex_deterministic_public_fallback'
     if not answer_text:
         fallback_text = await _maybe_contextual_public_direct_answer(
             request=request,
@@ -3723,6 +3887,61 @@ async def maybe_execute_llamaindex_native_plan(
         semantic_judge_used=semantic_judge_used,
     ) + [stage for stage in llm_stages if stage in {'structured_polish', 'response_critic'}]
     llm_stages = list(dict.fromkeys(llm_stages))
+    deterministic_candidate_text = rt._compose_public_profile_answer(
+        school_profile,
+        request.message,
+        actor=actor,
+        original_message=request.message,
+        conversation_context=conversation_context,
+        semantic_plan=public_plan,
+    )
+    deterministic_candidate_text = str(deterministic_candidate_text or '').strip()
+    candidate_chosen = 'documentary_synthesis' if llm_stages else 'deterministic'
+    candidate_reason = execution_reason
+    retrieval_probe_topic = llamaindex_probe.topic
+    response_cache_hit = False
+    response_cache_kind = None
+    if deterministic_candidate_text:
+        deterministic_candidate = build_response_candidate(
+            kind='deterministic',
+            text=deterministic_candidate_text,
+            reason='llamaindex_deterministic_fallback',
+            retrieval_backend=RetrievalBackend.none,
+            selected_tools=tuple(selected_tools),
+            source_count=max(1, len(citations)),
+            support_count=evidence_pack.support_count,
+        )
+        current_candidate = build_response_candidate(
+            kind='documentary_synthesis' if llm_stages else 'deterministic',
+            text=message_text,
+            reason=execution_reason,
+            used_llm=bool(llm_stages),
+            llm_stages=tuple(llm_stages),
+            retrieval_backend=retrieval_backend,
+            selected_tools=tuple(selected_tools),
+            source_count=max(1, len(citations)),
+            support_count=evidence_pack.support_count,
+        )
+        chosen_candidate = choose_best_candidate(
+            candidates=[candidate for candidate in (deterministic_candidate, current_candidate) if candidate is not None],
+            probe=llamaindex_probe,
+            policy=llamaindex_serving_policy,
+        )
+        if chosen_candidate is not None:
+            message_text = chosen_candidate.candidate.text
+            candidate_chosen = chosen_candidate.candidate.kind
+            candidate_reason = chosen_candidate.chooser_reason
+    if getattr(settings, 'public_response_cache_enabled', True) and llamaindex_serving_policy.prefer_cache:
+        store_cached_public_response(
+            message=request.message,
+            text=message_text,
+            canonical_lane=public_canonical_lane,
+            topic=llamaindex_probe.topic,
+            evidence_fingerprint=llamaindex_probe.evidence_fingerprint,
+            candidate_kind=candidate_chosen,
+            reason=candidate_reason,
+            ttl_seconds=float(getattr(settings, 'public_response_cache_ttl_seconds', 300.0)),
+        )
     response = MessageResponse(
         message_text=message_text,
         mode=preview.mode,
@@ -3752,6 +3971,20 @@ async def maybe_execute_llamaindex_native_plan(
         final_polish_reason=final_polish_decision.reason,
         final_polish_changed_text=final_polish_changed_text,
         final_polish_preserved_fallback=final_polish_preserved_fallback,
+        candidate_chosen=candidate_chosen,
+        candidate_reason=candidate_reason,
+        retrieval_probe_topic=retrieval_probe_topic,
+        response_cache_hit=response_cache_hit,
+        response_cache_kind=response_cache_kind,
+    )
+    record_stack_outcome(
+        stack_name='llamaindex',
+        latency_ms=(monotonic() - started_at) * 1000,
+        success=True,
+        timeout=False,
+        cache_hit=response_cache_hit,
+        used_llm=bool(llm_stages),
+        candidate_kind=candidate_chosen,
     )
     reflection = KernelReflection(
         grounded=verification.valid,

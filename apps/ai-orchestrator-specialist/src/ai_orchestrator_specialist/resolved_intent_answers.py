@@ -29,6 +29,56 @@ from .public_query_patterns import _looks_like_public_doc_bundle_request
 PASSING_GRADE_TARGET = Decimal("7.0")
 
 
+def _looks_like_public_pricing_navigation_query(message: str, *, deps: ResolvedIntentDeps) -> bool:
+    normalized = deps.normalize_text(message)
+    pricing_terms = {"mensalidade", "mensalidades", "matricula", "matrícula", "taxa de matricula", "taxa de matrícula"}
+    if not any(term in normalized for term in pricing_terms):
+        return False
+    private_finance_terms = {
+        "fatura",
+        "faturas",
+        "boleto",
+        "boletos",
+        "em aberto",
+        "vencimento",
+        "vencida",
+        "vencidas",
+        "do lucas",
+        "da ana",
+        "meu filho",
+        "minha filha",
+    }
+    return not any(term in normalized for term in private_finance_terms)
+
+
+def _looks_like_public_pricing_context_follow_up(ctx: Any, *, deps: ResolvedIntentDeps) -> bool:
+    normalized = deps.normalize_text(ctx.request.message).strip()
+    if _looks_like_public_pricing_navigation_query(ctx.request.message, deps=deps):
+        return False
+    recent_messages = (
+        ctx.conversation_context.get("recent_messages", [])
+        if isinstance(ctx.conversation_context, dict)
+        else []
+    )
+    recent_user_messages = [
+        deps.normalize_text(item.get("content"))
+        for item in recent_messages[-6:]
+        if isinstance(item, dict) and str(item.get("sender_type", "")).lower() == "user"
+    ]
+    pricing_context_active = any(
+        any(term in message for term in {"mensalidade", "matricula", "matrícula"})
+        and any(term in message for term in {"ensino medio", "ensino médio", "fundamental", "filhos", "alunos"})
+        for message in recent_user_messages
+    )
+    if not pricing_context_active:
+        return False
+    if normalized in {"1o", "2o", "3o", "6o", "7o", "8o", "9o"}:
+        return True
+    if re.fullmatch(r"(1o|2o|3o|6o|7o|8o|9o)\s+ano", normalized):
+        return True
+    return normalized.startswith("e para") or "filhos" in normalized or "alunos" in normalized
+
+
 @dataclass(frozen=True)
 class ResolvedIntentDeps:
     normalize_text: Callable[[str | None], str]
@@ -598,6 +648,11 @@ async def maybe_resolved_intent_answer(
 ) -> SupervisorAnswerPayload | None:
     resolved = ctx.resolved_turn
     if resolved is None or resolved.domain == "unknown":
+        return None
+    if _looks_like_public_pricing_navigation_query(
+        ctx.request.message,
+        deps=deps,
+    ) or _looks_like_public_pricing_context_follow_up(ctx, deps=deps):
         return None
     normalized_message = deps.normalize_text(ctx.request.message)
     if ctx.request.user.authenticated and "documentacao" in normalized_message and any(

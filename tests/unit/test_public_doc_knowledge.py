@@ -112,3 +112,112 @@ def test_academic_policy_overview_lane_matches() -> None:
     answer = compose_public_canonical_lane_answer(lane, profile=_sample_profile())
     assert answer is not None
     assert 'media 7,0' in answer.lower()
+
+
+def test_inclusion_accessibility_lane_matches() -> None:
+    lane = match_public_canonical_lane(
+        'Quais evidencias publicas mostram que a escola tenta acolher inclusao, acessibilidade e protecao do estudante como um mesmo compromisso institucional?'
+    )
+    assert lane == 'public_bundle.inclusion_accessibility'
+    answer = compose_public_canonical_lane_answer(lane, profile=_sample_profile())
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'inclus' in lowered
+    assert 'acessib' in lowered
+
+
+def test_integral_study_support_lane_matches() -> None:
+    lane = match_public_canonical_lane(
+        'Se eu quiser entender o suporte ao aluno alem da sala regular, como periodo integral e estudo orientado se completam no material publico da escola?'
+    )
+    assert lane == 'public_bundle.integral_study_support'
+    answer = compose_public_canonical_lane_answer(lane, profile=_sample_profile())
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'periodo integral' in lowered
+    assert 'estudo orientado' in lowered
+
+
+def test_integral_study_support_lane_matches_extended_day_ecosystem_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Sem repetir slogans, que arquitetura de rotina escolar aparece quando se combinam turno estendido, oficinas, refeicao, estudo acompanhado e permanencia no contraturno?'
+    )
+    assert lane == 'public_bundle.integral_study_support'
+
+
+def test_governance_protocol_lane_matches() -> None:
+    lane = match_public_canonical_lane(
+        'Quando um assunto foge do cotidiano, como a familia sai da coordenacao e chega a direcao com protocolo formal segundo a base publica?'
+    )
+    assert lane == 'public_bundle.governance_protocol'
+    answer = compose_public_canonical_lane_answer(lane, profile=_sample_profile())
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'direcao' in lowered
+    assert 'protocolo' in lowered
+
+
+def test_governance_protocol_lane_matches_governance_channels_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Se uma familia precisa entender por onde um tema caminha dentro da escola, que trilha institucional os documentos publicos sugerem entre secretaria, coordenacao, direcao e canais oficiais?'
+    )
+    assert lane == 'public_bundle.governance_protocol'
+
+
+def test_governance_protocol_answer_mentions_secretaria_coordenacao_and_direcao() -> None:
+    answer = compose_public_canonical_lane_answer('public_bundle.governance_protocol', profile=_sample_profile())
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'secretaria' in lowered
+    assert 'coordenacao' in lowered
+    assert 'direcao' in lowered
+
+
+def test_support_safety_balance_maps_to_inclusion_accessibility_lane() -> None:
+    lane = match_public_canonical_lane(
+        'Quero entender como a escola equilibra apoio a necessidades especificas, mediacao de rotina e seguranca institucional sem sair do material publico.'
+    )
+    assert lane == 'public_bundle.inclusion_accessibility'
+
+
+def test_external_activity_risk_management_maps_to_outings_lane() -> None:
+    lane = match_public_canonical_lane(
+        'Numa atividade externa, como a escola costura anuencia da familia, impedimentos de saude e retorno seguro segundo a base publica?'
+    )
+    assert lane == 'public_bundle.outings_authorizations'
+
+
+def test_operational_experience_bundle_maps_to_transport_uniform_lane() -> None:
+    lane = match_public_canonical_lane(
+        'Quero uma leitura integrada de deslocamento, refeicao, identificacao e uniforme na experiencia operacional do aluno.'
+    )
+    assert lane == 'public_bundle.transport_uniform_bundle'
+
+
+def test_operational_experience_bundle_maps_to_transport_uniform_lane_without_explicit_uniforme() -> None:
+    lane = match_public_canonical_lane(
+        'No cotidiano fora da aula, que experiencia operacional do aluno aparece quando a base publica fala de deslocamento, refeicao, identificacao e uso diario de itens institucionais?'
+    )
+    assert lane == 'public_bundle.transport_uniform_bundle'
+
+
+def test_family_time_architecture_maps_to_family_new_bundle() -> None:
+    lane = match_public_canonical_lane(
+        'Se eu montar o ano do ponto de vista da familia, como entrada, encontros com responsaveis, devolutivas e recomposicao academica se encadeiam?'
+    )
+    assert lane == 'public_bundle.family_new_calendar_assessment_enrollment'
+
+
+def test_visibility_boundary_answer_mentions_portal_and_login() -> None:
+    answer = compose_public_canonical_lane_answer('public_bundle.visibility_boundary', profile=_sample_profile())
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'portal' in lowered
+    assert 'login' in lowered
+
+
+def test_health_emergency_bundle_mentions_second_call_or_reorganizacao() -> None:
+    answer = compose_public_canonical_lane_answer('public_bundle.health_emergency_bundle', profile=_sample_profile())
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'segunda chamada' in lowered or 'reorganiz' in lowered

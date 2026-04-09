@@ -24,6 +24,7 @@ class ProtectedAnswerDeps:
     access_tier_for_domain: Callable[[str, bool], str]
     default_suggested_replies: Callable[[str], list[MessageResponseSuggestedReply]]
     student_hint_from_message: Callable[..., str | None]
+    unknown_explicit_student_reference: Callable[..., str | None]
     is_student_name_only_followup: Callable[..., str | None]
     looks_like_student_pronoun_followup: Callable[[str], bool]
     looks_like_subject_followup: Callable[[str], bool]
@@ -266,6 +267,8 @@ def resolved_academic_target_name(
     memory = ctx.operational_memory or OperationalMemory()
     if resolved is not None and str(resolved.referenced_student_name or "").strip():
         return str(resolved.referenced_student_name or "").strip()
+    if deps.unknown_explicit_student_reference(ctx.actor, ctx.request.message):
+        return None
     explicit_hint = deps.student_hint_from_message(ctx.actor, ctx.request.message) or deps.is_student_name_only_followup(
         ctx.actor,
         ctx.request.message,
@@ -293,6 +296,8 @@ def needs_specific_academic_student_clarification(
     if len(deps.linked_students(ctx.actor, capability="academic")) < 2:
         return False
     return (
+        bool(deps.unknown_explicit_student_reference(ctx.actor, ctx.request.message))
+        or
         bool(subject_hint)
         or deps.looks_like_student_pronoun_followup(ctx.request.message)
         or deps.looks_like_subject_followup(ctx.request.message)

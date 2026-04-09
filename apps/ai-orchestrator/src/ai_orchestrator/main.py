@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import secrets
+from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
 from time import monotonic
@@ -21,6 +22,7 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .channel_reply_formatting import format_reply_for_channel
 from .engine_selector import (
     SUPPORTED_PRIMARY_STACKS,
     build_engine_bundle,
@@ -38,6 +40,7 @@ from .engine_selector import (
 from .engines.llamaindex_workflow_engine import LLAMAINDEX_WORKFLOW_AVAILABLE
 from .graph import get_graph_blueprint, to_preview
 from .graph_rag_runtime import graph_rag_workspace_ready, run_graph_rag_query
+from .grounded_answer_experience import apply_grounded_answer_experience
 from .langgraph_runtime import (
     close_langgraph_runtime,
     get_langgraph_artifacts,
@@ -136,6 +139,30 @@ class Settings(BaseSettings):
     feature_flag_final_polish_telegram_only: bool = False
     feature_flag_final_polish_force_llm: bool = False
     feature_flag_final_polish_debug_metadata_enabled: bool = True
+    feature_flag_answer_experience_enabled: bool = True
+    feature_flag_answer_experience_channels: str = 'telegram'
+    feature_flag_answer_experience_stacks: str = 'langgraph,llamaindex,python_functions,specialist_supervisor'
+    feature_flag_answer_experience_public_enabled: bool = True
+    feature_flag_answer_experience_protected_enabled: bool = True
+    feature_flag_answer_experience_min_chars: int = 24
+    feature_flag_context_repair_enabled: bool = True
+    feature_flag_context_repair_stacks: str = 'langgraph,llamaindex,python_functions,specialist_supervisor'
+    feature_flag_context_repair_retry_top_k: int = 6
+    answer_experience_provider: str | None = None
+    answer_experience_openai_api_key: str | None = None
+    answer_experience_openai_base_url: str | None = None
+    answer_experience_openai_model: str | None = None
+    answer_experience_google_api_key: str | None = None
+    answer_experience_google_api_base_url: str | None = None
+    answer_experience_google_model: str | None = None
+    retrieval_aware_routing_enabled: bool = True
+    candidate_chooser_enabled: bool = True
+    public_response_cache_enabled: bool = True
+    public_response_cache_ttl_seconds: float = 300.0
+    public_response_semantic_cache_enabled: bool = True
+    public_response_semantic_jaccard_threshold: float = 0.84
+    serving_policy_llamaindex_summary_stage_required: bool = True
+    serving_policy_specialist_public_premium_enabled: bool = False
     specialist_supervisor_pilot_url: str | None = None
     specialist_supervisor_pilot_timeout_seconds: float = 18.0
     orchestrator_experiment_enabled: bool = False
@@ -563,6 +590,16 @@ def _build_debug_trace(
         'final_polish_reason': str(getattr(response, 'final_polish_reason', '') or ''),
         'final_polish_changed_text': bool(getattr(response, 'final_polish_changed_text', False)),
         'final_polish_preserved_fallback': bool(getattr(response, 'final_polish_preserved_fallback', False)),
+        'answer_experience_eligible': bool(getattr(response, 'answer_experience_eligible', False)),
+        'answer_experience_applied': bool(getattr(response, 'answer_experience_applied', False)),
+        'answer_experience_reason': str(getattr(response, 'answer_experience_reason', '') or ''),
+        'answer_experience_provider': str(getattr(response, 'answer_experience_provider', '') or ''),
+        'answer_experience_model': str(getattr(response, 'answer_experience_model', '') or ''),
+        'context_repair_applied': bool(getattr(response, 'context_repair_applied', False)),
+        'context_repair_action': str(getattr(response, 'context_repair_action', '') or ''),
+        'context_repair_reason': str(getattr(response, 'context_repair_reason', '') or ''),
+        'retrieval_retry_applied': bool(getattr(response, 'retrieval_retry_applied', False)),
+        'retrieval_retry_reason': str(getattr(response, 'retrieval_retry_reason', '') or ''),
     }
     if isinstance(getattr(bundle, 'experiment', None), dict):
         trace['experiment'] = dict(bundle.experiment)
@@ -594,6 +631,22 @@ def _format_telegram_debug_footer(trace: dict[str, Any]) -> str:
         polish_value = f"{polish_value} (eligible)"
     if bool(trace.get('final_polish_preserved_fallback')):
         polish_value = f"{polish_value}, rollback"
+    answer_experience_value = 'off'
+    if bool(trace.get('answer_experience_eligible')):
+        answer_experience_value = 'eligible'
+    if bool(trace.get('answer_experience_applied')):
+        answer_experience_value = 'applied'
+    answer_experience_provider = str(trace.get('answer_experience_provider') or 'none')
+    answer_experience_model = str(trace.get('answer_experience_model') or 'none')
+    answer_experience_reason = str(trace.get('answer_experience_reason') or 'none')
+    context_repair_action = str(trace.get('context_repair_action') or 'none')
+    context_repair_reason = str(trace.get('context_repair_reason') or 'none')
+    context_repair_value = 'off'
+    if bool(trace.get('context_repair_applied')):
+        context_repair_value = 'applied'
+    elif context_repair_action != 'none':
+        context_repair_value = f'planned:{context_repair_action}'
+    retrieval_retry_value = 'yes' if bool(trace.get('retrieval_retry_applied')) else 'no'
     lines = [
         '',
         '[debug]',
@@ -602,11 +655,16 @@ def _format_telegram_debug_footer(trace: dict[str, Any]) -> str:
         f"path: {' > '.join(path) if path else 'none'}",
         f"llm: {llm_value}",
         f"final_polish: {polish_value}",
+        f"answer_experience: {answer_experience_value} ({answer_experience_provider}/{answer_experience_model})",
+        f"context_repair: {context_repair_value}",
+        f"retrieval_retry: {retrieval_retry_value}",
         f"agents: {_truncate_debug_list(agents)}",
         f"resources: {_truncate_debug_list(resources)}",
         f"retrieval: {', '.join(retrieval_parts)}",
         f"reason: {str(trace.get('reason') or 'none')}",
         f"final_polish_reason: {polish_reason}",
+        f"answer_experience_reason: {answer_experience_reason}",
+        f"context_repair_reason: {context_repair_reason}",
     ]
     return '\n'.join(lines)
 
@@ -819,10 +877,24 @@ def _build_hitl_state_input(request: LangGraphHitlRequest, settings: Settings) -
     }
 
 
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    settings = get_settings()
+    _log_runtime_diagnostics('ai-orchestrator', _orchestrator_runtime_diagnostics(settings))
+    if settings.warm_retrieval_on_startup:
+        asyncio.create_task(asyncio.to_thread(_warm_retrieval_service, settings))
+    asyncio.create_task(asyncio.to_thread(_warm_langgraph_service, settings))
+    try:
+        yield
+    finally:
+        close_langgraph_runtime()
+
+
 app = FastAPI(
     title='EduAssist AI Orchestrator',
     version='0.2.0',
     summary='Agentic orchestration runtime bootstrap for EduAssist Platform.',
+    lifespan=_lifespan,
 )
 
 configure_observability(
@@ -864,20 +936,6 @@ def _warm_langgraph_service(settings: Settings) -> None:
         logger.info('langgraph_runtime_warmed')
     except Exception:
         logger.exception('langgraph_runtime_warmup_failed')
-
-
-@app.on_event('startup')
-async def warm_runtime_dependencies() -> None:
-    settings = get_settings()
-    _log_runtime_diagnostics('ai-orchestrator', _orchestrator_runtime_diagnostics(settings))
-    if settings.warm_retrieval_on_startup:
-        asyncio.create_task(asyncio.to_thread(_warm_retrieval_service, settings))
-    asyncio.create_task(asyncio.to_thread(_warm_langgraph_service, settings))
-
-
-@app.on_event('shutdown')
-async def close_runtime_dependencies() -> None:
-    close_langgraph_runtime()
 
 
 @app.get('/healthz', response_model=HealthResponse)
@@ -1274,11 +1332,41 @@ async def message_response(
     settings = get_settings()
     bundle = build_engine_bundle(settings, request=request)
     response = await bundle.primary.respond(request=request, settings=settings, engine_mode=bundle.mode)
-    return _attach_telegram_debug_trace(
+    response = await apply_grounded_answer_experience(
+        request=request,
+        response=response,
+        settings=settings,
+        stack_name=str(getattr(getattr(bundle, 'primary', None), 'name', '') or getattr(bundle, 'mode', 'unknown')),
+    )
+    if request.channel == ConversationChannel.telegram and response.mode == OrchestrationMode.clarify and not bool(getattr(response, 'answer_experience_eligible', False)):
+        response = await apply_grounded_answer_experience(
+            request=request,
+            response=response,
+            settings=settings,
+            stack_name=str(getattr(getattr(bundle, 'primary', None), 'name', '') or getattr(bundle, 'mode', 'unknown')),
+            forced_reason='clarify_repair_grounded_answer',
+        )
+    response = response.model_copy(
+        update={
+            'message_text': format_reply_for_channel(
+                text=response.message_text,
+                channel=request.channel.value,
+            )
+        }
+    )
+    response = _attach_telegram_debug_trace(
         request=request,
         response=response,
         bundle=bundle,
         settings=settings,
+    )
+    return response.model_copy(
+        update={
+            'message_text': format_reply_for_channel(
+                text=response.message_text,
+                channel=request.channel.value,
+            )
+        }
     )
 
 

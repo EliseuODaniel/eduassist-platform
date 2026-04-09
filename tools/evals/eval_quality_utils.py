@@ -8,6 +8,12 @@ from typing import Any
 ERROR_WEIGHTS = {
     'request_failed': 60,
     'forbidden_entity_or_value': 45,
+    'public_explanatory_misroute': 35,
+    'generic_profile_leak': 28,
+    'ungrounded_general_knowledge': 24,
+    'empty_response': 30,
+    'strict_safe_fallback_excess': 24,
+    'pilot_unavailable_fallback': 18,
     'repair_miss': 18,
     'followup_context_drop': 25,
     'missing_expected_keyword': 20,
@@ -210,6 +216,163 @@ def _contains_forbidden_keywords(answer_text: str, forbidden_keywords: list[str]
     return False
 
 
+def _looks_like_public_explanatory_prompt(prompt: str) -> bool:
+    normalized_prompt = _normalize_match_text(prompt)
+    explanatory_markers = (
+        'quais evidencias',
+        'material publico',
+        'base publica',
+        'sem entrar em dados privados',
+        'quero entender',
+        'quero uma leitura ampla',
+        'como a escola',
+        'como o material publico',
+        'como frequencia',
+        'como pontualidade',
+    )
+    return any(marker in normalized_prompt for marker in explanatory_markers)
+
+
+def _looks_like_public_bundle_prompt(prompt: str) -> bool:
+    normalized_prompt = _normalize_match_text(prompt)
+    topic_terms = (
+        'inclus',
+        'acess',
+        'integral',
+        'estudo orientado',
+        'medic',
+        'emerg',
+        'saida',
+        'autoriz',
+        'transporte',
+        'uniforme',
+        'aliment',
+        'direcao',
+        'protocolo',
+        'frequencia',
+        'pontualidade',
+        'convivencia',
+    )
+    return sum(1 for term in topic_terms if term in normalized_prompt) >= 2
+
+
+def _looks_like_public_explanatory_misroute(prompt: str, answer_text: str) -> bool:
+    if not _looks_like_public_explanatory_prompt(prompt):
+        return False
+    normalized_answer = _normalize_match_text(answer_text)
+    request_markers = (
+        'abrir um protocolo',
+        'abrir protocolo',
+        'abrir um pedido',
+        'abrir uma solicitacao',
+        'abrir uma solicitacao',
+        'registrar um protocolo',
+        'registrar um pedido',
+        'registrar uma solicitacao',
+        'encaminhar para direcao',
+        'encaminhar para a direcao',
+        'posso abrir',
+        'posso registrar',
+        'posso encaminhar',
+        'posso acionar',
+    )
+    return any(marker in normalized_answer for marker in request_markers)
+
+
+def _looks_like_generic_profile_leak(prompt: str, answer_text: str) -> bool:
+    if not _looks_like_public_bundle_prompt(prompt):
+        return False
+    normalized_answer = _normalize_match_text(answer_text)
+    profile_markers = (
+        'instituicao laica',
+        'proposta pedagogica',
+        'ensino fundamental ii',
+        'ensino medio',
+        'tecnologia',
+        'diferenciais',
+        'projeto de vida',
+        'colegio horizonte e uma escola',
+    )
+    marker_count = sum(1 for marker in profile_markers if marker in normalized_answer)
+    bundle_markers = (
+        'acessib',
+        'integral',
+        'estudo orientado',
+        'medic',
+        'emerg',
+        'autoriz',
+        'saida',
+        'transporte',
+        'uniforme',
+        'direcao',
+        'protocolo',
+        'pontualidade',
+        'frequencia',
+        'convivencia',
+    )
+    bundle_count = sum(1 for marker in bundle_markers if marker in normalized_answer)
+    return marker_count >= 2 and bundle_count <= 1
+
+
+def _looks_like_ungrounded_general_knowledge(prompt: str, answer_text: str) -> bool:
+    normalized_prompt = _normalize_match_text(prompt)
+    normalized_answer = _normalize_match_text(answer_text)
+    if (
+        'escola' not in normalized_prompt
+        and 'material publico' not in normalized_prompt
+        and 'base publica' not in normalized_prompt
+        and 'orientacoes publicas' not in normalized_prompt
+    ):
+        return False
+    general_markers = (
+        'em geral',
+        'normalmente',
+        'de modo geral',
+        'via de regra',
+        'costuma',
+        'em muitas escolas',
+        'geralmente',
+    )
+    if not any(marker in normalized_answer for marker in general_markers):
+        return False
+    grounding_markers = (
+        'colegio horizonte',
+        'na escola',
+        'material publico',
+        'base publica',
+        'documentos publicos',
+        'calendario publico',
+        'canais oficiais',
+        'portal institucional',
+        'conta vinculada',
+        'login',
+    )
+    return not any(marker in normalized_answer for marker in grounding_markers)
+
+
+def _looks_like_empty_response(answer_text: str) -> bool:
+    normalized_answer = _normalize_match_text(answer_text)
+    return normalized_answer in {'', 'empty response'}
+
+
+def _looks_like_strict_safe_fallback_excess(prompt: str, answer_text: str) -> bool:
+    normalized_prompt = _normalize_match_text(prompt)
+    normalized_answer = _normalize_match_text(answer_text)
+    fallback_markers = (
+        'nao consegui concluir essa resposta premium agora',
+        'nao consegui consolidar essa resposta premium com seguranca agora',
+        'reformule em uma frase mais direta',
+    )
+    return _looks_like_public_explanatory_prompt(normalized_prompt) and any(
+        marker in normalized_answer for marker in fallback_markers
+    )
+
+
+def _looks_like_pilot_unavailable_fallback(answer_text: str) -> bool:
+    normalized_answer = _normalize_match_text(answer_text)
+    return 'dependencia indisponivel' in normalized_answer or 'dependency unavailable' in normalized_answer
+
+
 def _detect_error_types(
     *,
     answer_text: str,
@@ -230,6 +393,18 @@ def _detect_error_types(
         errors.append('missing_expected_keyword')
     if _contains_forbidden_keywords(answer_text, forbidden_keywords):
         errors.append('forbidden_entity_or_value')
+    if _looks_like_public_explanatory_misroute(prompt, answer_text):
+        errors.append('public_explanatory_misroute')
+    if _looks_like_generic_profile_leak(prompt, answer_text):
+        errors.append('generic_profile_leak')
+    if _looks_like_ungrounded_general_knowledge(prompt, answer_text):
+        errors.append('ungrounded_general_knowledge')
+    if _looks_like_empty_response(answer_text):
+        errors.append('empty_response')
+    if _looks_like_strict_safe_fallback_excess(prompt, answer_text):
+        errors.append('strict_safe_fallback_excess')
+    if _looks_like_pilot_unavailable_fallback(answer_text):
+        errors.append('pilot_unavailable_fallback')
     if expected_keywords and '?' in answer_text:
         errors.append('unnecessary_clarification')
     if turn_index > 1 and previous_answer:

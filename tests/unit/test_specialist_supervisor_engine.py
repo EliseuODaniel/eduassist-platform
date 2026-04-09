@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from ai_orchestrator.engines.specialist_supervisor_engine import _local_public_canonical_lane_response
+from ai_orchestrator.engines.specialist_supervisor_engine import (
+    _local_public_canonical_lane_response,
+    _should_use_local_public_fallback_before_remote,
+)
 from ai_orchestrator.models import QueryDomain
 
 
@@ -20,3 +23,19 @@ def test_local_public_canonical_lane_response_handles_visibility_boundary() -> N
     lowered = response.message_text.lower()
     assert 'portal' in lowered
     assert 'login' in lowered
+
+
+def test_specialist_prefers_local_public_fallback_for_open_documentary_lane_when_pilot_is_unavailable() -> None:
+    assert _should_use_local_public_fallback_before_remote(
+        lane='public_bundle.governance_protocol',
+        llm_forced_mode=True,
+        pilot_url='',
+    ) is True
+
+
+def test_specialist_does_not_force_local_fallback_for_non_priority_lane_in_llm_mode() -> None:
+    assert _should_use_local_public_fallback_before_remote(
+        lane='public_bundle.teacher_directory_boundary',
+        llm_forced_mode=True,
+        pilot_url='http://pilot.local',
+    ) is False
