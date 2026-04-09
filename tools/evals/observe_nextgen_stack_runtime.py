@@ -336,7 +336,10 @@ def _write_outputs(*, report_md: Path, report_json: Path, artifact_json: Path, p
 def main() -> int:
     parser = argparse.ArgumentParser(description='Observe python_functions and llamaindex in the live runtime using runtime override.')
     parser.add_argument('--stack', choices=[*SUPPORTED_STACKS, 'all'], default='all')
-    parser.add_argument('--base-url', default='http://127.0.0.1:8002')
+    parser.add_argument(
+        '--base-url',
+        default=os.getenv('CONTROL_PLANE_ORCHESTRATOR_URL', 'http://127.0.0.1:8002'),
+    )
     parser.add_argument('--internal-api-token', default=os.environ.get('INTERNAL_API_TOKEN', 'dev-internal-token'))
     parser.add_argument('--operator', default='codex')
     parser.add_argument('--dataset', type=Path, default=DEFAULT_DATASET)

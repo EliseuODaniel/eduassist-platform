@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -16,6 +17,10 @@ from _common import Settings, assert_condition, request, wait_for_health
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_DATASET_PATH = ROOT_DIR / 'tests' / 'evals' / 'datasets' / 'orchestrator_cases.json'
 EVAL_RUN_ID = os.getenv('ORCHESTRATOR_EVAL_RUN_ID', uuid4().hex[:8])
+DEFAULT_EVAL_BASE_URL = os.getenv(
+    'ORCHESTRATOR_EVAL_BASE_URL',
+    os.getenv('CONTROL_PLANE_ORCHESTRATOR_URL', 'http://127.0.0.1:8002'),
+)
 
 
 def _normalize_text(value: str) -> str:
@@ -31,7 +36,13 @@ def _load_cases() -> list[dict[str, Any]]:
     return payload
 
 
-def _post_message_response(settings: Settings, payload: dict[str, Any], *, case_id: str) -> tuple[int, Any]:
+def _post_message_response(
+    settings: Settings,
+    payload: dict[str, Any],
+    *,
+    case_id: str,
+    base_url: str,
+) -> tuple[int, Any]:
     normalized_payload = dict(payload)
     conversation_id = normalized_payload.get('conversation_id')
     if isinstance(conversation_id, str) and conversation_id.strip():
@@ -40,7 +51,7 @@ def _post_message_response(settings: Settings, payload: dict[str, Any], *, case_
         normalized_payload['conversation_id'] = f'eval:{case_id}:{EVAL_RUN_ID}'
     status, _, body = request(
         'POST',
-        f'{settings.ai_orchestrator_url}/v1/messages/respond',
+        f'{base_url}/v1/messages/respond',
         headers={'X-Internal-Api-Token': settings.internal_api_token},
         json_body=normalized_payload,
         timeout=60.0,
@@ -48,10 +59,10 @@ def _post_message_response(settings: Settings, payload: dict[str, Any], *, case_
     return status, body
 
 
-def _post_retrieval_search(settings: Settings, payload: dict[str, Any]) -> tuple[int, Any]:
+def _post_retrieval_search(settings: Settings, payload: dict[str, Any], *, base_url: str) -> tuple[int, Any]:
     status, _, body = request(
         'POST',
-        f'{settings.ai_orchestrator_url}/v1/retrieval/search',
+        f'{base_url}/v1/retrieval/search',
         json_body=payload,
         timeout=25.0,
     )
@@ -193,12 +204,20 @@ def _assert_retrieval_search(case: dict[str, Any], payload: dict[str, Any]) -> N
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description='Control-plane compatibility eval suite for the historical ai-orchestrator contract.')
+    parser.add_argument(
+        '--base-url',
+        default=DEFAULT_EVAL_BASE_URL,
+        help='Control-plane base URL. Defaults to CONTROL_PLANE_ORCHESTRATOR_URL or http://127.0.0.1:8002.',
+    )
+    args = parser.parse_args()
+
     settings = Settings()
     print('Orchestrator eval suite starting...')
 
     for name, url in [
         ('api-core', f'{settings.api_core_url}/healthz'),
-        ('ai-orchestrator', f'{settings.ai_orchestrator_url}/healthz'),
+        ('runtime', f'{args.base_url}/healthz'),
     ]:
         wait_for_health(name, url)
         print(f'[ok] health {name}')
@@ -211,7 +230,12 @@ def main() -> int:
         case_type = str(case['type'])
         try:
             if case_type == 'message_response':
-                status, body = _post_message_response(settings, case['request'], case_id=case_id)
+                status, body = _post_message_response(
+                    settings,
+                    case['request'],
+                    case_id=case_id,
+                    base_url=args.base_url,
+                )
                 assert_condition(status == 200 and isinstance(body, dict), f'{case_id}:request_failed')
                 _assert_message_response(case, body)
                 print(
@@ -221,7 +245,7 @@ def main() -> int:
                 continue
 
             if case_type == 'retrieval_search':
-                status, body = _post_retrieval_search(settings, case['request'])
+                status, body = _post_retrieval_search(settings, case['request'], base_url=args.base_url)
                 assert_condition(status == 200 and isinstance(body, dict), f'{case_id}:request_failed')
                 _assert_retrieval_search(case, body)
                 print(

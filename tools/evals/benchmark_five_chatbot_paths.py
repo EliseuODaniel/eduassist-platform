@@ -53,7 +53,7 @@ def _make_settings(*, stack: str) -> Settings:
         api_core_url='http://127.0.0.1:8001',
         qdrant_url='http://127.0.0.1:6333',
         database_url='postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist',
-        specialist_supervisor_pilot_url='http://127.0.0.1:8005',
+        specialist_supervisor_pilot_url='http://127.0.0.1:8015',
     )
 
 
