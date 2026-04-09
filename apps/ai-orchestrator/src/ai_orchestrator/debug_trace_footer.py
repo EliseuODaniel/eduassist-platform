@@ -70,6 +70,33 @@ def _debug_resources_for_response(response: MessageResponse) -> list[str]:
     return _dedupe_debug_items(resources)
 
 
+def _normalized_trace_context(request: MessageResponseRequest) -> dict[str, str]:
+    raw_payload = getattr(request, 'trace_context', {})
+    payload = raw_payload if isinstance(raw_payload, dict) else {}
+
+    def _pick(key: str) -> str:
+        return str(payload.get(key) or '').strip()
+
+    conversation_external_id = _pick('conversation_external_id')
+    if not conversation_external_id:
+        request_conversation_id = getattr(request, 'conversation_id', None)
+        request_telegram_chat_id = getattr(request, 'telegram_chat_id', None)
+        if request_conversation_id:
+            conversation_external_id = str(request_conversation_id).strip()
+        elif getattr(request, 'channel', None) == ConversationChannel.telegram and request_telegram_chat_id is not None:
+            conversation_external_id = f'telegram:{request_telegram_chat_id}'
+
+    trace_context = {
+        'correlation_id': _pick('correlation_id'),
+        'conversation_external_id': conversation_external_id,
+        'ingress_service': _pick('ingress_service'),
+        'ingress_event_id': _pick('ingress_event_id'),
+        'telegram_update_id': _pick('telegram_update_id'),
+        'message_fingerprint': _pick('message_fingerprint'),
+    }
+    return {key: value for key, value in trace_context.items() if value}
+
+
 def _base_debug_trace(
     *,
     request: MessageResponseRequest,
@@ -98,10 +125,13 @@ def _base_debug_trace(
         'support_count': evidence_pack.support_count if evidence_pack is not None else 0,
         'citation_count': len(response.citations),
     }
+    trace_context = _normalized_trace_context(request)
     return {
         'channel': request.channel.value,
         'stack': stack_name,
         'bundle_mode': bundle_mode,
+        'conversation_id': str(getattr(request, 'conversation_id', '') or '').strip(),
+        'trace_context': trace_context,
         'path': path_nodes,
         'raw_path': raw_path_nodes,
         'agents': agents,
@@ -205,11 +235,19 @@ def format_telegram_debug_footer(trace: dict[str, Any]) -> str:
     elif context_repair_action != 'none':
         context_repair_value = f'planned:{context_repair_action}'
     retrieval_retry_value = 'yes' if bool(trace.get('retrieval_retry_applied')) else 'no'
+    trace_context = trace.get('trace_context') if isinstance(trace.get('trace_context'), dict) else {}
+    correlation_id = str(trace_context.get('correlation_id') or 'none')
+    conversation_external_id = str(trace_context.get('conversation_external_id') or trace.get('conversation_id') or 'none')
+    ingress_service = str(trace_context.get('ingress_service') or 'unknown')
+    ingress_event_id = str(trace_context.get('ingress_event_id') or trace_context.get('telegram_update_id') or 'none')
     lines = [
         '',
         '[debug]',
         f"stack: {trace.get('stack') or 'unknown'}",
         f"bundle: {trace.get('bundle_mode') or 'unknown'}",
+        f"corr: {correlation_id}",
+        f"conversation: {conversation_external_id}",
+        f"ingress: {ingress_service}:{ingress_event_id}",
         f"path: {' > '.join(path) if path else 'none'}",
         f"llm: {llm_value}",
         f"final_polish: {polish_value}",

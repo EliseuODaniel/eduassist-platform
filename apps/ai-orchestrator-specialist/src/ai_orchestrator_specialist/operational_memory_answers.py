@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Awaitable, Callable
 
 from .answer_payloads import (
@@ -80,6 +81,58 @@ def _compose_meta_repair_answer(memory: OperationalMemory) -> str | None:
     if active_domain == "institution":
         return "A resposta anterior estava falando do status administrativo ou documental desta conta."
     return None
+
+
+def _looks_like_cross_student_comparison_followup(message: str, *, deps: OperationalMemoryDeps) -> bool:
+    normalized = deps.normalize_text(message)
+    if not any(term in normalized for term in {"compar", "compare", "comparar", "contra", "em relacao", "em relação"}):
+        return False
+    return any(term in normalized for term in {" com ", " com a ", " com o ", " com ana", " com lucas", "isso com"})
+
+
+def _weakest_grade_row(summary: dict[str, Any]) -> tuple[str, Decimal] | None:
+    grades = summary.get("grades")
+    if not isinstance(grades, list):
+        return None
+    weakest: tuple[str, Decimal] | None = None
+    for row in grades:
+        if not isinstance(row, dict):
+            continue
+        score = row.get("score")
+        if score is None:
+            continue
+        try:
+            score_decimal = Decimal(str(score))
+        except Exception:
+            continue
+        subject_name = str(row.get("subject_name") or "Disciplina").strip() or "Disciplina"
+        candidate = (subject_name, score_decimal)
+        if weakest is None or candidate[1] < weakest[1]:
+            weakest = candidate
+    return weakest
+
+
+def _compose_cross_student_academic_comparison(
+    base_summary: dict[str, Any],
+    other_summary: dict[str, Any],
+) -> str | None:
+    base_name = str(base_summary.get("student_name") or "Aluno").strip() or "Aluno"
+    other_name = str(other_summary.get("student_name") or "Aluno").strip() or "Aluno"
+    base_weakest = _weakest_grade_row(base_summary)
+    other_weakest = _weakest_grade_row(other_summary)
+    if base_weakest is None or other_weakest is None:
+        return None
+    base_subject, base_score = base_weakest
+    other_subject, other_score = other_weakest
+    most_critical_name = base_name if base_score <= other_score else other_name
+    most_critical_subject = base_subject if base_score <= other_score else other_subject
+    most_critical_score = base_score if base_score <= other_score else other_score
+    return (
+        f"Comparando {base_name} com {other_name}: "
+        f"{base_name} tem o ponto academico mais sensivel em {base_subject}, com media parcial {str(base_score).replace('.', ',')}, "
+        f"enquanto {other_name} aparece com menor media em {other_subject}, com {str(other_score).replace('.', ',')}. "
+        f"Hoje quem esta mais perto da media minima entre os dois e {most_critical_name}, puxado por {most_critical_subject}."
+    )
 
 
 def _filtered_upcoming_summary(
@@ -331,6 +384,48 @@ async def maybe_operational_memory_follow_up_answer(
                     graph_leaf="academic_risk_followup",
                     suggested_domain="academic",
                 )
+
+    if (
+        memory.active_domain == "academic"
+        and memory.active_student_name
+        and _looks_like_cross_student_comparison_followup(ctx.request.message, deps=deps)
+    ):
+        comparison_target = explicit_student_hint or student_name_only_followup
+        if not comparison_target and memory.active_student_id:
+            other = deps.other_linked_student(ctx.actor, capability="academic", current_student_id=memory.active_student_id)
+            comparison_target = str((other or {}).get("full_name") or "").strip() or None
+        if comparison_target and deps.normalize_text(comparison_target) != deps.normalize_text(memory.active_student_name):
+            base_payload, other_payload = await asyncio.gather(
+                deps.fetch_academic_summary_payload(ctx, student_name_hint=memory.active_student_name),
+                deps.fetch_academic_summary_payload(ctx, student_name_hint=comparison_target),
+            )
+            base_summary = base_payload.get("summary") if isinstance(base_payload, dict) else None
+            other_summary = other_payload.get("summary") if isinstance(other_payload, dict) else None
+            if isinstance(base_summary, dict) and isinstance(other_summary, dict):
+                answer_text = _compose_cross_student_academic_comparison(base_summary, other_summary)
+                if answer_text:
+                    return _build_memory_payload(
+                        message_text=answer_text,
+                        domain="academic",
+                        access_tier=_access_tier_for_domain("academic", True),
+                        confidence=0.98,
+                        reason="specialist_supervisor_memory:cross_student_academic_comparison",
+                        summary="Comparacao academica deterministica entre o aluno ativo e outro aluno vinculado.",
+                        supports=[
+                            MessageEvidenceSupport(
+                                kind="academic_summary",
+                                label=str(base_summary.get("student_name") or "Aluno"),
+                                detail=deps.safe_excerpt(answer_text, limit=180),
+                            ),
+                            MessageEvidenceSupport(
+                                kind="academic_summary",
+                                label=str(other_summary.get("student_name") or "Aluno"),
+                                detail=deps.safe_excerpt(answer_text, limit=180),
+                            ),
+                        ],
+                        graph_leaf="cross_student_academic_comparison",
+                        suggested_domain="academic",
+                    )
 
     if other_student_followup:
         if memory.active_domain == "academic" and memory.active_student_id:

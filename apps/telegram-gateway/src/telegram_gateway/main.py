@@ -316,6 +316,21 @@ def _text_fingerprint(text: str) -> str:
     return hashlib.sha1(text.encode('utf-8')).hexdigest()[:12]
 
 
+def _build_trace_context(*, chat_id: int, text: str, update_id: int | None) -> dict[str, str]:
+    conversation_external_id = f'telegram:{chat_id}'
+    update_token = str(update_id) if update_id is not None else 'none'
+    correlation_seed = f'{conversation_external_id}|{update_token}|{_text_fingerprint(text)}'
+    correlation_id = hashlib.sha256(correlation_seed.encode('utf-8')).hexdigest()[:32]
+    return {
+        'correlation_id': correlation_id,
+        'conversation_external_id': conversation_external_id,
+        'ingress_service': 'telegram-gateway',
+        'ingress_event_id': f'telegram-update:{update_token}',
+        'telegram_update_id': update_token,
+        'message_fingerprint': _text_fingerprint(text),
+    }
+
+
 def _build_reply_markup(suggested_replies: list[dict[str, object]] | None) -> dict[str, object] | None:
     if not isinstance(suggested_replies, list):
         return None
@@ -758,6 +773,7 @@ async def _orchestrate_message(
     settings = get_settings()
     actor = await _resolve_actor_context(chat_id)
     user_context = _build_user_context(actor)
+    trace_context = _build_trace_context(chat_id=chat_id, text=text, update_id=update_id)
 
     payload = {
         'message': text,
@@ -765,6 +781,7 @@ async def _orchestrate_message(
         'telegram_chat_id': chat_id,
         'channel': 'telegram',
         'user': user_context,
+        'trace_context': trace_context,
         # Telegram normal chat should stay on the fast grounded paths.
         # Real GraphRAG is only exposed through the explicit /graphrag_* commands.
         'allow_graph_rag': False,

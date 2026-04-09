@@ -36,6 +36,11 @@ Estado atual:
   - boundary de professor em follow-up
   - workflow de visita com remarcacao e cancelamento
   - agregado familiar de frequencia com priorizacao
+- `tests/e2e/dedicated_stack_long_memory.py` estende a bateria dedicada para memoria longa:
+  - digressao publica longa e retorno ao contexto protegido
+  - workflow retomado depois de um assunto nao relacionado
+  - agregado familiar protegido com desvio para politica publica e retorno
+  - correcao tardia de aluno depois de follow-up por disciplina
 - `tests/e2e/telegram_gateway_dedicated_smoke.py` cobre o caminho real `telegram-gateway -> runtime dedicado -> api-core`:
   - webhook com secret valido
   - enfileiramento assíncrono do gateway
@@ -103,12 +108,15 @@ Comandos uteis:
 - `make smoke-dedicated-llamaindex`
 - `make smoke-dedicated-specialist`
 - `make smoke-dedicated-multiturn`
+- `make smoke-dedicated-long-memory`
 - `make smoke-dedicated-multiturn-langgraph`
 - `make smoke-dedicated-multiturn-python-functions`
 - `make smoke-dedicated-multiturn-llamaindex`
 - `make smoke-dedicated-multiturn-specialist`
+- `make telegram-edge-readiness`
 - `make smoke-telegram-dedicated`
 - `make runtime-parity-check`
+- `make promotion-gate-check`
 - `make eval-dedicated`
 - `make eval-control-plane-compat`
 - `make eval-orchestrator`

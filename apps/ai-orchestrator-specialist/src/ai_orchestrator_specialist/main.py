@@ -288,7 +288,10 @@ def _log_runtime_diagnostics(diagnostics: dict[str, object]) -> None:
             logger.error("ai_orchestrator_specialist_runtime_blocker %s", str(item.get("message") or item.get("code") or "blocker"))
 
 
-def _message_response_payload(payload: dict[str, object]) -> dict[str, object]:
+def _message_response_payload(payload: dict[str, object], *, request: SpecialistSupervisorRequest) -> dict[str, object]:
+    trace_context = dict(request.trace_context or {})
+    if request.conversation_id and not str(trace_context.get("conversation_external_id") or "").strip():
+        trace_context["conversation_external_id"] = str(request.conversation_id)
     answer = payload.get("answer") if isinstance(payload.get("answer"), dict) else None
     if not isinstance(answer, dict):
         reason = str(payload.get("reason") or "specialist_supervisor_no_answer")
@@ -340,7 +343,8 @@ def _message_response_payload(payload: dict[str, object]) -> dict[str, object]:
                     "service": "ai-orchestrator-specialist",
                     "mode": "quality-first",
                     "reason": reason,
-                }
+                },
+                "trace_context": trace_context,
             },
         }
 
@@ -390,7 +394,8 @@ def _message_response_payload(payload: dict[str, object]) -> dict[str, object]:
                 "service": "ai-orchestrator-specialist",
                 "mode": "quality-first",
                 "reason": str(payload.get("reason") or "specialist_local_contract"),
-            }
+            },
+            "trace_context": trace_context,
         },
     }
 
@@ -512,4 +517,4 @@ async def respond_message_contract(
     _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
     payload = await _run_specialist(request=request, settings=settings)
-    return JSONResponse(content=jsonable_encoder(_message_response_payload(payload)))
+    return JSONResponse(content=jsonable_encoder(_message_response_payload(payload, request=request)))

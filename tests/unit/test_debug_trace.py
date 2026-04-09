@@ -196,3 +196,51 @@ def test_attach_telegram_debug_trace_for_dedicated_stack_appends_footer() -> Non
     assert 'stack: python_functions' in updated.message_text
     assert updated.debug_trace is not None
     assert updated.debug_trace['stack'] == 'python_functions'
+
+
+def test_build_debug_trace_exposes_trace_context() -> None:
+    request = MessageResponseRequest(
+        message='oi',
+        conversation_id='telegram:1649845499',
+        telegram_chat_id=1649845499,
+        channel=ConversationChannel.telegram,
+        user=UserContext(authenticated=True),
+        trace_context={
+            'correlation_id': 'abc123',
+            'conversation_external_id': 'telegram:1649845499',
+            'ingress_service': 'telegram-gateway',
+            'ingress_event_id': 'telegram-update:123',
+            'telegram_update_id': '123',
+        },
+    )
+    trace = build_debug_trace_for_bundle(
+        request=request,
+        response=_response(used_llm=False, llm_stages=[]),
+        bundle=SimpleNamespace(primary=SimpleNamespace(name='python_functions'), mode='python_functions'),
+    )
+    assert trace['trace_context']['correlation_id'] == 'abc123'
+    assert trace['trace_context']['ingress_service'] == 'telegram-gateway'
+
+
+def test_format_telegram_debug_footer_renders_correlation_metadata() -> None:
+    footer = format_telegram_debug_footer({
+        'stack': 'python_functions',
+        'bundle_mode': 'python_functions',
+        'conversation_id': 'telegram:1649845499',
+        'trace_context': {
+            'correlation_id': 'abc123',
+            'conversation_external_id': 'telegram:1649845499',
+            'ingress_service': 'telegram-gateway',
+            'ingress_event_id': 'telegram-update:456',
+        },
+        'path': ['python_functions'],
+        'agents': [],
+        'resources': [],
+        'retrieval': {'backend': 'none', 'strategy': 'direct_answer', 'source_count': 0, 'support_count': 0, 'citation_count': 0},
+        'reason': 'test_reason',
+        'used_llm': False,
+        'llm_stages': [],
+    })
+    assert 'corr: abc123' in footer
+    assert 'conversation: telegram:1649845499' in footer
+    assert 'ingress: telegram-gateway:telegram-update:456' in footer

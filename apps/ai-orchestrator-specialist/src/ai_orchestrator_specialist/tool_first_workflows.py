@@ -161,13 +161,52 @@ async def maybe_tool_first_workflow_answer(
             "por onde remarco",
         }
     )
-    visit_followup_hint = visit_reschedule_hint or any(
+    visit_resume_hint = any(
+        term in normalized
+        for term in {
+            "retomar",
+            "retomar depois",
+            "por onde volto",
+            "como volto",
+            "volto por onde",
+            "abrir outro pedido",
+            "novo agendamento",
+        }
+    )
+    visit_followup_hint = visit_reschedule_hint or visit_resume_hint or any(
         term in normalized for term in {"pode ser", "quinta", "terça", "terca", "quarta", "sexta", "sabado", "sábado", "manha", "tarde", "noite"}
     )
     if visit_followup_hint:
         payload = await deps.workflow_status_payload(ctx, workflow_kind="visit_booking")
         item = payload.get("item") if isinstance(payload, dict) else None
         if isinstance(item, dict):
+            if visit_resume_hint:
+                protocol = str(item.get("protocol_code") or "indisponivel").strip()
+                ticket = str(item.get("linked_ticket_code") or "").strip()
+                slot = str(item.get("slot_label") or item.get("preferred_window") or "janela a confirmar").strip()
+                return _build_workflow_payload(
+                    message_text=(
+                        "Se quiser retomar a visita depois, volte por este mesmo canal institucional "
+                        "ou pela secretaria/admissions. "
+                        f"Protocolo anterior: {protocol}. "
+                        f"{f'Preferencia registrada antes da pausa: {slot}. ' if slot else ''}"
+                        f"{f'Ticket operacional anterior: {ticket}. ' if ticket else ''}"
+                        "Se preferir, ja me diga o novo dia e horario desejados para eu abrir outro pedido."
+                    ),
+                    domain="support",
+                    access_tier=support_access_tier,
+                    confidence=0.99,
+                    reason="specialist_supervisor_tool_first:visit_resume",
+                    summary="Orientacao deterministica para retomar um fluxo de visita a partir do contexto recente.",
+                    supports=[
+                        MessageEvidenceSupport(
+                            kind="workflow",
+                            label=protocol or "protocolo",
+                            detail=slot or "retomada de visita",
+                        ),
+                    ],
+                    graph_leaf="visit_resume",
+                )
             preferred_date = _extract_requested_visit_date_iso(ctx.request.message)
             preferred_window = _extract_requested_visit_window(profile, ctx.request.message)
             if preferred_date or preferred_window:

@@ -263,7 +263,14 @@ async def maybe_execute_python_functions_native_plan(
         )
         preview.selected_tools = list(dict.fromkeys([*preview.selected_tools, 'search_documents']))
         preview.needs_authentication = False
-    elif recent_focus and recent_focus.get('kind') == 'visit' and rt._looks_like_visit_update_follow_up(request.message):
+    elif (
+        recent_focus
+        and recent_focus.get('kind') == 'visit'
+        and (
+            rt._looks_like_visit_update_follow_up(request.message)
+            or rt._looks_like_workflow_resume_follow_up(request.message)
+        )
+    ):
         preview.mode = OrchestrationMode.structured_tool
         preview.classification = IntentClassification(
             domain=QueryDomain.support,

@@ -88,6 +88,59 @@ def resolve_public_base_url(env: dict[str, str], timeout_seconds: int = 60) -> s
     return get_cloudflared_url(timeout_seconds)
 
 
+def detect_public_edge_mode(env: dict[str, str]) -> str:
+    explicit_url = _normalize_base_url(env.get("TELEGRAM_PUBLIC_BASE_URL", ""))
+    named_token = str(env.get("CLOUDFLARED_TUNNEL_TOKEN", "") or "").strip()
+    quick_tunnel_allowed = env.get("CLOUDFLARED_ALLOW_QUICK_TUNNEL", "true").strip().lower() == "true"
+    if explicit_url and named_token:
+        return "named_tunnel"
+    if explicit_url and not named_token:
+        return "explicit_public_base_url"
+    if quick_tunnel_allowed:
+        return "quick_tunnel"
+    return "misconfigured"
+
+
+def edge_readiness() -> int:
+    env = load_env_file(ENV_PATH)
+    edge_mode = detect_public_edge_mode(env)
+    explicit_url = _normalize_base_url(env.get("TELEGRAM_PUBLIC_BASE_URL", ""))
+    named_token = str(env.get("CLOUDFLARED_TUNNEL_TOKEN", "") or "").strip()
+    quick_tunnel_allowed = env.get("CLOUDFLARED_ALLOW_QUICK_TUNNEL", "true").strip().lower() == "true"
+    risks: list[str] = []
+    ready_for_stable_edge = bool(explicit_url and named_token)
+    public_base_url = ""
+    try:
+        public_base_url = resolve_public_base_url(env)
+    except Exception as exc:  # pragma: no cover - operational path
+        risks.append(str(exc))
+
+    if edge_mode == "quick_tunnel":
+        risks.append(
+            "Quick tunnel ainda esta ativo; isso e aceitavel para dev local, mas nao representa ingress estavel para demos longas."
+        )
+    if edge_mode == "misconfigured":
+        risks.append(
+            "A borda publica esta inconsistente: quick tunnel desabilitado sem TELEGRAM_PUBLIC_BASE_URL e sem CLOUDFLARED_TUNNEL_TOKEN."
+        )
+    payload = {
+        "ok": edge_mode != "misconfigured",
+        "edge_mode": edge_mode,
+        "public_base_url": public_base_url or explicit_url or None,
+        "named_tunnel_configured": bool(named_token),
+        "quick_tunnel_allowed": quick_tunnel_allowed,
+        "ready_for_stable_edge": ready_for_stable_edge,
+        "risks": risks,
+        "next_step": (
+            "Configure CLOUDFLARED_TUNNEL_TOKEN e TELEGRAM_PUBLIC_BASE_URL para sair do TryCloudflare."
+            if not ready_for_stable_edge
+            else "A borda estavel esta configurada; use make telegram-public-up-stable."
+        ),
+    }
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    return 0 if payload["ok"] else 1
+
+
 def wait_for_public_healthcheck(base_url: str, timeout_seconds: int = 60) -> None:
     deadline = time.time() + timeout_seconds
     last_error = None
@@ -179,6 +232,7 @@ def main() -> int:
     subparsers.add_parser("register", help="Descobre a URL do cloudflared e registra o webhook.")
     subparsers.add_parser("info", help="Mostra o estado atual do webhook no Telegram.")
     subparsers.add_parser("health", help="Valida a URL publica configurada para o Telegram.")
+    subparsers.add_parser("edge-readiness", help="Resume se a borda publica esta em quick tunnel, named tunnel ou modo inconsistente.")
     args = parser.parse_args()
 
     try:
@@ -188,6 +242,8 @@ def main() -> int:
             return webhook_info()
         if args.command == "health":
             return public_health()
+        if args.command == "edge-readiness":
+            return edge_readiness()
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", "replace")
         print(json.dumps({"ok": False, "http_error": exc.code, "body": body}, ensure_ascii=False))

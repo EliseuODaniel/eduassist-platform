@@ -253,6 +253,7 @@ class SpecialistSupervisorEngine(ResponseEngine):
                 "allow_graph_rag": bool(getattr(request, "allow_graph_rag", True)),
                 "allow_handoff": bool(getattr(request, "allow_handoff", True)),
                 "debug_options": dict(getattr(request, "debug_options", {}) or {}),
+                "trace_context": dict(getattr(request, "trace_context", {}) or {}),
             },
         )
         response.raise_for_status()

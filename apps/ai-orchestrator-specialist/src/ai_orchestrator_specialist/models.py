@@ -123,6 +123,7 @@ class SpecialistSupervisorRequest(BaseModel):
     allow_graph_rag: bool = True
     allow_handoff: bool = True
     debug_options: dict[str, Any] = Field(default_factory=dict)
+    trace_context: dict[str, Any] = Field(default_factory=dict)
 
 
 class MessageResponseCitation(BaseModel):

@@ -6,7 +6,7 @@ SPECIALIST_PROFILE := --profile specialist-supervisor
 TELEGRAM_PROFILE := --profile telegram-public
 DEDICATED_CORE_SERVICES := postgres redis qdrant minio minio-init keycloak opa api-core ai-orchestrator ai-orchestrator-langgraph ai-orchestrator-python-functions ai-orchestrator-llamaindex ai-orchestrator-specialist telegram-gateway
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-up-dedicated-core compose-up-telegram-langgraph compose-up-telegram-python-functions compose-up-telegram-llamaindex compose-up-telegram-specialist compose-up-control-plane-compat compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-control-plane-compat smoke-authz smoke-adversarial smoke-all smoke-dedicated smoke-dedicated-langgraph smoke-dedicated-python-functions smoke-dedicated-llamaindex smoke-dedicated-specialist smoke-dedicated-multiturn smoke-dedicated-multiturn-langgraph smoke-dedicated-multiturn-python-functions smoke-dedicated-multiturn-llamaindex smoke-dedicated-multiturn-specialist smoke-telegram-dedicated runtime-parity-check eval-dedicated eval-orchestrator eval-control-plane-compat eval-all graphrag-benchmark-bootstrap graphrag-benchmark-bootstrap-local graphrag-benchmark-local-check graphrag-benchmark-index graphrag-benchmark-index-dry-run graphrag-benchmark-baseline graphrag-benchmark-run graphrag-benchmark-run-smoke graphrag-local-runtime-up graphrag-local-runtime-down graphrag-local-runtime-logs release-readiness release-readiness-strict article-docx db-upgrade db-downgrade db-seed-foundation db-seed-school-expansion db-seed-operational-load db-seed-deep-population db-seed-benchmark-scenarios db-seed-auth-bindings keycloak-sync-runtime-users db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install telegram-public-up telegram-public-up-stable telegram-webhook-info telegram-webhook-health
+.PHONY: env bootstrap compose-config compose-build compose-up compose-up-dedicated-core compose-up-telegram-langgraph compose-up-telegram-python-functions compose-up-telegram-llamaindex compose-up-telegram-specialist compose-up-control-plane-compat compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-control-plane-compat smoke-authz smoke-adversarial smoke-all smoke-dedicated smoke-dedicated-langgraph smoke-dedicated-python-functions smoke-dedicated-llamaindex smoke-dedicated-specialist smoke-dedicated-multiturn smoke-dedicated-multiturn-langgraph smoke-dedicated-multiturn-python-functions smoke-dedicated-multiturn-llamaindex smoke-dedicated-multiturn-specialist smoke-dedicated-long-memory smoke-dedicated-long-memory-langgraph smoke-dedicated-long-memory-python-functions smoke-dedicated-long-memory-llamaindex smoke-dedicated-long-memory-specialist smoke-telegram-dedicated runtime-parity-check eval-dedicated eval-orchestrator eval-control-plane-compat eval-all graphrag-benchmark-bootstrap graphrag-benchmark-bootstrap-local graphrag-benchmark-local-check graphrag-benchmark-index graphrag-benchmark-index-dry-run graphrag-benchmark-baseline graphrag-benchmark-run graphrag-benchmark-run-smoke graphrag-local-runtime-up graphrag-local-runtime-down graphrag-local-runtime-logs release-readiness release-readiness-strict promotion-gate-check promotion-gate-check-stable article-docx db-upgrade db-downgrade db-seed-foundation db-seed-school-expansion db-seed-operational-load db-seed-deep-population db-seed-benchmark-scenarios db-seed-auth-bindings keycloak-sync-runtime-users db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install telegram-public-up telegram-public-up-stable telegram-webhook-info telegram-webhook-health telegram-edge-readiness
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -73,6 +73,9 @@ telegram-webhook-info: env
 telegram-webhook-health: env
 	python3 tools/ops/telegram_webhook.py health
 
+telegram-edge-readiness: env
+	python3 tools/ops/telegram_webhook.py edge-readiness
+
 observability-up: env
 	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d otel-collector tempo loki promtail prometheus grafana
 
@@ -126,6 +129,21 @@ smoke-dedicated-multiturn-llamaindex: env
 smoke-dedicated-multiturn-specialist: env
 	python3 tests/e2e/dedicated_stack_multiturn.py --stack specialist_supervisor
 
+smoke-dedicated-long-memory: env
+	python3 tests/e2e/dedicated_stack_long_memory.py --stack $${STACK:-all}
+
+smoke-dedicated-long-memory-langgraph: env
+	python3 tests/e2e/dedicated_stack_long_memory.py --stack langgraph
+
+smoke-dedicated-long-memory-python-functions: env
+	python3 tests/e2e/dedicated_stack_long_memory.py --stack python_functions
+
+smoke-dedicated-long-memory-llamaindex: env
+	python3 tests/e2e/dedicated_stack_long_memory.py --stack llamaindex
+
+smoke-dedicated-long-memory-specialist: env
+	python3 tests/e2e/dedicated_stack_long_memory.py --stack specialist_supervisor
+
 smoke-telegram-dedicated: env
 	python3 tests/e2e/telegram_gateway_dedicated_smoke.py $${TELEGRAM_GATEWAY_SMOKE_ARGS:-}
 
@@ -177,10 +195,16 @@ graphrag-benchmark-run-smoke: env
 	uv run --project tools/graphrag-benchmark python -m graphrag_benchmark.run_benchmark --dataset tools/graphrag-benchmark/datasets/public_corpus_smoke.json
 
 release-readiness: env
-	python3 tools/ops/release_readiness.py
+	.venv/bin/python tools/ops/release_readiness.py
 
 release-readiness-strict: env
-	python3 tools/ops/release_readiness.py --strict-graphrag
+	.venv/bin/python tools/ops/release_readiness.py --strict-graphrag
+
+promotion-gate-check: env
+	.venv/bin/python tools/ops/promotion_gate.py $${PROMOTION_GATE_ARGS:-}
+
+promotion-gate-check-stable: env
+	.venv/bin/python tools/ops/promotion_gate.py --require-stable-edge $${PROMOTION_GATE_ARGS:-}
 
 article-docx: env
 	uv run --project tools/article-export python -m article_export.export_docx

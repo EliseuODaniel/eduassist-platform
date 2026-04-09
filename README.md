@@ -235,29 +235,74 @@ Observação:
 make release-readiness
 ```
 
-### Rodada comparativa de referência
+### Estado de referência atual
 
-A bateria final de referência do repositório público é a `50Q`, com `50` perguntas inéditas distribuídas entre cenários `public`, `protected` e `restricted`.
+A verdade pública do repositório deixou de ser a tabela antiga do control plane e passou a ser o pacote de validação `dedicated-first`. Em vez de um único benchmark estático, o projeto hoje usa um conjunto de gates complementares:
 
-| Caminho | OK | Keyword pass | Quality avg | Avg latency |
-| --- | --- | --- | --- | --- |
-| `langgraph` | `50/50` | `38/50` | `91.8` | `1251.2 ms` |
-| `python_functions` | `50/50` | `41/50` | `93.0` | `1082.2 ms` |
-| `llamaindex` | `50/50` | `38/50` | `92.0` | `1184.4 ms` |
-| `specialist_supervisor` | `50/50` | `39/50` | `92.4` | `1955.2 ms` |
+- `make smoke-dedicated`
+- `make smoke-dedicated-multiturn`
+- `make smoke-dedicated-long-memory`
+- `make smoke-telegram-dedicated`
+- `make runtime-parity-check`
+- `make promotion-gate-check`
 
-Leitura rápida das métricas:
+Os artefatos mais úteis dessa camada de verdade ficam em:
 
-- `OK`: respostas concluídas sem falha de runtime.
-- `Keyword pass`: verificação lexical mínima por caso.
-- `Quality avg`: média de score heurístico ponderado por tipo de erro.
-- `Avg latency`: tempo médio fim a fim, já incluindo a camada final de resposta ancorada em evidências.
+- [Dedicated-First Reference State](docs/architecture/dedicated-first-reference-state.md)
 
-Artefatos públicos da rodada:
+### Política operacional do control plane
 
-- [Relatório quantitativo 50Q](docs/architecture/retrieval-50q-cross-path-report-20260406.md)
-- [Relatório quantitativo 50Q em JSON](docs/architecture/retrieval-50q-cross-path-report-20260406.json)
-- [Análise qualitativa da 50Q](docs/architecture/retrieval-50q-human-analysis-20260406.md)
+Na arquitetura atual, `ai-orchestrator` não é mais o caminho recomendado de serving final. O papel dele passou a ser:
+
+- `control plane/router`
+- superfície interna de administração, comparação e APIs internas
+- apoio a runtimes dedicados quando houver dependências transversais explícitas
+
+O serving principal de usuário deve sair por um dos quatro runtimes dedicados:
+
+- `ai-orchestrator-langgraph`
+- `ai-orchestrator-python-functions`
+- `ai-orchestrator-llamaindex`
+- `ai-orchestrator-specialist`
+
+O modo de compatibilidade do control plane continua existindo só para manutenção, smoke legado e debug explícito.
+
+### Rollout e scorecard
+
+O gate de promoção já suporta rollout controlado com scorecard, mas isso depende de configuração explícita. O caminho canônico do scorecard agora é resolvido automaticamente tanto em Docker quanto em source mode a partir de:
+
+- `artifacts/framework-native-scorecard.json`
+- `docs/architecture/framework-native-scorecard.json`
+
+As flags principais de rollout continuam sendo:
+
+- `ORCHESTRATOR_EXPERIMENT_ENABLED`
+- `ORCHESTRATOR_EXPERIMENT_PRIMARY_ENGINE`
+- `ORCHESTRATOR_EXPERIMENT_REQUIRE_SCORECARD`
+- `ORCHESTRATOR_EXPERIMENT_SCORECARD_PATH`
+- `ORCHESTRATOR_EXPERIMENT_SLICES`
+- `ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS`
+- `ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES`
+
+Exemplo de validação local/controlada:
+
+```bash
+make promotion-gate-check
+```
+
+Exemplo de validação exigindo borda estável:
+
+```bash
+make promotion-gate-check-stable
+```
+- [Arquitetura dos orquestradores independentes](docs/architecture/independent-orchestrators-architecture-20260406.md)
+- [Fechamento da rodada de avaliação da arquitetura independente](docs/architecture/independent-orchestrators-eval-closeout-20260406.md)
+
+Na prática, isso significa:
+
+- o `ai-orchestrator` central é tratado como `control plane`, não como benchmark público principal;
+- a validação de serving passa pelos runtimes dedicados;
+- memória curta, memória longa, Telegram real e parity operacional entram na superfície de aceite, e não só prompts isolados.
 
 Exemplo de execução manual:
 

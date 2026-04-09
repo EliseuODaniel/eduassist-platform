@@ -2930,7 +2930,14 @@ async def maybe_execute_llamaindex_native_plan(
     conversation_context = rt._conversation_context_payload(conversation_context_bundle)
     recent_focus = rt._recent_conversation_focus(conversation_context)
     school_profile = await rt._fetch_public_school_profile(settings=settings)
-    if recent_focus and recent_focus.get('kind') == 'visit' and rt._looks_like_visit_update_follow_up(request.message):
+    if (
+        recent_focus
+        and recent_focus.get('kind') == 'visit'
+        and (
+            rt._looks_like_visit_update_follow_up(request.message)
+            or rt._looks_like_workflow_resume_follow_up(request.message)
+        )
+    ):
         preview = plan.preview.model_copy(deep=True)
         preview.mode = OrchestrationMode.structured_tool
         preview.classification = IntentClassification(

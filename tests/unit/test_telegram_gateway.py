@@ -204,3 +204,60 @@ def test_process_message_falls_back_after_retry_failure(monkeypatch) -> None:
     assert sent_messages == [
         'Nao consegui consultar a base da escola agora. Tente novamente em instantes ou use o portal institucional.'
     ]
+
+
+def test_build_trace_context_is_stable_for_same_update() -> None:
+    first = gateway_main._build_trace_context(chat_id=123, text='oi', update_id=456)
+    second = gateway_main._build_trace_context(chat_id=123, text='oi', update_id=456)
+    assert first == second
+    assert first['conversation_external_id'] == 'telegram:123'
+    assert first['ingress_service'] == 'telegram-gateway'
+
+
+def test_orchestrate_message_sends_trace_context(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_resolve_actor_context(_chat_id: int) -> None:
+        return None
+
+    class _FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {'message_text': 'ok'}
+
+    class _FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, _url: str, *, headers=None, json=None):
+            captured['headers'] = headers
+            captured['json'] = json
+            return _FakeResponse()
+
+    monkeypatch.setattr(gateway_main, '_resolve_actor_context', fake_resolve_actor_context)
+    monkeypatch.setattr(
+        gateway_main,
+        'get_settings',
+        lambda: gateway_main.Settings(
+            telegram_bot_token='token',
+            telegram_webhook_secret='secret',
+            internal_api_token='internal',
+            ai_orchestrator_url='http://runtime:8000',
+        ),
+    )
+    monkeypatch.setattr(gateway_main.httpx, 'AsyncClient', lambda *args, **kwargs: _FakeClient())
+
+    body = asyncio.run(gateway_main._orchestrate_message(chat_id=123, text='oi', update_id=456))
+
+    assert body['message_text'] == 'ok'
+    payload = captured['json']
+    assert isinstance(payload, dict)
+    trace_context = payload.get('trace_context')
+    assert isinstance(trace_context, dict)
+    assert trace_context['conversation_external_id'] == 'telegram:123'
+    assert trace_context['telegram_update_id'] == '456'

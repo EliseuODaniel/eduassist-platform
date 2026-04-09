@@ -119,8 +119,6 @@ def main() -> int:
         diagnostics=gateway_diag,
         expect_runtime_mode=expect_runtime_mode,
     )
-    if expect_runtime_mode is None:
-        expect_runtime_mode = gateway_runtime_mode
 
     control_plane_status = _fetch_control_plane_status(settings)
     control_plane_meta = _fetch_control_plane_meta(settings)
@@ -158,6 +156,7 @@ def main() -> int:
     report = {
         "generated_at": datetime.now(UTC).isoformat(),
         "expected_runtime_mode": expect_runtime_mode,
+        "observed_gateway_runtime_mode": gateway_runtime_mode,
         "gateway": gateway_status,
         "control_plane": control_plane_status,
         "control_plane_meta": control_plane_meta,

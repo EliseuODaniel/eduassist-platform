@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 from ai_orchestrator.models import AccessTier, OrchestrationMode, QueryDomain
 from ai_orchestrator.runtime import (
+    _apply_workflow_follow_up_rescue,
     _apply_authenticated_public_profile_rescue,
     PublicInstitutionPlan,
     ProtectedAttributeRequest,
@@ -27,6 +28,7 @@ from ai_orchestrator.runtime import (
     _compose_admin_finance_block_status_answer,
     _compose_finance_aggregate_answer,
     _compose_visit_booking_action_answer,
+    _compose_workflow_status_answer,
     _compose_missing_subject_explanation_answer,
     _detect_finance_attribute_request,
     _explicit_protected_domain_hint,
@@ -50,10 +52,12 @@ from ai_orchestrator.runtime import (
     _looks_like_family_attendance_aggregate_query,
     _looks_like_family_finance_aggregate_query,
     _looks_like_natural_visit_booking_request,
+    _looks_like_workflow_resume_follow_up,
     _looks_like_visit_update_follow_up,
     _looks_like_public_documentary_open_query,
     _public_open_documentary_topic,
     _recent_conversation_focus,
+    _recent_workflow_focus,
     _select_linked_student,
     _must_preserve_contextual_public_followup_message,
     _should_polish_structured_answer,
@@ -103,6 +107,40 @@ def test_visit_update_follow_up_accepts_generic_cancel_inside_visit_context() ->
     assert _looks_like_visit_update_follow_up('E se eu cancelar, qual e o caminho mais curto?') is True
 
 
+def test_workflow_resume_follow_up_accepts_resume_after_cancel_wording() -> None:
+    assert _looks_like_workflow_resume_follow_up('E se eu quiser retomar depois, por onde volto?') is True
+
+
+def test_recent_conversation_focus_keeps_visit_after_cancel_followup() -> None:
+    focus = _recent_conversation_focus(
+        {
+            'recent_messages': [
+                {'sender_type': 'assistant', 'content': 'Consigo remarcar a visita por aqui. Protocolo: VIS-20260409-403A7D.'},
+                {'sender_type': 'user', 'content': 'certo, e se eu cancelar mesmo?'},
+                {'sender_type': 'assistant', 'content': 'Se voce cancelar a visita, o protocolo VIS-20260409-403A7D sera cancelado.'},
+            ],
+            'recent_tool_calls': [],
+        }
+    )
+    assert isinstance(focus, dict)
+    assert focus.get('kind') == 'visit'
+
+
+def test_recent_conversation_focus_keeps_visit_from_protocol_prefix_even_without_word_visita() -> None:
+    focus = _recent_conversation_focus(
+        {
+            'recent_messages': [
+                {'sender_type': 'assistant', 'content': 'Se voce cancelar, o protocolo VIS-20260409-403A7D sera cancelado.'},
+                {'sender_type': 'user', 'content': 'certo, e se eu cancelar mesmo?'},
+            ],
+            'recent_tool_calls': [],
+        }
+    )
+    assert isinstance(focus, dict)
+    assert focus.get('kind') == 'visit'
+    assert focus.get('protocol_code') == 'VIS-20260409-403A7D'
+
+
 def test_visit_action_answer_uses_backend_cancel_action_for_elliptic_followup() -> None:
     answer = _compose_visit_booking_action_answer(
         {
@@ -119,6 +157,179 @@ def test_visit_action_answer_uses_backend_cancel_action_for_elliptic_followup() 
     lowered = answer.lower()
     assert 'cancelad' in lowered
     assert 'protocolo' in lowered
+
+
+def test_compose_workflow_status_answer_handles_visit_resume_wording() -> None:
+    answer = _compose_workflow_status_answer(
+        {
+            'found': True,
+            'item': {
+                'workflow_type': 'visit_booking',
+                'protocol_code': 'VIS-20260409-8C0B98',
+                'queue_name': 'admissions',
+                'linked_ticket_code': 'ATD-20260409-747EA3E6',
+                'status': 'cancelled',
+            },
+        },
+        protocol_code_hint='VIS-20260409-8C0B98',
+        request_message='e se eu quiser retomar depois, por onde volto?',
+    )
+    lowered = answer.lower()
+    assert 'retomar' in lowered
+    assert 'novo pedido' in lowered or 'canal institucional' in lowered
+
+
+def test_workflow_follow_up_rescue_prefers_recent_workflow_over_public_digression() -> None:
+    preview = SimpleNamespace(
+        mode=OrchestrationMode.structured_tool,
+        reason='fato institucional canonico deve vir de fonte estruturada',
+        needs_authentication=False,
+        selected_tools=['get_public_school_profile'],
+        graph_path=['classify_request', 'security_gate', 'route_request'],
+        risk_flags=[],
+        retrieval_backend=None,
+        citations_required=False,
+        output_contract='',
+        classification=SimpleNamespace(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.78,
+            reason='institution',
+        ),
+    )
+    applied = _apply_workflow_follow_up_rescue(
+        preview=preview,
+        message='e se eu quiser retomar depois, por onde volto?',
+        conversation_context={
+            'recent_messages': [
+                {'sender_type': 'assistant', 'content': 'Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260409-9A9D1D.'},
+                {'sender_type': 'assistant', 'content': 'O horario da biblioteca vai das 7h30 as 18h00.'},
+                {'sender_type': 'assistant', 'content': 'Consigo remarcar a visita por aqui. Protocolo: VIS-20260409-9A9D1D.'},
+                {'sender_type': 'assistant', 'content': 'Se voce cancelar, o protocolo VIS-20260409-9A9D1D sera cancelado.'},
+            ],
+            'recent_tool_calls': [
+                {
+                    'tool_name': 'orchestration.trace',
+                    'request_payload': {
+                        'selected_tools': ['schedule_school_visit', 'create_support_ticket'],
+                        'slot_memory': {
+                            'focus_kind': 'visit',
+                            'active_task': 'workflow:visit_booking',
+                            'protocol_code': 'VIS-20260409-9A9D1D',
+                        },
+                    },
+                },
+                {
+                    'tool_name': 'orchestration.trace',
+                    'request_payload': {
+                        'selected_tools': ['get_public_school_profile'],
+                        'slot_memory': {
+                            'focus_kind': 'public',
+                            'active_task': 'public:features',
+                            'active_entity': 'biblioteca',
+                        },
+                    },
+                },
+                {
+                    'tool_name': 'orchestration.trace',
+                    'request_payload': {
+                        'selected_tools': ['update_visit_booking'],
+                        'slot_memory': {
+                            'focus_kind': 'visit',
+                            'active_task': 'workflow:visit_booking',
+                            'protocol_code': 'VIS-20260409-9A9D1D',
+                        },
+                    },
+                },
+                {
+                    'tool_name': 'orchestration.trace',
+                    'request_payload': {
+                        'selected_tools': [],
+                        'slot_memory': {
+                            'focus_kind': 'public',
+                            'active_task': 'public:features',
+                            'active_entity': 'biblioteca',
+                        },
+                    },
+                },
+            ],
+        },
+    )
+    assert applied is True
+    assert preview.classification.domain is QueryDomain.support
+    assert preview.selected_tools == ['get_workflow_status']
+    assert preview.reason == 'workflow_follow_up_rescue:visit_resume'
+
+
+def test_recent_workflow_focus_prefers_visit_over_newer_public_trace() -> None:
+    focus = _recent_workflow_focus(
+        {
+            'recent_messages': [
+                {'sender_type': 'assistant', 'content': 'Pedido de visita registrado para o Colegio Horizonte. Protocolo: VIS-20260409-9A9D1D.'},
+                {'sender_type': 'assistant', 'content': 'O horario da biblioteca vai das 7h30 as 18h00.'},
+                {'sender_type': 'assistant', 'content': 'Consigo remarcar a visita por aqui. Protocolo: VIS-20260409-9A9D1D.'},
+                {'sender_type': 'assistant', 'content': 'Se voce cancelar, o protocolo VIS-20260409-9A9D1D sera cancelado.'},
+            ],
+            'recent_tool_calls': [
+                {
+                    'tool_name': 'orchestration.trace',
+                    'request_payload': {
+                        'selected_tools': ['schedule_school_visit', 'create_support_ticket'],
+                        'slot_memory': {
+                            'focus_kind': 'visit',
+                            'active_task': 'workflow:visit_booking',
+                            'protocol_code': 'VIS-20260409-9A9D1D',
+                        },
+                    },
+                },
+                {
+                    'tool_name': 'orchestration.trace',
+                    'request_payload': {
+                        'selected_tools': ['get_public_school_profile'],
+                        'slot_memory': {
+                            'focus_kind': 'public',
+                            'active_task': 'public:features',
+                            'active_entity': 'biblioteca',
+                        },
+                    },
+                },
+            ],
+        }
+    )
+    assert isinstance(focus, dict)
+    assert focus.get('kind') == 'visit'
+
+
+def test_workflow_follow_up_rescue_ignores_non_protocol_messages_without_crashing() -> None:
+    preview = SimpleNamespace(
+        mode=OrchestrationMode.structured_tool,
+        reason='dados estruturados devem passar por service deterministico',
+        needs_authentication=False,
+        selected_tools=['get_student_grades'],
+        graph_path=['classify_request', 'security_gate', 'route_request'],
+        risk_flags=[],
+        retrieval_backend=None,
+        citations_required=False,
+        output_contract='',
+        classification=SimpleNamespace(
+            domain=QueryDomain.academic,
+            access_tier=AccessTier.authenticated,
+            confidence=0.9,
+            reason='academic',
+        ),
+    )
+    applied = _apply_workflow_follow_up_rescue(
+        preview=preview,
+        message='e qual disciplina preocupa mais?',
+        conversation_context={
+            'recent_messages': [
+                {'sender_type': 'assistant', 'content': 'As notas de Lucas Oliveira sao: Matematica 7,7 e Fisica 5,9.'},
+            ],
+            'recent_tool_calls': [],
+        },
+    )
+    assert applied is False
+    assert preview.selected_tools == ['get_student_grades']
 
 
 def test_public_institution_structured_answer_still_polishes_when_not_canonical_lane() -> None:
@@ -411,6 +622,36 @@ def test_build_analysis_message_rewrites_upcoming_assessments_followup_to_recent
                         'slot_memory': {
                             'focus_kind': 'academic',
                             'active_task': 'academic:grades',
+                            'academic_student_name': 'Ana Oliveira',
+                        }
+                    },
+                }
+            ],
+        ),
+    )
+    assert 'proximas avaliacoes de Ana Oliveira' in rewritten
+
+
+def test_build_analysis_message_keeps_upcoming_scope_when_subject_is_added_later() -> None:
+    now_iso = datetime.now().astimezone().isoformat()
+    rewritten = _build_analysis_message(
+        'E a proxima de matematica?',
+        SimpleNamespace(
+            conversation_external_id='conv-test',
+            message_count=2,
+            recent_messages=[
+                {'sender_type': 'user', 'content': 'Quais as proximas provas da Ana?', 'created_at': now_iso},
+                {'sender_type': 'assistant', 'content': 'Proximas avaliacoes de Ana Oliveira: Matematica - Avaliacao B1 em 10/04/2026.', 'created_at': now_iso},
+            ],
+            recent_tool_calls=[
+                {
+                    'tool_name': 'orchestration.trace',
+                    'created_at': now_iso,
+                    'request_payload': {
+                        'slot_memory': {
+                            'focus_kind': 'academic',
+                            'active_task': 'academic:upcoming',
+                            'academic_focus_kind': 'upcoming',
                             'academic_student_name': 'Ana Oliveira',
                         }
                     },
@@ -781,6 +1022,32 @@ def test_effective_academic_attribute_request_does_not_override_explicit_difficu
                     },
                 }
             ]
+        },
+    ) is None
+
+
+def test_effective_academic_attribute_request_does_not_override_upcoming_subject_followup() -> None:
+    assert _effective_academic_attribute_request(
+        'E a proxima de matematica?',
+        conversation_context={
+            'recent_messages': [
+                {
+                    'sender_type': 'assistant',
+                    'content': 'Proximas avaliacoes de Ana Oliveira: Matematica - Avaliacao B1 em 10/04/2026.',
+                }
+            ],
+            'recent_tool_calls': [
+                {
+                    'tool_name': 'orchestration.trace',
+                    'request_payload': {
+                        'slot_memory': {
+                            'active_task': 'academic:upcoming',
+                            'academic_focus_kind': 'upcoming',
+                            'academic_student_name': 'Ana Oliveira',
+                        }
+                    },
+                }
+            ],
         },
     ) is None
 

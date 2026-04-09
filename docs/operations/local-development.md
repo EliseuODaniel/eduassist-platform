@@ -236,8 +236,40 @@ Validação operacional recomendada:
 
 - `make smoke-dedicated`
 - `make smoke-dedicated-multiturn`
+- `make smoke-dedicated-long-memory`
 - `make smoke-telegram-dedicated`
 - `make runtime-parity-check`
+- `make telegram-edge-readiness`
+- `make promotion-gate-check`
+
+Política operacional atual:
+
+- `ai-orchestrator` deve ser tratado como `control plane/router`, não como entrypoint principal de serving;
+- o fluxo recomendado de usuário é `telegram-gateway -> runtime dedicado -> api-core`;
+- o modo de compatibilidade do control plane continua restrito a manutenção e smoke legado.
+
+Rollout local/controlado:
+
+- o scorecard canônico é carregado automaticamente a partir de:
+  - `artifacts/framework-native-scorecard.json`
+  - `docs/architecture/framework-native-scorecard.json`
+- flags principais:
+  - `ORCHESTRATOR_EXPERIMENT_ENABLED`
+  - `ORCHESTRATOR_EXPERIMENT_PRIMARY_ENGINE`
+  - `ORCHESTRATOR_EXPERIMENT_REQUIRE_SCORECARD`
+  - `ORCHESTRATOR_EXPERIMENT_SCORECARD_PATH`
+  - `ORCHESTRATOR_EXPERIMENT_SLICES`
+  - `ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS`
+  - `ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES`
+
+Validação de rollout:
+
+- `make promotion-gate-check`
+- `make release-readiness`
+
+Se quiser exigir borda estável no gate:
+
+- `make promotion-gate-check-stable`
 
 ## 9. Variáveis de ambiente previstas
 
@@ -253,6 +285,10 @@ Validação operacional recomendada:
 - `TELEGRAM_PUBLIC_BASE_URL`
 - `CLOUDFLARED_TUNNEL_TOKEN`
 - `CLOUDFLARED_ALLOW_QUICK_TUNNEL`
+- `ORCHESTRATOR_EXPERIMENT_REQUIRE_SCORECARD`
+- `ORCHESTRATOR_EXPERIMENT_SCORECARD_PATH`
+- `ORCHESTRATOR_EXPERIMENT_SLICE_ROLLOUTS`
+- `ORCHESTRATOR_EXPERIMENT_ALLOWLIST_SLICES`
 - `LLM_PROVIDER`
 - `OPENAI_API_KEY`
 - `GOOGLE_MODEL`

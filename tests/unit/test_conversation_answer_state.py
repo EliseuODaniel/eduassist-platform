@@ -493,6 +493,119 @@ def test_resolve_answer_focus_marks_meta_repair_followup() -> None:
     assert focus.public_pricing_segment is None
 
 
+def test_resolve_answer_focus_keeps_upcoming_scope_when_subject_refines_previous_upcoming_turn() -> None:
+    focus = resolve_answer_focus(
+        request_message='e a próxima de matemática?',
+        actor=_actor(),
+        conversation_context={
+            'recent_messages': [
+                {'sender_type': 'user', 'content': 'quais as próximas provas da Ana?'},
+                {
+                    'sender_type': 'assistant',
+                    'content': 'Próximas avaliações de Ana Oliveira:\n- Matemática: Avaliação B1 em 10/04/2026.',
+                },
+            ],
+            'recent_tool_calls': [
+                {
+                    'tool_name': 'orchestration.trace',
+                    'request_payload': {
+                        'slot_memory': {
+                            'active_task': 'academic:upcoming',
+                            'academic_focus_kind': 'upcoming',
+                            'academic_student_name': 'Ana Oliveira',
+                        }
+                    },
+                }
+            ],
+        },
+    )
+
+    assert focus.domain == 'academic'
+    assert focus.topic == 'upcoming_assessments'
+    assert focus.student_name == 'Ana Oliveira'
+    assert focus.subject_name == 'Matematica'
+    assert focus.needs_disambiguation is False
+
+
+def test_resolve_answer_focus_treats_explicit_student_correction_as_same_upcoming_flow() -> None:
+    focus = resolve_answer_focus(
+        request_message='não, do Lucas',
+        actor=_actor(),
+        conversation_context={
+            'recent_messages': [
+                {'sender_type': 'user', 'content': 'quais as próximas provas da Ana?'},
+                {
+                    'sender_type': 'assistant',
+                    'content': 'Próximas avaliações de Ana Oliveira:\n- Matemática: Avaliação B1 em 10/04/2026.',
+                },
+                {'sender_type': 'user', 'content': 'e a próxima de matemática?'},
+                {
+                    'sender_type': 'assistant',
+                    'content': 'Próximas avaliações de Ana Oliveira:\n- Matemática: Avaliação B1 em 10/04/2026.',
+                },
+            ],
+            'recent_tool_calls': [
+                {
+                    'tool_name': 'orchestration.trace',
+                    'request_payload': {
+                        'slot_memory': {
+                            'active_task': 'academic:upcoming',
+                            'academic_focus_kind': 'upcoming',
+                            'academic_student_name': 'Ana Oliveira',
+                            'active_subject': 'Matematica',
+                        }
+                    },
+                }
+            ],
+        },
+    )
+
+    assert focus.domain == 'academic'
+    assert focus.topic == 'upcoming_assessments'
+    assert focus.student_name == 'Lucas Oliveira'
+    assert focus.subject_name == 'Matematica'
+    assert focus.needs_disambiguation is False
+
+
+def test_resolve_answer_focus_does_not_inherit_single_student_memory_for_family_comparison() -> None:
+    focus = resolve_answer_focus(
+        request_message='e agora quem dos dois está mais perto da média mínima?',
+        actor=_actor(),
+        conversation_context={
+            'recent_messages': [
+                {
+                    'sender_type': 'assistant',
+                    'content': 'Próximas avaliações de Lucas Oliveira:\n- Matemática: Avaliação B1 em 10/04/2026.',
+                },
+                {'sender_type': 'user', 'content': 'não, do Lucas'},
+                {
+                    'sender_type': 'assistant',
+                    'content': 'Próximas avaliações de Ana Oliveira:\n- Matemática: Avaliação B1 em 10/04/2026.',
+                },
+                {'sender_type': 'user', 'content': 'e a próxima de matemática?'},
+            ],
+            'recent_tool_calls': [
+                {
+                    'tool_name': 'orchestration.trace',
+                    'request_payload': {
+                        'slot_memory': {
+                            'active_task': 'academic:upcoming_assessments',
+                            'academic_student_name': 'Lucas Oliveira',
+                            'active_subject': 'Matematica',
+                        }
+                    },
+                }
+            ],
+        },
+    )
+
+    assert focus.domain == 'academic'
+    assert focus.topic == 'grades'
+    assert focus.asks_family_aggregate is True
+    assert focus.student_name is None
+    assert focus.subject_name is None
+
+
 def test_resolve_answer_focus_does_not_leak_public_pricing_into_finance_followup() -> None:
     focus = resolve_answer_focus(
         request_message='e o financeiro do lucas como está?',

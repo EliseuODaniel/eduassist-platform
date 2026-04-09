@@ -43,6 +43,7 @@ from .public_doc_knowledge import (
     compose_public_outings_authorizations,
     compose_public_permanence_and_family_support,
     compose_public_teacher_directory_boundary,
+    compose_public_timeline_lifecycle_bundle,
     match_public_canonical_lane as match_shared_public_canonical_lane,
 )
 from .python_functions_public_knowledge import (
@@ -1227,6 +1228,45 @@ def _looks_like_public_timeline_order_followup(
     )
 
 
+def _looks_like_public_calendar_reset_followup(
+    question: str,
+    conversation_context: dict[str, Any] | None,
+) -> bool:
+    normalized = _plain_text(question)
+    if not any(
+        term in normalized
+        for term in (
+            'so o calendario publico',
+            'quero so o calendario publico',
+            'calendario publico da escola',
+        )
+    ):
+        return False
+    recent_blob = ' '.join(
+        _plain_text(item)
+        for item in (
+            _extract_recent_user_messages(conversation_context)
+            + _extract_recent_assistant_messages(conversation_context)
+        )[-8:]
+    )
+    if any(
+        term in recent_blob
+        for term in (
+            'nota',
+            'notas',
+            'boletim',
+            'frequencia',
+            'faltas',
+            'financeiro',
+            'mensalidade',
+            'ana oliveira',
+            'lucas oliveira',
+        )
+    ):
+        return True
+    return 'calendario' in normalized
+
+
 def _compose_public_timeline_order_direct_answer(
     school_profile: dict[str, Any] | None,
     *,
@@ -1510,6 +1550,43 @@ def _question_mentions_visit_reschedule_followup(
     return any(term in recent_blob for term in ('visita', 'tour', 'pedido de visita', 'protocolo da visita'))
 
 
+def _question_mentions_visit_resume_followup(
+    question: str,
+    conversation_context: dict[str, Any] | None,
+) -> bool:
+    normalized = _plain_text(question)
+    asks_resume = any(
+        term in normalized
+        for term in (
+            'retomar',
+            'retoma',
+            'retomo',
+            'voltar',
+            'volto',
+            'como retomo',
+            'como eu retomo',
+            'como volto',
+            'como eu volto',
+            'por onde volto',
+            'por onde eu volto',
+            'por onde retomo',
+            'por onde eu retomo',
+        )
+    )
+    if not asks_resume:
+        return False
+    if any(term in normalized for term in ('visita', 'tour')):
+        return True
+    recent_blob = ' '.join(
+        _plain_text(item)
+        for item in (
+            _extract_recent_user_messages(conversation_context)
+            + _extract_recent_assistant_messages(conversation_context)
+        )[-8:]
+    )
+    return any(term in recent_blob for term in ('visita', 'tour', 'pedido de visita', 'protocolo da visita'))
+
+
 def _compose_public_capabilities_direct_answer(
     school_profile: dict[str, Any] | None,
     capabilities_payload: dict[str, Any] | None,
@@ -1554,6 +1631,27 @@ def _compose_public_visit_reschedule_direct_answer(
     eta = str((visit_service or {}).get('typical_eta') or 'confirmacao em ate 1 dia util').strip()
     return (
         'Se voce precisar remarcar a visita, me passe o protocolo do pedido ou o novo dia e horario desejados. '
+        f'Hoje o canal institucional para isso e {request_channel}, com {eta}.'
+    )
+
+
+def _compose_public_visit_resume_direct_answer(
+    school_profile: dict[str, Any] | None,
+) -> str:
+    services = (school_profile or {}).get('service_catalog')
+    visit_service = next(
+        (
+            item
+            for item in services
+            if isinstance(item, dict) and str(item.get('service_key') or '').strip() == 'visita_institucional'
+        ),
+        None,
+    ) if isinstance(services, list) else None
+    request_channel = str((visit_service or {}).get('request_channel') or 'bot, admissions ou whatsapp comercial').strip()
+    eta = str((visit_service or {}).get('typical_eta') or 'confirmacao em ate 1 dia util').strip()
+    return (
+        'Se voce quiser retomar a visita depois, volte por este mesmo canal institucional ou pela secretaria/admissions. '
+        'Se ja existir um protocolo anterior, pode me passar esse codigo; se preferir, eu tambem posso abrir um novo pedido com outro dia e horario. '
         f'Hoje o canal institucional para isso e {request_channel}, com {eta}.'
     )
 
@@ -1955,9 +2053,17 @@ async def _deterministic_public_direct_answer(
         request.message,
         conversation_context,
     )
+    visit_resume_query = _question_mentions_visit_resume_followup(
+        request.message,
+        conversation_context,
+    )
     service_routing_bundle = _looks_like_service_routing_bundle_request(request.message)
     service_routing_followup = _looks_like_service_routing_followup(request.message, conversation_context)
     timeline_order_followup = _looks_like_public_timeline_order_followup(request.message, conversation_context)
+    public_calendar_reset_followup = _looks_like_public_calendar_reset_followup(
+        request.message,
+        conversation_context,
+    )
     outings_protocol_followup = _looks_like_public_outings_protocol_followup(
         request.message,
         conversation_context,
@@ -1985,6 +2091,7 @@ async def _deterministic_public_direct_answer(
             service_routing_bundle,
             service_routing_followup,
             timeline_order_followup,
+            public_calendar_reset_followup,
             website_query,
             district_query,
             bncc_query,
@@ -1994,6 +2101,7 @@ async def _deterministic_public_direct_answer(
             school_year_start_query,
             family_meeting_query,
             visit_reschedule_query,
+            visit_resume_query,
             outings_protocol_followup,
         )
     )
@@ -2010,6 +2118,8 @@ async def _deterministic_public_direct_answer(
             return canonical_answer
     if teacher_directory:
         return compose_public_teacher_directory_boundary(school_profile)
+    if visit_resume_query:
+        return _compose_public_visit_resume_direct_answer(school_profile)
     if service_routing_bundle or service_routing_followup:
         direct_service_routing = _compose_public_service_routing_direct_answer(
             school_profile,
@@ -2018,6 +2128,10 @@ async def _deterministic_public_direct_answer(
         )
         if direct_service_routing:
             return direct_service_routing
+    if public_calendar_reset_followup:
+        direct_public_calendar = compose_public_timeline_lifecycle_bundle()
+        if direct_public_calendar:
+            return direct_public_calendar
     if timeline_order_followup:
         timeline_payload = timeline_payload or await _fetch_public_timeline(settings)
         direct_timeline_order = _compose_public_timeline_order_direct_answer(
@@ -2151,6 +2265,8 @@ async def _deterministic_public_direct_answer(
                 return summary
     if visit_reschedule_query:
         return _compose_public_visit_reschedule_direct_answer(school_profile)
+    if visit_resume_query:
+        return _compose_public_visit_resume_direct_answer(school_profile)
     if outings_protocol_followup:
         if 'dois passos' in _plain_text(request.message):
             return _compose_public_outings_two_steps()

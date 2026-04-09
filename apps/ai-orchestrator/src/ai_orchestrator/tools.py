@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from .models import AccessTier, ToolContract, ToolKind
 
 
@@ -455,3 +457,31 @@ TOOL_CONTRACTS: tuple[ToolContract, ...] = (
 
 def get_tool_contracts() -> list[ToolContract]:
     return list(TOOL_CONTRACTS)
+
+
+def tool_contract_to_mcp_descriptor(tool: ToolContract) -> dict[str, Any]:
+    return {
+        'name': tool.name,
+        'title': tool.name.replace('_', ' ').strip().title(),
+        'description': tool.description,
+        'inputSchema': dict(tool.input_schema),
+        'annotations': {
+            'readOnlyHint': tool.kind != ToolKind.operation,
+            'idempotentHint': bool(tool.deterministic),
+            'destructiveHint': False,
+            'openWorldHint': tool.kind == ToolKind.retrieval,
+        },
+        'eduassistMeta': {
+            'kind': tool.kind.value,
+            'accessTier': tool.access_tier.value,
+            'sourceOfTruth': tool.source_of_truth,
+            'deterministic': bool(tool.deterministic),
+            'outputContract': tool.output_contract,
+            'triggers': list(tool.triggers),
+            'notes': list(tool.notes),
+        },
+    }
+
+
+def get_mcp_tool_descriptors() -> list[dict[str, Any]]:
+    return [tool_contract_to_mcp_descriptor(tool) for tool in TOOL_CONTRACTS]

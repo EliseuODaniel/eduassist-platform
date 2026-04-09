@@ -67,7 +67,7 @@ from .models import (
 )
 from .retrieval import get_retrieval_service
 from .service_settings import REPO_ROOT, ROOT_ENV_FILE, Settings, get_settings
-from .tools import get_tool_contracts
+from .tools import get_mcp_tool_descriptors, get_tool_contracts
 
 logger = logging.getLogger(__name__)
 FOUR_PATH_COMPARISON_REPORT_JSON = REPO_ROOT / 'docs/architecture/four-path-chatbot-comparison-report.json'
@@ -842,6 +842,7 @@ async def status() -> dict[str, object]:
             '/v1/retrieval/status',
             '/v1/retrieval/search',
             '/v1/tools',
+            '/v1/mcp/tools',
             '/v1/graph',
             '/v1/orchestrate/preview',
             '/v1/internal/runtime/*',
@@ -1129,6 +1130,16 @@ async def tools() -> dict[str, object]:
         'service': 'ai-orchestrator',
         'count': len(contracts),
         'tools': [tool.model_dump(mode='json') for tool in contracts],
+    }
+
+
+@app.get('/v1/mcp/tools')
+async def mcp_tools() -> dict[str, object]:
+    descriptors = get_mcp_tool_descriptors()
+    return {
+        'service': 'ai-orchestrator',
+        'count': len(descriptors),
+        'tools': descriptors,
     }
 
 

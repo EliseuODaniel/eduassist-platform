@@ -21,6 +21,7 @@ from .engines.specialist_supervisor_engine import SpecialistSupervisorEngine
 from .slice_inference import infer_request_slice
 
 logger = logging.getLogger(__name__)
+_REPO_ROOT = Path(__file__).resolve().parents[4]
 
 _EXPERIMENT_AFFINITY: OrderedDict[str, dict[str, Any]] = OrderedDict()
 _EXPERIMENT_AFFINITY_LIMIT = 2048
@@ -415,6 +416,12 @@ def _load_scorecard(settings: Any) -> dict[str, Any] | None:
     candidate_paths: list[Path] = []
     if configured_path:
         candidate_paths.append(Path(configured_path))
+    for fallback in (
+        _REPO_ROOT / 'artifacts' / 'framework-native-scorecard.json',
+        _REPO_ROOT / 'docs' / 'architecture' / 'framework-native-scorecard.json',
+    ):
+        if fallback not in candidate_paths:
+            candidate_paths.append(fallback)
     for fallback in (
         '/workspace/artifacts/framework-native-scorecard.json',
         '/workspace/docs/architecture/framework-native-scorecard.json',

@@ -49,6 +49,31 @@ def _run_command(name: str, command: list[str]) -> dict[str, Any]:
     }
 
 
+def _parse_json_excerpt(excerpt: str) -> dict[str, Any] | None:
+    payload = str(excerpt or '').strip()
+    if not payload:
+        return None
+    candidates = [payload]
+    lines = [line.strip() for line in payload.splitlines() if line.strip()]
+    candidates.extend(reversed(lines))
+    first_brace = payload.find('{')
+    last_brace = payload.rfind('}')
+    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+        candidates.append(payload[first_brace : last_brace + 1])
+    seen: set[str] = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        try:
+            loaded = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(loaded, dict):
+            return loaded
+    return None
+
+
 def _report_has_completed_graphrag(payload: dict[str, Any]) -> bool:
     for case in payload.get('cases', []):
         methods = case.get('graphrag', {})
@@ -120,9 +145,33 @@ def _write_markdown(target: Path, payload: dict[str, Any]) -> None:
         lines.append(f"| {check['name']} | {check['ok']} | {check['duration_ms']} |")
 
     graphrag = payload['graphrag']
+    promotion_gate = payload.get('promotion_gate')
     lines.extend(
         [
             '',
+            '## Dedicated-First Promotion Gate',
+            '',
+        ]
+    )
+    if isinstance(promotion_gate, dict):
+        lines.extend(
+            [
+                f"- ok: `{promotion_gate.get('ok')}`",
+                f"- json_report: `{promotion_gate.get('json_report')}`",
+                f"- markdown_report: `{promotion_gate.get('markdown_report')}`",
+                f"- summary: {promotion_gate.get('summary')}",
+                '',
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                '- promotion_gate: `unavailable`',
+                '',
+            ]
+        )
+    lines.extend(
+        [
             '## GraphRAG Status',
             '',
             f"- workspace_exists: `{graphrag['workspace_exists']}`",
@@ -166,10 +215,20 @@ def main() -> int:
     checks = [
         _run_command('db-check-runtime-role', ['make', 'db-check-runtime-role']),
         _run_command('db-check-rls', ['make', 'db-check-rls']),
-        _run_command('eval-orchestrator', ['make', 'eval-orchestrator']),
-        _run_command('smoke-all', ['make', 'smoke-all']),
+        _run_command('promotion-gate-check', ['make', 'promotion-gate-check']),
         _run_command('graphrag-benchmark-baseline', ['make', 'graphrag-benchmark-baseline']),
     ]
+    promotion_gate_payload: dict[str, Any] | None = None
+    for check in checks:
+        if check['name'] != 'promotion-gate-check':
+            continue
+        stdout_excerpt = str(check.get('stdout_excerpt') or '').strip()
+        if not stdout_excerpt:
+            break
+        loaded = _parse_json_excerpt(stdout_excerpt)
+        if isinstance(loaded, dict):
+            promotion_gate_payload = loaded
+        break
 
     graphrag = _graphrag_status(
         workspace=DEFAULT_GRAPH_RAG_WORKSPACE,
@@ -200,6 +259,7 @@ def main() -> int:
         'ok': overall_ok,
         'strict_graphrag': args.strict_graphrag,
         'checks': checks,
+        'promotion_gate': promotion_gate_payload,
         'graphrag': graphrag,
         'summary': summary,
     }

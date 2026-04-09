@@ -52,6 +52,7 @@ from .public_doc_knowledge import (
     compose_public_health_second_call,
     compose_public_permanence_and_family_support,
     compose_public_process_compare,
+    compose_public_timeline_lifecycle_bundle,
     match_public_canonical_lane,
 )
 from .public_known_unknowns import compose_public_known_unknown_answer, detect_public_known_unknown_key
@@ -211,6 +212,28 @@ def _looks_like_visit_reschedule_follow_up(normalized: str, recent_user_messages
         return True
     recent_blob = ' '.join(recent_user_messages[-4:])
     return any(term in recent_blob for term in {'visita', 'tour', 'agendar uma visita'})
+
+
+def _looks_like_visit_resume_follow_up(normalized: str, recent_user_messages: list[str]) -> bool:
+    asks_resume = any(
+        term in normalized
+        for term in {
+            'retomar',
+            'retomar depois',
+            'por onde volto',
+            'como volto',
+            'volto por onde',
+            'abrir outro pedido',
+            'abrir outro agendamento',
+            'novo agendamento',
+        }
+    )
+    if not asks_resume:
+        return False
+    if any(term in normalized for term in {'visita', 'tour'}):
+        return True
+    recent_blob = ' '.join(recent_user_messages[-4:])
+    return any(term in recent_blob for term in {'visita', 'tour', 'agendar uma visita', 'protocolo'})
 
 
 def _looks_like_teacher_directory_follow_up(normalized: str, recent_user_messages: list[str]) -> bool:
@@ -740,6 +763,32 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
                 graph_leaf="timeline_followup_repair",
             )
 
+    if any(
+        term in contextual_normalized
+        for term in {
+            "so o calendario publico",
+            "quero so o calendario publico",
+            "calendario publico da escola",
+        }
+    ):
+        direct_timeline_answer = _compose_timeline_bundle_answer(
+            profile,
+            contextual_message,
+            recent_user_messages=recent_user_messages,
+        ) or compose_public_timeline_lifecycle_bundle()
+        if direct_timeline_answer:
+            return _build_fast_path_payload(
+                message_text=direct_timeline_answer,
+                domain="calendar",
+                access_tier="public",
+                confidence=0.99,
+                reason="specialist_supervisor_fast_path:public_calendar_reset",
+                summary="Retorno deterministico ao calendario publico apos uma digressao protegida.",
+                supports=[MessageEvidenceSupport(kind="timeline", label="Calendario publico", detail=deps.safe_excerpt(direct_timeline_answer, limit=180))],
+                graph_leaf="public_calendar_reset",
+                suggested_domain="institution",
+            )
+
     if deps.is_assistant_identity_query(ctx.request.message):
         return _build_fast_path_payload(
             message_text=deps.compose_assistant_identity_answer(profile),
@@ -1053,6 +1102,32 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
             suggested_domain="support",
         )
 
+    if _looks_like_visit_resume_follow_up(normalized, recent_user_messages):
+        visit_service = next(
+            (
+                item
+                for item in (profile.get("service_catalog") or [])
+                if isinstance(item, dict) and str(item.get("service_key") or "").strip() == "visita_institucional"
+            ),
+            None,
+        )
+        request_channel = str((visit_service or {}).get("request_channel") or "bot, admissions ou whatsapp comercial").strip()
+        return _build_fast_path_payload(
+            message_text=(
+                "Se voce quiser retomar a visita depois, volte por este mesmo canal institucional "
+                f"ou por {request_channel}. Se preferir, ja me diga o novo dia e horario desejados "
+                "que eu abro outro pedido de visita."
+            ),
+            domain="support",
+            access_tier=_access_tier_for_domain("support", ctx.request.user.authenticated),
+            confidence=0.98,
+            reason="specialist_supervisor_fast_path:visit_resume",
+            summary="Orientacao direta para retomar um fluxo de visita apos pausa ou cancelamento.",
+            supports=[MessageEvidenceSupport(kind="workflow_intent", label="Retomada de visita", detail="mesmo canal institucional ou novo pedido com dia e horario")],
+            graph_leaf="visit_resume",
+            suggested_domain="support",
+        )
+
     if "visita" in normalized and any(term in normalized for term in {"agendar", "marcar"}):
         weekday = next((item for item in ("segunda", "terca", "quarta", "quinta", "sexta", "sabado") if item in normalized), None)
         has_explicit_date = bool(re.search(r"\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b", normalized))
@@ -1086,7 +1161,7 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
                 mode="clarify",
             )
 
-    if "biblioteca" in normalized and any(term in normalized for term in {"horario", "funciona", "abre", "nome", "marketing"}):
+    if "biblioteca" in normalized and any(term in normalized for term in {"horario", "horário", "funciona", "abre", "nome", "marketing"}):
         label = _feature_label(profile, name_hint="biblioteca") or "Biblioteca Aurora"
         note = _feature_note(profile, name_hint="biblioteca") or "Atendimento ao publico de segunda a sexta, das 7h30 as 18h00."
         return _build_fast_path_payload(

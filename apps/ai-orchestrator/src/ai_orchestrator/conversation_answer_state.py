@@ -627,6 +627,23 @@ def _recent_subject_from_messages(conversation_context: dict[str, Any] | None) -
     return None
 
 
+def _recent_assistant_mentions_upcoming(conversation_context: dict[str, Any] | None) -> bool:
+    if not isinstance(conversation_context, dict):
+        return False
+    recent_messages = conversation_context.get('recent_messages')
+    if not isinstance(recent_messages, list):
+        return False
+    for item in reversed(recent_messages):
+        if not isinstance(item, dict):
+            continue
+        if str(item.get('sender_type') or '').strip().lower() != 'assistant':
+            continue
+        content = normalize_text(item.get('content'))
+        if any(term in content for term in ('proximas avaliacoes', 'proximas provas', 'avaliacao futura', 'avaliacoes futuras')):
+            return True
+    return False
+
+
 def _recent_public_pricing_value_from_messages(
     conversation_context: dict[str, Any] | None,
     *,
@@ -714,6 +731,16 @@ def _looks_like_repair_followup(message: str) -> bool:
         if re.search(rf'(?<!\w){escaped}(?!\w)', normalized):
             return True
     return False
+
+
+def _looks_like_student_correction_followup(message: str) -> bool:
+    normalized = normalize_text(message)
+    if not normalized or len(normalized) > 48:
+        return False
+    return bool(
+        re.match(r'^(?:nao|não)(?:\s+e|\s+eh)?(?:,\s*|\s+)(?:do|da)\s+[a-z]{3,}(?:\s+[a-z]{3,})?(?:\??)?$', normalized)
+        or re.match(r'^(?:do|da)\s+[a-z]{3,}(?:\s+[a-z]{3,})?(?:\??)?$', normalized)
+    )
 
 
 def _looks_like_attendance_justification_query(message: str, *, slot_memory: dict[str, Any] | None) -> bool:
@@ -834,8 +861,17 @@ def resolve_answer_focus(
     asks_finance = _contains_any(request_message, _FINANCE_TERMS)
     asks_admin = _contains_any(request_message, _ADMIN_TERMS)
     asks_attendance = _contains_any(request_message, _ACADEMIC_ATTENDANCE_TERMS)
-    asks_grade = _contains_any(request_message, _ACADEMIC_GRADE_TERMS) or explicit_subject is not None
+    asks_grade_terms = _contains_any(request_message, _ACADEMIC_GRADE_TERMS)
     asks_upcoming = _contains_any(request_message, _ACADEMIC_UPCOMING_TERMS)
+    slot_focus_kind = str((slot_memory or {}).get('academic_focus_kind') or '').strip()
+    upcoming_context_active = bool(
+        (active_task and active_task.startswith('academic:upcoming'))
+        or slot_focus_kind == 'upcoming'
+        or _recent_assistant_mentions_upcoming(conversation_context)
+    )
+    if explicit_subject is not None and not (asks_grade_terms or asks_upcoming or asks_attendance) and upcoming_context_active:
+        asks_upcoming = True
+    asks_grade = asks_grade_terms or (explicit_subject is not None and not asks_upcoming and not asks_attendance)
     asks_justification = _looks_like_attendance_justification_query(request_message, slot_memory=slot_memory)
     asks_comparison = any(term in normalized for term in ('compare', 'compar', 'diferenca', 'diferença', 'entre '))
     asks_yes_no = normalized.endswith('?') and any(term in normalized for term in {normalize_text(item) for item in _YES_NO_TERMS})
@@ -934,7 +970,7 @@ def resolve_answer_focus(
 
     uses_memory = False
     student = explicit_student
-    if student is None and unknown_student is None:
+    if student is None and unknown_student is None and not asks_family_aggregate:
         slot_candidate: str | None = None
         if domain == 'finance':
             slot_candidate = str((slot_memory or {}).get('finance_student_name') or '').strip() or None
@@ -951,11 +987,19 @@ def resolve_answer_focus(
             student = _linked_students(actor)[0]
 
     subject_name = explicit_subject
-    if subject_name is None and unknown_subject is None and not repair_followup and _looks_like_followup(request_message):
+    if (
+        subject_name is None
+        and unknown_subject is None
+        and not repair_followup
+        and not asks_family_aggregate
+        and _looks_like_followup(request_message)
+    ):
         subject_name = _recent_memory_subject(slot_memory) or _recent_subject_from_messages(conversation_context)
         uses_memory = uses_memory or bool(subject_name)
 
-    if domain is None and not repair_followup and _looks_like_followup(request_message) and isinstance(slot_memory, dict):
+    correction_followup = _looks_like_student_correction_followup(request_message)
+
+    if domain is None and not repair_followup and (_looks_like_followup(request_message) or correction_followup) and isinstance(slot_memory, dict):
         if active_task == 'public:pricing':
             domain = 'public'
             topic = 'pricing'
@@ -974,7 +1018,7 @@ def resolve_answer_focus(
         elif active_task and active_task.startswith('admin:'):
             domain = 'institution'
             topic = 'administrative_status'
-        if student is None and domain in {'academic', 'finance', 'institution'}:
+        if student is None and domain in {'academic', 'finance', 'institution'} and not asks_family_aggregate:
             slot_candidate = None
             if domain == 'finance':
                 slot_candidate = str((slot_memory or {}).get('finance_student_name') or '').strip() or None
@@ -991,9 +1035,15 @@ def resolve_answer_focus(
                 uses_memory = uses_memory or student is not None
             if student is None and len(_linked_students(actor)) == 1:
                 student = _linked_students(actor)[0]
-        if subject_name is None and unknown_subject is None and domain == 'academic':
+        if subject_name is None and unknown_subject is None and domain == 'academic' and not asks_family_aggregate:
             subject_name = _recent_memory_subject(slot_memory) or _recent_subject_from_messages(conversation_context)
             uses_memory = uses_memory or bool(subject_name)
+
+    if asks_family_aggregate:
+        student = None
+        unknown_student = None
+        if explicit_subject is None and unknown_subject is None:
+            subject_name = None
 
     if (
         not needs_disambiguation

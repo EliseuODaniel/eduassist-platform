@@ -1952,6 +1952,48 @@ def _recent_trace_focus(conversation_context: dict[str, Any] | None) -> dict[str
     return None
 
 
+def _recent_workflow_focus(conversation_context: dict[str, Any] | None) -> dict[str, str] | None:
+    if not isinstance(conversation_context, dict):
+        return None
+    for payload in _recent_orchestration_trace_payloads(conversation_context):
+        slot_memory = payload.get('slot_memory')
+        if isinstance(slot_memory, dict):
+            active_task = str(slot_memory.get('active_task', '') or '').strip()
+            protocol_code = str(slot_memory.get('protocol_code', '') or '').strip()
+            if active_task == 'workflow:visit_booking':
+                return {'kind': 'visit', 'protocol_code': protocol_code}
+            if active_task == 'workflow:institutional_request':
+                return {'kind': 'request', 'protocol_code': protocol_code}
+            if active_task == 'workflow:human_handoff':
+                return {'kind': 'support', 'protocol_code': protocol_code}
+
+        selected_tools = payload.get('selected_tools')
+        if not isinstance(selected_tools, list):
+            continue
+        selected_tool_names = {str(tool_name).strip() for tool_name in selected_tools if isinstance(tool_name, str)}
+        if {'schedule_school_visit', 'update_visit_booking', 'get_workflow_status'} & selected_tool_names:
+            return {'kind': 'visit', 'protocol_code': ''}
+        if {'create_institutional_request', 'update_institutional_request'} & selected_tool_names:
+            return {'kind': 'request', 'protocol_code': ''}
+        if {'create_support_ticket', 'handoff_to_human'} & selected_tool_names:
+            return {'kind': 'support', 'protocol_code': ''}
+
+    for sender_type, content in reversed(_recent_message_lines(conversation_context)):
+        if sender_type != 'assistant':
+            continue
+        normalized = _normalize_text(content)
+        protocol_code = _extract_protocol_code_from_text(content) or ''
+        if protocol_code.upper().startswith('VIS-'):
+            return {'kind': 'visit', 'protocol_code': protocol_code}
+        if protocol_code.upper().startswith('REQ-'):
+            return {'kind': 'request', 'protocol_code': protocol_code}
+        if protocol_code.upper().startswith('ATD-') and any(
+            token in normalized for token in {'suporte', 'atendimento', 'fila', 'ticket', 'retorno'}
+        ):
+            return {'kind': 'support', 'protocol_code': protocol_code}
+    return None
+
+
 def _recent_visit_slot(conversation_context: dict[str, Any] | None) -> tuple[date | None, str | None]:
     if not isinstance(conversation_context, dict):
         return None, None
@@ -2034,11 +2076,24 @@ def _recent_conversation_focus(conversation_context: dict[str, Any] | None) -> d
     last_user_message: str | None = None
     for sender_type, content in reversed(_recent_message_lines(conversation_context)):
         normalized = _normalize_text(content)
-        protocol_code = _extract_protocol_code_from_text(content)
+        protocol_code = _extract_protocol_code_from_text(content) or ''
         if sender_type == 'assistant':
             if _assistant_message_is_capability_overview(normalized):
                 continue
+            if protocol_code.upper().startswith('VIS-'):
+                return {'kind': 'visit', 'protocol_code': protocol_code}
+            if protocol_code.upper().startswith('REQ-'):
+                return {'kind': 'request', 'protocol_code': protocol_code}
+            if protocol_code.upper().startswith('ATD-') and any(
+                token in normalized for token in {'suporte', 'atendimento', 'fila', 'ticket', 'retorno'}
+            ):
+                return {'kind': 'support', 'protocol_code': protocol_code}
             if 'pedido de visita registrado' in normalized or 'pedido de visita segue' in normalized or 'visita cancelada' in normalized:
+                return {'kind': 'visit', 'protocol_code': protocol_code or ''}
+            if 'visita' in normalized and any(
+                token in normalized
+                for token in {'protocolo', 'remarcar', 'reagendar', 'cancelar', 'cancelado', 'pedido'}
+            ):
                 return {'kind': 'visit', 'protocol_code': protocol_code or ''}
             if 'solicitacao institucional registrada' in normalized or 'sua solicitacao institucional' in normalized:
                 return {'kind': 'request', 'protocol_code': protocol_code or ''}
@@ -3391,6 +3446,17 @@ def _effective_academic_attribute_request(
 ) -> ProtectedAttributeRequest | None:
     explicit = _detect_academic_attribute_request(message)
     if explicit is not None:
+        recent_focus_kind = str(_recent_slot_value(conversation_context, 'academic_focus_kind') or '').strip()
+        recent_active_task = str(_recent_slot_value(conversation_context, 'active_task') or '').strip()
+        if (
+            explicit.attribute == 'subject'
+            and recent_focus_kind == 'upcoming'
+            and (
+                recent_active_task == 'academic:upcoming'
+                or _is_follow_up_query(message)
+            )
+        ):
+            return None
         return explicit
     if _looks_like_academic_difficulty_query(message, conversation_context=conversation_context):
         return None
@@ -9254,6 +9320,38 @@ def _looks_like_visit_update_follow_up(message: str) -> bool:
     )
 
 
+def _looks_like_workflow_resume_follow_up(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'retomar',
+            'retoma',
+            'retomo',
+            'retomar depois',
+            'retomar a visita',
+            'retomar o pedido',
+            'quero retomar',
+            'quero retomar depois',
+            'voltar',
+            'volto',
+            'voltar depois',
+            'quero voltar',
+            'quero voltar depois',
+            'como retomo',
+            'como eu retomo',
+            'como volto',
+            'como eu volto',
+            'por onde volto',
+            'por onde eu volto',
+            'por onde retomo',
+            'por onde eu retomo',
+            'qual o caminho para voltar',
+            'qual o caminho para retomar',
+        }
+    )
+
+
 def _looks_like_natural_visit_booking_request(message: str) -> bool:
     normalized = _normalize_text(message)
     explicit_visit_phrases = {
@@ -9517,6 +9615,15 @@ def _build_analysis_message(message: str, conversation_context: ConversationCont
                 for term in {'frequencia', 'frequência', 'faltas', 'provas', 'avaliacoes', 'avaliações'}
             )
         ):
+            if (
+                active_task == 'academic:upcoming'
+                or str(recent_focus.get('academic_focus_kind') or '').strip() == 'upcoming'
+                or any(
+                    term in _normalize_text(last_assistant_message or '')
+                    for term in {'proximas avaliacoes', 'próximas avaliações', 'proximas provas', 'próximas provas'}
+                )
+            ):
+                return f'{message} sobre proximas avaliacoes de {recent_student_name}'
             return f'{message} sobre notas de {recent_student_name}'
         if active_task == 'public:document_submission':
             return f'{message} sobre envio de documentos pela secretaria ou portal institucional'
@@ -11512,7 +11619,9 @@ def _apply_workflow_follow_up_rescue(
     message: str,
     conversation_context: dict[str, Any] | None,
 ) -> bool:
-    recent_focus = _recent_trace_focus(conversation_context)
+    recent_focus = _recent_workflow_focus(conversation_context)
+    if recent_focus is None:
+        recent_focus = _recent_trace_focus(conversation_context) or _recent_conversation_focus(conversation_context)
     if not isinstance(recent_focus, dict):
         return False
     focus_kind = str(recent_focus.get('kind', '') or '').strip()
@@ -11531,12 +11640,22 @@ def _apply_workflow_follow_up_rescue(
             selected_tools = ['update_visit_booking']
             reason = 'workflow_follow_up_rescue:visit_update'
             graph_marker = 'workflow_follow_up_rescue_visit_update'
-        elif 'protocolo' in normalized or any(_message_matches_term(normalized, term) for term in WORKFLOW_STATUS_TERMS) or any(
-            phrase in normalized for phrase in {'resume', 'resuma', 'qual o protocolo', 'qual e o protocolo', 'qual é o protocolo'}
+        elif (
+            'protocolo' in normalized
+            or any(_message_matches_term(normalized, term) for term in WORKFLOW_STATUS_TERMS)
+            or _looks_like_workflow_resume_follow_up(message)
+            or any(
+                phrase in normalized
+                for phrase in {'resume', 'resuma', 'qual o protocolo', 'qual e o protocolo', 'qual é o protocolo'}
+            )
         ):
             selected_tools = ['get_workflow_status']
-            reason = 'workflow_follow_up_rescue:visit_status'
-            graph_marker = 'workflow_follow_up_rescue_visit_status'
+            if _looks_like_workflow_resume_follow_up(message):
+                reason = 'workflow_follow_up_rescue:visit_resume'
+                graph_marker = 'workflow_follow_up_rescue_visit_resume'
+            else:
+                reason = 'workflow_follow_up_rescue:visit_status'
+                graph_marker = 'workflow_follow_up_rescue_visit_status'
     elif focus_kind == 'request' or active_task == 'workflow:institutional_request':
         request_action = _detect_institutional_request_action(message)
         if request_action is not None:
@@ -12396,7 +12515,7 @@ async def _update_visit_booking(
         return None
     action = _detect_visit_booking_action(request.message)
     if action is None:
-        recent_focus = _recent_trace_focus(conversation_context)
+        recent_focus = _recent_workflow_focus(conversation_context) or _recent_trace_focus(conversation_context)
         if recent_focus and recent_focus.get('kind') == 'visit' and _looks_like_visit_update_follow_up(request.message):
             normalized = _normalize_text(request.message)
             if any(_message_matches_term(normalized, term) for term in {'cancelar', 'cancela', 'cancelamento', 'desmarcar', 'desmarca'}):
@@ -12841,7 +12960,7 @@ def _workflow_snapshot_from_context(
     workflow_kind_hint: str | None,
     protocol_code_hint: str | None,
 ) -> dict[str, Any] | None:
-    focus = _recent_trace_focus(conversation_context)
+    focus = _recent_trace_focus(conversation_context) or _recent_conversation_focus(conversation_context)
     if not isinstance(focus, dict):
         return None
     focus_kind = str(focus.get('kind', '') or '').strip()
@@ -12961,12 +13080,18 @@ def _compose_workflow_status_answer(
             'resuma pra mim',
         }
     )
+    asks_resume = _looks_like_workflow_resume_follow_up(request_message)
 
     if not isinstance(response_payload, dict) or not response_payload.get('found'):
         if protocol_code_hint:
             return (
                 f'Ainda nao localizei um protocolo ativo com o codigo {protocol_code_hint}. '
                 'Se quiser, me encaminhe novamente o codigo completo ou me diga se o assunto era visita, direcao, financeiro ou secretaria.'
+            )
+        if asks_resume:
+            return (
+                'Ainda nao encontrei um protocolo recente nesta conversa para retomar esse fluxo. '
+                'Se quiser, me diga se o assunto era visita, direcao, financeiro ou secretaria, ou me passe o codigo que comeca com VIS, REQ ou ATD.'
             )
         if asks_summary:
             return (
@@ -13000,6 +13125,20 @@ def _compose_workflow_status_answer(
     slot_label = str(item.get('slot_label', '') or '').strip()
     updated_at_label = _format_workflow_timestamp(item.get('updated_at'))
     if workflow_type == 'visit_booking':
+        if asks_resume:
+            lines = [
+                'Para retomar a visita, volte por este mesmo canal institucional ou pela secretaria/admissions e eu abro o proximo passo com voce.',
+                f'- Ultimo protocolo conhecido: {protocol_code}',
+            ]
+            if linked_ticket_code:
+                lines.append(f'- Ticket operacional anterior: {linked_ticket_code}')
+            if slot_label:
+                lines.append(f'- Preferencia registrada antes da pausa: {slot_label}')
+            elif preferred_date or preferred_window:
+                preference = ' - '.join(part for part in [preferred_date, preferred_window] if part)
+                lines.append(f'- Preferencia registrada antes da pausa: {preference}')
+            lines.append('Se preferir, ja me diga o novo dia e horario desejados para eu abrir outro pedido de visita.')
+            return '\n'.join(lines)
         if asks_protocol_only:
             lines = [f'O protocolo da sua visita e {protocol_code}.']
             if linked_ticket_code:

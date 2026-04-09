@@ -53,6 +53,10 @@ from ai_orchestrator_specialist.tool_first_protected_answers import (
     _compose_attendance_primary_alert,
     maybe_tool_first_protected_answer,
 )
+from ai_orchestrator_specialist.tool_first_workflows import (
+    ToolFirstWorkflowDeps,
+    maybe_tool_first_workflow_answer,
+)
 from ai_orchestrator_specialist.support_workflow_helpers import (
     _detect_support_handoff_queue,
     _looks_like_human_handoff_request,
@@ -245,6 +249,168 @@ def test_specialist_family_attendance_aggregate_query_accepts_more_attention_wor
         'Me mostre a frequencia dos meus dois filhos e diga quem exige mais atenção agora.',
         deps=deps,
     ) is True
+
+
+def test_specialist_fast_path_answers_library_hours_even_after_visit_context() -> None:
+    profile = {
+        "school_name": "Colegio Horizonte",
+        "feature_catalog": [
+            {
+                "name": "Biblioteca Aurora",
+                "label": "Biblioteca Aurora",
+                "note": "de segunda a sexta, das 7h30 as 18h00",
+            }
+        ],
+        "service_catalog": [
+            {
+                "service_key": "visita_institucional",
+                "request_channel": "bot, admissions ou whatsapp comercial",
+            }
+        ],
+    }
+    ctx = SimpleNamespace(
+        school_profile=profile,
+        actor=None,
+        request=SimpleNamespace(
+            message="qual o horário da biblioteca?",
+            user=SimpleNamespace(authenticated=False),
+        ),
+        conversation_context={
+            "recent_messages": [
+                {"sender_type": "user", "content": "quero visitar a escola na sexta de manhã"},
+            ]
+        },
+    )
+    deps = FastPathDeps(
+        normalize_text=lambda value: str(value or "").casefold(),
+        normalized_recent_user_messages=lambda context: [
+            str(item.get("content") or "").casefold()
+            for item in (context or {}).get("recent_messages", [])
+            if isinstance(item, dict) and str(item.get("sender_type") or "").casefold() == "user"
+        ],
+        is_simple_greeting=lambda message: False,
+        is_auth_guidance_query=lambda message: False,
+        compose_auth_guidance_answer=lambda profile: "",
+        linked_students=lambda *args, **kwargs: [],
+        compose_authenticated_scope_answer=lambda actor: "",
+        is_assistant_identity_query=lambda message: False,
+        compose_assistant_identity_answer=lambda profile: "",
+        school_name=lambda profile: "Colegio Horizonte",
+        safe_excerpt=lambda text, limit=220: str(text or "")[:limit],
+        format_brl=lambda value: str(value),
+        hypothetical_children_quantity=lambda message: None,
+        pricing_projection=lambda *args, **kwargs: {},
+        compose_public_bolsas_and_processes=lambda profile: None,
+    )
+
+    answer = build_fast_path_answer(ctx, deps)
+
+    assert answer is not None
+    assert answer.reason == "specialist_supervisor_fast_path:library_hours"
+    assert "biblioteca aurora" in answer.message_text.casefold()
+
+
+def test_specialist_fast_path_resets_to_public_calendar_after_protected_digression() -> None:
+    profile = {
+        "school_name": "Colegio Horizonte",
+        "public_timeline": [
+            {"topic": "school_year_start", "event_date": "2026-02-02", "summary": "Inicio das aulas do Fundamental II e Ensino Medio."},
+            {"topic": "family_meeting", "event_date": "2026-03-28", "summary": "Reuniao geral com familias."},
+        ],
+    }
+    ctx = SimpleNamespace(
+        school_profile=profile,
+        actor=None,
+        request=SimpleNamespace(
+            message="não, quero só o calendário público",
+            user=SimpleNamespace(authenticated=True),
+        ),
+        conversation_context={
+            "recent_messages": [
+                {"sender_type": "user", "content": "quando começam as aulas?"},
+                {"sender_type": "user", "content": "e as notas da Ana?"},
+            ]
+        },
+    )
+    deps = FastPathDeps(
+        normalize_text=lambda value: str(value or "").casefold(),
+        normalized_recent_user_messages=lambda context: [
+            str(item.get("content") or "").casefold()
+            for item in (context or {}).get("recent_messages", [])
+            if isinstance(item, dict) and str(item.get("sender_type") or "").casefold() == "user"
+        ],
+        is_simple_greeting=lambda message: False,
+        is_auth_guidance_query=lambda message: False,
+        compose_auth_guidance_answer=lambda profile: "",
+        linked_students=lambda *args, **kwargs: [],
+        compose_authenticated_scope_answer=lambda actor: "",
+        is_assistant_identity_query=lambda message: False,
+        compose_assistant_identity_answer=lambda profile: "",
+        school_name=lambda profile: "Colegio Horizonte",
+        safe_excerpt=lambda text, limit=220: str(text or "")[:limit],
+        format_brl=lambda value: str(value),
+        hypothetical_children_quantity=lambda message: None,
+        pricing_projection=lambda *args, **kwargs: {},
+        compose_public_bolsas_and_processes=lambda profile: None,
+    )
+
+    answer = build_fast_path_answer(ctx, deps)
+
+    assert answer is not None
+    assert answer.reason == "specialist_supervisor_fast_path:public_calendar_reset"
+    lowered = answer.message_text.casefold()
+    assert "inicio das aulas" in lowered or "início das aulas" in lowered
+    assert any(term in lowered for term in ("matricula", "reuniao", "famili"))
+
+
+def test_specialist_tool_first_workflow_answers_visit_resume_from_recent_context() -> None:
+    async def _workflow_status_payload(ctx, workflow_kind: str):
+        assert workflow_kind == "visit_booking"
+        return {
+            "item": {
+                "protocol_code": "VIS-123",
+                "linked_ticket_code": "ATD-1",
+                "slot_label": "sexta-feira, 14h30",
+                "status": "cancelled",
+            }
+        }
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            message="e se eu quiser retomar depois, por onde volto?",
+            user=SimpleNamespace(authenticated=False),
+            channel=SimpleNamespace(value="api"),
+            telegram_chat_id=None,
+        ),
+        settings=SimpleNamespace(api_core_url="http://api-core:8000", internal_api_token="token"),
+        http_client=object(),
+    )
+    memory = SimpleNamespace(active_domain="support", active_domains={"support"})
+    deps = ToolFirstWorkflowDeps(
+        http_post=None,
+        strip_none=lambda payload: payload,
+        effective_conversation_id=lambda request: "conv-visit",
+        create_institutional_request_payload=None,
+        create_visit_booking_payload=None,
+        workflow_status_payload=_workflow_status_payload,
+    )
+
+    answer = asyncio.run(
+        maybe_tool_first_workflow_answer(
+            ctx,
+            normalized="e se eu quiser retomar depois, por onde volto?",
+            profile={},
+            preview_mode="structured_tool",
+            memory=memory,
+            deps=deps,
+        )
+    )
+
+    assert answer is not None
+    assert answer.reason == "specialist_supervisor_tool_first:visit_resume"
+    lowered = answer.message_text.casefold()
+    assert "retomar a visita" in lowered
+    assert "vis-123" in lowered
 
 
 def test_admin_finance_combo_query_detects_regularidade_and_finance() -> None:
@@ -907,6 +1073,79 @@ def test_operational_memory_does_not_reuse_subject_answer_for_greeting() -> None
 
     answer = asyncio.run(maybe_operational_memory_follow_up_answer(ctx, deps=deps))
     assert answer is None
+
+
+def test_operational_memory_builds_cross_student_academic_comparison_after_public_digression() -> None:
+    summaries = {
+        "Lucas Oliveira": {
+            "student_name": "Lucas Oliveira",
+            "grades": [
+                {"subject_name": "Fisica", "score": "5.9"},
+                {"subject_name": "Matematica", "score": "7.7"},
+            ],
+        },
+        "Ana Oliveira": {
+            "student_name": "Ana Oliveira",
+            "grades": [
+                {"subject_name": "Fisica", "score": "6.3"},
+                {"subject_name": "Matematica", "score": "7.8"},
+            ],
+        },
+    }
+
+    async def _fetch_academic_summary_payload(_ctx, *, student_name_hint=None, **_kwargs):
+        if student_name_hint in summaries:
+            return {"summary": summaries[student_name_hint]}
+        return None
+
+    async def _unexpected_fetch(*_args, **_kwargs):
+        raise AssertionError("financial and upcoming fetches are not expected in this comparison follow-up")
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='e compara isso com a Ana',
+        ),
+        actor=None,
+        operational_memory=OperationalMemory(
+            active_domain='academic',
+            active_student_name='Lucas Oliveira',
+            active_student_id='stu-lucas',
+        ),
+    )
+    deps = OperationalMemoryDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        looks_like_public_doc_bundle_request=lambda _message: False,
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        effective_multi_intent_domains=lambda *_args, **_kwargs: [],
+        subject_hint_from_text=lambda _message: None,
+        looks_like_subject_followup=lambda _message: False,
+        looks_like_student_pronoun_followup=lambda _message: False,
+        student_hint_from_message=lambda *_args, **_kwargs: 'Ana Oliveira',
+        fetch_academic_summary_payload=_fetch_academic_summary_payload,
+        fetch_financial_summary_payload=_unexpected_fetch,
+        fetch_upcoming_assessments_payload=_unexpected_fetch,
+        build_academic_finance_combo_payload=lambda **_kwargs: None,
+        build_grade_requirement_answer=lambda **_kwargs: None,
+        compose_academic_risk_answer=lambda _summary: '',
+        compose_named_subject_grade_answer=lambda *_args, **_kwargs: None,
+        compose_upcoming_assessments_lines=lambda _summary: [],
+        safe_excerpt=lambda text, **_kwargs: text,
+        looks_like_academic_risk_followup=lambda _message: False,
+        looks_like_other_student_followup=lambda _message: False,
+        other_linked_student=lambda *_args, **_kwargs: {"student_id": "stu-ana", "full_name": "Ana Oliveira"},
+        compose_admin_status_answer=lambda _summary: '',
+        compose_named_grade_answer=lambda _summary: '',
+        compose_finance_installments_answer=lambda _summary: '',
+    )
+
+    answer = asyncio.run(maybe_operational_memory_follow_up_answer(ctx, deps=deps))
+
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_memory:cross_student_academic_comparison'
+    lowered = answer.message_text.casefold()
+    assert 'comparando lucas oliveira com ana oliveira' in lowered
+    assert 'media minima' in lowered or 'média mínima' in lowered
 
 
 def test_tool_first_protected_family_academic_aggregate_does_not_clarify() -> None:

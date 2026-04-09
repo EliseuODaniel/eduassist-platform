@@ -31,3 +31,16 @@ def test_resolve_public_base_url_uses_quick_tunnel_logs_when_allowed(monkeypatch
     env = {"CLOUDFLARED_ALLOW_QUICK_TUNNEL": "true"}
     assert telegram_webhook.resolve_public_base_url(env) == "https://quick-tunnel.trycloudflare.com"
 
+
+def test_detect_public_edge_mode_prefers_named_tunnel_when_token_and_url_exist() -> None:
+    env = {
+        "TELEGRAM_PUBLIC_BASE_URL": "https://eduassist.example.com",
+        "CLOUDFLARED_TUNNEL_TOKEN": "secret-token",
+        "CLOUDFLARED_ALLOW_QUICK_TUNNEL": "false",
+    }
+    assert telegram_webhook.detect_public_edge_mode(env) == "named_tunnel"
+
+
+def test_detect_public_edge_mode_marks_quick_tunnel_when_allowed() -> None:
+    env = {"CLOUDFLARED_ALLOW_QUICK_TUNNEL": "true"}
+    assert telegram_webhook.detect_public_edge_mode(env) == "quick_tunnel"

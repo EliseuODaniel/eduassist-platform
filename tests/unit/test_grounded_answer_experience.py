@@ -3186,6 +3186,64 @@ def test_answer_experience_repairs_public_timeline_order_followup_from_context(
     assert updated.answer_experience_reason.endswith(':public_direct_answer')
 
 
+@pytest.mark.parametrize("stack_name", ["python_functions", "llamaindex"])
+def test_answer_experience_repairs_public_calendar_reset_after_protected_digression(
+    monkeypatch: pytest.MonkeyPatch,
+    stack_name: str,
+) -> None:
+    async def fake_context(*, settings, request):
+        return {
+            'recent_messages': [
+                {'sender_type': 'user', 'content': 'Quando comecam as aulas?'},
+                {'sender_type': 'assistant', 'content': 'No calendario publico atual, as aulas comecam em 2 de fevereiro de 2026.'},
+                {'sender_type': 'user', 'content': 'E as notas da Ana?'},
+                {'sender_type': 'assistant', 'content': 'Em Educacao Fisica, Ana Oliveira esta com media parcial de 7,0/10.'},
+            ]
+        }
+
+    async def fake_profile(settings):
+        return {'school_name': 'Colegio Horizonte'}
+
+    async def fake_actor(*, settings, request):
+        return {'linked_students': [{'student_id': 'ana-id', 'full_name': 'Ana Oliveira'}]}
+
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_conversation_context', fake_context)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_public_school_profile', fake_profile)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_actor_context', fake_actor)
+    monkeypatch.setattr(
+        'ai_orchestrator.grounded_answer_experience.compose_public_timeline_lifecycle_bundle',
+        lambda: '1) Matricula e ingresso. 2) Inicio das aulas. 3) Reuniao com responsaveis. No calendario publico, as aulas entram nesse fluxo.',
+    )
+
+    response = _public_response('Entendido. O Colegio Horizonte e uma escola laica que oferece Ensino Fundamental II e Ensino Medio.')
+    updated = asyncio.run(
+        apply_grounded_answer_experience(
+            request=_request('Nao, quero so o calendario publico').model_copy(
+                update={'user': UserContext(role='guardian', authenticated=True)}
+            ),
+            response=response.model_copy(
+                update={
+                    'classification': IntentClassification(
+                        domain=QueryDomain.calendar,
+                        access_tier=AccessTier.public,
+                        confidence=0.82,
+                        reason='structured_grounded_answer:calendar_reset_followup',
+                    ),
+                    'mode': OrchestrationMode.structured_tool,
+                    'reason': 'structured_grounded_answer:calendar_reset_followup',
+                }
+            ),
+            settings=_settings(),
+            stack_name=stack_name,
+        )
+    )
+
+    lowered = updated.message_text.casefold()
+    assert 'inicio das aulas' in lowered
+    assert 'calendario publico' in lowered or 'calendário público' in updated.message_text.casefold()
+    assert updated.answer_experience_reason.endswith(':public_direct_answer')
+
+
 def test_answer_experience_repairs_student_switch_academic_risk_followup(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -4283,4 +4341,53 @@ def test_answer_experience_restores_visit_reschedule_followup(monkeypatch: pytes
     lowered = updated.message_text.lower()
     assert 'remarcar a visita' in lowered
     assert 'protocolo' in lowered
+    assert updated.answer_experience_reason.endswith('public_direct_answer')
+
+
+def test_answer_experience_restores_visit_resume_followup(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_context(*, settings, request):
+        return {
+            'recent_messages': [
+                {'sender_type': 'user', 'content': 'Quero agendar uma visita na quinta a tarde.'},
+                {'sender_type': 'assistant', 'content': 'Posso seguir com a visita e depois te devolver o protocolo.'},
+                {'sender_type': 'user', 'content': 'Certo, e se eu cancelar mesmo?'},
+                {'sender_type': 'assistant', 'content': 'Se cancelar, eu encerro esse pedido e voce pode voltar quando quiser.'},
+            ]
+        }
+
+    async def fake_profile(settings):
+        return {
+            'school_name': 'Colegio Horizonte',
+            'service_catalog': [
+                {
+                    'service_key': 'visita_institucional',
+                    'request_channel': 'bot, admissions ou whatsapp comercial',
+                    'typical_eta': 'confirmacao em ate 1 dia util',
+                }
+            ],
+        }
+
+    async def fake_actor(*, settings, request):
+        return None
+
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_conversation_context', fake_context)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_public_school_profile', fake_profile)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_actor_context', fake_actor)
+
+    updated = asyncio.run(
+        apply_grounded_answer_experience(
+            request=_request('E se eu quiser retomar depois, por onde volto?').model_copy(
+                update={'user': UserContext(role='anonymous', authenticated=False)}
+            ),
+            response=_public_response('Para retomar depois, voce pode voltar a Biblioteca Aurora no horario de atendimento.').model_copy(
+                update={'reason': 'langgraph_structured:institution'}
+            ),
+            settings=_settings(),
+            stack_name='langgraph',
+        )
+    )
+
+    lowered = updated.message_text.lower()
+    assert 'retomar a visita' in lowered
+    assert 'novo pedido' in lowered or 'canal institucional' in lowered
     assert updated.answer_experience_reason.endswith('public_direct_answer')
