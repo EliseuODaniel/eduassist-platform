@@ -27,6 +27,26 @@ tmp/
 artifacts/
 .runtime/
 
+# Generated cross-path evaluation waves and replay reports.
+docs/architecture/independent-orchestrators-20q-report-*.md
+docs/architecture/independent-orchestrators-20q-report-*.json
+docs/architecture/independent-orchestrators-30q-*.md
+docs/architecture/independent-orchestrators-30q-*.json
+docs/architecture/independent-orchestrators-50q-*.md
+docs/architecture/independent-orchestrators-50q-*.json
+docs/architecture/independent-orchestrators-multiturn-*.md
+docs/architecture/independent-orchestrators-multiturn-*.json
+docs/architecture/independent-orchestrators-targeted-*.md
+docs/architecture/independent-orchestrators-targeted-*.json
+docs/architecture/independent-orchestrators-q230-replay-*.md
+docs/architecture/independent-orchestrators-q230-replay-*.json
+docs/architecture/telegram-real-world-regression-*.json
+
+# Generated retrieval probe datasets.
+tests/evals/datasets/retrieval_*generated*.json
+tests/evals/datasets/retrieval_targeted_*.json
+tests/evals/datasets/retrieval_multiturn_probe_threads.targeted_*.json
+
 postgres-data/
 redis-data/
 minio-data/

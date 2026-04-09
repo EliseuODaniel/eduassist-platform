@@ -10,7 +10,7 @@ Diretório reservado para:
 
 Estado atual:
 
-- `tests/e2e/local_smoke.py` cobre o caminho principal local:
+- `tests/e2e/local_smoke.py` cobre o caminho de compatibilidade do control plane:
   - healthchecks
   - token do `Keycloak`
   - overview global autenticado de handoff
@@ -22,6 +22,30 @@ Estado atual:
   - validacao das metricas OTEL de `policy`, `retrieval`, `handoff` e `orquestracao`
   - validacao dos gauges vivos de backlog, idade do backlog, prioridade e handoffs sem responsavel
   - validacao da paginacao da fila humana em `GET /v1/support/handoffs`
+  - requer `CONTROL_PLANE_ALLOW_DIRECT_SERVING=true` no `ai-orchestrator` central
+- `tests/e2e/dedicated_stack_smoke.py` cobre os runtimes dedicados por stack, sem depender do router central como entrypoint principal:
+  - health do `api-core` e do runtime dedicado
+  - `v1/status` com `serviceRole=dedicated-stack-runtime`
+  - pergunta publica de matricula
+  - boundary publico de contato docente
+  - ambiguidade autenticada de responsavel com dois alunos
+  - consulta protegida nominal de notas do Lucas
+- `tests/e2e/dedicated_stack_multiturn.py` cobre follow-up real nos runtimes dedicados:
+  - publico -> protegido -> publico
+  - troca de aluno no meio da conversa
+  - boundary de professor em follow-up
+  - workflow de visita com remarcacao e cancelamento
+  - agregado familiar de frequencia com priorizacao
+- `tests/e2e/telegram_gateway_dedicated_smoke.py` cobre o caminho real `telegram-gateway -> runtime dedicado -> api-core`:
+  - webhook com secret valido
+  - enfileiramento assíncrono do gateway
+  - persistencia da mensagem e da resposta no `api-core`
+  - validacao opcional de fluxo protegido com `--guardian-chat-id`
+- `tests/e2e/dedicated_runtime_parity.py` cobre a paridade operacional entre `source mode` e Docker:
+  - `runtimeDiagnostics` do gateway, control plane e runtimes dedicados
+  - ausencia de `sourceContainerDriftRisk`
+  - ausencia de blockers e de `mode_mismatch`
+  - `serviceRole` e `primaryServingRecommended` coerentes com a arquitetura `dedicated-first`
 - `tests/e2e/authz_regression.py` cobre regressao de seguranca funcional:
   - negacao para usuario anonimo em fluxo protegido
   - clarificacao de responsavel com mais de um aluno
@@ -36,6 +60,8 @@ Estado atual:
   - tentativa de aluno consultar dados academicos de outro aluno
   - verificacao de que o prompt malicioso nao aparece em texto puro no `Loki`
 - `tests/evals/orchestrator_quality.py` cobre evals formais do `ai-orchestrator` com dataset versionado em `tests/evals/datasets/orchestrator_cases.json`:
+- `tests/evals/dedicated_runtime_quality.py` cobre a eval dedicada-first para um runtime por stack, com foco no contrato final de resposta em vez do grafo interno do control plane;
+- `tests/evals/orchestrator_quality.py` preserva a eval historica do `ai-orchestrator` central em modo `control-plane-compat`;
   - grounding publico com citações
   - calendario publico com resposta composta e eventos estruturados
   - negacao segura para fluxo protegido sem vinculo
@@ -64,10 +90,27 @@ Estado atual:
 
 Comandos uteis:
 
+- `make compose-up-control-plane-compat`
+- `make smoke-dedicated`
 - `make smoke-local`
+- `make smoke-control-plane-compat`
 - `make smoke-authz`
 - `make smoke-adversarial`
 - `make smoke-all`
+- `make smoke-dedicated`
+- `make smoke-dedicated-langgraph`
+- `make smoke-dedicated-python-functions`
+- `make smoke-dedicated-llamaindex`
+- `make smoke-dedicated-specialist`
+- `make smoke-dedicated-multiturn`
+- `make smoke-dedicated-multiturn-langgraph`
+- `make smoke-dedicated-multiturn-python-functions`
+- `make smoke-dedicated-multiturn-llamaindex`
+- `make smoke-dedicated-multiturn-specialist`
+- `make smoke-telegram-dedicated`
+- `make runtime-parity-check`
+- `make eval-dedicated`
+- `make eval-control-plane-compat`
 - `make eval-orchestrator`
 - `make eval-all`
 - `python3 tools/evals/build_system_question_bank_datasets.py`

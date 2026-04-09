@@ -23,7 +23,7 @@ O fluxo principal é simples de entender:
 
 1. o usuário envia a pergunta pelo Telegram;
 2. o `telegram-gateway` recebe e normaliza a mensagem;
-3. o `ai-orchestrator` classifica o tipo de pergunta e decide qual caminho usar;
+3. o `ai-orchestrator` atua como control plane e router interno, enquanto os runtimes dedicados executam o serving principal por stack;
 4. perguntas estruturadas seguem para serviços internos confiáveis no `api-core`;
 5. perguntas documentais passam pela camada de recuperação de informação;
 6. se faltar contexto, o sistema pode pedir esclarecimento ou tentar nova busca com mais contexto;
@@ -33,7 +33,8 @@ O fluxo principal é simples de entender:
 ```mermaid
 flowchart LR
     U["Usuário no Telegram"] --> TG["telegram-gateway"]
-    TG --> ORQ["ai-orchestrator"]
+    TG --> ORQ["dedicated runtime\n(ex.: python_functions, llamaindex)"]
+    ORQ -. control plane .-> CPR["ai-orchestrator"]
     ORQ --> DEC["Decisão de estratégia"]
     DEC -->|Dado estruturado| API["api-core"]
     DEC -->|Pergunta documental| RET["Recuperação de informação"]
@@ -53,7 +54,7 @@ flowchart LR
 ### Aplicações
 
 - `api-core`: regras de negócio, identidade, autorização contextual, serviços estruturados e trilha de auditoria.
-- `ai-orchestrator`: classificação da pergunta, escolha do caminho, recuperação de informação, reparo de contexto e composição final da resposta.
+- `ai-orchestrator`: control plane e router interno entre os runtimes dedicados, além de endpoints compartilhados. Não é o caminho recomendado de serving direto para `/v1/messages/respond`.
 - `ai-orchestrator-specialist`: caminho premium, orientado à qualidade, usado no comparativo dos quatro caminhos.
 - `telegram-gateway`: webhook, idempotência, retentativa e entrega da resposta final no Telegram.
 - `admin-web`: interface operacional com autenticação via Keycloak.
@@ -142,10 +143,39 @@ make documents-sync
 
 ### Telegram ponta a ponta
 
-Para o Telegram funcionar de verdade, `postgres`, `api-core`, `ai-orchestrator` e `telegram-gateway` precisam estar online e saudáveis, e o webhook precisa apontar para uma URL pública válida.
+Para o Telegram funcionar de verdade, `postgres`, `api-core`, o runtime dedicado alvo, e `telegram-gateway` precisam estar online e saudáveis, e o webhook precisa apontar para uma URL pública válida.
 
 ```bash
 make telegram-public-up
+make telegram-webhook-info
+```
+
+Para um fluxo dedicado-first mais direto, use um dos atalhos abaixo:
+
+```bash
+make compose-up-telegram-python-functions
+make compose-up-telegram-llamaindex
+make compose-up-telegram-langgraph
+make compose-up-telegram-specialist
+```
+
+Esses comandos:
+
+- sobem a base operacional dedicada;
+- apontam o `telegram-gateway` para o runtime escolhido;
+- reciclam o `cloudflared`;
+- registram o webhook automaticamente.
+
+Para um caminho mais estável que `TryCloudflare`, configure no `.env`:
+
+- `CLOUDFLARED_TUNNEL_TOKEN`
+- `TELEGRAM_PUBLIC_BASE_URL`
+
+E então suba o fluxo estável:
+
+```bash
+make telegram-public-up-stable
+make telegram-webhook-health
 make telegram-webhook-info
 ```
 
@@ -168,11 +198,36 @@ Serviços principais:
 ### Smokes
 
 ```bash
+make compose-up-dedicated-core
+make smoke-dedicated
+make smoke-dedicated-multiturn
+make smoke-telegram-dedicated
+make runtime-parity-check
 make smoke-local
 make smoke-authz
 make smoke-adversarial
 make smoke-all
 ```
+
+Observação:
+
+- `make smoke-dedicated` é o smoke recomendado para a arquitetura atual.
+- `make smoke-dedicated-multiturn` é a bateria recomendada para validar continuidade conversacional nos runtimes dedicados.
+- `make smoke-telegram-dedicated` valida o caminho real `telegram-gateway -> runtime dedicado -> api-core`, com verificação da persistência interna no `api-core`.
+- `make runtime-parity-check` valida que gateway, control plane e runtimes dedicados estão sem drift operacional entre `source mode` e Docker.
+- `make smoke-local` e `make eval-orchestrator` existem por compatibilidade com o control plane e exigem subir o `ai-orchestrator` central com `CONTROL_PLANE_ALLOW_DIRECT_SERVING=true`, por exemplo via `make compose-up-control-plane-compat`.
+
+### Evals
+
+```bash
+make eval-dedicated
+make eval-control-plane-compat
+```
+
+Observação:
+
+- `make eval-dedicated` é o alvo padrão e avalia um runtime dedicado diretamente.
+- `make eval-control-plane-compat` preserva o caminho histórico do control plane apenas para compatibilidade e comparação.
 
 ### Readiness
 
