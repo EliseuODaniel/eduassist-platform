@@ -1,23 +1,124 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from functools import lru_cache
 import logging
+import os
 from pathlib import Path
 import secrets
+from urllib.parse import urlparse, urlunparse
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from eduassist_observability import build_runtime_diagnostics, configure_observability, detect_runtime_mode
 
 from .models import SpecialistSupervisorRequest, SpecialistSupervisorResponse
-from .runtime import effective_llm_model_name, resolve_llm_provider, run_specialist_supervisor
 
 
 _ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / ".env"
+_INTERNAL_API_TOKEN_PLACEHOLDERS = {"", "dev-internal-token", "change-me-internal-token"}
 logger = logging.getLogger(__name__)
+
+_LOCAL_SOURCE_SERVICE_URLS = {
+    "api-core": "http://127.0.0.1:8001",
+    "ai-orchestrator": "http://127.0.0.1:8002",
+    "qdrant": "http://127.0.0.1:6333",
+}
+_LOCAL_SOURCE_DATABASE_URL = "postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist"
+_LOCAL_SOURCE_MEMORY_URL = "sqlite+aiosqlite:///" + str(
+    (Path(__file__).resolve().parents[4] / ".runtime" / "specialist_supervisor_memory.db").resolve()
+)
+
+
+def _replace_url_host(value: str, *, replacements: dict[str, str]) -> str:
+    normalized = str(value or "").strip()
+    if not normalized:
+        return normalized
+    parsed = urlparse(normalized)
+    host = (parsed.hostname or "").strip().lower()
+    replacement_host = replacements.get(host)
+    if replacement_host is None:
+        return normalized
+    netloc = replacement_host
+    if parsed.port is not None:
+        netloc = f"{replacement_host}:{parsed.port}"
+    if parsed.username:
+        auth = parsed.username
+        if parsed.password:
+            auth = f"{auth}:{parsed.password}"
+        netloc = f"{auth}@{netloc}"
+    return urlunparse(parsed._replace(netloc=netloc))
+
+
+def _normalize_local_service_url(value: str, *, env_name: str) -> str:
+    override = str(os.getenv(env_name, "") or "").strip()
+    normalized = str(value or "").strip()
+    if override:
+        return override
+    if not normalized:
+        return normalized
+    parsed = urlparse(normalized)
+    host = (parsed.hostname or "").strip().lower()
+    replacement = _LOCAL_SOURCE_SERVICE_URLS.get(host)
+    if replacement is None:
+        return normalized
+    replacement_parsed = urlparse(replacement)
+    netloc = replacement_parsed.netloc
+    if parsed.username:
+        auth = parsed.username
+        if parsed.password:
+            auth = f"{auth}:{parsed.password}"
+        netloc = f"{auth}@{netloc}"
+    return urlunparse(parsed._replace(scheme=replacement_parsed.scheme, netloc=netloc))
+
+
+def _normalize_local_database_url(value: str) -> str:
+    override = str(os.getenv("DATABASE_URL_LOCAL", "") or "").strip()
+    normalized = str(value or "").strip()
+    if override:
+        return override
+    if not normalized:
+        return _LOCAL_SOURCE_DATABASE_URL
+    return _replace_url_host(
+        normalized,
+        replacements={
+            "postgres": "127.0.0.1",
+            "localhost": "127.0.0.1",
+        },
+    )
+
+
+def _normalize_local_qdrant_url(value: str) -> str:
+    override = str(os.getenv("QDRANT_URL_LOCAL", "") or "").strip()
+    normalized = str(value or "").strip()
+    if override:
+        return override
+    if not normalized:
+        return _LOCAL_SOURCE_SERVICE_URLS["qdrant"]
+    return _replace_url_host(
+        normalized,
+        replacements={
+            "qdrant": "127.0.0.1",
+            "localhost": "127.0.0.1",
+        },
+    )
+
+
+def _normalize_local_memory_url(value: str) -> str:
+    override = str(os.getenv("AGENT_MEMORY_URL_LOCAL", "") or "").strip()
+    normalized = str(value or "").strip()
+    if override:
+        return override
+    if not normalized:
+        return _LOCAL_SOURCE_MEMORY_URL
+    if normalized.startswith("sqlite") and "/workspace/" in normalized:
+        return _LOCAL_SOURCE_MEMORY_URL
+    if normalized.startswith("postgresql://") or normalized.startswith("postgresql+"):
+        return _normalize_local_database_url(normalized)
+    return normalized
 
 
 class Settings(BaseSettings):
@@ -34,7 +135,9 @@ class Settings(BaseSettings):
     llm_provider: str = "auto"
     api_core_url: str = "http://api-core:8000"
     orchestrator_url: str = "http://ai-orchestrator:8000"
+    control_plane_orchestrator_url: str | None = None
     internal_api_token: str = "dev-internal-token"
+    allow_insecure_internal_api_token: bool = False
     openai_api_key: str | None = None
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-5.4"
@@ -55,10 +158,51 @@ class Settings(BaseSettings):
     graph_rag_sync_fallback_enabled: bool = False
     orchestrator_preview_timeout_seconds: float = 2.0
     orchestrator_retrieval_timeout_seconds: float = 3.0
+    context_fetch_timeout_seconds: float = 2.0
+    public_resource_timeout_seconds: float = 2.0
     database_url: str = "sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db"
     agent_memory_url: str = "sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db"
     agent_memory_dir: str | None = None
     public_resource_cache_ttl_seconds: float = 120.0
+    qdrant_url: str = "http://qdrant:6333"
+    qdrant_documents_collection: str = "school_documents"
+    document_embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    retrieval_enable_query_variants: bool = True
+    retrieval_enable_late_interaction_rerank: bool = True
+    retrieval_late_interaction_model: str = "answerdotai/answerai-colbert-small-v1"
+    retrieval_candidate_pool_size: int = 14
+    retrieval_cheap_candidate_pool_size: int = 8
+    retrieval_deep_candidate_pool_size: int = 22
+    retrieval_rerank_fused_weight: float = 0.35
+    retrieval_rerank_late_interaction_weight: float = 0.65
+
+    @model_validator(mode="after")
+    def _apply_source_mode_network_fallbacks(self) -> "Settings":
+        explicit_control_plane = str(self.control_plane_orchestrator_url or "").strip()
+        if explicit_control_plane:
+            self.orchestrator_url = explicit_control_plane
+        if detect_runtime_mode() != "source":
+            return self
+        self.api_core_url = _normalize_local_service_url(self.api_core_url, env_name="API_CORE_URL_LOCAL")
+        self.orchestrator_url = _normalize_local_service_url(self.orchestrator_url, env_name="AI_ORCHESTRATOR_URL_LOCAL")
+        if explicit_control_plane:
+            self.control_plane_orchestrator_url = self.orchestrator_url
+        self.database_url = _normalize_local_database_url(self.database_url)
+        self.agent_memory_url = _normalize_local_memory_url(self.agent_memory_url or self.database_url)
+        self.qdrant_url = _normalize_local_qdrant_url(self.qdrant_url)
+        return self
+
+    @model_validator(mode="after")
+    def _validate_internal_api_token(self) -> "Settings":
+        token = str(self.internal_api_token or "").strip()
+        if token not in _INTERNAL_API_TOKEN_PLACEHOLDERS:
+            return self
+        if self.allow_insecure_internal_api_token or self.app_env in {"test"}:
+            return self
+        raise ValueError(
+            "internal_api_token must be set to a non-placeholder value; "
+            "set INTERNAL_API_TOKEN or explicitly opt into ALLOW_INSECURE_INTERNAL_API_TOKEN=true for isolated tests."
+        )
 
 
 @lru_cache
@@ -79,7 +223,7 @@ class HealthResponse(BaseModel):
 
 
 def _specialist_runtime_diagnostics(settings: Settings) -> dict[str, object]:
-    llm_provider = resolve_llm_provider(settings)
+    llm_provider = _resolve_llm_provider(settings)
     runtime_mode = detect_runtime_mode()
     extra_findings: list[dict[str, str]] = []
     if llm_provider == "unconfigured":
@@ -144,10 +288,142 @@ def _log_runtime_diagnostics(diagnostics: dict[str, object]) -> None:
             logger.error("ai_orchestrator_specialist_runtime_blocker %s", str(item.get("message") or item.get("code") or "blocker"))
 
 
+def _message_response_payload(payload: dict[str, object]) -> dict[str, object]:
+    answer = payload.get("answer") if isinstance(payload.get("answer"), dict) else None
+    if not isinstance(answer, dict):
+        reason = str(payload.get("reason") or "specialist_supervisor_no_answer")
+        return {
+            "message_text": "Nao consegui formular uma resposta confiavel agora.",
+            "mode": "clarify",
+            "classification": {
+                "domain": "unknown",
+                "access_tier": "public",
+                "confidence": 0.0,
+                "reason": reason,
+            },
+            "retrieval_backend": "none",
+            "selected_tools": [],
+            "citations": [],
+            "visual_assets": [],
+            "suggested_replies": [],
+            "calendar_events": [],
+            "evidence_pack": None,
+            "needs_authentication": False,
+            "graph_path": ["specialist_supervisor", "message_contract_fallback"],
+            "risk_flags": ["contract_fallback"],
+            "reason": reason,
+            "used_llm": False,
+            "llm_stages": [],
+            "final_polish_eligible": False,
+            "final_polish_applied": False,
+            "final_polish_mode": "skip",
+            "final_polish_reason": "no_specialist_answer",
+            "final_polish_changed_text": False,
+            "final_polish_preserved_fallback": False,
+            "candidate_chosen": "specialist_supervisor",
+            "candidate_reason": "specialist_local_contract",
+            "retrieval_probe_topic": None,
+            "response_cache_hit": False,
+            "response_cache_kind": None,
+            "answer_experience_eligible": False,
+            "answer_experience_applied": False,
+            "answer_experience_reason": None,
+            "answer_experience_provider": None,
+            "answer_experience_model": None,
+            "context_repair_applied": False,
+            "context_repair_action": None,
+            "context_repair_reason": None,
+            "retrieval_retry_applied": False,
+            "retrieval_retry_reason": None,
+            "debug_trace": {
+                "specialist": {
+                    "service": "ai-orchestrator-specialist",
+                    "mode": "quality-first",
+                    "reason": reason,
+                }
+            },
+        }
+
+    graph_path = [str(item).strip() for item in answer.get("graph_path", []) if str(item).strip()]
+    if not graph_path:
+        graph_path = ["specialist_supervisor", "local_runtime"]
+    return {
+        "message_text": str(answer.get("message_text") or ""),
+        "mode": str(answer.get("mode") or "clarify"),
+        "classification": dict(answer.get("classification") or {}),
+        "retrieval_backend": str(answer.get("retrieval_backend") or "none"),
+        "selected_tools": list(answer.get("selected_tools") or []),
+        "citations": list(answer.get("citations") or []),
+        "visual_assets": list(answer.get("visual_assets") or []),
+        "suggested_replies": list(answer.get("suggested_replies") or []),
+        "calendar_events": list(answer.get("calendar_events") or []),
+        "evidence_pack": answer.get("evidence_pack"),
+        "needs_authentication": bool(answer.get("needs_authentication", False)),
+        "graph_path": graph_path,
+        "risk_flags": list(answer.get("risk_flags") or []),
+        "reason": str(answer.get("reason") or payload.get("reason") or "specialist_local_contract"),
+        "used_llm": bool(answer.get("used_llm", False)),
+        "llm_stages": list(answer.get("llm_stages") or []),
+        "final_polish_eligible": bool(answer.get("final_polish_eligible", False)),
+        "final_polish_applied": bool(answer.get("final_polish_applied", False)),
+        "final_polish_mode": answer.get("final_polish_mode"),
+        "final_polish_reason": answer.get("final_polish_reason"),
+        "final_polish_changed_text": bool(answer.get("final_polish_changed_text", False)),
+        "final_polish_preserved_fallback": bool(answer.get("final_polish_preserved_fallback", False)),
+        "candidate_chosen": "specialist_supervisor",
+        "candidate_reason": str(payload.get("reason") or "specialist_local_contract"),
+        "retrieval_probe_topic": None,
+        "response_cache_hit": False,
+        "response_cache_kind": None,
+        "answer_experience_eligible": False,
+        "answer_experience_applied": False,
+        "answer_experience_reason": None,
+        "answer_experience_provider": None,
+        "answer_experience_model": None,
+        "context_repair_applied": False,
+        "context_repair_action": None,
+        "context_repair_reason": None,
+        "retrieval_retry_applied": False,
+        "retrieval_retry_reason": None,
+        "debug_trace": {
+            "specialist": {
+                "service": "ai-orchestrator-specialist",
+                "mode": "quality-first",
+                "reason": str(payload.get("reason") or "specialist_local_contract"),
+            }
+        },
+    }
+
+
+def _resolve_llm_provider(settings: Settings) -> str:
+    from .runtime import resolve_llm_provider
+
+    return resolve_llm_provider(settings)
+
+
+def _effective_llm_model_name(settings: Settings) -> str:
+    from .runtime import effective_llm_model_name
+
+    return effective_llm_model_name(settings)
+
+
+async def _run_specialist(request: SpecialistSupervisorRequest, settings: Settings) -> dict[str, object]:
+    from .runtime import run_specialist_supervisor
+
+    return await run_specialist_supervisor(request=request, settings=settings)
+
+
+@asynccontextmanager
+async def _app_lifespan(_: FastAPI):
+    _log_runtime_diagnostics(_specialist_runtime_diagnostics(get_settings()))
+    yield
+
+
 app = FastAPI(
     title="EduAssist Specialist Supervisor Pilot",
     version="0.1.0",
     summary="Quality-first specialist supervisor service for side-by-side chatbot comparisons.",
+    lifespan=_app_lifespan,
 )
 
 configure_observability(
@@ -157,11 +433,6 @@ configure_observability(
     app=app,
     excluded_urls="/healthz",
 )
-
-
-@app.on_event("startup")
-async def log_startup_diagnostics() -> None:
-    _log_runtime_diagnostics(_specialist_runtime_diagnostics(get_settings()))
 
 
 @app.get("/healthz", response_model=HealthResponse)
@@ -175,19 +446,26 @@ async def status(
 ) -> dict[str, object]:
     _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
-    llm_provider = resolve_llm_provider(settings)
+    llm_provider = _resolve_llm_provider(settings)
     runtime_diagnostics = _specialist_runtime_diagnostics(settings)
     return {
         "service": "ai-orchestrator-specialist",
         "ready": True,
+        "serviceRole": "dedicated-stack-runtime",
+        "primaryServingRecommended": True,
         "mode": "quality-first",
         "llmProvider": llm_provider,
-        "effectiveModel": effective_llm_model_name(settings),
+        "effectiveModel": _effective_llm_model_name(settings),
         "openaiModel": settings.openai_model,
         "googleModel": settings.google_model,
         "llmConfigured": llm_provider != "unconfigured",
         "apiCoreUrl": settings.api_core_url,
         "orchestratorUrl": settings.orchestrator_url,
+        "controlPlaneOrchestratorUrl": settings.orchestrator_url,
+        "controlPlanePurpose": [
+            "shared-graphrag-consumer",
+            "router-internal-endpoints",
+        ],
         "runtimeDiagnostics": runtime_diagnostics,
         "capabilities": [
             "openai-agents-sdk",
@@ -196,9 +474,10 @@ async def status(
             "specialists-as-tools",
             "sqlalchemy-session-memory",
             "planner-manager-judge",
-            "shared-hybrid-retrieval-consumer",
+            "specialist-local-hybrid-retrieval",
             "shared-graphrag-consumer",
             "workflow-and-record-specialists",
+            "message-response-contract",
         ],
     }
 
@@ -210,7 +489,7 @@ async def respond(
 ) -> SpecialistSupervisorResponse:
     _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
-    payload = await run_specialist_supervisor(request=request, settings=settings)
+    payload = await _run_specialist(request=request, settings=settings)
     return SpecialistSupervisorResponse.model_validate(payload)
 
 
@@ -221,5 +500,16 @@ async def respond_raw(
 ) -> JSONResponse:
     _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
-    payload = await run_specialist_supervisor(request=request, settings=settings)
+    payload = await _run_specialist(request=request, settings=settings)
     return JSONResponse(content=jsonable_encoder(payload))
+
+
+@app.post("/v1/messages/respond")
+async def respond_message_contract(
+    request: SpecialistSupervisorRequest,
+    x_internal_api_token: str | None = Header(default=None, alias="X-Internal-Api-Token"),
+) -> JSONResponse:
+    _require_internal_api_token(x_internal_api_token)
+    settings = get_settings()
+    payload = await _run_specialist(request=request, settings=settings)
+    return JSONResponse(content=jsonable_encoder(_message_response_payload(payload)))

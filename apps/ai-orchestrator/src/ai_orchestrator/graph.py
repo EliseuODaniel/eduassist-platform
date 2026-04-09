@@ -429,8 +429,12 @@ VISIT_UPDATE_TERMS = {
     'ajustar a visita',
     'mudar a visita',
     'mudar horario da visita',
+    'mudar o horario da visita',
     'mudar horario da minha visita',
     'trocar horario da visita',
+    'trocar o horario da visita',
+    'trocar o horario',
+    'mudar o horario',
     'cancelar visita',
     'cancelar a visita',
     'desmarcar visita',
@@ -1038,6 +1042,16 @@ def _contains_any(message: str, terms: set[str]) -> bool:
 
 def _is_restricted_document_query(message: str) -> bool:
     normalized = _normalize_text(message)
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'sem recorrer a material interno',
+            'sem precisar recorrer a material interno',
+            'sem recorrer a documentos internos',
+            'sem precisar recorrer a documentos internos',
+        }
+    ):
+        return False
     return any(_message_matches_term(normalized, term) for term in RESTRICTED_DOCUMENT_TERMS)
 
 
@@ -1065,8 +1079,18 @@ def _is_visit_booking_request(message: str) -> bool:
     lowered = _normalize_text(message)
     if any(_message_matches_term(lowered, term) for term in VISIT_ACTION_TERMS):
         return True
-    scheduling_verbs = {'agendar', 'agendamento', 'marcar', 'reservar'}
-    visit_targets = {'visita', 'visita guiada', 'tour', 'conhecer a escola', 'conhecer o colegio', 'conhecer o colégio'}
+    scheduling_verbs = {'agendar', 'agendamento', 'marcar', 'reservar', 'visitar', 'conhecer'}
+    visit_targets = {
+        'visita',
+        'visita guiada',
+        'tour',
+        'conhecer a escola',
+        'conhecer o colegio',
+        'conhecer o colégio',
+        'visitar a escola',
+        'visitar o colegio',
+        'visitar o colégio',
+    }
     return _contains_any(lowered, scheduling_verbs) and _contains_any(lowered, visit_targets)
 
 
@@ -1911,6 +1935,15 @@ def _is_authenticated_student_assessment_query(message: str, *, authenticated: b
             'mais exposta',
             'maior risco',
             'pontos de maior risco',
+            'pontos academicos que mais preocupam',
+            'pontos acadêmicos que mais preocupam',
+            'pontos academicos',
+            'pontos acadêmicos',
+            'mais preocupam',
+            'preocupacao academica',
+            'preocupação acadêmica',
+            'preocupacoes academicas',
+            'preocupações acadêmicas',
             'esta mais vulneravel',
             'está mais vulnerável',
             'meus dois filhos',

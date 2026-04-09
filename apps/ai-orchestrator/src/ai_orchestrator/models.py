@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from enum import StrEnum
 from datetime import datetime
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -187,8 +187,14 @@ class RetrievalQueryPlan(BaseModel):
     profile: RetrievalProfile = RetrievalProfile.default
     normalized_query: str
     query_variants: list[str] = Field(default_factory=list)
+    subqueries: list[str] = Field(default_factory=list)
+    subquery_coverage: dict[str, float] = Field(default_factory=dict)
+    uncovered_subqueries_final: list[str] = Field(default_factory=list)
+    coverage_ratio: float = 1.0
+    citation_first_recommended: bool = False
     graph_rag_candidate: bool = False
     reranker_applied: bool = False
+    corrective_retry_applied: bool = False
     reranker_model: str | None = None
     category_bias: str | None = None
     canonical_lane: str | None = None
@@ -295,4 +301,19 @@ class MessageResponse(BaseModel):
     final_polish_reason: str | None = None
     final_polish_changed_text: bool = False
     final_polish_preserved_fallback: bool = False
+    candidate_chosen: str | None = None
+    candidate_reason: str | None = None
+    retrieval_probe_topic: str | None = None
+    response_cache_hit: bool = False
+    response_cache_kind: str | None = None
+    answer_experience_eligible: bool = False
+    answer_experience_applied: bool = False
+    answer_experience_reason: str | None = None
+    answer_experience_provider: str | None = None
+    answer_experience_model: str | None = None
+    context_repair_applied: bool = False
+    context_repair_action: str | None = None
+    context_repair_reason: str | None = None
+    retrieval_retry_applied: bool = False
+    retrieval_retry_reason: str | None = None
     debug_trace: dict[str, Any] | None = None

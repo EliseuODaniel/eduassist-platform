@@ -4,6 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Iterable
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,6 +27,7 @@ def parse_csv(value: str | Iterable[str]) -> list[str]:
 
 
 _ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / '.env'
+_INTERNAL_API_TOKEN_PLACEHOLDERS = {'', 'dev-internal-token', 'change-me-internal-token'}
 
 
 class Settings(BaseSettings):
@@ -47,6 +49,7 @@ class Settings(BaseSettings):
     keycloak_realm: str = 'eduassist'
     keycloak_allowed_clients: str = 'eduassist-web,eduassist-cli'
     internal_api_token: str = 'dev-internal-token'
+    allow_insecure_internal_api_token: bool = False
     allow_test_identity_overrides: bool = False
     telegram_link_ttl_minutes: int = 15
     telegram_bot_username: str | None = None
@@ -71,6 +74,18 @@ class Settings(BaseSettings):
     @property
     def allowed_keycloak_clients(self) -> list[str]:
         return parse_csv(self.keycloak_allowed_clients)
+
+    @model_validator(mode='after')
+    def _validate_internal_api_token(self) -> 'Settings':
+        token = str(self.internal_api_token or '').strip()
+        if token not in _INTERNAL_API_TOKEN_PLACEHOLDERS:
+            return self
+        if self.allow_insecure_internal_api_token or self.app_env in {'test'}:
+            return self
+        raise ValueError(
+            'internal_api_token must be set to a non-placeholder value; '
+            'set INTERNAL_API_TOKEN or explicitly opt into ALLOW_INSECURE_INTERNAL_API_TOKEN=true for isolated tests.'
+        )
 
 
 @lru_cache

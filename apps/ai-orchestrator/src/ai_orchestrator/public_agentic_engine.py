@@ -5,6 +5,8 @@ import re
 from typing import Any
 import unicodedata
 
+from .public_doc_knowledge import compose_public_academic_policy_overview, compose_public_health_second_call
+
 
 @dataclass(frozen=True)
 class PublicEvidenceFact:
@@ -149,6 +151,17 @@ def _service_texts(profile: dict[str, Any]) -> list[str]:
             ).strip()
         )
     return [text for text in facts if text]
+
+
+def _policy_texts(profile: dict[str, Any]) -> list[str]:
+    facts: list[str] = []
+    academic_policy = compose_public_academic_policy_overview(profile)
+    if academic_policy:
+        facts.append(academic_policy)
+    health_second_call = compose_public_health_second_call()
+    if health_second_call:
+        facts.append(health_second_call)
+    return facts
 
 
 def _curriculum_text(profile: dict[str, Any]) -> str | None:
@@ -334,6 +347,11 @@ def build_public_evidence_bundle(
         if act in {'careers'}:
             add_many('service_catalog', _service_texts(profile))
             add_many('contact_channels', _contact_texts(profile))
+        if act in {'service_routing'}:
+            add_many('service_catalog', _service_texts(profile)[:3])
+            add_many('contact_channels', _contact_texts(profile)[:3])
+        if act in {'policy'}:
+            add_many('policy', _policy_texts(profile)[:2])
         if act in {'curriculum'}:
             add('curriculum_basis', _curriculum_text(profile))
             add_many('shift_offers', _shift_offer_texts(profile)[:2])

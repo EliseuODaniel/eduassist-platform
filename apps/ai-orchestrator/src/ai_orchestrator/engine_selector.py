@@ -56,6 +56,13 @@ class EngineBundle:
     experiment: dict[str, Any] | None = None
 
 
+@dataclass(frozen=True)
+class StackSelection:
+    stack: str
+    mode: str
+    experiment: dict[str, Any] | None = None
+
+
 def _probe_remote_status_payload(
     *,
     name: str,
@@ -882,63 +889,46 @@ def _targeted_runtime_stack_for_request(*, request: Any) -> dict[str, Any] | Non
 
 
 def build_engine_bundle(settings: Any, request: Any | None = None) -> EngineBundle:
-    mode = resolve_primary_stack(settings)
+    selection = resolve_stack_selection(settings=settings, request=request)
+    mode = selection.stack
     langgraph_engine = LangGraphEngine()
     python_functions_engine = PythonFunctionsEngine()
     llamaindex_engine = LlamaIndexWorkflowEngine()
     specialist_supervisor_engine = SpecialistSupervisorEngine()
+    if mode == 'python_functions':
+        return EngineBundle(mode=selection.mode, primary=python_functions_engine, experiment=selection.experiment)
+    if mode == 'llamaindex':
+        return EngineBundle(mode=selection.mode, primary=llamaindex_engine, experiment=selection.experiment)
+    if mode == 'specialist_supervisor':
+        return EngineBundle(mode=selection.mode, primary=specialist_supervisor_engine, experiment=selection.experiment)
+    return EngineBundle(mode=selection.mode, primary=langgraph_engine, experiment=selection.experiment)
+
+
+def resolve_stack_selection(settings: Any, request: Any | None = None) -> StackSelection:
+    mode = resolve_primary_stack(settings)
     strict_mode = strict_framework_isolation_enabled(settings)
 
     if request is not None and not get_runtime_primary_stack_override().get('value'):
         targeted = _targeted_runtime_stack_for_request(request=request)
         if targeted is not None:
-            targeted_stack = str(targeted['stack'])
-            if targeted_stack == 'python_functions':
-                return EngineBundle(mode=f"targeted:{targeted['slice']}:{targeted_stack}", primary=python_functions_engine, experiment=targeted)
-            if targeted_stack == 'llamaindex':
-                return EngineBundle(mode=f"targeted:{targeted['slice']}:{targeted_stack}", primary=llamaindex_engine, experiment=targeted)
-            if targeted_stack == 'specialist_supervisor':
-                return EngineBundle(
-                    mode=f"targeted:{targeted['slice']}:{targeted_stack}",
-                    primary=specialist_supervisor_engine,
-                    experiment=targeted,
-                )
-            return EngineBundle(mode=f"targeted:{targeted['slice']}:{targeted_stack}", primary=langgraph_engine, experiment=targeted)
+            targeted_stack = str(targeted['stack'] or 'langgraph')
+            return StackSelection(
+                stack=targeted_stack,
+                mode=f"targeted:{targeted['slice']}:{targeted_stack}",
+                experiment=targeted,
+            )
 
     if request is not None and not strict_mode:
         should_experiment, experiment = _should_route_to_experiment(request=request, settings=settings)
-        if should_experiment:
+        if should_experiment and experiment is not None:
             experiment_engine = str(experiment.get('engine') or 'python_functions')
-            if experiment_engine == 'python_functions':
-                return EngineBundle(
-                    mode=f"experiment:{experiment['slice']}:{experiment_engine}",
-                    primary=python_functions_engine,
-                    shadow=None,
-                    experiment=experiment,
-                )
-            if experiment_engine == 'llamaindex':
-                return EngineBundle(
-                    mode=f"experiment:{experiment['slice']}:{experiment_engine}",
-                    primary=llamaindex_engine,
-                    shadow=None,
-                    experiment=experiment,
-                )
-            if experiment_engine == 'specialist_supervisor':
-                return EngineBundle(
-                    mode=f"experiment:{experiment['slice']}:{experiment_engine}",
-                    primary=specialist_supervisor_engine,
-                    shadow=None,
-                    experiment=experiment,
-                )
-            return EngineBundle(mode=f"experiment:{experiment['slice']}:langgraph", primary=langgraph_engine, shadow=None, experiment=experiment)
+            return StackSelection(
+                stack=experiment_engine,
+                mode=f"experiment:{experiment['slice']}:{experiment_engine}",
+                experiment=experiment,
+            )
 
-    if mode == 'python_functions':
-        return EngineBundle(mode='python_functions', primary=python_functions_engine)
-    if mode == 'llamaindex':
-        return EngineBundle(mode='llamaindex', primary=llamaindex_engine)
-    if mode == 'specialist_supervisor':
-        return EngineBundle(mode='specialist_supervisor', primary=specialist_supervisor_engine)
-    return EngineBundle(mode='langgraph', primary=langgraph_engine)
+    return StackSelection(stack=mode, mode=mode, experiment=None)
 
 
 async def maybe_run_shadow(*, bundle: EngineBundle, request: Any, settings: Any) -> ShadowRunResult | None:

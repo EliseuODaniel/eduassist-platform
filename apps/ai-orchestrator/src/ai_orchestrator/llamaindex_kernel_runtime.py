@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from . import runtime as rt
-from .agent_kernel import KernelPlan, KernelReflection, KernelRunResult, build_kernel_plan
+from .llamaindex_kernel import KernelPlan, KernelReflection, KernelRunResult, build_kernel_plan
 from .evidence_pack import (
     build_direct_answer_evidence_pack,
     build_known_unknown_evidence_pack,
@@ -12,7 +12,6 @@ from .evidence_pack import (
 )
 from .final_polish_policy import build_final_polish_decision
 from .graph_rag_runtime import run_graph_rag_query
-from .llm_provider import compose_with_provider, polish_structured_with_provider, revise_with_provider
 from .models import (
     AccessTier,
     MessageResponse,
@@ -25,10 +24,16 @@ from .models import (
     RetrievalBackend,
 )
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
-from .public_doc_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
-from .public_known_unknowns import detect_public_known_unknown_key, resolve_public_known_unknown_answer
-from .retrieval import get_retrieval_service
-from .retrieval import (
+from .llamaindex_public_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
+from .llamaindex_public_known_unknowns import detect_public_known_unknown_key, resolve_public_known_unknown_answer
+from .llamaindex_local_llm import (
+    compose_llamaindex_with_provider,
+    polish_llamaindex_with_provider,
+    revise_llamaindex_with_provider,
+    verify_llamaindex_answer_against_contract,
+)
+from .llamaindex_retrieval import get_retrieval_service
+from .llamaindex_retrieval import (
     can_read_restricted_documents,
     compose_restricted_document_grounded_answer_for_query,
     compose_restricted_document_no_match_answer,
@@ -84,6 +89,30 @@ def _should_prefer_contextual_tie(*, request: MessageResponseRequest, current: K
         OrchestrationMode.handoff,
         OrchestrationMode.hybrid_retrieval,
     }
+
+
+def _should_skip_contextual_replan_for_authenticated_combo_followup(
+    *,
+    request: MessageResponseRequest,
+    conversation_context: dict[str, Any] | None,
+) -> bool:
+    if not bool(getattr(request.user, 'authenticated', False)):
+        return False
+    if not rt._recent_admin_finance_combo_context(conversation_context):
+        return False
+    normalized = rt._normalize_text(request.message)
+    combo_terms = {
+        'regularizar',
+        'proximo passo',
+        'próximo passo',
+        'em aberto',
+        'bloqueio',
+        'bloqueando atendimento',
+        'nada estiver bloqueando',
+        'se nada estiver bloqueando',
+        'fala isso de forma direta',
+    }
+    return any(rt._message_matches_term(normalized, term) for term in combo_terms)
 
 
 def _message_requests_academic_domain(message: str) -> bool:
@@ -218,22 +247,106 @@ async def _maybe_contextual_public_direct_answer(
 ) -> str | None:
     if rt._llm_forced_mode_enabled(settings=settings, request=request):
         return None
-    is_public_context = preview.classification.access_tier is AccessTier.public or not request.user.authenticated
+    normalized_message = rt._normalize_text(request.message)
+    if (
+        request.user.authenticated
+        and rt._recent_admin_finance_combo_context(conversation_context)
+        and any(
+            rt._message_matches_term(normalized_message, term)
+            for term in {
+                'bloqueio',
+                'bloqueando atendimento',
+                'nada estiver bloqueando',
+                'se nada estiver bloqueando',
+                'fala isso de forma direta',
+            }
+        )
+    ):
+        return None
+    public_boundary_answer = rt._compose_contextual_public_boundary_answer(
+        message=request.message,
+        conversation_context=conversation_context,
+        profile=school_profile,
+    )
+    if public_boundary_answer:
+        return public_boundary_answer
+    timeline_followup_answer = rt._compose_contextual_public_timeline_followup_answer(
+        request_message=request.message,
+        conversation_context=conversation_context,
+        profile=school_profile,
+    )
+    if timeline_followup_answer:
+        return timeline_followup_answer
+    analysis_canonical_lane = match_public_canonical_lane(analysis_message)
+    rewritten_public_followup = analysis_message.strip() != str(request.message).strip() and (
+        analysis_canonical_lane is not None or rt._is_public_timeline_query(analysis_message)
+    )
+    is_public_context = (
+        preview.classification.access_tier is AccessTier.public
+        or not request.user.authenticated
+        or rewritten_public_followup
+    )
     if not is_public_context:
         return None
 
-    if rt._is_direct_service_routing_bundle_query(request.message):
-        return rt._compose_service_routing_answer(
-            school_profile,
-            request.message,
+    contextual_public_message = (
+        rt._contextualize_public_followup_message(
+            request_message=request.message,
+            analysis_message=analysis_message,
             conversation_context=conversation_context,
         )
+        if rewritten_public_followup
+        else request.message
+    )
+    if rt._is_direct_service_routing_bundle_query(contextual_public_message):
+        return rt._compose_service_routing_answer(
+            school_profile,
+            contextual_public_message,
+            conversation_context=conversation_context,
+        )
+    if rt._should_prefer_raw_public_followup_message(
+        request_message=request.message,
+        analysis_message=analysis_message,
+        conversation_context=conversation_context,
+    ) and rewritten_public_followup and str(contextual_public_message).strip() == str(analysis_message).strip() and not rt._must_preserve_contextual_public_followup_message(
+        request_message=request.message,
+        conversation_context=conversation_context,
+    ):
+        contextual_public_message = request.message
 
-    canonical_lane = match_public_canonical_lane(analysis_message) or match_public_canonical_lane(request.message)
+    canonical_lane = analysis_canonical_lane or match_public_canonical_lane(request.message)
     if canonical_lane:
         canonical_answer = compose_public_canonical_lane_answer(canonical_lane, profile=school_profile)
         if canonical_answer:
+            if request.user.authenticated and rewritten_public_followup and rt._message_matches_term(rt._normalize_text(request.message), 'apenas o que e publico nesse tema'):
+                return (
+                    'Sobre esse tema, eu continuo sem acesso ao protocolo interno; '
+                    f'so posso trazer o que e publico. {canonical_answer}'
+                )
             return canonical_answer
+
+    prefer_fast_public_direct = (
+        rewritten_public_followup
+        or rt._is_service_routing_query(request.message)
+        or rt._has_public_multi_intent_signal(request.message)
+        or rt._is_public_timeline_query(request.message)
+        or rt._is_public_timeline_lifecycle_query(request.message)
+        or rt._is_public_year_three_phase_query(request.message)
+        or rt._is_access_scope_query(request.message)
+    )
+    if (
+        prefer_fast_public_direct
+        and rt._base_profile_supports_fast_public_answer(
+            message=contextual_public_message,
+            profile=school_profile,
+        )
+    ):
+        fast_public_answer = rt._try_public_channel_fast_answer(
+            message=contextual_public_message,
+            profile=school_profile,
+        )
+        if fast_public_answer:
+            return fast_public_answer
 
     fast_public_answer = None
     if rt._base_profile_supports_fast_public_answer(
@@ -402,7 +515,15 @@ def _maybe_hypothetical_public_pricing_answer(
         return None
     if preview.classification.domain not in {QueryDomain.institution, QueryDomain.calendar}:
         return None
-    if plan.entities.domain_hint != 'public_pricing' or not plan.entities.is_hypothetical or not plan.entities.quantity_hint:
+    if not plan.entities.is_hypothetical or not plan.entities.quantity_hint:
+        return None
+    if not (
+        plan.entities.domain_hint == 'public_pricing'
+        or rt._is_explicit_public_pricing_projection_query(
+            request.message,
+            conversation_context=conversation_context,
+        )
+    ):
         return None
 
     public_plan = rt._build_public_institution_plan(
@@ -515,7 +636,11 @@ async def execute_kernel_plan(
     analysis_message = rt._build_analysis_message(request.message, conversation_context)
     school_profile = await rt._fetch_public_school_profile(settings=settings)
     effective_plan = plan
-    if effective_path_profile.use_contextual_replan and _needs_contextual_replan(
+    skip_contextual_replan = _should_skip_contextual_replan_for_authenticated_combo_followup(
+        request=request,
+        conversation_context=context_payload,
+    )
+    if effective_path_profile.use_contextual_replan and not skip_contextual_replan and _needs_contextual_replan(
         request=request,
         plan=plan,
         analysis_message=analysis_message,
@@ -698,7 +823,7 @@ async def execute_kernel_plan(
                 calendar_events=calendar_events,
                 query_hints=query_hints,
             )
-            llm_text = await compose_with_provider(
+            llm_text = await compose_llamaindex_with_provider(
                 settings=settings,
                 request_message=request.message,
                 analysis_message=analysis_message,
@@ -825,7 +950,7 @@ async def execute_kernel_plan(
                     calendar_events=calendar_events,
                     query_hints=query_hints,
                 )
-                llm_text = await compose_with_provider(
+                llm_text = await compose_llamaindex_with_provider(
                     settings=settings,
                     request_message=request.message,
                     analysis_message=analysis_message,
@@ -869,7 +994,7 @@ async def execute_kernel_plan(
         and preview.classification.access_tier is AccessTier.public
         and preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar}
     ) and final_polish_decision.apply_polish:
-        raw_polished_text = await polish_structured_with_provider(
+        raw_polished_text = await polish_llamaindex_with_provider(
             settings=settings,
             request_message=request.message,
             preview=preview,
@@ -901,7 +1026,7 @@ async def execute_kernel_plan(
         )
         and final_polish_decision.run_response_critic
     ):
-        revised_text = await revise_with_provider(
+        revised_text = await revise_llamaindex_with_provider(
             settings=settings,
             request_message=request.message,
             preview=preview,
@@ -921,7 +1046,7 @@ async def execute_kernel_plan(
         public_plan=public_plan,
         preview=preview,
     )
-    verification, semantic_judge_used = await rt._verify_answer_against_contract_async(
+    verification, semantic_judge_used = await verify_llamaindex_answer_against_contract(
         settings=settings,
         request_message=request.message,
         preview=preview,

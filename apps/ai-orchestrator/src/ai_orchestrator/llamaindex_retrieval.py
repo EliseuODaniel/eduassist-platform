@@ -26,7 +26,7 @@ from .models import (
     RetrievalSearchResponse,
     UserContext,
 )
-from .public_doc_knowledge import match_public_canonical_lane
+from .llamaindex_public_knowledge import match_public_canonical_lane
 
 
 RRF_K = 60
@@ -462,29 +462,6 @@ class RetrievalService:
                     reranked_hits,
                     max_groups=max(top_k, 3),
                 )
-            subquery_coverage = _subquery_coverage_map(
-                subqueries=query_plan.subqueries,
-                hits=reranked_hits,
-            )
-            uncovered_subqueries_final = [
-                subquery
-                for subquery, coverage in subquery_coverage.items()
-                if coverage < 0.5
-            ]
-            coverage_ratio = (
-                round(
-                    sum(subquery_coverage.values()) / max(1, len(subquery_coverage)),
-                    3,
-                )
-                if subquery_coverage
-                else 1.0
-            )
-            citation_first_recommended = _should_recommend_citation_first(
-                intent=query_plan.intent,
-                subqueries=query_plan.subqueries,
-                coverage_ratio=coverage_ratio,
-                document_groups=document_groups,
-            )
             context_pack = self._build_context_pack(document_groups)
 
             set_span_attributes(
@@ -498,8 +475,6 @@ class RetrievalService:
                     'eduassist.retrieval.profile': query_plan.profile.value,
                     'eduassist.retrieval.canonical_lane': query_plan.canonical_lane,
                     'eduassist.retrieval.corrective_retry_applied': corrective_retry_applied,
-                    'eduassist.retrieval.coverage_ratio': coverage_ratio,
-                    'eduassist.retrieval.citation_first_recommended': citation_first_recommended,
                 }
             )
             metric_attributes = {
@@ -510,7 +485,6 @@ class RetrievalService:
                 'profile': query_plan.profile.value,
                 'reranker_applied': str(reranker_applied).lower(),
                 'corrective_retry_applied': str(corrective_retry_applied).lower(),
-                'citation_first_recommended': str(citation_first_recommended).lower(),
             }
             record_counter(
                 'eduassist_retrieval_requests',
@@ -541,10 +515,6 @@ class RetrievalService:
                     normalized_query=query_plan.normalized_query,
                     query_variants=query_plan.query_variants,
                     subqueries=query_plan.subqueries,
-                    subquery_coverage=subquery_coverage,
-                    uncovered_subqueries_final=uncovered_subqueries_final,
-                    coverage_ratio=coverage_ratio,
-                    citation_first_recommended=citation_first_recommended,
                     graph_rag_candidate=query_plan.graph_rag_candidate,
                     reranker_applied=reranker_applied,
                     corrective_retry_applied=corrective_retry_applied,
@@ -1135,27 +1105,17 @@ def _hit_haystack(hit: RetrievalHit) -> str:
 
 
 def _subquery_is_covered(subquery: str, hits: list[RetrievalHit]) -> bool:
-    return _subquery_coverage_score(subquery, hits) >= 0.5
-
-
-def _subquery_coverage_score(subquery: str, hits: list[RetrievalHit]) -> float:
     terms = _coverage_terms_for_subquery(subquery)
     if not terms:
-        return 1.0
+        return True
     haystacks = [_hit_haystack(hit) for hit in hits[:6]]
     best_overlap = 0
     for haystack in haystacks:
         overlap = sum(1 for term in terms if term in haystack)
         best_overlap = max(best_overlap, overlap)
-    denominator = 1 if len(terms) <= 2 else 2
-    return min(1.0, best_overlap / denominator)
-
-
-def _subquery_coverage_map(*, subqueries: list[str], hits: list[RetrievalHit]) -> dict[str, float]:
-    return {
-        subquery: round(_subquery_coverage_score(subquery, hits), 3)
-        for subquery in subqueries
-    }
+    if len(terms) <= 2:
+        return best_overlap >= 1
+    return best_overlap >= 2
 
 
 def _uncovered_subqueries(*, subqueries: list[str], hits: list[RetrievalHit]) -> list[str]:
@@ -1165,20 +1125,6 @@ def _uncovered_subqueries(*, subqueries: list[str], hits: list[RetrievalHit]) ->
 def _corrective_retry_query(subquery: str, *, intent: str) -> str:
     expansion = _INTENT_EXPANSIONS.get(intent, '')
     return ' '.join(part for part in (subquery, expansion) if part).strip()
-
-
-def _should_recommend_citation_first(
-    *,
-    intent: str,
-    subqueries: list[str],
-    coverage_ratio: float,
-    document_groups: list[RetrievalDocumentGroup],
-) -> bool:
-    if intent in {'corpus_overview', 'policy_lookup', 'admissions_lookup'}:
-        return True
-    if len(subqueries) >= 2 and len(document_groups) >= 2:
-        return True
-    return coverage_ratio < 0.85 and len(document_groups) >= 2
 
 
 def _has_synthesis_language(normalized: str, terms: set[str]) -> bool:

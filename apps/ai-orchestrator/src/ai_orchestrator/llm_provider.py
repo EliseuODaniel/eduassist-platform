@@ -9,7 +9,6 @@ from openai import AsyncOpenAI
 
 from .models import CalendarEventCard, MessageResponseCitation
 
-
 PROJECT_CONTEXT = (
     'Contexto do projeto EduAssist: voce atua como assistente institucional de uma escola de ensino fundamental II e ensino medio. '
     'O sistema tem foco em atendimento escolar seguro, auditavel e baseado em fontes. '
@@ -432,6 +431,114 @@ def _build_public_grounded_composition_sections(
         f'Historico recente:\n{memory_block}\n\n'
         f'Evidencias estruturadas:\n{evidence_block}\n\n'
         f'Rascunho grounded atual:\n{draft_text}'
+    )
+    return instructions, prompt
+
+
+def _build_grounded_answer_experience_sections(
+    *,
+    request_message: str,
+    draft_text: str,
+    mode: str,
+    domain: str,
+    access_tier: str,
+    selected_tools: list[str],
+    evidence_lines: list[str],
+    recent_messages: list[str],
+    school_profile: dict[str, Any] | None,
+    reason: str,
+    focus_summary: str | None = None,
+) -> tuple[str, str]:
+    school_name = str((school_profile or {}).get('school_name') or 'Colegio Horizonte')
+    evidence_block = '\n'.join(f'- {line}' for line in evidence_lines[:10]) or '- nenhuma evidencia adicional'
+    memory_block = '\n'.join(f'- {line}' for line in recent_messages[-6:]) or '- nenhum'
+    tools_block = ', '.join(selected_tools) if selected_tools else 'nenhuma'
+    instructions = (
+        'Voce e a camada final de experiencia conversacional grounded do EduAssist. '
+        f'{PROJECT_CONTEXT} '
+        'Sua tarefa e transformar uma resposta correta ou parcialmente correta em uma resposta final realmente adaptada ao que o usuario perguntou, '
+        'como o ChatGPT faria ao responder sobre um documento carregado: natural, inteligente, focada e contextualizada. '
+        'Mas faca isso sem inventar fatos. Use apenas o rascunho e as evidencias fornecidas. '
+        'Se o rascunho estiver amplo demais, recorte apenas a parte pedida pelo usuario. '
+        'Se o rascunho estiver no dominio errado ou nao responder exatamente, nao repita a parte errada; diga com clareza que a resposta atual nao trouxe evidencia suficiente '
+        'para confirmar exatamente aquele ponto. '
+        'Preserve nomes proprios, valores, datas, numeros de media, frequencia, horarios, codigos, canais oficiais e limites de autenticacao quando eles realmente ajudarem a responder. '
+        'Nao fale em "segundo o sistema" nem em "conforme o banco". Fale como um atendente escolar muito competente. '
+        'Nao use tom de menu, FAQ dura, template mecanico ou autopromocao. '
+        'Se o usuario estiver corrigindo um erro anterior, reconheca isso brevemente e corrija o rumo. '
+        'Se a pergunta pedir um item especifico, como uma materia, um aluno, uma fatura ou uma avaliacao, responda so aquele recorte. '
+        'Nao carregue assuntos anteriores que nao facam parte do foco atual. '
+        'Nao mencione notas, medias, disciplinas ou financeiro se isso nao foi pedido agora. '
+        'Use texto simples. Nao use Markdown, asteriscos, negrito, tabelas ou listas inline confusas. '
+        'Se precisar listar itens, coloque um item por linha, com prefixo "- ". '
+        'Se houver base para responder, responda de forma direta e satisfatoria. '
+        'Se nao houver base suficiente no rascunho/evidencias, seja honesto sobre o limite. '
+        'Devolva apenas a resposta final em portugues do Brasil.'
+    )
+    prompt = (
+        f'Escola: {school_name}\n'
+        f'Modo atual: {mode}\n'
+        f'Dominio atual: {domain}\n'
+        f'Nível de acesso: {access_tier}\n'
+        f'Reason do runtime: {reason}\n'
+        f'Tools envolvidos: {tools_block}\n\n'
+        f'Pergunta do usuario:\n{request_message}\n\n'
+        f'Foco resolvido deste turno:\n{focus_summary or "sem foco explicito"}\n\n'
+        f'Historico recente:\n{memory_block}\n\n'
+        f'Evidencias disponiveis:\n{evidence_block}\n\n'
+        f'Rascunho atual:\n{draft_text}'
+    )
+    return instructions, prompt
+
+
+def _build_context_repair_sections(
+    *,
+    request_message: str,
+    draft_text: str,
+    mode: str,
+    domain: str,
+    access_tier: str,
+    selected_tools: list[str],
+    evidence_lines: list[str],
+    recent_messages: list[str],
+    school_profile: dict[str, Any] | None,
+    reason: str,
+    focus_summary: str | None = None,
+    actor_summary: str | None = None,
+) -> tuple[str, str]:
+    school_name = str((school_profile or {}).get('school_name') or 'Colegio Horizonte')
+    evidence_block = '\n'.join(f'- {line}' for line in evidence_lines[:10]) or '- nenhuma evidencia adicional'
+    memory_block = '\n'.join(f'- {line}' for line in recent_messages[-6:]) or '- nenhum'
+    tools_block = ', '.join(selected_tools) if selected_tools else 'nenhuma'
+    instructions = (
+        'Voce e o planejador de reparo de contexto e grounding do EduAssist. '
+        f'{PROJECT_CONTEXT} '
+        'Sua tarefa e decidir o proximo melhor passo quando a resposta atual parece insuficiente, ambigua ou pouco satisfatoria. '
+        'Escolha entre quatro acoes: keep, clarify, retry_retrieval ou unavailable. '
+        'Preferir retry_retrieval quando a pergunta do usuario ja estiver compreensivel com a mensagem atual, o foco resolvido e o historico recente, '
+        'mas a recuperacao atual parece fraca, generica ou insuficiente. '
+        'Escolha clarify apenas quando faltar uma informacao essencial que precisa vir do usuario, como qual aluno, qual disciplina, qual periodo ou qual documento. '
+        'Escolha unavailable apenas quando a pergunta estiver clara e voce tiver alta confianca de que a informacao nao esta disponivel no material/servicos atuais, mesmo apos uma nova busca enriquecida. '
+        'Evite unavailable cedo demais. Se houver chance razoavel de uma nova busca com mais contexto resolver, prefira retry_retrieval. '
+        'Quando gerar retry_query, torne a consulta autocontida e mais especifica, incorporando entidades e restricoes do foco atual sem inventar fatos. '
+        'Quando gerar clarify, escreva apenas uma pergunta curta, natural e objetiva em portugues do Brasil. '
+        'Quando gerar unavailable, escreva uma resposta honesta e curta, sem dizer que e impossivel; diga apenas que nao encontrei base suficiente no momento. '
+        'Devolva apenas JSON valido com as chaves: action, message, retry_query, confidence, reason.'
+    )
+    prompt = (
+        f'Escola: {school_name}\n'
+        f'Modo atual: {mode}\n'
+        f'Dominio atual: {domain}\n'
+        f'Nível de acesso: {access_tier}\n'
+        f'Reason do runtime: {reason}\n'
+        f'Tools envolvidos: {tools_block}\n\n'
+        f'Pergunta do usuario:\n{request_message}\n\n'
+        f'Foco resolvido deste turno:\n{focus_summary or "sem foco explicito"}\n\n'
+        f'Resumo do ator:\n{actor_summary or "sem resumo do ator"}\n\n'
+        f'Historico recente:\n{memory_block}\n\n'
+        f'Evidencias disponiveis:\n{evidence_block}\n\n'
+        f'Resposta/rascunho atual:\n{draft_text}\n\n'
+        'Responda somente com JSON.'
     )
     return instructions, prompt
 
@@ -1135,6 +1242,311 @@ async def compose_public_grounded_with_provider(
             evidence_lines=evidence_lines,
             conversation_context=conversation_context,
             school_profile=school_profile,
+        )
+    return None
+
+
+async def compose_grounded_answer_experience_with_openai(
+    *,
+    settings: Any,
+    request_message: str,
+    draft_text: str,
+    mode: str,
+    domain: str,
+    access_tier: str,
+    selected_tools: list[str],
+    evidence_lines: list[str],
+    recent_messages: list[str],
+    school_profile: dict[str, Any] | None,
+    reason: str,
+    focus_summary: str | None = None,
+) -> str | None:
+    if not settings.openai_api_key:
+        return None
+    instructions, prompt = _build_grounded_answer_experience_sections(
+        request_message=request_message,
+        draft_text=draft_text,
+        mode=mode,
+        domain=domain,
+        access_tier=access_tier,
+        selected_tools=selected_tools,
+        evidence_lines=evidence_lines,
+        recent_messages=recent_messages,
+        school_profile=school_profile,
+        reason=reason,
+        focus_summary=focus_summary,
+    )
+    try:
+        client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
+        response = await client.responses.create(
+            model=settings.openai_model,
+            instructions=instructions,
+            input=prompt,
+        )
+        text = (response.output_text or '').strip()
+    except Exception:
+        return None
+    return text or None
+
+
+async def compose_grounded_answer_experience_with_google(
+    *,
+    settings: Any,
+    request_message: str,
+    draft_text: str,
+    mode: str,
+    domain: str,
+    access_tier: str,
+    selected_tools: list[str],
+    evidence_lines: list[str],
+    recent_messages: list[str],
+    school_profile: dict[str, Any] | None,
+    reason: str,
+    focus_summary: str | None = None,
+) -> str | None:
+    if not settings.google_api_key:
+        return None
+    instructions, prompt = _build_grounded_answer_experience_sections(
+        request_message=request_message,
+        draft_text=draft_text,
+        mode=mode,
+        domain=domain,
+        access_tier=access_tier,
+        selected_tools=selected_tools,
+        evidence_lines=evidence_lines,
+        recent_messages=recent_messages,
+        school_profile=school_profile,
+        reason=reason,
+        focus_summary=focus_summary,
+    )
+    payload = {
+        'system_instruction': {
+            'parts': [{'text': instructions}],
+        },
+        'contents': [
+            {
+                'role': 'user',
+                'parts': [{'text': prompt}],
+            }
+        ],
+        'generationConfig': _google_generation_config(
+            settings,
+            temperature=0.12,
+            top_p=0.9,
+            max_output_tokens=320,
+        ),
+    }
+    body = await _google_generate_content_body(
+        settings=settings,
+        payload=payload,
+        timeout=18.0,
+    )
+    if not isinstance(body, dict):
+        return None
+    merged = _google_extract_text(body)
+    return merged or None
+
+
+async def compose_grounded_answer_experience_with_provider(
+    *,
+    settings: Any,
+    request_message: str,
+    draft_text: str,
+    mode: str,
+    domain: str,
+    access_tier: str,
+    selected_tools: list[str],
+    evidence_lines: list[str],
+    recent_messages: list[str],
+    school_profile: dict[str, Any] | None,
+    reason: str,
+    focus_summary: str | None = None,
+) -> str | None:
+    if settings.llm_provider == 'openai':
+        return await compose_grounded_answer_experience_with_openai(
+            settings=settings,
+            request_message=request_message,
+            draft_text=draft_text,
+            mode=mode,
+            domain=domain,
+            access_tier=access_tier,
+            selected_tools=selected_tools,
+            evidence_lines=evidence_lines,
+            recent_messages=recent_messages,
+            school_profile=school_profile,
+            reason=reason,
+            focus_summary=focus_summary,
+        )
+    if settings.llm_provider in {'google', 'gemini'}:
+        return await compose_grounded_answer_experience_with_google(
+            settings=settings,
+            request_message=request_message,
+            draft_text=draft_text,
+            mode=mode,
+            domain=domain,
+            access_tier=access_tier,
+            selected_tools=selected_tools,
+            evidence_lines=evidence_lines,
+            recent_messages=recent_messages,
+            school_profile=school_profile,
+            reason=reason,
+            focus_summary=focus_summary,
+        )
+    return None
+
+
+async def plan_context_repair_with_openai(
+    *,
+    settings: Any,
+    request_message: str,
+    draft_text: str,
+    mode: str,
+    domain: str,
+    access_tier: str,
+    selected_tools: list[str],
+    evidence_lines: list[str],
+    recent_messages: list[str],
+    school_profile: dict[str, Any] | None,
+    reason: str,
+    focus_summary: str | None = None,
+    actor_summary: str | None = None,
+) -> dict[str, Any] | None:
+    if not settings.openai_api_key:
+        return None
+    instructions, prompt = _build_context_repair_sections(
+        request_message=request_message,
+        draft_text=draft_text,
+        mode=mode,
+        domain=domain,
+        access_tier=access_tier,
+        selected_tools=selected_tools,
+        evidence_lines=evidence_lines,
+        recent_messages=recent_messages,
+        school_profile=school_profile,
+        reason=reason,
+        focus_summary=focus_summary,
+        actor_summary=actor_summary,
+    )
+    try:
+        client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
+        response = await client.responses.create(
+            model=settings.openai_model,
+            instructions=instructions,
+            input=prompt,
+        )
+        text = (response.output_text or '').strip()
+    except Exception:
+        return None
+    return _extract_json_object(text or '')
+
+
+async def plan_context_repair_with_google(
+    *,
+    settings: Any,
+    request_message: str,
+    draft_text: str,
+    mode: str,
+    domain: str,
+    access_tier: str,
+    selected_tools: list[str],
+    evidence_lines: list[str],
+    recent_messages: list[str],
+    school_profile: dict[str, Any] | None,
+    reason: str,
+    focus_summary: str | None = None,
+    actor_summary: str | None = None,
+) -> dict[str, Any] | None:
+    if not settings.google_api_key:
+        return None
+    instructions, prompt = _build_context_repair_sections(
+        request_message=request_message,
+        draft_text=draft_text,
+        mode=mode,
+        domain=domain,
+        access_tier=access_tier,
+        selected_tools=selected_tools,
+        evidence_lines=evidence_lines,
+        recent_messages=recent_messages,
+        school_profile=school_profile,
+        reason=reason,
+        focus_summary=focus_summary,
+        actor_summary=actor_summary,
+    )
+    payload = {
+        'system_instruction': {
+            'parts': [{'text': instructions}],
+        },
+        'contents': [
+            {
+                'role': 'user',
+                'parts': [{'text': prompt}],
+            }
+        ],
+        'generationConfig': _google_generation_config(
+            settings,
+            temperature=0.05,
+            top_p=0.9,
+            max_output_tokens=220,
+        ),
+    }
+    body = await _google_generate_content_body(
+        settings=settings,
+        payload=payload,
+        timeout=18.0,
+    )
+    if not isinstance(body, dict):
+        return None
+    merged = _google_extract_text(body)
+    return _extract_json_object(merged or '')
+
+
+async def plan_context_repair_with_provider(
+    *,
+    settings: Any,
+    request_message: str,
+    draft_text: str,
+    mode: str,
+    domain: str,
+    access_tier: str,
+    selected_tools: list[str],
+    evidence_lines: list[str],
+    recent_messages: list[str],
+    school_profile: dict[str, Any] | None,
+    reason: str,
+    focus_summary: str | None = None,
+    actor_summary: str | None = None,
+) -> dict[str, Any] | None:
+    if settings.llm_provider == 'openai':
+        return await plan_context_repair_with_openai(
+            settings=settings,
+            request_message=request_message,
+            draft_text=draft_text,
+            mode=mode,
+            domain=domain,
+            access_tier=access_tier,
+            selected_tools=selected_tools,
+            evidence_lines=evidence_lines,
+            recent_messages=recent_messages,
+            school_profile=school_profile,
+            reason=reason,
+            focus_summary=focus_summary,
+            actor_summary=actor_summary,
+        )
+    if settings.llm_provider in {'google', 'gemini'}:
+        return await plan_context_repair_with_google(
+            settings=settings,
+            request_message=request_message,
+            draft_text=draft_text,
+            mode=mode,
+            domain=domain,
+            access_tier=access_tier,
+            selected_tools=selected_tools,
+            evidence_lines=evidence_lines,
+            recent_messages=recent_messages,
+            school_profile=school_profile,
+            reason=reason,
+            focus_summary=focus_summary,
+            actor_summary=actor_summary,
         )
     return None
 
