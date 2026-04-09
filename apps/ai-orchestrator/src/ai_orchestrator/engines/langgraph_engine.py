@@ -10,9 +10,9 @@ class LangGraphEngine(ResponseEngine):
     ready = True
 
     async def respond(self, *, request: Any, settings: Any, engine_mode: str | None = None) -> Any:
-        from ..runtime import generate_message_response
+        from ..langgraph_dedicated_runtime import generate_langgraph_message_response
 
-        return await generate_message_response(
+        return await generate_langgraph_message_response(
             request=request,
             settings=settings,
             engine_name=self.name,

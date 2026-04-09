@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 from pathlib import Path
-import re
 from typing import Any
 
 
@@ -134,12 +134,14 @@ def compose_public_academic_policy_overview(profile: dict[str, Any] | None) -> s
     return " ".join(
         part
         for part in (
+            "Na pratica, convivencia, frequencia, recuperacao e promocao precisam ser lidas como um mesmo fluxo academico.",
             _first_line(evaluation),
             _first_line(feedback),
             _first_line(recovery),
             _first_line(second_call),
             f"Na referencia publica atual, a escola trabalha com media {average}/10 e frequencia minima de {minimum_attendance}% por componente.",
             _first_line(promotion),
+            "Primeiro a familia acompanha criterio, devolutiva e frequencia; depois usa segunda chamada e recuperacao quando houver impacto academico; e, por fim, observa a decisao final de promocao pelo canal oficial.",
         )
         if part
     ).strip()
@@ -164,16 +166,172 @@ def compose_public_conduct_frequency_punctuality(profile: dict[str, Any] | None)
             _first_line(manual_justifications),
             f"A politica publica de frequencia reforca presenca minima de {minimum_attendance}% por componente e alerta academico quando a recorrencia de faltas compromete a aprovacao.",
             _first_line(chronic),
+            "Na pratica, o proximo passo e justificar faltas no prazo, alinhar pontualidade e acionar a coordenacao assim que a frequencia comecar a comprometer a rotina academica.",
         )
         if part
     ).strip()
+
+
+def compose_public_conduct_policy_contextual_answer(
+    message: str,
+    *,
+    profile: dict[str, Any] | None = None,
+) -> str | None:
+    normalized = _normalize_space(message).lower()
+    if not normalized:
+        return None
+    conduct_answer = compose_public_conduct_frequency_punctuality(profile)
+    if not conduct_answer:
+        return None
+    if (
+        any(term in normalized for term in ("convivencia", "convivência", "comportamento"))
+        and any(term in normalized for term in ("frequencia", "frequência", "faltas", "pontualidade", "atrasos"))
+    ):
+        return conduct_answer
+    school_name = _school_name(profile)
+    concise_conduct = (
+        "Na leitura publica atual, bom comportamento significa respeito mutuo, linguagem adequada, cuidado com pessoas, rotina e patrimonio; "
+        "ja agressao, intimidacao, discriminacao, bullying, assedio ou uso indevido de imagem entram como ocorrencias que a escola trata com coordenacao e, se necessario, encaminhamento humano."
+    )
+    concise_protocol = (
+        f"No {school_name}, o encaminhamento institucional passa por coordenacao, registro formal pelos canais oficiais e, em ocorrencias graves, escalonamento para a direcao."
+    )
+    conduct_terms = (
+        "bullying",
+        "assedio",
+        "assédio",
+        "agressao",
+        "agressão",
+        "intimidacao",
+        "intimidação",
+        "discriminacao",
+        "discriminação",
+        "bom comportamento",
+        "mal comportamento",
+        "comportamento",
+        "convivencia",
+        "convivência",
+        "uso indevido de imagem",
+        "expulsao",
+        "expulsão",
+        "exclusao",
+        "exclusão",
+        "desligamento",
+        "desligar",
+        "bomba",
+        "explosivo",
+        "explosivos",
+        "seguranca",
+        "segurança",
+    )
+    if not any(term in normalized for term in conduct_terms):
+        return None
+    if any(term in normalized for term in ("expulsao", "expulsão", "exclusao", "exclusão", "desligamento")):
+        return " ".join(
+            part
+            for part in (
+                "Na base publica atual, a escola nao publica uma tabela fechada de hipoteses de expulsao, exclusao ou desligamento.",
+                concise_conduct,
+                concise_protocol,
+            )
+            if part
+        ).strip()
+    if any(term in normalized for term in ("bomba", "explosivo", "explosivos", "seguranca", "segurança")):
+        return " ".join(
+            part
+            for part in (
+                "Pelo material publico, condutas que colocam pessoas, patrimonio ou seguranca em risco nao sao tratadas como comportamento permitido.",
+                concise_conduct,
+                concise_protocol,
+            )
+            if part
+        ).strip()
+    if any(term in normalized for term in ("bom comportamento", "mal comportamento", "comportamento")):
+        return " ".join(
+            part
+            for part in (
+                concise_conduct,
+                "Na pratica, se a familia precisar tratar um episodio concreto, o primeiro passo e acionar a coordenacao pelo canal oficial.",
+            )
+            if part
+        ).strip()
+    if any(term in normalized for term in ("procedimento", "protocolo", "permitido", "permitida", "pensa", "define", "o que acontece")):
+        return " ".join(
+            part
+            for part in (
+                concise_conduct,
+                concise_protocol,
+            )
+            if part
+        ).strip()
+    return concise_conduct
+
+
+def _looks_like_public_conduct_policy_query(normalized: str) -> bool:
+    conduct_terms = (
+        "convivencia",
+        "convivência",
+        "frequencia",
+        "frequência",
+        "pontualidade",
+        "bullying",
+        "assedio",
+        "assédio",
+        "agressao",
+        "agressão",
+        "intimidacao",
+        "intimidação",
+        "discriminacao",
+        "discriminação",
+        "bom comportamento",
+        "mal comportamento",
+        "comportamento",
+        "expulsao",
+        "expulsão",
+        "exclusao",
+        "exclusão",
+        "desligamento",
+        "desligar",
+        "bomba",
+        "explosivo",
+        "explosivos",
+        "seguranca",
+        "segurança",
+        "ocorrencia disciplinar",
+        "ocorrência disciplinar",
+    )
+    if not any(term in normalized for term in conduct_terms):
+        return False
+    action_terms = (
+        "regra",
+        "regras",
+        "manual",
+        "regulamento",
+        "politica",
+        "política",
+        "escola",
+        "procedimento",
+        "protocolo",
+        "permitido",
+        "permitida",
+        "o que acontece",
+        "o que gera",
+        "qual e",
+        "qual é",
+        "como a escola",
+        "como funciona",
+        "quando",
+        "pode levar",
+    )
+    return any(term in normalized for term in action_terms)
 
 
 def compose_public_teacher_directory_boundary(profile: dict[str, Any] | None) -> str | None:
     school_name = _school_name(profile)
     return (
         f"O {school_name} nao divulga nome nem contato direto de professor individual por disciplina. "
-        "Quando a familia precisa tratar esse tipo de assunto, o caminho publico correto e a coordenacao pedagogica, que faz a ponte institucional."
+        "Quando a familia precisa tratar esse tipo de assunto, o caminho publico correto e a coordenacao pedagogica, que faz a ponte institucional. "
+        "Na pratica, o proximo passo e registrar a demanda pelo canal oficial da secretaria ou da coordenacao, para que a escola devolva pelo fluxo institucional."
     )
 
 
@@ -196,15 +354,16 @@ def compose_public_bolsas_and_processes(profile: dict[str, Any] | None) -> str |
     return " ".join(
         part
         for part in (
-            _first_line(edital["abrangencia"]),
-            _first_line(edital["inscricao"]),
+            "Bolsas e descontos entram como frente comercial e de concessao; rematricula, transferencia e cancelamento entram como trilhas administrativas diferentes.",
+            f"Bolsas e descontos: {_first_line(edital['abrangencia'])}",
+            f"Inscricao e analise: {_first_line(edital['inscricao'])}",
             _first_line(edital["analise"]),
-            _first_line(edital["manutencao"]),
-            _first_line(rematricula["rematricula"]),
-            _first_line(rematricula["transfer_in"]),
-            _first_line(rematricula["transfer_out"]),
-            _first_line(rematricula["cancelamento"]),
-            _first_line(rematricula["prazos"]),
+            f"Manutencao do beneficio: {_first_line(edital['manutencao'])}",
+            f"Rematricula: {_first_line(rematricula['rematricula'])}",
+            f"Transferencia de entrada: {_first_line(rematricula['transfer_in'])}",
+            f"Transferencia de saida: {_first_line(rematricula['transfer_out'])}",
+            f"Cancelamento: {_first_line(rematricula['cancelamento'])}",
+            f"Prazos e documentos: {_first_line(rematricula['prazos'])}",
         )
         if part
     ).strip()
@@ -213,9 +372,22 @@ def compose_public_bolsas_and_processes(profile: dict[str, Any] | None) -> str |
 def compose_public_health_second_call() -> str | None:
     attested = _section("protocolo-saude-medicacao-e-emergencias.md", "Atestados e justificativas")
     second_call = _section("politica-avaliacao-recuperacao-e-promocao.md", "Segunda chamada")
-    if not attested and not second_call:
+    recovery = _section("politica-avaliacao-recuperacao-e-promocao.md", "Recuperacao")
+    if not attested and not second_call and not recovery:
         return None
-    return " ".join(part for part in (_first_line(attested), _first_line(second_call)) if part).strip()
+    return " ".join(
+        part
+        for part in (
+            "Na documentacao publica da escola, a sequencia e direta.",
+            "Primeiro passo: registrar atestado ou justificativa formal da ausencia.",
+            _first_line(attested),
+            "Segundo passo: com esse registro em maos, a familia solicita segunda chamada.",
+            _first_line(second_call),
+            "Se ainda assim o desempenho ficar abaixo da referencia, o proximo passo passa a ser a recuperacao prevista na politica academica.",
+            _first_line(recovery),
+        )
+        if part
+    ).strip()
 
 
 def compose_public_permanence_and_family_support(profile: dict[str, Any] | None) -> str | None:
@@ -258,6 +430,157 @@ def compose_public_health_authorizations_bridge() -> str | None:
     ).strip()
 
 
+def compose_public_inclusion_accessibility() -> str | None:
+    inclusion = _load_public_doc("inclusao-acessibilidade-e-seguranca.md")
+    support = _section("inclusao-acessibilidade-e-seguranca.md", "Recursos de apoio")
+    convivencia = _section("inclusao-acessibilidade-e-seguranca.md", "Convivencia")
+    health_emergencies = _section("inclusao-acessibilidade-e-seguranca.md", "Saude e emergencias")
+    if not any((inclusion, support, convivencia, health_emergencies)):
+        return None
+    support_line = ""
+    if support:
+        cleaned = _normalize_space(support).lstrip("- ").strip()
+        support_line = _safe_sentence(
+            f"Nos recursos de apoio, a escola cita {cleaned}"
+            if cleaned
+            else ""
+        )
+    return " ".join(
+        part
+        for part in (
+            "A base publica trata inclusao, acessibilidade e protecao do estudante como um mesmo compromisso institucional.",
+            _first_line(inclusion),
+            support_line,
+            _first_line(convivencia),
+            _first_line(health_emergencies),
+        )
+        if part
+    ).strip()
+
+
+def compose_public_integral_study_support() -> str | None:
+    structure = _section("programa-periodo-integral-e-estudo-orientado.md", "Estrutura do programa")
+    guided_study = _section("programa-periodo-integral-e-estudo-orientado.md", "Estudo orientado")
+    afternoon = _section("programa-periodo-integral-e-estudo-orientado.md", "Rotina da tarde")
+    activities = _section("programa-periodo-integral-e-estudo-orientado.md", "Atividades complementares")
+    limits = _section("programa-periodo-integral-e-estudo-orientado.md", "Limites do acompanhamento")
+    if not any((structure, guided_study, afternoon, activities, limits)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            "Fora da sala regular, o material publico mostra que periodo integral e estudo orientado se completam como camadas de apoio ao estudante.",
+            _first_line(structure),
+            _first_line(guided_study),
+            _first_line(afternoon),
+            _first_line(activities),
+            _first_line(limits),
+            "Na pratica, primeiro a familia define se precisa de permanencia ampliada; depois verifica como estudo orientado, oficinas e apoio escolar entram na rotina do contraturno.",
+        )
+        if part
+    ).strip()
+
+
+def compose_public_health_emergency_bundle() -> str | None:
+    health_info = _section("protocolo-saude-medicacao-e-emergencias.md", "Informacoes de saude no cadastro")
+    medication_eventual = _section("protocolo-saude-medicacao-e-emergencias.md", "Medicacao de uso eventual")
+    medication_continuous = _section("protocolo-saude-medicacao-e-emergencias.md", "Medicacao de uso continuo")
+    malaise = _section("protocolo-saude-medicacao-e-emergencias.md", "Mal-estar durante a rotina escolar")
+    emergencies = _section("protocolo-saude-medicacao-e-emergencias.md", "Emergencias")
+    digital_limits = _section("protocolo-saude-medicacao-e-emergencias.md", "Limites do canal digital")
+    attested = _section("protocolo-saude-medicacao-e-emergencias.md", "Atestados e justificativas")
+    second_call = _section("politica-avaliacao-recuperacao-e-promocao.md", "Segunda chamada")
+    recovery = _section("politica-avaliacao-recuperacao-e-promocao.md", "Recuperacao")
+    if not any((health_info, medication_eventual, medication_continuous, malaise, emergencies, digital_limits, attested, second_call, recovery)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            "No material publico, uso de medicacao, justificativa de ausencia, reorganizacao avaliativa e resposta a emergencia aparecem como partes do mesmo protocolo escolar.",
+            _first_line(health_info),
+            _first_line(attested),
+            _first_line(medication_eventual),
+            _first_line(medication_continuous),
+            _first_line(malaise),
+            _first_line(second_call),
+            _first_line(recovery),
+            _first_line(emergencies),
+            _first_line(digital_limits),
+        )
+        if part
+    ).strip()
+
+
+def compose_public_outings_authorizations() -> str | None:
+    purpose = _section("saidas-pedagogicas-eventos-e-autorizacoes.md", "Finalidade")
+    authorization = _section("saidas-pedagogicas-eventos-e-autorizacoes.md", "Autorizacao")
+    essentials = _section("saidas-pedagogicas-eventos-e-autorizacoes.md", "Informacoes essenciais")
+    restrictions = _section("saidas-pedagogicas-eventos-e-autorizacoes.md", "Restricoes")
+    internal_events = _section("saidas-pedagogicas-eventos-e-autorizacoes.md", "Eventos internos")
+    if not any((purpose, authorization, essentials, restrictions, internal_events)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            "No material publico, o protocolo de saidas pedagogicas, eventos externos, viagens e autorizacao previa da familia aparece como um mesmo fluxo operacional.",
+            _first_line(purpose),
+            _first_line(authorization),
+            _first_line(essentials),
+            _first_line(restrictions),
+            _first_line(internal_events),
+            "Na pratica, o passo a passo publico e este: a escola comunica a atividade, a familia confere data e regras, envia a autorizacao no prazo e acompanha as orientacoes de uniforme, saida e retorno.",
+        )
+        if part
+    ).strip()
+
+
+def compose_public_transport_uniform_bundle() -> str | None:
+    transport = _load_public_doc("transporte-alimentacao-uniforme.md")
+    meal = _section("transporte-alimentacao-uniforme.md", "Cantina e almoco")
+    restrictions = _section("transporte-alimentacao-uniforme.md", "Restricoes alimentares")
+    uniform_use = _section("transporte-alimentacao-uniforme.md", "Uso")
+    uniform_purchase = _section("transporte-alimentacao-uniforme.md", "Compra")
+    if not any((transport, meal, restrictions, uniform_use, uniform_purchase)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            "Na documentacao publica da escola, transporte, uniforme e refeicoes aparecem como tres frentes da rotina diaria: deslocamento ate a escola, uso do uniforme institucional e alimentacao no periodo escolar.",
+            _first_line(transport),
+            _first_line(meal),
+            _first_line(restrictions),
+            _first_line(uniform_use),
+            _first_line(uniform_purchase),
+        )
+        if part
+    ).strip()
+
+
+def compose_public_governance_protocol(profile: dict[str, Any] | None) -> str | None:
+    leadership = _section("governanca-e-lideranca.md", "Estrutura de lideranca")
+    family_relationship = _section("governanca-e-lideranca.md", "Relacionamento com familias")
+    channels = _section("governanca-e-lideranca.md", "Canais institucionais")
+    meetings = _section("governanca-e-lideranca.md", "Reunioes e acompanhamento")
+    secretaria = _section("secretaria-documentacao-e-prazos.md", "Canais para documentos")
+    school_name = _school_name(profile)
+    if not any((leadership, family_relationship, channels, meetings, secretaria)):
+        return None
+    return " ".join(
+        part
+        for part in (
+            f"Na base publica do {school_name}, a trilha institucional fica mais clara quando secretaria, coordenacao, direcao e canais oficiais aparecem como etapas complementares de encaminhamento e protocolo.",
+            "Na pratica, o protocolo formal costuma seguir esta ordem: secretaria para registrar e orientar, coordenacao para acompanhar o tema pedagogico ou de convivio, e direcao como instancia de escalonamento institucional quando o assunto sai da rotina normal.",
+            _first_line(secretaria),
+            _first_line(leadership),
+            _first_line(family_relationship),
+            _first_line(channels),
+            _first_line(meetings),
+            "Se a familia precisar formalizar um impasse, o proximo passo e abrir o protocolo pelo canal oficial e guardar o registro para o escalonamento ate a direcao.",
+        )
+        if part
+    ).strip()
+
+
 def compose_public_secretaria_portal_credentials() -> str | None:
     documents = _section("secretaria-documentacao-e-prazos.md", "Canais para documentos")
     timelines = _section("secretaria-documentacao-e-prazos.md", "Prazos tipicos")
@@ -271,13 +594,16 @@ def compose_public_secretaria_portal_credentials() -> str | None:
     return " ".join(
         part
         for part in (
-            "Para documentos, portal e credenciais, a familia precisa tratar secretaria, canais digitais e suporte como um fluxo unico.",
+            "Para documentos, portal e credenciais, a familia precisa olhar tudo como um fluxo unico e em ordem.",
+            "Primeiro entram secretaria, envio de documentos e prazos tipicos da matricula ou da declaracao pedida.",
             _first_line(documents),
             _first_line(timelines),
             _first_line(declarations),
+            "Depois entram portal, aplicativo e credenciais pessoais para acompanhar a rotina sem depender de atendimento manual.",
             _first_line(credentials),
             _first_line(portal),
             _first_line(linkage),
+            "Se houver perda de acesso ou erro de cadastro, o proximo passo e acionar recuperacao e suporte.",
             _first_line(support),
         )
         if part
@@ -304,6 +630,7 @@ def compose_public_first_month_risks(profile: dict[str, Any] | None) -> str | No
             _first_line(linkage),
             _first_line(support),
             _first_line(punctuality),
+            "Na pratica, primeiro a familia precisa regularizar documentos e credenciais; depois, manter portal, cadastro e frequencia em dia para nao desorganizar o primeiro mes.",
         )
         if part
     ).strip()
@@ -320,6 +647,7 @@ def compose_public_process_compare() -> str | None:
     return " ".join(
         part
         for part in (
+            "Na pratica, rematricula, transferencia e cancelamento sao processos diferentes e cada um pede documentos, prazos e protocolo proprio.",
             f"Rematricula: {_first_line(rematricula)}",
             f"Transferencia de entrada: {_first_line(transfer_in)}",
             f"Transferencia de saida: {_first_line(transfer_out)}",
@@ -428,7 +756,7 @@ def compose_public_calendar_visibility(profile: dict[str, Any] | None) -> str | 
             "No calendario publico, o que costuma ficar aberto para familias sao marcos institucionais gerais e eventos coletivos."
         )
     parts.append(
-        "O que depende de autenticacao ou contexto interno sao detalhes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos."
+        "A fronteira pratica aparece assim: orientacoes abertas circulam no calendario publico, no portal institucional aberto e nos canais oficiais; o que so ganha detalhe depois do login, da autenticacao e da conta vinculada no portal sao informacoes individuais por aluno, convites direcionados, protocolos, situacoes financeiras e acompanhamentos protegidos."
     )
     if communication:
         parts.append(_first_line(communication))
@@ -485,10 +813,10 @@ def compose_public_family_new_calendar_assessment_enrollment() -> str | None:
     return " ".join(
         part
         for part in (
-            "Para uma familia nova, os tres documentos cumprem papeis diferentes e complementares.",
-            "Matricula: o manual orienta a entrada correta e a documentacao inicial.",
-            "Calendario: o calendario letivo organiza o comeco do ano e os primeiros marcos escolares.",
-            "Avaliacoes: a agenda avaliativa mostra quando entram devolutivas, provas e recuperacoes.",
+            "Para uma familia nova, os tres documentos cumprem papeis diferentes e complementares, e fazem mais sentido quando lidos em ordem.",
+            "Primeiro entram matricula, documentacao inicial, envio digital e canais de atendimento.",
+            "Depois entram calendario letivo e inicio das aulas, para organizar o comeco do ano.",
+            "Na sequencia entram agenda de avaliacoes, devolutivas e recuperacoes, para a familia nao perder os marcos pedagogicos.",
             f"Calendario letivo: {_first_line(school_calendar['start'])}",
             f"Ingresso e marcos do ano: {_first_line(school_calendar['entry'])}",
             f"Relacao com a familia: {_first_line(school_calendar['family'])}",
@@ -499,7 +827,7 @@ def compose_public_family_new_calendar_assessment_enrollment() -> str | None:
             f"Documentos e envio: {_first_line(enrollment['documents'])}",
             _first_line(enrollment["digital"]),
             _first_line(enrollment["service"]),
-            "Na pratica, uma familia nova usa o manual para entrar corretamente, o calendario para se orientar no ano e a agenda de avaliacoes para nao perder janelas pedagogicas e comunicados importantes.",
+            "Na pratica, a familia usa o manual para entrar corretamente, o calendario para se orientar antes e logo depois do inicio das aulas, e a agenda para acompanhar provas, comunicados e recuperacoes.",
         )
         if part
     ).strip()
@@ -516,9 +844,11 @@ def compose_public_timeline_lifecycle_bundle() -> str | None:
     return " ".join(
         part
         for part in (
-            f"Antes da confirmacao da vaga: {_first_line(school_calendar['entry'])}",
-            f"Depois do inicio das aulas: {_first_line(school_calendar['start'])}",
-            f"Primeira reuniao com responsaveis: {_first_line(school_calendar['family'])}",
+            f"1) Matricula e ingresso: {_first_line(school_calendar['entry'])}",
+            f"2) Inicio das aulas: {_first_line(school_calendar['start'])}",
+            f"3) Reuniao com responsaveis: {_first_line(school_calendar['family'])}",
+            "Na pratica, a ordem publica do ciclo e esta: primeiro matricula e ingresso, depois inicio das aulas e, na sequencia, a reuniao inicial com as familias.",
+            "Se a familia quiser se organizar sem perder marcos, o melhor uso desse fluxo e confirmar a matricula primeiro, acompanhar o inicio das aulas em seguida e deixar a reuniao com responsaveis como marco de alinhamento inicial.",
         )
         if part
     ).strip()
@@ -543,6 +873,10 @@ def compose_public_year_three_phases(profile: dict[str, Any] | None) -> str | No
         parts.append(f"Rotina academica: {school_year}")
     if graduation:
         parts.append(f"Fechamento: {graduation}")
+    if parts:
+        parts.append(
+            "Na pratica, o ano aparece em tres blocos: primeiro admissao para entrada, depois rotina academica para acompanhamento continuo e, por fim, fechamento para encerramento e marcos finais."
+        )
     return " ".join(parts).strip() or None
 
 
@@ -551,10 +885,190 @@ def match_public_canonical_lane(message: str) -> str | None:
     if not normalized:
         return None
     if (
+        any(term in normalized for term in ("inclus", "acessib"))
+        and any(
+            term in normalized
+            for term in ("acolh", "prote", "seguran", "compromisso institucional", "necessidades especificas", "necessidades específicas")
+        )
+    ):
+        return "public_bundle.inclusion_accessibility"
+    if (
+        any(
+            term in normalized
+            for term in (
+                "necessidades especificas",
+                "necessidades específicas",
+                "mediacao de rotina",
+                "mediação de rotina",
+                "rede de apoio",
+                "equilibrio entre apoio",
+                "equilíbrio entre apoio",
+            )
+        )
+        and any(term in normalized for term in ("seguran", "acolh", "prote", "acessib", "inclus"))
+    ):
+        return "public_bundle.inclusion_accessibility"
+    if (
+        any(term in normalized for term in ("periodo integral", "período integral", "integral"))
+        and any(term in normalized for term in ("estudo orientado", "apoio ao estudo", "suporte ao aluno", "alem da sala", "além da sala"))
+    ):
+        return "public_bundle.integral_study_support"
+    if (
+        any(term in normalized for term in ("turno estendido", "contraturno", "jornada estendida", "tempo estendido"))
+        and any(term in normalized for term in ("estudo guiado", "estudo orientado", "apoio ao estudo", "apoio fora da sala", "desenho"))
+    ):
+        return "public_bundle.integral_study_support"
+    if (
+        sum(
+            1
+            for term in ("turno estendido", "contraturno", "oficinas", "refeicao", "refeição", "permanencia", "permanência", "estudo acompanhado")
+            if term in normalized
+        )
+        >= 3
+        and any(term in normalized for term in ("rotina", "arquitetura", "jornada", "ecossistema", "permanencia no contraturno", "permanência no contraturno"))
+    ):
+        return "public_bundle.integral_study_support"
+    if (
+        any(term in normalized for term in ("medicacao", "medicação", "saude", "saúde"))
+        and any(term in normalized for term in ("emerg", "mal-estar", "mal estar", "monitoramento"))
+        and not (
+            any(term in normalized for term in ("atestado", "atestados", "justificativa", "justificativas"))
+            and any(term in normalized for term in ("segunda chamada", "segunda", "chamada"))
+            and any(term in normalized for term in ("recuperacao", "recuperação", "avaliacao", "avaliação", "perde uma avaliacao", "perde uma avaliação"))
+        )
+    ):
+        return "public_bundle.health_emergency_bundle"
+    if (
+        any(term in normalized for term in ("saude", "saúde", "atestado", "reorganiz", "reorganização"))
+        and any(term in normalized for term in ("avali", "devolut", "recuper", "rotina escolar", "recompos"))
+        and not (
+            any(term in normalized for term in ("segunda chamada", "segunda", "chamada"))
+            and any(term in normalized for term in ("recuperacao", "recuperação", "avaliacao", "avaliação", "perde uma avaliacao", "perde uma avaliação"))
+        )
+    ):
+        return "public_bundle.health_emergency_bundle"
+    if (
+        any(term in normalized for term in ("saida", "saída", "eventos externos", "saidas pedagogicas", "saídas pedagógicas"))
+        and any(term in normalized for term in ("autoriz", "familias", "famílias", "previa", "prévia"))
+    ):
+        return "public_bundle.outings_authorizations"
+    if (
+        any(term in normalized for term in ("atividade externa", "atividades externas", "risco", "anuencia", "anuência", "retorno"))
+        and any(term in normalized for term in ("autoriz", "saude", "saúde", "impedimento", "familia", "família"))
+    ):
+        return "public_bundle.outings_authorizations"
+    if (
+        any(term in normalized for term in ("transporte", "uniforme"))
+        and any(term in normalized for term in ("alimentacao", "alimentação", "cantina", "almoco", "almoço", "refeicoes", "refeições", "rotina fora da sala", "rotina"))
+    ):
+        return "public_bundle.transport_uniform_bundle"
+    if (
+        any(term in normalized for term in ("deslocamento", "refeicao", "refeição", "refeicoes", "refeições", "identificacao", "identificação", "itens institucionais"))
+        and any(
+            term in normalized
+            for term in ("rotina", "entrada", "saida", "saída", "uniforme", "transporte", "cotidiano fora da aula", "experiencia operacional", "experiência operacional", "uso diario", "uso diário")
+        )
+    ):
+        return "public_bundle.transport_uniform_bundle"
+    if (
+        any(term in normalized for term in ("direcao", "direção"))
+        and any(term in normalized for term in ("coordenacao", "coordenação", "cotidiano", "assunto foge", "assunto sair do cotidiano"))
+        and any(term in normalized for term in ("protocolo", "formal"))
+    ):
+        return "public_bundle.governance_protocol"
+    if (
+        any(term in normalized for term in ("lideranca maior", "liderança maior", "escalonamento", "escala de autoridade", "autoridade institucional"))
+        and any(term in normalized for term in ("impasse", "rotina normal", "encaminhamento", "coordenacao", "coordenação", "direcao", "direção"))
+    ):
+        return "public_bundle.governance_protocol"
+    if (
+        any(term in normalized for term in ("governanca", "governança"))
+        and any(term in normalized for term in ("demanda formal", "demandas formais", "demanda", "demandas"))
+        and any(term in normalized for term in ("direcao", "direção"))
+        and any(term in normalized for term in ("protocolo", "viram protocolo", "vira protocolo"))
+    ):
+        return "public_bundle.governance_protocol"
+    if (
+        sum(
+            1
+            for term in ("secretaria", "coordenacao", "coordenação", "direcao", "direção", "canais oficiais", "trilha institucional", "tema caminha", "escalonamento")
+            if term in normalized
+        )
+        >= 3
+    ):
+        return "public_bundle.governance_protocol"
+    if (
         any(term in normalized for term in ("professor", "professora", "docente"))
-        and any(term in normalized for term in ("contato", "telefone", "canal", "como falar", "como falo"))
+        and any(
+            term in normalized
+            for term in (
+                "contato",
+                "telefone",
+                "canal",
+                "como falar",
+                "como falo",
+                "falar com",
+                "quero falar com",
+                "conversar com",
+                "falar direto com",
+                "falar diretamente com",
+            )
+        )
     ):
         return "public_bundle.teacher_directory_boundary"
+    if (
+        any(term in normalized for term in ("antes da confirmacao da vaga", "antes da confirmação da vaga", "depois do inicio das aulas", "depois do início das aulas"))
+        or (
+            any(term in normalized for term in ("sequencia", "sequência", "ordem", "linha do tempo", "passo a passo", "marcos entre"))
+            and any(term in normalized for term in ("vaga", "matricula", "matrícula"))
+            and any(term in normalized for term in ("inicio das aulas", "início das aulas", "ano letivo", "aulas"))
+            and any(term in normalized for term in ("responsaveis", "responsáveis", "reuniao", "reunião", "familia", "família"))
+        )
+    ):
+        return "public_bundle.timeline_lifecycle"
+    if (
+        any(
+            term in normalized
+            for term in (
+                "responsaveis",
+                "responsáveis",
+                "responsavel",
+                "responsável",
+                "familia",
+                "família",
+                "comunicacao com responsaveis",
+                "comunicação com responsáveis",
+            )
+        )
+        and any(
+            term in normalized
+            for term in (
+                "avaliacoes",
+                "avaliações",
+                "avaliacao",
+                "avaliação",
+                "agenda avaliativa",
+                "agenda de avaliacoes",
+                "agenda de avaliações",
+            )
+        )
+        and any(
+            term in normalized
+            for term in (
+                "estudo orientado",
+                "canais digitais",
+                "portal",
+                "telegram",
+                "digitais",
+                "meios digitais",
+                "meios oficiais",
+                "canais oficiais",
+                "comunicacao digital",
+                "comunicação digital",
+            )
+        )
+    ):
+        return "public_bundle.transversal_year"
     if (
         any(term in normalized for term in ("calendario publico", "calendário público", "calendario", "calendário", "agenda", "eventos"))
         and any(term in normalized for term in ("familias", "famílias", "responsaveis", "responsáveis"))
@@ -573,18 +1087,22 @@ def match_public_canonical_lane(message: str) -> str | None:
                 "marcos",
                 "falam mais diretamente",
                 "mais diretamente",
+                "principais",
+                "publicos",
+                "públicos",
             )
         )
     ):
         return "public_bundle.calendar_week"
     if (
-        (
-            "tres fases" in normalized
-            and all(term in normalized for term in ("admiss", "rotina", "fechamento"))
-        )
+        ("tres fases" in normalized and all(term in normalized for term in ("admiss", "rotina", "fechamento")))
         or (
             all(term in normalized for term in ("admiss", "rotina academica", "fechamento"))
             and any(term in normalized for term in ("distribui", "distribui entre", "olhando so a base publica", "olhando apenas a base publica"))
+        )
+        or (
+            all(term in normalized for term in ("admiss", "rotina academica", "fechamento"))
+            and any(term in normalized for term in ("jornada completa", "ano escolar", "documentacao publica", "documentação pública", "segundo a documentacao publica", "se eu dividir o ano", "dividir o ano"))
         )
     ):
         return "public_bundle.year_three_phases"
@@ -593,9 +1111,14 @@ def match_public_canonical_lane(message: str) -> str | None:
         and any(term in normalized for term in ("escola", "manual", "criterios", "critérios", "media", "média", "frequencia", "frequência"))
     ):
         return "public_bundle.academic_policy_overview"
-    if any(term in normalized for term in ("convivencia", "convivência", "frequencia", "frequência", "pontualidade")):
-        if any(term in normalized for term in ("regra", "regras", "manual", "politica", "política", "escola")):
-            return "public_bundle.conduct_frequency_punctuality"
+    if (
+        any(term in normalized for term in ("documentos publicos", "documentos públicos", "base publica", "base pública", "material publico", "material público"))
+        and any(term in normalized for term in ("convivencia", "convivência", "frequencia", "frequência"))
+        and any(term in normalized for term in ("recuperacao", "recuperação", "segunda chamada", "avaliacao", "avaliação"))
+    ):
+        return "public_bundle.academic_policy_overview"
+    if _looks_like_public_conduct_policy_query(normalized):
+        return "public_bundle.conduct_frequency_punctuality"
 
     family_entry_terms = (
         "familia nova",
@@ -638,20 +1161,30 @@ def match_public_canonical_lane(message: str) -> str | None:
                 "primeiro bimestre",
             )
         )
-        and any(term in normalized for term in ("avaliacao", "avaliações", "avaliacoes"))
-        and "matricula" in normalized
+        and (
+            (
+                any(term in normalized for term in ("avaliacao", "avaliações", "avaliacoes"))
+                and "matricula" in normalized
+            )
+            or (
+                any(
+                    term in normalized
+                    for term in ("portal", "secretaria", "documentos", "documentacao", "documentação", "credenciais")
+                )
+                and any(
+                    term in normalized
+                    for term in ("matricula", "matrícula", "inicio das aulas", "início das aulas", "comeco das aulas", "começo das aulas")
+                )
+            )
+        )
     ):
         return "public_bundle.family_new_calendar_assessment_enrollment"
     if (
-        any(term in normalized for term in ("antes da confirmacao da vaga", "antes da confirmação da vaga", "depois do inicio das aulas", "depois do início das aulas"))
-        or (
-            any(term in normalized for term in ("sequencia", "sequência", "ordem", "linha do tempo", "passo a passo"))
-            and any(term in normalized for term in ("vaga", "matricula", "matrícula"))
-            and any(term in normalized for term in ("inicio das aulas", "início das aulas", "aulas"))
-            and any(term in normalized for term in ("responsaveis", "responsáveis", "reuniao", "reunião", "familia", "família"))
-        )
+        any(term in normalized for term in ("entrada", "encontros com responsaveis", "encontros com responsáveis", "devolutivas", "recomposicao academica", "recomposição acadêmica"))
+        and any(term in normalized for term in ("familia", "família", "tempo", "arquitetura do tempo", "ano"))
+        and any(term in normalized for term in ("avali", "reunioes", "reuniões", "rotina", "responsaveis", "responsáveis"))
     ):
-        return "public_bundle.timeline_lifecycle"
+        return "public_bundle.family_new_calendar_assessment_enrollment"
     has_visibility_channel = any(
         term in normalized
         for term in ("canais digitais", "canais da escola", "portal", "calendario", "calendário", "canais oficiais")
@@ -705,11 +1238,17 @@ def match_public_canonical_lane(message: str) -> str | None:
     )
     if any(term in normalized for term in family_terms) and sum(1 for term in permanence_terms if term in normalized) >= 2:
         return "public_bundle.permanence_family_support"
+    if (
+        any(term in normalized for term in ("bolsas", "bolsa", "descontos", "desconto"))
+        and any(term in normalized for term in ("rematricula", "transferencia", "cancelamento", "matricula"))
+    ):
+        return "public_bundle.bolsas_and_processes"
     if all(term in normalized for term in ("rematricula", "transferencia", "cancelamento")):
         return "public_bundle.process_compare"
     if (
-        any(term in normalized for term in ("saude", "saúde", "medicacao", "medicação"))
+        any(term in normalized for term in ("atestado", "atestados", "justificativa", "justificativas", "saude", "saúde", "medicacao", "medicação"))
         and any(term in normalized for term in ("segunda chamada", "segunda", "chamada"))
+        and any(term in normalized for term in ("recuperacao", "recuperação", "avaliacao", "avaliação", "perde uma avaliacao", "perde uma avaliação"))
     ):
         return "public_bundle.health_second_call"
     if (
@@ -767,54 +1306,6 @@ def match_public_canonical_lane(message: str) -> str | None:
     ):
         return "public_bundle.conduct_frequency_recovery"
     if (
-        any(term in normalized for term in ("bolsas", "bolsa", "descontos", "desconto"))
-        and any(term in normalized for term in ("rematricula", "transferencia", "cancelamento", "matricula"))
-    ):
-        return "public_bundle.bolsas_and_processes"
-    if (
-        any(
-            term in normalized
-            for term in (
-                "responsaveis",
-                "responsáveis",
-                "responsavel",
-                "responsável",
-                "familia",
-                "família",
-                "comunicacao com responsaveis",
-                "comunicação com responsáveis",
-            )
-        )
-        and any(
-            term in normalized
-            for term in (
-                "avaliacoes",
-                "avaliações",
-                "avaliacao",
-                "avaliação",
-                "agenda avaliativa",
-                "agenda de avaliacoes",
-                "agenda de avaliações",
-            )
-        )
-        and any(
-            term in normalized
-            for term in (
-                "estudo orientado",
-                "canais digitais",
-                "portal",
-                "telegram",
-                "digitais",
-                "meios digitais",
-                "meios oficiais",
-                "canais oficiais",
-                "comunicacao digital",
-                "comunicação digital",
-            )
-        )
-    ):
-        return "public_bundle.transversal_year"
-    if (
         any(term in normalized for term in ("biblioteca", "laboratorios", "laboratórios", "laboratorio", "laboratório"))
         and any(term in normalized for term in ("estudo", "apoio", "ensino medio", "ensino médio"))
     ):
@@ -829,6 +1320,18 @@ def compose_public_canonical_lane_answer(
 ) -> str | None:
     if lane == "public_bundle.teacher_directory_boundary":
         return compose_public_teacher_directory_boundary(profile)
+    if lane == "public_bundle.inclusion_accessibility":
+        return compose_public_inclusion_accessibility()
+    if lane == "public_bundle.integral_study_support":
+        return compose_public_integral_study_support()
+    if lane == "public_bundle.health_emergency_bundle":
+        return compose_public_health_emergency_bundle()
+    if lane == "public_bundle.outings_authorizations":
+        return compose_public_outings_authorizations()
+    if lane == "public_bundle.transport_uniform_bundle":
+        return compose_public_transport_uniform_bundle()
+    if lane == "public_bundle.governance_protocol":
+        return compose_public_governance_protocol(profile)
     if lane == "public_bundle.calendar_week":
         return compose_public_calendar_week(profile)
     if lane == "public_bundle.year_three_phases":

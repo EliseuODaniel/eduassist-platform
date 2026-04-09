@@ -86,7 +86,7 @@ def _compose_service_routing_fast_answer(profile: dict[str, Any] | None, message
     requested: list[tuple[str, str]] = []
     if any(
         term in normalized
-        for term in {"bolsa", "desconto", "matricula", "matrícula", "atendimento comercial", "admissoes", "admissao"}
+        for term in {"bolsa", "bolsas", "desconto", "descontos", "matricula", "matrícula", "atendimento comercial", "admissoes", "admissao"}
     ):
         requested.append(("atendimento_admissoes", "Atendimento comercial / Admissoes"))
     if any(term in normalized for term in {"boleto", "boletos", "financeiro", "fatura", "mensalidade"}):
@@ -102,7 +102,35 @@ def _compose_service_routing_fast_answer(profile: dict[str, Any] | None, message
         requested.append(("carreiras_docentes", "Carreiras docentes"))
     if not requested:
         return None
+    wants_one_line_per_sector = any(
+        term in normalized
+        for term in {
+            "uma linha por setor",
+            "sem explicar o resto da escola",
+        }
+    )
+    wants_priority = any(
+        term in normalized
+        for term in {
+            "entra primeiro",
+            "qual desses setores entra primeiro",
+            "quem entra primeiro",
+            "setor entra primeiro",
+        }
+    )
+    has_documental_pending = any(
+        term in normalized
+        for term in {
+            "documento pendente",
+            "documentacao pendente",
+            "documentação pendente",
+            "pendencia documental",
+            "pendência documental",
+        }
+    )
     lines: list[str] = []
+    direct_order: list[str] = []
+    one_line_lines: list[str] = []
     if any(term in normalized for term in {"direcao", "direção", "diretora", "diretor"}):
         leadership = (profile or {}).get("leadership_team")
         if isinstance(leadership, list):
@@ -113,16 +141,46 @@ def _compose_service_routing_fast_answer(profile: dict[str, Any] | None, message
                 channel = str(first.get("contact_channel") or "").strip()
                 if name and channel:
                     lines.append(f"- {title}: {name}. Canal institucional: {channel}.")
+                    direct_order.append("Direcao")
+                    compact_line = f"- Direcao: {channel}."
+                    if compact_line not in one_line_lines:
+                        one_line_lines.append(compact_line)
                 elif name:
                     lines.append(f"- {title}: {name}.")
+                    direct_order.append("Direcao")
+                    compact_line = f"- Direcao: {name}."
+                    if compact_line not in one_line_lines:
+                        one_line_lines.append(compact_line)
     for service_key, label in requested:
         item = index.get(service_key)
         if not isinstance(item, dict):
             continue
         request_channel = str(item.get("request_channel") or "canal institucional").strip()
         lines.append(f"- {label}: {request_channel}.")
+        direct_order.append(label)
+        compact_label = label
+        if wants_one_line_per_sector and service_key == "atendimento_admissoes":
+            compact_label = "Bolsas / admissoes"
+        compact_line = f"- {compact_label}: {request_channel}."
+        if service_key == "solicitacao_direcao" and any(line.startswith("- Direcao:") for line in one_line_lines):
+            continue
+        if compact_line not in one_line_lines:
+            one_line_lines.append(compact_line)
     if not lines:
         return None
+    if wants_priority:
+        if any("Atendimento comercial / Admissoes" == label for label in direct_order) and has_documental_pending:
+            return (
+                "Se o tema for bolsa com documento pendente, o primeiro setor que entra e "
+                "Atendimento comercial / Admissoes. Depois, se houver impacto em contrato ou cobranca, entra o "
+                "Financeiro. A Direcao fica como escalonamento institucional se o caso sair da rotina normal."
+            )
+        first_sector = direct_order[0] if direct_order else "o canal institucional principal"
+        return f"Desses setores, o primeiro passo hoje e {first_sector}."
+    if wants_one_line_per_sector:
+        compact_lines = one_line_lines or lines
+        compact_items = [line[2:].strip() if line.startswith("- ") else line.strip() for line in compact_lines]
+        return " | ".join(item for item in compact_items if item)
     return "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n" + "\n".join(lines)
 
 
@@ -137,9 +195,10 @@ def _compose_public_teacher_directory_answer(profile: dict[str, Any] | None, mes
     return compose_public_teacher_directory_boundary(profile)
 
 
-def _compose_contact_bundle_answer(profile: dict[str, Any] | None) -> str | None:
+def _compose_contact_bundle_answer(profile: dict[str, Any] | None, *, message: str | None = None) -> str | None:
     if not isinstance(profile, dict):
         return None
+    normalized = _normalize_text(message)
     address_line = str(profile.get("address_line") or "").strip()
     district = str(profile.get("district") or "").strip()
     city = str(profile.get("city") or "").strip()
@@ -148,6 +207,9 @@ def _compose_contact_bundle_answer(profile: dict[str, Any] | None) -> str | None
     phone = _select_contact_channel(profile, label_contains=("secretaria",), channel_equals=("telefone",))
     secretaria_whatsapp = _select_contact_channel(profile, label_contains=("secretaria",), channel_equals=("whatsapp",))
     secretaria_email = _select_contact_channel(profile, label_contains=("secretaria",), channel_equals=("email",))
+    financeiro_phone = _select_contact_channel(profile, label_contains=("financeiro",), channel_equals=("telefone",))
+    financeiro_whatsapp = _select_contact_channel(profile, label_contains=("financeiro",), channel_equals=("whatsapp",))
+    financeiro_email = _select_contact_channel(profile, label_contains=("financeiro",), channel_equals=("email",))
     if not address_line and not phone and not secretaria_whatsapp and not secretaria_email:
         return None
     locality = ", ".join(part for part in [address_line, district, city, state] if part)
@@ -162,6 +224,13 @@ def _compose_contact_bundle_answer(profile: dict[str, Any] | None) -> str | None
         parts.append(f"O melhor canal para a secretaria hoje e o WhatsApp {secretaria_whatsapp.get('value')}.")
     elif secretaria_email:
         parts.append(f"O melhor canal para a secretaria hoje e o email {secretaria_email.get('value')}.")
+    if any(term in normalized for term in {"financeiro", "mensalidade", "boleto", "fatura"}):
+        if financeiro_whatsapp:
+            parts.append(f"O melhor canal para o financeiro hoje e o WhatsApp {financeiro_whatsapp.get('value')}.")
+        elif financeiro_email:
+            parts.append(f"O melhor canal para o financeiro hoje e o email {financeiro_email.get('value')}.")
+        elif financeiro_phone:
+            parts.append(f"O telefone mais direto do financeiro hoje e {financeiro_phone.get('value')}.")
     return " ".join(parts) if parts else None
 
 
@@ -174,7 +243,18 @@ def _timeline_entry(entries: list[dict[str, Any]], *, topic_fragment: str) -> di
     return None
 
 
-def _compose_timeline_bundle_answer(profile: dict[str, Any] | None, message: str) -> str | None:
+def _timeline_event_date(item: dict[str, Any] | None) -> str:
+    if not isinstance(item, dict):
+        return ""
+    return str(item.get("event_date") or item.get("starts_at") or "").strip()
+
+
+def _compose_timeline_bundle_answer(
+    profile: dict[str, Any] | None,
+    message: str,
+    *,
+    recent_user_messages: list[str] | None = None,
+) -> str | None:
     entries = (profile or {}).get("public_timeline")
     if not isinstance(entries, list):
         return None
@@ -193,8 +273,77 @@ def _compose_timeline_bundle_answer(profile: dict[str, Any] | None, message: str
         }
     )
     wants_family = any(term in normalized for term in {"responsaveis", "responsáveis", "reuniao", "reunião", "familia", "família"})
+    asks_before_after = any(
+        term in normalized
+        for term in {"antes ou depois", "antes das aulas", "depois das aulas", "primeira reuniao", "primeira reunião"}
+    )
+    asks_order_only = any(
+        term in normalized
+        for term in {"so esse recorte", "só esse recorte", "nao quero o calendario inteiro", "não quero o calendário inteiro", "recorte em ordem"}
+    )
+    wants_assessments = any(
+        term in normalized
+        for term in {"avaliac", "prova", "provas", "simulado", "simulados"}
+    )
+    normalized_recent = " ".join(_normalize_text(item) for item in (recent_user_messages or []))
+    recent_has_timeline_context = any(
+        term in normalized_recent
+        for term in {
+            "matricula",
+            "matrícula",
+            "inicio das aulas",
+            "início das aulas",
+            "ano letivo",
+            "reuniao de responsaveis",
+            "reunião de responsáveis",
+        }
+    )
+    if asks_before_after:
+        wants_enrollment = True
+        wants_classes = True
+        wants_family = True
+    if asks_order_only:
+        wants_enrollment = True
+        wants_classes = True
+        wants_family = True
+    if recent_has_timeline_context and asks_before_after:
+        wants_enrollment = True
+        wants_classes = True
+        wants_family = True
+    if recent_has_timeline_context and asks_order_only:
+        wants_enrollment = True
+        wants_classes = True
+        wants_family = True
+    if (
+        not (wants_enrollment and wants_classes)
+        and any(term in normalized for term in {"depois disso", "proximo marco", "próximo marco"})
+        and wants_family
+        and any(term in normalized_recent for term in {"portal", "documentos", "secretaria", "matricula", "matrícula", "inicio das aulas", "início das aulas"})
+    ):
+        wants_enrollment = True
+        wants_classes = True
     if not (wants_enrollment and wants_classes):
         return None
+    admissions_item = _timeline_entry(entries, topic_fragment="admissions_opening")
+    school_year_item = _timeline_entry(entries, topic_fragment="school_year_start")
+    family_item = _timeline_entry(entries, topic_fragment="family_meeting")
+    if (
+        wants_family
+        and asks_before_after
+        and isinstance(school_year_item, dict)
+        and isinstance(family_item, dict)
+    ):
+        school_year_date = _timeline_event_date(school_year_item)
+        family_date = _timeline_event_date(family_item)
+        if school_year_date and family_date:
+            ordering = "depois" if family_date >= school_year_date else "antes"
+            family_summary = str(family_item.get("summary") or "").strip()
+            school_year_summary = str(school_year_item.get("summary") or "").strip()
+            return (
+                f"A primeira reuniao com responsaveis acontece {ordering} do inicio das aulas. "
+                f"Inicio das aulas: {school_year_summary} "
+                f"Primeira reuniao: {family_summary}"
+            ).strip()
     lines: list[str] = []
     topics = ["admissions_opening", "school_year_start"]
     if wants_family:
@@ -208,6 +357,25 @@ def _compose_timeline_bundle_answer(profile: dict[str, Any] | None, message: str
         line = f"{summary} {notes}".strip()
         if line:
             lines.append(line)
+    if lines and any(term in normalized for term in {"ordem", "sequencia", "sequência", "recorte"}):
+        ordered_lines = []
+        labels = [
+            "1) Matricula e ingresso",
+            "2) Inicio das aulas",
+            "3) Reuniao com responsaveis",
+        ]
+        for label, line in zip(labels, lines, strict=False):
+            ordered_lines.append(f"{label}: {line}")
+        return "\n".join(ordered_lines)
+    if lines:
+        if wants_assessments:
+            lines.append(
+                "No calendario publico, primeiro entra a matricula, depois comecam as aulas e, nas primeiras semanas, a agenda de avaliacoes passa a organizar o inicio do ano junto com a reuniao inicial das familias."
+            )
+        else:
+            lines.append(
+                "Na pratica, primeiro entra a matricula, depois comecam as aulas e, na sequencia, vem a reuniao inicial com as familias."
+            )
     return "\n".join(lines) if lines else None
 
 
@@ -753,4 +921,8 @@ def _compose_year_three_phases_answer(entries: list[dict[str, Any]], events: lis
         parts.append(f"Rotina academica: {routine}")
     if isinstance(closure, dict):
         parts.append(f"Fechamento: {str(closure.get('summary') or '').strip()}")
+    if parts:
+        parts.append(
+            "Em ordem pratica, primeiro entra a admissao, depois a rotina academica e, por fim, o fechamento."
+        )
     return "\n".join(parts) if parts else None

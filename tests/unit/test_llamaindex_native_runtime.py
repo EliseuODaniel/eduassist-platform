@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from llama_index.core.postprocessor import LongContextReorder, SentenceEmbeddingOptimizer
 
 from ai_orchestrator.llamaindex_native_runtime import (
+    LlamaIndexEarlyPublicAnswer,
     LlamaIndexNativePublicDecision,
     _build_llamaindex_node_postprocessors,
     _build_public_document_group_node,
@@ -15,11 +16,14 @@ from ai_orchestrator.llamaindex_native_runtime import (
     _looks_like_open_documentary_bundle_query,
     _should_avoid_llamaindex_public_profile_fast_path,
     _run_public_hybrid_search,
+    _resolve_early_llamaindex_public_answer,
     _should_skip_llamaindex_public_fast_paths,
     _should_use_llamaindex_llm_public_resolver,
     _should_use_llamaindex_protected_records_fast_path,
     _should_use_llamaindex_selector_router,
 )
+from ai_orchestrator.llamaindex_kernel_runtime import _maybe_contextual_public_direct_answer
+from ai_orchestrator.llamaindex_kernel import _build_preview as build_llamaindex_kernel_preview
 from ai_orchestrator.models import AccessTier, OrchestrationMode, QueryDomain
 from ai_orchestrator.path_profiles import PathExecutionProfile
 
@@ -65,6 +69,14 @@ def _guardian_actor() -> dict[str, object]:
             {'student_id': 'stu-lucas', 'full_name': 'Lucas Oliveira', 'can_view_academic': True, 'can_view_finance': True},
         ]
     }
+
+
+def _authenticated_user() -> SimpleNamespace:
+    return SimpleNamespace(
+        authenticated=True,
+        scopes=[],
+        role=SimpleNamespace(value='guardian'),
+    )
 
 
 def test_heuristic_public_decision_skips_prompt_router_when_ambiguity_only_enabled() -> None:
@@ -362,6 +374,28 @@ def test_llamaindex_protected_records_fast_path_detects_family_finance_aggregate
     )
 
 
+def test_llamaindex_protected_records_fast_path_detects_family_attendance_aggregate() -> None:
+    assert _should_use_llamaindex_protected_records_fast_path(
+        request=_protected_request(
+            'Me de um panorama de faltas e frequencia dos meus filhos, apontando quem exige maior atencao agora.'
+        ),
+        actor=_guardian_actor(),
+        preview=_protected_preview(),
+        conversation_context=None,
+    )
+
+
+def test_llamaindex_protected_records_fast_path_detects_access_scope() -> None:
+    assert _should_use_llamaindex_protected_records_fast_path(
+        request=_protected_request(
+            'Estou autenticado como quem e com qual escopo? Quero saber o que consigo ver de academico e financeiro.'
+        ),
+        actor=_guardian_actor(),
+        preview=_protected_preview(),
+        conversation_context=None,
+    )
+
+
 def test_llamaindex_protected_records_fast_path_detects_academic_followup() -> None:
     assert _should_use_llamaindex_protected_records_fast_path(
         request=_protected_request(
@@ -371,3 +405,96 @@ def test_llamaindex_protected_records_fast_path_detects_academic_followup() -> N
         preview=_protected_preview(),
         conversation_context=None,
     )
+
+
+def test_llamaindex_kernel_preview_keeps_public_process_compare_public_when_authenticated() -> None:
+    preview = build_llamaindex_kernel_preview(
+        request=SimpleNamespace(
+            message='Compare rematricula, transferencia e cancelamento destacando o que muda na pratica.',
+            user=_authenticated_user(),
+        ),
+        settings=SimpleNamespace(),
+    )
+    assert preview.reason == 'llamaindex_local_public_fact:institution'
+    assert preview.classification.access_tier == AccessTier.public
+    assert 'get_public_school_profile' in preview.selected_tools
+
+
+async def _resolve_early_public_answer(message: str, monkeypatch) -> LlamaIndexEarlyPublicAnswer | None:
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_native_runtime.rt._compose_contextual_public_boundary_answer',
+        lambda **_: 'Resposta de boundary.',
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_native_runtime._maybe_contextual_public_direct_answer',
+        lambda **_: 'Resposta contextual generica.',
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_native_runtime.rt._is_explicit_public_pricing_projection_query',
+        lambda *_, **__: False,
+    )
+    return await _resolve_early_llamaindex_public_answer(
+        request=SimpleNamespace(message=message, user=_authenticated_user()),
+        plan=SimpleNamespace(preview=_plan().preview),
+        settings=SimpleNamespace(),
+        school_profile={'school_name': 'Colegio Horizonte'},
+        conversation_context=None,
+    )
+
+
+def test_early_llamaindex_public_answer_prioritizes_canonical_lane(monkeypatch) -> None:
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_native_runtime.match_public_canonical_lane',
+        lambda message: 'public_bundle.process_compare' if 'rematricula' in message else None,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_native_runtime.compose_public_canonical_lane_answer',
+        lambda lane, profile=None: 'Comparacao canonica de processo.' if lane == 'public_bundle.process_compare' else None,
+    )
+    result = __import__('asyncio').run(
+        _resolve_early_public_answer(
+            'Compare rematricula, transferencia e cancelamento destacando o que muda na pratica.',
+            monkeypatch,
+        )
+    )
+    assert result is not None
+    assert result.reason == 'canonical_lane'
+    assert result.canonical_lane == 'public_bundle.process_compare'
+    assert result.answer_text == 'Comparacao canonica de processo.'
+
+
+def test_contextual_public_direct_answer_skips_admin_finance_block_followup(monkeypatch) -> None:
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._llm_forced_mode_enabled',
+        lambda **_: False,
+    )
+    result = __import__('asyncio').run(
+        _maybe_contextual_public_direct_answer(
+            request=SimpleNamespace(
+                message='Se nada estiver bloqueando, fala isso de forma direta.',
+                user=_authenticated_user(),
+            ),
+            analysis_message='Se nada estiver bloqueando, fala isso de forma direta.',
+            preview=SimpleNamespace(
+                classification=SimpleNamespace(
+                    access_tier=AccessTier.public,
+                    domain=QueryDomain.institution,
+                ),
+            ),
+            settings=SimpleNamespace(),
+            school_profile={'school_name': 'Colegio Horizonte'},
+            conversation_context={
+                'recent_messages': [
+                    {
+                        'sender_type': 'user',
+                        'content': 'Minha documentacao ou cadastro esta bloqueando atendimento financeiro? Quero um panorama combinado de documentacao e financeiro.',
+                    },
+                    {
+                        'sender_type': 'assistant',
+                        'content': 'Na documentacao e no cadastro escolar de Ana Oliveira, o status atual esta como pending. No financeiro, Ana Oliveira esta com 2 faturas em aberto.',
+                    },
+                ]
+            },
+        )
+    )
+    assert result is None

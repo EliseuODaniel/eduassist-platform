@@ -6,6 +6,81 @@ from typing import Any, Awaitable, Callable
 
 from .models import OperationalMemory
 
+_SUBJECT_ALIASES = {
+    "fisica",
+    "física",
+    "matematica",
+    "matemática",
+    "portugues",
+    "português",
+    "quimica",
+    "química",
+    "biologia",
+    "historia",
+    "história",
+    "geografia",
+    "ingles",
+    "inglês",
+    "english",
+    "lingua inglesa",
+    "língua inglesa",
+    "educacao fisica",
+    "educação física",
+    "projeto de vida",
+}
+
+_UNKNOWN_STUDENT_STOPWORDS = {
+    "nota",
+    "notas",
+    "media",
+    "média",
+    "prova",
+    "provas",
+    "avaliacao",
+    "avaliação",
+    "avaliacoes",
+    "avaliações",
+    "entrega",
+    "entregas",
+    "frequencia",
+    "frequência",
+    "financeiro",
+    "fatura",
+    "faturas",
+    "boleto",
+    "boletos",
+    "historia",
+    "história",
+    "matematica",
+    "matemática",
+    "fisica",
+    "física",
+    "geografia",
+    "ingles",
+    "inglês",
+    "english",
+    "serve",
+    "como",
+    "esta",
+    "está",
+    "esta?",
+    "está?",
+    "dele",
+    "dela",
+    "ele",
+    "ela",
+    "aluno",
+    "aluna",
+    "estudante",
+    "disciplina",
+    "disciplinas",
+    "olhando",
+    "registradas",
+    "registrados",
+    "registrada",
+    "registrado",
+}
+
 
 @dataclass(frozen=True)
 class StudentContextDeps:
@@ -111,6 +186,50 @@ def student_hint_from_message(
     return None
 
 
+def unknown_explicit_student_reference(
+    actor: dict[str, Any] | None,
+    message: str,
+    *,
+    deps: StudentContextDeps,
+) -> str | None:
+    normalized_message = deps.normalize_text(message)
+    if not normalized_message or not any(
+        term in normalized_message
+        for term in {"nota", "notas", "media", "média", "prova", "provas", "avaliac", "frequ", "fatura", "boleto", "financeiro"}
+    ):
+        return None
+    academic_students = deps.linked_students(actor, capability="academic")
+    finance_students = deps.linked_students(actor, capability="finance")
+    if not academic_students and not finance_students:
+        return None
+    if re.search(r"\b(?:notas?|provas?|avaliacoes?|avaliações|aulas?)\s+de\b", normalized_message):
+        return None
+
+    known_names = {
+        deps.normalize_text(student.get("full_name"))
+        for student in academic_students + finance_students
+        if isinstance(student, dict)
+    }
+    known_first_names = {name.split(" ")[0] for name in known_names if name}
+    patterns = (
+        r"\b(?:da|do|de|para|pro|pra)\s+([a-z]{3,}(?:\s+[a-z]{3,})?)\b",
+        r"\b(?:aluno|aluna|estudante)\s+([a-z]{3,}(?:\s+[a-z]{3,})?)\b",
+    )
+    for pattern in patterns:
+        for match in re.finditer(pattern, normalized_message):
+            candidate = deps.normalize_text(match.group(1))
+            if not candidate:
+                continue
+            if candidate in known_names or candidate in known_first_names:
+                continue
+            if candidate in _UNKNOWN_STUDENT_STOPWORDS or candidate in _SUBJECT_ALIASES:
+                continue
+            if any(candidate.startswith(stopword) for stopword in _UNKNOWN_STUDENT_STOPWORDS):
+                continue
+            return candidate
+    return None
+
+
 def resolve_student(
     actor: dict[str, Any] | None,
     *,
@@ -205,12 +324,17 @@ def subject_hint_from_text(message: str, *, deps: StudentContextDeps) -> str | N
         "ingles": "Lingua Inglesa",
         "inglesa": "Lingua Inglesa",
         "inglês": "Lingua Inglesa",
+        "english": "Lingua Inglesa",
         "educacao fisica": "Educacao Fisica",
         "educação física": "Educacao Fisica",
         "projeto de vida": "Projeto de vida",
+        "danca": "Danca",
+        "dança": "Danca",
     }
-    for alias, canonical in subject_aliases.items():
+    for alias, canonical in sorted(subject_aliases.items(), key=lambda item: len(item[0]), reverse=True):
         if alias in normalized:
+            if re.search(rf"\b(?:nao e|não é|nao eh|não eh)\s+{re.escape(alias)}\b", normalized):
+                continue
             return canonical
     return None
 

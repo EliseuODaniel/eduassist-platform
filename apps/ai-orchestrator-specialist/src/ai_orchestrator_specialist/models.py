@@ -22,6 +22,98 @@ class UserContext(BaseModel):
     scopes: list[str] = Field(default_factory=list)
 
 
+class RetrievalBackend(StrEnum):
+    qdrant_hybrid = 'qdrant_hybrid'
+    graph_rag = 'graph_rag'
+    none = 'none'
+
+
+class RetrievalProfile(StrEnum):
+    cheap = 'cheap'
+    default = 'default'
+    deep = 'deep'
+
+
+class RetrievalCitation(BaseModel):
+    document_title: str
+    version_label: str
+    storage_path: str
+    chunk_id: str
+    chunk_index: int
+    section_path: str | None = None
+
+
+class RetrievalHit(BaseModel):
+    chunk_id: str
+    document_title: str
+    document_set_slug: str | None = None
+    category: str
+    audience: str
+    visibility: str
+    text_excerpt: str
+    contextual_summary: str | None = None
+    section_path: str | None = None
+    section_parent: str | None = None
+    section_title: str | None = None
+    parent_ref_key: str | None = None
+    labels: dict[str, list[str]] = Field(default_factory=dict)
+    fused_score: float
+    document_score: float | None = None
+    lexical_score: float | None = None
+    vector_score: float | None = None
+    rerank_score: float | None = None
+    citation: RetrievalCitation
+
+
+class RetrievalDocumentGroup(BaseModel):
+    document_title: str
+    document_set_slug: str | None = None
+    category: str
+    audience: str
+    visibility: str
+    document_score: float
+    primary_excerpt: str
+    primary_summary: str | None = None
+    primary_section: str | None = None
+    parent_ref_key: str | None = None
+    support_excerpt_count: int = 0
+    section_titles: list[str] = Field(default_factory=list)
+    citation: RetrievalCitation
+
+
+class RetrievalQueryPlan(BaseModel):
+    intent: str
+    profile: RetrievalProfile = RetrievalProfile.default
+    normalized_query: str
+    query_variants: list[str] = Field(default_factory=list)
+    subqueries: list[str] = Field(default_factory=list)
+    subquery_coverage: dict[str, float] = Field(default_factory=dict)
+    uncovered_subqueries_final: list[str] = Field(default_factory=list)
+    coverage_ratio: float = 1.0
+    citation_first_recommended: bool = False
+    graph_rag_candidate: bool = False
+    reranker_applied: bool = False
+    corrective_retry_applied: bool = False
+    reranker_model: str | None = None
+    category_bias: str | None = None
+    canonical_lane: str | None = None
+    candidate_pool_size: int = 0
+    lexical_limit: int = 0
+    vector_limit: int = 0
+    rerank_limit: int = 0
+    max_chunks_per_document: int = 0
+
+
+class RetrievalSearchResponse(BaseModel):
+    query: str
+    retrieval_backend: RetrievalBackend
+    total_hits: int
+    hits: list[RetrievalHit]
+    document_groups: list[RetrievalDocumentGroup] = Field(default_factory=list)
+    query_plan: RetrievalQueryPlan | None = None
+    context_pack: str | None = None
+
+
 class SpecialistSupervisorRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     conversation_id: str | None = None

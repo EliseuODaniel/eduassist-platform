@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 from collections import OrderedDict
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from functools import lru_cache
+import hashlib
 import logging
 from pathlib import Path
 import secrets
@@ -11,16 +15,26 @@ from time import monotonic
 
 import httpx
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from eduassist_observability import build_runtime_diagnostics, configure_observability
 
 
 _ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / '.env'
+_INTERNAL_API_TOKEN_PLACEHOLDERS = {'', 'dev-internal-token', 'change-me-internal-token'}
+_TELEGRAM_WEBHOOK_SECRET_PLACEHOLDERS = {'', 'change-me'}
 _RECENT_TELEGRAM_UPDATE_IDS: OrderedDict[int, float] = OrderedDict()
 _TELEGRAM_UPDATE_DEDUPE_LOCK = Lock()
 _TELEGRAM_UPDATE_DEDUPE_TTL_SECONDS = 60.0 * 15.0
 _TELEGRAM_UPDATE_DEDUPE_LIMIT = 4096
+_LATEST_TELEGRAM_UPDATE_BY_CHAT: OrderedDict[int, tuple[int, float]] = OrderedDict()
+_TELEGRAM_CHAT_LATEST_LOCK = Lock()
+_TELEGRAM_CHAT_LATEST_TTL_SECONDS = 60.0 * 60.0
+_TELEGRAM_CHAT_LATEST_LIMIT = 4096
+_TELEGRAM_CHAT_PROCESSING_LOCKS: OrderedDict[int, tuple[asyncio.Lock, float]] = OrderedDict()
+_TELEGRAM_CHAT_PROCESSING_LOCKS_GUARD = Lock()
+_TELEGRAM_CHAT_PROCESSING_TTL_SECONDS = 60.0 * 60.0
+_TELEGRAM_CHAT_PROCESSING_LIMIT = 4096
 
 
 class Settings(BaseSettings):
@@ -38,12 +52,37 @@ class Settings(BaseSettings):
     telegram_bot_username: str | None = None
     telegram_webhook_secret: str = 'change-me'
     api_core_url: str = 'http://api-core:8000'
-    ai_orchestrator_url: str = 'http://ai-orchestrator:8000'
+    ai_orchestrator_url: str = 'http://ai-orchestrator-python-functions:8000'
     ai_orchestrator_timeout_seconds: float = 45.0
     graph_rag_async_timeout_seconds: float = 480.0
     graph_rag_async_max_seconds: int = 420
     internal_api_token: str = 'dev-internal-token'
+    allow_insecure_internal_api_token: bool = False
     telegram_api_base_url: str = 'https://api.telegram.org'
+
+    @model_validator(mode='after')
+    def _validate_internal_api_token(self) -> 'Settings':
+        token = str(self.internal_api_token or '').strip()
+        if token not in _INTERNAL_API_TOKEN_PLACEHOLDERS:
+            return self
+        if self.allow_insecure_internal_api_token or self.app_env in {'test'}:
+            return self
+        raise ValueError(
+            'internal_api_token must be set to a non-placeholder value; '
+            'set INTERNAL_API_TOKEN or explicitly opt into ALLOW_INSECURE_INTERNAL_API_TOKEN=true for isolated tests.'
+        )
+
+    @model_validator(mode='after')
+    def _validate_telegram_webhook_secret(self) -> 'Settings':
+        secret = str(self.telegram_webhook_secret or '').strip()
+        if secret not in _TELEGRAM_WEBHOOK_SECRET_PLACEHOLDERS:
+            return self
+        if self.app_env in {'test'}:
+            return self
+        raise ValueError(
+            'telegram_webhook_secret must be set to a non-placeholder value; '
+            'set TELEGRAM_WEBHOOK_SECRET before starting the gateway.'
+        )
 
 
 @lru_cache
@@ -57,10 +96,24 @@ class HealthResponse(BaseModel):
     ready: bool
 
 
+@dataclass(slots=True)
+class TelegramSendOutcome:
+    delivered: bool
+    delivery_uncertain: bool = False
+    retry_without_markup: bool = False
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    _log_runtime_diagnostics(_telegram_runtime_diagnostics(get_settings()))
+    yield
+
+
 app = FastAPI(
     title='EduAssist Telegram Gateway',
     version='0.2.0',
     summary='Telegram ingress bootstrap for EduAssist Platform.',
+    lifespan=_lifespan,
 )
 
 configure_observability(
@@ -192,6 +245,77 @@ def _consume_telegram_update_id(update_id: int | None) -> bool:
     return True
 
 
+def _mark_latest_chat_update(chat_id: int, update_id: int | None) -> None:
+    if update_id is None:
+        return
+    now = monotonic()
+    with _TELEGRAM_CHAT_LATEST_LOCK:
+        expired = [
+            item
+            for item, (_latest_update_id, seen_at) in _LATEST_TELEGRAM_UPDATE_BY_CHAT.items()
+            if now - seen_at > _TELEGRAM_CHAT_LATEST_TTL_SECONDS
+        ]
+        for item in expired:
+            _LATEST_TELEGRAM_UPDATE_BY_CHAT.pop(item, None)
+        previous = _LATEST_TELEGRAM_UPDATE_BY_CHAT.get(chat_id)
+        if previous is None or update_id >= previous[0]:
+            _LATEST_TELEGRAM_UPDATE_BY_CHAT[chat_id] = (update_id, now)
+        while len(_LATEST_TELEGRAM_UPDATE_BY_CHAT) > _TELEGRAM_CHAT_LATEST_LIMIT:
+            _LATEST_TELEGRAM_UPDATE_BY_CHAT.popitem(last=False)
+
+
+def _is_stale_chat_update(chat_id: int, update_id: int | None) -> bool:
+    if update_id is None:
+        return False
+    with _TELEGRAM_CHAT_LATEST_LOCK:
+        latest = _LATEST_TELEGRAM_UPDATE_BY_CHAT.get(chat_id)
+    if latest is None:
+        return False
+    return update_id < latest[0]
+
+
+def _get_chat_processing_lock(chat_id: int) -> asyncio.Lock:
+    now = monotonic()
+    with _TELEGRAM_CHAT_PROCESSING_LOCKS_GUARD:
+        expired = [
+            item
+            for item, (chat_lock, seen_at) in _TELEGRAM_CHAT_PROCESSING_LOCKS.items()
+            if now - seen_at > _TELEGRAM_CHAT_PROCESSING_TTL_SECONDS and not chat_lock.locked()
+        ]
+        for item in expired:
+            _TELEGRAM_CHAT_PROCESSING_LOCKS.pop(item, None)
+
+        current = _TELEGRAM_CHAT_PROCESSING_LOCKS.get(chat_id)
+        chat_lock = current[0] if current is not None else asyncio.Lock()
+        _TELEGRAM_CHAT_PROCESSING_LOCKS[chat_id] = (chat_lock, now)
+
+        while len(_TELEGRAM_CHAT_PROCESSING_LOCKS) > _TELEGRAM_CHAT_PROCESSING_LIMIT:
+            oldest_chat_id, (oldest_lock, _seen_at) = next(iter(_TELEGRAM_CHAT_PROCESSING_LOCKS.items()))
+            if oldest_lock.locked():
+                break
+            _TELEGRAM_CHAT_PROCESSING_LOCKS.pop(oldest_chat_id, None)
+    return chat_lock
+
+
+def _touch_chat_processing_lock(chat_id: int) -> None:
+    now = monotonic()
+    with _TELEGRAM_CHAT_PROCESSING_LOCKS_GUARD:
+        current = _TELEGRAM_CHAT_PROCESSING_LOCKS.get(chat_id)
+        if current is not None:
+            _TELEGRAM_CHAT_PROCESSING_LOCKS[chat_id] = (current[0], now)
+
+
+def _text_preview(text: str, *, limit: int = 120) -> str:
+    compact = ' '.join(text.split())
+    if len(compact) <= limit:
+        return compact
+    return f'{compact[: limit - 3]}...'
+
+
+def _text_fingerprint(text: str) -> str:
+    return hashlib.sha1(text.encode('utf-8')).hexdigest()[:12]
+
+
 def _build_reply_markup(suggested_replies: list[dict[str, object]] | None) -> dict[str, object] | None:
     if not isinstance(suggested_replies, list):
         return None
@@ -221,39 +345,120 @@ async def _send_telegram_message(
     text: str,
     *,
     reply_markup: dict[str, object] | None = None,
-) -> bool:
+) -> TelegramSendOutcome:
     settings = get_settings()
     if not settings.telegram_bot_token:
-        return False
+        return TelegramSendOutcome(delivered=False)
 
     payload: dict[str, object] = {'chat_id': chat_id, 'text': text}
     if reply_markup:
         payload['reply_markup'] = reply_markup
 
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.post(
+    timeout = httpx.Timeout(connect=10.0, read=15.0, write=15.0, pool=5.0)
+
+    async def _post_once() -> httpx.Response:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            return await client.post(
                 f'{settings.telegram_api_base_url}/bot{settings.telegram_bot_token}/sendMessage',
                 json=payload,
             )
-        response.raise_for_status()
-        body = response.json()
-        if not body.get('ok', False):
-            logger.warning(
-                'telegram_send_message_not_ok chat_id=%s body=%s',
+
+    for attempt in (1, 2):
+        try:
+            response = await _post_once()
+            response.raise_for_status()
+            body = response.json()
+            if not body.get('ok', False):
+                body_text = str(body).lower()
+                retry_without_markup = reply_markup is not None and any(
+                    marker in body_text
+                    for marker in ('reply_markup', 'keyboard', 'button')
+                )
+                logger.warning(
+                    'telegram_send_message_not_ok chat_id=%s retry_without_markup=%s body=%s',
+                    chat_id,
+                    retry_without_markup,
+                    body,
+                )
+                return TelegramSendOutcome(
+                    delivered=False,
+                    retry_without_markup=retry_without_markup,
+                )
+            result = body.get('result') if isinstance(body.get('result'), dict) else {}
+            logger.info(
+                'telegram_send_message_ok chat_id=%s message_id=%s text_hash=%s text_preview=%s has_reply_markup=%s',
                 chat_id,
-                body,
+                result.get('message_id'),
+                _text_fingerprint(text),
+                _text_preview(text),
+                reply_markup is not None,
             )
-            return False
-        return True
-    except Exception as exc:
-        logger.exception(
-            'telegram_send_message_failed chat_id=%s has_reply_markup=%s error=%s',
-            chat_id,
-            reply_markup is not None,
-            exc,
-        )
-        return False
+            return TelegramSendOutcome(delivered=True)
+        except httpx.ConnectTimeout as exc:
+            if attempt == 1:
+                logger.warning(
+                    'telegram_send_message_connect_timeout_retrying chat_id=%s text_hash=%s text_preview=%s has_reply_markup=%s error=%s',
+                    chat_id,
+                    _text_fingerprint(text),
+                    _text_preview(text),
+                    reply_markup is not None,
+                    exc,
+                )
+                await asyncio.sleep(0.35)
+                continue
+            logger.exception(
+                'telegram_send_message_connect_timeout chat_id=%s text_hash=%s text_preview=%s has_reply_markup=%s error=%s',
+                chat_id,
+                _text_fingerprint(text),
+                _text_preview(text),
+                reply_markup is not None,
+                exc,
+            )
+            return TelegramSendOutcome(delivered=False)
+        except (httpx.ReadTimeout, httpx.WriteTimeout) as exc:
+            # Telegram may have accepted the request even when the response times out.
+            # Treat these cases as delivery-uncertain and avoid an immediate retry that
+            # could duplicate the same answer in the chat.
+            logger.warning(
+                'telegram_send_message_delivery_uncertain chat_id=%s text_hash=%s text_preview=%s has_reply_markup=%s error=%s',
+                chat_id,
+                _text_fingerprint(text),
+                _text_preview(text),
+                reply_markup is not None,
+                exc,
+            )
+            return TelegramSendOutcome(delivered=False, delivery_uncertain=True)
+        except httpx.HTTPStatusError as exc:
+            response_text = exc.response.text.lower()
+            retry_without_markup = reply_markup is not None and any(
+                marker in response_text
+                for marker in ('reply_markup', 'keyboard', 'button')
+            )
+            logger.exception(
+                'telegram_send_message_http_error chat_id=%s text_hash=%s text_preview=%s has_reply_markup=%s retry_without_markup=%s status_code=%s error=%s',
+                chat_id,
+                _text_fingerprint(text),
+                _text_preview(text),
+                reply_markup is not None,
+                retry_without_markup,
+                exc.response.status_code,
+                exc,
+            )
+            return TelegramSendOutcome(
+                delivered=False,
+                retry_without_markup=retry_without_markup,
+            )
+        except Exception as exc:
+            logger.exception(
+                'telegram_send_message_failed chat_id=%s text_hash=%s text_preview=%s has_reply_markup=%s error=%s',
+                chat_id,
+                _text_fingerprint(text),
+                _text_preview(text),
+                reply_markup is not None,
+                exc,
+            )
+            return TelegramSendOutcome(delivered=False)
+    return TelegramSendOutcome(delivered=False)
 
 
 async def _send_telegram_photo(chat_id: int, image_bytes: bytes, *, caption: str | None = None) -> None:
@@ -317,12 +522,6 @@ async def healthz() -> HealthResponse:
         service='telegram-gateway',
         ready=True,
     )
-
-
-@app.on_event('startup')
-async def log_startup_diagnostics() -> None:
-    _log_runtime_diagnostics(_telegram_runtime_diagnostics(get_settings()))
-
 
 @app.get('/meta')
 async def meta(
@@ -501,36 +700,53 @@ async def _process_explicit_graphrag_message(
     preferred_method: str | None,
     update_id: int | None,
 ) -> None:
-    try:
-        payload = await _run_explicit_graphrag_query(query=query, preferred_method=preferred_method)
-        result_text = _format_explicit_graphrag_result(payload, preferred_method=preferred_method)
-        if result_text is None:
-            result_text = (
-                'O GraphRAG real nao concluiu uma sintese final neste modo. '
-                'Tente uma pergunta mais curta ou especifique /graphrag_local ou /graphrag_global.'
+    chat_lock = _get_chat_processing_lock(chat_id)
+    async with chat_lock:
+        _touch_chat_processing_lock(chat_id)
+        try:
+            if _is_stale_chat_update(chat_id, update_id):
+                logger.info(
+                    'telegram_stale_graphrag_response_suppressed chat_id=%s update_id=%s phase=before_query',
+                    chat_id,
+                    update_id,
+                )
+                return
+            payload = await _run_explicit_graphrag_query(query=query, preferred_method=preferred_method)
+            result_text = _format_explicit_graphrag_result(payload, preferred_method=preferred_method)
+            if result_text is None:
+                result_text = (
+                    'O GraphRAG real nao concluiu uma sintese final neste modo. '
+                    'Tente uma pergunta mais curta ou especifique /graphrag_local ou /graphrag_global.'
+                )
+            if _is_stale_chat_update(chat_id, update_id):
+                logger.info(
+                    'telegram_stale_graphrag_response_suppressed chat_id=%s update_id=%s phase=after_query',
+                    chat_id,
+                    update_id,
+                )
+                return
+            send_outcome = await _send_telegram_message(chat_id, result_text)
+            if not send_outcome.delivered and not send_outcome.delivery_uncertain:
+                logger.error('telegram_graphrag_send_exhausted chat_id=%s update_id=%s', chat_id, update_id)
+        except httpx.HTTPError as exc:
+            logger.exception('telegram_graphrag_http_failed chat_id=%s update_id=%s error=%s', chat_id, update_id, exc)
+            await _send_telegram_message(
+                chat_id,
+                'Nao consegui concluir o GraphRAG real agora. '
+                'Tente novamente em instantes ou use uma pergunta mais curta com /graphrag_local.',
             )
-        sent = await _send_telegram_message(chat_id, result_text)
-        if not sent:
-            logger.error('telegram_graphrag_send_exhausted chat_id=%s update_id=%s', chat_id, update_id)
-    except httpx.HTTPError as exc:
-        logger.exception('telegram_graphrag_http_failed chat_id=%s update_id=%s error=%s', chat_id, update_id, exc)
-        await _send_telegram_message(
-            chat_id,
-            'Nao consegui concluir o GraphRAG real agora. '
-            'Tente novamente em instantes ou use uma pergunta mais curta com /graphrag_local.',
-        )
-    except Exception as exc:
-        logger.exception(
-            'telegram_graphrag_unexpected_failed chat_id=%s update_id=%s error=%s',
-            chat_id,
-            update_id,
-            exc,
-        )
-        await _send_telegram_message(
-            chat_id,
-            'O modo assíncrono de GraphRAG falhou antes de concluir a execução. '
-            'Tente novamente em instantes.',
-        )
+        except Exception as exc:
+            logger.exception(
+                'telegram_graphrag_unexpected_failed chat_id=%s update_id=%s error=%s',
+                chat_id,
+                update_id,
+                exc,
+            )
+            await _send_telegram_message(
+                chat_id,
+                'O modo assíncrono de GraphRAG falhou antes de concluir a execução. '
+                'Tente novamente em instantes.',
+            )
 
 
 async def _orchestrate_message(
@@ -570,52 +786,110 @@ async def _process_telegram_text_message(
     text: str,
     update_id: int | None,
 ) -> None:
-    try:
-        orchestration = await _orchestrate_message(
-            chat_id=chat_id,
-            text=text,
-            update_id=update_id,
+    chat_lock = _get_chat_processing_lock(chat_id)
+    async with chat_lock:
+        _touch_chat_processing_lock(chat_id)
+        logger.info(
+            'telegram_message_processing_started chat_id=%s update_id=%s text_hash=%s text_preview=%s',
+            chat_id,
+            update_id,
+            _text_fingerprint(text),
+            _text_preview(text),
         )
-        reply_text = str(orchestration.get('message_text', _default_help_message()))
-        reply_markup = _build_reply_markup(orchestration.get('suggested_replies'))
-        sent = await _send_telegram_message(chat_id, reply_text, reply_markup=reply_markup)
-        if not sent and reply_markup is not None:
-            logger.warning(
-                'telegram_send_retry_without_markup chat_id=%s',
-                chat_id,
+        try:
+            if _is_stale_chat_update(chat_id, update_id):
+                logger.info(
+                    'telegram_stale_response_suppressed chat_id=%s update_id=%s phase=before_orchestration',
+                    chat_id,
+                    update_id,
+                )
+                return
+            try:
+                orchestration = await _orchestrate_message(
+                    chat_id=chat_id,
+                    text=text,
+                    update_id=update_id,
+                )
+            except httpx.HTTPError as exc:
+                logger.warning(
+                    'telegram_orchestrator_retry chat_id=%s update_id=%s error=%s',
+                    chat_id,
+                    update_id,
+                    exc,
+                )
+                await asyncio.sleep(0.4)
+                orchestration = await _orchestrate_message(
+                    chat_id=chat_id,
+                    text=text,
+                    update_id=update_id,
+                )
+            if _is_stale_chat_update(chat_id, update_id):
+                logger.info(
+                    'telegram_stale_response_suppressed chat_id=%s update_id=%s phase=after_orchestration',
+                    chat_id,
+                    update_id,
+                )
+                return
+            reply_text = str(orchestration.get('message_text', _default_help_message()))
+            reply_markup = _build_reply_markup(orchestration.get('suggested_replies'))
+            send_outcome = await _send_telegram_message(chat_id, reply_text, reply_markup=reply_markup)
+            if (
+                not send_outcome.delivered
+                and not send_outcome.delivery_uncertain
+                and reply_markup is not None
+                and send_outcome.retry_without_markup
+            ):
+                logger.warning(
+                    'telegram_send_retry_without_markup chat_id=%s update_id=%s',
+                    chat_id,
+                    update_id,
+                )
+                send_outcome = await _send_telegram_message(chat_id, reply_text, reply_markup=None)
+            if not send_outcome.delivered and not send_outcome.delivery_uncertain:
+                logger.error(
+                    'telegram_send_message_exhausted chat_id=%s update_id=%s',
+                    chat_id,
+                    update_id,
+                )
+            visual_assets = orchestration.get('visual_assets', [])
+            if isinstance(visual_assets, list):
+                for asset in visual_assets:
+                    if not isinstance(asset, dict):
+                        continue
+                    if str(asset.get('mime_type', '')).lower() != 'image/png':
+                        continue
+                    encoded = asset.get('base64_data')
+                    if not isinstance(encoded, str) or not encoded:
+                        continue
+                    try:
+                        image_bytes = base64.b64decode(encoded)
+                    except Exception:
+                        continue
+                    await _send_telegram_photo(
+                        chat_id,
+                        image_bytes,
+                        caption=str(asset.get('caption') or asset.get('title') or 'Visual institucional'),
+                    )
+        except httpx.HTTPError:
+            fallback_text = (
+                'Nao consegui consultar a base da escola agora. '
+                'Tente novamente em instantes ou use o portal institucional.'
             )
-            sent = await _send_telegram_message(chat_id, reply_text, reply_markup=None)
-        if not sent:
-            logger.error(
-                'telegram_send_message_exhausted chat_id=%s update_id=%s',
+            if _is_stale_chat_update(chat_id, update_id):
+                logger.info(
+                    'telegram_stale_fallback_suppressed chat_id=%s update_id=%s',
+                    chat_id,
+                    update_id,
+                )
+                return
+            await _send_telegram_message(chat_id, fallback_text)
+        finally:
+            logger.info(
+                'telegram_message_processing_finished chat_id=%s update_id=%s text_hash=%s',
                 chat_id,
                 update_id,
+                _text_fingerprint(text),
             )
-        visual_assets = orchestration.get('visual_assets', [])
-        if isinstance(visual_assets, list):
-            for asset in visual_assets:
-                if not isinstance(asset, dict):
-                    continue
-                if str(asset.get('mime_type', '')).lower() != 'image/png':
-                    continue
-                encoded = asset.get('base64_data')
-                if not isinstance(encoded, str) or not encoded:
-                    continue
-                try:
-                    image_bytes = base64.b64decode(encoded)
-                except Exception:
-                    continue
-                await _send_telegram_photo(
-                    chat_id,
-                    image_bytes,
-                    caption=str(asset.get('caption') or asset.get('title') or 'Visual institucional'),
-                )
-    except httpx.HTTPError:
-        fallback_text = (
-            'Nao consegui consultar a base da escola agora. '
-            'Tente novamente em instantes ou use o portal institucional.'
-        )
-        await _send_telegram_message(chat_id, fallback_text)
 
 
 def _command_to_orchestrator_text(text: str) -> str | None:
@@ -675,6 +949,14 @@ async def telegram_webhook(
                 'service': 'telegram-gateway',
                 'processed': 'missing_chat',
             }
+        logger.info(
+            'telegram_update_received chat_id=%s update_id=%s text_hash=%s text_preview=%s',
+            chat_id,
+            update_id,
+            _text_fingerprint(text),
+            _text_preview(text),
+        )
+        _mark_latest_chat_update(chat_id, update_id if isinstance(update_id, int) else None)
 
         graphrag_query, graphrag_method = _extract_explicit_graphrag_request(text)
         if graphrag_query is not None:

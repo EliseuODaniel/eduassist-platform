@@ -26,6 +26,10 @@ def _looks_like_access_scope_query(message: str) -> bool:
         'quem sou eu aqui',
         'quais alunos eu tenho vinculados',
         'quais alunos tenho vinculados',
+        'quais alunos estao vinculados a esta conta',
+        'quais alunos estão vinculados a esta conta',
+        'quais alunos estao vinculados nesta conta',
+        'quais alunos estão vinculados nesta conta',
         'alunos vinculados',
         'qual meu acesso',
         'qual e o meu escopo',
@@ -36,6 +40,8 @@ def _looks_like_access_scope_query(message: str) -> bool:
         'que dados posso ver',
         'o que eu consigo ver',
         'o que consigo ver',
+        'o que eu consigo ver sobre cada um',
+        'o que consigo ver sobre cada aluno',
         'o que posso consultar aqui',
         'qual e exatamente o meu escopo',
         'qual é exatamente o meu escopo',
@@ -140,6 +146,17 @@ def _looks_like_service_routing_query(message: str) -> bool:
             'como faco para entrar em contato',
             'como faço para entrar em contato',
             'por qual canal',
+            'como reporto',
+            'como denunciar',
+            'como denuncio',
+            'onde reporto',
+            'onde denuncio',
+            'a quem reporto',
+            'me diga so os canais',
+            'me diga só os canais',
+            'canais de',
+            'uma linha por setor',
+            'qual desses setores entra primeiro',
         }
     )
 
@@ -148,7 +165,22 @@ def _looks_like_public_teacher_identity_query(message: str) -> bool:
     normalized = _normalize_text(message)
     if not any(term in normalized for term in {'prof', 'professor', 'professora', 'docente'}):
         return False
-    return any(term in normalized for term in {'nome', 'telefone', 'contato', 'canal', 'como falar', 'como falo'})
+    return any(
+        term in normalized
+        for term in {
+            'nome',
+            'telefone',
+            'contato',
+            'canal',
+            'como falar',
+            'como falo',
+            'falar com',
+            'quero falar com',
+            'conversar com',
+            'falar direto com',
+            'falar diretamente com',
+        }
+    )
 
 
 def _extract_teacher_subject(message: str) -> str | None:
@@ -260,12 +292,63 @@ def _looks_like_cross_document_public_query(message: str) -> bool:
 
 
 def _looks_like_public_doc_bundle_request(message: str) -> bool:
+    normalized = _normalize_text(message)
+    documentary_open = (
+        any(
+            phrase in normalized
+            for phrase in {
+                'quero entender',
+                'me explique',
+                'como a escola',
+                'como a familia',
+                'como a família',
+                'qual imagem institucional',
+                'quais evidencias',
+                'quais evidências',
+                'que evidencias',
+                'que evidências',
+                'que leitura integrada',
+            }
+        )
+        and sum(
+            1
+            for term in {
+                'inclus',
+                'acessib',
+                'seguran',
+                'apoio',
+                'estudo orientado',
+                'contraturno',
+                'turno estendido',
+                'atividade externa',
+                'autoriz',
+                'transporte',
+                'uniforme',
+                'refeicao',
+                'refeição',
+                'governan',
+                'lideranca maior',
+                'liderança maior',
+                'direcao',
+                'direção',
+                'coordenacao',
+                'coordenação',
+                'impasse',
+                'devolut',
+                'recompos',
+                'responsaveis',
+                'responsáveis',
+            }
+            if term in normalized
+        ) >= 2
+    )
     return (
         _looks_like_cross_document_public_query(message)
         or _looks_like_family_new_calendar_enrollment_query(message)
         or _looks_like_public_graph_rag_query(message)
         or _looks_like_service_credentials_bundle_query(message)
         or _looks_like_policy_compare_query(message)
+        or documentary_open
     )
 
 
@@ -319,8 +402,23 @@ def _looks_like_calendar_week_query(message: str) -> bool:
     return (
         any(term in normalized for term in {'calendario publico', 'calendário público', 'calendario', 'calendário', 'eventos'})
         and any(term in normalized for term in {'familias', 'famílias', 'responsaveis', 'responsáveis'})
-        and any(term in normalized for term in {'desta semana', 'esta semana', 'mais importantes', 'mais relevantes', 'importantes', 'visiveis', 'visíveis'})
+        and any(term in normalized for term in {'desta semana', 'esta semana', 'mais importantes', 'mais relevantes', 'importantes', 'principais', 'visiveis', 'visíveis'})
     )
+
+
+def _looks_like_timeline_lifecycle_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    has_between_markers = 'marcos entre' in normalized or 'entre matricula' in normalized
+    has_enrollment = any(term in normalized for term in {'matricula', 'matrícula', 'vaga', 'vagas'})
+    has_school_start = any(term in normalized for term in {'inicio do ano letivo', 'início do ano letivo', 'inicio das aulas', 'início das aulas'})
+    has_family_meeting = any(term in normalized for term in {'reuniao de responsaveis', 'reunião de responsáveis', 'reuniao de familias', 'reunião de famílias', 'responsaveis', 'responsáveis'})
+    asks_before_after = any(term in normalized for term in {'antes ou depois', 'antes das aulas', 'depois das aulas', 'primeira reuniao', 'primeira reunião'})
+    asks_order_only = 'calendario inteiro' in normalized and any(term in normalized for term in {'recorte em ordem', 'so esse recorte', 'só esse recorte'})
+    return (
+        has_between_markers and has_enrollment and has_school_start and has_family_meeting
+    ) or (
+        asks_before_after and has_school_start and has_family_meeting
+    ) or asks_order_only
 
 
 def _looks_like_first_bimester_timeline_query(message: str) -> bool:
@@ -344,7 +442,7 @@ def _looks_like_year_three_phases_query(message: str) -> bool:
         'tres fases' in normalized and all(term in normalized for term in {'admiss', 'rotina', 'fechamento'})
     ) or (
         all(term in normalized for term in {'admiss', 'rotina academica', 'fechamento'})
-        and any(term in normalized for term in {'distribui', 'distribui entre', 'olhando so a base publica', 'olhando apenas a base publica'})
+        and any(term in normalized for term in {'distribui', 'distribui entre', 'olhando so a base publica', 'olhando apenas a base publica', 'se eu dividir o ano', 'dividir o ano'})
     )
 
 
@@ -360,7 +458,37 @@ def _looks_like_public_academic_policy_overview_query(message: str) -> bool:
 
 def _looks_like_conduct_frequency_punctuality_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    return any(term in normalized for term in {'convivencia', 'convivência', 'frequencia', 'frequência', 'pontualidade'})
+    conduct_terms = {
+        'convivencia',
+        'convivência',
+        'frequencia',
+        'frequência',
+        'pontualidade',
+        'bullying',
+        'assedio',
+        'assédio',
+        'agressao',
+        'agressão',
+        'intimidacao',
+        'intimidação',
+        'discriminacao',
+        'discriminação',
+        'bom comportamento',
+        'mal comportamento',
+        'comportamento',
+        'expulsao',
+        'expulsão',
+        'exclusao',
+        'exclusão',
+        'desligamento',
+        'desligar',
+        'bomba',
+        'explosivo',
+        'explosivos',
+        'seguranca',
+        'segurança',
+    }
+    return any(term in normalized for term in conduct_terms)
 
 
 def _looks_like_bolsas_and_processes_query(message: str) -> bool:

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from .agent_kernel import KernelPlan, KernelRunResult, build_kernel_plan
-from .kernel_runtime import execute_kernel_plan
+from .python_functions_kernel import KernelPlan, KernelRunResult, build_kernel_plan
+from .python_functions_kernel_runtime import execute_kernel_plan
 from .models import MessageResponseRequest
 from .path_profiles import annotate_plan_for_path, get_path_execution_profile
 from .python_functions_native_runtime import maybe_execute_python_functions_native_plan

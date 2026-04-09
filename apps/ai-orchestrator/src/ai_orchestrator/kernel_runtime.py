@@ -222,6 +222,13 @@ async def _maybe_contextual_public_direct_answer(
     if not is_public_context:
         return None
 
+    if rt._is_direct_service_routing_bundle_query(request.message):
+        return rt._compose_service_routing_answer(
+            school_profile,
+            request.message,
+            conversation_context=conversation_context,
+        )
+
     canonical_lane = match_public_canonical_lane(analysis_message) or match_public_canonical_lane(request.message)
     if canonical_lane:
         canonical_answer = compose_public_canonical_lane_answer(canonical_lane, profile=school_profile)

@@ -14,6 +14,7 @@ from .models import (
 from .public_doc_knowledge import (
     compose_public_calendar_visibility,
     compose_public_canonical_lane_answer,
+    compose_public_conduct_policy_contextual_answer,
     compose_public_conduct_frequency_recovery_bridge,
     compose_public_facilities_and_study_support,
     compose_public_family_new_calendar_assessment_enrollment,
@@ -24,6 +25,7 @@ from .public_doc_knowledge import (
     compose_public_transversal_year_bundle,
     match_public_canonical_lane,
 )
+from .public_known_unknowns import compose_public_known_unknown_answer, detect_public_known_unknown_key
 
 
 def _normalize_text(value: str) -> str:
@@ -65,12 +67,54 @@ def _looks_like_family_new_calendar_enrollment_query(message: str) -> bool:
                 "primeiro filho",
                 "primeira matricula",
                 "primeira matrícula",
+                "primeira matricula da familia",
+                "primeira matrícula da família",
                 "comeco das aulas",
                 "começo das aulas",
+                "portal",
+                "credenciais",
+                "secretaria",
+                "envio de documentos",
+                "documentos",
             }
         )
-        and any(term in normalized for term in {"calendario", "calendário", "rotina", "datas", "inicio do ano", "início do ano", "primeiro bimestre", "aulas"})
-        and any(term in normalized for term in {"matricula", "matrícula", "avaliacao", "avaliação", "provas", "processo de ingresso", "ingresso"})
+        and any(
+            term in normalized
+            for term in {
+                "ordem certa",
+                "passo a passo",
+                "como ler juntos",
+                "ler juntos",
+                "como entender",
+                "entender o primeiro bimestre",
+                "para entender o primeiro bimestre",
+                "como entram",
+                "como se organizam",
+                "agenda de avaliacoes",
+                "agenda de avaliações",
+                "antes do inicio das aulas",
+                "antes do início das aulas",
+                "como a familia deve juntar",
+                "como a família deve juntar",
+                "nao perder marcos",
+                "não perder marcos",
+            }
+        )
+        and any(term in normalized for term in {"calendario", "calendário", "rotina", "datas", "inicio do ano", "início do ano", "primeiro bimestre", "aulas", "ordem certa"})
+        and any(
+            term in normalized
+            for term in {
+                "matricula",
+                "matrícula",
+                "avaliacao",
+                "avaliação",
+                "provas",
+                "processo de ingresso",
+                "ingresso",
+                "portal",
+                "credenciais",
+            }
+        )
     )
 
 
@@ -117,6 +161,8 @@ def _looks_like_first_month_risks_query(message: str) -> bool:
                 "primeiro mês",
                 "comeco do ano",
                 "começo do ano",
+                "inicio do ano",
+                "início do ano",
                 "primeiras semanas",
                 "arranque do ano",
                 "arranque do ano letivo",
@@ -128,6 +174,8 @@ def _looks_like_first_month_risks_query(message: str) -> bool:
             term in normalized
             for term in {
                 "riscos",
+                "tropecos",
+                "tropeços",
                 "esquecido",
                 "prazo",
                 "deslizes",
@@ -136,8 +184,11 @@ def _looks_like_first_month_risks_query(message: str) -> bool:
                 "problema",
                 "problemas",
                 "comprometem",
+                "travando",
+                "travam",
                 "baguncam",
                 "bagunçam",
+                "desorganizam",
                 "explodem",
                 "explodir",
             }
@@ -157,6 +208,8 @@ def _looks_like_process_compare_query(message: str) -> bool:
                 "compare",
                 "destacando",
                 "o que muda",
+                "mudancas reais",
+                "mudanças reais",
                 "na pratica",
                 "na prática",
                 "se diferenciam",
@@ -240,7 +293,7 @@ def _looks_like_visibility_boundary_query(message: str) -> bool:
     normalized = _normalize_text(message)
     has_visibility_channel = any(
         term in normalized
-        for term in {"canais digitais", "portal", "calendario", "calendário", "canais oficiais"}
+        for term in {"canais digitais", "portal", "calendario", "calendário", "canais oficiais", "conteudo publico", "conteúdo público"}
     )
     has_public_visibility = any(
         term in normalized
@@ -261,7 +314,20 @@ def _looks_like_visibility_boundary_query(message: str) -> bool:
             "depende de autenticação",
         }
     )
-    return has_visibility_channel and has_public_visibility and has_auth_visibility
+    has_boundary_wording = any(
+        term in normalized
+        for term in {
+            "onde termina",
+            "onde comeca",
+            "onde começa",
+            "o que exige autenticacao",
+            "o que exige autenticação",
+            "o que pede login",
+        }
+    )
+    return (has_visibility_channel and has_public_visibility and has_auth_visibility) or (
+        has_public_visibility and has_auth_visibility and has_boundary_wording
+    )
 
 
 def _looks_like_public_graph_rag_query(message: str) -> bool:
@@ -348,12 +414,55 @@ def _institution_preflight_answer(
 def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message: str) -> SupervisorAnswerPayload | None:
     normalized = _normalize_text(message)
     canonical_lane = match_public_canonical_lane(message)
+    known_unknown_key = detect_public_known_unknown_key(message)
     canonical_supports: dict[str, tuple[str, str, list[MessageEvidenceSupport]]] = {
         "public_bundle.teacher_directory_boundary": (
             "specialist_supervisor_preflight:teacher_directory_boundary",
             "teacher_directory_boundary",
             [
                 MessageEvidenceSupport(kind="profile", label="Diretorio publico", detail="leadership_team / service_catalog"),
+            ],
+        ),
+        "public_bundle.inclusion_accessibility": (
+            "specialist_supervisor_preflight:inclusion_accessibility",
+            "inclusion_accessibility",
+            [
+                MessageEvidenceSupport(kind="document", label="Inclusao, Acessibilidade e Seguranca", detail="data/corpus/public/inclusao-acessibilidade-e-seguranca.md"),
+            ],
+        ),
+        "public_bundle.integral_study_support": (
+            "specialist_supervisor_preflight:integral_study_support",
+            "integral_study_support",
+            [
+                MessageEvidenceSupport(kind="document", label="Periodo Integral e Estudo Orientado", detail="data/corpus/public/programa-periodo-integral-e-estudo-orientado.md"),
+            ],
+        ),
+        "public_bundle.health_emergency_bundle": (
+            "specialist_supervisor_preflight:health_emergency_bundle",
+            "health_emergency_bundle",
+            [
+                MessageEvidenceSupport(kind="document", label="Protocolo de Saude, Medicacao e Emergencias", detail="data/corpus/public/protocolo-saude-medicacao-e-emergencias.md"),
+            ],
+        ),
+        "public_bundle.outings_authorizations": (
+            "specialist_supervisor_preflight:outings_authorizations",
+            "outings_authorizations",
+            [
+                MessageEvidenceSupport(kind="document", label="Saidas Pedagogicas, Eventos e Autorizacoes", detail="data/corpus/public/saidas-pedagogicas-eventos-e-autorizacoes.md"),
+            ],
+        ),
+        "public_bundle.transport_uniform_bundle": (
+            "specialist_supervisor_preflight:transport_uniform_bundle",
+            "transport_uniform_bundle",
+            [
+                MessageEvidenceSupport(kind="document", label="Transporte, Alimentacao e Uniforme", detail="data/corpus/public/transporte-alimentacao-uniforme.md"),
+            ],
+        ),
+        "public_bundle.governance_protocol": (
+            "specialist_supervisor_preflight:governance_protocol",
+            "governance_protocol",
+            [
+                MessageEvidenceSupport(kind="document", label="Governanca e Lideranca Institucional", detail="data/corpus/public/governanca-e-lideranca.md"),
             ],
         ),
         "public_bundle.calendar_week": (
@@ -390,7 +499,11 @@ def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message:
         ),
     }
     if canonical_lane in canonical_supports:
-        answer_text = compose_public_canonical_lane_answer(canonical_lane, profile=profile)
+        answer_text = (
+            compose_public_conduct_policy_contextual_answer(message, profile=profile)
+            if canonical_lane == "public_bundle.conduct_frequency_punctuality"
+            else None
+        ) or compose_public_canonical_lane_answer(canonical_lane, profile=profile)
         if answer_text:
             reason, graph_leaf, supports = canonical_supports[canonical_lane]
             return _institution_preflight_answer(
@@ -401,7 +514,27 @@ def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message:
                 supports=supports,
             )
 
-    if _looks_like_family_new_calendar_enrollment_query(message):
+    if known_unknown_key:
+        answer_text = compose_public_known_unknown_answer(
+            key=known_unknown_key,
+            school_name=str((profile or {}).get("school_name") or "Colegio Horizonte"),
+        )
+        if answer_text:
+            return _institution_preflight_answer(
+                answer_text=answer_text,
+                reason="specialist_supervisor_preflight:public_known_unknown",
+                graph_leaf="public_known_unknown",
+                summary="Pergunta publica valida, mas o dado solicitado nao esta publicado oficialmente.",
+                supports=[
+                    MessageEvidenceSupport(
+                        kind="known_unknown",
+                        label=known_unknown_key,
+                        detail="dado publico nao publicado oficialmente",
+                    )
+                ],
+            )
+
+    if _looks_like_family_new_calendar_enrollment_query(message) and not _looks_like_first_month_risks_query(message):
         answer_text = compose_public_family_new_calendar_assessment_enrollment()
         if answer_text:
             return _institution_preflight_answer(

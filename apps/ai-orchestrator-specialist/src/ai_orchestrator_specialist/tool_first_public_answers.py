@@ -26,6 +26,7 @@ from .public_bundle_fast_paths import (
 from .public_doc_knowledge import (
     compose_public_academic_policy_overview,
     compose_public_bolsas_and_processes,
+    compose_public_conduct_policy_contextual_answer,
     compose_public_conduct_frequency_punctuality,
     compose_public_first_month_risks,
     compose_public_health_authorizations_bridge,
@@ -56,6 +57,7 @@ from .public_query_patterns import (
     _looks_like_passing_policy_query,
     _looks_like_project_of_life_query,
     _looks_like_public_academic_policy_overview_query,
+    _looks_like_timeline_lifecycle_query,
     _looks_like_travel_planning_query,
     _looks_like_year_three_phases_query,
 )
@@ -95,6 +97,7 @@ def _build_public_tool_payload(
     strategy = "graph_rag" if mode == "graph_rag" else "structured_tools"
     if mode == "hybrid_retrieval":
         strategy = "hybrid_retrieval"
+    resolved_retrieval_backend = str(retrieval_backend or "none")
     return SupervisorAnswerPayload(
         message_text=message_text,
         mode=mode,
@@ -104,7 +107,7 @@ def _build_public_tool_payload(
             confidence=confidence,
             reason=reason,
         ),
-        retrieval_backend=retrieval_backend,
+        retrieval_backend=resolved_retrieval_backend,
         citations=citations or [],
         evidence_pack=MessageEvidencePack(
             strategy=strategy,
@@ -128,6 +131,8 @@ async def maybe_tool_first_public_answer(
     deps: ToolFirstPublicDeps,
 ) -> SupervisorAnswerPayload | None:
     if not ctx.request.user.authenticated and (
+        _looks_like_timeline_lifecycle_query(ctx.request.message)
+        or
         _looks_like_calendar_week_query(ctx.request.message)
         or _looks_like_first_bimester_timeline_query(ctx.request.message)
         or _looks_like_eval_calendar_query(ctx.request.message)
@@ -149,7 +154,11 @@ async def maybe_tool_first_public_answer(
         answer_text = None
         reason = "specialist_supervisor_tool_first:public_calendar"
         support_label = "Calendario publico"
-        if _looks_like_calendar_week_query(ctx.request.message):
+        if _looks_like_timeline_lifecycle_query(ctx.request.message):
+            answer_text = _compose_timeline_bundle_answer(profile, ctx.request.message)
+            reason = "specialist_supervisor_tool_first:timeline_lifecycle"
+            support_label = "Linha do tempo publica"
+        elif _looks_like_calendar_week_query(ctx.request.message):
             answer_text = _compose_calendar_week_answer(events if isinstance(events, list) else [])
             reason = "specialist_supervisor_tool_first:calendar_week"
             support_label = "Eventos publicos para familias"
@@ -220,7 +229,10 @@ async def maybe_tool_first_public_answer(
             )
 
     if not ctx.request.user.authenticated and _looks_like_conduct_frequency_punctuality_query(ctx.request.message):
-        answer_text = compose_public_conduct_frequency_punctuality(profile)
+        answer_text = (
+            compose_public_conduct_policy_contextual_answer(ctx.request.message, profile=profile)
+            or compose_public_conduct_frequency_punctuality(profile)
+        )
         if answer_text:
             return _build_public_tool_payload(
                 message_text=answer_text,
@@ -505,7 +517,21 @@ async def maybe_tool_first_public_answer(
         timeline_payload = await deps.fetch_public_payload(ctx, "/v1/public/timeline", "timeline")
         entries = timeline_payload.get("entries") if isinstance(timeline_payload, dict) else None
         if isinstance(entries, list):
-            combined_answer = _compose_timeline_bundle_answer({"public_timeline": entries}, ctx.request.message)
+            recent_messages = (
+                ctx.conversation_context.get("recent_messages", [])
+                if isinstance(ctx.conversation_context, dict)
+                else []
+            )
+            recent_user_messages = [
+                str(item.get("content") or "").strip()
+                for item in recent_messages[-6:]
+                if isinstance(item, dict) and str(item.get("sender_type") or "").lower() == "user"
+            ]
+            combined_answer = _compose_timeline_bundle_answer(
+                {"public_timeline": entries},
+                ctx.request.message,
+                recent_user_messages=recent_user_messages,
+            )
             if combined_answer:
                 return _build_public_tool_payload(
                     message_text=combined_answer,

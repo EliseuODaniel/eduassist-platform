@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..agent_kernel import KernelPlan
+from ..llamaindex_kernel import KernelPlan
 from ..llamaindex_path_runtime import build_llamaindex_plan, execute_llamaindex_plan
 from ..models import MessageResponse
 from .base import ResponseEngine

@@ -111,15 +111,15 @@ def _normalize_local_service_url(value: str, *, kind: str) -> str:
         defaults = {
             'api_core': 'http://127.0.0.1:8001',
             'ai_orchestrator': 'http://127.0.0.1:8002',
-            'specialist_pilot': 'http://127.0.0.1:8005',
+            'specialist_pilot': 'http://127.0.0.1:8015',
         }
         return defaults[kind]
     replacements = {
         'http://api-core:8000': 'http://127.0.0.1:8001',
         'http://ai-orchestrator:8000': 'http://127.0.0.1:8002',
-        'http://ai-orchestrator-specialist:8000': 'http://127.0.0.1:8005',
+        'http://ai-orchestrator-specialist:8000': 'http://127.0.0.1:8015',
         'http://localhost:8000': {
-            'specialist_pilot': 'http://127.0.0.1:8005',
+            'specialist_pilot': 'http://127.0.0.1:8015',
         }.get(kind, normalized),
     }
     return replacements.get(normalized, normalized)

@@ -15,6 +15,7 @@ import psycopg
 from psycopg.rows import dict_row
 from qdrant_client import QdrantClient, models
 
+from .model_cache import clear_fastembed_cache
 from .models import (
     RetrievalBackend,
     RetrievalCitation,
@@ -81,6 +82,99 @@ _INTENT_EXPANSIONS = {
     'policy_lookup': 'avaliacao recuperacao promocao frequencia pontualidade saude medicacao segunda chamada autorizacoes saidas pedagogicas regras',
     'admissions_lookup': 'matricula rematricula transferencia cancelamento bolsas descontos documentos entrevista acolhimento prazos protocolos',
     'service_overview': 'secretaria portal aplicativo credenciais login senha suporte digital servicos atendimento documentos prazos canais protocolos',
+}
+_TOPIC_FAMILIES: dict[str, set[str]] = {
+    'contacts': {
+        'telefone',
+        'whatsapp',
+        'instagram',
+        'site',
+        'email',
+        'contato',
+        'secretaria',
+        'direcao',
+        'direção',
+        'coordenacao',
+        'coordenação',
+        'financeiro',
+    },
+    'pricing': {
+        'mensalidade',
+        'mensalidades',
+        'matricula',
+        'matrícula',
+        'bolsa',
+        'bolsas',
+        'desconto',
+        'descontos',
+        'valor',
+        'valores',
+        'preco',
+        'preço',
+        'filhos',
+    },
+    'timeline': {
+        'calendario',
+        'calendário',
+        'aulas',
+        'inicio',
+        'início',
+        'reuniao',
+        'reunião',
+        'responsaveis',
+        'responsáveis',
+        'pais',
+        'formatura',
+        'datas',
+    },
+    'admissions': {
+        'matricula',
+        'matrícula',
+        'rematricula',
+        'rematrícula',
+        'transferencia',
+        'transferência',
+        'cancelamento',
+        'documentacao',
+        'documentação',
+        'visita',
+        'acolhimento',
+    },
+    'policy': {
+        'avaliacao',
+        'avaliação',
+        'recuperacao',
+        'recuperação',
+        'promocao',
+        'promoção',
+        'frequencia',
+        'frequência',
+        'segunda',
+        'chamada',
+        'regra',
+        'regras',
+    },
+    'services': {
+        'portal',
+        'credenciais',
+        'login',
+        'senha',
+        'aplicativo',
+        'app',
+        'servicos',
+        'serviços',
+        'documentos',
+        'documentacao',
+        'documentação',
+    },
+}
+_TOPIC_QUERIES: dict[str, str] = {
+    'contacts': 'contato secretaria financeiro direcao coordenacao canais oficiais',
+    'pricing': 'mensalidade matricula bolsas descontos simulacao comercial publica',
+    'timeline': 'calendario matricula inicio das aulas reuniao de responsaveis datas publicadas',
+    'admissions': 'matricula rematricula transferencia cancelamento documentos e prazos',
+    'policy': 'avaliacao recuperacao promocao frequencia e regras academicas',
+    'services': 'portal credenciais secretaria documentos e servicos digitais',
 }
 _RESTRICTED_DOC_QUERY_TERMS = {
     'procedimento interno',
@@ -153,6 +247,7 @@ class RetrievalQueryPlanSpec:
     profile: RetrievalProfile
     normalized_query: str
     query_variants: list[str]
+    subqueries: list[str]
     graph_rag_candidate: bool
     category_bias: str | None
     canonical_lane: str | None
@@ -248,6 +343,7 @@ class RetrievalService:
             deep_candidate_pool_size=self.deep_candidate_pool_size,
             profile_override=profile,
         )
+        corrective_retry_applied = False
         with start_span(
             'eduassist.retrieval.hybrid_search',
             tracer_name='eduassist.ai_orchestrator.retrieval',
@@ -262,6 +358,7 @@ class RetrievalService:
                 'eduassist.retrieval.intent': query_plan.intent,
                 'eduassist.retrieval.graph_rag_candidate': query_plan.graph_rag_candidate,
                 'eduassist.retrieval.variant_count': len(query_plan.query_variants),
+                'eduassist.retrieval.subquery_count': len(query_plan.subqueries),
             },
         ):
             lexical_sources: dict[str, list[dict[str, Any]]] = {}
@@ -281,6 +378,21 @@ class RetrievalService:
             for index, variant in enumerate(vector_variants):
                 vector_sources[f'vector:{index}'] = self._vector_search(
                     query=variant,
+                    top_k=query_plan.vector_limit,
+                    visibility=effective_visibility,
+                    category=effective_category,
+                    parent_ref_keys=parent_ref_keys,
+                )
+            for index, subquery in enumerate(query_plan.subqueries[:2]):
+                lexical_sources[f'subquery:{index}:lexical'] = self._lexical_search(
+                    query=subquery,
+                    top_k=query_plan.lexical_limit,
+                    visibility=effective_visibility,
+                    category=effective_category,
+                    parent_ref_keys=parent_ref_keys,
+                )
+                vector_sources[f'subquery:{index}:vector'] = self._vector_search(
+                    query=subquery,
                     top_k=query_plan.vector_limit,
                     visibility=effective_visibility,
                     category=effective_category,
@@ -306,6 +418,73 @@ class RetrievalService:
                 reranked_hits,
                 max_groups=max(top_k, 3),
             )
+            uncovered_subqueries = _uncovered_subqueries(
+                subqueries=query_plan.subqueries,
+                hits=reranked_hits,
+            )
+            if uncovered_subqueries:
+                corrective_retry_applied = True
+                for index, subquery in enumerate(uncovered_subqueries[:2]):
+                    retry_query = _corrective_retry_query(
+                        subquery,
+                        intent=query_plan.intent,
+                    )
+                    lexical_sources[f'corrective:{index}:lexical'] = self._lexical_search(
+                        query=retry_query,
+                        top_k=max(query_plan.lexical_limit, top_k * 4),
+                        visibility=effective_visibility,
+                        category=effective_category,
+                        parent_ref_keys=parent_ref_keys,
+                    )
+                    vector_sources[f'corrective:{index}:vector'] = self._vector_search(
+                        query=retry_query,
+                        top_k=max(query_plan.vector_limit, top_k * 4),
+                        visibility=effective_visibility,
+                        category=effective_category,
+                        parent_ref_keys=parent_ref_keys,
+                    )
+                fused_hits = self._fuse_hits(
+                    lexical_sources=lexical_sources,
+                    vector_sources=vector_sources,
+                    top_k=max(top_k, query_plan.rerank_limit),
+                    category_bias=query_plan.category_bias,
+                    max_chunks_per_document=query_plan.max_chunks_per_document,
+                    intent=query_plan.intent,
+                    normalized_query=query_plan.normalized_query,
+                )
+                reranked_hits, reranker_applied = self._rerank_hits(
+                    query=query,
+                    hits=fused_hits,
+                    rerank_limit=query_plan.rerank_limit,
+                    top_k=top_k,
+                )
+                document_groups = self._build_document_groups(
+                    reranked_hits,
+                    max_groups=max(top_k, 3),
+                )
+            subquery_coverage = _subquery_coverage_map(
+                subqueries=query_plan.subqueries,
+                hits=reranked_hits,
+            )
+            uncovered_subqueries_final = [
+                subquery
+                for subquery, coverage in subquery_coverage.items()
+                if coverage < 0.5
+            ]
+            coverage_ratio = (
+                round(
+                    sum(subquery_coverage.values()) / max(1, len(subquery_coverage)),
+                    3,
+                )
+                if subquery_coverage
+                else 1.0
+            )
+            citation_first_recommended = _should_recommend_citation_first(
+                intent=query_plan.intent,
+                subqueries=query_plan.subqueries,
+                coverage_ratio=coverage_ratio,
+                document_groups=document_groups,
+            )
             context_pack = self._build_context_pack(document_groups)
 
             set_span_attributes(
@@ -318,6 +497,9 @@ class RetrievalService:
                     'eduassist.retrieval.reranker_applied': reranker_applied,
                     'eduassist.retrieval.profile': query_plan.profile.value,
                     'eduassist.retrieval.canonical_lane': query_plan.canonical_lane,
+                    'eduassist.retrieval.corrective_retry_applied': corrective_retry_applied,
+                    'eduassist.retrieval.coverage_ratio': coverage_ratio,
+                    'eduassist.retrieval.citation_first_recommended': citation_first_recommended,
                 }
             )
             metric_attributes = {
@@ -327,6 +509,8 @@ class RetrievalService:
                 'intent': query_plan.intent,
                 'profile': query_plan.profile.value,
                 'reranker_applied': str(reranker_applied).lower(),
+                'corrective_retry_applied': str(corrective_retry_applied).lower(),
+                'citation_first_recommended': str(citation_first_recommended).lower(),
             }
             record_counter(
                 'eduassist_retrieval_requests',
@@ -356,8 +540,14 @@ class RetrievalService:
                     profile=query_plan.profile,
                     normalized_query=query_plan.normalized_query,
                     query_variants=query_plan.query_variants,
+                    subqueries=query_plan.subqueries,
+                    subquery_coverage=subquery_coverage,
+                    uncovered_subqueries_final=uncovered_subqueries_final,
+                    coverage_ratio=coverage_ratio,
+                    citation_first_recommended=citation_first_recommended,
                     graph_rag_candidate=query_plan.graph_rag_candidate,
                     reranker_applied=reranker_applied,
+                    corrective_retry_applied=corrective_retry_applied,
                     reranker_model=self.late_interaction_model if reranker_applied else None,
                     category_bias=query_plan.category_bias,
                     canonical_lane=query_plan.canonical_lane,
@@ -880,6 +1070,117 @@ def _cross_document_variants(query: str) -> list[str]:
     return _dedupe_strings(variants)
 
 
+def _topic_families_for_query(query: str) -> list[str]:
+    terms = set(_query_terms(query))
+    normalized = _normalize_text(query)
+    families: list[str] = []
+    for family, markers in _TOPIC_FAMILIES.items():
+        if markers & terms:
+            families.append(family)
+            continue
+        if family == 'timeline' and any(
+            phrase in normalized for phrase in ('entre matricula', 'antes das aulas', 'depois da matricula')
+        ):
+            families.append(family)
+    return families
+
+
+def _decompose_query_into_subqueries(
+    query: str,
+    *,
+    intent: str,
+    visibility: str,
+) -> list[str]:
+    if visibility != 'public':
+        return []
+    families = _topic_families_for_query(query)
+    if len(families) <= 1 and intent not in {'corpus_overview', 'service_overview', 'admissions_lookup'}:
+        return []
+    hints: list[str] = []
+    normalized = _normalize_text(query)
+    for family in families:
+        base = _TOPIC_QUERIES.get(family)
+        if not base:
+            continue
+        if family == 'pricing':
+            children_match = re.search(r'\b(\d+)\s+filh', normalized)
+            if children_match:
+                base = f'{base} {children_match.group(1)} filhos'
+        hints.append(base)
+    if intent in {'corpus_overview', 'service_overview'} and 'familia nova' in normalized:
+        hints.append('familia nova acolhimento rotina canais portal e suporte')
+    return _dedupe_strings(hints)
+
+
+def _coverage_terms_for_subquery(subquery: str) -> list[str]:
+    terms = [term for term in _query_terms(subquery) if len(term) >= 4]
+    return terms[:4]
+
+
+def _hit_haystack(hit: RetrievalHit) -> str:
+    return _normalize_text(
+        ' '.join(
+            part
+            for part in (
+                hit.document_title,
+                hit.contextual_summary or '',
+                hit.text_excerpt or '',
+                hit.section_title or '',
+                hit.section_parent or '',
+                hit.section_path or '',
+            )
+            if part
+        )
+    )
+
+
+def _subquery_is_covered(subquery: str, hits: list[RetrievalHit]) -> bool:
+    return _subquery_coverage_score(subquery, hits) >= 0.5
+
+
+def _subquery_coverage_score(subquery: str, hits: list[RetrievalHit]) -> float:
+    terms = _coverage_terms_for_subquery(subquery)
+    if not terms:
+        return 1.0
+    haystacks = [_hit_haystack(hit) for hit in hits[:6]]
+    best_overlap = 0
+    for haystack in haystacks:
+        overlap = sum(1 for term in terms if term in haystack)
+        best_overlap = max(best_overlap, overlap)
+    denominator = 1 if len(terms) <= 2 else 2
+    return min(1.0, best_overlap / denominator)
+
+
+def _subquery_coverage_map(*, subqueries: list[str], hits: list[RetrievalHit]) -> dict[str, float]:
+    return {
+        subquery: round(_subquery_coverage_score(subquery, hits), 3)
+        for subquery in subqueries
+    }
+
+
+def _uncovered_subqueries(*, subqueries: list[str], hits: list[RetrievalHit]) -> list[str]:
+    return [subquery for subquery in subqueries if not _subquery_is_covered(subquery, hits)]
+
+
+def _corrective_retry_query(subquery: str, *, intent: str) -> str:
+    expansion = _INTENT_EXPANSIONS.get(intent, '')
+    return ' '.join(part for part in (subquery, expansion) if part).strip()
+
+
+def _should_recommend_citation_first(
+    *,
+    intent: str,
+    subqueries: list[str],
+    coverage_ratio: float,
+    document_groups: list[RetrievalDocumentGroup],
+) -> bool:
+    if intent in {'corpus_overview', 'policy_lookup', 'admissions_lookup'}:
+        return True
+    if len(subqueries) >= 2 and len(document_groups) >= 2:
+        return True
+    return coverage_ratio < 0.85 and len(document_groups) >= 2
+
+
 def _has_synthesis_language(normalized: str, terms: set[str]) -> bool:
     if {
         'panorama',
@@ -1129,10 +1430,17 @@ def _build_query_plan(
     intent = _intent_for_query(query)
     normalized_query = _normalize_text(query)
     canonical_lane = match_public_canonical_lane(query) if visibility == 'public' else None
+    subqueries = _decompose_query_into_subqueries(
+        query,
+        intent=intent,
+        visibility=visibility,
+    )
     keyword_variant = _keyword_variant(query) if enable_query_variants else None
     variants = [query]
     if keyword_variant:
         variants.append(keyword_variant)
+    if enable_query_variants:
+        variants.extend(subqueries)
     expansion = _INTENT_EXPANSIONS.get(intent)
     if enable_query_variants and expansion:
         variants.append(f'{query} {expansion}'.strip())
@@ -1173,6 +1481,7 @@ def _build_query_plan(
         profile=profile,
         normalized_query=normalized_query,
         query_variants=deduped_variants,
+        subqueries=subqueries,
         graph_rag_candidate=_graph_rag_candidate(query, intent=intent),
         category_bias=_category_bias_for_query(query, category=category, intent=intent),
         canonical_lane=canonical_lane,
@@ -1466,12 +1775,20 @@ def compose_restricted_document_no_match_answer(query: str) -> str:
         and any(term in normalized for term in ('hospedagem', 'pernoite'))
     ):
         return (
-            'Consultei os documentos internos disponiveis, mas nao encontrei uma orientacao restrita '
-            'especifica sobre excursao ou viagem internacional com hospedagem para o ensino medio.'
+            'Nao encontrei uma orientacao restrita especifica sobre excursao ou viagem internacional com hospedagem para o ensino medio nos documentos internos disponiveis. '
+            'Na pratica, o proximo passo e consultar o setor responsavel por esse protocolo interno ou eu posso trazer apenas o correspondente publico.'
+        )
+    if ('negoci' in normalized or 'financeir' in normalized) and ('familia' in normalized or 'família' in normalized):
+        return (
+            'Consultei os documentos internos disponiveis, mas nao encontrei um criterio interno especifico '
+            'de negociacao financeira com a familia para esse recorte. '
+            'Na pratica, o proximo passo e validar essa orientacao com o financeiro responsavel.'
         )
     return (
         'Consultei os documentos internos disponiveis, mas nao encontrei uma orientacao restrita '
-        f'especifica para: "{normalized_query}".'
+        f'especifica para: "{normalized_query}". '
+        'Na pratica, esta base nao trouxe detalhe interno suficiente para responder com seguranca; '
+        'o proximo passo e consultar o setor responsavel ou pedir apenas o material publico correspondente.'
     )
 
 
@@ -1708,7 +2025,7 @@ def _build_embedder(model_name: str) -> TextEmbedding:
         message = str(exc)
         if 'NO_SUCHFILE' not in message and "File doesn't exist" not in message:
             raise
-        shutil.rmtree('/tmp/fastembed_cache', ignore_errors=True)
+        clear_fastembed_cache()
         return TextEmbedding(model_name=model_name)
 
 
@@ -1719,5 +2036,5 @@ def _build_late_interaction_embedder(model_name: str) -> LateInteractionTextEmbe
         message = str(exc)
         if 'NO_SUCHFILE' not in message and "File doesn't exist" not in message:
             raise
-        shutil.rmtree('/tmp/fastembed_cache', ignore_errors=True)
+        clear_fastembed_cache()
         return LateInteractionTextEmbedding(model_name=model_name)

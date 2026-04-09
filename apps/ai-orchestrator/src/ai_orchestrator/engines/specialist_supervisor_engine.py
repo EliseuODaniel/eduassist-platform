@@ -7,13 +7,28 @@ from typing import Any
 import httpx
 from eduassist_observability import canonicalize_evidence_strategy, canonicalize_risk_flags
 
-from ..models import AccessTier, IntentClassification, MessageResponse, OrchestrationMode, QueryDomain, RetrievalBackend
+from ..models import (
+    AccessTier,
+    IntentClassification,
+    MessageResponse,
+    OrchestrationMode,
+    QueryDomain,
+    RetrievalBackend,
+)
 from ..public_doc_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
+from ..serving_telemetry import record_stack_outcome
 from .base import ResponseEngine, ShadowRunResult
 
 logger = logging.getLogger(__name__)
 _REMOTE_PILOT_CLIENTS: dict[tuple[str, float], httpx.AsyncClient] = {}
 _REMOTE_PILOT_FAILURES: dict[str, tuple[int, float]] = {}
+_PUBLIC_OPEN_DOCUMENTARY_LOCAL_FALLBACK_LANES = {
+    "public_bundle.integral_study_support",
+    "public_bundle.governance_protocol",
+    "public_bundle.health_emergency_bundle",
+    "public_bundle.visibility_boundary",
+    "public_bundle.permanence_family_support",
+}
 
 
 def _strict_safe_response_text(*, request: Any) -> str:
@@ -147,7 +162,29 @@ def _local_public_canonical_lane_response(*, request: Any, lane: str) -> Message
         final_polish_reason='deterministic_answer',
         final_polish_changed_text=False,
         final_polish_preserved_fallback=False,
+        candidate_chosen='deterministic',
+        candidate_reason=f'public_canonical_lane:{lane}',
+        retrieval_probe_topic=None,
+        response_cache_hit=False,
+        response_cache_kind=None,
     )
+
+
+def _should_use_local_public_fallback_before_remote(
+    *,
+    lane: str | None,
+    llm_forced_mode: bool,
+    pilot_url: str,
+) -> bool:
+    if not lane:
+        return False
+    if not llm_forced_mode:
+        return True
+    if lane not in _PUBLIC_OPEN_DOCUMENTARY_LOCAL_FALLBACK_LANES:
+        return False
+    if not pilot_url:
+        return True
+    return _pilot_is_temporarily_open_circuit(pilot_url)
 
 
 def _pilot_client(*, pilot_url: str, timeout_seconds: float) -> httpx.AsyncClient:
@@ -224,6 +261,7 @@ class SpecialistSupervisorEngine(ResponseEngine):
         return payload if isinstance(payload, dict) else None
 
     async def respond(self, *, request: Any, settings: Any, engine_mode: str | None = None) -> Any:
+        started_at = time.monotonic()
         strict_isolation = bool(getattr(settings, "strict_framework_isolation_enabled", False))
         pilot_url = str(getattr(settings, "specialist_supervisor_pilot_url", "") or "").strip()
         request_user = getattr(request, "user", None)
@@ -231,12 +269,26 @@ class SpecialistSupervisorEngine(ResponseEngine):
         llm_forced_mode = bool(getattr(settings, 'feature_flag_final_polish_force_llm', False)) or bool(
             (getattr(request, 'debug_options', {}) or {}).get('llm_forced_mode')
         )
-        if is_effectively_public and not llm_forced_mode:
+        canonical_lane = None
+        if is_effectively_public:
             canonical_lane = match_public_canonical_lane(str(getattr(request, "message", "") or ""))
-            if canonical_lane:
-                local_public_answer = _local_public_canonical_lane_response(request=request, lane=canonical_lane)
-                if local_public_answer is not None:
-                    return local_public_answer
+        if is_effectively_public and _should_use_local_public_fallback_before_remote(
+            lane=canonical_lane,
+            llm_forced_mode=llm_forced_mode,
+            pilot_url=pilot_url,
+        ):
+            local_public_answer = _local_public_canonical_lane_response(request=request, lane=canonical_lane)
+            if local_public_answer is not None:
+                record_stack_outcome(
+                    stack_name='specialist_supervisor',
+                    latency_ms=(time.monotonic() - started_at) * 1000,
+                    success=True,
+                    timeout=False,
+                    cache_hit=False,
+                    used_llm=False,
+                    candidate_kind=local_public_answer.candidate_chosen,
+                )
+                return local_public_answer
         try:
             payload = await self._call_remote_pilot(request=request, settings=settings)
         except Exception:
@@ -247,10 +299,34 @@ class SpecialistSupervisorEngine(ResponseEngine):
 
         answer = payload.get("answer") if isinstance(payload, dict) and isinstance(payload.get("answer"), dict) else None
         if isinstance(answer, dict):
-            return MessageResponse.model_validate(_normalize_remote_answer(answer))
+            response = MessageResponse.model_validate(_normalize_remote_answer(answer))
+            record_stack_outcome(
+                stack_name='specialist_supervisor',
+                latency_ms=(time.monotonic() - started_at) * 1000,
+                success=True,
+                timeout=False,
+                cache_hit=bool(response.response_cache_hit),
+                used_llm=bool(response.used_llm),
+                candidate_kind=response.candidate_chosen,
+            )
+            return response
+
+        if is_effectively_public and canonical_lane in _PUBLIC_OPEN_DOCUMENTARY_LOCAL_FALLBACK_LANES:
+            local_public_answer = _local_public_canonical_lane_response(request=request, lane=canonical_lane)
+            if local_public_answer is not None:
+                record_stack_outcome(
+                    stack_name='specialist_supervisor',
+                    latency_ms=(time.monotonic() - started_at) * 1000,
+                    success=True,
+                    timeout=True,
+                    cache_hit=False,
+                    used_llm=False,
+                    candidate_kind=local_public_answer.candidate_chosen,
+                )
+                return local_public_answer
 
         if strict_isolation and not is_effectively_public:
-            return MessageResponse(
+            response = MessageResponse(
                 message_text=_strict_safe_response_text(request=request),
                 mode=OrchestrationMode.clarify,
                 classification=IntentClassification(
@@ -273,6 +349,16 @@ class SpecialistSupervisorEngine(ResponseEngine):
                 used_llm=False,
                 llm_stages=[],
             )
+            record_stack_outcome(
+                stack_name='specialist_supervisor',
+                latency_ms=(time.monotonic() - started_at) * 1000,
+                success=False,
+                timeout=False,
+                cache_hit=False,
+                used_llm=False,
+                candidate_kind=response.candidate_chosen,
+            )
+            return response
 
         from ..runtime import generate_message_response
 
@@ -284,7 +370,17 @@ class SpecialistSupervisorEngine(ResponseEngine):
             engine_mode=str(engine_mode or self.name),
         )
         if isinstance(fallback_response, MessageResponse):
-            return _mark_cross_stack_fallback(fallback_response)
+            marked_response = _mark_cross_stack_fallback(fallback_response)
+            record_stack_outcome(
+                stack_name='specialist_supervisor',
+                latency_ms=(time.monotonic() - started_at) * 1000,
+                success=False,
+                timeout=True,
+                cache_hit=bool(marked_response.response_cache_hit),
+                used_llm=bool(marked_response.used_llm),
+                candidate_kind=marked_response.candidate_chosen,
+            )
+            return marked_response
         return fallback_response
 
     async def shadow_compare(self, *, request: Any, settings: Any) -> ShadowRunResult:

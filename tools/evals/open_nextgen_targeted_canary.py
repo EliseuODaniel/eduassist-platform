@@ -166,7 +166,10 @@ def _write_report(*, report_md: Path, report_json: Path, artifact_json: Path, pa
 
 def main() -> int:
     parser = argparse.ArgumentParser(description='Activate or clear a targeted next-gen canary window for Telegram traffic.')
-    parser.add_argument('--base-url', default='http://127.0.0.1:8002')
+    parser.add_argument(
+        '--base-url',
+        default=os.getenv('CONTROL_PLANE_ORCHESTRATOR_URL', 'http://127.0.0.1:8002'),
+    )
     parser.add_argument('--internal-api-token', default=os.environ.get('INTERNAL_API_TOKEN', 'dev-internal-token'))
     parser.add_argument('--operator', default='codex')
     parser.add_argument('--stack', choices=SUPPORTED_STACKS)

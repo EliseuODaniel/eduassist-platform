@@ -24,6 +24,7 @@ class ProtectedAnswerDeps:
     access_tier_for_domain: Callable[[str, bool], str]
     default_suggested_replies: Callable[[str], list[MessageResponseSuggestedReply]]
     student_hint_from_message: Callable[..., str | None]
+    unknown_explicit_student_reference: Callable[..., str | None]
     is_student_name_only_followup: Callable[..., str | None]
     looks_like_student_pronoun_followup: Callable[[str], bool]
     looks_like_subject_followup: Callable[[str], bool]
@@ -84,6 +85,50 @@ def compose_academic_snapshot_lines(summary: dict[str, Any], *, deps: ProtectedA
     return [f"- {student_name}: {preview}"]
 
 
+def compose_academic_aggregate_answer(
+    summaries: list[dict[str, Any]],
+    *,
+    deps: ProtectedAnswerDeps,
+) -> str:
+    if not summaries:
+        return "Nao encontrei resumo academico consolidado das contas vinculadas neste recorte."
+
+    lines = ["Panorama academico das contas vinculadas:"]
+    highest_risk_student: str | None = None
+    highest_risk_subject: str | None = None
+    highest_risk_signature: tuple[int, Decimal, str] | None = None
+
+    for summary in summaries:
+        student_name = str(summary.get("student_name") or "Aluno").strip() or "Aluno"
+        lines.extend(compose_academic_snapshot_lines(summary, deps=deps))
+        snapshots = subject_grade_snapshot(summary, deps=deps, preferred_subjects=())
+        if not snapshots:
+            continue
+        below_target = [(name, avg) for name, avg in snapshots if avg < deps.passing_grade_target]
+        if below_target:
+            subject_name, average = min(
+                below_target,
+                key=lambda item: (item[1], deps.normalize_text(item[0])),
+            )
+            signature = (1, deps.passing_grade_target - average, student_name)
+        else:
+            subject_name, average = min(
+                snapshots,
+                key=lambda item: (abs(item[1] - deps.passing_grade_target), deps.normalize_text(item[0])),
+            )
+            signature = (0, deps.passing_grade_target - average, student_name)
+        if highest_risk_signature is None or signature > highest_risk_signature:
+            highest_risk_signature = signature
+            highest_risk_student = student_name
+            highest_risk_subject = subject_name
+
+    if highest_risk_student and highest_risk_subject:
+        lines.append(
+            f"Quem hoje exige maior atencao academica e {highest_risk_student}, principalmente em {highest_risk_subject}."
+        )
+    return "\n".join(lines)
+
+
 def compose_named_grade_answer(summary: dict[str, Any], *, deps: ProtectedAnswerDeps) -> str:
     student_name = str(summary.get("student_name") or "Aluno").strip()
     snapshots = subject_grade_snapshot(summary, deps=deps)
@@ -98,6 +143,11 @@ def looks_like_academic_risk_followup(message: str, *, deps: ProtectedAnswerDeps
     return any(
         term in normalized
         for term in {
+            "pontos academicos que mais preocupam",
+            "pontos acadêmicos que mais preocupam",
+            "o que mais preocupa academicamente",
+            "o que mais preocupa academicamente nela",
+            "o que mais preocupa academicamente nele",
             "risco academico",
             "risco acadêmico",
             "maior risco",
@@ -111,6 +161,10 @@ def looks_like_academic_risk_followup(message: str, *, deps: ProtectedAnswerDeps
             "mais próximo do limite",
             "mais vulneravel",
             "mais vulnerável",
+            "mais exposta",
+            "mais exposto",
+            "mais expostas",
+            "mais expostos",
         }
     )
 
@@ -266,6 +320,16 @@ def resolved_academic_target_name(
     memory = ctx.operational_memory or OperationalMemory()
     if resolved is not None and str(resolved.referenced_student_name or "").strip():
         return str(resolved.referenced_student_name or "").strip()
+    alternate_name = str((getattr(resolved, 'alternate_student_name', None) if resolved is not None else None) or "").strip()
+    if not alternate_name:
+        alternate_name = str(memory.alternate_student_name or "").strip()
+    if alternate_name:
+        normalized_message = deps.normalize_text(ctx.request.message)
+        alternate_tokens = [deps.normalize_text(token) for token in alternate_name.split() if token.strip()]
+        if any(token and token in normalized_message for token in alternate_tokens):
+            return alternate_name
+    if deps.unknown_explicit_student_reference(ctx.actor, ctx.request.message):
+        return None
     explicit_hint = deps.student_hint_from_message(ctx.actor, ctx.request.message) or deps.is_student_name_only_followup(
         ctx.actor,
         ctx.request.message,
@@ -293,6 +357,8 @@ def needs_specific_academic_student_clarification(
     if len(deps.linked_students(ctx.actor, capability="academic")) < 2:
         return False
     return (
+        bool(deps.unknown_explicit_student_reference(ctx.actor, ctx.request.message))
+        or
         bool(subject_hint)
         or deps.looks_like_student_pronoun_followup(ctx.request.message)
         or deps.looks_like_subject_followup(ctx.request.message)
@@ -514,11 +580,20 @@ def compose_finance_aggregate_answer(
 ) -> str:
     total_open = sum(int(item.get("open_invoice_count", 0) or 0) for item in summaries)
     total_overdue = sum(int(item.get("overdue_invoice_count", 0) or 0) for item in summaries)
-    lines = [
-        "Resumo financeiro das contas vinculadas:",
-        f"- Total de faturas em aberto: {total_open}",
-        f"- Total de faturas vencidas: {total_overdue}",
-    ]
+    lines: list[str] = []
+    if total_overdue > 0:
+        lines.append("Hoje existe bloqueio financeiro por atraso vencido no recorte da familia.")
+    elif total_open > 0:
+        lines.append("Hoje nao ha bloqueio financeiro por atraso vencido no recorte da familia.")
+    else:
+        lines.append("Hoje nao ha pendencia financeira aberta no recorte da familia.")
+    lines.extend(
+        [
+            "Resumo financeiro das contas vinculadas:",
+            f"- Total de faturas em aberto: {total_open}",
+            f"- Total de faturas vencidas: {total_overdue}",
+        ]
+    )
     for summary in summaries:
         student_name = str(summary.get("student_name") or "Aluno").strip()
         open_count = int(summary.get("open_invoice_count", 0) or 0)
@@ -537,6 +612,10 @@ def compose_finance_aggregate_answer(
         next_step = str(summary.get("next_step") or "").strip()
         if next_step:
             lines.append(f"  Proximo passo: {next_step}")
+    if total_overdue > 0:
+        lines.append("Proximo passo: priorizar as faturas vencidas e regularizar o financeiro antes de um atendimento mais sensivel.")
+    elif total_open > 0:
+        lines.append("Proximo passo: acompanhar os vencimentos mais proximos e manter os comprovantes em dia.")
     return "\n".join(lines)
 
 
@@ -545,6 +624,10 @@ def looks_like_family_finance_aggregate_query(message: str, *, deps: ProtectedAn
     explicit_terms = {
         "como esta o financeiro da familia",
         "como está o financeiro da família",
+        "como estao meus pagamentos",
+        "como estão meus pagamentos",
+        "meus pagamentos",
+        "meus boletos",
         "situacao financeira da familia",
         "situação financeira da família",
         "situacao financeira atual da familia",
@@ -591,6 +674,61 @@ def looks_like_family_academic_aggregate_query(message: str, *, deps: ProtectedA
         term in normalized
         for term in {"quadro academico", "quadro acadêmico", "panorama academico", "panorama acadêmico", "aprovacao", "aprovação"}
     )
+
+
+def looks_like_family_attendance_aggregate_query(message: str, *, deps: ProtectedAnswerDeps) -> bool:
+    normalized = deps.normalize_text(message)
+    explicit_terms = {
+        "resumo de frequencia dos meus dois filhos",
+        "resumo de frequência dos meus dois filhos",
+        "resumo de frequencia dos meus filhos",
+        "resumo de frequência dos meus filhos",
+        "panorama de faltas e frequencia",
+        "panorama de faltas e frequência",
+        "faltas e frequencia dos meus filhos",
+        "faltas e frequência dos meus filhos",
+        "frequencia dos meus filhos",
+        "frequência dos meus filhos",
+        "frequencia dos meus dois filhos",
+        "frequência dos meus dois filhos",
+        "frequencia dos alunos vinculados",
+        "frequência dos alunos vinculados",
+        "quem exige maior atencao agora",
+        "quem exige maior atenção agora",
+        "quem exige mais atencao agora",
+        "quem exige mais atenção agora",
+        "quem inspira mais atencao",
+        "quem inspira mais atenção",
+        "principal alerta de frequencia dos meus filhos",
+        "principal alerta de frequência dos meus filhos",
+    }
+    if any(term in normalized for term in explicit_terms):
+        return True
+    has_family_anchor = any(
+        term in normalized
+        for term in {"meus dois filhos", "dos meus dois filhos", "meus filhos", "familia", "família", "alunos vinculados", "contas vinculadas"}
+    )
+    has_attendance_focus = any(
+        term in normalized
+        for term in {"frequencia", "frequência", "faltas", "falta", "atrasos", "presenca", "presença", "ausencias", "ausências"}
+    )
+    has_attention_focus = any(
+        term in normalized
+        for term in {
+            "quem inspira mais atencao",
+            "quem inspira mais atenção",
+            "quem exige maior atencao",
+            "quem exige maior atenção",
+            "quem exige mais atencao",
+            "quem exige mais atenção",
+            "maior atencao",
+            "maior atenção",
+            "mais atencao",
+            "mais atenção",
+            "principal alerta",
+        }
+    )
+    return has_family_anchor and (has_attendance_focus or has_attention_focus)
 
 
 def compose_finance_installments_answer(summary: dict[str, Any], *, deps: ProtectedAnswerDeps) -> str:

@@ -57,7 +57,7 @@ def test_langgraph_public_noncanonical_allows_light_polish() -> None:
         request=_request(),
         preview=_preview(mode=OrchestrationMode.hybrid_retrieval, reason='langgraph_public_retrieval'),
         response_reason='langgraph_public_retrieval',
-        llm_stages=['answer_composition'],
+        llm_stages=[],
         citations_count=2,
         support_count=2,
         retrieval_backend=RetrievalBackend.qdrant_hybrid,
@@ -65,6 +65,22 @@ def test_langgraph_public_noncanonical_allows_light_polish() -> None:
     assert decision.apply_polish is True
     assert decision.run_response_critic is True
     assert decision.mode == 'light_polish'
+
+
+def test_langgraph_skips_polish_when_candidate_synthesis_already_used() -> None:
+    decision = build_final_polish_decision(
+        settings=_settings(),
+        stack_name='langgraph',
+        request=_request(),
+        preview=_preview(mode=OrchestrationMode.hybrid_retrieval, reason='langgraph_public_retrieval'),
+        response_reason='langgraph_public_retrieval',
+        llm_stages=['answer_composition'],
+        citations_count=2,
+        support_count=2,
+        retrieval_backend=RetrievalBackend.qdrant_hybrid,
+    )
+    assert decision.apply_polish is False
+    assert decision.reason == 'langgraph_candidate_synthesis_already_used'
 
 
 def test_python_functions_deterministic_contextual_answer_skips_polish() -> None:

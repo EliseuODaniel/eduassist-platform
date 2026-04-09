@@ -114,6 +114,10 @@ async def maybe_tool_first_structured_answer(
     memory = ctx.operational_memory or OperationalMemory()
     multi_domains = deps.effective_multi_intent_domains(memory, ctx.request.message)
 
+    restricted_doc_answer = await deps.maybe_restricted_document_tool_first_answer(ctx, profile=profile)
+    if restricted_doc_answer is not None:
+        return restricted_doc_answer
+
     if ctx.request.allow_handoff and _looks_like_human_handoff_request(ctx.request.message):
         queue_name = _detect_support_handoff_queue(ctx)
         payload = await deps.create_support_handoff_payload(
@@ -149,10 +153,6 @@ async def maybe_tool_first_structured_answer(
                 graph_path=["specialist_supervisor", "tool_first", "human_handoff"],
                 reason="specialist_supervisor_tool_first:human_handoff",
             )
-
-    restricted_doc_answer = await deps.maybe_restricted_document_tool_first_answer(ctx, profile=profile)
-    if restricted_doc_answer is not None:
-        return restricted_doc_answer
 
     public_tool_answer = await maybe_tool_first_public_answer(
         ctx,

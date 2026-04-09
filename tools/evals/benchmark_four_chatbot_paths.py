@@ -4,12 +4,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
 from typing import Any
+
+import httpx
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
@@ -18,14 +21,19 @@ AI_ORCHESTRATOR_SRC = REPO_ROOT / 'apps/ai-orchestrator/src'
 if str(AI_ORCHESTRATOR_SRC) not in sys.path:
     sys.path.insert(0, str(AI_ORCHESTRATOR_SRC))
 
-from ai_orchestrator.engine_selector import build_engine_bundle
-from ai_orchestrator.main import Settings
 from ai_orchestrator.models import MessageResponseRequest, UserContext
 
 DEFAULT_DATASET = REPO_ROOT / 'tests/evals/datasets/four_path_chatbot_smoke_cases.json'
 DEFAULT_REPORT = REPO_ROOT / 'docs/architecture/four-path-chatbot-smoke-report.md'
 DEFAULT_JSON_REPORT = REPO_ROOT / 'docs/architecture/four-path-chatbot-smoke-report.json'
 STACKS = ('langgraph', 'python_functions', 'llamaindex', 'specialist_supervisor')
+STACK_URLS = {
+    'langgraph': os.getenv('AI_ORCHESTRATOR_LANGGRAPH_BENCH_URL', 'http://127.0.0.1:8006'),
+    'python_functions': os.getenv('AI_ORCHESTRATOR_PYTHON_FUNCTIONS_BENCH_URL', 'http://127.0.0.1:8007'),
+    'llamaindex': os.getenv('AI_ORCHESTRATOR_LLAMAINDEX_BENCH_URL', 'http://127.0.0.1:8008'),
+    'specialist_supervisor': os.getenv('AI_ORCHESTRATOR_SPECIALIST_BENCH_URL', 'http://127.0.0.1:8015'),
+}
+INTERNAL_API_TOKEN = os.getenv('INTERNAL_API_TOKEN', 'dev-internal-token')
 
 
 @dataclass
@@ -42,21 +50,6 @@ class CaseResult:
     error: str | None = None
 
 
-def _make_settings(*, stack: str) -> Settings:
-    fallback = 'langgraph' if stack != 'langgraph' else 'python_functions'
-    return Settings(
-        orchestrator_engine=fallback,
-        feature_flag_primary_orchestration_stack=stack,
-        strict_framework_isolation_enabled=True,
-        orchestrator_experiment_enabled=False,
-        langgraph_checkpointer_enabled=False,
-        api_core_url='http://127.0.0.1:8001',
-        qdrant_url='http://127.0.0.1:6333',
-        database_url='postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist',
-        specialist_supervisor_pilot_url='http://127.0.0.1:8005',
-    )
-
-
 def _build_request(case: dict[str, Any], *, stack: str) -> MessageResponseRequest:
     return MessageResponseRequest(
         message=str(case['message']),
@@ -70,29 +63,36 @@ def _build_request(case: dict[str, Any], *, stack: str) -> MessageResponseReques
 
 
 async def _run_case(case: dict[str, Any], *, stack: str) -> CaseResult:
-    settings = _make_settings(stack=stack)
     request = _build_request(case, stack=stack)
-    bundle = build_engine_bundle(settings, request=request)
+    target_url = str(STACK_URLS[stack]).rstrip('/')
     started = perf_counter()
     try:
-        response = await asyncio.wait_for(
-            bundle.primary.respond(request=request, settings=settings, engine_mode=bundle.mode),
-            timeout=8.0,
-        )
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=3.0)) as client:
+            http_response = await asyncio.wait_for(
+                client.post(
+                    f'{target_url}/v1/messages/respond',
+                    headers={'X-Internal-Api-Token': INTERNAL_API_TOKEN},
+                    json=request.model_dump(mode='json'),
+                ),
+                timeout=11.0,
+            )
+        http_response.raise_for_status()
+        response = http_response.json()
         latency_ms = (perf_counter() - started) * 1000
         expected_access_tier = str(case.get('expected_access_tier') or '').strip()
-        access_tier = response.classification.access_tier.value
-        passed = bool(response.message_text.strip()) and (not expected_access_tier or access_tier == expected_access_tier)
+        access_tier = str(response.get('classification', {}).get('access_tier') or 'unknown')
+        message_text = str(response.get('message_text') or '')
+        passed = bool(message_text.strip()) and (not expected_access_tier or access_tier == expected_access_tier)
         return CaseResult(
             case_id=str(case['id']),
             stack=stack,
             passed=passed,
             latency_ms=latency_ms,
-            mode=response.mode.value,
+            mode=str(response.get('mode') or 'unknown'),
             access_tier=access_tier,
-            reason=response.reason,
-            graph_path=list(response.graph_path),
-            message_preview=response.message_text[:180],
+            reason=str(response.get('reason') or ''),
+            graph_path=list(response.get('graph_path') or []),
+            message_preview=message_text[:180],
             error=None,
         )
     except Exception as exc:

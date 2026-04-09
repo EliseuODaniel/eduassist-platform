@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 from . import runtime as rt
-from .agent_kernel import KernelPlan, KernelRunResult, build_kernel_plan
+from .llamaindex_kernel import KernelPlan, KernelRunResult, build_kernel_plan
 from .evidence_pack import build_structured_tool_evidence_pack
-from .kernel_runtime import execute_kernel_plan
+from .llamaindex_kernel_runtime import execute_kernel_plan
 from .llamaindex_native_runtime import maybe_execute_llamaindex_native_plan
 from .models import (
     AccessTier,
@@ -46,11 +46,6 @@ async def _maybe_execute_llamaindex_student_focus_fast_path(
     actor = await rt._fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
     if actor is None or not rt._is_student_focus_activation_query(request.message, actor):
         return None
-    student = rt._student_focus_candidate(actor, request.message)
-    student_name = str((student or {}).get('full_name', '')).strip() or None
-    message_text = rt._compose_student_focus_activation_answer(actor, student_name=student_name)
-    if not message_text:
-        return None
     effective_conversation_id = rt._effective_conversation_id(request)
     conversation_context_bundle = await rt._fetch_conversation_context(
         settings=settings,
@@ -58,6 +53,17 @@ async def _maybe_execute_llamaindex_student_focus_fast_path(
         channel=request.channel.value,
     )
     conversation_context = rt._conversation_context_payload(conversation_context_bundle)
+    if rt._should_continue_recent_student_task(
+        request.message,
+        actor=actor,
+        conversation_context=conversation_context,
+    ):
+        return None
+    student = rt._student_focus_candidate(actor, request.message)
+    student_name = str((student or {}).get('full_name', '')).strip() or None
+    message_text = rt._compose_student_focus_activation_answer(actor, student_name=student_name)
+    if not message_text:
+        return None
     school_profile = await rt._fetch_public_school_profile(settings=settings)
     preview = plan.preview.model_copy(deep=True)
     preview.mode = OrchestrationMode.structured_tool
@@ -132,7 +138,7 @@ async def _maybe_execute_llamaindex_student_focus_fast_path(
         risk_flags=preview.risk_flags,
         reason='llamaindex_student_focus_fast_path',
     )
-    from .agent_kernel import KernelReflection
+    from .llamaindex_kernel import KernelReflection
 
     reflection = KernelReflection(
         grounded=True,

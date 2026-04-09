@@ -21,6 +21,10 @@ CLOUDFLARED_URL_PATTERN = re.compile(
 )
 
 
+def _normalize_base_url(value: str) -> str:
+    return value.strip().rstrip("/")
+
+
 def load_env_file(path: Path) -> dict[str, str]:
     values: dict[str, str] = {}
     for raw_line in path.read_text(encoding="utf-8").splitlines():
@@ -66,6 +70,24 @@ def get_cloudflared_url(timeout_seconds: int = 60) -> str:
     )
 
 
+def resolve_public_base_url(env: dict[str, str], timeout_seconds: int = 60) -> str:
+    explicit_url = _normalize_base_url(env.get("TELEGRAM_PUBLIC_BASE_URL", ""))
+    if explicit_url:
+        return explicit_url
+    quick_tunnel_allowed = env.get("CLOUDFLARED_ALLOW_QUICK_TUNNEL", "true").strip().lower() == "true"
+    if env.get("CLOUDFLARED_TUNNEL_TOKEN", "").strip():
+        raise RuntimeError(
+            "CLOUDFLARED_TUNNEL_TOKEN esta configurado, mas TELEGRAM_PUBLIC_BASE_URL nao foi definido. "
+            "Para named tunnel, configure a URL publica estavel do webhook no .env."
+        )
+    if not quick_tunnel_allowed:
+        raise RuntimeError(
+            "Quick tunnel esta desabilitado e TELEGRAM_PUBLIC_BASE_URL nao foi definido. "
+            "Configure TELEGRAM_PUBLIC_BASE_URL junto com um named tunnel."
+        )
+    return get_cloudflared_url(timeout_seconds)
+
+
 def wait_for_public_healthcheck(base_url: str, timeout_seconds: int = 60) -> None:
     deadline = time.time() + timeout_seconds
     last_error = None
@@ -93,7 +115,7 @@ def register_webhook() -> int:
         print(json.dumps({"ok": False, "error": "TELEGRAM_WEBHOOK_SECRET ausente no .env"}))
         return 1
 
-    public_base_url = get_cloudflared_url()
+    public_base_url = resolve_public_base_url(env)
     wait_for_public_healthcheck(public_base_url)
     webhook_url = f"{public_base_url}/webhooks/telegram"
 
@@ -122,6 +144,24 @@ def register_webhook() -> int:
     return 0
 
 
+def public_health() -> int:
+    env = load_env_file(ENV_PATH)
+    public_base_url = resolve_public_base_url(env)
+    wait_for_public_healthcheck(public_base_url)
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "public_base_url": public_base_url,
+                "healthcheck_url": f"{public_base_url}/healthz",
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+    return 0
+
+
 def webhook_info() -> int:
     env = load_env_file(ENV_PATH)
     token = env.get("TELEGRAM_BOT_TOKEN", "").strip()
@@ -138,6 +178,7 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("register", help="Descobre a URL do cloudflared e registra o webhook.")
     subparsers.add_parser("info", help="Mostra o estado atual do webhook no Telegram.")
+    subparsers.add_parser("health", help="Valida a URL publica configurada para o Telegram.")
     args = parser.parse_args()
 
     try:
@@ -145,6 +186,8 @@ def main() -> int:
             return register_webhook()
         if args.command == "info":
             return webhook_info()
+        if args.command == "health":
+            return public_health()
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", "replace")
         print(json.dumps({"ok": False, "http_error": exc.code, "body": body}, ensure_ascii=False))

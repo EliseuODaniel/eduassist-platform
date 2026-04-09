@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from time import monotonic
 from typing import Any
+import unicodedata
 
 import httpx
 
+from .local_retrieval import get_retrieval_service
+from .models import RetrievalProfile
 from .models import (
     JudgeVerdict,
     ManagerDraft,
@@ -22,6 +26,10 @@ _PUBLIC_RESOURCE_CACHE: dict[str, dict[str, Any]] = {}
 _ORCHESTRATOR_PREVIEW_CACHE: dict[str, dict[str, Any]] = {}
 _ORCHESTRATOR_RETRIEVAL_CACHE: dict[str, dict[str, Any]] = {}
 _ACTOR_CONTEXT_CACHE: dict[str, dict[str, Any]] = {}
+_ACADEMIC_HINTS = ('nota', 'notas', 'media', 'média', 'boletim', 'frequencia', 'frequência', 'falta', 'faltas', 'prova', 'provas', 'avaliacao', 'avaliação')
+_FINANCE_HINTS = ('fatura', 'financeiro', 'boleto', 'mensalidade', 'pagamento', 'valor')
+_CALENDAR_HINTS = ('calendario', 'calendário', 'inicio das aulas', 'início das aulas', 'reuniao', 'reunião', 'data', 'datas', 'cronograma')
+_SUPPORT_HINTS = ('atestado', 'secretaria', 'protocolo', 'documentacao', 'documentação', 'cancelamento', 'transferencia', 'transferência', 'rematricula', 'rematrícula')
 
 
 def _conversation_external_id(ctx: Any) -> str:
@@ -35,6 +43,14 @@ def _conversation_external_id(ctx: Any) -> str:
 
 def _strip_none(payload: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in payload.items() if value is not None}
+
+
+def _normalize_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFD", value or "")
+    normalized = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    normalized = normalized.lower()
+    normalized = re.sub(r"[^a-z0-9\s]", " ", normalized)
+    return re.sub(r"\s+", " ", normalized).strip()
 
 
 def _cache_get(cache: dict[str, dict[str, Any]], cache_key: str, *, allow_stale: bool = False) -> Any | None:
@@ -68,11 +84,17 @@ async def _http_get(
     path: str,
     token: str,
     params: dict[str, Any] | None = None,
+    timeout_seconds: float | None = None,
 ) -> dict[str, Any] | None:
     response = await client.get(
         f"{base_url.rstrip('/')}{path}",
         params=params,
         headers={"X-Internal-Api-Token": token},
+        timeout=(
+            httpx.Timeout(timeout_seconds, connect=min(1.0, max(0.3, timeout_seconds / 2.0)))
+            if timeout_seconds is not None
+            else None
+        ),
     )
     response.raise_for_status()
     payload = response.json()
@@ -114,6 +136,7 @@ async def fetch_actor_context(ctx: Any) -> dict[str, Any] | None:
             path="/v1/internal/identity/context",
             token=ctx.settings.internal_api_token,
             params={"telegram_chat_id": ctx.request.telegram_chat_id},
+            timeout_seconds=float(getattr(ctx.settings, "context_fetch_timeout_seconds", 2.0) or 2.0),
         )
     except httpx.HTTPError as exc:
         logger.warning("specialist_supervisor_actor_context_unavailable", extra={"error": str(exc)})
@@ -137,6 +160,7 @@ async def fetch_conversation_context(ctx: Any) -> dict[str, Any] | None:
                 "channel": ctx.request.channel.value,
                 "limit": 8,
             },
+            timeout_seconds=float(getattr(ctx.settings, "context_fetch_timeout_seconds", 2.0) or 2.0),
         )
     except httpx.HTTPError as exc:
         logger.warning("specialist_supervisor_conversation_context_unavailable", extra={"error": str(exc)})
@@ -146,50 +170,62 @@ async def fetch_conversation_context(ctx: Any) -> dict[str, Any] | None:
 
 async def fetch_public_school_profile(ctx: Any) -> dict[str, Any] | None:
     profile = await fetch_public_payload(ctx, "/v1/public/school-profile", "profile")
-    return profile if isinstance(profile, dict) else None
+    if not isinstance(profile, dict):
+        return None
+    hydrated_profile = dict(profile)
+    if not isinstance(hydrated_profile.get("public_timeline"), list):
+        timeline = await fetch_public_payload(ctx, "/v1/public/timeline", "timeline")
+        timeline_entries = timeline.get("entries") if isinstance(timeline, dict) else None
+        if isinstance(timeline_entries, list):
+            hydrated_profile["public_timeline"] = timeline_entries
+    return hydrated_profile
 
 
 async def fetch_public_payload(ctx: Any, path: str, key: str) -> Any:
     cache_key = f"{path}:{key}"
-    cached = _PUBLIC_RESOURCE_CACHE.get(cache_key)
-    if isinstance(cached, dict):
-        expires_at = float(cached.get("expires_at", 0.0) or 0.0)
-        if expires_at > monotonic():
-            value = cached.get("value")
-            if isinstance(value, dict):
-                return dict(value)
-            if isinstance(value, list):
-                return [dict(item) if isinstance(item, dict) else item for item in value]
-            return value
-        _PUBLIC_RESOURCE_CACHE.pop(cache_key, None)
-    payload = await _http_get(
-        ctx.http_client,
-        base_url=ctx.settings.api_core_url,
-        path=path,
-        token=ctx.settings.internal_api_token,
-    )
+    cached = _cache_get(_PUBLIC_RESOURCE_CACHE, cache_key)
+    if cached is not None:
+        return cached
+    try:
+        payload = await _http_get(
+            ctx.http_client,
+            base_url=ctx.settings.api_core_url,
+            path=path,
+            token=ctx.settings.internal_api_token,
+            timeout_seconds=float(getattr(ctx.settings, "public_resource_timeout_seconds", 2.0) or 2.0),
+        )
+    except httpx.HTTPError as exc:
+        logger.warning(
+            "specialist_public_payload_unavailable",
+            extra={"path": path, "key": key, "error": str(exc)},
+        )
+        stale_payload = _cache_get(_PUBLIC_RESOURCE_CACHE, cache_key, allow_stale=True)
+        if stale_payload is not None:
+            logger.info("specialist_public_payload_stale_cache_hit", extra={"path": path, "key": key})
+            return stale_payload
+        return None
     if not isinstance(payload, dict):
         return None
     value = payload.get(key)
-    _PUBLIC_RESOURCE_CACHE[cache_key] = {
-        "value": value,
-        "expires_at": monotonic() + float(getattr(ctx.settings, "public_resource_cache_ttl_seconds", 120.0) or 120.0),
-    }
-    if isinstance(value, dict):
-        return dict(value)
-    if isinstance(value, list):
-        return [dict(item) if isinstance(item, dict) else item for item in value]
-    return value
+    return _cache_set(
+        _PUBLIC_RESOURCE_CACHE,
+        cache_key,
+        value,
+        ttl_seconds=float(getattr(ctx.settings, "public_resource_cache_ttl_seconds", 120.0) or 120.0),
+    )
 
 
 async def orchestrator_preview(ctx: Any) -> dict[str, Any] | None:
+    user = getattr(ctx.request, "user", None)
+    user_role = getattr(user, "role", None)
+    user_scopes = getattr(user, "scopes", ()) or ()
     cache_key = "|".join(
         (
             str(_conversation_external_id(ctx)),
             str(ctx.request.message),
-            str(ctx.request.user.authenticated),
-            str(getattr(ctx.request.user.role, "value", ctx.request.user.role)),
-            ",".join(sorted(str(item) for item in ctx.request.user.scopes)),
+            str(getattr(user, "authenticated", False)),
+            str(getattr(user_role, "value", user_role)),
+            ",".join(sorted(str(item) for item in user_scopes)),
             str(ctx.request.allow_graph_rag),
             str(ctx.request.allow_handoff),
         )
@@ -200,33 +236,42 @@ async def orchestrator_preview(ctx: Any) -> dict[str, Any] | None:
     )
     if isinstance(cached_preview, dict):
         return cached_preview
-    try:
-        timeout_seconds = float(getattr(ctx.settings, "orchestrator_preview_timeout_seconds", 2.0) or 2.0)
-        response = await ctx.http_client.post(
-            f"{ctx.settings.orchestrator_url.rstrip('/')}/v1/orchestrate/preview",
-            timeout=httpx.Timeout(timeout_seconds, connect=min(1.5, max(0.5, timeout_seconds / 2.0))),
-            json={
-                "message": ctx.request.message,
-                "conversation_id": _conversation_external_id(ctx),
-                "user": ctx.request.user.model_dump(mode="json"),
-                "allow_graph_rag": ctx.request.allow_graph_rag,
-                "allow_handoff": ctx.request.allow_handoff,
-            },
-        )
-        response.raise_for_status()
-    except httpx.HTTPError as exc:
-        logger.warning("specialist_orchestrator_preview_unavailable: %s", exc)
-        stale_preview = _cache_get(_ORCHESTRATOR_PREVIEW_CACHE, cache_key, allow_stale=True)
-        if isinstance(stale_preview, dict):
-            logger.info("specialist_orchestrator_preview_stale_cache_hit")
-            return stale_preview
-        return None
-    payload = response.json()
-    if not isinstance(payload, dict):
-        return None
-    preview = payload.get("preview")
-    if not isinstance(preview, dict):
-        return None
+    message = _normalize_text(str(ctx.request.message or ""))
+    domain = "institution"
+    mode = "hybrid_retrieval"
+    retrieval_backend = "qdrant_hybrid"
+    access_tier = "public"
+
+    if any(hint in message for hint in _FINANCE_HINTS):
+        domain = "finance"
+    elif any(hint in message for hint in _ACADEMIC_HINTS):
+        domain = "academic"
+    elif any(hint in message for hint in _CALENDAR_HINTS):
+        domain = "calendar"
+    elif any(hint in message for hint in _SUPPORT_HINTS):
+        domain = "support"
+
+    if domain in {"finance", "academic"} and bool(getattr(user, "authenticated", False)):
+        access_tier = "authenticated"
+        mode = "structured_tool"
+        retrieval_backend = "none"
+    elif domain == "support":
+        mode = "structured_tool"
+        retrieval_backend = "none"
+
+    preview = {
+        "mode": mode,
+        "classification": {
+            "domain": domain,
+            "access_tier": access_tier,
+            "confidence": 0.55,
+            "reason": "specialist_local_preview_hint",
+        },
+        "retrieval_backend": retrieval_backend,
+        "selected_tools": [],
+        "graph_path": ["specialist_supervisor", "local_preview_hint"],
+        "reason": "specialist_local_preview_hint",
+    }
     return _cache_set(
         _ORCHESTRATOR_PREVIEW_CACHE,
         cache_key,
@@ -255,38 +300,39 @@ async def orchestrator_retrieval_search(
     if isinstance(cached_payload, dict):
         return cached_payload
     try:
-        timeout_seconds = float(getattr(ctx.settings, "orchestrator_retrieval_timeout_seconds", 3.0) or 3.0)
-        response = await ctx.http_client.post(
-            f"{ctx.settings.orchestrator_url.rstrip('/')}/v1/retrieval/search",
-            timeout=httpx.Timeout(timeout_seconds, connect=min(1.5, max(0.5, timeout_seconds / 2.0))),
-            headers={
-                "X-Internal-Api-Token": ctx.settings.internal_api_token,
-                "Content-Type": "application/json",
-            },
-            json=_strip_none(
-                {
-                    "query": query,
-                    "top_k": top_k,
-                    "visibility": visibility,
-                    "category": category,
-                }
-            ),
+        retrieval_service = get_retrieval_service(
+            database_url=str(ctx.settings.database_url),
+            qdrant_url=str(ctx.settings.qdrant_url),
+            collection_name=str(ctx.settings.qdrant_documents_collection),
+            embedding_model=str(ctx.settings.document_embedding_model),
+            enable_query_variants=bool(ctx.settings.retrieval_enable_query_variants),
+            enable_late_interaction_rerank=bool(ctx.settings.retrieval_enable_late_interaction_rerank),
+            late_interaction_model=str(ctx.settings.retrieval_late_interaction_model),
+            candidate_pool_size=int(ctx.settings.retrieval_candidate_pool_size),
+            cheap_candidate_pool_size=int(ctx.settings.retrieval_cheap_candidate_pool_size),
+            deep_candidate_pool_size=int(ctx.settings.retrieval_deep_candidate_pool_size),
+            rerank_fused_weight=float(ctx.settings.retrieval_rerank_fused_weight),
+            rerank_late_interaction_weight=float(ctx.settings.retrieval_rerank_late_interaction_weight),
         )
-        response.raise_for_status()
-        body = response.json()
-        if not isinstance(body, dict):
-            return None
+        profile = RetrievalProfile.cheap if top_k <= 3 else None
+        body = retrieval_service.hybrid_search(
+            query=query,
+            top_k=top_k,
+            visibility=visibility,
+            category=category,
+            profile=profile,
+        ).model_dump(mode="json")
         return _cache_set(
             _ORCHESTRATOR_RETRIEVAL_CACHE,
             cache_key,
             body,
             ttl_seconds=float(getattr(ctx.settings, "orchestrator_retrieval_cache_ttl_seconds", 45.0) or 45.0),
         )
-    except httpx.HTTPError as exc:
-        logger.warning("specialist_orchestrator_retrieval_unavailable: %s", exc)
+    except Exception as exc:
+        logger.warning("specialist_local_retrieval_unavailable: %s", exc)
         stale_payload = _cache_get(_ORCHESTRATOR_RETRIEVAL_CACHE, cache_key, allow_stale=True)
         if isinstance(stale_payload, dict):
-            logger.info("specialist_orchestrator_retrieval_stale_cache_hit")
+            logger.info("specialist_local_retrieval_stale_cache_hit")
             return stale_payload
         return None
 

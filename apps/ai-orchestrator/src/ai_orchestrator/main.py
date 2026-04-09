@@ -4,13 +4,13 @@ import asyncio
 import json
 import logging
 import secrets
-from functools import lru_cache
-from pathlib import Path
+from contextlib import asynccontextmanager
 from time import monotonic
 from typing import Any
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
+import httpx
 from eduassist_observability import (
     build_runtime_diagnostics,
     canonicalize_evidence_strategy,
@@ -19,11 +19,15 @@ from eduassist_observability import (
 )
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .channel_reply_formatting import format_reply_for_channel
+from .debug_trace_footer import (
+    attach_telegram_debug_trace_for_bundle,
+    build_debug_trace_for_bundle,
+    format_telegram_debug_footer,
+)
 from .engine_selector import (
     SUPPORTED_PRIMARY_STACKS,
-    build_engine_bundle,
     clear_runtime_primary_stack_override,
     clear_runtime_targeted_stack_override,
     get_experiment_live_promotion_summary,
@@ -32,6 +36,7 @@ from .engine_selector import (
     get_runtime_targeted_stack_override,
     get_scorecard_gate_status,
     resolve_primary_stack,
+    resolve_stack_selection,
     set_runtime_primary_stack_override,
     set_runtime_targeted_stack_override,
 )
@@ -61,114 +66,107 @@ from .models import (
     UserContext,
 )
 from .retrieval import get_retrieval_service
+from .service_settings import REPO_ROOT, ROOT_ENV_FILE, Settings, get_settings
 from .tools import get_tool_contracts
 
 logger = logging.getLogger(__name__)
-REPO_ROOT = Path(__file__).resolve().parents[4]
-ROOT_ENV_FILE = REPO_ROOT / '.env'
 FOUR_PATH_COMPARISON_REPORT_JSON = REPO_ROOT / 'docs/architecture/four-path-chatbot-comparison-report.json'
 FOUR_PATH_SMOKE_REPORT_JSON = REPO_ROOT / 'docs/architecture/four-path-chatbot-smoke-report.json'
 _REMOTE_STATUS_CACHE: dict[str, dict[str, Any]] = {}
-
-
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        case_sensitive=False,
-        env_file=('/workspace/.env', str(ROOT_ENV_FILE), '.env'),
-        env_ignore_empty=True,
-        extra='ignore',
-    )
-
-    app_env: str = 'development'
-    log_level: str = 'INFO'
-    port: int = 8000
-    llm_provider: str = 'openai'
-    api_core_url: str = 'http://api-core:8000'
-    internal_api_token: str = 'dev-internal-token'
-    openai_api_key: str | None = None
-    openai_base_url: str = 'https://api.openai.com/v1'
-    openai_model: str = 'gpt-5.4'
-    google_api_key: str | None = None
-    google_api_base_url: str = 'https://generativelanguage.googleapis.com/v1beta'
-    google_model: str = 'gemini-2.5-flash'
-    database_url: str = 'postgresql://eduassist:eduassist@postgres:5432/eduassist'
-    qdrant_url: str = 'http://qdrant:6333'
-    qdrant_documents_collection: str = 'school_documents'
-    qdrant_document_summaries_collection: str = 'school_document_summaries'
-    llamaindex_qdrant_documents_collection: str = 'school_documents_llamaindex'
-    llamaindex_qdrant_document_summaries_collection: str = 'school_document_summaries'
-    llamaindex_native_timeout_seconds: float = 20.0
-    llamaindex_native_prompt_router_ambiguity_only: bool = True
-    llamaindex_native_recursive_retriever_enabled: bool = True
-    llamaindex_native_summary_stage_enabled: bool = True
-    llamaindex_native_summary_stage_top_k: int = 2
-    llamaindex_native_selector_ambiguity_only: bool = True
-    llamaindex_native_sentence_optimizer_enabled: bool = True
-    llamaindex_native_sentence_optimizer_percentile_cutoff: float = 0.55
-    llamaindex_native_long_context_reorder_enabled: bool = True
-    document_embedding_model: str = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
-    warm_retrieval_on_startup: bool = True
-    retrieval_enable_query_variants: bool = True
-    retrieval_enable_late_interaction_rerank: bool = True
-    retrieval_late_interaction_model: str = 'answerdotai/answerai-colbert-small-v1'
-    retrieval_candidate_pool_size: int = 14
-    retrieval_cheap_candidate_pool_size: int = 8
-    retrieval_deep_candidate_pool_size: int = 22
-    retrieval_rerank_fused_weight: float = 0.35
-    retrieval_rerank_late_interaction_weight: float = 0.65
-    strict_framework_isolation_enabled: bool = False
-    graph_rag_enabled: bool = False
-    graph_rag_workspace: str = '/workspace/artifacts/graphrag/eduassist-public-benchmark'
-    graph_rag_response_type: str = 'List of 3-5 concise bullet points in Brazilian Portuguese'
-    graph_rag_local_chat_api_base: str = 'http://host.docker.internal:18080/v1'
-    graph_rag_local_embedding_api_base: str = 'http://host.docker.internal:11435/v1'
-    graph_rag_local_chat_api_key: str = 'llama.cpp'
-    graph_rag_local_embedding_api_key: str = 'ollama'
-    orchestrator_engine: str = 'langgraph'
-    feature_flag_primary_orchestration_stack: str | None = None
-    feature_flag_telegram_debug_trace_footer_enabled: bool = False
-    feature_flag_final_polish_enabled: bool = True
-    feature_flag_final_polish_public_enabled: bool = True
-    feature_flag_final_polish_protected_enabled: bool = False
-    feature_flag_final_polish_stacks: str = 'langgraph,llamaindex,python_functions'
-    feature_flag_final_polish_budget_ms: int = 600
-    feature_flag_final_polish_max_delta_ratio: float = 0.25
-    feature_flag_final_polish_telegram_only: bool = False
-    feature_flag_final_polish_force_llm: bool = False
-    feature_flag_final_polish_debug_metadata_enabled: bool = True
-    specialist_supervisor_pilot_url: str | None = None
-    specialist_supervisor_pilot_timeout_seconds: float = 18.0
-    orchestrator_experiment_enabled: bool = False
-    orchestrator_experiment_primary_engine: str = 'python_functions'
-    orchestrator_experiment_slices: str = ''
-    orchestrator_experiment_rollout_percent: int = 0
-    orchestrator_experiment_slice_rollouts: str = ''
-    orchestrator_experiment_telegram_chat_allowlist: str = ''
-    orchestrator_experiment_conversation_allowlist: str = ''
-    orchestrator_experiment_allowlist_slices: str = ''
-    orchestrator_experiment_require_scorecard: bool = False
-    orchestrator_experiment_scorecard_path: str = '/workspace/artifacts/framework-native-scorecard.json'
-    orchestrator_experiment_min_primary_engine_score: int = 20
-    orchestrator_experiment_require_healthy_pilot: bool = False
-    orchestrator_experiment_health_ttl_seconds: int = 15
-    langgraph_checkpointer_enabled: bool = True
-    langgraph_checkpointer_url: str | None = None
-    langgraph_checkpointer_schema: str = 'langgraph_checkpoint'
-    langgraph_hitl_enabled: bool = False
-    langgraph_hitl_default_slices: str = 'support'
-    langgraph_hitl_user_traffic_enabled: bool = False
-    langgraph_hitl_user_traffic_slices: str = 'support'
-
-
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()
+_STACK_PROXY_CLIENTS: dict[float, httpx.AsyncClient] = {}
 
 
 def _require_internal_api_token(x_internal_api_token: str | None) -> None:
     settings = get_settings()
     if not x_internal_api_token or not secrets.compare_digest(x_internal_api_token, settings.internal_api_token):
         raise HTTPException(status_code=401, detail='invalid_internal_api_token')
+
+
+def _require_control_plane_direct_serving_enabled(settings: Settings) -> None:
+    if settings.control_plane_allow_direct_serving:
+        return
+    raise HTTPException(
+        status_code=503,
+        detail={
+            'code': 'control_plane_direct_serving_disabled',
+            'message': (
+                'ai-orchestrator central is control-plane only by default; '
+                'send user-facing /v1/messages/respond traffic to a dedicated stack runtime.'
+            ),
+            'recommendedTargets': {
+                'langgraph': _stack_service_url(settings, 'langgraph'),
+                'python_functions': _stack_service_url(settings, 'python_functions'),
+                'llamaindex': _stack_service_url(settings, 'llamaindex'),
+                'specialist_supervisor': _stack_service_url(settings, 'specialist_supervisor'),
+            },
+        },
+    )
+
+
+def _stack_service_url(settings: Settings, stack_name: str) -> str:
+    if stack_name == 'python_functions':
+        return str(settings.python_functions_orchestrator_url).rstrip('/')
+    if stack_name == 'llamaindex':
+        return str(settings.llamaindex_orchestrator_url).rstrip('/')
+    if stack_name == 'specialist_supervisor':
+        return str(settings.specialist_supervisor_pilot_url or '').rstrip('/')
+    return str(settings.langgraph_orchestrator_url).rstrip('/')
+
+
+def _stack_proxy_client(timeout_seconds: float) -> httpx.AsyncClient:
+    cache_key = round(float(timeout_seconds), 3)
+    client = _STACK_PROXY_CLIENTS.get(cache_key)
+    if client is not None:
+        return client
+    client = httpx.AsyncClient(
+        timeout=httpx.Timeout(timeout_seconds, connect=min(3.0, max(1.0, timeout_seconds / 3.0))),
+        limits=httpx.Limits(max_keepalive_connections=20, max_connections=40, keepalive_expiry=30.0),
+        headers={'Content-Type': 'application/json'},
+    )
+    _STACK_PROXY_CLIENTS[cache_key] = client
+    return client
+
+
+async def _proxy_stack_message_response(
+    *,
+    settings: Settings,
+    request: MessageResponseRequest,
+) -> MessageResponse:
+    selection = resolve_stack_selection(settings=settings, request=request)
+    stack_name = str(selection.stack or 'langgraph')
+    target_url = _stack_service_url(settings, stack_name)
+    if not target_url:
+        raise HTTPException(status_code=503, detail=f'stack_unavailable:{stack_name}')
+    client = _stack_proxy_client(float(settings.router_forward_timeout_seconds or 25.0))
+    try:
+        response = await client.post(
+            f'{target_url}/v1/messages/respond',
+            headers={'X-Internal-Api-Token': settings.internal_api_token},
+            json=request.model_dump(mode='json'),
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        logger.warning(
+            'router_stack_forward_failed',
+            extra={'stack': stack_name, 'target_url': target_url, 'error': str(exc)},
+        )
+        raise HTTPException(status_code=503, detail=f'stack_forward_failed:{stack_name}') from exc
+    payload = response.json()
+    message_response = MessageResponse.model_validate(payload)
+    if message_response.debug_trace is None:
+        message_response = message_response.model_copy(
+            update={
+                'debug_trace': {
+                    'router': {
+                        'stack': stack_name,
+                        'mode': selection.mode,
+                        'target_url': target_url,
+                        'experiment': selection.experiment or {},
+                    }
+                }
+            }
+        )
+    return message_response
 
 
 class HealthResponse(BaseModel):
@@ -453,176 +451,6 @@ def _load_report_json(path: Path) -> dict[str, object] | None:
         return None
     return payload if isinstance(payload, dict) else None
 
-
-def _dedupe_debug_items(values: list[str]) -> list[str]:
-    seen: set[str] = set()
-    ordered: list[str] = []
-    for raw in values:
-        normalized = str(raw or '').strip()
-        if not normalized or normalized in seen:
-            continue
-        seen.add(normalized)
-        ordered.append(normalized)
-    return ordered
-
-
-def _truncate_debug_list(values: list[str], *, limit: int = 6) -> str:
-    if not values:
-        return 'none'
-    if len(values) <= limit:
-        return ', '.join(values)
-    hidden = len(values) - limit
-    return f"{', '.join(values[:limit])}, +{hidden} more"
-
-
-def _debug_agents_for_response(*, response: MessageResponse, stack_name: str) -> list[str]:
-    candidates: list[str] = []
-    for node in response.graph_path:
-        token = str(node or '').strip()
-        lowered = token.lower()
-        if any(
-            keyword in lowered
-            for keyword in (
-                'specialist',
-                'planner',
-                'manager',
-                'judge',
-                'composer',
-                'critic',
-                'router',
-                'supervisor',
-            )
-        ):
-            candidates.append(token)
-    if not candidates:
-        candidates.append(stack_name)
-    return _dedupe_debug_items(candidates)
-
-
-def _debug_resources_for_response(response: MessageResponse) -> list[str]:
-    resources: list[str] = []
-    resources.extend(f'tool:{tool}' for tool in response.selected_tools)
-    if response.evidence_pack is not None:
-        for support in response.evidence_pack.supports:
-            label = str(support.label or support.kind or 'support').strip()
-            kind = str(support.kind or 'support').strip()
-            resources.append(f'support:{kind}:{label}')
-    for citation in response.citations:
-        title = str(citation.document_title or '').strip()
-        if title:
-            resources.append(f'doc:{title}')
-    return _dedupe_debug_items(resources)
-
-
-def _build_debug_trace(
-    *,
-    request: MessageResponseRequest,
-    response: MessageResponse,
-    bundle: Any,
-) -> dict[str, Any]:
-    stack_name = str(getattr(getattr(bundle, 'primary', None), 'name', '') or 'unknown')
-    bundle_mode = str(getattr(bundle, 'mode', '') or stack_name)
-    raw_path_nodes = [str(item).strip() for item in (response.graph_path or []) if str(item).strip()]
-    path_nodes = list(raw_path_nodes)
-    if stack_name == 'langgraph':
-        classify_indexes = [index for index, item in enumerate(path_nodes) if item == 'classify_request']
-        if len(classify_indexes) > 1:
-            path_nodes = path_nodes[classify_indexes[-1]:]
-    if not path_nodes or path_nodes[0] != stack_name:
-        path_nodes = [stack_name, *path_nodes]
-    agents = _debug_agents_for_response(response=response, stack_name=stack_name)
-    resources = _debug_resources_for_response(response)
-    evidence_pack = response.evidence_pack
-    retrieval: dict[str, Any] = {
-        'backend': response.retrieval_backend.value,
-        'strategy': canonicalize_evidence_strategy(
-            evidence_pack.strategy if evidence_pack is not None else 'none',
-            retrieval_backend=response.retrieval_backend.value,
-        ),
-        'source_count': evidence_pack.source_count if evidence_pack is not None else 0,
-        'support_count': evidence_pack.support_count if evidence_pack is not None else 0,
-        'citation_count': len(response.citations),
-    }
-    trace: dict[str, Any] = {
-        'channel': request.channel.value,
-        'stack': stack_name,
-        'bundle_mode': bundle_mode,
-        'path': path_nodes,
-        'raw_path': raw_path_nodes,
-        'agents': agents,
-        'resources': resources,
-        'selected_tools': list(response.selected_tools),
-        'risk_flags': canonicalize_risk_flags(response.risk_flags),
-        'retrieval': retrieval,
-        'reason': response.reason,
-        'used_llm': bool(response.used_llm),
-        'llm_stages': [str(item).strip() for item in (response.llm_stages or []) if str(item).strip()],
-        'final_polish_eligible': bool(getattr(response, 'final_polish_eligible', False)),
-        'final_polish_applied': bool(getattr(response, 'final_polish_applied', False)),
-        'final_polish_mode': str(getattr(response, 'final_polish_mode', '') or ''),
-        'final_polish_reason': str(getattr(response, 'final_polish_reason', '') or ''),
-        'final_polish_changed_text': bool(getattr(response, 'final_polish_changed_text', False)),
-        'final_polish_preserved_fallback': bool(getattr(response, 'final_polish_preserved_fallback', False)),
-    }
-    if isinstance(getattr(bundle, 'experiment', None), dict):
-        trace['experiment'] = dict(bundle.experiment)
-    return trace
-
-
-def _format_telegram_debug_footer(trace: dict[str, Any]) -> str:
-    path = [str(item).strip() for item in trace.get('path', []) if str(item).strip()]
-    agents = [str(item).strip() for item in trace.get('agents', []) if str(item).strip()]
-    resources = [str(item).strip() for item in trace.get('resources', []) if str(item).strip()]
-    retrieval = trace.get('retrieval') if isinstance(trace.get('retrieval'), dict) else {}
-    retrieval_parts = [
-        f"backend={str(retrieval.get('backend') or 'none')}",
-        f"strategy={str(retrieval.get('strategy') or 'none')}",
-        f"sources={int(retrieval.get('source_count') or 0)}",
-        f"supports={int(retrieval.get('support_count') or 0)}",
-        f"citations={int(retrieval.get('citation_count') or 0)}",
-    ]
-    llm_stages = [str(item).strip() for item in trace.get('llm_stages', []) if str(item).strip()]
-    llm_value = 'yes' if bool(trace.get('used_llm')) else 'no'
-    if llm_stages:
-        llm_value = f"{llm_value} ({', '.join(llm_stages)})"
-    polish_mode = str(trace.get('final_polish_mode') or 'skip')
-    polish_reason = str(trace.get('final_polish_reason') or 'none')
-    polish_value = polish_mode
-    if bool(trace.get('final_polish_applied')):
-        polish_value = f"{polish_value} (applied)"
-    elif bool(trace.get('final_polish_eligible')):
-        polish_value = f"{polish_value} (eligible)"
-    if bool(trace.get('final_polish_preserved_fallback')):
-        polish_value = f"{polish_value}, rollback"
-    lines = [
-        '',
-        '[debug]',
-        f"stack: {trace.get('stack') or 'unknown'}",
-        f"bundle: {trace.get('bundle_mode') or 'unknown'}",
-        f"path: {' > '.join(path) if path else 'none'}",
-        f"llm: {llm_value}",
-        f"final_polish: {polish_value}",
-        f"agents: {_truncate_debug_list(agents)}",
-        f"resources: {_truncate_debug_list(resources)}",
-        f"retrieval: {', '.join(retrieval_parts)}",
-        f"reason: {str(trace.get('reason') or 'none')}",
-        f"final_polish_reason: {polish_reason}",
-    ]
-    return '\n'.join(lines)
-
-
-def _append_telegram_debug_footer(text: str, footer: str) -> str:
-    combined = f'{text}{footer}'
-    max_length = 4096
-    if len(combined) <= max_length:
-        return combined
-    overflow = len(combined) - max_length
-    available_footer = max(0, len(footer) - overflow - len('\n[debug truncated]'))
-    if available_footer <= 0:
-        return text
-    return f"{text}{footer[:available_footer]}\n[debug truncated]"
-
-
 def _attach_telegram_debug_trace(
     *,
     request: MessageResponseRequest,
@@ -630,17 +458,11 @@ def _attach_telegram_debug_trace(
     bundle: Any,
     settings: Settings,
 ) -> MessageResponse:
-    if request.channel != ConversationChannel.telegram:
-        return response
-    if not settings.feature_flag_telegram_debug_trace_footer_enabled:
-        return response
-    trace = _build_debug_trace(request=request, response=response, bundle=bundle)
-    footer = _format_telegram_debug_footer(trace)
-    return response.model_copy(
-        update={
-            'message_text': _append_telegram_debug_footer(response.message_text, footer),
-            'debug_trace': trace,
-        }
+    return attach_telegram_debug_trace_for_bundle(
+        request=request,
+        response=response,
+        bundle=bundle,
+        settings=settings,
     )
 
 
@@ -819,10 +641,24 @@ def _build_hitl_state_input(request: LangGraphHitlRequest, settings: Settings) -
     }
 
 
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    settings = get_settings()
+    _log_runtime_diagnostics('ai-orchestrator', _orchestrator_runtime_diagnostics(settings))
+    if settings.warm_retrieval_on_startup:
+        asyncio.create_task(asyncio.to_thread(_warm_retrieval_service, settings))
+    asyncio.create_task(asyncio.to_thread(_warm_langgraph_service, settings))
+    try:
+        yield
+    finally:
+        close_langgraph_runtime()
+
+
 app = FastAPI(
     title='EduAssist AI Orchestrator',
     version='0.2.0',
     summary='Agentic orchestration runtime bootstrap for EduAssist Platform.',
+    lifespan=_lifespan,
 )
 
 configure_observability(
@@ -864,21 +700,6 @@ def _warm_langgraph_service(settings: Settings) -> None:
         logger.info('langgraph_runtime_warmed')
     except Exception:
         logger.exception('langgraph_runtime_warmup_failed')
-
-
-@app.on_event('startup')
-async def warm_runtime_dependencies() -> None:
-    settings = get_settings()
-    _log_runtime_diagnostics('ai-orchestrator', _orchestrator_runtime_diagnostics(settings))
-    if settings.warm_retrieval_on_startup:
-        asyncio.create_task(asyncio.to_thread(_warm_retrieval_service, settings))
-    asyncio.create_task(asyncio.to_thread(_warm_langgraph_service, settings))
-
-
-@app.on_event('shutdown')
-async def close_runtime_dependencies() -> None:
-    close_langgraph_runtime()
-
 
 @app.get('/healthz', response_model=HealthResponse)
 async def healthz() -> HealthResponse:
@@ -957,6 +778,12 @@ async def status() -> dict[str, object]:
         'service': 'ai-orchestrator',
         'ready': True,
         **_runtime_primary_stack_payload(settings),
+        'stackServiceUrls': {
+            'langgraph': _stack_service_url(settings, 'langgraph'),
+            'python_functions': _stack_service_url(settings, 'python_functions'),
+            'llamaindex': _stack_service_url(settings, 'llamaindex'),
+            'specialist_supervisor': _stack_service_url(settings, 'specialist_supervisor'),
+        },
         'specialistSupervisorPilotConfigured': bool(settings.specialist_supervisor_pilot_url),
         'experimentEnabled': settings.orchestrator_experiment_enabled,
         'experimentPrimaryEngine': settings.orchestrator_experiment_primary_engine,
@@ -976,22 +803,15 @@ async def status() -> dict[str, object]:
         'llmProvider': settings.llm_provider,
         'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
         'capabilities': [
-            'langgraph-state-machine',
-            'langgraph-thread-id',
-            'langgraph-hitl-internal',
+            'thin-router',
+            'stack-proxy',
+            'shared-retrieval-kernel',
+            'shared-graphrag-kernel',
+            'runtime-stack-selection',
             'engine-selector',
-            'agent-kernel',
-            'shared-entity-resolution',
-            'tool-routing',
             'qdrant-hybrid-retrieval',
             'query-planned-retrieval',
             'late-interaction-reranking',
-            'conversation-memory',
-            'graph-rag-routing',
-            'provider-abstraction',
-            'python-functions-engine',
-            'llamaindex-workflow-engine',
-            'specialist-supervisor-engine',
         ],
         'supportedEngines': sorted(SUPPORTED_PRIMARY_STACKS),
         'telegramDebugTraceFooterEnabled': settings.feature_flag_telegram_debug_trace_footer_enabled,
@@ -1013,6 +833,24 @@ async def status() -> dict[str, object]:
         'llamaindexWorkflowAvailable': LLAMAINDEX_WORKFLOW_AVAILABLE,
         'experimentalStackReadiness': experimental_stack_readiness,
         'runtimeDiagnosticsSummary': _public_runtime_diagnostics_summary(runtime_diagnostics),
+        'serviceRole': 'control-plane-router',
+        'primaryServingRecommended': False,
+        'controlPlanePurpose': 'internal-admin-eval',
+        'controlPlaneDirectServingEnabled': settings.control_plane_allow_direct_serving,
+        'controlPlanePrimaryInterfaces': [
+            '/v1/status',
+            '/v1/retrieval/status',
+            '/v1/retrieval/search',
+            '/v1/tools',
+            '/v1/graph',
+            '/v1/orchestrate/preview',
+            '/v1/internal/runtime/*',
+            '/v1/internal/graphrag/query',
+            '/v1/internal/hitl/*',
+        ],
+        'controlPlaneCompatibilityInterfaces': [
+            '/v1/messages/respond',
+        ],
     }
 
 
@@ -1272,13 +1110,15 @@ async def message_response(
 ) -> MessageResponse:
     _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
-    bundle = build_engine_bundle(settings, request=request)
-    response = await bundle.primary.respond(request=request, settings=settings, engine_mode=bundle.mode)
-    return _attach_telegram_debug_trace(
-        request=request,
-        response=response,
-        bundle=bundle,
-        settings=settings,
+    _require_control_plane_direct_serving_enabled(settings)
+    response = await _proxy_stack_message_response(settings=settings, request=request)
+    return response.model_copy(
+        update={
+            'message_text': format_reply_for_channel(
+                text=response.message_text,
+                channel=request.channel.value,
+            )
+        }
     )
 
 

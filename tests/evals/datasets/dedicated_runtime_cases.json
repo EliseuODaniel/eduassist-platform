@@ -1,0 +1,60 @@
+[
+  {
+    "case_id": "public_admissions",
+    "message": "quais documentos sao exigidos para matricula?",
+    "channel": "api",
+    "user": {"authenticated": false, "role": "anonymous"},
+    "message_contains": ["matricula", "document"],
+    "message_any_contains": ["cadastro", "secretaria", "contrato", "pre-cadastro", "pre cadastro", "formulario", "histori", "comprovante", "etapas", "envio"]
+  },
+  {
+    "case_id": "public_calendar_start",
+    "message": "quando começam as aulas?",
+    "channel": "api",
+    "user": {"authenticated": false, "role": "anonymous"},
+    "message_any_contains": ["aulas", "ano letivo", "calend", "inicio", "início"]
+  },
+  {
+    "case_id": "public_teacher_boundary",
+    "message": "quero o telefone do professor de matematica",
+    "channel": "api",
+    "user": {"authenticated": false, "role": "anonymous"},
+    "message_contains": ["coorden"],
+    "message_any_contains": ["nao divulga", "não divulga", "contato institucional", "secretaria"]
+  },
+  {
+    "case_id": "public_conduct_bullying",
+    "message": "o que a escola faz em caso de bullying?",
+    "channel": "api",
+    "user": {"authenticated": false, "role": "anonymous"},
+    "message_contains": ["bullying"],
+    "message_any_contains": ["coorden", "ocorr", "protocolo", "convivencia", "convivência"]
+  },
+  {
+    "case_id": "guardian_ambiguity",
+    "message": "quero ver minhas notas",
+    "channel": "telegram",
+    "telegram_chat_id": 1649845499,
+    "user": {"authenticated": true, "role": "guardian"},
+    "message_any_contains": ["mais de um aluno vinculado", "qual aluno", "contas vinculadas", "panorama academico"],
+    "message_contains": ["lucas oliveira", "ana oliveira"]
+  },
+  {
+    "case_id": "guardian_named_grades",
+    "message": "quais as notas do Lucas Oliveira?",
+    "channel": "telegram",
+    "telegram_chat_id": 1649845499,
+    "user": {"authenticated": true, "role": "guardian"},
+    "message_contains": ["lucas oliveira"],
+    "message_any_contains": ["biologia", "fisica", "física", "historia", "história", "ingles", "inglês"]
+  },
+  {
+    "case_id": "guardian_family_attendance",
+    "message": "me mostra a frequencia dos meus dois filhos",
+    "channel": "telegram",
+    "telegram_chat_id": 1649845499,
+    "user": {"authenticated": true, "role": "guardian"},
+    "message_contains": ["lucas oliveira", "ana oliveira"],
+    "message_any_contains": ["frequencia", "frequência", "faltas", "atencao", "atenção"]
+  }
+]

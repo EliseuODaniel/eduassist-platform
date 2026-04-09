@@ -53,6 +53,10 @@ Serviços:
 - keycloak
 - opa
 - api-core
+- ai-orchestrator-langgraph
+- ai-orchestrator-python-functions
+- ai-orchestrator-llamaindex
+- ai-orchestrator-specialist
 - telegram-gateway
 - ai-orchestrator
 - worker
@@ -78,11 +82,12 @@ Status atual:
 - o `worker` já faz sync idempotente do corpus documental mockado e reconstrói a coleção `school_documents` no `Qdrant`;
 - o `worker` agora publica a coleção do `Qdrant` por alias, criando uma coleção nova e promovendo-a ao final do sync para reduzir a janela de indisponibilidade;
 - o `ai-orchestrator` já expõe `retrieval/status` e `retrieval/search` com fusão de `Qdrant` e `PostgreSQL FTS`;
-- o `ai-orchestrator` já expõe `POST /v1/messages/respond` para FAQ pública, calendário público, negações seguras e composição final via provider externo quando a chave estiver configurada;
+- os runtimes dedicados (`langgraph`, `python_functions`, `llamaindex`, `specialist_supervisor`) são o caminho primário de serving para `POST /v1/messages/respond`;
+- o `ai-orchestrator` central mantém kernels compartilhados, preview, roteamento interno e compatibilidade opcional de serving apenas quando `CONTROL_PLANE_ALLOW_DIRECT_SERVING=true`;
 - o `ai-orchestrator` agora também usa memória curta de conversa via `conversation_id` estável, incluindo threads vindas do `telegram-gateway` por `telegram:{chat_id}`;
 - o fluxo público agora combina fatos canônicos do `api-core`, retrieval híbrido e guardrails de abstenção para perguntas negativas, condicionais, comparativas e follow-ups curtos;
 - o `ai-orchestrator` já executa o caminho `graph_rag` no runtime principal quando `GRAPH_RAG_ENABLED=true` e o workspace estiver pronto;
-- o `telegram-gateway` já encaminha mensagens públicas ao `ai-orchestrator` e responde `/help`, FAQ e calendário pelo webhook;
+- o `telegram-gateway` já encaminha mensagens ao runtime dedicado configurado em `TELEGRAM_ORCHESTRATOR_URL`, mantendo o `ai-orchestrator` central fora do caminho principal de serving;
 - o `telegram-gateway` agora usa `conversation_id` estável por chat, permitindo continuidade conversacional local entre perguntas sequenciais do mesmo usuário;
 - o fluxo protegido do Telegram já responde resumo acadêmico com filtros por disciplina e bimestre, resumo financeiro com filtros por status e panorama consolidado para responsáveis, além de grade docente por turmas, disciplinas e horário para contas vinculadas;
 - o `admin-web` já expõe login real via `Keycloak` com OIDC + PKCE, leitura de sessão autenticada do `api-core` e emissão de challenge de vínculo em `/api/telegram-link/challenge`;
@@ -98,7 +103,7 @@ Status atual:
 - `telegram_chat_id` em rotas protegidas do `api-core` e `POST /v1/messages/respond` no `ai-orchestrator` agora exigem `X-Internal-Api-Token`;
 - endpoints `/meta` e diagnósticos sensíveis dos serviços Python agora também exigem `X-Internal-Api-Token` e não devolvem URLs internas completas;
 - `ALLOW_TEST_IDENTITY_OVERRIDES` agora fica desligado por padrão; quando ligado para depuração, `user_external_code` continua restrito a chamadas internas autenticadas;
-- observabilidade distribuida base já esta ativa no Compose, com tracing entre `telegram-gateway`, `ai-orchestrator` e `api-core`.
+- observabilidade distribuida base já esta ativa no Compose, com tracing entre `telegram-gateway`, runtime dedicado ativo, `ai-orchestrator` central quando acionado, e `api-core`.
 
 ### `compose:observability`
 
@@ -116,7 +121,7 @@ Uso:
 - tracing distribuido;
 - metricas OTEL e consultas PromQL;
 - consulta de traces por `trace_id`;
-- debugging operacional do fluxo `telegram-gateway -> ai-orchestrator -> api-core`.
+- debugging operacional do fluxo `telegram-gateway -> runtime dedicado -> api-core`, com passagem pelo `ai-orchestrator` central apenas quando houver necessidade de control plane ou kernels compartilhados.
 
 Status atual:
 
@@ -217,6 +222,23 @@ Uso rápido do drill operacional:
 - `make db-seed-operational-load`
 - `make db-seed-school-expansion`
 
+Atalhos dedicados mais simples para a arquitetura atual:
+
+- `make compose-up-dedicated-core`
+  - sobe apenas a base operacional recomendada para serving dedicado
+- `make compose-up-telegram-langgraph`
+- `make compose-up-telegram-python-functions`
+- `make compose-up-telegram-llamaindex`
+- `make compose-up-telegram-specialist`
+  - sobem a base dedicada e registram o webhook do Telegram já apontando para o runtime escolhido
+
+Validação operacional recomendada:
+
+- `make smoke-dedicated`
+- `make smoke-dedicated-multiturn`
+- `make smoke-telegram-dedicated`
+- `make runtime-parity-check`
+
 ## 9. Variáveis de ambiente previstas
 
 - `DATABASE_URL`
@@ -228,6 +250,9 @@ Uso rápido do drill operacional:
 - `OPA_URL`
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_WEBHOOK_SECRET`
+- `TELEGRAM_PUBLIC_BASE_URL`
+- `CLOUDFLARED_TUNNEL_TOKEN`
+- `CLOUDFLARED_ALLOW_QUICK_TUNNEL`
 - `LLM_PROVIDER`
 - `OPENAI_API_KEY`
 - `GOOGLE_MODEL`
@@ -272,10 +297,19 @@ Uso rápido do drill operacional:
 - `make observability-up`
 - `make observability-down`
 - `make observability-logs`
+- `make telegram-public-up`
+- `make telegram-public-up-stable`
+- `make telegram-webhook-health`
+- `make telegram-webhook-info`
+- `make compose-up-control-plane-compat`
+- `make smoke-dedicated`
+- `make smoke-dedicated-multiturn`
 - `make smoke-local`
 - `make smoke-authz`
 - `make smoke-adversarial`
 - `make smoke-all`
+- `make eval-dedicated`
+- `make eval-control-plane-compat`
 - `make eval-orchestrator`
 - `make eval-all`
 - `make graphrag-benchmark-bootstrap`
@@ -322,7 +356,8 @@ Uso rápido do drill operacional:
 - `POST /v1/authz/check`
 - `GET /v1/retrieval/status` no `ai-orchestrator`
 - `POST /v1/retrieval/search` no `ai-orchestrator`
-- `POST /v1/messages/respond` no `ai-orchestrator` com `X-Internal-Api-Token`
+- `POST /v1/messages/respond` nos runtimes dedicados com `X-Internal-Api-Token`
+- `POST /v1/messages/respond` no `ai-orchestrator` central apenas em modo compatibilidade com `CONTROL_PLANE_ALLOW_DIRECT_SERVING=true`
 - dataset formal de evals versionado em [orchestrator_cases.json](/home/edann/projects/eduassist-platform/tests/evals/datasets/orchestrator_cases.json)
 - trilha experimental de benchmark em [tools/graphrag-benchmark](/home/edann/projects/eduassist-platform/tools/graphrag-benchmark)
 - gate operacional final documentado em [release-readiness.md](/home/edann/projects/eduassist-platform/docs/operations/release-readiness.md)
