@@ -21,6 +21,7 @@ from ai_orchestrator.runtime import (
     _compose_academic_difficulty_answer,
     _compose_academic_risk_answer,
     _compose_family_attendance_aggregate_answer,
+    _compose_family_admin_aggregate_answer,
     _compose_contextual_public_boundary_answer,
     _compose_meta_repair_follow_up_answer,
     _compose_contextual_public_timeline_followup_answer,
@@ -50,6 +51,8 @@ from ai_orchestrator.runtime import (
     _is_public_pricing_context_follow_up,
     _is_public_pricing_navigation_query,
     _looks_like_family_attendance_aggregate_query,
+    _looks_like_family_admin_aggregate_query,
+    _looks_like_family_academic_aggregate_query,
     _looks_like_family_finance_aggregate_query,
     _looks_like_natural_visit_booking_request,
     _looks_like_workflow_resume_follow_up,
@@ -93,6 +96,11 @@ def test_langgraph_public_canonical_lane_skips_polish() -> None:
 
 def test_family_finance_aggregate_query_accepts_meus_pagamentos_wording() -> None:
     assert _looks_like_family_finance_aggregate_query('Como estao meus pagamentos?') is True
+
+
+def test_family_attendance_aggregate_query_rejects_finance_summary_with_atrasos_prompt() -> None:
+    prompt = 'De forma bem objetiva, resuma a situacao financeira atual da familia, com vencimentos, atrasos e proximos passos.'
+    assert _looks_like_family_attendance_aggregate_query(prompt) is False
 
 
 def test_natural_visit_booking_request_accepts_quero_visitar_prompt() -> None:
@@ -1122,6 +1130,63 @@ def test_compose_finance_aggregate_answer_adds_direct_next_step() -> None:
     assert 'Na pratica' in answer
 
 
+def test_family_admin_aggregate_query_accepts_compare_documentacao_prompt() -> None:
+    prompt = 'Compare a documentacao dos meus filhos e diga qual deles ainda tem pendencia.'
+    assert _looks_like_family_admin_aggregate_query(prompt) is True
+
+
+def test_should_prioritize_protected_sql_query_accepts_family_admin_aggregate() -> None:
+    actor = {
+        'linked_students': [
+            {'student_id': 'lucas-id', 'full_name': 'Lucas Oliveira'},
+            {'student_id': 'ana-id', 'full_name': 'Ana Oliveira'},
+        ]
+    }
+    assert _should_prioritize_protected_sql_query(
+        'Compare a documentacao dos meus filhos e diga qual deles ainda tem pendencia.',
+        actor=actor,
+    ) is True
+
+
+def test_explicit_protected_domain_hint_prefers_institution_for_family_admin_aggregate() -> None:
+    actor = {
+        'linked_students': [
+            {'student_id': 'lucas-id', 'full_name': 'Lucas Oliveira'},
+            {'student_id': 'ana-id', 'full_name': 'Ana Oliveira'},
+        ]
+    }
+    assert _explicit_protected_domain_hint(
+        'Compare a documentacao dos meus filhos e diga qual deles ainda tem pendencia.',
+        actor=actor,
+    ) is QueryDomain.institution
+
+
+def test_compose_family_admin_aggregate_answer_highlights_pending_student() -> None:
+    answer = _compose_family_admin_aggregate_answer(
+        [
+            {
+                'student_name': 'Lucas Oliveira',
+                'overall_status': 'complete',
+                'next_step': '',
+                'checklist': [],
+            },
+            {
+                'student_name': 'Ana Oliveira',
+                'overall_status': 'pending',
+                'next_step': 'Enviar comprovante de endereco atualizado.',
+                'checklist': [
+                    {'status': 'pending', 'notes': 'Comprovante de endereco nao anexado.'},
+                ],
+            },
+        ]
+    )
+    lowered = answer.casefold()
+    assert 'panorama documental das contas vinculadas' in lowered
+    assert 'ana oliveira' in lowered
+    assert 'pendencia documental' in lowered or 'pendência documental' in answer.casefold()
+    assert 'proximo passo' in lowered or 'próximo passo' in answer.casefold()
+
+
 def test_build_analysis_message_expands_access_scope_followup_by_student() -> None:
     context = SimpleNamespace(
         recent_messages=[
@@ -1682,6 +1747,12 @@ def test_direct_service_routing_bundle_query_detects_objective_multi_sector_prom
     ) is True
 
 
+def test_direct_service_routing_bundle_query_detects_quem_responde_por_cada_frente_prompt() -> None:
+    assert _is_direct_service_routing_bundle_query(
+        'Se eu precisar tratar desconto, financeiro e um assunto com a direcao, quem responde por cada frente?'
+    ) is True
+
+
 def test_direct_service_routing_bundle_query_ignores_pricing_projection_mix() -> None:
     assert _is_direct_service_routing_bundle_query(
         'Quero os canais do financeiro e da direcao junto com mensalidade e matricula para 3 filhos.'
@@ -2030,7 +2101,7 @@ def test_compose_attendance_attribute_answer_mentions_frequencia_and_subject() -
         student_name='Lucas Oliveira',
         message='Recorte so o Lucas e diga onde a frequencia dele esta mais sensivel por faltas recentes.',
     )
-    assert 'frequencia de Lucas Oliveira' in answer
+    assert 'principal alerta de frequencia de Lucas Oliveira' in answer
     assert 'Tecnologia e Cultura Digital' in answer
 
 
@@ -2092,6 +2163,57 @@ def test_family_attendance_aggregate_query_is_not_treated_as_generic_academic_ag
     ) is True
 
 
+def test_family_academic_aggregate_query_accepts_academicamente_pior_prompt() -> None:
+    prompt = 'Sem me dar tabela, qual dos meus filhos esta academicamente pior hoje e em qual disciplina isso fica mais claro?'
+    assert _looks_like_family_academic_aggregate_query(prompt) is True
+
+
+def test_select_linked_student_accepts_focus_marked_ana_after_negated_lucas() -> None:
+    student, clarification = _select_linked_student(
+        _guardian_actor(),
+        'Sem repetir o Lucas, corta so para a Ana e me diga qual componente dela acende mais alerta agora.',
+        capability='academic',
+        conversation_context={
+            'recent_messages': [
+                {
+                    'sender_type': 'assistant',
+                    'content': 'Panorama academico das contas vinculadas:\n- Lucas Oliveira: Fisica 5,9; Matematica 7,4\n- Ana Oliveira: Historia 6,8; Portugues 7,1\nQuem hoje exige maior atencao academica e Lucas Oliveira, principalmente em Fisica.',
+                }
+            ],
+        },
+    )
+    assert clarification is None
+    assert student is not None
+    assert student['full_name'] == 'Ana Oliveira'
+
+
+def test_compose_attendance_attribute_answer_handles_chamam_atencao_prompt() -> None:
+    answer = _compose_academic_attribute_answer(
+        {
+            'attendance': [
+                {
+                    'subject_name': 'Tecnologia e Cultura Digital',
+                    'present_count': 19,
+                    'late_count': 7,
+                    'absent_count': 6,
+                }
+            ]
+        },
+        attribute_request=ProtectedAttributeRequest(domain='academic', attribute='attendance'),
+        student_name='Lucas Oliveira',
+        message='No Lucas, quais faltas ou ausencias mais chamam atencao agora e como isso bate na frequencia dele?',
+    )
+    assert 'principal alerta de frequencia de Lucas Oliveira' in answer
+    assert 'Tecnologia e Cultura Digital' in answer
+    assert 'Proximo passo:' in answer
+
+
+def test_direct_service_routing_bundle_query_detects_nao_me_manda_menu_geral_prompt() -> None:
+    assert _is_direct_service_routing_bundle_query(
+        'Nao me manda menu geral: quais setores e canais realmente resolvem bolsa, financeiro e direcao?'
+    ) is True
+
+
 def test_family_attendance_aggregate_query_accepts_two_children_attention_wording() -> None:
     prompt = 'Faca um resumo de frequencia dos meus dois filhos e destaque quem inspira mais atencao por faltas.'
     assert _looks_like_family_attendance_aggregate_query(prompt) is True
@@ -2110,6 +2232,14 @@ def test_family_attendance_aggregate_query_accepts_more_attention_wording() -> N
         actor=_guardian_actor(),
         conversation_context=None,
     ) is True
+
+
+def test_family_attendance_aggregate_query_rejects_academic_components_followup() -> None:
+    prompt = (
+        'Sem sair do escopo do projeto, depois do panorama dos meus filhos, '
+        'fique apenas com a Ana e diga quais componentes merecem mais atencao agora.'
+    )
+    assert _looks_like_family_attendance_aggregate_query(prompt) is False
 
 
 def test_compose_family_attendance_aggregate_answer_points_to_highest_attention_student() -> None:
@@ -2263,3 +2393,44 @@ def test_message_response_supports_explicit_llm_debug_fields() -> None:
     assert response.llm_stages == ['answer_composition']
     assert response.candidate_chosen == 'documentary_synthesis'
     assert response.response_cache_hit is True
+
+
+def test_explicit_unmatched_student_reference_ignores_family_scope_phrase_cada_filho() -> None:
+    students = _guardian_actor()["linked_students"]
+    assert _explicit_unmatched_student_reference(
+        students,
+        'Qual e exatamente o meu escopo: posso ver academico, financeiro ou os dois para cada filho?',
+        conversation_context=None,
+    ) is None
+
+
+def test_family_finance_aggregate_query_detects_leigo_breakdown_prompt() -> None:
+    prompt = 'Explique a minha situacao financeira como se eu fosse leigo, separando mensalidade, taxa, atraso e desconto dos meus filhos.'
+    assert _looks_like_family_finance_aggregate_query(prompt) is True
+
+
+def test_family_finance_aggregate_query_rejects_third_party_partial_payment_prompt_without_family_anchor() -> None:
+    prompt = 'Paguei parte da mensalidade do Joao e preciso negociar o restante; o que ja aparece e qual o proximo passo?'
+    assert _looks_like_family_finance_aggregate_query(prompt) is False
+
+
+def test_explicit_protected_domain_hint_promotes_family_admin_aggregate_even_without_recent_focus() -> None:
+    assert _explicit_protected_domain_hint(
+        'Compare a documentacao dos meus filhos e diga qual deles ainda tem pendencia.',
+        actor=_guardian_actor(),
+        conversation_context=None,
+    ) is QueryDomain.institution
+
+
+def test_public_pricing_navigation_query_rejects_partial_payment_negotiation_prompt() -> None:
+    prompt = 'Paguei parte da mensalidade do Joao e preciso negociar o restante; o que ja aparece e qual o proximo passo?'
+    assert _is_public_pricing_navigation_query(prompt) is False
+
+
+def test_should_prioritize_protected_sql_query_for_partial_payment_negotiation() -> None:
+    prompt = 'Paguei parte da mensalidade do Joao e preciso negociar o restante; o que ja aparece e qual o proximo passo?'
+    assert _should_prioritize_protected_sql_query(
+        prompt,
+        actor=_guardian_actor(),
+        conversation_context=None,
+    ) is True

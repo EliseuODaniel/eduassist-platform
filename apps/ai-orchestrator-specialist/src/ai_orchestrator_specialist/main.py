@@ -415,7 +415,66 @@ def _effective_llm_model_name(settings: Settings) -> str:
 async def _run_specialist(request: SpecialistSupervisorRequest, settings: Settings) -> dict[str, object]:
     from .runtime import run_specialist_supervisor
 
-    return await run_specialist_supervisor(request=request, settings=settings)
+    try:
+        return await run_specialist_supervisor(request=request, settings=settings)
+    except Exception as exc:
+        logger.exception("specialist_supervisor_request_failed")
+        return {
+            "engine_name": "specialist_supervisor",
+            "executed": True,
+            "reason": "specialist_supervisor_request_failed_fallback",
+            "metadata": {
+                "provider": _resolve_llm_provider(settings),
+                "model": _effective_llm_model_name(settings),
+                "request_failed": True,
+                "error_type": exc.__class__.__name__,
+            },
+            "answer": {
+                "message_text": (
+                    "Tive uma falha interna ao tentar montar essa resposta. "
+                    "Para nao te devolver algo inconsistente, fiquei no fallback seguro: "
+                    "posso responder apenas o que estiver sustentado no material publico ou reabrir a pergunta em um recorte mais especifico."
+                ),
+                "mode": "deny",
+                "classification": {
+                    "domain": "institution",
+                    "access_tier": "public",
+                    "confidence": 0.45,
+                    "reason": "specialist_supervisor_request_failed_fallback",
+                },
+                "retrieval_backend": "none",
+                "selected_tools": [],
+                "citations": [],
+                "visual_assets": [],
+                "suggested_replies": [],
+                "calendar_events": [],
+                "evidence_pack": {
+                    "strategy": "deny",
+                    "summary": "Fallback seguro apos falha interna do specialist.",
+                    "source_count": 0,
+                    "support_count": 1,
+                    "supports": [
+                        {
+                            "kind": "runtime_fallback",
+                            "label": "Falha interna controlada",
+                            "detail": exc.__class__.__name__,
+                        }
+                    ],
+                },
+                "needs_authentication": False,
+                "graph_path": ["specialist_supervisor", "fallback", "request_failed"],
+                "risk_flags": ["request_failed"],
+                "reason": "specialist_supervisor_request_failed_fallback",
+                "used_llm": False,
+                "llm_stages": [],
+                "final_polish_eligible": False,
+                "final_polish_applied": False,
+                "final_polish_mode": "skip",
+                "final_polish_reason": "request_failed_fallback",
+                "final_polish_changed_text": False,
+                "final_polish_preserved_fallback": True,
+            },
+        }
 
 
 @asynccontextmanager

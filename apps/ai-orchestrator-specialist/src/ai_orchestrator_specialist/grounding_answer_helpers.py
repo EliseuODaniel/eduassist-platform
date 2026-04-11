@@ -129,6 +129,7 @@ def compose_internal_doc_no_match_answer(
     *,
     deps: GroundingAnswerDeps,
 ) -> str:
+    normalized = deps.normalize_text(message)
     if deps.looks_like_health_second_call_query(message):
         public_answer = deps.compose_public_health_second_call()
         if public_answer:
@@ -139,16 +140,23 @@ def compose_internal_doc_no_match_answer(
             )
     school_name = deps.school_name(profile)
     quoted_message = str(message or "").strip().rstrip(' ?!.')
-    normalized = deps.normalize_text(quoted_message)
+    normalized_quoted = deps.normalize_text(quoted_message)
+    if "escopo parcial" in normalized or "acessos diferentes entre responsaveis" in normalized or "acessos diferentes entre responsáveis" in normalized:
+        return (
+            f'Consultei os documentos internos disponiveis do {school_name}, mas nao encontrei um protocolo interno compartilhavel '
+            'para responsaveis com escopo parcial. No que e publico, a diferenca principal e esta: o material aberto explica apenas o que a escola publica para familias em geral; '
+            'o detalhamento de permissoes, restricoes e encaminhamento operacional da equipe continua restrito aos canais internos e ao perfil autenticado autorizado. '
+            'Na pratica, o proximo passo e pedir ao setor responsavel que confirme o procedimento aplicavel ao perfil autorizado.'
+        )
     if (
-        any(term in normalized for term in ("viagem internacional", "excursao internacional", "excursão internacional"))
-        and any(term in normalized for term in ("hospedagem", "pernoite"))
+        any(term in normalized_quoted for term in ("viagem internacional", "excursao internacional", "excursão internacional"))
+        and any(term in normalized_quoted for term in ("hospedagem", "pernoite"))
     ):
         return (
             f"Nao encontrei uma orientacao restrita especifica sobre excursao ou viagem internacional com hospedagem para o ensino medio nos documentos internos disponiveis do {school_name}. "
             "Na pratica, o proximo passo e consultar o setor responsavel por esse protocolo interno ou pedir apenas o correspondente publico."
         )
-    if "professor" in normalized and any(term in normalized for term in ("avaliac", "pedagog", "devolutiva", "aprendizagem")):
+    if "professor" in normalized_quoted and any(term in normalized_quoted for term in ("avaliac", "pedagog", "devolutiva", "aprendizagem")):
         return (
             f'Consultei o material interno do professor do {school_name}, mas nao encontrei uma orientacao restrita '
             f'especifica para: "{quoted_message}". '

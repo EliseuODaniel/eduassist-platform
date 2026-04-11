@@ -26,6 +26,7 @@ from ai_orchestrator_specialist.public_query_patterns import (
     _looks_like_calendar_week_query,
     _looks_like_conduct_frequency_punctuality_query,
     _looks_like_health_second_call_query,
+    _looks_like_public_academic_policy_overview_query,
     _looks_like_public_doc_bundle_request,
     _looks_like_public_teacher_identity_query,
     _looks_like_process_compare_query,
@@ -43,9 +44,14 @@ from ai_orchestrator_specialist.resolved_intent_answers import (
     maybe_academic_grade_fast_path_answer,
     maybe_resolved_intent_answer,
 )
+from ai_orchestrator_specialist.protected_answer_helpers import compose_academic_risk_answer
 from ai_orchestrator_specialist.protected_answer_helpers import looks_like_academic_risk_followup
+from ai_orchestrator_specialist.protected_answer_helpers import compose_finance_aggregate_answer
 from ai_orchestrator_specialist.protected_answer_helpers import looks_like_family_attendance_aggregate_query
+from ai_orchestrator_specialist.protected_answer_helpers import looks_like_family_finance_aggregate_query
 from ai_orchestrator_specialist.protected_answer_helpers import resolved_academic_target_name
+from ai_orchestrator_specialist.student_context_helpers import StudentContextDeps, student_hint_from_message, unknown_explicit_student_reference
+from ai_orchestrator_specialist.public_doc_knowledge import match_public_canonical_lane
 from ai_orchestrator_specialist.public_profile_answers import _compose_timeline_bundle_answer
 from ai_orchestrator_specialist.public_profile_answers import _compose_service_routing_fast_answer
 from ai_orchestrator_specialist.tool_first_protected_answers import (
@@ -62,6 +68,7 @@ from ai_orchestrator_specialist.support_workflow_helpers import (
     _looks_like_human_handoff_request,
 )
 from ai_orchestrator_specialist.public_bundle_fast_paths import (
+    _preflight_public_doc_bundle_answer,
     _looks_like_family_new_calendar_enrollment_query,
     _looks_like_first_month_risks_query,
     _looks_like_visibility_boundary_query,
@@ -90,6 +97,16 @@ def test_specialist_service_routing_query_detects_bullying_reporting_prompt() ->
 
 def test_specialist_service_routing_query_detects_direct_channels_prompt() -> None:
     assert _looks_like_service_routing_query('Me diga so os canais de bolsas, financeiro e direcao. Seja objetivo.')
+
+
+def test_specialist_service_routing_query_detects_menu_geral_compression_prompt() -> None:
+    assert _looks_like_service_routing_query('Nao me manda menu geral: quais setores e canais realmente resolvem bolsa, financeiro e direcao?')
+
+
+def test_specialist_service_routing_query_detects_role_comparison_prompt() -> None:
+    assert _looks_like_service_routing_query(
+        'Qual a diferenca entre falar com secretaria, coordenacao e orientacao educacional?'
+    )
 
 
 def test_specialist_service_routing_fast_answer_accepts_plural_bolsas_wording() -> None:
@@ -203,6 +220,42 @@ def test_specialist_service_routing_fast_answer_compact_mode_deduplicates_direca
 
     assert answer is not None
     assert answer.count("Direcao:") <= 1
+
+
+def test_specialist_service_routing_fast_answer_accepts_menu_geral_prompt() -> None:
+    profile = {
+        "service_catalog": [
+            {
+                "service_key": "atendimento_admissoes",
+                "request_channel": "bot, admissions, whatsapp comercial ou visita guiada",
+            },
+            {
+                "service_key": "financeiro_escolar",
+                "request_channel": "bot, financeiro, portal autenticado ou email institucional",
+            },
+            {
+                "service_key": "solicitacao_direcao",
+                "request_channel": "protocolo institucional",
+            },
+        ],
+        "leadership_team": [
+            {
+                "title": "Diretora geral",
+                "name": "Helena Martins",
+                "contact_channel": "direcao@colegiohorizonte.edu.br",
+            }
+        ],
+    }
+
+    answer = _compose_service_routing_fast_answer(
+        profile,
+        "Nao me manda menu geral: quais setores e canais realmente resolvem bolsa, financeiro e direcao?",
+    )
+
+    assert answer is not None
+    assert "Financeiro" in answer
+    assert "Direcao" in answer
+    assert "Atendimento comercial / Admissoes" in answer or "Bolsas / admissoes" in answer
 
 
 def test_specialist_augment_public_followup_message_rewrites_service_routing_compression() -> None:
@@ -425,6 +478,27 @@ def test_health_second_call_query_detects_attested_exam_miss() -> None:
     )
 
 
+def test_health_second_call_query_detects_comprovacao_bridge_prompt() -> None:
+    assert _looks_like_health_second_call_query(
+        'Se o aluno perde uma prova por razao de saude, como a escola amarra comprovacao, segunda chamada e recuperacao no material publico?'
+    )
+
+
+def test_public_academic_policy_overview_query_does_not_steal_health_second_call() -> None:
+    assert _looks_like_public_academic_policy_overview_query(
+        'De forma bem objetiva, se o aluno perde uma prova por razao de saude, como a escola amarra comprovacao, segunda chamada e recuperacao no material publico?'
+    ) is False
+
+
+def test_specialist_preflight_promotes_health_second_call_lane() -> None:
+    payload = _preflight_public_doc_bundle_answer(
+        {'school_name': 'Colegio Horizonte'},
+        'Se o aluno perde uma prova por razao de saude, como a escola amarra comprovacao, segunda chamada e recuperacao no material publico?',
+    )
+    assert payload is not None
+    assert payload.reason == 'specialist_supervisor_preflight:health_second_call'
+
+
 def test_calendar_week_query_detects_generic_public_calendar_prompt() -> None:
     assert _looks_like_calendar_week_query(
         'Dentro do calendario publico, quais eventos parecem mais importantes para familias e responsaveis?'
@@ -440,6 +514,12 @@ def test_calendar_week_query_accepts_principais_wording() -> None:
 def test_timeline_lifecycle_query_detects_marcos_entre_prompt() -> None:
     assert _looks_like_timeline_lifecycle_query(
         'Quais sao os marcos entre matricula, inicio do ano letivo e reuniao de responsaveis no calendario publico de 2026?'
+    )
+
+
+def test_timeline_lifecycle_query_detects_qual_vem_primeiro_prompt() -> None:
+    assert _looks_like_timeline_lifecycle_query(
+        'No calendario publico de 2026, qual vem primeiro entre matricula, inicio das aulas e encontro inicial com responsaveis?'
     )
 
 
@@ -1148,6 +1228,84 @@ def test_operational_memory_builds_cross_student_academic_comparison_after_publi
     assert 'media minima' in lowered or 'média mínima' in lowered
 
 
+def test_operational_memory_builds_cross_student_academic_comparison_with_two_names_after_public_turn() -> None:
+    summaries = {
+        "Lucas Oliveira": {
+            "student_name": "Lucas Oliveira",
+            "grades": [
+                {"subject_name": "Fisica", "score": "5.9"},
+                {"subject_name": "Matematica", "score": "7.7"},
+            ],
+        },
+        "Ana Oliveira": {
+            "student_name": "Ana Oliveira",
+            "grades": [
+                {"subject_name": "Fisica", "score": "6.4"},
+                {"subject_name": "Matematica", "score": "7.4"},
+            ],
+        },
+    }
+
+    async def _fetch_academic_summary_payload(_ctx, *, student_name_hint=None, **_kwargs):
+        if student_name_hint in summaries:
+            return {"summary": summaries[student_name_hint]}
+        return None
+
+    async def _unexpected_fetch(*_args, **_kwargs):
+        raise AssertionError("financial and upcoming fetches are not expected in this comparison follow-up")
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='voltando aos meus filhos, compara o Lucas com a Ana',
+        ),
+        actor={
+            "linked_students": [
+                {"student_id": "stu-lucas", "full_name": "Lucas Oliveira", "can_view_academic": True},
+                {"student_id": "stu-ana", "full_name": "Ana Oliveira", "can_view_academic": True},
+            ]
+        },
+        operational_memory=OperationalMemory(
+            active_domain='public',
+            active_student_name='Lucas Oliveira',
+            active_student_id='stu-lucas',
+        ),
+    )
+    deps = OperationalMemoryDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        looks_like_public_doc_bundle_request=lambda _message: False,
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        effective_multi_intent_domains=lambda *_args, **_kwargs: [],
+        subject_hint_from_text=lambda _message: None,
+        looks_like_subject_followup=lambda _message: False,
+        looks_like_student_pronoun_followup=lambda _message: False,
+        student_hint_from_message=lambda *_args, **_kwargs: 'Lucas Oliveira',
+        fetch_academic_summary_payload=_fetch_academic_summary_payload,
+        fetch_financial_summary_payload=_unexpected_fetch,
+        fetch_upcoming_assessments_payload=_unexpected_fetch,
+        build_academic_finance_combo_payload=lambda **_kwargs: None,
+        build_grade_requirement_answer=lambda **_kwargs: None,
+        compose_academic_risk_answer=lambda _summary: '',
+        compose_named_subject_grade_answer=lambda *_args, **_kwargs: None,
+        compose_upcoming_assessments_lines=lambda _summary: [],
+        safe_excerpt=lambda text, **_kwargs: text,
+        looks_like_academic_risk_followup=lambda _message: False,
+        looks_like_other_student_followup=lambda _message: False,
+        other_linked_student=lambda *_args, **_kwargs: {"student_id": "stu-ana", "full_name": "Ana Oliveira"},
+        compose_admin_status_answer=lambda _summary: '',
+        compose_named_grade_answer=lambda _summary: '',
+        compose_finance_installments_answer=lambda _summary: '',
+    )
+
+    answer = asyncio.run(maybe_operational_memory_follow_up_answer(ctx, deps=deps))
+
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_memory:cross_student_academic_comparison'
+    lowered = answer.message_text.casefold()
+    assert 'comparando lucas oliveira com ana oliveira' in lowered
+    assert 'media minima' in lowered or 'média mínima' in lowered
+
+
 def test_tool_first_protected_family_academic_aggregate_does_not_clarify() -> None:
     actor = {
         "linked_students": [
@@ -1181,6 +1339,7 @@ def test_tool_first_protected_family_academic_aggregate_does_not_clarify() -> No
         contains_any=lambda message, terms: any(term in str(message).casefold() for term in terms),
         looks_like_admin_finance_combo_query=lambda _message: False,
         looks_like_family_finance_aggregate_query=lambda _message: False,
+        unknown_explicit_student_reference=lambda *_args, **_kwargs: None,
         student_hint_from_message=lambda *_args, **_kwargs: None,
         looks_like_student_pronoun_followup=lambda _message: False,
         fetch_financial_summary_payload=_unused_fetch,
@@ -1335,6 +1494,7 @@ def test_tool_first_protected_attendance_aggregate_wins_before_academic_aggregat
         contains_any=lambda message, terms: any(term in str(message).casefold() for term in terms),
         looks_like_admin_finance_combo_query=lambda _message: False,
         looks_like_family_finance_aggregate_query=lambda _message: False,
+        unknown_explicit_student_reference=lambda *_args, **_kwargs: None,
         student_hint_from_message=lambda *_args, **_kwargs: None,
         looks_like_student_pronoun_followup=lambda _message: False,
         fetch_financial_summary_payload=_unused_fetch,
@@ -1680,6 +1840,72 @@ def test_specialist_attendance_primary_alert_explains_why_frequency_concerns_stu
     assert 'Lucas Oliveira' in answer
     assert 'Fisica' in answer
     assert 'maior combinacao de faltas e atrasos' in answer
+    assert 'Proximo passo:' in answer
+
+
+def test_specialist_resolved_intent_attendance_primary_alert_accepts_chamam_atencao_prompt() -> None:
+    async def _fetch_academic_summary_payload(_ctx, *, student_name_hint=None, **_kwargs):
+        return {
+            'summary': {
+                'student_name': student_name_hint or 'Lucas Oliveira',
+                'attendance': [
+                    {'subject_name': 'Fisica', 'absent_count': 5, 'late_count': 3, 'present_count': 18},
+                    {'subject_name': 'Matematica', 'absent_count': 2, 'late_count': 1, 'present_count': 20},
+                ],
+            }
+        }
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='No Lucas, quais faltas ou ausencias mais chamam atencao agora e como isso bate na frequencia dele?',
+        ),
+        actor={'students': [{'full_name': 'Lucas Oliveira'}, {'full_name': 'Ana Oliveira'}]},
+        resolved_turn=ResolvedTurnIntent(
+            key='academic.attendance_summary',
+            domain='academic',
+            subintent='attendance_summary',
+            capability='academic.attendance_summary',
+            access_tier='authenticated',
+            confidence=0.98,
+        ),
+        operational_memory=OperationalMemory(active_student_name='Lucas Oliveira'),
+        conversation_context={},
+    )
+    deps = ResolvedIntentDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        looks_like_subject_followup=lambda _message: False,
+        looks_like_academic_risk_followup=lambda _message: False,
+        looks_like_family_finance_aggregate_query=lambda _message: False,
+        looks_like_family_attendance_aggregate_query=lambda _message: False,
+        fetch_academic_summary_payload=_fetch_academic_summary_payload,
+        fetch_financial_summary_payload=lambda *_args, **_kwargs: None,
+        fetch_upcoming_assessments_payload=lambda *_args, **_kwargs: None,
+        resolved_academic_target_name=lambda *_args, **_kwargs: 'Lucas Oliveira',
+        needs_specific_academic_student_clarification=lambda *_args, **_kwargs: False,
+        build_academic_student_selection_clarify=lambda *_args, **_kwargs: None,
+        compose_academic_risk_answer=lambda _summary: '',
+        compose_named_subject_grade_answer=lambda *_args, **_kwargs: None,
+        compose_named_grade_answer=lambda _summary: '',
+        compose_named_attendance_answer=lambda *_args, **_kwargs: None,
+        compose_academic_snapshot_lines=lambda _summary: [],
+        compose_academic_aggregate_answer=lambda _summaries: '',
+        compose_finance_aggregate_answer=lambda _summaries: '',
+        compose_finance_installments_answer=lambda _summary: '',
+        linked_students=lambda actor, **_kwargs: list(actor.get('students') or []),
+        safe_excerpt=lambda text, **_kwargs: text,
+        subject_hint_from_text=lambda _message: None,
+        recent_subject_from_context=lambda *_args, **_kwargs: None,
+        subject_code_from_hint=lambda *_args, **_kwargs: (None, None),
+        student_hint_from_message=lambda *_args, **_kwargs: 'Lucas Oliveira',
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        compose_upcoming_assessments_lines=lambda _summary: [],
+    )
+
+    answer = asyncio.run(maybe_resolved_intent_answer(ctx, deps=deps))
+    assert answer is not None
+    assert 'principal alerta de frequencia de Lucas Oliveira' in answer.message_text
+    assert 'Fisica' in answer.message_text
 
 
 def test_restricted_document_denial_mentions_access_boundary() -> None:
@@ -1693,6 +1919,117 @@ def test_restricted_document_denial_mentions_access_boundary() -> None:
     assert answer is not None
     assert answer.reason == 'specialist_supervisor_tool_first:restricted_document_denied'
     assert 'acesso' in answer.message_text.casefold()
+
+
+def test_restricted_document_denial_for_partial_scope_mentions_public_internal_split() -> None:
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            message='Quero o protocolo interno para responsaveis com escopo parcial.',
+            user=SimpleNamespace(authenticated=True, scopes=[], role='guardian'),
+        )
+    )
+    answer = asyncio.run(maybe_restricted_document_tool_first_answer(ctx, profile={}))
+    assert answer is not None
+    lowered = answer.message_text.casefold()
+    assert 'escopo parcial' in lowered
+    assert 'orientacoes gerais' in lowered or 'orientações gerais' in answer.message_text.casefold()
+    assert 'regras operacionais de permissao' in lowered or 'regras operacionais de permissão' in answer.message_text.casefold()
+    assert 'proximo passo' in lowered or 'próximo passo' in answer.message_text.casefold()
+
+
+def test_specialist_compose_finance_aggregate_answer_adds_layman_categories() -> None:
+    answer = compose_finance_aggregate_answer(
+        [
+            {
+                'student_name': 'Lucas Oliveira',
+                'open_invoice_count': 1,
+                'overdue_invoice_count': 0,
+                'invoices': [],
+            }
+        ],
+        deps=SimpleNamespace(normalize_text=lambda value: str(value or '').casefold()),
+    )
+    lowered = answer.casefold()
+    assert 'mensalidade' in lowered
+    assert 'taxa' in lowered
+    assert 'atraso' in lowered
+    assert 'desconto' in lowered
+
+
+def test_tool_first_finance_denies_unlinked_student_name() -> None:
+    async def _unused_fetch(*_args, **_kwargs):
+        raise AssertionError('third-party denial should trigger before any finance fetch')
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            message='Paguei parte da mensalidade do Joao e quero negociar o restante.',
+            user=SimpleNamespace(authenticated=True),
+        ),
+        actor={'linked_students': [{'full_name': 'Lucas Oliveira'}, {'full_name': 'Ana Oliveira'}]},
+        resolved_turn=None,
+        conversation_context={},
+    )
+    deps = ToolFirstProtectedDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        contains_any=lambda message, terms: any(term in str(message).casefold() for term in terms),
+        looks_like_admin_finance_combo_query=lambda _message: False,
+        looks_like_family_finance_aggregate_query=lambda _message: False,
+        unknown_explicit_student_reference=lambda _actor, _message: 'Joao',
+        student_hint_from_message=lambda *_args, **_kwargs: None,
+        looks_like_student_pronoun_followup=lambda _message: False,
+        fetch_financial_summary_payload=_unused_fetch,
+        linked_students=lambda actor, capability='finance': list(actor.get('linked_students') or []),
+        compose_finance_installments_answer=lambda _summary: '',
+        compose_finance_aggregate_answer=lambda _summaries: '',
+        looks_like_academic_risk_followup=lambda _message: False,
+        looks_like_family_academic_aggregate_query=lambda _message: False,
+        looks_like_family_attendance_aggregate_query=lambda _message: False,
+        looks_like_upcoming_assessments_query=lambda _message: False,
+        looks_like_attendance_timeline_query=lambda _message: False,
+        subject_hint_from_text=lambda _message: None,
+        looks_like_subject_followup=lambda _message: False,
+        resolved_academic_target_name=lambda *_args, **_kwargs: None,
+        needs_specific_academic_student_clarification=lambda *_args, **_kwargs: False,
+        build_academic_student_selection_clarify=lambda *_args, **_kwargs: None,
+        fetch_academic_summary_payload=_unused_fetch,
+        fetch_upcoming_assessments_payload=_unused_fetch,
+        fetch_attendance_timeline_payload=_unused_fetch,
+        compose_academic_risk_answer=lambda _summary: '',
+        compose_named_subject_grade_answer=lambda *_args, **_kwargs: None,
+        compose_named_grade_answer=lambda _summary: '',
+        compose_named_attendance_answer=lambda *_args, **_kwargs: None,
+        compose_academic_snapshot_lines=lambda _summary: [],
+        compose_academic_aggregate_answer=lambda _summaries: '',
+        compose_upcoming_assessments_lines=lambda _summary: [],
+        compose_attendance_timeline_lines=lambda _summary: [],
+        safe_excerpt=lambda text, **_kwargs: text,
+        http_get=_unused_fetch,
+        compose_actor_admin_status_answer=lambda _summary: '',
+        recent_student_from_context_with_memory=lambda *_args, **_kwargs: None,
+        compose_admin_status_answer=lambda _summary: '',
+        find_student_by_hint=lambda *_args, **_kwargs: None,
+    )
+
+    answer = asyncio.run(
+        maybe_tool_first_protected_answer(
+            ctx,
+            normalized=str(ctx.request.message).casefold(),
+            preview={'classification': {'domain': 'finance'}},
+            memory=OperationalMemory(),
+            deps=deps,
+        )
+    )
+
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_tool_first:finance_third_party_denied'
+    lowered = answer.message_text.casefold()
+    assert 'o que ja aparece:' in lowered
+    assert 'nao posso confirmar nem expor o financeiro' in lowered
+    assert 'joao' in lowered
+    assert 'lucas oliveira' in lowered
+    assert 'regularize primeiro o vinculo com a secretaria' in lowered
+    assert 'me diga qual deles' in lowered
+    assert 'canal oficial' in lowered
 
 
 def test_resolved_academic_target_name_accepts_alternate_student_name_for_short_followup() -> None:
@@ -1719,6 +2056,97 @@ def test_academic_risk_followup_detects_pontos_que_mais_preocupam() -> None:
         'Quero isolar a Ana e os pontos academicos que mais preocupam.',
         deps=SimpleNamespace(normalize_text=lambda value: str(value or '').casefold()),
     )
+
+
+def test_academic_risk_followup_detects_componentes_merecem_mais_atencao() -> None:
+    assert looks_like_academic_risk_followup(
+        'Fique apenas com a Ana e diga quais componentes merecem mais atencao agora.',
+        deps=SimpleNamespace(normalize_text=lambda value: str(value or '').casefold()),
+    )
+
+
+def test_academic_risk_followup_detects_acende_mais_alerta_prompt() -> None:
+    assert looks_like_academic_risk_followup(
+        'Sem repetir o Lucas, corta so para a Ana e me diga qual componente dela acende mais alerta agora.',
+        deps=SimpleNamespace(normalize_text=lambda value: str(value or '').casefold()),
+    )
+
+
+def test_academic_risk_followup_detects_disciplina_preocupa_mais_prompt() -> None:
+    assert looks_like_academic_risk_followup(
+        'e qual disciplina preocupa mais?',
+        deps=SimpleNamespace(normalize_text=lambda value: str(value or '').casefold()),
+    )
+
+
+def test_compose_academic_risk_answer_mentions_concern_and_lowest_grade() -> None:
+    summary = {
+        'student_name': 'Lucas Oliveira',
+        'grades': [
+            {'subject_name': 'Fisica', 'score': '5.9'},
+            {'subject_name': 'Matematica', 'score': '7.7'},
+            {'subject_name': 'Portugues', 'score': '8.3'},
+        ],
+    }
+    text = compose_academic_risk_answer(
+        summary,
+        deps=SimpleNamespace(
+            normalize_text=lambda value: str(value or '').casefold(),
+            subject_code_from_hint=lambda *_args, **_kwargs: (None, None),
+        ),
+    )
+    assert text is not None
+    lowered = text.casefold()
+    assert 'preocupam academicamente' in lowered
+    assert 'menor nota parcial' in lowered
+    assert 'fisica' in lowered
+
+
+def test_student_hint_from_message_prefers_focus_marked_student() -> None:
+    deps = StudentContextDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        linked_students=lambda _actor, capability='academic': [
+            {'student_id': 'stu-lucas', 'full_name': 'Lucas Oliveira'},
+            {'student_id': 'stu-ana', 'full_name': 'Ana Oliveira'},
+        ],
+        http_get=lambda **kwargs: None,
+    )
+
+    assert (
+        student_hint_from_message(
+            {'linked_students': [{'student_id': 'stu-lucas', 'full_name': 'Lucas Oliveira'}, {'student_id': 'stu-ana', 'full_name': 'Ana Oliveira'}]},
+            'Sem repetir o Lucas, corta so para a Ana e me diga qual componente dela acende mais alerta agora.',
+            deps=deps,
+        )
+        == 'Ana Oliveira'
+    )
+
+
+def test_resolved_academic_target_name_prefers_explicit_student_over_alternate_memory() -> None:
+    deps = SimpleNamespace(
+        normalize_text=lambda value: str(value or '').casefold(),
+        student_hint_from_message=lambda _actor, _message: 'Ana Oliveira',
+        is_student_name_only_followup=lambda _actor, _message: None,
+        unknown_explicit_student_reference=lambda _actor, _message: None,
+        looks_like_student_pronoun_followup=lambda _message: False,
+        looks_like_subject_followup=lambda _message: False,
+        subject_hint_from_text=lambda _message: None,
+    )
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(message='Sem repetir o Lucas, corta so para a Ana e me diga qual componente dela acende mais alerta agora.'),
+        operational_memory=OperationalMemory(active_student_name='Lucas Oliveira', alternate_student_name='Lucas Oliveira'),
+        actor=None,
+    )
+    resolved = SimpleNamespace(referenced_student_name=None, alternate_student_name='Lucas Oliveira')
+
+    assert resolved_academic_target_name(ctx, resolved=resolved, deps=deps) == 'Ana Oliveira'
+
+
+def test_specialist_family_attendance_aggregate_query_rejects_academic_components_followup() -> None:
+    assert looks_like_family_attendance_aggregate_query(
+        'Sem sair do escopo do projeto, depois do panorama dos meus filhos, fique apenas com a Ana e diga quais componentes merecem mais atencao agora.',
+        deps=SimpleNamespace(normalize_text=lambda value: str(value or '').casefold()),
+    ) is False
 
 
 def test_resolved_intent_skips_public_pricing_query() -> None:
@@ -2195,3 +2623,113 @@ def test_fast_path_handles_bullying_service_routing() -> None:
     lowered = answer.message_text.lower()
     assert 'orientacao educacional' in lowered
     assert 'bot' in lowered
+
+
+def test_human_handoff_request_does_not_steal_role_comparison_prompt() -> None:
+    assert not _looks_like_human_handoff_request(
+        'Qual a diferenca entre falar com secretaria, coordenacao e orientacao educacional?'
+    )
+
+
+def test_specialist_preflight_promotes_policy_compare_lane() -> None:
+    payload = _preflight_public_doc_bundle_answer(
+        {"school_name": "Colegio Horizonte"},
+        'Compare o manual de regulamentos gerais com a politica de avaliacao e explique como os dois se complementam.',
+    )
+    assert payload is not None
+    assert payload.reason == 'specialist_supervisor_preflight:policy_compare'
+
+
+def test_specialist_preflight_promotes_permanence_family_support_lane() -> None:
+    payload = _preflight_public_doc_bundle_answer(
+        {"school_name": "Colegio Horizonte"},
+        'Quais temas atravessam varios documentos publicos quando o assunto e permanencia escolar e acompanhamento da familia?',
+    )
+    assert payload is not None
+    assert payload.reason == 'specialist_supervisor_preflight:permanence_family_support'
+
+
+def test_specialist_public_lane_matches_access_scope_compare_prompt() -> None:
+    prompt = 'Compare a orientacao publica e a interna sobre acessos diferentes entre responsaveis e destaque o que muda de linguagem e de acao.'
+    assert match_public_canonical_lane(prompt) == 'public_bundle.access_scope_compare'
+
+
+def test_specialist_family_finance_aggregate_query_rejects_third_party_partial_payment_prompt_without_family_anchor() -> None:
+    deps = SimpleNamespace(normalize_text=lambda text: str(text or '').casefold())
+    prompt = 'Paguei parte da mensalidade do Joao e preciso negociar o restante; o que ja aparece e qual o proximo passo?'
+    assert looks_like_family_finance_aggregate_query(prompt, deps=deps) is False
+
+
+def test_specialist_unknown_student_reference_skips_finance_noun_and_returns_actual_name() -> None:
+    actor = {
+        'linked_students': [
+            {'student_id': 'lucas-id', 'full_name': 'Lucas Oliveira'},
+            {'student_id': 'ana-id', 'full_name': 'Ana Oliveira'},
+        ]
+    }
+    deps = StudentContextDeps(
+        normalize_text=lambda text: str(text or '').casefold(),
+        linked_students=lambda _actor, capability='academic': actor['linked_students'],
+        http_get=lambda **kwargs: None,
+    )
+    prompt = 'Paguei parte da mensalidade do Joao e preciso negociar o restante; o que ja aparece e qual o proximo passo?'
+    assert unknown_explicit_student_reference(actor, prompt, deps=deps) == 'joao'
+
+
+def test_resolved_finance_summary_denies_unlinked_student_name() -> None:
+    async def _fetch_financial_summary_payload(_ctx, *, student_name_hint=None, **_kwargs):
+        return {"summary": {"student_name": student_name_hint or "Aluno", "open_invoice_count": 1, "overdue_invoice_count": 0}}
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='Sou a Helena e quero ver o financeiro do Rafael.',
+        ),
+        actor={'students': [{'full_name': 'Lucas Oliveira'}, {'full_name': 'Ana Oliveira'}]},
+        resolved_turn=ResolvedTurnIntent(
+            key='finance.student_summary',
+            domain='finance',
+            subintent='student_summary',
+            capability='finance.student_summary',
+            access_tier='authenticated',
+            confidence=0.99,
+            referenced_student_name='Rafael',
+        ),
+        operational_memory=OperationalMemory(),
+        conversation_context={},
+    )
+    deps = ResolvedIntentDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        looks_like_subject_followup=lambda _message: False,
+        looks_like_academic_risk_followup=lambda _message: False,
+        looks_like_family_finance_aggregate_query=lambda _message: False,
+        looks_like_family_attendance_aggregate_query=lambda _message: False,
+        fetch_academic_summary_payload=lambda *_args, **_kwargs: None,
+        fetch_financial_summary_payload=_fetch_financial_summary_payload,
+        fetch_upcoming_assessments_payload=lambda *_args, **_kwargs: None,
+        resolved_academic_target_name=lambda *_args, **_kwargs: None,
+        needs_specific_academic_student_clarification=lambda *_args, **_kwargs: False,
+        build_academic_student_selection_clarify=lambda *_args, **_kwargs: None,
+        compose_academic_risk_answer=lambda _summary: '',
+        compose_named_subject_grade_answer=lambda *_args, **_kwargs: None,
+        compose_named_grade_answer=lambda _summary: '',
+        compose_named_attendance_answer=lambda *_args, **_kwargs: '',
+        compose_academic_snapshot_lines=lambda _summary: [],
+        compose_academic_aggregate_answer=lambda _summaries: '',
+        compose_finance_aggregate_answer=lambda _summaries: '',
+        compose_finance_installments_answer=lambda _summary: '',
+        linked_students=lambda actor, **_kwargs: list(actor.get('students') or []),
+        safe_excerpt=lambda text, **_kwargs: text,
+        subject_hint_from_text=lambda _message: None,
+        recent_subject_from_context=lambda *_args, **_kwargs: None,
+        subject_code_from_hint=lambda *_args, **_kwargs: (None, None),
+        student_hint_from_message=lambda *_args, **_kwargs: None,
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        compose_upcoming_assessments_lines=lambda _summary: [],
+    )
+
+    answer = asyncio.run(maybe_resolved_intent_answer(ctx, deps=deps))
+    assert answer is not None
+    assert answer.mode == 'deny'
+    assert 'Rafael' in answer.message_text
+    assert 'Lucas Oliveira' in answer.message_text

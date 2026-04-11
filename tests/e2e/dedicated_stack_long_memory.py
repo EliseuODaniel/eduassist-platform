@@ -132,6 +132,42 @@ def _assert_late_correction(turns: list[dict[str, Any]]) -> None:
     assert_condition(_contains_any(fourth, ("ana oliveira", "lucas oliveira", "media minima", "média mínima", "compar")), "late_correction:fourth_missing_compare")
 
 
+def _assert_teacher_boundary_then_compare(turns: list[dict[str, Any]]) -> None:
+    first = str(turns[0]["message_text"])
+    second = str(turns[1]["message_text"])
+    third = str(turns[2]["message_text"])
+    fourth = str(turns[3]["message_text"])
+    assert_condition("lucas oliveira" in _normalize(first), "teacher_boundary_compare:first_missing_lucas")
+    assert_condition(_contains_any(second, ("menor nota", "fisica", "física", "5,")), "teacher_boundary_compare:second_missing_low_grade")
+    lowered = _normalize(third)
+    assert_condition("coorden" in lowered, "teacher_boundary_compare:third_missing_coordination")
+    assert_condition(
+        _contains_any(lowered, ("nao divulga", "não divulga", "contato direto", "contato institucional")),
+        "teacher_boundary_compare:third_missing_boundary",
+    )
+    lowered_fourth = _normalize(fourth)
+    assert_condition("lucas oliveira" in lowered_fourth, "teacher_boundary_compare:fourth_missing_lucas")
+    assert_condition("ana oliveira" in lowered_fourth, "teacher_boundary_compare:fourth_missing_ana")
+    assert_condition(_contains_any(lowered_fourth, ("compar", "media minima", "média mínima", "academ")), "teacher_boundary_compare:fourth_missing_compare")
+
+
+def _assert_process_compare_after_family_digression(turns: list[dict[str, Any]]) -> None:
+    first = str(turns[0]["message_text"])
+    second = str(turns[1]["message_text"])
+    third = str(turns[2]["message_text"])
+    fourth = str(turns[3]["message_text"])
+    assert_condition("lucas oliveira" in _normalize(first), "process_after_family:first_missing_lucas")
+    assert_condition("ana oliveira" in _normalize(first), "process_after_family:first_missing_ana")
+    assert_condition(_contains_any(second, ("atencao", "atenção", "lucas oliveira", "ana oliveira")), "process_after_family:second_missing_priority")
+    lowered_third = _normalize(third)
+    assert_condition("rematric" in lowered_third, "process_after_family:third_missing_rematricula")
+    assert_condition("transfer" in lowered_third, "process_after_family:third_missing_transferencia")
+    assert_condition("cancel" in lowered_third, "process_after_family:third_missing_cancelamento")
+    lowered_fourth = _normalize(fourth)
+    assert_condition("lucas oliveira" in lowered_fourth, "process_after_family:fourth_missing_lucas")
+    assert_condition(_contains_any(lowered_fourth, ("alerta", "frequencia", "frequência", "falta")), "process_after_family:fourth_missing_alert")
+
+
 @dataclass(frozen=True)
 class Scenario:
     name: str
@@ -196,6 +232,32 @@ SCENARIOS: tuple[Scenario, ...] = (
             "e agora quem dos dois está mais perto da média mínima?",
         ),
         validator=_assert_late_correction,
+    ),
+    Scenario(
+        name="teacher_boundary_then_family_compare",
+        channel="telegram",
+        telegram_chat_id=GUARDIAN_CHAT_ID,
+        user={"authenticated": True, "role": "guardian"},
+        prompts=(
+            "quais as notas do Lucas Oliveira?",
+            "e qual foi a menor nota dele?",
+            "agora me diz se a escola divulga contato direto do professor de matemática",
+            "voltando aos meus filhos, compara o Lucas com a Ana",
+        ),
+        validator=_assert_teacher_boundary_then_compare,
+    ),
+    Scenario(
+        name="process_compare_after_family_digression",
+        channel="telegram",
+        telegram_chat_id=GUARDIAN_CHAT_ID,
+        user={"authenticated": True, "role": "guardian"},
+        prompts=(
+            "me mostra a frequência dos meus dois filhos",
+            "quem exige mais atenção?",
+            "agora esquece meu caso: sem falar de preço, o que muda entre rematrícula, transferência e cancelamento?",
+            "voltando ao meu caso, qual é o principal alerta só do Lucas?",
+        ),
+        validator=_assert_process_compare_after_family_digression,
     ),
 )
 

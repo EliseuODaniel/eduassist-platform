@@ -1770,6 +1770,19 @@ def compose_restricted_document_grounded_answer_for_query(query: str, hits: list
 def compose_restricted_document_no_match_answer(query: str) -> str:
     normalized_query = str(query or '').strip().rstrip(' ?!.')
     normalized = _normalize_text(normalized_query)
+    if ('segunda chamada' in normalized or 'motivo de saude' in normalized or 'motivo de saúde' in normalized) and any(
+        term in normalized for term in ('procedimento interno', 'orientacao interna', 'orientação interna', 'equipe', 'o que cabe ao publico', 'o que cabe ao público')
+    ):
+        return (
+            'Consultei os documentos internos disponiveis, mas nao encontrei um procedimento interno adicional especifico para esse recorte. '
+            'No que fica publico, a escola explica segunda chamada por motivo de saude no material aberto; o que cabe a equipe internamente segue como rotina restrita e nao apareceu com detalhe suficiente nesta base.'
+        )
+    if 'escopo parcial' in normalized or 'responsaveis com escopo parcial' in normalized or 'responsáveis com escopo parcial' in normalized:
+        return (
+            'Consultei os documentos internos disponiveis, mas nao encontrei um protocolo interno compartilhavel para responsaveis com escopo parcial. '
+            'No que e publico, a diferenca principal e esta: a base aberta explica apenas orientacoes gerais, enquanto regras operacionais de permissao, restricao e encaminhamento continuam internas. '
+            'Na pratica, o proximo passo e pedir ao setor responsavel que confirme o procedimento aplicavel ao perfil autorizado.'
+        )
     if (
         any(term in normalized for term in ('viagem internacional', 'excursao internacional', 'excursão internacional'))
         and any(term in normalized for term in ('hospedagem', 'pernoite'))

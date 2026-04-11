@@ -89,6 +89,27 @@ def test_timeline_lifecycle_lane_wins_over_calendar_week_for_marcos_entre_prompt
     assert lane == 'public_bundle.timeline_lifecycle'
 
 
+def test_timeline_lifecycle_lane_matches_qual_vem_primeiro_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'No calendario publico de 2026, qual vem primeiro entre matricula, inicio das aulas e encontro inicial com responsaveis?'
+    )
+    assert lane == 'public_bundle.timeline_lifecycle'
+
+
+def test_health_second_call_lane_matches_comprovacao_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Se o aluno perde uma prova por razao de saude, como a escola amarra comprovacao, segunda chamada e recuperacao no material publico?'
+    )
+    assert lane == 'public_bundle.health_second_call'
+
+
+def test_conduct_frequency_recovery_lane_matches_faltas_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Quero uma sintese publica de como disciplina, faltas e recuperacao se cruzam quando o desempenho do aluno cai.'
+    )
+    assert lane == 'public_bundle.conduct_frequency_recovery'
+
+
 def test_calendar_week_lane_matches_marcos_prompt() -> None:
     lane = match_public_canonical_lane(
         'Quais marcos do calendario publico hoje falam mais diretamente com familias e responsaveis?'
@@ -149,6 +170,20 @@ def test_bolsas_and_processes_lane_beats_generic_process_compare() -> None:
         'Como a escola conecta edital de bolsas com rematricula, transferencia e cancelamento?'
     )
     assert lane == 'public_bundle.bolsas_and_processes'
+
+
+def test_process_compare_lane_matches_accented_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'O que muda entre rematrícula, transferência e cancelamento?'
+    )
+    assert lane == 'public_bundle.process_compare'
+
+
+def test_process_compare_lane_beats_price_negation_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Sem falar de preço, o que muda entre rematrícula, transferência e cancelamento?'
+    )
+    assert lane == 'public_bundle.process_compare'
 
 
 def test_academic_policy_overview_lane_matches() -> None:
@@ -428,3 +463,47 @@ def test_stack_specific_public_answers_reuse_canonical_teacher_boundary_bundle()
     assert canonical is not None
     assert compose_python_functions_public_teacher_directory_boundary(profile) == canonical
     assert compose_llamaindex_public_teacher_directory_boundary(profile) == canonical
+
+
+def test_policy_compare_lane_matches_manual_vs_policy_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Compare o manual de regulamentos gerais com a politica de avaliacao e explique como os dois se complementam.'
+    )
+    assert lane == 'public_bundle.policy_compare'
+
+
+def test_policy_compare_answer_mentions_regulamentos_and_avaliacao() -> None:
+    answer = compose_public_canonical_lane_answer('public_bundle.policy_compare', profile=_sample_profile())
+    assert answer is not None
+    lowered = answer.casefold()
+    assert 'manual de regulamentos gerais' in lowered
+    assert 'politica de avaliacao' in lowered or 'política de avaliação' in lowered
+    assert 'se complementam' in lowered or 'complementam' in lowered
+    assert 'primeiro' in lowered
+    assert 'depois' in lowered
+    assert 'proximo passo' in lowered or 'próximo passo' in lowered
+
+
+def test_access_scope_compare_lane_matches_public_vs_internal_responsaveis_prompt() -> None:
+    prompt = 'Compare a orientacao publica e a interna sobre acessos diferentes entre responsaveis e destaque o que muda de linguagem e de acao.'
+    assert match_public_canonical_lane(prompt) == 'public_bundle.access_scope_compare'
+    assert match_specialist_public_canonical_lane(prompt) == 'public_bundle.access_scope_compare'
+
+
+def test_access_scope_compare_answer_mentions_public_internal_and_scope() -> None:
+    answer = compose_public_canonical_lane_answer('public_bundle.access_scope_compare', profile=_sample_profile())
+    assert answer is not None
+    lowered = answer.casefold()
+    assert 'publica' in lowered
+    assert 'interna' in lowered
+    assert 'escopo' in lowered or 'acesso' in lowered
+
+
+def test_permanence_family_support_answer_explicitly_mentions_cross_document_themes() -> None:
+    answer = compose_public_canonical_lane_answer('public_bundle.permanence_family_support', profile=_sample_profile())
+    assert answer is not None
+    lowered = answer.casefold()
+    assert 'acolhimento' in lowered
+    assert 'monitoria' in lowered or 'apoio' in lowered
+    assert 'comunicacao com a familia' in lowered or 'comunicação com a família' in lowered
+    assert 'frequencia' in lowered or 'frequência' in lowered

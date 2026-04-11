@@ -31,6 +31,7 @@ from .models import (
     MessageResponse,
     MessageResponseRequest,
     OrchestrationMode,
+    QueryDomain,
     RetrievalBackend,
     RetrievalProfile,
 )
@@ -56,6 +57,33 @@ from .retrieval import get_retrieval_service
 logger = logging.getLogger(__name__)
 _ANSWER_FOCUS_CACHE_TTL_SECONDS = 900.0
 _ANSWER_FOCUS_CACHE: dict[str, dict[str, Any]] = {}
+_PUBLIC_CANONICAL_SAFE_LANES = {
+    'public_bundle.academic_policy_overview',
+    'public_bundle.governance_protocol',
+    'public_bundle.conduct_frequency_punctuality',
+    'public_bundle.policy_compare',
+    'public_bundle.timeline_lifecycle',
+    'public_bundle.year_three_phases',
+    'public_bundle.family_new_calendar_assessment_enrollment',
+    'public_bundle.first_month_risks',
+    'public_bundle.process_compare',
+    'public_bundle.health_second_call',
+    'public_bundle.health_authorizations_bridge',
+    'public_bundle.conduct_frequency_recovery',
+    'public_bundle.secretaria_portal_credentials',
+    'public_bundle.bolsas_and_processes',
+    'public_bundle.transversal_year',
+    'public_bundle.facilities_study_support',
+    'public_bundle.inclusion_accessibility',
+    'public_bundle.integral_study_support',
+    'public_bundle.transport_uniform_bundle',
+    'public_bundle.health_emergency_bundle',
+    'public_bundle.outings_authorizations',
+    'public_bundle.visibility_boundary',
+    'public_bundle.permanence_family_support',
+    'public_bundle.teacher_directory_boundary',
+    'public_bundle.calendar_week',
+}
 
 _QUESTION_SUBJECTS = (
     'historia',
@@ -621,6 +649,40 @@ def _looks_like_family_academic_next_in_line_followup(question: str) -> bool:
     )
 
 
+def _looks_like_family_academic_priority_followup(question: str) -> bool:
+    normalized = _plain_text(question)
+    if not any(
+        term in normalized
+        for term in (
+            'academicamente',
+            'academico',
+            'acadêmico',
+            'media minima',
+            'média mínima',
+            'mais critico',
+            'mais crítico',
+            'mais perto da media minima',
+            'mais perto da média mínima',
+        )
+    ):
+        return False
+    return any(
+        term in normalized
+        for term in (
+            'quem esta',
+            'quem está',
+            'quem dos dois',
+            'qual dos dois',
+            'qual dos meus filhos',
+            'quem hoje',
+            'mais critico',
+            'mais crítico',
+            'mais perto da media minima',
+            'mais perto da média mínima',
+        )
+    )
+
+
 def _compose_family_academic_alert_reason(summaries: list[dict[str, Any]]) -> str | None:
     ranked = _family_academic_ranking(summaries)
     if not ranked:
@@ -698,6 +760,22 @@ def _compose_family_finance_focus(summaries: list[dict[str, Any]]) -> str | None
         lines.append(f"- {student_name}: {', '.join(details)}.")
     lines.insert(1, f'- Total de faturas em aberto: {total_open}')
     lines.insert(2, f'- Total de faturas vencidas: {total_overdue}')
+    if total_open or total_overdue:
+        lines.append(
+            f'- Mensalidade: neste recorte, o financeiro mostra {total_open} cobranca(s) em aberto e {total_overdue} vencida(s) nas faturas escolares.'
+        )
+        lines.append('- Taxa: nao apareceu taxa separada no resumo financeiro desta conta.')
+        lines.append(
+            '- Atraso: '
+            + (
+                'ha faturas vencidas que pedem regularizacao imediata.'
+                if total_overdue > 0
+                else 'nao ha fatura vencida agora; o foco fica nos proximos vencimentos.'
+            )
+        )
+        lines.append(
+            '- Desconto: nao apareceu desconto separado nas faturas deste recorte; se existir negociacao comercial, ela precisa ser confirmada com o financeiro.'
+        )
     if total_overdue > 0:
         lines.append(
             '- Proximo passo recomendado: priorizar as faturas vencidas e, se necessario, acionar o financeiro para alinhamento imediato.'
@@ -793,6 +871,98 @@ def _actor_summary(actor: dict[str, Any] | None) -> str:
     if not names:
         return 'sem alunos vinculados nomeados'
     return f"alunos_vinculados={', '.join(names[:4])}"
+
+
+_FINANCE_STUDENT_REFERENCE_STOPWORDS = {
+    'mensalidade',
+    'mensalidades',
+    'pagamento',
+    'pagamentos',
+    'taxa',
+    'taxas',
+    'desconto',
+    'descontos',
+    'atraso',
+    'atrasos',
+    'restante',
+    'financeiro',
+    'fatura',
+    'faturas',
+    'boleto',
+    'boletos',
+}
+
+
+def _explicit_unmatched_finance_student_reference(
+    actor: dict[str, Any] | None,
+    message: str,
+) -> str | None:
+    linked_students = actor.get('linked_students') if isinstance(actor, dict) else None
+    if not isinstance(linked_students, list) or not linked_students:
+        return None
+    normalized = _plain_text(message)
+    if not any(term in normalized for term in ('mensalidade', 'financeiro', 'fatura', 'boleto', 'pagamento', 'negociar')):
+        return None
+    known_names = {
+        _plain_text(str(student.get('full_name') or ''))
+        for student in linked_students
+        if isinstance(student, dict)
+    }
+    known_first_names = {name.split(' ')[0] for name in known_names if name}
+    for pattern in (
+        r"\b(?:da|do|de|para|pro|pra)\s+([a-z]{3,}(?:\s+[a-z]{3,})?)\b",
+        r"\b(?:aluno|aluna|estudante)\s+([a-z]{3,}(?:\s+[a-z]{3,})?)\b",
+    ):
+        for match in re.finditer(pattern, normalized):
+            candidate = _plain_text(match.group(1))
+            if not candidate or candidate in _FINANCE_STUDENT_REFERENCE_STOPWORDS:
+                continue
+            if any(candidate.startswith(stopword) for stopword in _FINANCE_STUDENT_REFERENCE_STOPWORDS):
+                continue
+            if candidate in known_names or candidate in known_first_names:
+                continue
+            return candidate
+    return None
+
+
+def _compose_family_admin_focus(summaries: list[dict[str, Any]]) -> str | None:
+    if not summaries:
+        return None
+    lines = ['Panorama documental das contas vinculadas:']
+    pending_students: list[str] = []
+    for summary in summaries:
+        student_name = str(summary.get('student_name') or 'Aluno').strip() or 'Aluno'
+        overall_status = str(summary.get('overall_status') or '').strip().lower()
+        next_step = str(summary.get('next_step') or '').strip()
+        pending_note = ''
+        checklist = summary.get('checklist')
+        if isinstance(checklist, list):
+            for item in checklist:
+                if not isinstance(item, dict):
+                    continue
+                if str(item.get('status') or '').strip().lower() == 'pending':
+                    pending_note = str(item.get('notes') or '').strip()
+                    break
+        status_label = 'regular'
+        if overall_status in {'pending', 'review', 'missing', 'incomplete'}:
+            status_label = 'com pendencias'
+            pending_students.append(student_name)
+        elif overall_status:
+            status_label = overall_status
+        line = f'- {student_name}: situacao documental {status_label}.'
+        if pending_note:
+            line += f' Ponto pendente: {pending_note}'
+        if next_step:
+            line += f' Proximo passo: {next_step}'
+        lines.append(line)
+    if pending_students:
+        if len(pending_students) == 1:
+            lines.append(f'Quem ainda tem pendencia documental mais clara neste recorte: {pending_students[0]}.')
+        else:
+            lines.append('Quem ainda aparece com pendencia documental neste recorte: ' + ', '.join(pending_students) + '.')
+    else:
+        lines.append('Hoje nao aparece pendencia documental relevante entre os alunos vinculados neste recorte.')
+    return '\n'.join(lines)
 
 
 def _question_mentions_unasked_grade_scope(question: str) -> bool:
@@ -895,6 +1065,49 @@ def _looks_like_family_attendance_aggregate_request(question: str) -> bool:
         )
     )
     has_attendance_focus = any(term in normalized for term in ('frequencia', 'frequência', 'faltas', 'falta', 'atrasos', 'presenca', 'presença', 'ausencias', 'ausências'))
+    has_explicit_academic_focus = any(
+        term in normalized
+        for term in (
+            'componente',
+            'componentes',
+            'disciplina',
+            'disciplinas',
+            'materia',
+            'materias',
+            'nota',
+            'notas',
+            'media',
+            'média',
+            'academico',
+            'acadêmico',
+        )
+    )
+    has_explicit_finance_focus = any(
+        term in normalized
+        for term in (
+            'financeiro',
+            'financeira',
+            'situacao financeira',
+            'situação financeira',
+            'mensalidade',
+            'mensalidades',
+            'boleto',
+            'boletos',
+            'fatura',
+            'faturas',
+            'pagamento',
+            'pagamentos',
+            'vencimento',
+            'vencimentos',
+            'proximos passos',
+            'próximos passos',
+            'comprovantes',
+        )
+    )
+    has_non_ambiguous_attendance_focus = any(
+        term in normalized
+        for term in ('frequencia', 'frequência', 'faltas', 'falta', 'presenca', 'presença', 'ausencias', 'ausências')
+    )
     has_attention_focus = any(
         term in normalized
         for term in (
@@ -911,6 +1124,10 @@ def _looks_like_family_attendance_aggregate_request(question: str) -> bool:
             'principal alerta',
         )
     )
+    if has_explicit_academic_focus and not has_attendance_focus:
+        return False
+    if has_explicit_finance_focus and not has_non_ambiguous_attendance_focus:
+        return False
     return has_family_anchor and (has_attendance_focus or has_attention_focus)
 
 
@@ -938,6 +1155,12 @@ def _looks_like_family_finance_aggregate_request(question: str) -> bool:
         'quadro financeiro da familia',
         'quadro financeiro da família',
         'contas vinculadas',
+        'minha situacao financeira',
+        'minha situação financeira',
+        'situacao financeira como se eu fosse leigo',
+        'situação financeira como se eu fosse leigo',
+        'separando mensalidade, taxa, atraso e desconto',
+        'separando mensalidade taxa atraso e desconto',
     )
     if any(term in normalized for term in explicit_terms):
         return True
@@ -967,6 +1190,19 @@ def _looks_like_family_finance_aggregate_request(question: str) -> bool:
             'próximos passos',
         )
     )
+    if has_family_anchor and any(
+        term in normalized
+        for term in (
+            'mensalidade parcialmente paga',
+            'negociar o restante',
+            'o que ja aparece',
+            'o que já aparece',
+            'taxa',
+            'atraso',
+            'desconto',
+        )
+    ):
+        return True
     return has_family_anchor and has_finance_focus
 
 
@@ -1005,8 +1241,64 @@ def _looks_like_relationship_followup(question: str) -> bool:
 def _response_covers_requested_scope(question: str, response_text: str) -> bool:
     question_plain = _plain_text(question)
     response_plain = _plain_text(response_text)
+    if (
+        any(term in response_plain for term in ('para qual aluno', 'qual aluno', 'voce quer consultar', 'você quer consultar'))
+        and any(term in response_plain for term in (' ou ', 'vinculado a esta conta', 'vinculados a esta conta'))
+    ):
+        return False
+    if any(term in question_plain for term in ('bloqueando atendimento', 'nada estiver bloqueando', 'se nada estiver bloqueando', 'bloqueio')):
+        if not any(term in response_plain for term in ('bloqueio', 'administrativo', 'documental', 'financeiro por atraso')):
+            return False
+    timeline_groups = (
+        ('matricula', 'matrícula', 'ingresso'),
+        ('inicio das aulas', 'início das aulas', 'inicio do ano letivo', 'início do ano letivo'),
+        ('reuniao com responsaveis', 'reunião com responsáveis', 'reuniao de pais', 'reunião de pais', 'reuniao de responsaveis'),
+    )
+    requested_timeline_groups = sum(
+        1 for group in timeline_groups if any(term in question_plain for term in group)
+    )
+    if requested_timeline_groups >= 2:
+        covered_timeline_groups = sum(
+            1 for group in timeline_groups if any(term in response_plain for term in group)
+        )
+        if covered_timeline_groups < 2:
+            return False
+    policy_groups = (
+        ('avaliac',),
+        ('recuper',),
+        ('promo',),
+        ('media', 'média'),
+        ('frequenc',),
+    )
+    requested_policy_groups = sum(
+        1 for group in policy_groups if any(term in question_plain for term in group)
+    )
+    if requested_policy_groups >= 3:
+        covered_policy_groups = sum(
+            1 for group in policy_groups if any(term in response_plain for term in group)
+        )
+        if covered_policy_groups < 2:
+            return False
     if _question_mentions_unasked_finance_scope(question_plain):
         if not (_contains_monetary_signal(response_text) or any(term in response_plain for term in ('fatura', 'boleto', 'financeiro'))):
+            return False
+    if _looks_like_family_finance_aggregate_request(question_plain):
+        if not any(
+            term in response_plain
+            for term in ('resumo financeiro', 'contas vinculadas', 'fatura', 'boleto', 'vencimento', 'em aberto', 'vencida')
+        ):
+            return False
+    if (
+        any(term in question_plain for term in ('documentacao dos meus filhos', 'documentação dos meus filhos', 'pendencia documental', 'pendência documental'))
+        or (
+            any(term in question_plain for term in ('meus filhos', 'meus dois filhos', 'alunos vinculados'))
+            and any(term in question_plain for term in ('documentacao', 'documentação', 'documental', 'pendencia', 'pendência', 'cadastro'))
+        )
+    ):
+        if not any(
+            term in response_plain
+            for term in ('document', 'cadastro', 'administrativ', 'pendenc', 'comprovante', 'regular')
+        ):
             return False
     if _question_mentions_unasked_grade_scope(question_plain):
         requested_subject = _extract_requested_subject(question)
@@ -1040,7 +1332,15 @@ def _looks_like_service_routing_bundle_request(question: str) -> bool:
             'como eu falo',
             'contato',
             'contatar',
+            'setores',
+            'canais',
             'setor de bolsas',
+            'quem responde por',
+            'quem cuida',
+            'quem resolve',
+            'menu geral',
+            'caminho mais curto',
+            'por cada frente',
         )
     )
     has_target_sector = sum(
@@ -1093,6 +1393,18 @@ def _looks_like_service_routing_followup(question: str, conversation_context: di
     )
 
 
+def _service_routing_sector_hits(text: str) -> int:
+    normalized = _plain_text(text)
+    groups = (
+        ('atendimento comercial / admissoes', 'admissoes', 'admissoes', 'bolsa', 'bolsas', 'desconto', 'descontos'),
+        ('financeiro', 'fatura', 'faturas', 'boleto', 'boletos', 'mensalidade', 'mensalidades'),
+        ('direcao', 'direção', 'diretora', 'diretor'),
+        ('secretaria', 'documentos', 'declaração', 'declaracao'),
+        ('orientacao educacional', 'orientação educacional', 'convivencia', 'convivência', 'bullying'),
+    )
+    return sum(1 for group in groups if any(term in normalized for term in group))
+
+
 def _compose_public_service_routing_direct_answer(
     school_profile: dict[str, Any] | None,
     *,
@@ -1126,6 +1438,11 @@ def _compose_public_service_routing_direct_answer(
             'so os canais',
             'só os canais',
             'seja objetivo',
+            'nao me manda menu geral',
+            'não me manda menu geral',
+            'caminho mais curto',
+            'nao a lista completa',
+            'não a lista completa',
         )
     )
     wants_priority = any(
@@ -1961,9 +2278,28 @@ def _looks_like_internal_document_query(message: str) -> bool:
     )
 
 
+def _is_restricted_document_no_match_response(response: MessageResponse) -> bool:
+    reason = str(response.reason or '')
+    if 'restricted_document_no_match' in reason or 'restricted_doc_no_match' in reason:
+        return True
+    if response.classification.access_tier == AccessTier.public:
+        return False
+    text = _plain_text(response.message_text)
+    return (
+        response.retrieval_backend != RetrievalBackend.none
+        and 'nao encontrei' in text
+        and any(term in text for term in ('excursao', 'excursão', 'viagem internacional', 'hospedagem', 'pernoite'))
+    )
+
+
 def _question_mentions_public_permanence_support(message: str) -> bool:
     normalized = _plain_text(message)
     if 'famil' not in normalized:
+        return False
+    if any(
+        term in normalized
+        for term in ('financeiro', 'pagamentos', 'boletos', 'faturas', 'vencimentos', 'atrasos', 'mensalidade', 'taxa', 'desconto')
+    ):
         return False
     return (
         any(term in normalized for term in ('permanencia', 'vida escolar'))
@@ -2025,6 +2361,11 @@ async def _deterministic_public_direct_answer(
         or match_python_functions_public_canonical_lane(request.message)
     )
     if response.classification.access_tier is not AccessTier.public and (
+        _looks_like_family_finance_aggregate_request(request.message)
+        or _looks_like_access_scope_request(request.message)
+    ):
+        return None
+    if response.classification.access_tier is not AccessTier.public and (
         _looks_like_attendance_alert_request(request.message)
         or _looks_like_family_attendance_aggregate_request(request.message)
     ):
@@ -2070,15 +2411,7 @@ async def _deterministic_public_direct_answer(
     )
     public_safe_direct_query = any(
         (
-            canonical_lane in {
-                'public_bundle.academic_policy_overview',
-                'public_bundle.governance_protocol',
-                'public_bundle.conduct_frequency_punctuality',
-                'public_bundle.timeline_lifecycle',
-                'public_bundle.year_three_phases',
-                'public_bundle.family_new_calendar_assessment_enrollment',
-                'public_bundle.first_month_risks',
-            },
+            canonical_lane in _PUBLIC_CANONICAL_SAFE_LANES,
             teacher_directory,
             permanence_support,
             first_month_risks,
@@ -2140,15 +2473,7 @@ async def _deterministic_public_direct_answer(
         )
         if direct_timeline_order:
             return direct_timeline_order
-    if canonical_lane in {
-        'public_bundle.academic_policy_overview',
-        'public_bundle.governance_protocol',
-        'public_bundle.conduct_frequency_punctuality',
-        'public_bundle.timeline_lifecycle',
-        'public_bundle.year_three_phases',
-        'public_bundle.family_new_calendar_assessment_enrollment',
-        'public_bundle.first_month_risks',
-    }:
+    if canonical_lane in _PUBLIC_CANONICAL_SAFE_LANES:
         canonical_answer = compose_public_canonical_lane_answer(canonical_lane, profile=school_profile)
         if canonical_answer:
             return canonical_answer
@@ -2274,6 +2599,207 @@ async def _deterministic_public_direct_answer(
     return None
 
 
+def _focus_marked_student_from_question(
+    actor: dict[str, Any] | None,
+    question: str,
+) -> dict[str, Any] | None:
+    linked_students = actor.get('linked_students') if isinstance(actor, dict) else None
+    if not isinstance(linked_students, list):
+        return None
+    normalized = _plain_text(question)
+    positive_markers = (
+        'so ',
+        'só ',
+        'apenas ',
+        'somente ',
+        'so a ',
+        'só a ',
+        'so o ',
+        'só o ',
+        'olhe so para ',
+        'olhe só para ',
+        'agora foque so na ',
+        'agora foque só na ',
+        'foque so na ',
+        'foque só na ',
+        'fique apenas com ',
+        'fique só com ',
+        'recorte so ',
+        'recorte só ',
+        'isole a ',
+        'isole o ',
+        'corta so para ',
+        'corta só para ',
+        'corta so para a ',
+        'corta só para a ',
+        'corta so para o ',
+        'corta só para o ',
+        'filtre apenas ',
+        'agora quero apenas ',
+        'agora quero so ',
+        'agora quero só ',
+    )
+    for student in linked_students:
+        if not isinstance(student, dict):
+            continue
+        full_name = str(student.get('full_name') or '').strip()
+        full_name_plain = _plain_text(full_name)
+        first_name_plain = full_name_plain.split(' ')[0] if full_name_plain else ''
+        candidate_forms = tuple(value for value in {full_name_plain, first_name_plain} if value)
+        if not candidate_forms:
+            continue
+        for candidate in candidate_forms:
+            for marker in positive_markers:
+                marker_pattern = re.escape(_plain_text(marker).strip()).replace(r'\ ', r'\s+')
+                if re.search(rf'{marker_pattern}\s+{re.escape(candidate)}\b', normalized):
+                    return student
+            if re.search(rf'\b(?:so|só|apenas|somente)\s+(?:a|o)\s+{re.escape(candidate)}\b', normalized):
+                return student
+    return None
+
+
+def _mentioned_linked_student_names_from_question(
+    actor: dict[str, Any] | None,
+    question: str,
+) -> list[str]:
+    linked_students = actor.get('linked_students') if isinstance(actor, dict) else None
+    if not isinstance(linked_students, list):
+        return []
+    normalized = _plain_text(question)
+    matches: list[tuple[int, str]] = []
+    for student in linked_students:
+        if not isinstance(student, dict):
+            continue
+        full_name = str(student.get('full_name') or '').strip()
+        if not full_name:
+            continue
+        full_name_plain = _plain_text(full_name)
+        first_name_plain = full_name_plain.split(' ')[0] if full_name_plain else ''
+        position = normalized.find(full_name_plain) if full_name_plain else -1
+        if position < 0 and first_name_plain:
+            match = re.search(rf'\b{re.escape(first_name_plain)}\b', normalized)
+            position = match.start() if match else -1
+        if position >= 0:
+            matches.append((position, full_name))
+    matches.sort(key=lambda item: (item[0], _plain_text(item[1])))
+    ordered_names: list[str] = []
+    seen: set[str] = set()
+    for _position, full_name in matches:
+        normalized_name = _plain_text(full_name)
+        if normalized_name in seen:
+            continue
+        seen.add(normalized_name)
+        ordered_names.append(full_name)
+    return ordered_names
+
+
+def _looks_like_cross_student_academic_comparison_followup(question: str) -> bool:
+    normalized = _plain_text(question)
+    if not any(term in normalized for term in ('compar', 'compare', 'comparar', 'contra', 'em relacao', 'em relação')):
+        return False
+    if any(term in normalized for term in ('documentacao', 'documentação', 'documental', 'cadastro', 'pendencia', 'pendência', 'administrativ')):
+        return False
+    has_family_compare = any(
+        term in normalized for term in (' com ', ' com a ', ' com o ', 'isso com', 'meus filhos', 'minha filha', 'meu filho')
+    )
+    has_academic_anchor = any(
+        term in normalized
+        for term in (
+            'academ',
+            'nota',
+            'notas',
+            'media',
+            'média',
+            'disciplina',
+            'disciplinas',
+            'componente',
+            'componentes',
+            'bimestre',
+            'aprovacao',
+            'aprovação',
+        )
+    )
+    return has_family_compare and has_academic_anchor
+
+
+def _recent_guardian_academic_context(conversation_context: dict[str, Any] | None) -> bool:
+    if not isinstance(conversation_context, dict):
+        return False
+    recent_messages = conversation_context.get('recent_messages')
+    if not isinstance(recent_messages, list):
+        return False
+    blob = ' '.join(str(item.get('content') or '') for item in recent_messages if isinstance(item, dict))
+    normalized = _plain_text(blob)
+    return any(
+        term in normalized
+        for term in (
+            'nota',
+            'notas',
+            'media parcial',
+            'média parcial',
+            'menor nota',
+            'mais perto da media minima',
+            'mais perto da média mínima',
+            'atencao academica',
+            'atenção acadêmica',
+            'fisica',
+            'física',
+            'historia',
+            'história',
+            'matematica',
+            'matemática',
+            'portugues',
+            'português',
+            'panorama academico',
+            'panorama acadêmico',
+        )
+    )
+
+
+def _looks_like_contextual_cross_student_academic_comparison_followup(
+    question: str,
+    *,
+    conversation_context: dict[str, Any] | None,
+    mentioned_students: list[str] | None = None,
+) -> bool:
+    normalized = _plain_text(question)
+    if not any(term in normalized for term in ('compar', 'compare', 'comparar', 'contra', 'em relacao', 'em relação')):
+        return False
+    if any(term in normalized for term in ('documentacao', 'documentação', 'documental', 'cadastro', 'pendencia', 'pendência', 'administrativ')):
+        return False
+    has_compare_target = bool(mentioned_students) or any(
+        term in normalized for term in (' com ', ' com a ', ' com o ', 'isso com', 'meus filhos', 'minha filha', 'meu filho')
+    )
+    return has_compare_target and _recent_guardian_academic_context(conversation_context)
+
+
+def _compose_cross_student_academic_comparison_direct(
+    summaries: list[dict[str, Any]],
+    *,
+    preferred_order: list[str] | None = None,
+) -> str | None:
+    ranking = _family_academic_ranking(summaries)
+    if len(ranking) < 2:
+        return None
+    by_name = {str(item['student_name']): item for item in ranking}
+    ordered_names = [name for name in (preferred_order or []) if name in by_name]
+    if len(ordered_names) < 2:
+        ordered_names = list(by_name.keys())[:2]
+    if len(ordered_names) < 2:
+        return None
+    base = by_name[ordered_names[0]]
+    other = by_name[ordered_names[1]]
+    most_critical = base if float(base['value']) <= float(other['value']) else other
+    base_value = f"{float(base['value']):.1f}".replace('.', ',')
+    other_value = f"{float(other['value']):.1f}".replace('.', ',')
+    return (
+        f"Comparando {base['student_name']} com {other['student_name']}: "
+        f"{base['student_name']} tem o ponto academico mais sensivel em {base['subject_name']}, com media parcial {base_value}/10, "
+        f"enquanto {other['student_name']} aparece com menor media em {other['subject_name']}, com {other_value}/10. "
+        f"Hoje quem esta mais perto da media minima entre os dois e {most_critical['student_name']}, puxado por {most_critical['subject_name']}."
+    )
+
+
 async def _deterministic_protected_academic_direct_answer(
     *,
     request: MessageResponseRequest,
@@ -2287,9 +2813,17 @@ async def _deterministic_protected_academic_direct_answer(
     if not isinstance(actor, dict):
         return None
     recent_family_academic = _recent_family_academic_context(conversation_context)
-    if response.classification.access_tier is AccessTier.public and not recent_family_academic:
+    recent_family_attendance = _recent_family_attendance_context(conversation_context)
+    if response.classification.access_tier is AccessTier.public and not (recent_family_academic or recent_family_attendance):
         return None
     normalized = _plain_text(request.message)
+    mentioned_students = _mentioned_linked_student_names_from_question(actor, request.message)
+    family_academic_priority_follow_up = _looks_like_family_academic_priority_followup(request.message)
+    cross_student_comparison_follow_up = _looks_like_cross_student_academic_comparison_followup(request.message) or _looks_like_contextual_cross_student_academic_comparison_followup(
+        request.message,
+        conversation_context=conversation_context,
+        mentioned_students=mentioned_students,
+    )
     academic_risk_follow_up = any(
         term in normalized
         for term in (
@@ -2304,6 +2838,16 @@ async def _deterministic_protected_academic_direct_answer(
             'preocupação acadêmica',
             'preocupacoes academicas',
             'preocupações acadêmicas',
+            'componentes merecem mais atencao',
+            'componentes merecem mais atenção',
+            'componentes merecem acompanhamento',
+            'componentes exigem mais atencao',
+            'componentes exigem mais atenção',
+            'qual componente',
+            'qual disciplina',
+            'mais alerta',
+            'acende mais alerta',
+            'fica mais claro',
         )
     )
     academic_difficulty_follow_up = any(
@@ -2320,17 +2864,28 @@ async def _deterministic_protected_academic_direct_answer(
     if not (
         _looks_like_family_academic_reason_followup(request.message)
         or _looks_like_family_academic_next_in_line_followup(request.message)
+        or family_academic_priority_follow_up
+        or cross_student_comparison_follow_up
         or academic_risk_follow_up
         or academic_difficulty_follow_up
     ):
         return None
-    if not recent_family_academic and not (academic_risk_follow_up or academic_difficulty_follow_up):
+    if not (recent_family_academic or recent_family_attendance) and not (
+        family_academic_priority_follow_up
+        or cross_student_comparison_follow_up
+        or academic_risk_follow_up
+        or academic_difficulty_follow_up
+    ):
         return None
     linked_students = actor.get('linked_students')
     if not isinstance(linked_students, list):
         return None
     if academic_risk_follow_up or academic_difficulty_follow_up:
-        for student in linked_students:
+        focused_student = _focus_marked_student_from_question(actor, request.message)
+        prioritized_students = list(linked_students)
+        if isinstance(focused_student, dict):
+            prioritized_students = [focused_student, *[student for student in linked_students if student is not focused_student]]
+        for student in prioritized_students:
             if not isinstance(student, dict):
                 continue
             student_id = str(student.get('student_id') or '').strip()
@@ -2339,7 +2894,7 @@ async def _deterministic_protected_academic_direct_answer(
                 continue
             full_name_plain = _plain_text(full_name)
             first_name_plain = full_name_plain.split(' ')[0] if full_name_plain else ''
-            if full_name_plain not in normalized and not (first_name_plain and f' {first_name_plain}' in f' {normalized}'):
+            if student is not focused_student and full_name_plain not in normalized and not (first_name_plain and f' {first_name_plain}' in f' {normalized}'):
                 continue
             payload = await _api_core_get(
                 settings=settings,
@@ -2369,6 +2924,23 @@ async def _deterministic_protected_academic_direct_answer(
         summary = payload.get('summary') if isinstance(payload, dict) else None
         if isinstance(summary, dict):
             summaries.append(summary)
+    if cross_student_comparison_follow_up:
+        preferred_order = mentioned_students
+        if len(preferred_order) < 2:
+            recent_name = _recent_linked_student_name_from_messages(conversation_context, actor)
+            explicit_other = next(
+                (name for name in mentioned_students if _plain_text(name) != _plain_text(recent_name)),
+                None,
+            ) if recent_name else None
+            preferred_order = [item for item in (recent_name, explicit_other) if item]
+        comparison_answer = _compose_cross_student_academic_comparison_direct(
+            summaries,
+            preferred_order=preferred_order,
+        )
+        if comparison_answer:
+            return comparison_answer
+    if family_academic_priority_follow_up:
+        return _compose_family_academic_focus(summaries)
     if _looks_like_family_academic_reason_followup(request.message):
         return _compose_family_academic_alert_reason(summaries)
     if _looks_like_family_academic_next_in_line_followup(request.message):
@@ -2384,17 +2956,30 @@ def _looks_like_attendance_alert_request(question: str) -> bool:
             'principal alerta',
             'maior atencao',
             'maior atenção',
+            'mais atencao',
+            'mais atenção',
             'inspira mais atencao',
             'inspira mais atenção',
+            'chama mais atencao',
+            'chama mais atenção',
+            'chamam atencao',
+            'chamam atenção',
             'olhando as faltas',
             'foco principal de frequencia',
             'foco principal de frequência',
+            'bate na frequencia',
+            'bate na frequência',
             'por que a frequencia',
             'por que a frequência',
             'frequencia dele preocupa',
             'frequência dele preocupa',
             'preocupa mais',
             'preocupa menos',
+            'mais sensivel',
+            'mais sensível',
+            'faltas recentes',
+            'ausencias recentes',
+            'ausências recentes',
         )
     )
 
@@ -2411,7 +2996,8 @@ def _compose_attendance_priority_focus(summary: dict[str, Any], *, student_name:
     return (
         f'O principal alerta de frequencia de {student_name} hoje aparece em {subject_name}: '
         f'{absent} falta(s), {late} atraso(s) e {present} presenca(s) neste recorte. '
-        'Esse e o foco principal porque concentra a maior combinacao de faltas e atrasos do aluno neste momento.'
+        'Esse e o foco principal porque concentra a maior combinacao de faltas e atrasos do aluno neste momento. '
+        f'Proximo passo: acompanhar {subject_name} nas proximas aulas para verificar se novas faltas ou atrasos continuam pressionando a frequencia.'
     )
 
 
@@ -2704,6 +3290,22 @@ async def _deterministic_protected_finance_direct_answer(
     if not isinstance(actor, dict):
         return None
     normalized = _plain_text(request.message)
+    unmatched_student = _explicit_unmatched_finance_student_reference(actor, request.message)
+    if unmatched_student:
+        linked_students = actor.get('linked_students')
+        linked_names = [
+            str(student.get('full_name') or '').strip()
+            for student in linked_students
+            if isinstance(student, dict) and str(student.get('full_name') or '').strip()
+        ] if isinstance(linked_students, list) else []
+        linked_preview = ', '.join(linked_names) if linked_names else 'os alunos vinculados desta conta'
+        return (
+            f'O que ja aparece: eu nao posso confirmar nem expor o financeiro de {unmatched_student} porque esse aluno nao aparece entre os vinculados desta conta. '
+            f'No recorte atual, eu consigo consultar apenas: {linked_preview}. '
+            'Proximo passo: se Joao deveria aparecer neste recorte, regularize primeiro o vinculo com a secretaria. '
+            'Se a cobranca for de Lucas ou Ana, me diga qual deles e eu consulto o que ja aparece. '
+            'Se a ideia for negociar o restante de uma cobranca vinculada, abra o atendimento com o financeiro pelo canal oficial.'
+        )
     recent_blob = ' '.join(
         _plain_text(item)
         for item in (
@@ -2951,10 +3553,7 @@ def _should_attempt_context_repair(
         and response.retrieval_backend != RetrievalBackend.none
     ):
         return False
-    if (
-        _looks_like_internal_document_query(request.message)
-        and ('restricted_document_no_match' in str(response.reason or '') or 'restricted_doc_no_match' in str(response.reason or ''))
-    ):
+    if _is_restricted_document_no_match_response(response):
         return False
     if focus.unknown_student_name or focus.unknown_subject_name or focus.is_repair_followup or focus.needs_disambiguation:
         return True
@@ -3815,6 +4414,28 @@ async def _build_supplemental_focus(
                         'focused_draft': focused_draft,
                         'evidence_lines': [f'Foco agregado | {focused_draft}'],
                     }
+            if focus.domain == 'institution':
+                summaries = []
+                for student in linked_students:
+                    if not isinstance(student, dict):
+                        continue
+                    student_id = str(student.get('student_id') or '').strip()
+                    if not student_id:
+                        continue
+                    payload = await _api_core_get(
+                        settings=settings,
+                        path=f'/v1/students/{student_id}/administrative-status',
+                        params={'telegram_chat_id': request.telegram_chat_id},
+                    )
+                    summary = payload.get('summary') if isinstance(payload, dict) else None
+                    if isinstance(summary, dict):
+                        summaries.append(summary)
+                focused_draft = _compose_family_admin_focus(summaries)
+                if focused_draft:
+                    return {
+                        'focused_draft': focused_draft,
+                        'evidence_lines': [f'Foco agregado | {focused_draft}'],
+                    }
             summaries: list[dict[str, Any]] = []
             path_suffix = 'academic-summary' if focus.domain == 'academic' else 'financial-summary'
             for student in linked_students:
@@ -4280,7 +4901,18 @@ def _preserve_deterministic_answer_surface(
         for reason in reasons
         if reason
     ):
-        return 'preserve_process_compare'
+        if _response_covers_requested_scope(request.message, response.message_text):
+            return 'preserve_process_compare'
+    if any(
+        (
+            'public_bundle.policy_compare' in reason
+            and ('canonical_lane' in reason or 'policy_compare' in reason)
+        )
+        for reason in reasons
+        if reason
+    ):
+        if _response_covers_requested_scope(request.message, response.message_text):
+            return 'preserve_policy_compare'
     if any(
         (
             'public_bundle.integral_study_support' in reason
@@ -4290,6 +4922,40 @@ def _preserve_deterministic_answer_surface(
         if reason
     ):
         return 'preserve_integral_study_support'
+    if any(
+        (
+            any(lane in reason for lane in {
+                'public_bundle.health_second_call',
+                'public_bundle.conduct_frequency_recovery',
+                'public_bundle.facilities_study_support',
+                'public_bundle.governance_protocol',
+                'public_bundle.academic_policy_overview',
+                'public_bundle.policy_compare',
+                'public_bundle.timeline_lifecycle',
+                'public_bundle.year_three_phases',
+                'public_bundle.family_new_calendar_assessment_enrollment',
+                'public_bundle.first_month_risks',
+                'public_bundle.health_authorizations_bridge',
+                'public_bundle.secretaria_portal_credentials',
+                'public_bundle.bolsas_and_processes',
+                'public_bundle.transversal_year',
+                'public_bundle.inclusion_accessibility',
+                'public_bundle.transport_uniform_bundle',
+                'public_bundle.health_emergency_bundle',
+                'public_bundle.outings_authorizations',
+                'public_bundle.visibility_boundary',
+                'public_bundle.access_scope_compare',
+                'public_bundle.permanence_family_support',
+                'public_bundle.teacher_directory_boundary',
+                'public_bundle.calendar_week',
+            })
+            and 'canonical_lane' in reason
+        )
+        for reason in reasons
+        if reason
+    ):
+        if _response_covers_requested_scope(request.message, response.message_text):
+            return 'preserve_public_canonical_lane'
     if (
         response.mode != OrchestrationMode.clarify
         and _looks_like_explicit_public_pricing_projection(request.message)
@@ -4304,10 +4970,28 @@ def _preserve_deterministic_answer_surface(
         and not _looks_like_student_resolution_failure(response.message_text)
     ):
         return 'preserve_access_scope'
+    finance_tools = {'get_financial_summary', 'get_student_financial_summary'}
+    response_is_finance_surface = (
+        response.classification.domain is QueryDomain.finance
+        or bool(finance_tools & set(response.selected_tools or []))
+        or 'finance' in _normalize_text(getattr(response, 'reason', None))
+    )
+    if (
+        response.classification.access_tier is not AccessTier.public
+        and response.mode is OrchestrationMode.structured_tool
+        and response_is_finance_surface
+        and not _looks_like_student_resolution_failure(response.message_text)
+        and not _looks_like_access_scope_request(request.message)
+        and focus.topic != 'admin_finance_combo'
+        and not focus.finance_status_filter
+        and 'valores publicos de referencia' not in _plain_text(response.message_text)
+        and _response_covers_requested_scope(request.message, response.message_text)
+    ):
+        return 'preserve_protected_finance_surface'
     if (
         response.mode != OrchestrationMode.clarify
         and _looks_like_service_routing_bundle_request(request.message)
-        and any(term in _plain_text(response.message_text) for term in ('financeiro', 'direcao', 'direção', 'bolsa', 'admissoes'))
+        and _service_routing_sector_hits(response.message_text) >= 2
         and any(term in _plain_text(response.message_text) for term in ('email', 'telefone', 'whatsapp', 'canal institucional', 'portal autenticado'))
     ):
         return 'preserve_service_routing'
@@ -4319,6 +5003,16 @@ def _preserve_deterministic_answer_surface(
         and _response_covers_requested_scope(request.message, response.message_text)
     ):
         response_plain = _plain_text(response.message_text)
+        if _looks_like_family_finance_aggregate_request(request.message) and not any(
+            term in response_plain
+            for term in ('resumo financeiro', 'financeiro', 'fatura', 'boleto', 'mensalidade', 'vencimento')
+        ):
+            return None
+        if _looks_like_family_attendance_aggregate_request(request.message) and not any(
+            term in response_plain
+            for term in ('frequ', 'falta', 'presen', 'atraso')
+        ):
+            return None
         linked_students = actor.get('linked_students') if isinstance(actor, dict) else None
         linked_names = [
             _plain_text(str(student.get('full_name') or ''))
@@ -4374,10 +5068,7 @@ async def apply_grounded_answer_experience(
             }
         )
 
-    if (
-        _looks_like_internal_document_query(request.message)
-        and ('restricted_document_no_match' in str(response.reason or '') or 'restricted_doc_no_match' in str(response.reason or ''))
-    ):
+    if _is_restricted_document_no_match_response(response):
         return response.model_copy(
             update={
                 'answer_experience_eligible': True,

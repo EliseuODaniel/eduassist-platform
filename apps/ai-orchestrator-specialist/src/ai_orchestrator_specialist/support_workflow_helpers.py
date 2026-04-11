@@ -15,6 +15,20 @@ def _looks_like_human_handoff_request(message: str) -> bool:
     if any(
         marker in normalized
         for marker in (
+            "qual a diferenca entre",
+            "qual a diferença entre",
+            "explique a diferenca entre",
+            "explique a diferença entre",
+            "compare",
+            "como se complementam",
+            "o que muda entre",
+            "quem faz o que",
+        )
+    ):
+        return False
+    if any(
+        marker in normalized
+        for marker in (
             "bloqueando atendimento",
             "bloqueia atendimento",
             "bloqueio de atendimento",

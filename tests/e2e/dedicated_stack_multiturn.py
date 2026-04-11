@@ -136,6 +136,35 @@ def _assert_family_attention(turns: list[dict[str, Any]]) -> None:
     assert_condition(_contains_any(third, ("frequencia", "frequência", "alerta", "falta")), "family_attention:third_missing_alert")
 
 
+def _assert_teacher_boundary_after_protected_digression(turns: list[dict[str, Any]]) -> None:
+    first = str(turns[0]["message_text"])
+    second = str(turns[1]["message_text"])
+    third = str(turns[2]["message_text"])
+    assert_condition("ana oliveira" in _normalize(first), "teacher_after_protected:first_missing_ana")
+    assert_condition(_contains_any(second, ("matematica", "matemática")), "teacher_after_protected:second_missing_math")
+    lowered = _normalize(third)
+    assert_condition("coorden" in lowered, "teacher_after_protected:third_missing_coordination")
+    assert_condition(
+        _contains_any(lowered, ("nao divulga", "não divulga", "contato institucional", "contato direto")),
+        "teacher_after_protected:third_missing_boundary",
+    )
+
+
+def _assert_attendance_to_academic_reset(turns: list[dict[str, Any]]) -> None:
+    first = str(turns[0]["message_text"])
+    second = str(turns[1]["message_text"])
+    third = str(turns[2]["message_text"])
+    assert_condition("lucas oliveira" in _normalize(first), "attendance_to_academic:first_missing_lucas")
+    assert_condition("ana oliveira" in _normalize(first), "attendance_to_academic:first_missing_ana")
+    assert_condition(_contains_any(second, ("atencao", "atenção", "lucas oliveira", "ana oliveira")), "attendance_to_academic:second_missing_priority")
+    lowered = _normalize(third)
+    assert_condition(_contains_any(lowered, ("lucas oliveira", "ana oliveira")), "attendance_to_academic:third_missing_student")
+    assert_condition(
+        _contains_any(lowered, ("academ", "media minima", "média mínima", "fisica", "física", "matematica", "matemática")),
+        "attendance_to_academic:third_missing_academic_signal",
+    )
+
+
 @dataclass(frozen=True)
 class Scenario:
     name: str
@@ -206,6 +235,30 @@ SCENARIOS: tuple[Scenario, ...] = (
             "e qual o principal alerta só do Lucas?",
         ),
         validator=_assert_family_attention,
+    ),
+    Scenario(
+        name="teacher_boundary_after_protected_digression",
+        channel="telegram",
+        telegram_chat_id=GUARDIAN_CHAT_ID,
+        user={"authenticated": True, "role": "guardian"},
+        prompts=(
+            "quais as próximas provas da Ana?",
+            "e a próxima de matemática?",
+            "não, esquece o caso dela: a escola divulga contato direto do professor ou passa pela coordenação?",
+        ),
+        validator=_assert_teacher_boundary_after_protected_digression,
+    ),
+    Scenario(
+        name="attendance_to_academic_reset",
+        channel="telegram",
+        telegram_chat_id=GUARDIAN_CHAT_ID,
+        user={"authenticated": True, "role": "guardian"},
+        prompts=(
+            "me mostra a frequência dos meus dois filhos",
+            "quem exige mais atenção agora?",
+            "não estou falando de falta agora: academicamente, quem está mais crítico?",
+        ),
+        validator=_assert_attendance_to_academic_reset,
     ),
 )
 

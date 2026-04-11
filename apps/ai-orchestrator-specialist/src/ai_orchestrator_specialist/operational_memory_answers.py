@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Awaitable, Callable
@@ -88,6 +89,45 @@ def _looks_like_cross_student_comparison_followup(message: str, *, deps: Operati
     if not any(term in normalized for term in {"compar", "compare", "comparar", "contra", "em relacao", "em relação"}):
         return False
     return any(term in normalized for term in {" com ", " com a ", " com o ", " com ana", " com lucas", "isso com"})
+
+
+def _mentioned_linked_student_names(
+    actor: dict[str, Any] | None,
+    message: str,
+    *,
+    deps: OperationalMemoryDeps,
+) -> list[str]:
+    linked_students = actor.get("linked_students") if isinstance(actor, dict) else None
+    if not isinstance(linked_students, list):
+        return []
+    normalized = deps.normalize_text(message)
+    matches: list[tuple[int, str]] = []
+    for student in linked_students:
+        if not isinstance(student, dict):
+            continue
+        if student.get("can_view_academic") is False:
+            continue
+        full_name = str(student.get("full_name") or "").strip()
+        if not full_name:
+            continue
+        normalized_full_name = deps.normalize_text(full_name)
+        first_name = normalized_full_name.split(" ")[0] if normalized_full_name else ""
+        position = normalized.find(normalized_full_name) if normalized_full_name else -1
+        if position < 0 and first_name:
+            match = re.search(rf"\b{re.escape(first_name)}\b", normalized)
+            position = match.start() if match else -1
+        if position >= 0:
+            matches.append((position, full_name))
+    matches.sort(key=lambda item: (item[0], deps.normalize_text(item[1])))
+    ordered_names: list[str] = []
+    seen: set[str] = set()
+    for _position, full_name in matches:
+        normalized_name = deps.normalize_text(full_name)
+        if normalized_name in seen:
+            continue
+        seen.add(normalized_name)
+        ordered_names.append(full_name)
+    return ordered_names
 
 
 def _weakest_grade_row(summary: dict[str, Any]) -> tuple[str, Decimal] | None:
@@ -385,18 +425,37 @@ async def maybe_operational_memory_follow_up_answer(
                     suggested_domain="academic",
                 )
 
-    if (
-        memory.active_domain == "academic"
-        and memory.active_student_name
-        and _looks_like_cross_student_comparison_followup(ctx.request.message, deps=deps)
-    ):
-        comparison_target = explicit_student_hint or student_name_only_followup
-        if not comparison_target and memory.active_student_id:
-            other = deps.other_linked_student(ctx.actor, capability="academic", current_student_id=memory.active_student_id)
-            comparison_target = str((other or {}).get("full_name") or "").strip() or None
-        if comparison_target and deps.normalize_text(comparison_target) != deps.normalize_text(memory.active_student_name):
+    mentioned_students = _mentioned_linked_student_names(ctx.actor, ctx.request.message, deps=deps)
+    if _looks_like_cross_student_comparison_followup(ctx.request.message, deps=deps):
+        base_student_name: str | None = None
+        comparison_target: str | None = None
+        if len(mentioned_students) >= 2:
+            base_student_name = mentioned_students[0]
+            comparison_target = next(
+                (
+                    candidate
+                    for candidate in mentioned_students[1:]
+                    if deps.normalize_text(candidate) != deps.normalize_text(base_student_name)
+                ),
+                None,
+            )
+        elif memory.active_student_name:
+            base_student_name = memory.active_student_name
+            comparison_target = explicit_student_hint or student_name_only_followup
+            if not comparison_target and mentioned_students:
+                candidate = mentioned_students[0]
+                if deps.normalize_text(candidate) != deps.normalize_text(base_student_name):
+                    comparison_target = candidate
+            if not comparison_target and memory.active_student_id:
+                other = deps.other_linked_student(ctx.actor, capability="academic", current_student_id=memory.active_student_id)
+                comparison_target = str((other or {}).get("full_name") or "").strip() or None
+        if (
+            base_student_name
+            and comparison_target
+            and deps.normalize_text(comparison_target) != deps.normalize_text(base_student_name)
+        ):
             base_payload, other_payload = await asyncio.gather(
-                deps.fetch_academic_summary_payload(ctx, student_name_hint=memory.active_student_name),
+                deps.fetch_academic_summary_payload(ctx, student_name_hint=base_student_name),
                 deps.fetch_academic_summary_payload(ctx, student_name_hint=comparison_target),
             )
             base_summary = base_payload.get("summary") if isinstance(base_payload, dict) else None

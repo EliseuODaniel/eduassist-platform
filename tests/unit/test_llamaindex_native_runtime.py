@@ -17,6 +17,8 @@ from ai_orchestrator.llamaindex_native_runtime import (
     _should_avoid_llamaindex_public_profile_fast_path,
     _run_public_hybrid_search,
     _resolve_early_llamaindex_public_answer,
+    _should_use_llamaindex_teacher_schedule_direct,
+    _should_use_llamaindex_teacher_scope_guidance,
     _should_skip_llamaindex_public_fast_paths,
     _should_use_llamaindex_llm_public_resolver,
     _should_use_llamaindex_protected_records_fast_path,
@@ -418,6 +420,42 @@ def test_llamaindex_kernel_preview_keeps_public_process_compare_public_when_auth
     assert preview.reason == 'llamaindex_local_public_fact:institution'
     assert preview.classification.access_tier == AccessTier.public
     assert 'get_public_school_profile' in preview.selected_tools
+
+
+def test_llamaindex_kernel_preview_keeps_family_finance_aggregate_protected_when_authenticated() -> None:
+    preview = build_llamaindex_kernel_preview(
+        request=SimpleNamespace(
+            message='Explique a minha situacao financeira como se eu fosse leigo, separando mensalidade, taxa, atraso e desconto.',
+            user=_authenticated_user(),
+        ),
+        settings=SimpleNamespace(),
+    )
+    assert preview.reason == 'llamaindex_local_protected:finance'
+    assert preview.classification.access_tier == AccessTier.sensitive
+    assert 'get_financial_summary' in preview.selected_tools
+    assert 'project_public_pricing' not in preview.selected_tools
+
+
+def test_teacher_schedule_direct_runs_without_teacher_scope_guidance_phrase() -> None:
+    assert _should_use_llamaindex_teacher_schedule_direct(
+        teacher_authenticated=True,
+        should_fetch_teacher_schedule=True,
+    ) is True
+    assert _should_use_llamaindex_teacher_scope_guidance(
+        teacher_scope_query=False,
+        should_fetch_teacher_schedule=True,
+    ) is False
+
+
+def test_teacher_scope_guidance_only_runs_when_schedule_fetch_is_not_needed() -> None:
+    assert _should_use_llamaindex_teacher_schedule_direct(
+        teacher_authenticated=True,
+        should_fetch_teacher_schedule=False,
+    ) is False
+    assert _should_use_llamaindex_teacher_scope_guidance(
+        teacher_scope_query=True,
+        should_fetch_teacher_schedule=False,
+    ) is True
 
 
 async def _resolve_early_public_answer(message: str, monkeypatch) -> LlamaIndexEarlyPublicAnswer | None:

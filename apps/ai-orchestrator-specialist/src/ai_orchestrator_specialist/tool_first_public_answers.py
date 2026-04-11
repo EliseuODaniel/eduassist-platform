@@ -210,7 +210,11 @@ async def maybe_tool_first_public_answer(
                 graph_leaf="admissions_documents",
             )
 
-    if not ctx.request.user.authenticated and _looks_like_public_academic_policy_overview_query(ctx.request.message):
+    if (
+        not ctx.request.user.authenticated
+        and not _looks_like_health_second_call_query(ctx.request.message)
+        and _looks_like_public_academic_policy_overview_query(ctx.request.message)
+    ):
         answer_text = compose_public_academic_policy_overview(profile)
         if answer_text:
             return _build_public_tool_payload(

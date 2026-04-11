@@ -621,10 +621,10 @@ async def maybe_academic_grade_fast_path_answer(
     if not ctx.request.user.authenticated:
         return None
     resolved_turn = getattr(ctx, "resolved_turn", None)
-    student_hint = deps.resolved_academic_target_name(ctx, resolved=resolved_turn) or deps.student_hint_from_message(
+    student_hint = deps.student_hint_from_message(
         getattr(ctx, "actor", None),
         ctx.request.message,
-    )
+    ) or deps.resolved_academic_target_name(ctx, resolved=resolved_turn)
     recent_messages = (
         ctx.conversation_context.get("recent_messages", [])
         if isinstance(ctx.conversation_context, dict)
@@ -889,10 +889,10 @@ async def _resolved_academic_student_grades_answer(
     subject_hint = str(resolved.referenced_subject or "").strip() or (
         memory.active_subject if deps.looks_like_subject_followup(ctx.request.message) else None
     )
-    target_name = deps.resolved_academic_target_name(ctx, resolved=resolved) or deps.student_hint_from_message(
+    target_name = deps.student_hint_from_message(
         ctx.actor,
         ctx.request.message,
-    )
+    ) or deps.resolved_academic_target_name(ctx, resolved=resolved)
     if deps.needs_specific_academic_student_clarification(ctx, target_name=target_name, subject_hint=subject_hint):
         return deps.build_academic_student_selection_clarify(
             ctx,
@@ -988,10 +988,10 @@ async def _resolved_academic_attendance_summary_answer(
     subject_hint = str(resolved.referenced_subject or "").strip() or (
         memory.active_subject if deps.looks_like_subject_followup(ctx.request.message) else None
     )
-    target_name = deps.resolved_academic_target_name(ctx, resolved=resolved) or deps.student_hint_from_message(
+    target_name = deps.student_hint_from_message(
         ctx.actor,
         ctx.request.message,
-    )
+    ) or deps.resolved_academic_target_name(ctx, resolved=resolved)
     if not target_name:
         target_name = str(memory.active_student_name or "").strip() or _recent_linked_student_name(ctx, deps=deps)
     if deps.needs_specific_academic_student_clarification(ctx, target_name=target_name, subject_hint=subject_hint):
@@ -1086,7 +1086,13 @@ async def _resolved_academic_attendance_summary_answer(
             "quem exige mais atenção",
             "inspira mais atencao",
             "inspira mais atenção",
+            "chama mais atencao",
+            "chama mais atenção",
+            "chamam atencao",
+            "chamam atenção",
             "olhando as faltas",
+            "bate na frequencia",
+            "bate na frequência",
             "por que a frequencia",
             "por que a frequência",
             "frequencia dele preocupa",
@@ -1116,7 +1122,8 @@ async def _resolved_academic_attendance_summary_answer(
                 answer_text = (
                     f"O principal alerta de frequencia de {student_name} hoje aparece em {subject_name}: "
                     f"{absent} falta(s), {late} atraso(s) e {present} presenca(s) neste recorte. "
-                    "Esse e o foco principal porque concentra a maior combinacao de faltas e atrasos do aluno neste momento."
+                    "Esse e o foco principal porque concentra a maior combinacao de faltas e atrasos do aluno neste momento. "
+                    f"Proximo passo: acompanhar {subject_name} nas proximas aulas para verificar se novas faltas ou atrasos continuam pressionando a frequencia."
                 )
                 return SupervisorAnswerPayload(
                     message_text=answer_text,
@@ -1240,10 +1247,58 @@ async def _resolved_finance_student_summary_answer(
     if not ctx.request.user.authenticated:
         return None
     wants_family_finance_aggregate = deps.looks_like_family_finance_aggregate_query(ctx.request.message)
+    finance_students = deps.linked_students(ctx.actor, capability="finance")
     target_name = str(resolved.referenced_student_name or "").strip()
+    normalized_target = deps.normalize_text(target_name)
+    if target_name and finance_students:
+        linked_names = {
+            deps.normalize_text(str(student.get("full_name") or ""))
+            for student in finance_students
+            if str(student.get("full_name") or "").strip()
+        }
+        if normalized_target and normalized_target not in linked_names:
+            linked_preview = ", ".join(
+                str(student.get("full_name") or "").strip()
+                for student in finance_students
+                if str(student.get("full_name") or "").strip()
+            )
+            return SupervisorAnswerPayload(
+                message_text=(
+                    f"Nao posso expor o financeiro de {target_name} porque esse aluno nao aparece entre os vinculados desta conta. "
+                    + (
+                        f"No recorte atual, eu consigo consultar apenas: {linked_preview}."
+                        if linked_preview
+                        else "No recorte atual, eu consigo consultar apenas os alunos vinculados desta sessao."
+                    )
+                ),
+                mode="deny",
+                classification=MessageIntentClassification(
+                    domain="finance",
+                    access_tier=_access_tier_for_domain("finance", True),
+                    confidence=0.99,
+                    reason="specialist_supervisor_resolved_intent:finance_third_party_denied",
+                ),
+                evidence_pack=MessageEvidencePack(
+                    strategy="deny",
+                    summary="Pedido de financeiro para aluno nao vinculado negado por privacidade.",
+                    source_count=1,
+                    support_count=1,
+                    supports=[
+                        MessageEvidenceSupport(
+                            kind="privacy_guardrail",
+                            label="Aluno nao vinculado",
+                            detail=target_name,
+                        )
+                    ],
+                ),
+                suggested_replies=_default_suggested_replies("finance"),
+                graph_path=["specialist_supervisor", "resolved_intent", "finance_third_party_denied"],
+                risk_flags=["privacy_guardrail"],
+                reason="specialist_supervisor_resolved_intent:finance_third_party_denied",
+            )
     if not target_name and wants_family_finance_aggregate:
         summaries: list[dict[str, Any]] = []
-        for student in deps.linked_students(ctx.actor, capability="finance"):
+        for student in finance_students:
             payload = await deps.fetch_financial_summary_payload(ctx, student_name_hint=str(student.get("full_name") or ""))
             summary = payload.get("summary") if isinstance(payload, dict) else None
             if isinstance(summary, dict):
@@ -1278,7 +1333,7 @@ async def _resolved_finance_student_summary_answer(
             )
         finance_names = [
             str(student.get("full_name") or "").strip()
-            for student in deps.linked_students(ctx.actor, capability="finance")
+            for student in finance_students
             if str(student.get("full_name") or "").strip()
         ]
         if finance_names:
@@ -1305,9 +1360,13 @@ async def _resolved_finance_student_summary_answer(
                 graph_path=["specialist_supervisor", "resolved_intent", "financial_summary_aggregate_fallback"],
                 reason="specialist_supervisor_resolved_intent:financial_summary_aggregate_fallback",
             )
-    if not target_name and len(deps.linked_students(ctx.actor, capability="finance")) > 1:
+    if not target_name and len(finance_students) > 1:
         return SupervisorAnswerPayload(
-            message_text="Consigo verificar a situacao financeira, mas preciso que voce me diga qual aluno: Lucas Oliveira ou Ana Oliveira?",
+            message_text=(
+                "Consigo verificar o financeiro por aluno, mas aqui ainda faltou dizer qual recorte voce quer. "
+                "Se a ideia for um panorama da familia, eu separo mensalidade, taxa, atraso e desconto no conjunto. "
+                "Se voce quiser um aluno especifico, me diga qual deles."
+            ),
             mode="clarify",
             classification=MessageIntentClassification(
                 domain="finance",
@@ -1323,7 +1382,7 @@ async def _resolved_finance_student_summary_answer(
             reason="specialist_supervisor_resolved_intent:finance_student_clarify",
         )
     if not target_name:
-        student = next(iter(deps.linked_students(ctx.actor, capability="finance")), None)
+        student = next(iter(finance_students), None)
         target_name = str(student.get("full_name") or "").strip() if isinstance(student, dict) else ""
     if not target_name:
         return None

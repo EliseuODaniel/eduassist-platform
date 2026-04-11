@@ -45,6 +45,17 @@ _UNKNOWN_STUDENT_STOPWORDS = {
     "frequencia",
     "frequência",
     "financeiro",
+    "mensalidade",
+    "mensalidades",
+    "pagamento",
+    "pagamentos",
+    "taxa",
+    "taxas",
+    "desconto",
+    "descontos",
+    "atraso",
+    "atrasos",
+    "restante",
     "fatura",
     "faturas",
     "boleto",
@@ -87,6 +98,22 @@ class StudentContextDeps:
     normalize_text: Callable[[str | None], str]
     linked_students: Callable[..., list[dict[str, Any]]]
     http_get: Callable[..., Awaitable[dict[str, Any] | None]]
+
+
+_FOCUS_MARKERS = (
+    "so para o",
+    "so para a",
+    "só para o",
+    "só para a",
+    "corta so para o",
+    "corta so para a",
+    "corta só para o",
+    "corta só para a",
+    "fique so com o",
+    "fique so com a",
+    "fique só com o",
+    "fique só com a",
+)
 
 
 def student_from_memory(
@@ -169,12 +196,42 @@ def recent_student_from_context_with_memory(
     return None
 
 
+def _focus_marked_student_from_message(
+    actor: dict[str, Any] | None,
+    message: str,
+    *,
+    deps: StudentContextDeps,
+) -> str | None:
+    normalized_message = deps.normalize_text(message)
+    if not normalized_message:
+        return None
+    for student in deps.linked_students(actor, capability="academic"):
+        rendered_name = str(student.get("full_name") or "").strip()
+        full_name = deps.normalize_text(rendered_name)
+        first_name = full_name.split(" ")[0] if full_name else ""
+        candidate_names = tuple(
+            candidate
+            for candidate in (full_name, first_name)
+            if candidate
+        )
+        for marker in _FOCUS_MARKERS:
+            marker_pattern = re.escape(deps.normalize_text(marker).strip()).replace(r"\ ", r"\s+")
+            for candidate in candidate_names:
+                candidate_pattern = re.escape(candidate).replace(r"\ ", r"\s+")
+                if re.search(rf"{marker_pattern}\s+{candidate_pattern}\b", normalized_message):
+                    return rendered_name or None
+    return None
+
+
 def student_hint_from_message(
     actor: dict[str, Any] | None,
     message: str,
     *,
     deps: StudentContextDeps,
 ) -> str | None:
+    focus_marked = _focus_marked_student_from_message(actor, message, deps=deps)
+    if focus_marked:
+        return focus_marked
     normalized_message = deps.normalize_text(message)
     for student in deps.linked_students(actor, capability="academic"):
         full_name = deps.normalize_text(student.get("full_name"))
@@ -195,7 +252,25 @@ def unknown_explicit_student_reference(
     normalized_message = deps.normalize_text(message)
     if not normalized_message or not any(
         term in normalized_message
-        for term in {"nota", "notas", "media", "média", "prova", "provas", "avaliac", "frequ", "fatura", "boleto", "financeiro"}
+        for term in {
+            "nota",
+            "notas",
+            "media",
+            "média",
+            "prova",
+            "provas",
+            "avaliac",
+            "frequ",
+            "fatura",
+            "boleto",
+            "financeiro",
+            "mensalidade",
+            "pagamento",
+            "pagamentos",
+            "negociar",
+            "negociacao",
+            "negociação",
+        }
     ):
         return None
     academic_students = deps.linked_students(actor, capability="academic")

@@ -143,6 +143,17 @@ def looks_like_academic_risk_followup(message: str, *, deps: ProtectedAnswerDeps
     return any(
         term in normalized
         for term in {
+            "qual disciplina preocupa mais",
+            "que disciplina preocupa mais",
+            "disciplina preocupa mais",
+            "quais disciplinas preocupam mais",
+            "qual disciplina merece mais atencao",
+            "qual disciplina merece mais atenção",
+            "qual foi a menor nota",
+            "qual e a menor nota",
+            "qual é a menor nota",
+            "onde esta a menor nota",
+            "onde está a menor nota",
             "pontos academicos que mais preocupam",
             "pontos acadêmicos que mais preocupam",
             "o que mais preocupa academicamente",
@@ -165,6 +176,16 @@ def looks_like_academic_risk_followup(message: str, *, deps: ProtectedAnswerDeps
             "mais exposto",
             "mais expostas",
             "mais expostos",
+            "componentes merecem mais atencao",
+            "componentes merecem mais atenção",
+            "componentes merecem acompanhamento",
+            "componentes exigem mais atencao",
+            "componentes exigem mais atenção",
+            "acende mais alerta",
+            "acendem mais alerta",
+            "qual componente dela acende mais alerta",
+            "qual componente dele acende mais alerta",
+            "qual componente acende mais alerta",
         }
     )
 
@@ -174,9 +195,13 @@ def compose_academic_risk_answer(summary: dict[str, Any], *, deps: ProtectedAnsw
     snapshots = subject_grade_snapshot(summary, deps=deps)
     if not snapshots:
         return None
-    lines = [f"Os pontos de maior risco academico de {student_name} hoje sao:"]
+    lines = [f"As disciplinas que mais preocupam academicamente em {student_name} hoje sao:"]
     for name, avg in snapshots[:3]:
         lines.append(f"- {name}: media parcial {str(avg).replace('.', ',')}")
+    top_subject, top_avg = snapshots[0]
+    lines.append(
+        f"A menor nota parcial neste recorte aparece em {top_subject}, com media {str(top_avg).replace('.', ',')}."
+    )
     lines.append("Esses componentes merecem acompanhamento primeiro no proximo ciclo de estudo.")
     return "\n".join(lines)
 
@@ -320,14 +345,6 @@ def resolved_academic_target_name(
     memory = ctx.operational_memory or OperationalMemory()
     if resolved is not None and str(resolved.referenced_student_name or "").strip():
         return str(resolved.referenced_student_name or "").strip()
-    alternate_name = str((getattr(resolved, 'alternate_student_name', None) if resolved is not None else None) or "").strip()
-    if not alternate_name:
-        alternate_name = str(memory.alternate_student_name or "").strip()
-    if alternate_name:
-        normalized_message = deps.normalize_text(ctx.request.message)
-        alternate_tokens = [deps.normalize_text(token) for token in alternate_name.split() if token.strip()]
-        if any(token and token in normalized_message for token in alternate_tokens):
-            return alternate_name
     if deps.unknown_explicit_student_reference(ctx.actor, ctx.request.message):
         return None
     explicit_hint = deps.student_hint_from_message(ctx.actor, ctx.request.message) or deps.is_student_name_only_followup(
@@ -336,6 +353,14 @@ def resolved_academic_target_name(
     )
     if explicit_hint:
         return explicit_hint
+    alternate_name = str((getattr(resolved, 'alternate_student_name', None) if resolved is not None else None) or "").strip()
+    if not alternate_name:
+        alternate_name = str(memory.alternate_student_name or "").strip()
+    if alternate_name:
+        normalized_message = deps.normalize_text(ctx.request.message)
+        alternate_tokens = [deps.normalize_text(token) for token in alternate_name.split() if token.strip()]
+        if any(token and token in normalized_message for token in alternate_tokens):
+            return alternate_name
     if str(memory.active_student_name or "").strip() and (
         deps.looks_like_student_pronoun_followup(ctx.request.message)
         or deps.looks_like_subject_followup(ctx.request.message)
@@ -594,6 +619,22 @@ def compose_finance_aggregate_answer(
             f"- Total de faturas vencidas: {total_overdue}",
         ]
     )
+    if total_open or total_overdue:
+        lines.append(
+            f"- Mensalidade: neste recorte, o financeiro mostra {total_open} cobranca(s) em aberto e {total_overdue} vencida(s) nas faturas escolares."
+        )
+        lines.append("- Taxa: nao apareceu taxa separada neste recorte financeiro das contas vinculadas.")
+        lines.append(
+            "- Atraso: "
+            + (
+                "ha faturas vencidas que pedem regularizacao imediata."
+                if total_overdue > 0
+                else "nao ha fatura vencida agora, so acompanhamento dos proximos vencimentos."
+            )
+        )
+        lines.append(
+            "- Desconto: nao apareceu desconto separado nas faturas deste recorte; se existir negociacao comercial, ela precisa ser confirmada com o financeiro."
+        )
     for summary in summaries:
         student_name = str(summary.get("student_name") or "Aluno").strip()
         open_count = int(summary.get("open_invoice_count", 0) or 0)
@@ -645,12 +686,26 @@ def looks_like_family_finance_aggregate_query(message: str, *, deps: ProtectedAn
         "vencimentos e proximos passos",
         "vencimentos e próximos passos",
         "contas vinculadas",
+        "minha situacao financeira",
+        "minha situação financeira",
+        "situacao financeira como se eu fosse leigo",
+        "situação financeira como se eu fosse leigo",
+        "separando mensalidade, taxa, atraso e desconto",
+        "separando mensalidade taxa atraso e desconto",
     }
     if any(term in normalized for term in explicit_terms):
         return True
-    return any(term in normalized for term in {"familia", "família", "filhos", "responsavel", "responsável"}) and any(
+    has_family_anchor = any(
+        term in normalized for term in {"familia", "família", "filhos", "responsavel", "responsável", "contas vinculadas"}
+    )
+    if has_family_anchor and any(
         term in normalized
-        for term in {"financeiro", "mensalidade", "boleto", "vencimentos", "atrasos", "proximos passos", "próximos passos"}
+        for term in {"mensalidade parcialmente paga", "negociar o restante", "o que ja aparece", "o que já aparece"}
+    ):
+        return True
+    return has_family_anchor and any(
+        term in normalized
+        for term in {"financeiro", "mensalidade", "boleto", "vencimentos", "atrasos", "proximos passos", "próximos passos", "taxa", "desconto", "descontos"}
     )
 
 
@@ -712,6 +767,49 @@ def looks_like_family_attendance_aggregate_query(message: str, *, deps: Protecte
         term in normalized
         for term in {"frequencia", "frequência", "faltas", "falta", "atrasos", "presenca", "presença", "ausencias", "ausências"}
     )
+    has_explicit_academic_focus = any(
+        term in normalized
+        for term in {
+            "componente",
+            "componentes",
+            "disciplina",
+            "disciplinas",
+            "materia",
+            "materias",
+            "nota",
+            "notas",
+            "media",
+            "média",
+            "academico",
+            "acadêmico",
+        }
+    )
+    has_explicit_finance_focus = any(
+        term in normalized
+        for term in {
+            "financeiro",
+            "financeira",
+            "situacao financeira",
+            "situação financeira",
+            "mensalidade",
+            "mensalidades",
+            "boleto",
+            "boletos",
+            "fatura",
+            "faturas",
+            "pagamento",
+            "pagamentos",
+            "vencimento",
+            "vencimentos",
+            "proximos passos",
+            "próximos passos",
+            "comprovantes",
+        }
+    )
+    has_non_ambiguous_attendance_focus = any(
+        term in normalized
+        for term in {"frequencia", "frequência", "faltas", "falta", "presenca", "presença", "ausencias", "ausências"}
+    )
     has_attention_focus = any(
         term in normalized
         for term in {
@@ -728,6 +826,10 @@ def looks_like_family_attendance_aggregate_query(message: str, *, deps: Protecte
             "principal alerta",
         }
     )
+    if has_explicit_academic_focus and not has_attendance_focus:
+        return False
+    if has_explicit_finance_focus and not has_non_ambiguous_attendance_focus:
+        return False
     return has_family_anchor and (has_attendance_focus or has_attention_focus)
 
 

@@ -236,8 +236,9 @@ def _compose_teacher_summary_answer(summary: dict[str, Any], *, profile: dict[st
     if classes:
         parts.append("Turmas: " + ", ".join(classes[:4]) + ".")
     if event_titles:
-        parts.append("No calendario publico, vale acompanhar marcos como " + ", ".join(event_titles[:2]) + ".")
-    parts.append("Para comunicacao escolar geral, a secretaria e o canal institucional mais seguro; para alinhamentos pedagogicos, siga com coordenacao e orientacao conforme o assunto.")
+        parts.append("No calendario publico, vale acompanhar marcos como " + ", ".join(event_titles[:3]) + ".")
+    parts.append("No uso do calendario, priorize datas institucionais abertas a familias e equipe, como reunioes, simulados, conselhos e janelas letivas publicadas.")
+    parts.append("Para comunicacao escolar geral, a secretaria e o canal institucional mais seguro; para alinhamentos pedagogicos, o fluxo correto passa por coordenacao e orientacao conforme o assunto.")
     return " ".join(part for part in parts if part).strip()
 
 

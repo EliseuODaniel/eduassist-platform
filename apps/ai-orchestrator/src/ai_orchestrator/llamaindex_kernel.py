@@ -235,12 +235,60 @@ def _public_selected_tools_for_message(message: str) -> list[str]:
     return tools
 
 
+def _looks_like_protected_family_finance_request(message: str) -> bool:
+    normalized = _normalize(message)
+    explicit_terms = (
+        'minha situacao financeira',
+        'situacao financeira como se eu fosse leigo',
+        'separando mensalidade, taxa, atraso e desconto',
+        'separando mensalidade taxa atraso e desconto',
+    )
+    if any(term in normalized for term in explicit_terms):
+        return True
+    has_family_anchor = any(term in normalized for term in ('meus filhos', 'meus dois filhos', 'familia', 'família', 'contas vinculadas'))
+    if has_family_anchor and any(
+        term in normalized
+        for term in ('negociar o restante', 'mensalidade parcialmente paga', 'o que ja aparece', 'o que já aparece')
+    ):
+        return True
+    return False
+
+
+def _looks_like_explicit_public_pricing_request(message: str) -> bool:
+    normalized = _normalize(message)
+    if not _contains_any(message, PUBLIC_PRICING_TERMS):
+        return False
+    public_anchors = (
+        'tabela publica',
+        'tabela pública',
+        'valor publico',
+        'valor público',
+        'valores publicos',
+        'valores públicos',
+        'valor de referencia',
+        'valor de referência',
+        'valor de tabela',
+        'quanto custa',
+        'qual a mensalidade do ensino',
+        'qual a matricula do ensino',
+        'qual a matrícula do ensino',
+        'mensalidade do ensino medio',
+        'mensalidade do ensino médio',
+        'mensalidade do colegio',
+        'matricula do colegio',
+        'matrícula do colégio',
+        'bolsa da escola',
+    )
+    return any(anchor in normalized for anchor in public_anchors)
+
+
 def _build_preview(*, request: MessageResponseRequest, settings: Any) -> OrchestrationPreview:
     authenticated = bool(request.user.authenticated)
     domain = _classify_domain(request.message, authenticated=authenticated)
     normalized = _normalize(request.message)
     authenticated_public_profile_request = authenticated and (
-        _contains_any(request.message, PROCESS_TERMS | PUBLIC_PRICING_TERMS)
+        _contains_any(request.message, PROCESS_TERMS)
+        or _looks_like_explicit_public_pricing_request(request.message)
         or (
             _contains_any(request.message, DOCUMENTARY_TERMS)
             and any(term in normalized for term in ('escola', 'colegio', 'colegio horizonte'))
@@ -253,7 +301,7 @@ def _build_preview(*, request: MessageResponseRequest, settings: Any) -> Orchest
                 'protocolo publico da escola',
             )
         )
-    )
+    ) and not _looks_like_protected_family_finance_request(request.message)
 
     if any(normalized == greeting or normalized.startswith(f'{greeting} ') for greeting in GREETING_TERMS):
         mode = OrchestrationMode.clarify
@@ -281,7 +329,10 @@ def _build_preview(*, request: MessageResponseRequest, settings: Any) -> Orchest
         mode = OrchestrationMode.hybrid_retrieval
         reason = f'llamaindex_local_public_default:{domain.value}'
 
-    public_institution_request = authenticated_public_profile_request or _contains_any(request.message, PROCESS_TERMS | PUBLIC_PRICING_TERMS)
+    public_institution_request = authenticated_public_profile_request or (
+        _contains_any(request.message, PROCESS_TERMS)
+        or _looks_like_explicit_public_pricing_request(request.message)
+    ) and not _looks_like_protected_family_finance_request(request.message)
     access_tier = AccessTier.public
     if authenticated and not public_institution_request:
         access_tier = AccessTier.sensitive if domain is QueryDomain.finance else AccessTier.authenticated

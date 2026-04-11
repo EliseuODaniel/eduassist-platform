@@ -251,6 +251,13 @@ _FAMILY_ACADEMIC_AGGREGATE_TERMS = {
     'limite de aprovação',
     'corte de aprovacao',
     'corte de aprovação',
+    'academicamente pior',
+    'mais critico academicamente',
+    'mais crítico academicamente',
+    'qual dos meus filhos esta academicamente pior',
+    'qual dos meus filhos está academicamente pior',
+    'qual dos meus filhos esta pior',
+    'qual dos meus filhos está pior',
 }
 _FAMILY_FINANCE_AGGREGATE_TERMS = {
     'situacao financeira atual da familia',
@@ -259,6 +266,12 @@ _FAMILY_FINANCE_AGGREGATE_TERMS = {
     'resumo financeiro da família',
     'vencimentos, atrasos e proximos passos',
     'vencimentos, atrasos e próximos passos',
+    'minha situacao financeira',
+    'minha situação financeira',
+    'situacao financeira como se eu fosse leigo',
+    'situação financeira como se eu fosse leigo',
+    'separando mensalidade, taxa, atraso e desconto',
+    'separando mensalidade taxa atraso e desconto',
 }
 _NON_ENTITY_FILLER_TERMS = {
     'forma',
@@ -275,6 +288,64 @@ _NON_ENTITY_FILLER_TERMS = {
     'corte',
     'aprovacao',
     'aprovação',
+    'cada',
+    'filho',
+    'filhos',
+    'negociar',
+    'mensalidade',
+    'taxa',
+    'desconto',
+    'descontos',
+    'situacao',
+    'situação',
+    'financeira',
+    'atendimento',
+}
+_FOCUS_MARKERS = (
+    'so ',
+    'só ',
+    'apenas ',
+    'somente ',
+    'so a ',
+    'só a ',
+    'so o ',
+    'só o ',
+    'olhe so para ',
+    'olhe só para ',
+    'agora foque so na ',
+    'agora foque só na ',
+    'foque so na ',
+    'foque só na ',
+    'fique apenas com ',
+    'fique só com ',
+    'recorte so ',
+    'recorte só ',
+    'isole a ',
+    'isole o ',
+    'corta so para ',
+    'corta só para ',
+    'corta so para a ',
+    'corta só para a ',
+    'corta so para o ',
+    'corta só para o ',
+    'filtre apenas ',
+    'agora quero apenas ',
+    'agora quero so ',
+    'agora quero só ',
+)
+_GENERIC_SUBJECT_REFERENCE_STUBS = {
+    'qual disciplina',
+    'que disciplina',
+    'qual componente',
+    'que componente',
+    'qual materia',
+    'qual matéria',
+    'que materia',
+    'que matéria',
+    'qual componente dela',
+    'qual componente dele',
+    'qual disciplina dela',
+    'qual disciplina dele',
 }
 
 
@@ -489,6 +560,49 @@ def _looks_like_family_academic_aggregate_query(message: str) -> bool:
     )
 
 
+def _looks_like_family_admin_aggregate_query(message: str) -> bool:
+    normalized = normalize_text(message)
+    explicit_terms = {
+        'documentacao dos meus filhos',
+        'documentação dos meus filhos',
+        'compare a documentacao dos meus filhos',
+        'compare a documentação dos meus filhos',
+        'compare a documentacao dos meus filhos e diga qual deles ainda tem pendencia',
+        'compare a documentação dos meus filhos e diga qual deles ainda tem pendência',
+        'quadro documental dos meus filhos',
+        'quadro documental da familia',
+        'quadro documental da família',
+        'pendencia documental dos meus filhos',
+        'pendência documental dos meus filhos',
+        'pendencias documentais dos meus filhos',
+        'pendências documentais dos meus filhos',
+    }
+    if any(term in normalized for term in explicit_terms):
+        return True
+    family_reference = any(term in normalized for term in {normalize_text(item) for item in _FAMILY_REFERENCE_TERMS}) or bool(
+        re.search(r'\b(?:meus?|minhas?)\s+(?:\w+\s+){0,2}filh(?:o|os|a|as)\b', normalized)
+        or re.search(r'\bdos?\s+meus?\s+(?:\w+\s+){0,2}filh(?:o|os|a|as)\b', normalized)
+    )
+    return family_reference and any(
+        term in normalized
+        for term in (
+            'documentacao',
+            'documentação',
+            'documental',
+            'documentais',
+            'cadastro',
+            'pendencia',
+            'pendência',
+            'pendencias',
+            'pendências',
+            'comprovante',
+            'comprovantes',
+            'administrativo',
+            'administrativa',
+        )
+    )
+
+
 def _looks_like_public_pricing_followup(message: str, *, slot_memory: dict[str, Any] | None) -> bool:
     normalized = normalize_text(message)
     if not normalized:
@@ -537,6 +651,25 @@ def _find_explicit_student(actor: dict[str, Any] | None, message: str) -> dict[s
     return None
 
 
+def _find_focus_marked_student(actor: dict[str, Any] | None, message: str) -> dict[str, Any] | None:
+    normalized_message = normalize_text(message)
+    for student in _linked_students(actor):
+        full_name = str(student.get('full_name') or '').strip()
+        normalized_full = normalize_text(full_name)
+        first_name = normalized_full.split(' ')[0] if normalized_full else ''
+        candidate_forms = tuple(value for value in {normalized_full, first_name} if value)
+        if not candidate_forms:
+            continue
+        for candidate in candidate_forms:
+            for marker in _FOCUS_MARKERS:
+                marker_pattern = re.escape(normalize_text(marker).strip()).replace(r'\ ', r'\s+')
+                if re.search(rf'{marker_pattern}\s+{re.escape(candidate)}\b', normalized_message):
+                    return student
+            if re.search(rf'\b(?:so|só|apenas|somente)\s+(?:a|o)\s+{re.escape(candidate)}\b', normalized_message):
+                return student
+    return None
+
+
 def _count_explicit_linked_students(actor: dict[str, Any] | None, message: str) -> int:
     normalized_message = normalize_text(message)
     if not normalized_message:
@@ -559,6 +692,14 @@ def _extract_unknown_student_reference(actor: dict[str, Any] | None, message: st
     if not normalized_message:
         return None
     if not _linked_students(actor):
+        return None
+    if (
+        _looks_like_family_finance_aggregate_query(message)
+        or _looks_like_family_academic_aggregate_query(message)
+        or _looks_like_family_admin_aggregate_query(message)
+        or _looks_like_public_pricing_query(message)
+        or ('escopo' in normalized_message and any(term in normalized_message for term in {'filho', 'filhos', 'academico', 'acadêmico', 'financeiro'}))
+    ):
         return None
     if not any(term in normalized_message for term in ('nota', 'prova', 'avaliac', 'frequ', 'fatura', 'boleto', 'financeiro')):
         return None
@@ -590,6 +731,8 @@ def _extract_unknown_student_reference(actor: dict[str, Any] | None, message: st
         for match in re.finditer(pattern, normalized_message):
             candidate = normalize_text(match.group(1))
             if not candidate or candidate in known_names or candidate in known_first_names:
+                continue
+            if candidate in {'cada filho', 'cada um', 'meus filhos', 'dos meus filhos', 'negociar uma', 'situacao financeira', 'situação financeira'}:
                 continue
             if candidate in stopwords or any(candidate.startswith(f'{term} ') for term in stopwords):
                 continue
@@ -700,6 +843,8 @@ def _extract_unknown_subject_reference(message: str | None, actor: dict[str, Any
         if not match:
             continue
         candidate = normalize_text(match.group(1))
+        if candidate in _GENERIC_SUBJECT_REFERENCE_STUBS:
+            continue
         if not candidate or candidate in stopwords or candidate in known_student_names or candidate in known_student_first_names:
             continue
         return candidate.title()
@@ -850,9 +995,11 @@ def resolve_answer_focus(
         conversation_context,
         extractor=_detect_public_pricing_price_kind,
     )
-    explicit_student = _find_explicit_student(actor, request_message)
+    focus_marked_student = _find_focus_marked_student(actor, request_message)
+    focus_marked_student_used = focus_marked_student is not None
+    explicit_student = focus_marked_student or _find_explicit_student(actor, request_message)
     explicit_linked_student_count = _count_explicit_linked_students(actor, request_message)
-    if explicit_linked_student_count >= 2:
+    if explicit_linked_student_count >= 2 and focus_marked_student is None:
         explicit_student = None
     explicit_subject = explicit_subject_from_message(request_message)
     unknown_student = None if explicit_student else _extract_unknown_student_reference(actor, request_message)
@@ -877,12 +1024,15 @@ def resolve_answer_focus(
     asks_yes_no = normalized.endswith('?') and any(term in normalized for term in {normalize_text(item) for item in _YES_NO_TERMS})
     asks_family_finance_aggregate = _looks_like_family_finance_aggregate_query(request_message)
     asks_family_academic_aggregate = _looks_like_family_academic_aggregate_query(request_message)
+    asks_family_admin_aggregate = _looks_like_family_admin_aggregate_query(request_message)
     if explicit_linked_student_count >= 2:
         if asks_finance:
             asks_family_finance_aggregate = True
         if asks_grade or asks_upcoming or asks_attendance:
             asks_family_academic_aggregate = True
-    asks_family_aggregate = asks_family_finance_aggregate or asks_family_academic_aggregate
+        if asks_admin:
+            asks_family_admin_aggregate = True
+    asks_family_aggregate = asks_family_finance_aggregate or asks_family_academic_aggregate or asks_family_admin_aggregate
     if asks_family_aggregate and explicit_student is None:
         unknown_student = None
     direct_public_pricing = _looks_like_public_pricing_query(request_message)
@@ -992,6 +1142,7 @@ def resolve_answer_focus(
         and unknown_subject is None
         and not repair_followup
         and not asks_family_aggregate
+        and not focus_marked_student_used
         and _looks_like_followup(request_message)
     ):
         subject_name = _recent_memory_subject(slot_memory) or _recent_subject_from_messages(conversation_context)
@@ -1035,7 +1186,13 @@ def resolve_answer_focus(
                 uses_memory = uses_memory or student is not None
             if student is None and len(_linked_students(actor)) == 1:
                 student = _linked_students(actor)[0]
-        if subject_name is None and unknown_subject is None and domain == 'academic' and not asks_family_aggregate:
+        if (
+            subject_name is None
+            and unknown_subject is None
+            and domain == 'academic'
+            and not asks_family_aggregate
+            and not focus_marked_student_used
+        ):
             subject_name = _recent_memory_subject(slot_memory) or _recent_subject_from_messages(conversation_context)
             uses_memory = uses_memory or bool(subject_name)
 

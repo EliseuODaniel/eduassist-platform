@@ -1491,6 +1491,7 @@ def _tool_first_structured_deps():
             contains_any=_contains_any,
             looks_like_admin_finance_combo_query=_looks_like_admin_finance_combo_query,
             looks_like_family_finance_aggregate_query=_looks_like_family_finance_aggregate_query,
+            unknown_explicit_student_reference=_unknown_explicit_student_reference,
             student_hint_from_message=_student_hint_from_message,
             looks_like_student_pronoun_followup=_looks_like_student_pronoun_followup,
             fetch_financial_summary_payload=_fetch_financial_summary_payload,

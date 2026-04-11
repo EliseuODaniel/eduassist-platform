@@ -68,6 +68,8 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Se o acesso falhou bem na hora de enviar documentos, como portal, credenciais e secretaria devem ser tratados na sequencia correta?",
             "Quando o problema e acesso mais entrega de documentos ao mesmo tempo, como portal, credenciais e secretaria entram na ordem correta?",
             "Se a familia ficou sem login justamente na etapa de envio documental, qual e a sequencia mais segura entre portal, credenciais e secretaria?",
+            "Se eu perdi o login exatamente na hora de mandar documentos, qual ordem evita retrabalho entre recuperar credenciais, portal e secretaria?",
+            "Sem me mandar um resumo generico, qual e a sequencia mais segura entre portal, recuperacao de credenciais e secretaria quando o envio documental trava?",
         ],
     },
     {
@@ -126,6 +128,8 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Olhando prazos, protocolo e documentacao, como rematricula, transferencia e cancelamento se diferenciam na pratica?",
             "Quando comparo rematricula, transferencia de entrada e cancelamento, o que muda de verdade em prazo, protocolo e documentos?",
             "Se a familia colocar rematricula, transferencia e cancelamento lado a lado, quais diferencas praticas aparecem em papelada e prazos?",
+            "Nao quero valor nem mensalidade: o que muda de verdade entre rematricula, transferencia e cancelamento em prazo, protocolo e papelada?",
+            "Sem falar de preco, compare rematricula, transferencia e cancelamento pelo que muda em documento, prazo e tramitacao.",
         ],
     },
     {
@@ -168,6 +172,8 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Se o estudante comeca a falhar em frequencia e rendimento, como os documentos publicos ligam regras de convivencia, recuperacao e acompanhamento?",
             "Junte regulamento, frequencia e recuperacao para explicar o que a escola faz quando o aluno entra em zona de risco academico.",
             "Quero uma sintese publica de como disciplina, faltas e recuperacao se cruzam quando o desempenho do aluno cai.",
+            "Sem um resumao generico, como convivencia, frequencia e recuperacao se encadeiam quando o aluno comeca a derrapar academicamente?",
+            "Se o aluno mistura queda de rendimento com faltas e problema de convivencia, como os documentos publicos ligam frequencia, recuperacao e acompanhamento?",
         ],
     },
     {
@@ -204,6 +210,8 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Nos canais digitais da escola, o que ainda e publico e o que passa a depender da autenticacao da familia?",
             "Nos canais da escola, onde termina o conteudo publico e onde comeca o que exige autenticacao da familia?",
             "O que qualquer familia ve no calendario e portal sem login, e o que so surge depois da autenticacao?",
+            "Sem olhar meu caso particular, o que qualquer familia ve sem login e o que ja depende de autenticacao?",
+            "Quero so a fronteira: o que o portal mostra publicamente para qualquer pessoa e o que so aparece depois do login da familia?",
         ],
     },
     {
@@ -249,6 +257,8 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Faca um resumo academico dos meus dois filhos e destaque qual deles esta mais perto do corte de aprovacao.",
             "Me de um panorama academico dos meus filhos e diga qual deles aparece mais perto da media minima agora.",
             "Quero comparar rapidamente a situacao academica dos meus dois filhos e saber quem esta mais proximo do limite de aprovacao.",
+            "Sem me dar tabela, qual dos meus filhos esta academicamente pior hoje e em qual disciplina isso fica mais claro?",
+            "Quero so o veredito academico entre Ana e Lucas: quem esta mais perto de reprovar e qual componente puxa esse alerta?",
         ],
     },
     {
@@ -275,6 +285,8 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Sem repetir o quadro inteiro, recorte so a Ana e mostre onde o risco academico dela esta mais alto.",
             "Depois do panorama dos meus filhos, fique apenas com a Ana e diga quais componentes merecem mais atencao agora.",
             "Quero o mesmo panorama, mas agora isolando a Ana e os pontos academicos que mais preocupam.",
+            "Sem repetir o Lucas, corta so para a Ana e me diga qual componente dela acende mais alerta agora.",
+            "Mantendo a comparacao anterior, tira o Lucas da conversa e mostra so o ponto academico mais fraco da Ana.",
         ],
     },
     {
@@ -485,6 +497,8 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Como entrar em contato com admissoes, financeiro e direcao quando o assunto mistura bolsa e mensalidade?",
             "Por qual canal eu falo com o setor de bolsas, com o financeiro e com a direcao da escola?",
             "Quem responde por bolsa, financeiro e direcao hoje, e quais canais publicos devo usar?",
+            "Nao me manda menu geral: quais setores e canais realmente resolvem bolsa, financeiro e direcao?",
+            "Quero o caminho mais curto, nao a lista completa: quem cuida de bolsa, financeiro e direcao e por onde eu aciono cada um?",
         ],
     },
     {
@@ -503,6 +517,8 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Se eu quiser falar com o professor de matematica, a escola divulga esse contato ou manda procurar a coordenacao?",
             "Existe canal publico com nome ou contato do professor de matematica, ou isso vai pela coordenacao pedagogica?",
             "Para falar com o professor de matematica, o contato e publico ou a familia precisa passar pela coordenacao?",
+            "Nao estou pedindo whatsapp privado: a escola divulga contato direto do professor ou centraliza tudo na coordenacao?",
+            "Quero entender o limite publico: falar com o professor de matematica passa por contato direto ou obrigatoriamente pela coordenacao?",
         ],
     },
     {
@@ -860,6 +876,8 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Faca um resumo de frequencia dos meus dois filhos e destaque quem inspira mais atencao por faltas.",
             "Quero comparar a situacao de frequencia dos meus filhos e saber quem esta mais vulneravel por ausencias.",
             "Me de um panorama de faltas e frequencia dos meus filhos, apontando quem exige maior atencao agora.",
+            "Nao quero so os numeros: olhando meus dois filhos, quem merece o alerta de frequencia mais urgente agora?",
+            "Entre Ana e Lucas, quem esta mais delicado por frequencia hoje e por que esse alerta pesa mais?",
         ],
     },
     {
@@ -883,6 +901,8 @@ QUESTION_SPECS: list[dict[str, Any]] = [
             "Seguindo o panorama, filtre apenas o Lucas e diga o que mais chama atencao nas faltas dele.",
             "Continuando a analise, isole o Lucas e mostre por que a frequencia dele preocupa mais ou menos.",
             "Sem repetir o quadro inteiro, recorte so o Lucas e diga o principal alerta de frequencia.",
+            "Agora ignora a Ana e me da so o alerta principal do Lucas por frequencia, sem repetir o panorama todo.",
+            "Mantendo o contexto, corta para o Lucas e resume qual e o risco mais concreto dele em frequencia.",
         ],
     },
     {

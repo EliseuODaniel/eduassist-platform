@@ -134,11 +134,22 @@ def _looks_like_service_routing_query(message: str) -> bool:
     return any(
         term in normalized
         for term in {
+            'qual a diferenca entre falar com',
+            'qual a diferença entre falar com',
+            'diferenca entre falar com',
+            'diferença entre falar com',
+            'diferenca entre secretaria',
+            'diferença entre secretaria',
+            'secretaria, coordenacao e orientacao educacional',
+            'secretaria, coordenação e orientação educacional',
             'com quem eu falo sobre',
             'quem responde por',
             'qual setor',
             'qual area',
             'qual área',
+            'quem cuida',
+            'quem resolve',
+            'por cada frente',
             'como falo com',
             'como falar com',
             'como entro em contato',
@@ -157,6 +168,11 @@ def _looks_like_service_routing_query(message: str) -> bool:
             'canais de',
             'uma linha por setor',
             'qual desses setores entra primeiro',
+            'nao me manda menu geral',
+            'não me manda menu geral',
+            'caminho mais curto',
+            'nao a lista completa',
+            'não a lista completa',
         }
     )
 
@@ -408,7 +424,13 @@ def _looks_like_calendar_week_query(message: str) -> bool:
 
 def _looks_like_timeline_lifecycle_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    has_between_markers = 'marcos entre' in normalized or 'entre matricula' in normalized
+    has_between_markers = (
+        'marcos entre' in normalized
+        or 'entre matricula' in normalized
+        or 'qual vem primeiro' in normalized
+        or 'o que vem primeiro' in normalized
+        or 'vem primeiro' in normalized
+    )
     has_enrollment = any(term in normalized for term in {'matricula', 'matrícula', 'vaga', 'vagas'})
     has_school_start = any(term in normalized for term in {'inicio do ano letivo', 'início do ano letivo', 'inicio das aulas', 'início das aulas'})
     has_family_meeting = any(term in normalized for term in {'reuniao de responsaveis', 'reunião de responsáveis', 'reuniao de familias', 'reunião de famílias', 'responsaveis', 'responsáveis'})
@@ -453,6 +475,8 @@ def _looks_like_enrollment_documents_query(message: str) -> bool:
 
 def _looks_like_public_academic_policy_overview_query(message: str) -> bool:
     normalized = _normalize_text(message)
+    if _looks_like_health_second_call_query(message):
+        return False
     return any(term in normalized for term in {'politica de avaliacao', 'política de avaliação', 'recuperacao', 'promoção', 'promocao'}) and 'escola' in normalized
 
 
@@ -500,6 +524,45 @@ def _looks_like_bolsas_and_processes_query(message: str) -> bool:
 
 def _looks_like_health_second_call_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    return any(term in normalized for term in {'saude', 'saúde', 'atestado', 'motivo de saude', 'motivo de saúde'}) and any(
-        term in normalized for term in {'perder uma prova', 'perdi uma prova', 'segunda chamada'}
+    has_health_anchor = any(
+        term in normalized
+        for term in {
+            'saude',
+            'saúde',
+            'atestado',
+            'motivo de saude',
+            'motivo de saúde',
+            'comprovacao',
+            'comprovação',
+            'justificativa',
+        }
     )
+    has_assessment_loss = any(
+        term in normalized
+        for term in {
+            'perder uma prova',
+            'perdi uma prova',
+            'perde uma prova',
+            'faltar por motivo de saude',
+            'faltar por motivo de saúde',
+            'faltei a prova',
+            'falta a prova',
+            'segunda chamada',
+        }
+    ) or ('prova' in normalized and any(term in normalized for term in {'faltar', 'faltei', 'perder', 'perdi'}))
+    has_guidance_signal = any(
+        term in normalized
+        for term in {
+            'o que devo fazer',
+            'onde a escola explica',
+            'como a escola explica',
+            'como proceder',
+            'como devo proceder',
+            'segunda chamada',
+            'avaliacao',
+            'avaliação',
+            'recuperacao',
+            'recuperação',
+        }
+    )
+    return has_health_anchor and has_assessment_loss and has_guidance_signal

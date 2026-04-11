@@ -107,6 +107,11 @@ def _compose_service_routing_fast_answer(profile: dict[str, Any] | None, message
         for term in {
             "uma linha por setor",
             "sem explicar o resto da escola",
+            "nao me manda menu geral",
+            "não me manda menu geral",
+            "caminho mais curto",
+            "nao a lista completa",
+            "não a lista completa",
         }
     )
     wants_priority = any(
@@ -402,8 +407,9 @@ def _compose_policy_compare_answer(profile: dict[str, Any] | None) -> str | None
         else "Ja a politica de avaliacao detalha aprovacao, recuperacao, monitorias e criterios de promocao."
     )
     closing = (
-        "Os dois se complementam porque a frequencia e os combinados gerais sustentam a rotina, "
-        "enquanto a politica academica mostra como a escola trata recuperacao e aprovacao quando a meta nao e atingida."
+        "Na pratica, primeiro o manual ajuda a entender convivencia, frequencia e rotina; "
+        "depois a politica academica orienta segunda chamada, recuperacao e aprovacao; "
+        "e o proximo passo, se houver duvida operacional, e confirmar isso pelo canal oficial da secretaria ou da coordenacao."
     )
     return " ".join((attendance_line, passing_line, closing))
 

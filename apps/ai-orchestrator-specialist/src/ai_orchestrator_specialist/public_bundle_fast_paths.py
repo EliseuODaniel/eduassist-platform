@@ -444,6 +444,28 @@ def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message:
                 MessageEvidenceSupport(kind="document", label="Protocolo de Saude, Medicacao e Emergencias", detail="data/corpus/public/protocolo-saude-medicacao-e-emergencias.md"),
             ],
         ),
+        "public_bundle.health_second_call": (
+            "specialist_supervisor_preflight:health_second_call",
+            "health_second_call",
+            [
+                MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
+            ],
+        ),
+        "public_bundle.policy_compare": (
+            "specialist_supervisor_preflight:policy_compare",
+            "policy_compare",
+            [
+                MessageEvidenceSupport(kind="document", label="Manual de Regulamentos Gerais", detail="data/corpus/public/manual-regulamentos-gerais.md"),
+                MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
+            ],
+        ),
+        "public_bundle.access_scope_compare": (
+            "specialist_supervisor_preflight:access_scope_compare",
+            "access_scope_compare",
+            [
+                MessageEvidenceSupport(kind="document", label="Orientacao publica e escopo de acesso", detail="public/internal access scope contrast"),
+            ],
+        ),
         "public_bundle.outings_authorizations": (
             "specialist_supervisor_preflight:outings_authorizations",
             "outings_authorizations",
@@ -495,6 +517,15 @@ def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message:
             [
                 MessageEvidenceSupport(kind="document", label="Manual de Regulamentos Gerais", detail="data/corpus/public/manual-regulamentos-gerais.md"),
                 MessageEvidenceSupport(kind="policy", label="Attendance policy", detail="academic_policy.attendance_policy"),
+            ],
+        ),
+        "public_bundle.permanence_family_support": (
+            "specialist_supervisor_preflight:permanence_family_support",
+            "permanence_family_support",
+            [
+                MessageEvidenceSupport(kind="document", label="Orientacao, Apoio e Vida Escolar", detail="data/corpus/public/orientacao-apoio-e-vida-escolar.md"),
+                MessageEvidenceSupport(kind="document", label="Politica de Avaliacao, Recuperacao e Promocao", detail="data/corpus/public/politica-avaliacao-recuperacao-e-promocao.md"),
+                MessageEvidenceSupport(kind="policy", label="Projeto de vida", detail="academic_policy.project_of_life_summary"),
             ],
         ),
     }

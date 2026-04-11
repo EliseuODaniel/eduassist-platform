@@ -28,6 +28,7 @@ class ToolFirstProtectedDeps:
     contains_any: Callable[[str, set[str]], bool]
     looks_like_admin_finance_combo_query: Callable[[str], bool]
     looks_like_family_finance_aggregate_query: Callable[[str], bool]
+    unknown_explicit_student_reference: Callable[..., str | None]
     student_hint_from_message: Callable[..., str | None]
     looks_like_student_pronoun_followup: Callable[[str], bool]
     fetch_financial_summary_payload: Callable[..., Awaitable[dict[str, Any] | None]]
@@ -169,7 +170,8 @@ def _compose_attendance_primary_alert(summary: dict[str, Any], *, deps: ToolFirs
     return (
         f"O principal alerta de frequencia de {student_name} hoje aparece em {subject_name}: "
         f"{absent} falta(s), {late} atraso(s) e {present} presenca(s) neste recorte. "
-        "Esse e o foco principal porque concentra a maior combinacao de faltas e atrasos do aluno neste momento."
+        "Esse e o foco principal porque concentra a maior combinacao de faltas e atrasos do aluno neste momento. "
+        f"Proximo passo: acompanhar {subject_name} nas proximas aulas para verificar se novas faltas ou atrasos continuam pressionando a frequencia."
     )
 
 
@@ -251,6 +253,41 @@ async def maybe_tool_first_protected_answer(
         or str(preview.get("classification", {}).get("domain") or "") == "finance"
     ) and not any(term in normalized for term in {"documentacao", "documentação", "documental", "documentais", "pendencia", "pendencias", "pendência", "pendências", "cadastro", "cadastral"}):
         wants_family_finance_aggregate = deps.looks_like_family_finance_aggregate_query(ctx.request.message)
+        unmatched_student = deps.unknown_explicit_student_reference(ctx.actor, ctx.request.message)
+        if unmatched_student:
+            finance_names = [
+                str(student.get("full_name") or "").strip()
+                for student in deps.linked_students(ctx.actor, capability="finance")
+                if str(student.get("full_name") or "").strip()
+            ]
+            linked_preview = ", ".join(finance_names)
+            return _build_protected_tool_payload(
+                message_text=(
+                    f"O que ja aparece: eu nao posso confirmar nem expor o financeiro de {unmatched_student} porque esse aluno nao aparece entre os vinculados desta conta. "
+                    + (
+                        f"No recorte atual, eu consigo consultar apenas: {linked_preview}. "
+                        if linked_preview
+                        else "No recorte atual, eu consigo consultar apenas os alunos vinculados desta sessao. "
+                    )
+                    + "Proximo passo: se Joao deveria aparecer neste recorte, regularize primeiro o vinculo com a secretaria. "
+                    + "Se a cobranca for de Lucas ou Ana, me diga qual deles e eu consulto o que ja aparece. "
+                    + "Se a ideia for negociar o restante de uma cobranca vinculada, abra o atendimento com o financeiro pelo canal oficial."
+                ),
+                domain="finance",
+                access_tier=_access_tier_for_domain("finance", True),
+                confidence=0.99,
+                reason="specialist_supervisor_tool_first:finance_third_party_denied",
+                summary="Pedido financeiro para aluno nao vinculado negado por privacidade.",
+                supports=[
+                    MessageEvidenceSupport(
+                        kind="privacy_guardrail",
+                        label="Aluno nao vinculado",
+                        detail=str(unmatched_student),
+                    )
+                ],
+                graph_leaf="finance_third_party_denied",
+                suggested_domain="finance",
+            )
         student_hint = (
             None
             if wants_family_finance_aggregate

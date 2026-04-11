@@ -726,6 +726,22 @@ def _llamaindex_timeout_seconds(settings: Any | None = None) -> float:
         return 20.0
 
 
+def _should_use_llamaindex_teacher_schedule_direct(
+    *,
+    teacher_authenticated: bool,
+    should_fetch_teacher_schedule: bool,
+) -> bool:
+    return teacher_authenticated and should_fetch_teacher_schedule
+
+
+def _should_use_llamaindex_teacher_scope_guidance(
+    *,
+    teacher_scope_query: bool,
+    should_fetch_teacher_schedule: bool,
+) -> bool:
+    return teacher_scope_query and not should_fetch_teacher_schedule
+
+
 async def _await_with_llamaindex_timeout(awaitable: Any, *, settings: Any | None = None) -> Any:
     return await asyncio.wait_for(awaitable, timeout=_llamaindex_timeout_seconds(settings))
 
@@ -3033,9 +3049,18 @@ async def maybe_execute_llamaindex_native_plan(
         user=request.user,
         conversation_context=conversation_context,
     )
-    if teacher_scope_query and teacher_authenticated:
+    if _should_use_llamaindex_teacher_schedule_direct(
+        teacher_authenticated=teacher_authenticated,
+        should_fetch_teacher_schedule=should_fetch_teacher_schedule,
+    ) or _should_use_llamaindex_teacher_scope_guidance(
+        teacher_scope_query=teacher_scope_query,
+        should_fetch_teacher_schedule=should_fetch_teacher_schedule,
+    ):
         preview = plan.preview.model_copy(deep=True)
-        if should_fetch_teacher_schedule:
+        if _should_use_llamaindex_teacher_schedule_direct(
+            teacher_authenticated=teacher_authenticated,
+            should_fetch_teacher_schedule=should_fetch_teacher_schedule,
+        ):
             message_text = await rt._execute_teacher_protected_specialist(
                 settings=settings,
                 request=request,

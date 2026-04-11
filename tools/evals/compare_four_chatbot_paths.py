@@ -14,6 +14,20 @@ from typing import Any
 import httpx
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _load_local_env(path: Path) -> None:
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding='utf-8').splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+_load_local_env(REPO_ROOT / '.env')
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 AI_ORCHESTRATOR_SRC = REPO_ROOT / 'apps/ai-orchestrator/src'

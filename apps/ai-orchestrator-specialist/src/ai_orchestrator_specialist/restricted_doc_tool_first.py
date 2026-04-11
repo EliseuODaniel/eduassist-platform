@@ -42,11 +42,19 @@ async def maybe_restricted_document_tool_first_answer(
             topic_hint = 'sobre viagem internacional de alunos'
         elif 'manual interno do professor' in normalized_message:
             topic_hint = 'sobre manual interno do professor'
+        elif 'escopo parcial' in normalized_message:
+            topic_hint = 'sobre responsaveis com escopo parcial'
         public_bridge = ""
         if _looks_like_health_second_call_query(ctx.request.message):
             public_answer = compose_public_health_second_call()
             if public_answer:
                 public_bridge = f"\n\nPosso, no entanto, te orientar pelo material publico:\n{public_answer}"
+        elif 'escopo parcial' in normalized_message:
+            public_bridge = (
+                "\n\nNo que e publico, a base aberta cobre apenas orientacoes gerais; "
+                "regras operacionais de permissao, restricao e encaminhamento continuam internas. "
+                "Na pratica, o proximo passo e pedir ao setor responsavel que confirme o procedimento aplicavel ao perfil autorizado."
+            )
         return SupervisorAnswerPayload(
             message_text=(
                 f"Nao posso compartilhar procedimentos, protocolos, manuais ou playbooks internos da escola {topic_hint}. "
@@ -74,13 +82,38 @@ async def maybe_restricted_document_tool_first_answer(
             reason="specialist_supervisor_tool_first:restricted_document_denied",
         )
 
-    retrieval_payload = await _orchestrator_retrieval_search(
-        ctx,
-        query=ctx.request.message,
-        visibility="restricted",
-        category="private_docs",
-        top_k=5,
-    )
+    try:
+        retrieval_payload = await _orchestrator_retrieval_search(
+            ctx,
+            query=ctx.request.message,
+            visibility="restricted",
+            category="private_docs",
+            top_k=5,
+        )
+    except Exception:
+        return SupervisorAnswerPayload(
+            message_text=_compose_internal_doc_no_match_answer(ctx.request.message, profile),
+            mode="hybrid_retrieval",
+            classification=MessageIntentClassification(
+                domain=domain_hint,
+                access_tier=_access_tier_for_domain(domain_hint, ctx.request.user.authenticated),
+                confidence=0.8,
+                reason="specialist_supervisor_tool_first:restricted_document_search_fallback",
+            ),
+            retrieval_backend="qdrant_hybrid",
+            evidence_pack=MessageEvidencePack(
+                strategy="document_search",
+                summary="Busca em documentos restritos falhou e caiu para fallback deterministico seguro.",
+                source_count=0,
+                support_count=1,
+                supports=[
+                    MessageEvidenceSupport(kind="retrieval", label="Documentos restritos", detail="falha temporaria na busca interna, com fallback seguro"),
+                ],
+            ),
+            suggested_replies=_default_suggested_replies(domain_hint),
+            graph_path=["specialist_supervisor", "tool_first", "restricted_document_search_fallback"],
+            reason="specialist_supervisor_tool_first:restricted_document_search_fallback",
+        )
     hits = retrieval_payload.get("hits") if isinstance(retrieval_payload, dict) else []
     normalized_hits = hits if isinstance(hits, list) else []
     relevant_hits = _select_relevant_internal_doc_hits(ctx.request.message, normalized_hits)

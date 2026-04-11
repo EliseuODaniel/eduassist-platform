@@ -304,6 +304,13 @@ FAMILY_ACADEMIC_AGGREGATE_TERMS = {
     'quem está mais perto da aprovação',
     'mais proximo do limite de aprovacao',
     'mais próximo do limite de aprovação',
+    'academicamente pior',
+    'mais critico academicamente',
+    'mais crítico academicamente',
+    'qual dos meus filhos esta academicamente pior',
+    'qual dos meus filhos está academicamente pior',
+    'qual dos meus filhos esta pior',
+    'qual dos meus filhos está pior',
 }
 FAMILY_REFERENCE_TERMS = {
     'familia',
@@ -1446,6 +1453,11 @@ SERVICE_ROUTING_TERMS = {
     'canais de',
     'uma linha por setor',
     'qual desses setores entra primeiro',
+    'nao me manda menu geral',
+    'não me manda menu geral',
+    'caminho mais curto',
+    'nao a lista completa',
+    'não a lista completa',
 }
 PUBLIC_POLICY_TERMS = {
     'politica de avaliacao',
@@ -2565,7 +2577,29 @@ def _should_prioritize_protected_sql_query(
         return False
     if _is_admin_finance_combined_query(message):
         return True
+    if _looks_like_family_admin_aggregate_query(message):
+        return True
     if _looks_like_family_finance_aggregate_query(message):
+        return True
+    normalized = _normalize_text(message)
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'paguei parte da mensalidade',
+            'negociar o restante',
+            'mensalidade parcialmente paga',
+            'minha situacao financeira',
+            'minha situação financeira',
+            'separando mensalidade',
+            'taxa, atraso e desconto',
+            'taxa atraso e desconto',
+            'em aberto',
+            'atraso',
+            'atrasos',
+            'desconto',
+            'descontos',
+        }
+    ):
         return True
     if _looks_like_family_attendance_aggregate_query(message):
         return True
@@ -2590,7 +2624,6 @@ def _should_prioritize_protected_sql_query(
     focus_kind = _detect_academic_focus_kind(message)
     if focus_kind is not None and focus_kind != 'grades':
         return True
-    normalized = _normalize_text(message)
     return any(
         _message_matches_term(normalized, term)
         for term in {
@@ -2631,6 +2664,32 @@ def _is_public_pricing_navigation_query(message: str) -> bool:
         or _is_access_scope_query(message)
     ):
         return False
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'minha situacao financeira',
+            'minha situação financeira',
+            'situacao financeira como se eu fosse leigo',
+            'situação financeira como se eu fosse leigo',
+            'paguei parte da mensalidade',
+            'negociar o restante',
+            'mensalidade parcialmente paga',
+            'parcialmente paga',
+            'o que ja aparece',
+            'o que já aparece',
+            'taxa',
+            'atraso',
+            'atrasos',
+            'desconto',
+            'descontos',
+            'em aberto',
+            'vencida',
+            'vencidas',
+            'proximo passo',
+            'próximo passo',
+        }
+    ):
+        return False
     entity_hints = resolve_entity_hints(message)
     if entity_hints.domain_hint == 'public_pricing':
         return True
@@ -2645,6 +2704,49 @@ def _is_public_pricing_navigation_query(message: str) -> bool:
     if not any(_message_matches_term(normalized, term) for term in PUBLIC_PRICING_TERMS):
         return False
     return not any(_message_matches_term(normalized, term) for term in {'meu', 'minha', 'meus', 'minhas', 'do meu filho', 'da minha filha'})
+
+
+def _looks_like_family_admin_aggregate_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    explicit_terms = {
+        'documentacao dos meus filhos',
+        'documentação dos meus filhos',
+        'compare a documentacao dos meus filhos',
+        'compare a documentação dos meus filhos',
+        'compare a documentacao dos meus filhos e diga qual deles ainda tem pendencia',
+        'compare a documentação dos meus filhos e diga qual deles ainda tem pendência',
+        'quadro documental dos meus filhos',
+        'quadro documental da familia',
+        'pendencia documental dos meus filhos',
+        'pendência documental dos meus filhos',
+        'pendencias documentais dos meus filhos',
+        'pendências documentais dos meus filhos',
+    }
+    if any(term in normalized for term in explicit_terms):
+        return True
+    has_family_anchor = any(
+        term in normalized
+        for term in {'meus filhos', 'meus dois filhos', 'minha familia', 'minha família', 'familia', 'família', 'contas vinculadas'}
+    )
+    has_admin_focus = any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'documentacao',
+            'documentação',
+            'documental',
+            'documentais',
+            'cadastro',
+            'pendencia',
+            'pendência',
+            'pendencias',
+            'pendências',
+            'comprovante',
+            'comprovantes',
+            'administrativo',
+            'administrativa',
+        }
+    )
+    return has_family_anchor and has_admin_focus
 
 
 def _is_explicit_public_pricing_projection_query(
@@ -4679,6 +4781,10 @@ def _is_public_timeline_lifecycle_query(message: str) -> bool:
         _message_matches_term(normalized, term)
         for term in {'ordene', 'ordem', 'sequencia', 'sequência', 'linha do tempo', 'passo a passo'}
     )
+    asks_which_comes_first = any(
+        _message_matches_term(normalized, term)
+        for term in {'qual vem primeiro', 'o que vem primeiro', 'vem primeiro'}
+    )
     mentions_core_milestones = (
         any(_message_matches_term(normalized, term) for term in {'vaga', 'matricula', 'matrícula'})
         and any(_message_matches_term(normalized, term) for term in {'inicio das aulas', 'início das aulas', 'aulas'})
@@ -4693,7 +4799,7 @@ def _is_public_timeline_lifecycle_query(message: str) -> bool:
     return has_before_after or mentions_marcos_between or (
         any(_message_matches_term(normalized, term) for term in {'antes', 'depois'})
         and any(_message_matches_term(normalized, term) for term in {'vaga', 'matricula', 'matrícula', 'inicio das aulas', 'início das aulas', 'aulas'})
-    ) or (has_ordering and mentions_core_milestones)
+    ) or ((has_ordering or asks_which_comes_first) and mentions_core_milestones)
 
 
 def _is_public_travel_planning_query(message: str) -> bool:
@@ -5360,10 +5466,13 @@ def _is_public_health_second_call_query(message: str) -> bool:
     normalized = _normalize_text(message)
     return any(
         _message_matches_term(normalized, term)
-        for term in {'saude', 'saúde', 'motivo de saude', 'motivo de saúde', 'atestado'}
+        for term in {'saude', 'saúde', 'motivo de saude', 'motivo de saúde', 'atestado', 'comprovacao', 'comprovação', 'justificativa'}
     ) and any(
         _message_matches_term(normalized, term)
-        for term in {'segunda chamada', 'perder uma prova', 'perdi uma prova'}
+        for term in {'segunda chamada', 'perder uma prova', 'perdi uma prova', 'prova'}
+    ) and any(
+        _message_matches_term(normalized, term)
+        for term in {'recuperacao', 'recuperação', 'avaliacao', 'avaliação', 'segunda chamada'}
     )
 
 
@@ -11047,6 +11156,15 @@ def _explicit_protected_domain_hint(
     conversation_context: dict[str, Any] | None = None,
 ) -> QueryDomain | None:
     normalized = _normalize_text(message)
+    if _looks_like_family_admin_aggregate_query(message):
+        return QueryDomain.institution
+    if _looks_like_family_finance_aggregate_query(message):
+        return QueryDomain.finance
+    if _looks_like_family_attendance_aggregate_query(message):
+        return QueryDomain.academic
+    if _looks_like_family_academic_aggregate_query(message):
+        return QueryDomain.academic
+    linked_students = _linked_students(actor)
     recent_focus = _recent_trace_focus(conversation_context) or {}
     recent_slot_memory = _recent_trace_slot_memory(conversation_context) or {}
     recent_focus_kind = str(recent_focus.get('kind') or recent_slot_memory.get('kind') or '')
@@ -11144,15 +11262,8 @@ def _explicit_protected_domain_hint(
         return QueryDomain.finance
     if not isinstance(actor, dict):
         return None
-    linked_students = _linked_students(actor)
     if not linked_students:
         return None
-    if _looks_like_family_finance_aggregate_query(message):
-        return QueryDomain.finance
-    if _looks_like_family_attendance_aggregate_query(message):
-        return QueryDomain.academic
-    if _looks_like_family_academic_aggregate_query(message):
-        return QueryDomain.academic
     mentions_linked_student = bool(_matching_students_in_text(linked_students, message) or _student_focus_candidate(actor, message))
     protected_follow_up = _is_follow_up_query(message) and bool(recent_focus)
     if mentions_linked_student and protected_follow_up:
@@ -14838,6 +14949,33 @@ def _extract_explicit_student_reference_candidates(message: str) -> list[str]:
         'política',
         'publica',
         'pública',
+        'cada',
+        'cada um',
+        'cada filho',
+        'negociar',
+        'negociacao',
+        'negociação',
+        'restante',
+        'parcialmente',
+        'paga',
+        'pago',
+        'taxa',
+        'desconto',
+        'descontos',
+        'situacao',
+        'situação',
+        'financeira',
+    }
+    phrase_disallow = {
+        'cada filho',
+        'cada um',
+        'meus filhos',
+        'dos meus filhos',
+        'negociar uma',
+        'atendimento com o financeiro',
+        'mensalidade parcialmente paga',
+        'situacao financeira',
+        'situação financeira',
     }
     has_student_context = _is_student_reference_context_message(normalized)
     for pattern, requires_student_context in patterns:
@@ -14872,6 +15010,10 @@ def _extract_explicit_student_reference_candidates(message: str) -> list[str]:
             if trimmed_tokens:
                 tokens = trimmed_tokens
             candidate = ' '.join(tokens[:3]).strip()
+            if not candidate:
+                continue
+            if candidate in phrase_disallow or any(candidate.startswith(f'{term} ') for term in phrase_disallow):
+                continue
             if candidate and candidate not in candidates:
                 candidates.append(candidate)
     return candidates
@@ -14975,6 +15117,18 @@ def _looks_like_non_student_followup_candidate(candidate: str) -> bool:
         'explosivos',
         'seguranca',
         'segurança',
+        'cada filho',
+        'cada um',
+        'meus filhos',
+        'dos meus filhos',
+        'negociar uma',
+        'atendimento com o financeiro',
+        'mensalidade parcialmente paga',
+        'situacao financeira',
+        'situação financeira',
+        'taxa',
+        'desconto',
+        'descontos',
     }
     if normalized in {_normalize_text(term) for term in disallowed}:
         return True
@@ -15006,6 +15160,18 @@ def _explicit_unmatched_student_reference(
     if _is_access_scope_query(message) or _is_access_scope_repair_query(message, {'linked_students': students}, conversation_context):
         return None
     if match_public_canonical_lane(message):
+        return None
+    if (
+        _looks_like_family_finance_aggregate_query(message)
+        or _looks_like_family_attendance_aggregate_query(message)
+        or _looks_like_family_academic_aggregate_query(message)
+    ):
+        return None
+    normalized = _normalize_text(message)
+    if (
+        any(_message_matches_term(normalized, term) for term in {'abrir um atendimento', 'abre um atendimento', 'abrir um chamado', 'abrir um protocolo'})
+        and any(_message_matches_term(normalized, term) for term in SUPPORT_FINANCE_TERMS | {'negociar', 'mensalidade parcialmente paga'})
+    ):
         return None
     candidates = _extract_explicit_student_reference_candidates(message)
     if not candidates and isinstance(conversation_context, dict):
@@ -15152,6 +15318,63 @@ def _student_from_slot_memory(
     return None
 
 
+def _focus_marked_student_from_message(
+    students: list[dict[str, Any]],
+    message: str,
+) -> dict[str, Any] | None:
+    normalized = _normalize_text(message)
+    positive_markers = (
+        'so ',
+        'só ',
+        'apenas ',
+        'somente ',
+        'so a ',
+        'só a ',
+        'so o ',
+        'só o ',
+        'olhe so para ',
+        'olhe só para ',
+        'agora foque so na ',
+        'agora foque só na ',
+        'foque so na ',
+        'foque só na ',
+        'fique apenas com ',
+        'fique só com ',
+        'recorte so ',
+        'recorte só ',
+        'isole a ',
+        'isole o ',
+        'corta so para ',
+        'corta só para ',
+        'corta so para a ',
+        'corta só para a ',
+        'corta so para o ',
+        'corta só para o ',
+        'filtre apenas ',
+        'agora quero apenas ',
+        'agora quero so ',
+        'agora quero só ',
+    )
+    for student in students:
+        full_name = str(student.get('full_name') or '').strip()
+        if not full_name:
+            continue
+        normalized_full_name = _normalize_text(full_name)
+        first_name = normalized_full_name.split(' ')[0] if normalized_full_name else ''
+        candidate_forms = tuple(
+            value for value in {normalized_full_name, first_name} if value
+        )
+        if not candidate_forms:
+            continue
+        for candidate in candidate_forms:
+            for marker in positive_markers:
+                if f'{marker}{candidate}' in normalized:
+                    return student
+            if re.search(rf'\b(?:so|só|apenas|somente)\s+(?:a|o)\s+{re.escape(candidate)}\b', normalized):
+                return student
+    return None
+
+
 def _recent_multi_student_summary_context(
     actor: dict[str, Any] | None,
     *,
@@ -15195,6 +15418,9 @@ def _select_linked_student(
     matched_students = _matching_students_in_text(students, message)
     if len(matched_students) == 1:
         return matched_students[0], None
+    focus_marked_student = _focus_marked_student_from_message(students, message)
+    if focus_marked_student is not None:
+        return focus_marked_student, None
 
     recent_student = _recent_student_from_context(
         actor,
@@ -15331,6 +15557,11 @@ def _detect_academic_focus_kind(message: str) -> str | None:
             'piores medias',
             'piores médias',
             'mais baixas',
+            'componentes merecem mais atencao',
+            'componentes merecem mais atenção',
+            'componentes merecem acompanhamento',
+            'componentes exigem mais atencao',
+            'componentes exigem mais atenção',
         }
     ):
         return 'grades'
@@ -16061,6 +16292,22 @@ def _compose_finance_aggregate_answer(summaries: list[dict[str, Any]]) -> str:
         if next_step:
             line += f' Proximo passo: {next_step}'
         lines.append(line)
+    if total_open or total_overdue:
+        lines.append(
+            f'- Mensalidade: neste recorte, o financeiro mostra {total_open} cobranca(s) em aberto e {total_overdue} vencida(s) nas faturas escolares.'
+        )
+        lines.append('- Taxa: nao apareceu taxa separada no resumo financeiro desta conta.')
+        lines.append(
+            '- Atraso: '
+            + (
+                'ha faturas vencidas que pedem regularizacao imediata.'
+                if total_overdue > 0
+                else 'nao ha fatura vencida agora; o foco fica nos proximos vencimentos.'
+            )
+        )
+        lines.append(
+            '- Desconto: nao apareceu desconto separado nas faturas deste recorte; se existir negociacao comercial, ela precisa ser confirmada com o financeiro.'
+        )
     lines.insert(1, f'- Total de faturas em aberto: {total_open}')
     lines.insert(2, f'- Total de faturas vencidas: {total_overdue}')
     if total_overdue > 0:
@@ -16215,6 +16462,34 @@ def _looks_like_family_finance_aggregate_query(message: str) -> bool:
     normalized = _normalize_text(message)
     if any(_message_matches_term(normalized, term) for term in FAMILY_FINANCE_AGGREGATE_TERMS):
         return True
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'minha situacao financeira',
+            'minha situação financeira',
+            'situacao financeira como se eu fosse leigo',
+            'situação financeira como se eu fosse leigo',
+            'separando mensalidade',
+            'separando mensalidade, taxa, atraso e desconto',
+            'separando mensalidade taxa atraso e desconto',
+        }
+    ) and any(_message_matches_term(normalized, term) for term in FAMILY_REFERENCE_TERMS):
+        return True
+    if any(_message_matches_term(normalized, term) for term in FAMILY_REFERENCE_TERMS) and any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'taxa',
+            'atraso',
+            'atrasos',
+            'desconto',
+            'descontos',
+            'negociar o restante',
+            'mensalidade parcialmente paga',
+            'o que ja aparece',
+            'o que já aparece',
+        }
+    ):
+        return True
     return any(_message_matches_term(normalized, term) for term in FAMILY_REFERENCE_TERMS) and (
         any(_message_matches_term(normalized, term) for term in FINANCE_TERMS)
         or any(_message_matches_term(normalized, term) for term in {'vencimentos', 'atrasos', 'proximos passos', 'próximos passos'})
@@ -16257,6 +16532,49 @@ def _looks_like_family_attendance_aggregate_query(message: str) -> bool:
         _message_matches_term(normalized, term)
         for term in {'frequencia', 'frequência', 'faltas', 'falta', 'atrasos', 'presenca', 'presença', 'ausencias', 'ausências'}
     )
+    has_explicit_academic_focus = any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'componente',
+            'componentes',
+            'disciplina',
+            'disciplinas',
+            'materia',
+            'materias',
+            'nota',
+            'notas',
+            'media',
+            'média',
+            'academico',
+            'acadêmico',
+        }
+    )
+    has_explicit_finance_focus = any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'financeiro',
+            'financeira',
+            'situacao financeira',
+            'situação financeira',
+            'mensalidade',
+            'mensalidades',
+            'boleto',
+            'boletos',
+            'fatura',
+            'faturas',
+            'pagamento',
+            'pagamentos',
+            'vencimento',
+            'vencimentos',
+            'proximos passos',
+            'próximos passos',
+            'comprovantes',
+        }
+    )
+    has_non_ambiguous_attendance_focus = any(
+        _message_matches_term(normalized, term)
+        for term in {'frequencia', 'frequência', 'faltas', 'falta', 'presenca', 'presença', 'ausencias', 'ausências'}
+    )
     has_attention_focus = any(
         _message_matches_term(normalized, term)
         for term in {
@@ -16273,6 +16591,10 @@ def _looks_like_family_attendance_aggregate_query(message: str) -> bool:
             'principal alerta',
         }
     )
+    if has_explicit_academic_focus and not has_attendance_focus:
+        return False
+    if has_explicit_finance_focus and not has_non_ambiguous_attendance_focus:
+        return False
     return has_family_anchor and (has_attendance_focus or has_attention_focus)
 
 
@@ -16296,6 +16618,46 @@ def _looks_like_family_academic_aggregate_query(message: str) -> bool:
             'componentes',
             'mais vulneravel',
             'mais vulnerável',
+            'academicamente pior',
+            'mais critico academicamente',
+            'mais crítico academicamente',
+        }
+    )
+
+
+def _looks_like_family_academic_student_focus_followup(
+    actor: dict[str, Any] | None,
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> bool:
+    if not _recent_multi_student_summary_context(actor, conversation_context=conversation_context):
+        return False
+    normalized = _normalize_text(message)
+    if not _focus_marked_student_from_message(
+        _eligible_students(actor, capability='academic'),
+        message,
+    ):
+        return False
+    return any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'qual componente',
+            'qual disciplina',
+            'mais alerta',
+            'acende mais alerta',
+            'chama mais atencao',
+            'chama mais atenção',
+            'chamam atencao',
+            'chamam atenção',
+            'mais fragil',
+            'mais frágil',
+            'mais vulneravel',
+            'mais vulnerável',
+            'mais critico',
+            'mais crítico',
+            'ponto mais fraco',
+            'mais claro',
         }
     )
 
@@ -16620,6 +16982,42 @@ def _format_student_administrative_status(
     return lines
 
 
+def _compose_family_admin_aggregate_answer(summaries: list[dict[str, Any]]) -> str:
+    if not summaries:
+        return 'Nao encontrei panorama documental consolidado das contas vinculadas neste recorte.'
+    lines = ['Panorama documental das contas vinculadas:']
+    pending_students: list[str] = []
+    for summary in summaries:
+        student_name = str(summary.get('student_name') or 'Aluno').strip() or 'Aluno'
+        overall_status = ADMIN_STATUS_LABELS.get(str(summary.get('overall_status', '')).lower(), 'em analise')
+        next_step = str(summary.get('next_step') or '').strip()
+        pending_note = ''
+        checklist = summary.get('checklist')
+        if isinstance(checklist, list):
+            for item in checklist:
+                if not isinstance(item, dict):
+                    continue
+                if str(item.get('status') or '').strip().lower() == 'pending':
+                    pending_note = str(item.get('notes') or '').strip()
+                    break
+        line = f'- {student_name}: situacao documental {overall_status}.'
+        if pending_note:
+            line += f' Ponto pendente: {pending_note}'
+        if next_step:
+            line += f' Proximo passo: {next_step}'
+        lines.append(line)
+        if str(summary.get('overall_status') or '').strip().lower() in {'pending', 'review', 'missing', 'incomplete'}:
+            pending_students.append(student_name)
+    if pending_students:
+        if len(pending_students) == 1:
+            lines.append(f'Quem ainda tem pendencia documental mais clara neste recorte: {pending_students[0]}.')
+        else:
+            lines.append('Quem ainda aparece com pendencia documental neste recorte: ' + ', '.join(pending_students) + '.')
+    else:
+        lines.append('Hoje nao aparece pendencia documental relevante entre os alunos vinculados neste recorte.')
+    return '\n'.join(lines)
+
+
 def _select_relevant_invoice(
     summary: dict[str, Any],
     *,
@@ -16711,7 +17109,13 @@ def _compose_academic_attribute_answer(
                 'quem exige mais atenção',
                 'inspira mais atencao',
                 'inspira mais atenção',
+                'chama mais atencao',
+                'chama mais atenção',
+                'chamam atencao',
+                'chamam atenção',
                 'olhando as faltas',
+                'bate na frequencia',
+                'bate na frequência',
                 'por que a frequencia',
                 'por que a frequência',
                 'frequencia dele preocupa',
@@ -16728,7 +17132,8 @@ def _compose_academic_attribute_answer(
             return (
                 f'O principal alerta de frequencia de {student_name} hoje aparece em {subject_name}: '
                 f'{absent} falta(s), {late} atraso(s) e {present} presenca(s) neste recorte. '
-                'Esse e o foco principal porque concentra a maior combinacao de faltas e atrasos do aluno neste momento.'
+                'Esse e o foco principal porque concentra a maior combinacao de faltas e atrasos do aluno neste momento. '
+                f'Proximo passo: acompanhar {subject_name} nas proximas aulas para verificar se novas faltas ou atrasos continuam pressionando a frequencia.'
             )
         if _message_matches_term(normalized_message, 'frequencia') and not _contains_any(normalized_message, {'falta', 'faltas'}):
             lines = [f'Panorama de frequencia de {student_name}:']
@@ -17068,8 +17473,9 @@ def _compose_teacher_schedule_summary_answer(
     if classes:
         parts.append('Turmas: ' + ', '.join(classes[:4]) + '.')
     if event_titles:
-        parts.append('No calendario publico, vale acompanhar marcos como ' + ', '.join(event_titles[:2]) + '.')
-    parts.append('Para comunicacao escolar geral, a secretaria e o canal institucional mais seguro; para alinhamentos pedagogicos, siga com coordenacao e orientacao conforme o assunto.')
+        parts.append('No calendario publico da escola, vale acompanhar marcos como ' + ', '.join(event_titles[:3]) + '.')
+    parts.append('No uso do calendario publico da escola, priorize datas institucionais abertas a familias e equipe, como reunioes, simulados, conselhos e janelas letivas publicadas.')
+    parts.append('Nos canais oficiais da escola, a secretaria continua sendo o contato institucional mais seguro para comunicacao geral; para alinhamentos pedagogicos, o fluxo correto passa por coordenacao e orientacao conforme o assunto.')
     return ' '.join(part for part in parts if part).strip()
 
 
@@ -17234,6 +17640,7 @@ async def _execute_protected_records_specialist(
         message,
         conversation_context=conversation_context,
     )
+    force_family_admin_aggregate = _looks_like_family_admin_aggregate_query(message)
     force_family_finance_aggregate = _looks_like_family_finance_aggregate_query(message)
     force_family_attendance_aggregate = _looks_like_family_attendance_aggregate_query(message)
     force_family_academic_aggregate = _looks_like_family_academic_aggregate_query(message)
@@ -17315,6 +17722,22 @@ async def _execute_protected_records_specialist(
         )
     if _is_actor_identity_query(message):
         return _compose_actor_identity_answer(actor)
+    if force_family_admin_aggregate:
+        summaries: list[dict[str, Any]] = []
+        for candidate in _linked_students(actor):
+            candidate_id = candidate.get('student_id')
+            if not isinstance(candidate_id, str):
+                continue
+            payload, status_code = await _api_core_get(
+                settings=settings,
+                path=f'/v1/students/{candidate_id}/administrative-status',
+                params={'telegram_chat_id': request.telegram_chat_id},
+            )
+            summary = payload.get('summary') if isinstance(payload, dict) else None
+            if status_code == 200 and isinstance(summary, dict):
+                summaries.append(summary)
+        if summaries:
+            return _compose_family_admin_aggregate_answer(summaries)
     if _is_public_document_submission_query(message):
         if _message_matches_term(normalized_message, 'fax'):
             return (
@@ -17784,6 +18207,11 @@ async def _execute_protected_records_specialist(
             message,
             conversation_context=conversation_context,
         )
+        academic_family_focus_follow_up = _looks_like_family_academic_student_focus_followup(
+            actor,
+            message,
+            conversation_context=conversation_context,
+        )
         academic_risk_follow_up = any(
             _message_matches_term(normalized_message, term)
             for term in {
@@ -17815,6 +18243,9 @@ async def _execute_protected_records_specialist(
             message,
             conversation_context=conversation_context,
         )
+        if academic_family_focus_follow_up:
+            academic_attribute_request = None
+            academic_difficulty_follow_up = True
         payload, status_code = await _api_core_get(
             settings=settings,
             path=f'/v1/students/{student_id}/academic-summary',
@@ -18874,6 +19305,11 @@ def _compose_deterministic_answer(
                 return (
                     'Nao. Eu continuo sem acesso ao protocolo interno de viagem internacional de alunos por este canal. '
                     'Se quiser, eu posso orientar pelo material publico correspondente sobre saídas pedagogicas e autorizacoes.'
+                )
+            if any(_message_matches_term(normalized_message, term) for term in {'escopo parcial', 'responsaveis com escopo parcial', 'responsáveis com escopo parcial'}):
+                return (
+                    'Nao posso compartilhar o protocolo interno para responsaveis com escopo parcial por este canal, porque esse material segue restrito. '
+                    'No que e publico, a base aberta cobre apenas orientacoes gerais; regras operacionais de permissao, restricao e encaminhamento continuam internas.'
                 )
             return (
                 'Nao posso compartilhar procedimentos, protocolos, manuais ou playbooks internos da escola por este canal, '
