@@ -197,6 +197,20 @@ async def _execute_protected_records_specialist(
     )
     force_family_admin_aggregate = _looks_like_family_admin_aggregate_query(message)
     force_family_finance_aggregate = _looks_like_family_finance_aggregate_query(message)
+    recent_focus = _recent_trace_focus(conversation_context) or {}
+    recent_active_task = str(recent_focus.get('active_task', '') or '').strip()
+    wants_family_next_due = any(
+        _message_matches_term(normalized_message, term)
+        for term in {
+            'proximo vencimento',
+            'próximo vencimento',
+            'proxima fatura',
+            'próxima fatura',
+            'vence primeiro',
+        }
+    )
+    if not force_family_finance_aggregate and wants_family_next_due and recent_active_task.startswith('finance:'):
+        force_family_finance_aggregate = True
     force_family_attendance_aggregate = _looks_like_family_attendance_aggregate_query(message)
     force_family_academic_aggregate = _looks_like_family_academic_aggregate_query(message)
     explicit_academic_student = (
@@ -681,6 +695,10 @@ async def _execute_protected_records_specialist(
                     if isinstance(summary, dict):
                         summaries.append(summary)
             if summaries:
+                if finance_attribute_request is not None and finance_attribute_request.attribute == 'next_due':
+                    family_next_due_answer = _compose_family_next_due_answer(summaries)
+                    if family_next_due_answer:
+                        return family_next_due_answer
                 return _compose_finance_aggregate_answer(summaries)
             finance_names = [
                 str(student.get('full_name') or '').strip()
@@ -731,6 +749,10 @@ async def _execute_protected_records_specialist(
                     _normalize_text(str(student.get('full_name', ''))) in normalized_message
                     for student in finance_students
                 ):
+                    if finance_attribute_request is not None and finance_attribute_request.attribute == 'next_due':
+                        family_next_due_answer = _compose_family_next_due_answer(summaries)
+                        if family_next_due_answer:
+                            return family_next_due_answer
                     lines = _compose_finance_aggregate_answer(summaries).splitlines()
                     filtered_any = any(
                         _filter_invoice_rows(summary, status_filter=requested_status)

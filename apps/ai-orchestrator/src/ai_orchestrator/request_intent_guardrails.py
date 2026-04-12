@@ -3,6 +3,10 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from eduassist_semantic_ingress import (
+    looks_like_high_confidence_public_school_faq as _shared_high_confidence_public_school_faq,
+)
+
 from .public_doc_knowledge import match_public_canonical_lane
 
 _DIRECT_ADMIN_STATUS_TERMS = {
@@ -141,8 +145,74 @@ def looks_like_public_canonical_request(message: str) -> bool:
     return match_public_canonical_lane(message) is not None
 
 
-def looks_like_school_domain_request(message: str) -> bool:
+def looks_like_high_confidence_public_school_faq(
+    message: str,
+    *,
+    conversation_context: dict | None = None,
+    school_profile: dict | None = None,
+) -> bool:
+    if _shared_high_confidence_public_school_faq(message):
+        return True
     if looks_like_public_canonical_request(message):
+        return True
+    normalized = normalize_guardrail_text(message)
+    if not normalized:
+        return False
+    try:
+        from .public_orchestration_runtime import _is_high_confidence_public_profile_query
+
+        return bool(
+            _is_high_confidence_public_profile_query(
+                message,
+                conversation_context=conversation_context,
+                school_profile=school_profile,
+            )
+        )
+    except Exception:
+        pass
+    enrollment_documents_terms = {
+        'quais documentos preciso',
+        'documentos exigidos',
+        'documentos sao exigidos',
+        'documentos são exigidos',
+        'documentos necessarios',
+        'documentos necessários',
+        'preciso para matricula',
+        'preciso para a matricula',
+        'preciso para matrícula',
+        'preciso para a matrícula',
+    }
+    if 'matricula' in normalized and any(term in normalized for term in enrollment_documents_terms):
+        return True
+    if any(
+        term in normalized
+        for term in {
+            'quando iniciam as aulas',
+            'quando comecam as aulas',
+            'quando começa as aulas',
+            'quando começam as aulas',
+            'inicio das aulas',
+            'início das aulas',
+            'ano letivo',
+        }
+    ):
+        return True
+    if 'biblioteca' in normalized and any(
+        term in normalized for term in {'tem biblioteca', 'horario', 'horário', 'abre', 'fecha', 'funciona'}
+    ):
+        return True
+    if any(
+        term in normalized for term in {'diretor', 'diretora', 'direcao', 'direção', 'diretoria'}
+    ) and any(
+        term in normalized
+        for term in {'contato', 'telefone', 'email', 'e-mail', 'whatsapp', 'como falar'}
+    ):
+        return True
+    return False
+
+
+def looks_like_school_domain_request(message: str) -> bool:
+    if looks_like_high_confidence_public_school_faq(message):
         return True
     normalized = normalize_guardrail_text(message)
     if not normalized:
@@ -153,7 +223,7 @@ def looks_like_school_domain_request(message: str) -> bool:
 def looks_like_explicit_admin_status_query(message: str, *, authenticated: bool) -> bool:
     if not authenticated:
         return False
-    if looks_like_public_canonical_request(message):
+    if looks_like_high_confidence_public_school_faq(message):
         return False
     normalized = normalize_guardrail_text(message)
     if not normalized:

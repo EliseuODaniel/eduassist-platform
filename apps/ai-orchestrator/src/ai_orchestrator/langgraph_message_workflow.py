@@ -67,7 +67,7 @@ def _deterministic_retrieval_fallback(*, citations: list[Any], context_pack: str
 def _route_native_path(preview: Any, request_message: str, analysis_message: str | None = None) -> str:
     analysis_message = analysis_message or request_message
     if analysis_message.strip() != str(request_message).strip():
-        if rt.match_public_canonical_lane(analysis_message):
+        if rt.match_public_canonical_lane(request.message) or rt.match_public_canonical_lane(analysis_message):
             return 'public_compound'
         if rt._is_public_timeline_query(analysis_message):
             return 'public_compound'
@@ -146,7 +146,11 @@ async def _bootstrap_context(state: LangGraphMessageState) -> LangGraphMessageSt
         (semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan))
         and actor is not None
         and request.user.authenticated
-        and rt.match_public_canonical_lane(request.message) is None
+        and not rt._is_high_confidence_public_profile_query(
+            request.message,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
     ):
         rt._apply_protected_domain_rescue(
             preview=preview,

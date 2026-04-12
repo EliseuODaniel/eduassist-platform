@@ -17,6 +17,7 @@ from ai_orchestrator_specialist.operational_memory_answers import (
 from ai_orchestrator_specialist.fast_path_answers import (
     FastPathDeps,
     _augment_public_followup_message,
+    _looks_like_public_pricing_query,
     build_fast_path_answer,
 )
 from ai_orchestrator_specialist.public_query_patterns import (
@@ -25,6 +26,7 @@ from ai_orchestrator_specialist.public_query_patterns import (
     _looks_like_admin_finance_combo_query,
     _looks_like_calendar_week_query,
     _looks_like_conduct_frequency_punctuality_query,
+    _looks_like_enrollment_documents_query,
     _looks_like_health_second_call_query,
     _looks_like_public_academic_policy_overview_query,
     _looks_like_public_doc_bundle_request,
@@ -45,6 +47,7 @@ from ai_orchestrator_specialist.resolved_intent_answers import (
     maybe_resolved_intent_answer,
 )
 from ai_orchestrator_specialist.protected_answer_helpers import compose_academic_risk_answer
+from ai_orchestrator_specialist.protected_answer_helpers import compose_family_next_due_answer
 from ai_orchestrator_specialist.protected_answer_helpers import looks_like_academic_risk_followup
 from ai_orchestrator_specialist.protected_answer_helpers import compose_finance_aggregate_answer
 from ai_orchestrator_specialist.protected_answer_helpers import looks_like_family_attendance_aggregate_query
@@ -369,6 +372,101 @@ def test_specialist_fast_path_answers_library_hours_even_after_visit_context() -
     assert "biblioteca aurora" in answer.message_text.casefold()
 
 
+def test_specialist_fast_path_answers_library_existence_query() -> None:
+    profile = {
+        "school_name": "Colegio Horizonte",
+        "feature_catalog": [
+            {
+                "name": "Biblioteca Aurora",
+                "label": "Biblioteca Aurora",
+                "note": "de segunda a sexta, das 7h30 as 18h00",
+            }
+        ],
+    }
+    ctx = SimpleNamespace(
+        school_profile=profile,
+        actor=None,
+        request=SimpleNamespace(
+            message="tem biblioteca nessa escola?",
+            user=SimpleNamespace(authenticated=False),
+        ),
+        conversation_context={"recent_messages": []},
+    )
+    deps = FastPathDeps(
+        normalize_text=lambda value: str(value or "").casefold(),
+        normalized_recent_user_messages=lambda context: [],
+        is_simple_greeting=lambda message: False,
+        is_auth_guidance_query=lambda message: False,
+        compose_auth_guidance_answer=lambda profile: "",
+        linked_students=lambda *args, **kwargs: [],
+        compose_authenticated_scope_answer=lambda actor: "",
+        is_assistant_identity_query=lambda message: False,
+        compose_assistant_identity_answer=lambda profile: "",
+        school_name=lambda profile: "Colegio Horizonte",
+        safe_excerpt=lambda text, limit=220: str(text or "")[:limit],
+        format_brl=lambda value: str(value),
+        hypothetical_children_quantity=lambda message: None,
+        pricing_projection=lambda *args, **kwargs: {},
+        compose_public_bolsas_and_processes=lambda profile: None,
+    )
+
+    answer = build_fast_path_answer(ctx, deps)
+
+    assert answer is not None
+    assert answer.reason == "specialist_supervisor_fast_path:library_exists"
+    assert "sim." in answer.message_text.casefold()
+    assert "biblioteca aurora" in answer.message_text.casefold()
+
+
+def test_specialist_fast_path_answers_library_close_followup() -> None:
+    profile = {
+        "school_name": "Colegio Horizonte",
+        "feature_catalog": [
+            {
+                "name": "Biblioteca Aurora",
+                "label": "Biblioteca Aurora",
+                "note": "de segunda a sexta, das 7h30 as 18h00",
+            }
+        ],
+    }
+    ctx = SimpleNamespace(
+        school_profile=profile,
+        actor=None,
+        request=SimpleNamespace(
+            message="que horas fecha a biblioteca?",
+            user=SimpleNamespace(authenticated=False),
+        ),
+        conversation_context={
+            "recent_messages": [
+                {"sender_type": "assistant", "content": "A biblioteca funciona das 7h30 as 18h00."},
+            ]
+        },
+    )
+    deps = FastPathDeps(
+        normalize_text=lambda value: str(value or "").casefold(),
+        normalized_recent_user_messages=lambda context: [],
+        is_simple_greeting=lambda message: False,
+        is_auth_guidance_query=lambda message: False,
+        compose_auth_guidance_answer=lambda profile: "",
+        linked_students=lambda *args, **kwargs: [],
+        compose_authenticated_scope_answer=lambda actor: "",
+        is_assistant_identity_query=lambda message: False,
+        compose_assistant_identity_answer=lambda profile: "",
+        school_name=lambda profile: "Colegio Horizonte",
+        safe_excerpt=lambda text, limit=220: str(text or "")[:limit],
+        format_brl=lambda value: str(value),
+        hypothetical_children_quantity=lambda message: None,
+        pricing_projection=lambda *args, **kwargs: {},
+        compose_public_bolsas_and_processes=lambda profile: None,
+    )
+
+    answer = build_fast_path_answer(ctx, deps)
+
+    assert answer is not None
+    assert answer.reason == "specialist_supervisor_fast_path:library_hours"
+    assert "18h00" in answer.message_text
+
+
 def test_specialist_fast_path_answers_leadership_contact_query() -> None:
     profile = {
         "school_name": "Colegio Horizonte",
@@ -471,6 +569,60 @@ def test_specialist_fast_path_resets_to_public_calendar_after_protected_digressi
     lowered = answer.message_text.casefold()
     assert "inicio das aulas" in lowered or "início das aulas" in lowered
     assert any(term in lowered for term in ("matricula", "reuniao", "famili"))
+
+
+def test_specialist_enrollment_documents_query_accepts_preciso_wording() -> None:
+    assert _looks_like_enrollment_documents_query("Quais documentos preciso para matricula?")
+
+
+def test_specialist_public_pricing_query_does_not_steal_enrollment_documents_prompt() -> None:
+    assert _looks_like_public_pricing_query("qual valor da matricula?") is True
+    assert _looks_like_public_pricing_query("Quais documentos preciso para matricula?") is False
+
+
+def test_specialist_fast_path_does_not_route_enrollment_documents_prompt_to_public_pricing() -> None:
+    profile = {
+        "school_name": "Colegio Horizonte",
+        "tuition_reference": [
+            {
+                "segment": "Ensino Medio",
+                "shift_label": "Manha",
+                "monthly_amount": "1450.00",
+                "enrollment_fee": "350.00",
+                "notes": "Valor comercial publico de referencia para 2026.",
+            }
+        ],
+    }
+    ctx = SimpleNamespace(
+        school_profile=profile,
+        actor=None,
+        request=SimpleNamespace(
+            message="Quais documentos preciso para matricula?",
+            user=SimpleNamespace(authenticated=True),
+        ),
+        conversation_context={"recent_messages": []},
+    )
+    deps = FastPathDeps(
+        normalize_text=lambda value: str(value or "").casefold(),
+        normalized_recent_user_messages=lambda context: [],
+        is_simple_greeting=lambda message: False,
+        is_auth_guidance_query=lambda message: False,
+        compose_auth_guidance_answer=lambda profile: "",
+        linked_students=lambda *args, **kwargs: [],
+        compose_authenticated_scope_answer=lambda actor: "",
+        is_assistant_identity_query=lambda message: False,
+        compose_assistant_identity_answer=lambda profile: "",
+        school_name=lambda profile: "Colegio Horizonte",
+        safe_excerpt=lambda text, limit=220: str(text or "")[:limit],
+        format_brl=lambda value: str(value),
+        hypothetical_children_quantity=lambda message: None,
+        pricing_projection=lambda *args, **kwargs: {},
+        compose_public_bolsas_and_processes=lambda profile: None,
+    )
+
+    answer = build_fast_path_answer(ctx, deps)
+
+    assert answer is None or answer.reason != "specialist_supervisor_fast_path:public_pricing_overview"
 
 
 def test_specialist_tool_first_workflow_answers_visit_resume_from_recent_context() -> None:
@@ -1818,6 +1970,77 @@ def test_operational_memory_subject_followup_reports_missing_named_subject() -> 
     assert 'nao encontrei notas de Lucas Oliveira em Danca' in answer.message_text
 
 
+def test_operational_memory_finance_followup_answers_family_next_due() -> None:
+    async def _fetch_financial_summary_payload(_ctx, *, student_name_hint=None, **_kwargs):
+        return {
+            'summary': {
+                'student_name': str(student_name_hint or 'Aluno'),
+                'open_invoice_count': 1,
+                'overdue_invoice_count': 0,
+                'invoices': [
+                    {
+                        'reference_month': '2026-04',
+                        'due_date': '2026-04-15',
+                        'amount_due': '1450.00',
+                        'status': 'open',
+                    }
+                ],
+            }
+        }
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='Qual o proximo vencimento?',
+        ),
+        actor={'students': [{'full_name': 'Lucas Oliveira'}, {'full_name': 'Ana Oliveira'}]},
+        operational_memory=OperationalMemory(
+            active_domain='finance',
+            active_topic='finance_summary',
+            active_domains=['finance'],
+        ),
+        conversation_context={
+            'recent_messages': [
+                {'sender_type': 'user', 'content': 'Quero ver meu financeiro'},
+                {'sender_type': 'assistant', 'content': 'Resumo financeiro das contas vinculadas.'},
+            ]
+        },
+    )
+    deps = OperationalMemoryDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        looks_like_public_doc_bundle_request=lambda _message: False,
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        effective_multi_intent_domains=lambda *_args, **_kwargs: [],
+        subject_hint_from_text=lambda _message: None,
+        looks_like_subject_followup=lambda _message: False,
+        looks_like_student_pronoun_followup=lambda _message: False,
+        student_hint_from_message=lambda *_args, **_kwargs: None,
+        fetch_academic_summary_payload=lambda *_args, **_kwargs: None,
+        fetch_financial_summary_payload=_fetch_financial_summary_payload,
+        fetch_upcoming_assessments_payload=lambda *_args, **_kwargs: None,
+        build_academic_finance_combo_payload=lambda *_args, **_kwargs: None,
+        build_grade_requirement_answer=lambda *_args, **_kwargs: None,
+        compose_academic_risk_answer=lambda _summary: '',
+        compose_named_subject_grade_answer=lambda *_args, **_kwargs: None,
+        compose_upcoming_assessments_lines=lambda _summary: [],
+        safe_excerpt=lambda text, **_kwargs: text,
+        looks_like_academic_risk_followup=lambda _message: False,
+        looks_like_other_student_followup=lambda _message: False,
+        other_linked_student=lambda *_args, **_kwargs: None,
+        compose_admin_status_answer=lambda _summary: '',
+        compose_named_grade_answer=lambda _summary: '',
+        compose_finance_installments_answer=lambda _summary: '',
+        compose_family_next_due_answer=lambda _summaries: 'O proximo vencimento mais imediato e em 15 de abril de 2026.',
+        linked_students=lambda actor, **_kwargs: list(actor.get('students') or []),
+    )
+
+    answer = asyncio.run(maybe_operational_memory_follow_up_answer(ctx, deps=deps))
+
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_memory:financial_next_due_aggregate'
+    assert '15 de abril de 2026' in answer.message_text
+
+
 def test_operational_memory_meta_repair_does_not_trigger_on_subject_correction_phrase() -> None:
     deps = OperationalMemoryDeps(
         normalize_text=lambda value: str(value or '').casefold(),
@@ -2011,6 +2234,43 @@ def test_specialist_compose_finance_aggregate_answer_adds_layman_categories() ->
     assert 'taxa' in lowered
     assert 'atraso' in lowered
     assert 'desconto' in lowered
+
+
+def test_specialist_compose_family_next_due_answer_prefers_earliest_due_invoice() -> None:
+    answer = compose_family_next_due_answer(
+        [
+            {
+                'student_name': 'Lucas Oliveira',
+                'invoices': [
+                    {
+                        'reference_month': '2026-05',
+                        'due_date': '2026-05-10',
+                        'amount_due': '1450.00',
+                        'status': 'open',
+                    }
+                ],
+            },
+            {
+                'student_name': 'Ana Oliveira',
+                'invoices': [
+                    {
+                        'reference_month': '2026-04',
+                        'due_date': '2026-04-15',
+                        'amount_due': '1450.00',
+                        'status': 'open',
+                    }
+                ],
+            },
+        ],
+        deps=SimpleNamespace(
+            normalize_text=lambda value: str(value or '').casefold(),
+            format_brl=lambda value: f"R$ {float(value):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
+        ),
+    )
+    assert answer is not None
+    lowered = answer.casefold()
+    assert 'ana oliveira' in lowered
+    assert '2026-04-15' in lowered
 
 
 def test_tool_first_finance_denies_unlinked_student_name() -> None:
@@ -2452,6 +2712,62 @@ def test_fast_path_handles_public_multi_intent_contacts_and_pricing() -> None:
     assert 'Valores publicos e simulacao' in answer.message_text
 
 
+def test_fast_path_does_not_steal_authenticated_family_finance_request_into_public_multi_intent() -> None:
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='Quero ver meu financeiro.',
+        ),
+        actor={'actor_type': 'guardian'},
+        school_profile={
+            'service_catalog': [{'service_key': 'financeiro_escolar', 'request_channel': 'Portal autenticado'}],
+            'tuition_reference': [
+                {
+                    'segment': 'Ensino Medio',
+                    'shift_label': 'Manha',
+                    'monthly_amount': '1450.00',
+                    'enrollment_fee': '350.00',
+                }
+            ],
+        },
+        conversation_context={
+            'recent_messages': [
+                {'sender_type': 'user', 'content': 'Quero contatos e mensalidade da escola.'},
+                {'sender_type': 'assistant', 'content': 'Canais gerais da escola e valores publicos de referencia.'},
+            ]
+        },
+    )
+
+    deps = FastPathDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        normalized_recent_user_messages=lambda context: [
+            str(item.get('content') or '').casefold()
+            for item in (context or {}).get('recent_messages', [])
+            if isinstance(item, dict) and str(item.get('sender_type') or '').casefold() == 'user'
+        ],
+        is_simple_greeting=lambda _message: False,
+        is_auth_guidance_query=lambda _message: False,
+        compose_auth_guidance_answer=lambda _profile: '',
+        linked_students=lambda *_args, **kwargs: [{'full_name': 'Lucas Oliveira'}] if kwargs.get('capability') == 'finance' else [],
+        compose_authenticated_scope_answer=lambda _actor: '',
+        is_assistant_identity_query=lambda _message: False,
+        compose_assistant_identity_answer=lambda _profile: '',
+        school_name=lambda _profile: 'Colegio Horizonte',
+        safe_excerpt=lambda text, **_kwargs: text,
+        format_brl=lambda value: str(value),
+        hypothetical_children_quantity=lambda _message: None,
+        pricing_projection=lambda *_args, **_kwargs: {},
+        compose_public_bolsas_and_processes=lambda _profile: None,
+    )
+
+    answer = build_fast_path_answer(ctx, deps)
+
+    assert answer is None or answer.reason not in {
+        'specialist_supervisor_fast_path:public_multi_intent',
+        'specialist_supervisor_fast_path:service_routing',
+    }
+
+
 def test_fast_path_handles_access_scope_followup_per_student_without_strict_recent_marker() -> None:
     ctx = SimpleNamespace(
         request=SimpleNamespace(
@@ -2865,6 +3181,172 @@ def test_specialist_family_finance_aggregate_query_rejects_third_party_partial_p
     deps = SimpleNamespace(normalize_text=lambda text: str(text or '').casefold())
     prompt = 'Paguei parte da mensalidade do Joao e preciso negociar o restante; o que ja aparece e qual o proximo passo?'
     assert looks_like_family_finance_aggregate_query(prompt, deps=deps) is False
+
+
+def test_specialist_family_finance_aggregate_query_accepts_meu_financeiro_prompt() -> None:
+    deps = SimpleNamespace(normalize_text=lambda text: str(text or '').casefold())
+    assert looks_like_family_finance_aggregate_query('Quero ver meu financeiro', deps=deps) is True
+
+
+def test_resolved_intent_finance_aggregate_handles_quero_ver_meu_financeiro() -> None:
+    async def _fetch_financial_summary_payload(_ctx, *, student_name_hint=None, **_kwargs):
+        if student_name_hint == 'Lucas Oliveira':
+            return {
+                'summary': {
+                    'student_name': 'Lucas Oliveira',
+                    'open_invoice_count': 1,
+                    'overdue_invoice_count': 0,
+                    'invoices': [
+                        {
+                            'reference_month': '2026-05',
+                            'due_date': '2026-05-10',
+                            'amount_due': '1450.00',
+                            'status': 'open',
+                        }
+                    ],
+                }
+            }
+        if student_name_hint == 'Ana Oliveira':
+            return {
+                'summary': {
+                    'student_name': 'Ana Oliveira',
+                    'open_invoice_count': 2,
+                    'overdue_invoice_count': 0,
+                    'invoices': [
+                        {
+                            'reference_month': '2026-04',
+                            'due_date': '2026-04-15',
+                            'amount_due': '1450.00',
+                            'status': 'open',
+                        }
+                    ],
+                }
+            }
+        return None
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='Quero ver meu financeiro',
+        ),
+        actor={'students': [{'full_name': 'Lucas Oliveira'}, {'full_name': 'Ana Oliveira'}]},
+        resolved_turn=ResolvedTurnIntent(
+            domain='finance',
+            capability='finance.student_summary',
+            confidence=0.94,
+        ),
+        operational_memory=OperationalMemory(),
+        conversation_context={},
+    )
+    deps = ResolvedIntentDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        looks_like_subject_followup=lambda _message: False,
+        looks_like_academic_risk_followup=lambda _message: False,
+        looks_like_family_finance_aggregate_query=lambda message: 'meu financeiro' in str(message).casefold(),
+        looks_like_family_attendance_aggregate_query=lambda _message: False,
+        fetch_academic_summary_payload=lambda *_args, **_kwargs: None,
+        fetch_financial_summary_payload=_fetch_financial_summary_payload,
+        fetch_upcoming_assessments_payload=lambda *_args, **_kwargs: None,
+        resolved_academic_target_name=lambda *_args, **_kwargs: None,
+        needs_specific_academic_student_clarification=lambda *_args, **_kwargs: False,
+        build_academic_student_selection_clarify=lambda *_args, **_kwargs: None,
+        compose_academic_risk_answer=lambda _summary: '',
+        compose_named_subject_grade_answer=lambda *_args, **_kwargs: None,
+        compose_named_grade_answer=lambda _summary: '',
+        compose_named_attendance_answer=lambda *_args, **_kwargs: '',
+        compose_academic_snapshot_lines=lambda _summary: [],
+        compose_academic_aggregate_answer=lambda _summaries: '',
+        compose_finance_aggregate_answer=lambda _summaries: 'Resumo financeiro das contas vinculadas.',
+        compose_family_next_due_answer=lambda _summaries: 'Proximo vencimento agregado.',
+        compose_finance_installments_answer=lambda _summary: '',
+        linked_students=lambda actor, **_kwargs: list(actor.get('students') or []),
+        safe_excerpt=lambda text, **_kwargs: text,
+        subject_hint_from_text=lambda _message: None,
+        recent_subject_from_context=lambda *_args, **_kwargs: None,
+        subject_code_from_hint=lambda *_args, **_kwargs: (None, None),
+        student_hint_from_message=lambda *_args, **_kwargs: None,
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        compose_upcoming_assessments_lines=lambda _summary: [],
+    )
+
+    answer = asyncio.run(maybe_resolved_intent_answer(ctx, deps=deps))
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_resolved_intent:financial_summary_aggregate'
+    assert 'Resumo financeiro das contas vinculadas.' in answer.message_text
+
+
+def test_resolved_intent_finance_aggregate_followup_prefers_next_due_answer() -> None:
+    async def _fetch_financial_summary_payload(_ctx, *, student_name_hint=None, **_kwargs):
+        return {
+            'summary': {
+                'student_name': str(student_name_hint or 'Aluno'),
+                'open_invoice_count': 1,
+                'overdue_invoice_count': 0,
+                'invoices': [
+                    {
+                        'reference_month': '2026-04',
+                        'due_date': '2026-04-15',
+                        'amount_due': '1450.00',
+                        'status': 'open',
+                    }
+                ],
+            }
+        }
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='Qual o proximo vencimento?',
+        ),
+        actor={'students': [{'full_name': 'Lucas Oliveira'}, {'full_name': 'Ana Oliveira'}]},
+        resolved_turn=ResolvedTurnIntent(
+            domain='finance',
+            capability='finance.student_summary',
+            confidence=0.94,
+        ),
+        operational_memory=OperationalMemory(),
+        conversation_context={
+            'recent_messages': [
+                {'sender_type': 'user', 'content': 'Quero ver meu financeiro'},
+                {'sender_type': 'assistant', 'content': 'Resumo financeiro das contas vinculadas.'},
+            ]
+        },
+    )
+    deps = ResolvedIntentDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        looks_like_subject_followup=lambda _message: False,
+        looks_like_academic_risk_followup=lambda _message: False,
+        looks_like_family_finance_aggregate_query=lambda message: 'vencimento' in str(message).casefold(),
+        looks_like_family_attendance_aggregate_query=lambda _message: False,
+        fetch_academic_summary_payload=lambda *_args, **_kwargs: None,
+        fetch_financial_summary_payload=_fetch_financial_summary_payload,
+        fetch_upcoming_assessments_payload=lambda *_args, **_kwargs: None,
+        resolved_academic_target_name=lambda *_args, **_kwargs: None,
+        needs_specific_academic_student_clarification=lambda *_args, **_kwargs: False,
+        build_academic_student_selection_clarify=lambda *_args, **_kwargs: None,
+        compose_academic_risk_answer=lambda _summary: '',
+        compose_named_subject_grade_answer=lambda *_args, **_kwargs: None,
+        compose_named_grade_answer=lambda _summary: '',
+        compose_named_attendance_answer=lambda *_args, **_kwargs: '',
+        compose_academic_snapshot_lines=lambda _summary: [],
+        compose_academic_aggregate_answer=lambda _summaries: '',
+        compose_finance_aggregate_answer=lambda _summaries: 'Resumo financeiro das contas vinculadas.',
+        compose_family_next_due_answer=lambda _summaries: 'O proximo vencimento mais imediato e em 15 de abril de 2026.',
+        compose_finance_installments_answer=lambda _summary: '',
+        linked_students=lambda actor, **_kwargs: list(actor.get('students') or []),
+        safe_excerpt=lambda text, **_kwargs: text,
+        subject_hint_from_text=lambda _message: None,
+        recent_subject_from_context=lambda *_args, **_kwargs: None,
+        subject_code_from_hint=lambda *_args, **_kwargs: (None, None),
+        student_hint_from_message=lambda *_args, **_kwargs: None,
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        compose_upcoming_assessments_lines=lambda _summary: [],
+    )
+
+    answer = asyncio.run(maybe_resolved_intent_answer(ctx, deps=deps))
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_resolved_intent:financial_next_due_aggregate'
+    assert '15 de abril de 2026' in answer.message_text
 
 
 def test_specialist_unknown_student_reference_skips_finance_noun_and_returns_actual_name() -> None:

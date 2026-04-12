@@ -170,6 +170,110 @@ def test_contextual_public_direct_answer_short_circuits_objective_service_routin
     assert answer == 'Resposta curta de canais por assunto.'
 
 
+def test_contextual_public_direct_answer_prefers_request_message_for_high_confidence_public_query(monkeypatch) -> None:
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._llm_forced_mode_enabled',
+        lambda **kwargs: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._compose_contextual_public_boundary_answer',
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._compose_contextual_public_timeline_followup_answer',
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._recent_admin_finance_combo_context',
+        lambda conversation_context: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._normalize_text',
+        lambda message: str(message).lower(),
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._message_matches_term',
+        lambda normalized, term: term in normalized,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.looks_like_school_domain_request',
+        lambda message: True,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._contextualize_public_followup_message',
+        lambda **kwargs: 'Qual o valor da matrícula?',
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._should_prefer_raw_public_followup_message',
+        lambda **kwargs: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._must_preserve_contextual_public_followup_message',
+        lambda **kwargs: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._is_direct_service_routing_bundle_query',
+        lambda message: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.match_public_canonical_lane',
+        lambda message: None,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._is_public_timeline_query',
+        lambda message: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._has_public_multi_intent_signal',
+        lambda message: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._is_public_timeline_lifecycle_query',
+        lambda message: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._is_public_year_three_phase_query',
+        lambda message: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._is_access_scope_query',
+        lambda message: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._is_high_confidence_public_profile_query',
+        lambda message, **kwargs: 'documentos' in str(message).lower(),
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._base_profile_supports_fast_public_answer',
+        lambda **kwargs: True,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._try_public_channel_fast_answer',
+        lambda **kwargs: kwargs['message'],
+    )
+
+    request = SimpleNamespace(
+        message='Quais documentos preciso para matricula?',
+        user=SimpleNamespace(authenticated=True),
+    )
+    preview = SimpleNamespace(
+        classification=SimpleNamespace(access_tier=AccessTier.public),
+    )
+
+    answer = asyncio.run(
+        _maybe_contextual_public_direct_answer(
+            request=request,
+            analysis_message='Qual o valor da matrícula?',
+            preview=preview,
+            settings=SimpleNamespace(),
+            school_profile={'school_name': 'Colegio Horizonte'},
+            conversation_context=None,
+        )
+    )
+
+    assert answer == 'Quais documentos preciso para matricula?'
+
+
 def test_skip_contextual_replan_for_authenticated_admin_finance_combo_followup() -> None:
     request = SimpleNamespace(
         message='Se nada estiver bloqueando, fala isso de forma direta.',

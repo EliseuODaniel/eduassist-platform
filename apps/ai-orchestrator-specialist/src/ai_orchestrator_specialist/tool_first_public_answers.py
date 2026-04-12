@@ -130,7 +130,7 @@ async def maybe_tool_first_public_answer(
     profile: dict[str, Any],
     deps: ToolFirstPublicDeps,
 ) -> SupervisorAnswerPayload | None:
-    if not ctx.request.user.authenticated and (
+    if (
         _looks_like_timeline_lifecycle_query(ctx.request.message)
         or
         _looks_like_calendar_week_query(ctx.request.message)
@@ -194,7 +194,7 @@ async def maybe_tool_first_public_answer(
                 suggested_domain="institution",
             )
 
-    if not ctx.request.user.authenticated and _looks_like_enrollment_documents_query(ctx.request.message):
+    if _looks_like_enrollment_documents_query(ctx.request.message):
         admissions_docs = profile.get("admissions_required_documents") if isinstance(profile, dict) else None
         if isinstance(admissions_docs, list) and admissions_docs:
             lines = ["Hoje os documentos exigidos para matricula publicados pela escola sao:"]
@@ -211,8 +211,7 @@ async def maybe_tool_first_public_answer(
             )
 
     if (
-        not ctx.request.user.authenticated
-        and not _looks_like_health_second_call_query(ctx.request.message)
+        not _looks_like_health_second_call_query(ctx.request.message)
         and _looks_like_public_academic_policy_overview_query(ctx.request.message)
     ):
         answer_text = compose_public_academic_policy_overview(profile)
@@ -232,7 +231,7 @@ async def maybe_tool_first_public_answer(
                 suggested_domain="academic",
             )
 
-    if not ctx.request.user.authenticated and _looks_like_conduct_frequency_punctuality_query(ctx.request.message):
+    if _looks_like_conduct_frequency_punctuality_query(ctx.request.message):
         answer_text = (
             compose_public_conduct_policy_contextual_answer(ctx.request.message, profile=profile)
             or compose_public_conduct_frequency_punctuality(profile)
@@ -253,7 +252,7 @@ async def maybe_tool_first_public_answer(
                 suggested_domain="academic",
             )
 
-    if not ctx.request.user.authenticated and _looks_like_bolsas_and_processes_query(ctx.request.message):
+    if _looks_like_bolsas_and_processes_query(ctx.request.message):
         answer_text = compose_public_bolsas_and_processes(profile)
         if answer_text:
             return _build_public_tool_payload(
@@ -270,7 +269,7 @@ async def maybe_tool_first_public_answer(
                 graph_leaf="bolsas_and_processes",
             )
 
-    if not ctx.request.user.authenticated and _looks_like_health_second_call_query(ctx.request.message):
+    if _looks_like_health_second_call_query(ctx.request.message):
         answer_text = compose_public_health_second_call()
         if answer_text:
             return _build_public_tool_payload(
@@ -288,7 +287,7 @@ async def maybe_tool_first_public_answer(
                 suggested_domain="academic",
             )
 
-    if not ctx.request.user.authenticated and _looks_like_permanence_family_query(ctx.request.message):
+    if _looks_like_permanence_family_query(ctx.request.message):
         answer_text = compose_public_permanence_and_family_support(profile)
         if answer_text:
             return _build_public_tool_payload(
@@ -306,7 +305,7 @@ async def maybe_tool_first_public_answer(
                 graph_leaf="permanence_family_support",
             )
 
-    if not ctx.request.user.authenticated and _looks_like_health_authorization_bridge_query(ctx.request.message):
+    if _looks_like_health_authorization_bridge_query(ctx.request.message):
         answer_text = compose_public_health_authorizations_bridge()
         if answer_text:
             return _build_public_tool_payload(
@@ -324,7 +323,7 @@ async def maybe_tool_first_public_answer(
                 graph_leaf="health_authorizations_bridge",
             )
 
-    if not ctx.request.user.authenticated and _looks_like_first_month_risks_query(ctx.request.message):
+    if _looks_like_first_month_risks_query(ctx.request.message):
         answer_text = compose_public_first_month_risks(profile)
         if answer_text:
             return _build_public_tool_payload(
@@ -342,7 +341,7 @@ async def maybe_tool_first_public_answer(
                 graph_leaf="first_month_risks",
             )
 
-    if not ctx.request.user.authenticated and _looks_like_process_compare_query(ctx.request.message):
+    if _looks_like_process_compare_query(ctx.request.message):
         answer_text = compose_public_process_compare()
         if answer_text:
             return _build_public_tool_payload(

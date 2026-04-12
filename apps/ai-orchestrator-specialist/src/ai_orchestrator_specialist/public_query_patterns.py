@@ -499,7 +499,24 @@ def _looks_like_year_three_phases_query(message: str) -> bool:
 
 def _looks_like_enrollment_documents_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    return any(term in normalized for term in {'documentos exigidos', 'documentos sao exigidos', 'documentos são exigidos'}) and 'matricula' in normalized
+    if 'matricula' not in normalized and 'matrícula' not in normalized:
+        return False
+    return any(
+        term in normalized
+        for term in {
+            'documentos exigidos',
+            'documentos sao exigidos',
+            'documentos são exigidos',
+            'documentos preciso',
+            'documentos necessarios',
+            'documentos necessários',
+            'preciso para matricula',
+            'preciso para a matricula',
+            'preciso para matrícula',
+            'preciso para a matrícula',
+            'quais documentos preciso',
+        }
+    )
 
 
 def _looks_like_public_academic_policy_overview_query(message: str) -> bool:

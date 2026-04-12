@@ -53,7 +53,9 @@ def _message_matches_term(message: str, term: str) -> bool:
 
 
 def _is_greeting_only(message: str) -> bool:
-    return _intent_analysis_impl('_is_greeting_only')(message)
+    from .conversation_focus_runtime import _is_greeting_only as _impl
+
+    return _impl(message)
 
 
 def _is_auth_guidance_query(message: str) -> bool:
@@ -451,6 +453,34 @@ def _is_public_date_query(message: str) -> bool:
 
 def _is_public_document_submission_query(message: str) -> bool:
     normalized = _normalize_text(message)
+    if any(
+        phrase in normalized
+        for phrase in (
+            'quais documentos preciso para matricula',
+            'quais documentos preciso para matrícula',
+            'documentos para matricula',
+            'documentos para matrícula',
+            'documentos exigidos para matricula',
+            'documentos exigidos para matrícula',
+        )
+    ):
+        return True
+    if (_message_matches_term(normalized, 'matricula') or _message_matches_term(normalized, 'matrícula')) and any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'quais documentos preciso',
+            'documentos exigidos',
+            'documentos sao exigidos',
+            'documentos são exigidos',
+            'documentos necessarios',
+            'documentos necessários',
+            'preciso para matricula',
+            'preciso para a matricula',
+            'preciso para matrícula',
+            'preciso para a matrícula',
+        }
+    ):
+        return True
     if any(_message_matches_term(normalized, term) for term in PUBLIC_DOCUMENT_SUBMISSION_TERMS):
         return True
     document_terms = {'documento', 'documentos', 'matricula', 'matrícula', 'cadastro'}
@@ -633,6 +663,22 @@ def _is_public_timeline_query(message: str) -> bool:
     if _is_public_travel_planning_query(message):
         return True
     if _is_public_year_three_phase_query(message):
+        return True
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'iniciam as aulas',
+            'quando iniciam as aulas',
+            'quando comecam as aulas',
+            'quando começam as aulas',
+            'quando inicia o ano letivo',
+            'inicio das aulas',
+            'início das aulas',
+            'comeco das aulas',
+            'começo das aulas',
+            'ano letivo',
+        }
+    ):
         return True
     asks_timing = any(
         _message_matches_term(normalized, term)
@@ -840,6 +886,7 @@ def _prioritize_public_act_rules(
         'teacher_directory': 88,
         'leadership': 86,
         'contacts': 84,
+        'document_submission': 84,
         'social_presence': 83,
         'web_presence': 82,
         'location': 82,
@@ -916,5 +963,3 @@ PUBLIC_SEMANTIC_TOOLS = {
     'get_public_timeline',
     'get_public_calendar_events',
 }
-
-

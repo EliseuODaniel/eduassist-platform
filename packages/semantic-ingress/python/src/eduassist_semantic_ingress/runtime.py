@@ -198,7 +198,14 @@ _SCHOOL_SCOPE_TERMS = {
     'mensalidade',
     'boleto',
     'fatura',
+    'vencimento',
+    'vencimentos',
+    'parcela',
+    'parcelas',
+    'segunda via',
     'secretaria',
+    'documento',
+    'documentos',
     'calendario',
     'calendário',
     'aulas',
@@ -297,6 +304,84 @@ _PUBLIC_INFO_INTENT_TERMS = {
     'falar com',
     'quero falar com',
     'conversar com',
+}
+
+_PUBLIC_PRICING_TERMS = {
+    'valor da matricula',
+    'valor da matrícula',
+    'taxa de matricula',
+    'taxa de matrícula',
+    'mensalidade',
+    'mensalidades',
+    'quanto custa',
+    'quanto fica',
+    'preco da matricula',
+    'preço da matrícula',
+}
+
+_PRIVATE_FINANCE_HINTS = {
+    'fatura',
+    'faturas',
+    'boleto',
+    'boletos',
+    'em aberto',
+    'vencimento',
+    'vencida',
+    'vencidas',
+    'lucas',
+    'ana',
+    'meu filho',
+    'minha filha',
+    'contas vinculadas',
+}
+
+_PROTECTED_FINANCE_ACTION_HINTS = {
+    'paguei',
+    'paguei parte',
+    'negociar',
+    'negociacao',
+    'negociação',
+    'restante',
+    'quitar',
+    'quitacao',
+    'quitação',
+    'parcelar',
+    'renegociar',
+    'meu financeiro',
+    'situacao financeira',
+    'situação financeira',
+    'minha situacao financeira',
+    'minha situação financeira',
+    'atraso',
+    'atrasos',
+    'desconto',
+    'descontos',
+}
+
+_ENROLLMENT_DOCUMENT_TERMS = {
+    'quais documentos preciso',
+    'documentos exigidos',
+    'documentos sao exigidos',
+    'documentos são exigidos',
+    'documentos necessarios',
+    'documentos necessários',
+    'preciso para matricula',
+    'preciso para a matricula',
+    'preciso para matrícula',
+    'preciso para a matrícula',
+}
+
+_SCHOOL_YEAR_START_TERMS = {
+    'iniciam as aulas',
+    'quando iniciam as aulas',
+    'quando comecam as aulas',
+    'quando começam as aulas',
+    'quando inicia o ano letivo',
+    'inicio das aulas',
+    'início das aulas',
+    'comeco das aulas',
+    'começo das aulas',
+    'ano letivo',
 }
 
 
@@ -420,10 +505,50 @@ def looks_like_opaque_short_input(message: str | None) -> bool:
     return False
 
 
+def looks_like_high_confidence_public_school_faq(message: str | None) -> bool:
+    normalized = normalize_ingress_text(message)
+    if not normalized:
+        return False
+    has_facility = any(_contains_term(normalized, term) for term in _SCHOOL_PUBLIC_FACILITY_TERMS)
+    if has_facility and (
+        any(_contains_term(normalized, term) for term in _PUBLIC_INFO_INTENT_TERMS)
+        or any(
+            _contains_term(normalized, term)
+            for term in {
+                'tem biblioteca',
+                'ha biblioteca',
+                'há biblioteca',
+                'possui biblioteca',
+                'existe biblioteca',
+            }
+        )
+    ):
+        return True
+    has_leadership = any(
+        _contains_term(normalized, term) for term in _SCHOOL_PUBLIC_LEADERSHIP_TERMS
+    )
+    if has_leadership and any(_contains_term(normalized, term) for term in _PUBLIC_INFO_INTENT_TERMS):
+        return True
+    if _contains_term(normalized, 'matricula') and any(
+        _contains_term(normalized, term) for term in _ENROLLMENT_DOCUMENT_TERMS
+    ):
+        return True
+    if any(_contains_term(normalized, term) for term in _SCHOOL_YEAR_START_TERMS):
+        return True
+    if any(_contains_term(normalized, term) for term in _PUBLIC_PRICING_TERMS) and not any(
+        _contains_term(normalized, term)
+        for term in (*_PRIVATE_FINANCE_HINTS, *_PROTECTED_FINANCE_ACTION_HINTS)
+    ):
+        return True
+    return False
+
+
 def looks_like_school_scope_message(message: str | None) -> bool:
     normalized = normalize_ingress_text(message)
     if not normalized:
         return False
+    if looks_like_high_confidence_public_school_faq(message):
+        return True
     if any(_contains_term(normalized, term) for term in _SCHOOL_SCOPE_TERMS):
         return True
     has_school_public_facility = any(

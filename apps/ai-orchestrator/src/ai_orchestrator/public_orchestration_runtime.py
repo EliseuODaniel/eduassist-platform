@@ -11,12 +11,34 @@ from .conversation_focus_runtime import (
     _recent_trace_focus,
     _recent_workflow_focus,
 )
-from .public_act_rules_runtime import _matched_public_act_rules, _prioritize_public_act_rules
+from eduassist_semantic_ingress import looks_like_high_confidence_public_school_faq
+from .public_act_rules_runtime import (
+    _is_service_routing_query,
+    _is_public_capacity_query,
+    _is_public_careers_query,
+    _is_public_curriculum_query,
+    _is_public_document_submission_query,
+    _is_public_feature_query,
+    _is_public_policy_query,
+    _is_public_pricing_navigation_query,
+    _is_public_timeline_lifecycle_query,
+    _is_public_timeline_query,
+    _is_leadership_specific_query,
+    _matches_public_contact_rule,
+    _matches_public_highlight_rule,
+    _matches_public_location_rule,
+    _matched_public_act_rules,
+    _prioritize_public_act_rules,
+)
 
 
 LOCAL_EXTRACTED_NAMES = {
     '_intent_analysis_impl',
     '_looks_like_family_admin_aggregate_query',
+    '_is_positive_requirement_query',
+    '_is_public_pricing_context_follow_up',
+    '_is_public_curriculum_context_follow_up',
+    '_is_public_teacher_directory_follow_up',
 }
 
 
@@ -53,6 +75,46 @@ def _message_matches_term(message: str, term: str) -> bool:
 
 def _normalize_text(text: str) -> str:
     return _intent_analysis_impl('_normalize_text')(text)
+
+
+def _is_positive_requirement_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_positive_requirement_query')(message)
+
+
+def _is_public_pricing_context_follow_up(
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> bool:
+    return _intent_analysis_impl('_is_public_pricing_context_follow_up')(
+        message,
+        conversation_context=conversation_context,
+    )
+
+
+def _is_public_curriculum_context_follow_up(
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> bool:
+    return _intent_analysis_impl('_is_public_curriculum_context_follow_up')(
+        message,
+        conversation_context=conversation_context,
+    )
+
+
+def _is_public_teacher_directory_follow_up(
+    message: str,
+    conversation_context: dict[str, Any] | None = None,
+) -> bool:
+    from .public_profile_runtime import (
+        _is_public_teacher_directory_follow_up as _impl,
+    )
+
+    return _impl(
+        message,
+        conversation_context=conversation_context,
+    )
 
 
 def _looks_like_workflow_resume_follow_up(message: str) -> bool:
@@ -538,6 +600,8 @@ def _explicit_protected_domain_hint(
     conversation_context: dict[str, Any] | None = None,
 ) -> QueryDomain | None:
     _refresh_runtime_core_namespace()
+    if looks_like_high_confidence_public_school_faq(message):
+        return None
     normalized = _normalize_text(message)
     if _looks_like_family_admin_aggregate_query(message):
         return QueryDomain.institution
@@ -1073,6 +1137,77 @@ def _apply_public_support_rescue(
     return True
 
 
+def _is_high_confidence_public_profile_query(
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+    school_profile: dict[str, Any] | None = None,
+) -> bool:
+    if match_public_canonical_lane(message) is not None:
+        return True
+    explicit_public_signal = any(
+        matcher(message)
+        for matcher in (
+            _is_service_routing_query,
+            _matches_public_contact_rule,
+            _matches_public_location_rule,
+            _is_public_document_submission_query,
+            _is_public_policy_query,
+            _is_public_timeline_query,
+            _is_public_timeline_lifecycle_query,
+            _is_public_capacity_query,
+            _is_public_careers_query,
+            _is_public_feature_query,
+            _is_leadership_specific_query,
+            _is_public_curriculum_query,
+            _is_public_pricing_navigation_query,
+            _is_positive_requirement_query,
+        )
+    )
+    if explicit_public_signal:
+        return True
+    contextual_public_signal = _is_public_pricing_context_follow_up(
+        message,
+        conversation_context=conversation_context,
+    ) or _is_public_curriculum_context_follow_up(
+        message,
+        conversation_context=conversation_context,
+    ) or _is_public_teacher_directory_follow_up(
+        message,
+        conversation_context,
+    )
+    if contextual_public_signal:
+        return True
+    matched_rules = _matched_public_act_rules(
+        message,
+        conversation_context=conversation_context,
+    )
+    if matched_rules:
+        return True
+    if not looks_like_school_domain_request(message):
+        return False
+    if isinstance(school_profile, dict):
+        if _base_profile_supports_fast_public_answer(
+            message=message,
+            profile=school_profile,
+        ):
+            return True
+        contextual_message = _contextualize_public_followup_message(
+            request_message=message,
+            analysis_message=message,
+            conversation_context=conversation_context,
+        )
+        if (
+            contextual_message.strip() != str(message).strip()
+            and _base_profile_supports_fast_public_answer(
+                message=contextual_message,
+                profile=school_profile,
+            )
+        ):
+            return True
+    return False
+
+
 def _apply_authenticated_public_profile_rescue(
     *,
     preview: Any,
@@ -1089,13 +1224,10 @@ def _apply_authenticated_public_profile_rescue(
         OrchestrationMode.clarify,
     }:
         return False
-    explicit_public_signal = (
-        _is_public_pricing_navigation_query(message)
-        or _is_public_pricing_context_follow_up(message, conversation_context=conversation_context)
-        or _is_public_curriculum_query(message)
-        or _is_public_curriculum_context_follow_up(
-            message, conversation_context=conversation_context
-        )
+    explicit_public_signal = _is_high_confidence_public_profile_query(
+        message,
+        conversation_context=conversation_context,
+        school_profile=school_profile,
     )
     if not explicit_public_signal:
         return False

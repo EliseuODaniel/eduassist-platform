@@ -19,11 +19,13 @@ from .conversation_focus_runtime import _recent_message_lines
 from .conversation_focus_runtime import _recent_trace_focus
 from .conversation_focus_runtime import _is_greeting_only
 from .intent_analysis_runtime import (
+    _compose_required_documents_answer,
     _contains_any,
     _is_assistant_identity_query,
     _is_capability_query,
     _is_direct_service_routing_bundle_query,
     _is_follow_up_query,
+    _is_positive_requirement_query,
     _is_public_pricing_navigation_query,
     _is_service_routing_query,
     _message_matches_term,
@@ -499,7 +501,7 @@ def _compose_public_feature_answer(
     from .public_profile_routes_runtime import _compose_public_feature_answer_impl as _impl
 
     return _impl(
-        profile,
+        profile=profile,
         original_message=original_message,
         analysis_message=analysis_message,
         conversation_context=conversation_context,
@@ -967,6 +969,47 @@ def _is_public_operating_hours_query(message: str) -> bool:
     )
 
 
+def _mentions_school_year_start_topic(message: str) -> bool:
+    normalized = _normalize_text(message)
+    return any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'iniciam as aulas',
+            'quando iniciam as aulas',
+            'quando comecam as aulas',
+            'quando começam as aulas',
+            'quando inicia o ano letivo',
+            'inicio das aulas',
+            'início das aulas',
+            'comeco das aulas',
+            'começo das aulas',
+            'ano letivo',
+        }
+    )
+
+
+def _is_explicit_school_year_start_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if not _mentions_school_year_start_topic(message):
+        return False
+    return any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'quando',
+            'qual data',
+            'que dia',
+            'quando comeca',
+            'quando começa',
+            'quando inicia',
+            'quando iniciam',
+            'inicio',
+            'início',
+            'comeco',
+            'começo',
+        }
+    )
+
+
 def _is_public_timeline_query(message: str) -> bool:
     normalized = _normalize_text(message)
     if _is_public_timeline_lifecycle_query(message):
@@ -974,6 +1017,8 @@ def _is_public_timeline_query(message: str) -> bool:
     if _is_public_travel_planning_query(message):
         return True
     if _is_public_year_three_phase_query(message):
+        return True
+    if _mentions_school_year_start_topic(message):
         return True
     asks_timing = any(
         _message_matches_term(normalized, term)
@@ -983,6 +1028,8 @@ def _is_public_timeline_query(message: str) -> bool:
             'que dia',
             'quando comeca',
             'quando começa',
+            'quando inicia',
+            'quando iniciam',
             'comeco',
             'começo',
             'quando fecha',
@@ -993,6 +1040,8 @@ def _is_public_timeline_query(message: str) -> bool:
             'começo das aulas',
             'comecam as aulas',
             'começam as aulas',
+            'iniciam as aulas',
+            'início das aulas',
         }
     )
     if not asks_timing:
@@ -1009,6 +1058,7 @@ def _is_public_timeline_query(message: str) -> bool:
             'começo das aulas',
             'comecam as aulas',
             'começam as aulas',
+            'iniciam as aulas',
             'ano letivo',
         }
     )
@@ -1855,6 +1905,23 @@ def _compose_scope_boundary_answer(
 
 def _is_public_document_submission_query(message: str) -> bool:
     normalized = _normalize_text(message)
+    if any(
+        phrase in normalized
+        for phrase in (
+            'quais documentos preciso para matricula',
+            'quais documentos preciso para matrícula',
+            'documentos para matricula',
+            'documentos para matrícula',
+            'documentos exigidos para matricula',
+            'documentos exigidos para matrícula',
+        )
+    ):
+        return True
+    if _is_positive_requirement_query(message) and any(
+        _message_matches_term(normalized, term)
+        for term in {'documento', 'documentos', 'matricula', 'matrícula', 'cadastro'}
+    ):
+        return True
     if any(_message_matches_term(normalized, term) for term in PUBLIC_DOCUMENT_SUBMISSION_TERMS):
         return True
     document_terms = {'documento', 'documentos', 'matricula', 'matrícula', 'cadastro'}
@@ -3422,7 +3489,21 @@ def _resolve_public_profile_act(context: PublicProfileContext) -> str:
         return 'acknowledgement'
     if _looks_like_public_documentary_open_query(context.source_message):
         return 'canonical_fact'
+    matched_rule = next(
+        iter(
+            _prioritize_public_act_rules(
+                context.source_message,
+                _matched_public_act_rules(
+                    context.source_message,
+                    conversation_context=context.conversation_context,
+                ),
+            )
+        ),
+        None,
+    ) or _match_public_act_rule(context.source_message)
     if context.semantic_act and context.semantic_act != 'canonical_fact':
+        if matched_rule is not None and matched_rule.name != context.semantic_act:
+            return matched_rule.name
         if context.semantic_act in {
             'comparative',
             'highlight',
@@ -3430,7 +3511,6 @@ def _resolve_public_profile_act(context: PublicProfileContext) -> str:
         } and _looks_like_public_documentary_open_query(context.source_message):
             return 'canonical_fact'
         return context.semantic_act
-    matched_rule = _match_public_act_rule(context.source_message)
     if matched_rule is not None:
         if matched_rule.name in {
             'comparative',
@@ -3516,6 +3596,15 @@ def _handle_public_capabilities(context: PublicProfileContext) -> str:
 
 
 def _handle_public_document_submission(context: PublicProfileContext) -> str:
+    normalized = _normalize_text(context.source_message)
+    if _is_positive_requirement_query(context.source_message) or (
+        any(_message_matches_term(normalized, term) for term in {'documento', 'documentos'})
+        and any(
+            _message_matches_term(normalized, term)
+            for term in {'matricula', 'matrícula', 'exigido', 'exigidos'}
+        )
+    ):
+        return _compose_required_documents_answer(context.profile)
     return _compose_public_document_submission_answer(
         context.profile, message=context.source_message
     )
@@ -4427,20 +4516,6 @@ def _candidate_public_multi_intent_acts(
     conversation_context: dict[str, Any] | None,
 ) -> tuple[str, ...]:
     acts: list[str] = []
-    if semantic_plan is not None:
-        acts.extend(
-            act
-            for act in (semantic_plan.conversation_act, *semantic_plan.secondary_acts)
-            if isinstance(act, str) and act.strip()
-        )
-    elif _has_public_multi_intent_signal(message):
-        matched_rules = _prioritize_public_act_rules(
-            message,
-            _matched_public_act_rules(message, conversation_context=conversation_context),
-        )
-        acts.extend(
-            rule.name for rule in matched_rules[:3] if isinstance(rule.name, str) and rule.name
-        )
 
     explicit_detectors: tuple[tuple[str, Callable[[str], bool]], ...] = (
         (
@@ -4457,9 +4532,34 @@ def _candidate_public_multi_intent_acts(
         ('timeline', _is_public_timeline_query),
         ('calendar_events', _is_public_calendar_event_query),
     )
+    explicit_acts: list[str] = []
     for act, matcher in explicit_detectors:
-        if matcher(message) and act not in acts:
-            acts.append(act)
+        if matcher(message) and act not in explicit_acts:
+            explicit_acts.append(act)
+
+    has_multi_intent_signal = _has_public_multi_intent_signal(message)
+    if semantic_plan is not None:
+        semantic_acts = [
+            act
+            for act in (semantic_plan.conversation_act, *semantic_plan.secondary_acts)
+            if isinstance(act, str) and act.strip()
+        ]
+        if has_multi_intent_signal:
+            acts.extend(semantic_acts)
+        elif not explicit_acts:
+            acts.extend(semantic_acts[:1])
+        elif semantic_plan.conversation_act in explicit_acts:
+            acts.append(semantic_plan.conversation_act)
+    elif has_multi_intent_signal:
+        matched_rules = _prioritize_public_act_rules(
+            message,
+            _matched_public_act_rules(message, conversation_context=conversation_context),
+        )
+        acts.extend(
+            rule.name for rule in matched_rules[:3] if isinstance(rule.name, str) and rule.name
+        )
+
+    acts.extend(act for act in explicit_acts if act not in acts)
 
     ordered: list[str] = []
     seen: set[str] = set()
@@ -4828,6 +4928,15 @@ def _compose_public_profile_answer(
         conversation_context=conversation_context,
         semantic_plan=semantic_plan,
     )
+    normalized_source_message = _normalize_text(context.source_message)
+    if _is_positive_requirement_query(context.source_message) or (
+        any(_message_matches_term(normalized_source_message, term) for term in {'documento', 'documentos'})
+        and any(
+            _message_matches_term(normalized_source_message, term)
+            for term in {'matricula', 'matrícula', 'exigido', 'exigidos'}
+        )
+    ):
+        return _localize_pt_br_surface_labels(_compose_required_documents_answer(profile))
     registry = _public_profile_handler_registry()
     if semantic_plan is not None and semantic_plan.conversation_act in {
         'greeting',
@@ -4866,21 +4975,14 @@ def _compose_public_profile_answer(
     )
     if multi_intent_answer:
         return _localize_pt_br_surface_labels(multi_intent_answer)
-    normalized_source_message = _normalize_text(context.source_message)
     if (
         (
             _is_follow_up_query(context.source_message)
             or normalized_source_message.startswith('depois disso')
         )
-        and any(
-            _message_matches_term(normalized_source_message, term)
-            for term in {
-                'inicio das aulas',
-                'início das aulas',
-                'comecam as aulas',
-                'começam as aulas',
-                'aulas',
-            }
+        and (
+            _mentions_school_year_start_topic(context.source_message)
+            or _message_matches_term(normalized_source_message, 'aulas')
         )
         and (
             normalized_source_message.startswith('depois disso')

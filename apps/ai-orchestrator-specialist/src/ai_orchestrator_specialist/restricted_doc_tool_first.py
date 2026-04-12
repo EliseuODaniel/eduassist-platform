@@ -5,9 +5,36 @@ from typing import TYPE_CHECKING
 from .answer_payloads import access_tier_for_domain as _access_tier_for_domain, default_suggested_replies as _default_suggested_replies
 from .models import MessageEvidencePack, MessageEvidenceSupport, MessageIntentClassification, SupervisorAnswerPayload
 from .public_doc_knowledge import compose_public_health_second_call
+from .public_query_patterns import _looks_like_health_second_call_query
+from .restricted_doc_matching import _looks_like_internal_document_query
 
 if TYPE_CHECKING:
     from .runtime import SupervisorRunContext
+
+
+def _can_read_restricted_documents(user: object) -> bool:
+    scopes = {
+        str(item).strip().lower()
+        for item in getattr(user, "scopes", []) or []
+        if str(item).strip()
+    }
+    role = str(getattr(getattr(user, "role", None), "value", getattr(user, "role", "")) or "").strip().lower()
+    return bool(getattr(user, "authenticated", False)) and (
+        "documents:private:read" in scopes
+        or "documents:restricted:read" in scopes
+        or role in {"staff", "teacher"}
+    )
+
+
+def _internal_doc_domain_hint(message: str) -> str:
+    normalized = str(message or "").casefold()
+    if any(term in normalized for term in ("financeiro", "quitacao", "quitação", "negociacao", "negociação", "pagamento")):
+        return "finance"
+    if any(term in normalized for term in ("professor", "segunda chamada", "saude", "saúde", "frequencia", "frequência")):
+        return "academic"
+    if any(term in normalized for term in ("transferencia", "transferência", "secretaria", "documento")):
+        return "workflow"
+    return "institution"
 
 
 async def maybe_restricted_document_tool_first_answer(
@@ -15,19 +42,6 @@ async def maybe_restricted_document_tool_first_answer(
     *,
     profile: dict[str, object],
 ) -> SupervisorAnswerPayload | None:
-    from .runtime import (
-        _can_read_restricted_documents,
-        _citation_from_retrieval_hit,
-        _compose_internal_doc_grounded_answer,
-        _compose_internal_doc_no_match_answer,
-        _internal_doc_domain_hint,
-        _looks_like_health_second_call_query,
-        _looks_like_internal_document_query,
-        _orchestrator_retrieval_search,
-        _safe_excerpt,
-        _select_relevant_internal_doc_hits,
-    )
-
     if not _looks_like_internal_document_query(ctx.request.message):
         return None
 
@@ -81,6 +95,15 @@ async def maybe_restricted_document_tool_first_answer(
             graph_path=["specialist_supervisor", "tool_first", "restricted_document_denied"],
             reason="specialist_supervisor_tool_first:restricted_document_denied",
         )
+
+    from .runtime import (
+        _citation_from_retrieval_hit,
+        _compose_internal_doc_grounded_answer,
+        _compose_internal_doc_no_match_answer,
+        _orchestrator_retrieval_search,
+        _safe_excerpt,
+        _select_relevant_internal_doc_hits,
+    )
 
     try:
         retrieval_payload = await _orchestrator_retrieval_search(

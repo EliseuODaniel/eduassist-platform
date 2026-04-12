@@ -180,7 +180,7 @@ def test_specialist_llm_profile_switches_to_local_gemma() -> None:
     assert settings.openai_api_mode == "chat_completions"
     assert settings.openai_api_key == "local-llm"
     assert settings.openai_base_url == "http://local-llm-gemma4e4b:8080/v1"
-    assert settings.openai_model == "ggml-org/gemma-4-E4B-it-GGUF:Q4_K_M"
+    assert settings.openai_model == "ggml-org_gemma-4-E4B-it-GGUF_gemma-4-e4b-it-Q4_K_M.gguf"
     assert settings.openai_fast_model == settings.openai_model
     assert settings.openai_reasoning_model == settings.openai_model
 

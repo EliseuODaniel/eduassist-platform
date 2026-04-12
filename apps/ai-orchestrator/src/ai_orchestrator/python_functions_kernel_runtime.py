@@ -231,6 +231,15 @@ async def _maybe_contextual_public_direct_answer(
 ) -> str | None:
     if rt._llm_forced_mode_enabled(settings=settings, request=request):
         return None
+    high_confidence_public_query = rt._is_high_confidence_public_profile_query(
+        request.message,
+        conversation_context=conversation_context,
+        school_profile=school_profile,
+    ) or rt._is_high_confidence_public_profile_query(
+        analysis_message,
+        conversation_context=conversation_context,
+        school_profile=school_profile,
+    )
     public_boundary_answer = rt._compose_contextual_public_boundary_answer(
         message=request.message,
         conversation_context=conversation_context,
@@ -245,7 +254,7 @@ async def _maybe_contextual_public_direct_answer(
     )
     if timeline_followup_answer:
         return timeline_followup_answer
-    analysis_canonical_lane = match_public_canonical_lane(analysis_message)
+    analysis_canonical_lane = match_public_canonical_lane(request.message) or match_public_canonical_lane(analysis_message)
     rewritten_public_followup = analysis_message.strip() != str(request.message).strip() and (
         analysis_canonical_lane is not None or rt._is_public_timeline_query(analysis_message)
     )
@@ -253,12 +262,14 @@ async def _maybe_contextual_public_direct_answer(
         preview.classification.access_tier is AccessTier.public
         or not request.user.authenticated
         or rewritten_public_followup
+        or high_confidence_public_query
     )
     if not is_public_context:
         return None
     if not (
         looks_like_school_domain_request(request.message)
         or looks_like_school_domain_request(analysis_message)
+        or high_confidence_public_query
     ):
         return None
 
@@ -286,8 +297,10 @@ async def _maybe_contextual_public_direct_answer(
         conversation_context=conversation_context,
     ):
         contextual_public_message = request.message
+    fast_public_message = request.message if high_confidence_public_query else contextual_public_message
     prefer_fast_public_direct = (
         rewritten_public_followup
+        or high_confidence_public_query
         or rt._is_service_routing_query(request.message)
         or rt._has_public_multi_intent_signal(request.message)
         or rt._is_public_timeline_query(request.message)
@@ -298,12 +311,12 @@ async def _maybe_contextual_public_direct_answer(
     if (
         prefer_fast_public_direct
         and rt._base_profile_supports_fast_public_answer(
-            message=contextual_public_message,
+            message=fast_public_message,
             profile=school_profile,
         )
     ):
         fast_public_answer = rt._try_public_channel_fast_answer(
-            message=contextual_public_message,
+            message=fast_public_message,
             profile=school_profile,
         )
         if fast_public_answer:
@@ -367,6 +380,11 @@ async def _maybe_contextual_public_direct_answer(
     library_hours_followup_terms = {
         'ate que horas funciona',
         'até que horas funciona',
+        'ate que horas fecha',
+        'até que horas fecha',
+        'que horas fecha',
+        'fecha',
+        'encerra',
         'horario',
         'horário',
         'funciona',
@@ -398,8 +416,13 @@ async def _maybe_contextual_public_direct_answer(
                         'nome da biblioteca',
                         'ate que horas funciona',
                         'até que horas funciona',
+                        'ate que horas fecha',
+                        'até que horas fecha',
+                        'que horas fecha',
                         'horario da biblioteca',
                         'horário da biblioteca',
+                        'fecha',
+                        'encerra',
                         'funciona',
                     }
                 )
@@ -790,11 +813,11 @@ async def execute_kernel_plan(
             and can_read_restricted_documents(request.user)
         )
         canonical_lane = (
-            match_public_canonical_lane(analysis_message)
+            match_public_canonical_lane(request.message)
             if preview.classification.access_tier is AccessTier.public
             else None
         ) or (
-            match_public_canonical_lane(request.message)
+            match_public_canonical_lane(analysis_message)
             if preview.classification.access_tier is AccessTier.public
             else None
         )

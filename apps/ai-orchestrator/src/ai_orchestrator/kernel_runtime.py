@@ -236,7 +236,7 @@ async def _maybe_contextual_public_direct_answer(
             conversation_context=conversation_context,
         )
 
-    canonical_lane = match_public_canonical_lane(analysis_message) or match_public_canonical_lane(request.message)
+    canonical_lane = match_public_canonical_lane(request.message) or match_public_canonical_lane(analysis_message)
     if canonical_lane:
         canonical_answer = compose_public_canonical_lane_answer(canonical_lane, profile=school_profile)
         if canonical_answer:
@@ -697,11 +697,11 @@ async def execute_kernel_plan(
             and can_read_restricted_documents(request.user)
         )
         canonical_lane = (
-            match_public_canonical_lane(analysis_message)
+            match_public_canonical_lane(request.message)
             if preview.classification.access_tier is AccessTier.public
             else None
         ) or (
-            match_public_canonical_lane(request.message)
+            match_public_canonical_lane(analysis_message)
             if preview.classification.access_tier is AccessTier.public
             else None
         )

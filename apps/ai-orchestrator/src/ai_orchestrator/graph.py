@@ -20,6 +20,7 @@ from .models import (
     UserRole,
 )
 from .public_doc_knowledge import match_public_canonical_lane
+from .request_intent_guardrails import looks_like_high_confidence_public_school_faq
 
 
 class OrchestrationState(TypedDict, total=False):
@@ -1710,6 +1711,22 @@ def _is_public_school_profile_request(message: str) -> bool:
 
 def _is_public_document_submission_query(message: str) -> bool:
     lowered = _normalize_text(message)
+    if (_message_matches_term(lowered, 'matricula') or _message_matches_term(lowered, 'matrícula')) and any(
+        _message_matches_term(lowered, term)
+        for term in {
+            'quais documentos preciso',
+            'documentos exigidos',
+            'documentos sao exigidos',
+            'documentos são exigidos',
+            'documentos necessarios',
+            'documentos necessários',
+            'preciso para matricula',
+            'preciso para a matricula',
+            'preciso para matrícula',
+            'preciso para a matrícula',
+        }
+    ):
+        return True
     explicit_terms = {
         'documentos online',
         'documento online',
@@ -1837,6 +1854,8 @@ def _is_public_attribute_followup_query(message: str) -> bool:
 
 def _is_authenticated_admin_query(message: str, *, authenticated: bool) -> bool:
     if not authenticated:
+        return False
+    if looks_like_high_confidence_public_school_faq(message):
         return False
     lowered = _normalize_text(message)
     if _is_public_contact_phrase_query(lowered) or _is_public_contact_channel_query(lowered):

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable
+
+from eduassist_semantic_ingress import looks_like_high_confidence_public_school_faq
 
 from .answer_payloads import (
     access_tier_for_domain as _access_tier_for_domain,
@@ -22,7 +24,7 @@ from .public_query_patterns import (
 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ToolFirstProtectedDeps:
     normalize_text: Callable[[str | None], str]
     contains_any: Callable[[str, set[str]], bool]
@@ -35,6 +37,9 @@ class ToolFirstProtectedDeps:
     linked_students: Callable[..., list[dict[str, Any]]]
     compose_finance_installments_answer: Callable[[dict[str, Any]], str]
     compose_finance_aggregate_answer: Callable[[list[dict[str, Any]]], str]
+    compose_family_next_due_answer: Callable[[list[dict[str, Any]]], str | None] = field(
+        default=lambda _summaries: None
+    )
     looks_like_academic_risk_followup: Callable[[str], bool]
     looks_like_family_academic_aggregate_query: Callable[[str], bool]
     looks_like_family_attendance_aggregate_query: Callable[[str], bool]
@@ -217,6 +222,9 @@ async def maybe_tool_first_protected_answer(
     memory: Any,
     deps: ToolFirstProtectedDeps,
 ) -> SupervisorAnswerPayload | None:
+    if looks_like_high_confidence_public_school_faq(ctx.request.message):
+        return None
+
     def _compose_family_upcoming_answer(rows: list[tuple[str, dict[str, Any], dict[str, Any]]]) -> str:
         lines = ["Proximas avaliacoes das contas vinculadas:"]
         for student_name, academic_summary, upcoming_summary in rows:
@@ -247,6 +255,16 @@ async def maybe_tool_first_protected_answer(
         normalized=normalized,
         memory=memory,
         deps=deps,
+    )
+    wants_family_next_due = any(
+        term in normalized
+        for term in {
+            "proximo vencimento",
+            "próximo vencimento",
+            "proxima fatura",
+            "próxima fatura",
+            "vence primeiro",
+        }
     )
     if ctx.request.user.authenticated and not deps.looks_like_admin_finance_combo_query(ctx.request.message) and (
         deps.contains_any(normalized, finance_terms)
@@ -331,6 +349,27 @@ async def maybe_tool_first_protected_answer(
             if isinstance(summary, dict):
                 summaries.append(summary)
         if summaries:
+            if wants_family_next_due:
+                next_due_answer = deps.compose_family_next_due_answer(summaries)
+                if next_due_answer:
+                    return _build_protected_tool_payload(
+                        message_text=next_due_answer,
+                        domain="finance",
+                        access_tier=_access_tier_for_domain("finance", True),
+                        confidence=0.99,
+                        reason="specialist_supervisor_tool_first:financial_next_due_aggregate",
+                        summary="Proximo vencimento agregado resolvido a partir das contas vinculadas.",
+                        supports=[
+                            MessageEvidenceSupport(
+                                kind="finance_summary",
+                                label=str(summary.get("student_name") or "Aluno"),
+                                detail=f"em aberto {summary.get('open_invoice_count', 0)} · vencidas {summary.get('overdue_invoice_count', 0)}",
+                            )
+                            for summary in summaries[:4]
+                        ],
+                        graph_leaf="financial_next_due_aggregate",
+                        suggested_domain="finance",
+                    )
             return _build_protected_tool_payload(
                 message_text=deps.compose_finance_aggregate_answer(summaries),
                 domain="finance",

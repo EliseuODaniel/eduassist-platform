@@ -119,6 +119,7 @@ from .protected_answer_helpers import (
     build_academic_student_selection_clarify as _build_academic_student_selection_clarify_module,
     build_third_party_student_data_denial as _build_third_party_student_data_denial_module,
     compose_academic_aggregate_answer as _compose_academic_aggregate_answer_module,
+    compose_family_next_due_answer as _compose_family_next_due_answer_module,
     compose_finance_aggregate_answer as _compose_finance_aggregate_answer_module,
     compose_finance_installments_answer as _compose_finance_installments_answer_module,
     compose_academic_risk_answer as _compose_academic_risk_answer_module,
@@ -1280,6 +1281,10 @@ def _compose_finance_aggregate_answer(summaries: list[dict[str, Any]]) -> str:
     return _compose_finance_aggregate_answer_module(summaries, deps=_protected_answer_deps())
 
 
+def _compose_family_next_due_answer(summaries: list[dict[str, Any]]) -> str | None:
+    return _compose_family_next_due_answer_module(summaries, deps=_protected_answer_deps())
+
+
 def _compose_academic_aggregate_answer(summaries: list[dict[str, Any]]) -> str:
     return _compose_academic_aggregate_answer_module(summaries, deps=_protected_answer_deps())
 
@@ -1320,6 +1325,7 @@ def _resolved_intent_deps():
         compose_academic_snapshot_lines=_compose_academic_snapshot_lines,
         compose_academic_aggregate_answer=_compose_academic_aggregate_answer,
         compose_finance_aggregate_answer=_compose_finance_aggregate_answer,
+        compose_family_next_due_answer=_compose_family_next_due_answer,
         compose_finance_installments_answer=_compose_finance_installments_answer,
         linked_students=_linked_students,
         safe_excerpt=_safe_excerpt,
@@ -1498,6 +1504,7 @@ def _tool_first_structured_deps():
             linked_students=_linked_students,
             compose_finance_installments_answer=_compose_finance_installments_answer,
             compose_finance_aggregate_answer=_compose_finance_aggregate_answer,
+            compose_family_next_due_answer=_compose_family_next_due_answer,
             looks_like_academic_risk_followup=_looks_like_academic_risk_followup,
             looks_like_family_academic_aggregate_query=_looks_like_family_academic_aggregate_query,
             looks_like_family_attendance_aggregate_query=_looks_like_family_attendance_aggregate_query,
@@ -1645,6 +1652,8 @@ def _operational_memory_deps() -> OperationalMemoryDeps:
         compose_admin_status_answer=_compose_admin_status_answer,
         compose_named_grade_answer=_compose_named_grade_answer,
         compose_finance_installments_answer=_compose_finance_installments_answer,
+        compose_family_next_due_answer=_compose_family_next_due_answer,
+        linked_students=_linked_students,
     )
 
 

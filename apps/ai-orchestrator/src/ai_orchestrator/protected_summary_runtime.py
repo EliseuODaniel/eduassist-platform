@@ -19,6 +19,12 @@ def _select_next_due_invoice(*args, **kwargs):
     return _impl(*args, **kwargs)
 
 
+def _format_public_date_text(*args, **kwargs):
+    from .public_profile_runtime import _format_public_date_text as _impl
+
+    return _impl(*args, **kwargs)
+
+
 def _export_runtime_core_namespace() -> None:
     for name, value in vars(_runtime_core).items():
         if name.startswith('__'):
@@ -391,6 +397,37 @@ def _compose_finance_aggregate_answer(summaries: list[dict[str, Any]]) -> str:
     return '\n'.join(lines)
 
 
+def _compose_family_next_due_answer(summaries: list[dict[str, Any]]) -> str | None:
+    candidates: list[tuple[str, dict[str, Any]]] = []
+    for summary in summaries:
+        if not isinstance(summary, dict):
+            continue
+        next_invoice = _select_next_due_invoice(summary, status_filter=None)
+        if not isinstance(next_invoice, dict):
+            continue
+        student_name = str(summary.get('student_name') or 'Aluno').strip() or 'Aluno'
+        candidates.append((student_name, next_invoice))
+    if not candidates:
+        return None
+    candidates.sort(
+        key=lambda item: (
+            str(item[1].get('status', '')).lower() not in {'open', 'overdue'},
+            str(item[1].get('due_date', '') or '9999-99-99'),
+            str(item[0]).lower(),
+        )
+    )
+    student_name, invoice = candidates[0]
+    reference_month = str(invoice.get('reference_month', '') or '---').strip()
+    due_date = _format_public_date_text(invoice.get('due_date'))
+    amount_due = str(invoice.get('amount_due', '0.00')).strip() or '0.00'
+    status_label = _humanize_invoice_status(str(invoice.get('status', 'desconhecido')))
+    return (
+        'O proximo vencimento mais imediato no recorte da familia hoje '
+        f'e de {student_name}, na referencia {reference_month}, com vencimento em {due_date} '
+        f'e valor {amount_due}. Status atual: {status_label}.'
+    )
+
+
 def _compose_admin_finance_combined_answer(
     *,
     admin_summary: dict[str, Any] | None,
@@ -543,6 +580,18 @@ def _wants_attendance_timeline(message: str) -> bool:
 def _looks_like_family_finance_aggregate_query(message: str) -> bool:
     normalized = _normalize_text(message)
     if any(_message_matches_term(normalized, term) for term in FAMILY_FINANCE_AGGREGATE_TERMS):
+        return True
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'meu financeiro',
+            'quero ver meu financeiro',
+            'quero ver o meu financeiro',
+            'me mostra meu financeiro',
+            'mostrar meu financeiro',
+            'ver meu financeiro',
+        }
+    ):
         return True
     if any(
         _message_matches_term(normalized, term)
@@ -991,5 +1040,3 @@ def _administrative_checklist_lines(summary: dict[str, Any]) -> list[str]:
             line += f'. {notes}'
         lines.append(line)
     return lines or ['- Nao encontrei itens administrativos detalhados para este cadastro.']
-
-

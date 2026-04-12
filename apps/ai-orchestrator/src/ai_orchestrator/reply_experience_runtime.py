@@ -16,6 +16,15 @@ def _export_runtime_core_namespace() -> None:
 _export_runtime_core_namespace()
 
 
+def _student_scope_helpers() -> tuple[Any, Any]:
+    from .student_scope_runtime import (
+        _recent_student_from_context as recent_student_from_context,
+    )
+    from .student_scope_runtime import _select_linked_student as select_linked_student
+
+    return select_linked_student, recent_student_from_context
+
+
 def _workflow_contextual_suggested_replies(
     *,
     preview: Any,
@@ -64,16 +73,17 @@ def _recent_protected_student_name(
     message: str | None = None,
     conversation_context: dict[str, Any] | None,
 ) -> str | None:
+    select_linked_student, recent_student_from_context = _student_scope_helpers()
     student: dict[str, Any] | None = None
     if message:
-        student, _clarification = _select_linked_student(
+        student, _clarification = select_linked_student(
             actor,
             message,
             capability=capability,
             conversation_context=conversation_context,
         )
     if student is None:
-        student = _recent_student_from_context(
+        student = recent_student_from_context(
             actor,
             capability=capability,
             conversation_context=conversation_context,

@@ -300,12 +300,21 @@ async def _public_compound(state: LangGraphMessageState) -> LangGraphMessageStat
             )
         )
     )
+    fast_public_message = (
+        request.message
+        if rt._is_high_confidence_public_profile_query(
+            request.message,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
+        else contextual_public_message
+    )
     if prefer_fast_public_direct and rt._base_profile_supports_fast_public_answer(
-        message=contextual_public_message,
+        message=fast_public_message,
         profile=school_profile,
     ):
         fast_public_answer = rt._try_public_channel_fast_answer(
-            message=contextual_public_message,
+            message=fast_public_message,
             profile=school_profile,
         )
         if fast_public_answer:
@@ -382,7 +391,7 @@ async def _public_compound(state: LangGraphMessageState) -> LangGraphMessageStat
             )
             return {'response': response}
 
-    canonical_lane = rt.match_public_canonical_lane(analysis_message) or rt.match_public_canonical_lane(request.message)
+    canonical_lane = rt.match_public_canonical_lane(request.message) or rt.match_public_canonical_lane(analysis_message)
     if canonical_lane:
         message_text = (
             rt.compose_public_conduct_policy_contextual_answer(request.message, profile=school_profile)

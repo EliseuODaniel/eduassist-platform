@@ -202,7 +202,7 @@ class Settings(BaseSettings):
             if not str(self.openai_base_url or "").strip() or self.openai_base_url == "https://api.openai.com/v1":
                 self.openai_base_url = "http://local-llm-gemma4e4b:8080/v1"
             if not str(self.openai_model or "").strip() or self.openai_model == "gpt-5.4":
-                self.openai_model = "ggml-org/gemma-4-E4B-it-GGUF:Q4_K_M"
+                self.openai_model = "ggml-org_gemma-4-E4B-it-GGUF_gemma-4-e4b-it-Q4_K_M.gguf"
             if not str(self.openai_fast_model or "").strip() or self.openai_fast_model == "gpt-5-mini":
                 self.openai_fast_model = self.openai_model
             if not str(self.openai_reasoning_model or "").strip() or self.openai_reasoning_model == "gpt-5.4":

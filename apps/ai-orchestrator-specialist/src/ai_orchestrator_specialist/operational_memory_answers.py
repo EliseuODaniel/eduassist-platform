@@ -46,6 +46,8 @@ class OperationalMemoryDeps:
     compose_admin_status_answer: Callable[[dict[str, Any]], str]
     compose_named_grade_answer: Callable[[dict[str, Any]], str]
     compose_finance_installments_answer: Callable[[dict[str, Any]], str]
+    compose_family_next_due_answer: Callable[[list[dict[str, Any]]], str | None] = lambda _summaries: None
+    linked_students: Callable[..., list[dict[str, Any]]] = lambda *_args, **_kwargs: []
 
 
 def _looks_like_meta_repair_question(message: str, *, deps: OperationalMemoryDeps) -> bool:
@@ -266,6 +268,7 @@ async def maybe_operational_memory_follow_up_answer(
     deps: OperationalMemoryDeps,
 ) -> SupervisorAnswerPayload | None:
     memory = ctx.operational_memory or OperationalMemory()
+    normalized_message = deps.normalize_text(ctx.request.message)
     if not ctx.request.user.authenticated:
         return None
     if deps.looks_like_public_doc_bundle_request(ctx.request.message):
@@ -274,6 +277,16 @@ async def maybe_operational_memory_follow_up_answer(
     student_pronoun_followup = deps.looks_like_student_pronoun_followup(ctx.request.message)
     other_student_followup = deps.looks_like_other_student_followup(ctx.request.message)
     explicit_student_hint = deps.student_hint_from_message(ctx.actor, ctx.request.message)
+    wants_family_next_due = any(
+        term in normalized_message
+        for term in {
+            "proximo vencimento",
+            "próximo vencimento",
+            "proxima fatura",
+            "próxima fatura",
+            "vence primeiro",
+        }
+    )
     if _looks_like_meta_repair_question(ctx.request.message, deps=deps):
         answer_text = _compose_meta_repair_answer(memory)
         if answer_text:
@@ -323,6 +336,43 @@ async def maybe_operational_memory_follow_up_answer(
 
     if ctx.operational_memory is None:
         return None
+
+    if (
+        memory.active_domain == "finance"
+        and not explicit_student_hint
+        and not student_name_only_followup
+        and wants_family_next_due
+    ):
+        summaries: list[dict[str, Any]] = []
+        for student in deps.linked_students(ctx.actor, capability="finance"):
+            payload = await deps.fetch_financial_summary_payload(
+                ctx,
+                student_name_hint=str(student.get("full_name") or ""),
+            )
+            summary = payload.get("summary") if isinstance(payload, dict) else None
+            if isinstance(summary, dict):
+                summaries.append(summary)
+        if summaries:
+            next_due_answer = deps.compose_family_next_due_answer(summaries)
+            if next_due_answer:
+                return _build_memory_payload(
+                    message_text=next_due_answer,
+                    domain="finance",
+                    access_tier=_access_tier_for_domain("finance", True),
+                    confidence=0.98,
+                    reason="specialist_supervisor_memory:financial_next_due_aggregate",
+                    summary="Follow-up financeiro curto resolvido pela memoria operacional da familia.",
+                    supports=[
+                        MessageEvidenceSupport(
+                            kind="finance_summary",
+                            label=str(summary.get("student_name") or "Aluno"),
+                            detail=f"em aberto {summary.get('open_invoice_count', 0)} · vencidas {summary.get('overdue_invoice_count', 0)}",
+                        )
+                        for summary in summaries[:4]
+                    ],
+                    graph_leaf="financial_next_due_aggregate",
+                    suggested_domain="finance",
+                )
 
     if student_name_only_followup and memory.pending_kind == "upcoming_assessments_student_selection":
         payload = await deps.fetch_upcoming_assessments_payload(ctx, student_name_hint=student_name_only_followup)

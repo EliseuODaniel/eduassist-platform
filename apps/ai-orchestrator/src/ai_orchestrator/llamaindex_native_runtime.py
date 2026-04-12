@@ -39,6 +39,7 @@ from llama_index.core.vector_stores.types import (
 )
 from pydantic import BaseModel, Field, PrivateAttr
 from qdrant_client import AsyncQdrantClient, QdrantClient, models
+from eduassist_semantic_ingress import looks_like_high_confidence_public_school_faq
 
 from . import runtime as rt
 from .llamaindex_kernel import KernelPlan, KernelReflection, KernelRunResult
@@ -2084,6 +2085,8 @@ def _should_use_llamaindex_protected_records_fast_path(
     conversation_context: dict[str, Any] | None,
 ) -> bool:
     if request.telegram_chat_id is None or actor is None:
+        return False
+    if looks_like_high_confidence_public_school_faq(request.message):
         return False
     if match_public_canonical_lane(request.message):
         return False

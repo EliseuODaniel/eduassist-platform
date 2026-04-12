@@ -7,7 +7,7 @@ from __future__ import annotations
 LOCAL_EXTRACTED_NAMES = {'_compose_public_feature_answer', '_try_public_channel_fast_answer', '_build_public_profile_context', '_handle_public_contacts', '_handle_public_timeline', '_compose_public_pricing_projection_answer'}
 
 from . import public_profile_runtime as _native
-from .intent_analysis_runtime import _detect_public_pricing_price_kind, _is_auth_guidance_query, _is_follow_up_query, _is_positive_requirement_query, _message_matches_term, _normalize_text, _should_reuse_public_pricing_slots
+from .intent_analysis_runtime import _compose_required_documents_answer, _detect_public_pricing_price_kind, _is_auth_guidance_query, _is_follow_up_query, _is_positive_requirement_query, _message_matches_term, _normalize_text, _should_reuse_public_pricing_slots
 from .public_act_rules_runtime import (
     _is_comparative_query,
     _is_cross_document_public_query,
@@ -21,6 +21,7 @@ from .public_act_rules_runtime import (
     _is_public_first_month_risks_query,
     _is_public_health_authorization_bridge_query,
     _is_public_health_second_call_query,
+    _is_public_operating_hours_query,
     _is_public_permanence_family_query,
     _is_public_policy_compare_query,
     _is_public_policy_query,
@@ -242,12 +243,13 @@ def _try_public_channel_fast_answer_impl(
         ) or compose_public_canonical_lane_answer(canonical_lane, profile=profile)
         if canonical_answer:
             return canonical_answer
-    multi_intent_answer = _compose_public_multi_intent_answer(
-        public_context,
-        semantic_plan=None,
-    )
-    if multi_intent_answer:
-        return multi_intent_answer
+    if _has_public_multi_intent_signal(message):
+        multi_intent_answer = _compose_public_multi_intent_answer(
+            public_context,
+            semantic_plan=None,
+        )
+        if multi_intent_answer:
+            return multi_intent_answer
     if (
         _requested_contact_channel(message) is not None or _matches_public_location_rule(message)
     ) and (
@@ -269,6 +271,25 @@ def _try_public_channel_fast_answer_impl(
         routing_answer = _handle_public_service_routing(public_context)
         if routing_answer:
             return routing_answer
+    if _is_positive_requirement_query(message) or (
+        any(_message_matches_term(normalized, term) for term in {'documento', 'documentos'})
+        and any(
+            _message_matches_term(normalized, term)
+            for term in {'matricula', 'matrícula', 'exigido', 'exigidos'}
+        )
+    ):
+        return _compose_required_documents_answer(profile)
+    if _is_public_document_submission_query(message) or (
+        any(
+            _message_matches_term(normalized, term)
+            for term in {'documentacao', 'documentação', 'documentos'}
+        )
+        and any(
+            _message_matches_term(normalized, term)
+            for term in {'mandar', 'enviar', 'envio', 'caminho'}
+        )
+    ):
+        return _compose_public_document_submission_answer(profile, message=message)
     if _is_public_pricing_navigation_query(message):
         pricing_answer = _handle_public_pricing(public_context)
         if pricing_answer:
@@ -277,6 +298,14 @@ def _try_public_channel_fast_answer_impl(
         timeline_answer = _handle_public_timeline(public_context)
         if timeline_answer:
             return timeline_answer
+    if _is_public_operating_hours_query(message):
+        operating_hours_answer = _handle_public_operating_hours(public_context)
+        if operating_hours_answer:
+            return operating_hours_answer
+    if _is_public_feature_query(message):
+        feature_answer = _handle_public_features(public_context)
+        if feature_answer:
+            return feature_answer
     if _is_public_timeline_lifecycle_query(message):
         lifecycle_answer = _compose_public_timeline_lifecycle_answer(profile)
         if lifecycle_answer:
@@ -337,14 +366,6 @@ def _try_public_channel_fast_answer_impl(
         highlight_answer = _handle_public_highlight(public_context)
         if highlight_answer:
             return highlight_answer
-    if _is_positive_requirement_query(message) or (
-        any(_message_matches_term(normalized, term) for term in {'documento', 'documentos'})
-        and any(
-            _message_matches_term(normalized, term)
-            for term in {'matricula', 'matrícula', 'exigido', 'exigidos'}
-        )
-    ):
-        return _compose_required_documents_answer(profile)
     if (
         any(
             _message_matches_term(normalized, term)
@@ -391,17 +412,6 @@ def _try_public_channel_fast_answer_impl(
         comparative_answer = _compose_public_comparative_answer(profile)
         if comparative_answer:
             return comparative_answer
-    if _is_public_document_submission_query(message) or (
-        any(
-            _message_matches_term(normalized, term)
-            for term in {'documentacao', 'documentação', 'documentos'}
-        )
-        and any(
-            _message_matches_term(normalized, term)
-            for term in {'mandar', 'enviar', 'envio', 'caminho'}
-        )
-    ):
-        return _compose_public_document_submission_answer(profile, message=message)
     if _message_matches_term(normalized, 'caixa postal'):
         primary_phone = _select_primary_contact_entry(
             profile,
@@ -809,15 +819,9 @@ def _handle_public_timeline_impl(context: PublicProfileContext) -> str:
     wants_enrollment = _message_matches_term(normalized, 'matricula') or _message_matches_term(
         normalized, 'matrícula'
     )
-    wants_school_year_start = any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'inicio das aulas',
-            'início das aulas',
-            'comecam as aulas',
-            'começam as aulas',
-            'ano letivo',
-        }
+    wants_school_year_start = _mentions_school_year_start_topic(context.source_message)
+    explicit_school_year_start_request = _is_explicit_school_year_start_query(
+        context.source_message
     )
     wants_family = any(
         _message_matches_term(normalized, term)
@@ -842,7 +846,7 @@ def _handle_public_timeline_impl(context: PublicProfileContext) -> str:
 
     chosen: dict[str, Any] | None = None
     recent_focus = _recent_conversation_focus(context.conversation_context) or {}
-    if _is_follow_up_query(context.source_message):
+    if _is_follow_up_query(context.source_message) and not explicit_school_year_start_request:
         if _recent_messages_mention(
             context.conversation_context,
             {'comecam as aulas', 'começam as aulas', 'aulas', 'ano letivo'},
@@ -858,19 +862,12 @@ def _handle_public_timeline_impl(context: PublicProfileContext) -> str:
             {'matricula', 'matrícula', 'pre cadastro', 'pré-cadastro'},
         ):
             chosen = _pick('admissions_opening')
-    if (
+    if explicit_school_year_start_request:
+        chosen = _pick('school_year_start')
+    elif (
         _is_follow_up_query(context.source_message)
         and str(recent_focus.get('kind', '') or '').strip() == 'admissions'
-        and any(
-            _message_matches_term(normalized, term)
-            for term in {
-                'inicio das aulas',
-                'início das aulas',
-                'comecam as aulas',
-                'começam as aulas',
-                'aulas',
-            }
-        )
+        and (wants_school_year_start or _message_matches_term(normalized, 'aulas'))
     ):
         chosen = _pick('school_year_start')
     elif chosen is None and (
@@ -880,16 +877,7 @@ def _handle_public_timeline_impl(context: PublicProfileContext) -> str:
         chosen = _pick('admissions_opening')
     elif chosen is None and _message_matches_term(normalized, 'formatura'):
         chosen = _pick('graduation')
-    elif chosen is None and any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'inicio das aulas',
-            'início das aulas',
-            'comecam as aulas',
-            'começam as aulas',
-            'ano letivo',
-        }
-    ):
+    elif chosen is None and wants_school_year_start:
         chosen = _pick('school_year_start')
 
     if chosen is None:

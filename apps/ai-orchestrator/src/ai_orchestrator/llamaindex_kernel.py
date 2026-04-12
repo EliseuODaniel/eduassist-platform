@@ -17,7 +17,10 @@ from .models import (
     RetrievalBackend,
 )
 from .public_doc_knowledge import match_public_canonical_lane
-from .request_intent_guardrails import looks_like_explicit_admin_status_query
+from .request_intent_guardrails import (
+    looks_like_explicit_admin_status_query,
+    looks_like_high_confidence_public_school_faq,
+)
 
 
 class KernelExecutionStep(BaseModel):
@@ -217,6 +220,8 @@ def _contains_any(text: str, terms: set[str]) -> bool:
 
 
 def _classify_domain(message: str, *, authenticated: bool) -> QueryDomain:
+    if looks_like_high_confidence_public_school_faq(message):
+        return QueryDomain.institution
     if authenticated and looks_like_explicit_admin_status_query(message, authenticated=authenticated):
         return QueryDomain.institution
     if authenticated and _contains_any(message, FINANCE_TERMS):
@@ -317,7 +322,8 @@ def _build_preview(*, request: MessageResponseRequest, settings: Any) -> Orchest
         authenticated=authenticated,
     )
     authenticated_public_profile_request = authenticated and (
-        match_public_canonical_lane(request.message) is not None
+        looks_like_high_confidence_public_school_faq(request.message)
+        or match_public_canonical_lane(request.message) is not None
         or _contains_any(request.message, PROCESS_TERMS | PUBLIC_DIRECTORY_TERMS)
         or _looks_like_explicit_public_pricing_request(request.message)
         or (

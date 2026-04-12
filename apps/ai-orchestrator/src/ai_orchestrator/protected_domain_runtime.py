@@ -50,6 +50,24 @@ def _export_runtime_core_namespace() -> None:
 _export_runtime_core_namespace()
 
 
+def _public_profile_impl(name: str):
+    from . import public_profile_runtime as _public_profile_runtime
+
+    return getattr(_public_profile_runtime, name)
+
+
+def _build_public_profile_context(*args, **kwargs):
+    return _public_profile_impl('_build_public_profile_context')(*args, **kwargs)
+
+
+def _resolve_public_profile_act(*args, **kwargs):
+    return _public_profile_impl('_resolve_public_profile_act')(*args, **kwargs)
+
+
+def _parse_iso_date_value(value: Any) -> date | None:
+    return _public_profile_impl('_parse_iso_date_value')(value)
+
+
 def _available_subjects(summary: dict[str, Any]) -> dict[str, dict[str, str]]:
     available_subjects: dict[str, str] = {}
     available_codes: dict[str, str] = {}

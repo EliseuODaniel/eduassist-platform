@@ -15,6 +15,7 @@ from eduassist_semantic_ingress.runtime import (
     _validated_conversation_act,
     IngressSemanticPlan,
     is_terminal_ingress_act,
+    looks_like_high_confidence_public_school_faq,
     looks_like_language_preference_feedback,
     looks_like_opaque_short_input,
     looks_like_scope_boundary_candidate,
@@ -131,6 +132,21 @@ def test_looks_like_school_scope_message_detects_school_policy_query() -> None:
 def test_looks_like_school_scope_message_detects_public_school_information_queries() -> None:
     assert looks_like_school_scope_message("Qual o horario da biblioteca?") is True
     assert looks_like_school_scope_message("qual contato do diretor?") is True
+    assert looks_like_school_scope_message("Qual o proximo vencimento?") is True
+
+
+def test_looks_like_high_confidence_public_school_faq_detects_public_faq_families() -> None:
+    assert looks_like_high_confidence_public_school_faq("tem biblioteca nessa escola?") is True
+    assert looks_like_high_confidence_public_school_faq("qual valor da matricula?") is True
+    assert looks_like_high_confidence_public_school_faq("quando iniciam as aulas?") is True
+    assert looks_like_high_confidence_public_school_faq("quais documentos preciso para matricula?") is True
+    assert looks_like_high_confidence_public_school_faq("qual o proximo vencimento?") is False
+    assert (
+        looks_like_high_confidence_public_school_faq(
+            "Explique a minha situacao financeira como se eu fosse leigo, separando mensalidade, taxa, atraso e desconto."
+        )
+        is False
+    )
 
 
 def test_looks_like_scope_boundary_candidate_detects_out_of_scope_question() -> None:

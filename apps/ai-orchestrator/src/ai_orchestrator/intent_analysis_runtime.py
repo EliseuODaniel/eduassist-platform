@@ -528,6 +528,8 @@ def _should_reuse_public_pricing_slots(message: str) -> bool:
     normalized = _normalize_text(message).strip()
     if not normalized:
         return False
+    if _looks_like_explicit_non_pricing_public_switch(message):
+        return False
     if _is_public_pricing_navigation_query(message):
         return False
     if _is_follow_up_query(message):
@@ -540,6 +542,62 @@ def _should_reuse_public_pricing_slots(message: str) -> bool:
     ):
         return True
     return False
+
+
+def _looks_like_explicit_non_pricing_public_switch(message: str) -> bool:
+    from .public_act_rules_runtime import (
+        _is_leadership_specific_query,
+        _is_public_capacity_query,
+        _is_public_curriculum_query,
+        _is_public_document_submission_query,
+        _is_public_feature_query,
+        _is_public_policy_query,
+        _is_public_timeline_lifecycle_query,
+        _is_public_timeline_query,
+        _matches_public_contact_rule,
+        _matches_public_location_rule,
+    )
+
+    if any(
+        matcher(message)
+        for matcher in (
+            _is_public_document_submission_query,
+            _is_public_timeline_query,
+            _is_public_timeline_lifecycle_query,
+            _matches_public_contact_rule,
+            _matches_public_location_rule,
+            _is_leadership_specific_query,
+            _is_public_curriculum_query,
+            _is_public_capacity_query,
+            _is_public_feature_query,
+            _is_public_policy_query,
+        )
+    ):
+        return True
+
+    normalized = _normalize_text(message)
+    return any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'biblioteca',
+            'biblioteca aurora',
+            'que horas fecha a biblioteca',
+            'fecha a biblioteca',
+            'quando iniciam as aulas',
+            'quando comecam as aulas',
+            'quando começam as aulas',
+            'inicio das aulas',
+            'início das aulas',
+            'contato do diretor',
+            'contato da diretora',
+            'diretor',
+            'diretora',
+            'documentos para matricula',
+            'documentos para matrícula',
+            'documentos exigidos para matricula',
+            'documentos exigidos para matrícula',
+        }
+    )
 
 
 def _is_public_pricing_context_follow_up(

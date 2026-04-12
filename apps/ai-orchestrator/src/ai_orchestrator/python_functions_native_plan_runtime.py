@@ -56,7 +56,11 @@ async def maybe_execute_python_functions_native_plan(
         (semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan))
         and actor is not None
         and request.user.authenticated
-        and match_public_canonical_lane(request.message) is None
+        and not rt._is_high_confidence_public_profile_query(
+            request.message,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
     ):
         rt._apply_protected_domain_rescue(
             preview=preview,
@@ -292,8 +296,8 @@ async def maybe_execute_python_functions_native_plan(
             early_public_canonical_lane = 'public_bundle.teacher_directory_boundary'
         else:
             early_public_canonical_lane = (
-                match_public_canonical_lane(analysis_message)
-                or match_public_canonical_lane(request.message)
+                match_public_canonical_lane(request.message)
+                or match_public_canonical_lane(analysis_message)
             )
         if early_public_canonical_lane:
             early_public_canonical_answer = (
@@ -629,11 +633,11 @@ async def maybe_execute_python_functions_native_plan(
             and can_read_restricted_documents(request.user)
         )
         canonical_lane = (
-            match_public_canonical_lane(analysis_message)
+            match_public_canonical_lane(request.message)
             if preview.classification.access_tier is AccessTier.public
             else None
         ) or (
-            match_public_canonical_lane(request.message)
+            match_public_canonical_lane(analysis_message)
             if preview.classification.access_tier is AccessTier.public
             else None
         )

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Awaitable, Callable
+
+from eduassist_semantic_ingress import looks_like_high_confidence_public_school_faq
 
 from .answer_payloads import (
     access_tier_for_domain as _access_tier_for_domain,
@@ -386,7 +388,7 @@ async def _maybe_recent_context_followup_answer(
     return await _resolved_academic_attendance_summary_answer(ctx, synthetic_resolved, deps=deps)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ResolvedIntentDeps:
     normalize_text: Callable[[str | None], str]
     looks_like_subject_followup: Callable[[str], bool]
@@ -406,6 +408,9 @@ class ResolvedIntentDeps:
     compose_academic_snapshot_lines: Callable[[dict[str, Any]], list[str]]
     compose_academic_aggregate_answer: Callable[[list[dict[str, Any]]], str]
     compose_finance_aggregate_answer: Callable[[list[dict[str, Any]]], str]
+    compose_family_next_due_answer: Callable[[list[dict[str, Any]]], str | None] = field(
+        default=lambda _summaries: None
+    )
     compose_finance_installments_answer: Callable[[dict[str, Any]], str]
     linked_students: Callable[..., list[dict[str, Any]]]
     safe_excerpt: Callable[..., str | None]
@@ -1246,6 +1251,17 @@ async def _resolved_finance_student_summary_answer(
 ) -> SupervisorAnswerPayload | None:
     if not ctx.request.user.authenticated:
         return None
+    normalized_message = deps.normalize_text(ctx.request.message)
+    wants_family_next_due = any(
+        term in normalized_message
+        for term in {
+            "proximo vencimento",
+            "próximo vencimento",
+            "proxima fatura",
+            "próxima fatura",
+            "vence primeiro",
+        }
+    )
     wants_family_finance_aggregate = deps.looks_like_family_finance_aggregate_query(ctx.request.message)
     finance_students = deps.linked_students(ctx.actor, capability="finance")
     target_name = str(resolved.referenced_student_name or "").strip()
@@ -1304,6 +1320,36 @@ async def _resolved_finance_student_summary_answer(
             if isinstance(summary, dict):
                 summaries.append(summary)
         if summaries:
+            if wants_family_next_due:
+                next_due_answer = deps.compose_family_next_due_answer(summaries)
+                if next_due_answer:
+                    return SupervisorAnswerPayload(
+                        message_text=next_due_answer,
+                        mode="structured_tool",
+                        classification=MessageIntentClassification(
+                            domain="finance",
+                            access_tier=_access_tier_for_domain("finance", True),
+                            confidence=resolved.confidence,
+                            reason="specialist_supervisor_resolved_intent:financial_next_due_aggregate",
+                        ),
+                        evidence_pack=MessageEvidencePack(
+                            strategy="structured_tools",
+                            summary="Proximo vencimento agregado resolvido pela memoria discursiva e pelos alunos vinculados.",
+                            source_count=len(summaries),
+                            support_count=len(summaries),
+                            supports=[
+                                MessageEvidenceSupport(
+                                    kind="finance_summary",
+                                    label=str(summary.get("student_name") or "Aluno"),
+                                    detail=f"em aberto {summary.get('open_invoice_count', 0)} · vencidas {summary.get('overdue_invoice_count', 0)}",
+                                )
+                                for summary in summaries[:4]
+                            ],
+                        ),
+                        suggested_replies=_default_suggested_replies("finance"),
+                        graph_path=["specialist_supervisor", "resolved_intent", "financial_next_due_aggregate"],
+                        reason="specialist_supervisor_resolved_intent:financial_next_due_aggregate",
+                    )
             return SupervisorAnswerPayload(
                 message_text=deps.compose_finance_aggregate_answer(summaries),
                 mode="structured_tool",
@@ -1424,6 +1470,8 @@ async def maybe_resolved_intent_answer(
     *,
     deps: ResolvedIntentDeps,
 ) -> SupervisorAnswerPayload | None:
+    if looks_like_high_confidence_public_school_faq(ctx.request.message):
+        return None
     recent_context_answer = await _maybe_recent_context_followup_answer(ctx, deps=deps)
     if recent_context_answer is not None:
         return recent_context_answer

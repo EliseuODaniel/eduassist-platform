@@ -234,7 +234,11 @@ async def maybe_execute_llamaindex_native_plan(
         (semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan))
         and actor is not None
         and request.user.authenticated
-        and match_public_canonical_lane(request.message) is None
+        and not rt._is_high_confidence_public_profile_query(
+            request.message,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
     ):
         rt._apply_protected_domain_rescue(
             preview=semantic_ingress_preview,
@@ -378,8 +382,8 @@ async def maybe_execute_llamaindex_native_plan(
             response=response.model_dump(mode='json'),
         )
     early_public_canonical_lane = None if semantic_ingress_plan is not None else (
-        match_public_canonical_lane(analysis_message)
-        or match_public_canonical_lane(request.message)
+        match_public_canonical_lane(request.message)
+        or match_public_canonical_lane(analysis_message)
     )
     early_public_canonical_answer = (
         _canonical_lane_answer_for_message(
@@ -500,8 +504,8 @@ async def maybe_execute_llamaindex_native_plan(
     )
     early_known_unknown_key = detect_public_known_unknown_key(analysis_message) or detect_public_known_unknown_key(request.message)
     early_public_canonical_lane = (
-        match_public_canonical_lane(analysis_message)
-        or match_public_canonical_lane(request.message)
+        match_public_canonical_lane(request.message)
+        or match_public_canonical_lane(analysis_message)
     ) if not skip_fast_paths else None
     contextual_fast_public_answer = None
     fast_public_channel_answer = None
@@ -681,7 +685,7 @@ async def maybe_execute_llamaindex_native_plan(
         )
 
     llm_forced_mode = rt._llm_forced_mode_enabled(settings=settings, request=request)
-    public_canonical_lane = None if llm_forced_mode else (match_public_canonical_lane(analysis_message) or match_public_canonical_lane(request.message))
+    public_canonical_lane = None if llm_forced_mode else (match_public_canonical_lane(request.message) or match_public_canonical_lane(analysis_message))
     public_canonical_answer = (
         _canonical_lane_answer_for_message(
             canonical_lane=public_canonical_lane,
@@ -839,8 +843,8 @@ async def maybe_execute_llamaindex_native_plan(
     )
     public_canonical_lane = (
         (
-            match_public_canonical_lane(effective_analysis_message)
-            or match_public_canonical_lane(request.message)
+            match_public_canonical_lane(request.message)
+            or match_public_canonical_lane(effective_analysis_message)
         )
         if not skip_fast_paths and not llm_forced_mode
         else None

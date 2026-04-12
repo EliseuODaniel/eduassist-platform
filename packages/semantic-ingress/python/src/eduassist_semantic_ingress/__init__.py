@@ -1,6 +1,7 @@
 from .runtime import (
     IngressSemanticPlan,
     is_terminal_ingress_act,
+    looks_like_high_confidence_public_school_faq,
     looks_like_language_preference_feedback,
     looks_like_opaque_short_input,
     looks_like_scope_boundary_candidate,
@@ -13,6 +14,7 @@ from .runtime import (
 __all__ = [
     "IngressSemanticPlan",
     "is_terminal_ingress_act",
+    "looks_like_high_confidence_public_school_faq",
     "looks_like_language_preference_feedback",
     "looks_like_opaque_short_input",
     "looks_like_scope_boundary_candidate",

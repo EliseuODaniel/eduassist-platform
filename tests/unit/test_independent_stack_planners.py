@@ -160,6 +160,64 @@ def test_llamaindex_plan_treats_leadership_contact_query_as_public_institution()
     assert 'get_public_school_profile' in plan.preview.selected_tools
 
 
+def test_python_functions_plan_keeps_authenticated_enrollment_documents_query_public() -> None:
+    request = MessageResponseRequest(
+        message='Quais documentos preciso para matricula?',
+        user=UserContext(role=UserRole.guardian, authenticated=True),
+    )
+
+    plan = build_python_functions_plan(request=request, settings=_Settings(), mode='python_functions')
+
+    assert plan.preview.mode is OrchestrationMode.structured_tool
+    assert plan.preview.classification.domain is QueryDomain.institution
+    assert plan.preview.classification.access_tier is AccessTier.public
+    assert 'get_public_school_profile' in plan.preview.selected_tools
+    assert 'get_administrative_status' not in plan.preview.selected_tools
+
+
+def test_llamaindex_plan_keeps_authenticated_enrollment_documents_query_public() -> None:
+    request = MessageResponseRequest(
+        message='Quais documentos preciso para matricula?',
+        user=UserContext(role=UserRole.guardian, authenticated=True),
+    )
+
+    plan = build_llamaindex_plan(request=request, settings=_Settings(), mode='llamaindex')
+
+    assert plan.preview.mode is OrchestrationMode.structured_tool
+    assert plan.preview.classification.domain is QueryDomain.institution
+    assert plan.preview.classification.access_tier is AccessTier.public
+    assert 'get_public_school_profile' in plan.preview.selected_tools
+    assert 'get_administrative_status' not in plan.preview.selected_tools
+
+
+def test_python_functions_plan_keeps_authenticated_school_year_start_query_public() -> None:
+    request = MessageResponseRequest(
+        message='Quando iniciam as aulas?',
+        user=UserContext(role=UserRole.guardian, authenticated=True),
+    )
+
+    plan = build_python_functions_plan(request=request, settings=_Settings(), mode='python_functions')
+
+    assert plan.preview.mode is OrchestrationMode.structured_tool
+    assert plan.preview.classification.access_tier is AccessTier.public
+    assert 'get_public_school_profile' in plan.preview.selected_tools
+    assert 'get_administrative_status' not in plan.preview.selected_tools
+
+
+def test_llamaindex_plan_keeps_authenticated_school_year_start_query_public() -> None:
+    request = MessageResponseRequest(
+        message='Quando iniciam as aulas?',
+        user=UserContext(role=UserRole.guardian, authenticated=True),
+    )
+
+    plan = build_llamaindex_plan(request=request, settings=_Settings(), mode='llamaindex')
+
+    assert plan.preview.mode is OrchestrationMode.structured_tool
+    assert plan.preview.classification.access_tier is AccessTier.public
+    assert 'get_public_school_profile' in plan.preview.selected_tools
+    assert 'get_administrative_status' not in plan.preview.selected_tools
+
+
 def test_python_functions_plan_clarifies_authenticated_off_scope_query_instead_of_admin_fallback() -> None:
     request = MessageResponseRequest(
         message='Qual o melhor filme do ano?',

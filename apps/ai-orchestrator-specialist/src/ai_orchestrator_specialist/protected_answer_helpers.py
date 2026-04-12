@@ -660,9 +660,64 @@ def compose_finance_aggregate_answer(
     return "\n".join(lines)
 
 
+def compose_family_next_due_answer(
+    summaries: list[dict[str, Any]],
+    *,
+    deps: ProtectedAnswerDeps,
+) -> str | None:
+    candidates: list[tuple[str, dict[str, Any]]] = []
+    for summary in summaries:
+        if not isinstance(summary, dict):
+            continue
+        invoices = summary.get("invoices")
+        if not isinstance(invoices, list):
+            continue
+        pending = [
+            item
+            for item in invoices
+            if isinstance(item, dict)
+            and str(item.get("status") or "").strip().lower() in {"open", "overdue", "pending"}
+        ]
+        if not pending:
+            continue
+        pending.sort(key=lambda item: str(item.get("due_date") or "9999-99-99"))
+        candidates.append((str(summary.get("student_name") or "Aluno").strip() or "Aluno", pending[0]))
+    if not candidates:
+        return None
+    candidates.sort(
+        key=lambda item: (
+            str(item[1].get("status") or "").strip().lower() not in {"open", "overdue"},
+            str(item[1].get("due_date") or "9999-99-99"),
+            item[0].lower(),
+        )
+    )
+    student_name, invoice = candidates[0]
+    reference_month = str(invoice.get("reference_month") or "---").strip()
+    due_date = str(invoice.get("due_date") or "--").strip()
+    amount_due = deps.format_brl(invoice.get("amount_due"))
+    status = str(invoice.get("status") or "desconhecido").strip().lower()
+    status_label = {
+        "open": "em aberto",
+        "overdue": "vencida",
+        "pending": "pendente",
+        "paid": "paga",
+    }.get(status, status or "desconhecido")
+    return (
+        "O proximo vencimento mais imediato no recorte da familia hoje "
+        f"e de {student_name}, na referencia {reference_month}, com vencimento em {due_date} "
+        f"e valor {amount_due}. Status atual: {status_label}."
+    )
+
+
 def looks_like_family_finance_aggregate_query(message: str, *, deps: ProtectedAnswerDeps) -> bool:
     normalized = deps.normalize_text(message)
     explicit_terms = {
+        "meu financeiro",
+        "quero ver meu financeiro",
+        "quero ver o meu financeiro",
+        "me mostra meu financeiro",
+        "mostrar meu financeiro",
+        "ver meu financeiro",
         "como esta o financeiro da familia",
         "como está o financeiro da família",
         "como estao meus pagamentos",

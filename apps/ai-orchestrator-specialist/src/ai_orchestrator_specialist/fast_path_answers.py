@@ -90,7 +90,30 @@ class FastPathDeps:
 
 
 def _looks_like_public_pricing_query(normalized: str) -> bool:
-    if not any(term in normalized for term in {'mensalidade', 'mensalidades', 'matricula', 'matrícula'}):
+    pricing_anchor_terms = {
+        'mensalidade',
+        'mensalidades',
+        'valor',
+        'valores',
+        'preco',
+        'preços',
+        'preco',
+        'custa',
+        'custaria',
+        'custo',
+        'investimento',
+        'taxa',
+        'quanto',
+        'pagaria',
+        'pagar',
+        'bolsa',
+        'bolsas',
+        'desconto',
+        'descontos',
+    }
+    if not any(term in normalized for term in pricing_anchor_terms):
+        return False
+    if 'matricula' not in normalized and 'matrícula' not in normalized and 'mensalidade' not in normalized and 'mensalidades' not in normalized:
         return False
     return not any(
         term in normalized

@@ -781,8 +781,8 @@ async def _run_retrieval_stage(
                 )
                 flow_state.canonical_lane = (
                     (search.query_plan.canonical_lane if search.query_plan is not None else None)
-                    or match_public_canonical_lane(analysis_message)
                     or match_public_canonical_lane(request.message)
+                    or match_public_canonical_lane(analysis_message)
                 )
                 flow_state.retrieval_hits = search.hits
                 flow_state.query_hints = {

@@ -28,6 +28,7 @@ from ai_orchestrator.runtime import (
     _compose_admin_finance_combined_answer,
     _compose_admin_finance_block_status_answer,
     _compose_finance_aggregate_answer,
+    _compose_family_next_due_answer,
     _compose_visit_booking_action_answer,
     _compose_workflow_status_answer,
     _compose_missing_subject_explanation_answer,
@@ -37,12 +38,15 @@ from ai_orchestrator.runtime import (
     _extract_unknown_subject_reference,
     _explicit_unmatched_student_reference,
     _foreign_school_reference,
+    _is_greeting_only,
     _is_access_scope_query,
     _is_direct_service_routing_bundle_query,
     _is_service_routing_query,
     _is_public_capacity_query,
     _is_public_careers_query,
     _is_public_curriculum_query,
+    _is_public_document_submission_query,
+    _is_public_timeline_query,
     _is_public_timeline_lifecycle_query,
     _is_public_year_three_phase_query,
     _is_public_support_navigation_query,
@@ -50,6 +54,7 @@ from ai_orchestrator.runtime import (
     _is_explicit_public_pricing_projection_query,
     _is_public_pricing_context_follow_up,
     _is_public_pricing_navigation_query,
+    _should_reuse_public_pricing_slots,
     _looks_like_family_attendance_aggregate_query,
     _looks_like_family_admin_aggregate_query,
     _looks_like_family_academic_aggregate_query,
@@ -74,6 +79,10 @@ from ai_orchestrator.runtime import (
     _is_public_teacher_directory_follow_up,
 )
 from ai_orchestrator.python_functions_public_knowledge import match_public_canonical_lane as match_python_functions_public_canonical_lane
+from ai_orchestrator.request_intent_guardrails import (
+    looks_like_explicit_admin_status_query,
+    looks_like_high_confidence_public_school_faq,
+)
 
 
 def _preview(*, reason: str, domain: QueryDomain = QueryDomain.institution) -> SimpleNamespace:
@@ -88,6 +97,10 @@ def _preview(*, reason: str, domain: QueryDomain = QueryDomain.institution) -> S
     )
 
 
+def test_public_act_rules_greeting_bridge_remains_available_after_runtime_split() -> None:
+    assert _is_greeting_only('oi') is True
+
+
 def test_langgraph_public_canonical_lane_skips_polish() -> None:
     request = SimpleNamespace(channel=SimpleNamespace(value="telegram"))
     preview = _preview(reason="langgraph_public_canonical_lane:public_bundle.year_three_phases")
@@ -96,6 +109,51 @@ def test_langgraph_public_canonical_lane_skips_polish() -> None:
 
 def test_family_finance_aggregate_query_accepts_meus_pagamentos_wording() -> None:
     assert _looks_like_family_finance_aggregate_query('Como estao meus pagamentos?') is True
+
+
+def test_family_finance_aggregate_query_accepts_meu_financeiro_wording() -> None:
+    assert _looks_like_family_finance_aggregate_query('Quero ver meu financeiro') is True
+
+
+def test_public_document_submission_query_accepts_enrollment_documents_requirement() -> None:
+    assert _is_public_document_submission_query('Quais documentos preciso para matricula?') is True
+
+
+def test_public_timeline_query_accepts_quando_iniciam_as_aulas_prompt() -> None:
+    assert _is_public_timeline_query('Quando iniciam as aulas?') is True
+
+
+def test_compose_family_next_due_answer_prefers_earliest_due_invoice() -> None:
+    answer = _compose_family_next_due_answer(
+        [
+            {
+                'student_name': 'Lucas Oliveira',
+                'invoices': [
+                    {
+                        'reference_month': '2026-05',
+                        'due_date': '2026-05-10',
+                        'amount_due': '1450.00',
+                        'status': 'open',
+                    }
+                ],
+            },
+            {
+                'student_name': 'Ana Oliveira',
+                'invoices': [
+                    {
+                        'reference_month': '2026-04',
+                        'due_date': '2026-04-15',
+                        'amount_due': '1450.00',
+                        'status': 'open',
+                    }
+                ],
+            },
+        ]
+    )
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'ana oliveira' in lowered
+    assert '15 de abril de 2026' in lowered
 
 
 def test_family_attendance_aggregate_query_rejects_finance_summary_with_atrasos_prompt() -> None:
@@ -1523,6 +1581,214 @@ def test_try_public_channel_fast_answer_projects_enrollment_and_monthly_for_thre
     assert 'r$ 4.350,00' in lowered
 
 
+def test_try_public_channel_fast_answer_prefers_enrollment_documents_before_pricing() -> None:
+    answer = _try_public_channel_fast_answer(
+        message='Quais documentos preciso para matricula?',
+        profile={
+            'admissions_required_documents': [
+                'Formulario cadastral preenchido',
+                'Documento de identificacao do aluno',
+            ],
+            'tuition_reference': [
+                {
+                    'segment': 'Ensino Medio',
+                    'shift_label': 'Manha',
+                    'monthly_amount': '1450.00',
+                    'enrollment_fee': '350.00',
+                }
+            ],
+        },
+    )
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'documentos exigidos' in lowered
+    assert 'formulario cadastral preenchido' in lowered
+    assert 'mensalidade' not in lowered
+
+
+def test_try_public_channel_fast_answer_prefers_enrollment_documents_over_inherited_pricing_context() -> None:
+    now_iso = datetime.now().astimezone().isoformat()
+    answer = _try_public_channel_fast_answer(
+        message='Quais documentos preciso para matricula?',
+        profile={
+            'admissions_required_documents': [
+                'Formulario cadastral preenchido',
+                'Documento de identificacao do aluno',
+            ],
+            'tuition_reference': [
+                {
+                    'segment': 'Ensino Medio',
+                    'shift_label': 'Manha',
+                    'monthly_amount': '1450.00',
+                    'enrollment_fee': '350.00',
+                }
+            ],
+        },
+        conversation_context={
+            'recent_messages': [
+                {'sender_type': 'user', 'content': 'qual valor da matrícula?', 'created_at': now_iso},
+                {'sender_type': 'assistant', 'content': 'Valores publicos de referencia para 2026.', 'created_at': now_iso},
+            ],
+            'recent_tool_calls': [
+                {
+                    'tool_name': 'orchestration.trace',
+                    'created_at': now_iso,
+                    'request_payload': {
+                        'slot_memory': {
+                            'focus_kind': 'public',
+                            'active_task': 'public:pricing',
+                            'public_pricing_segment': 'Ensino Medio',
+                        }
+                    },
+                }
+            ],
+        },
+    )
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'documentos exigidos' in lowered
+    assert 'formulario cadastral preenchido' in lowered
+    assert 'mensalidade' not in lowered
+
+
+def test_try_public_channel_fast_answer_answers_library_existence_queries() -> None:
+    answer = _try_public_channel_fast_answer(
+        message='Tem biblioteca nessa escola?',
+        profile={
+            'school_name': 'Colegio Horizonte',
+            'feature_inventory': [
+                {
+                    'feature_key': 'biblioteca',
+                    'label': 'Biblioteca Aurora',
+                    'available': True,
+                    'notes': 'Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.',
+                }
+            ],
+        },
+    )
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'biblioteca aurora' in lowered
+    assert '7h30' in lowered
+
+
+def test_try_public_channel_fast_answer_answers_school_year_start_queries() -> None:
+    answer = _try_public_channel_fast_answer(
+        message='Quando iniciam as aulas?',
+        profile={
+            'school_name': 'Colegio Horizonte',
+            'public_timeline': [
+                {
+                    'topic_key': 'school_year_start',
+                    'summary': 'As aulas comecam em 2 de fevereiro de 2026.',
+                    'notes': 'As aulas do Ensino Fundamental II e do Ensino Medio comecam em 2 de fevereiro de 2026.',
+                }
+            ],
+        },
+    )
+    assert answer is not None
+    lowered = answer.lower()
+    assert '2 de fevereiro de 2026' in lowered
+
+
+def test_request_guardrails_keep_enrollment_documents_out_of_admin_status() -> None:
+    prompt = 'Quais documentos preciso para matricula?'
+    assert looks_like_high_confidence_public_school_faq(prompt) is True
+    assert looks_like_explicit_admin_status_query(prompt, authenticated=True) is False
+
+
+def test_request_guardrails_keep_school_year_start_out_of_admin_status() -> None:
+    prompt = 'Quando iniciam as aulas?'
+    assert looks_like_high_confidence_public_school_faq(prompt) is True
+    assert looks_like_explicit_admin_status_query(prompt, authenticated=True) is False
+
+
+def test_public_profile_answer_prefers_explicit_school_year_start_over_recent_enrollment_context() -> None:
+    answer = _compose_public_profile_answer(
+        {
+            'school_name': 'Colegio Horizonte',
+            'public_timeline': [
+                {
+                    'topic_key': 'admissions_opening',
+                    'summary': 'A matricula de 2026 abre em 6 de outubro de 2025.',
+                },
+                {
+                    'topic_key': 'school_year_start',
+                    'summary': 'As aulas comecam em 2 de fevereiro de 2026.',
+                },
+            ],
+        },
+        'Quando iniciam as aulas?',
+        actor={},
+        original_message='Quando iniciam as aulas?',
+        conversation_context={
+            'recent_messages': [
+                {'sender_type': 'user', 'content': 'qual valor da matrícula?'},
+                {'sender_type': 'assistant', 'content': 'Valores publicos de referencia para 2026.'},
+            ]
+        },
+    )
+    lowered = answer.lower()
+    assert '2 de fevereiro de 2026' in lowered
+    assert '6 de outubro de 2025' not in lowered
+
+
+def test_public_profile_answer_prefers_explicit_documents_over_inherited_pricing_semantic_plan() -> None:
+    answer = _compose_public_profile_answer(
+        {
+            'school_name': 'Colegio Horizonte',
+            'admissions_required_documents': [
+                'Formulario cadastral preenchido',
+                'Documento de identificacao do aluno',
+            ],
+            'tuition_reference': [
+                {
+                    'segment': 'Ensino Medio',
+                    'shift_label': 'Manha',
+                    'monthly_amount': '1450.00',
+                    'enrollment_fee': '350.00',
+                }
+            ],
+        },
+        'Quais documentos preciso para matricula?',
+        actor={},
+        original_message='Quais documentos preciso para matricula?',
+        conversation_context={
+            'recent_messages': [
+                {'sender_type': 'user', 'content': 'qual valor da matrícula?'},
+                {'sender_type': 'assistant', 'content': 'Valores publicos de referencia para 2026.'},
+            ],
+            'recent_tool_calls': [
+                {
+                    'tool_name': 'orchestration.trace',
+                    'request_payload': {
+                        'slot_memory': {
+                            'focus_kind': 'public',
+                            'active_task': 'public:pricing',
+                            'public_pricing_segment': 'Ensino Medio',
+                        }
+                    },
+                }
+            ],
+        },
+        semantic_plan=PublicInstitutionPlan(
+            conversation_act='pricing',
+            required_tools=('get_public_school_profile',),
+            fetch_profile=True,
+            secondary_acts=(),
+            requested_attribute=None,
+            requested_channel=None,
+            focus_hint=None,
+            semantic_source='llm',
+            use_conversation_context=True,
+        ),
+    )
+    lowered = answer.lower()
+    assert 'documentos exigidos' in lowered
+    assert 'formulario cadastral preenchido' in lowered
+    assert 'mensalidade' not in lowered
+
+
 def test_try_public_channel_fast_answer_returns_scope_boundary_for_out_of_scope_question() -> None:
     answer = _try_public_channel_fast_answer(
         message='Qual o melhor filme do ano?',
@@ -1963,6 +2229,29 @@ def test_public_pricing_short_follow_up_is_detected_from_recent_task() -> None:
     assert recent_focus.get('kind') == 'public'
     assert recent_focus.get('active_task') == 'public:pricing'
     assert recent_focus.get('public_pricing_segment') == 'Ensino Medio'
+
+
+def test_public_pricing_context_follow_up_does_not_steal_explicit_documents_query() -> None:
+    now_iso = datetime.now().astimezone().isoformat()
+    conversation_context = {
+        'recent_tool_calls': [
+            {
+                'tool_name': 'orchestration.trace',
+                'created_at': now_iso,
+                'request_payload': {
+                    'slot_memory': {
+                        'focus_kind': 'public',
+                        'active_task': 'public:pricing',
+                        'public_pricing_segment': 'Ensino Medio',
+                    }
+                },
+            }
+        ]
+    }
+
+    prompt = 'Quais documentos preciso para matricula?'
+    assert _should_reuse_public_pricing_slots(prompt) is False
+    assert _is_public_pricing_context_follow_up(prompt, conversation_context=conversation_context) is False
 
 
 def test_public_capacity_query_distinguishes_parking_from_careers() -> None:

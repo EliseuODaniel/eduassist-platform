@@ -31,6 +31,70 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
         normalized,
         recent_user_messages,
     )
+    linked_finance_students = (
+        deps.linked_students(ctx.actor, capability="finance")
+        if bool(getattr(ctx.request.user, "authenticated", False))
+        else []
+    )
+    recent_finance_context_active = any(
+        any(
+            marker in item
+            for marker in {
+                "meu financeiro",
+                "financeiro",
+                "fatura",
+                "faturas",
+                "boleto",
+                "boletos",
+                "mensalidade",
+                "vencimento",
+                "em aberto",
+            }
+        )
+        for item in recent_user_messages
+    )
+    protected_finance_followup_active = bool(linked_finance_students) and (
+        any(
+            term in normalized
+            for term in {
+                "quero ver meu financeiro",
+                "meu financeiro",
+                "meus pagamentos",
+                "financeiro da familia",
+                "financeiro da família",
+                "contas vinculadas",
+                "fatura",
+                "faturas",
+                "boleto",
+                "boletos",
+                "em aberto",
+                "proximo vencimento",
+                "próximo vencimento",
+                "proxima fatura",
+                "próxima fatura",
+                "vence primeiro",
+                "mensalidade vencida",
+                "mensalidades vencidas",
+            }
+        )
+        or (
+            recent_finance_context_active
+            and any(
+                term in normalized
+                for term in {
+                    "proximo vencimento",
+                    "próximo vencimento",
+                    "proxima fatura",
+                    "próxima fatura",
+                    "vence primeiro",
+                    "em aberto",
+                    "vencimento",
+                    "vencida",
+                    "vencidas",
+                }
+            )
+        )
+    )
     if profile and any(
         term in normalized
         for term in {
@@ -207,7 +271,7 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
             graph_leaf="access_scope",
         )
 
-    if profile:
+    if profile and not protected_finance_followup_active:
         multi_intent_public_answer = _compose_public_multi_intent_fast_answer(
             profile=profile,
             message=contextual_message,
@@ -234,7 +298,7 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
                 graph_leaf="public_multi_intent",
             )
 
-    if _looks_like_service_routing_query(contextual_message) and profile:
+    if _looks_like_service_routing_query(contextual_message) and profile and not protected_finance_followup_active:
         routing_answer = _compose_service_routing_fast_answer(profile, contextual_message)
         if routing_answer:
             return _build_fast_path_payload(
@@ -764,7 +828,46 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
                 mode="clarify",
             )
 
-    if "biblioteca" in normalized and any(term in normalized for term in {"horario", "horário", "funciona", "abre", "nome", "marketing"}):
+    if "biblioteca" in normalized and any(
+        term in normalized
+        for term in {
+            "tem biblioteca",
+            "ha biblioteca",
+            "há biblioteca",
+            "possui biblioteca",
+            "existe biblioteca",
+            "biblioteca nessa escola",
+        }
+    ):
+        label = _feature_label(profile, name_hint="biblioteca") or "Biblioteca Aurora"
+        note = _feature_note(profile, name_hint="biblioteca") or "Atendimento ao publico de segunda a sexta, das 7h30 as 18h00."
+        return _build_fast_path_payload(
+            message_text=f"Sim. O colegio tem a {label}. {note}",
+            domain="institution",
+            access_tier="public",
+            confidence=0.99,
+            reason="specialist_supervisor_fast_path:library_exists",
+            summary="Resposta direta grounded sobre a existencia da biblioteca institucional.",
+            supports=[MessageEvidenceSupport(kind="profile_fact", label=label, detail=note)],
+            graph_leaf="library_exists",
+        )
+
+    if "biblioteca" in normalized and any(
+        term in normalized
+        for term in {
+            "horario",
+            "horário",
+            "funciona",
+            "abre",
+            "fecha",
+            "fecha a biblioteca",
+            "que horas fecha",
+            "ate que horas",
+            "até que horas",
+            "nome",
+            "marketing",
+        }
+    ):
         label = _feature_label(profile, name_hint="biblioteca") or "Biblioteca Aurora"
         note = _feature_note(profile, name_hint="biblioteca") or "Atendimento ao publico de segunda a sexta, das 7h30 as 18h00."
         return _build_fast_path_payload(
@@ -901,7 +1004,15 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
     school_year_entry = _timeline_entry(profile.get("public_timeline") or [], topic_fragment="school_year_start")
     if any(
         term in normalized
-        for term in {"quando comecam as aulas", "quando começam as aulas", "inicio das aulas", "início das aulas"}
+        for term in {
+            "quando comecam as aulas",
+            "quando começam as aulas",
+            "quando iniciam as aulas",
+            "inicio das aulas",
+            "início das aulas",
+            "inicio do ano letivo",
+            "início do ano letivo",
+        }
     ) and isinstance(school_year_entry, dict):
         entry_date = _timeline_entry_date_label(school_year_entry)
         summary = str(school_year_entry.get("summary", "") or "").strip()
@@ -1004,6 +1115,41 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
                     graph_leaf="public_pricing_reference",
                     suggested_domain="finance",
                 )
+
+    if profile and pricing_query_active:
+        rows = profile.get("tuition_reference")
+        if isinstance(rows, list) and rows:
+            lines = ["Valores publicos de referencia:"]
+            for row in rows[:3]:
+                if not isinstance(row, dict):
+                    continue
+                lines.append(
+                    "- {segment} ({shift_label}): mensalidade {monthly_amount} e taxa de matricula {enrollment_fee}. {notes}".format(
+                        segment=str(row.get("segment") or "segmento").strip(),
+                        shift_label=str(row.get("shift_label") or "Manha").strip(),
+                        monthly_amount=deps.format_brl(row.get("monthly_amount")),
+                        enrollment_fee=deps.format_brl(row.get("enrollment_fee")),
+                        notes=str(row.get("notes") or "").strip(),
+                    ).strip()
+                )
+            lines.append("Se quiser, eu tambem posso simular a matricula para 2 ou 3 alunos.")
+            return _build_fast_path_payload(
+                message_text="\n".join(lines),
+                domain="finance",
+                access_tier="public",
+                confidence=0.99,
+                reason="specialist_supervisor_fast_path:public_pricing_overview",
+                summary="Resumo publico deterministico da tabela de referencia institucional.",
+                supports=[
+                    MessageEvidenceSupport(
+                        kind="pricing_reference",
+                        label="Tabela publica de valores",
+                        detail="mensalidade e taxa de matricula por segmento",
+                    )
+                ],
+                graph_leaf="public_pricing_overview",
+                suggested_domain="finance",
+            )
 
     if contextual_canonical_lane:
         contextual_public_answer = compose_public_canonical_lane_answer(contextual_canonical_lane, profile=profile)
