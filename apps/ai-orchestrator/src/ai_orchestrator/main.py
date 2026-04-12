@@ -741,7 +741,9 @@ async def meta(
         'experimentScorecardGate': scorecard_gate,
         'experimentRolloutReadiness': rollout_readiness,
         'experimentLivePromotionSummary': live_promotion_summary,
+        'llmModelProfile': settings.llm_model_profile,
         'provider': settings.llm_provider,
+        'openaiApiMode': settings.openai_api_mode,
         'openaiModel': settings.openai_model,
         'googleModel': settings.google_model,
         'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
@@ -800,7 +802,9 @@ async def status() -> dict[str, object]:
         'experimentScorecardGate': scorecard_gate,
         'experimentRolloutReadiness': rollout_readiness,
         'experimentLivePromotionSummary': live_promotion_summary,
+        'llmModelProfile': settings.llm_model_profile,
         'llmProvider': settings.llm_provider,
+        'openaiApiMode': settings.openai_api_mode,
         'llmConfigured': bool(settings.openai_api_key) or bool(settings.google_api_key),
         'capabilities': [
             'thin-router',
@@ -992,7 +996,9 @@ async def capabilities() -> RuntimeCapabilities:
     experimental_stack_readiness = _experimental_stack_readiness(settings)
     return RuntimeCapabilities(
         service='ai-orchestrator',
+        llm_model_profile=settings.llm_model_profile,
         llm_provider=settings.llm_provider,
+        openai_api_mode=settings.openai_api_mode,
         openai_model=settings.openai_model,
         google_model=settings.google_model,
         llm_configured=bool(settings.openai_api_key) or bool(settings.google_api_key),

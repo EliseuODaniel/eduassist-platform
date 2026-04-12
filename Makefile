@@ -4,9 +4,10 @@ COMPOSE_FILE := infra/compose/compose.yaml
 ENV_FILE := .env
 SPECIALIST_PROFILE := --profile specialist-supervisor
 TELEGRAM_PROFILE := --profile telegram-public
+LOCAL_LLM_PROFILE := --profile local-llm-gemma4e4b
 DEDICATED_CORE_SERVICES := postgres redis qdrant minio minio-init keycloak opa api-core ai-orchestrator ai-orchestrator-langgraph ai-orchestrator-python-functions ai-orchestrator-llamaindex ai-orchestrator-specialist telegram-gateway
 
-.PHONY: env bootstrap compose-config compose-build compose-up compose-up-dedicated-core compose-up-telegram-langgraph compose-up-telegram-python-functions compose-up-telegram-llamaindex compose-up-telegram-specialist compose-up-control-plane-compat compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-control-plane-compat smoke-authz smoke-adversarial smoke-all smoke-dedicated smoke-dedicated-langgraph smoke-dedicated-python-functions smoke-dedicated-llamaindex smoke-dedicated-specialist smoke-dedicated-multiturn smoke-dedicated-multiturn-langgraph smoke-dedicated-multiturn-python-functions smoke-dedicated-multiturn-llamaindex smoke-dedicated-multiturn-specialist smoke-dedicated-long-memory smoke-dedicated-long-memory-langgraph smoke-dedicated-long-memory-python-functions smoke-dedicated-long-memory-llamaindex smoke-dedicated-long-memory-specialist smoke-dedicated-semantic-ingress smoke-dedicated-semantic-ingress-langgraph smoke-dedicated-semantic-ingress-python-functions smoke-dedicated-semantic-ingress-llamaindex smoke-dedicated-semantic-ingress-specialist smoke-telegram-dedicated runtime-parity-check eval-dedicated eval-orchestrator eval-control-plane-compat eval-all graphrag-benchmark-bootstrap graphrag-benchmark-bootstrap-local graphrag-benchmark-local-check graphrag-benchmark-index graphrag-benchmark-index-dry-run graphrag-benchmark-baseline graphrag-benchmark-run graphrag-benchmark-run-smoke graphrag-local-runtime-up graphrag-local-runtime-down graphrag-local-runtime-logs release-readiness release-readiness-strict promotion-gate-check promotion-gate-check-stable article-docx db-upgrade db-downgrade db-seed-foundation db-seed-school-expansion db-seed-operational-load db-seed-deep-population db-seed-benchmark-scenarios db-seed-auth-bindings keycloak-sync-runtime-users db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install telegram-public-up telegram-public-up-stable telegram-webhook-info telegram-webhook-health telegram-edge-readiness
+.PHONY: env bootstrap compose-config compose-build compose-up compose-up-dedicated-core compose-up-dedicated-core-gemini-flash-lite compose-up-dedicated-core-gemma4e4b-local local-llm-gemma4e4b-down local-llm-gemma4e4b-logs compose-up-telegram-langgraph compose-up-telegram-python-functions compose-up-telegram-llamaindex compose-up-telegram-specialist compose-up-control-plane-compat compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-control-plane-compat smoke-authz smoke-adversarial smoke-all smoke-dedicated smoke-dedicated-langgraph smoke-dedicated-python-functions smoke-dedicated-llamaindex smoke-dedicated-specialist smoke-dedicated-multiturn smoke-dedicated-multiturn-langgraph smoke-dedicated-multiturn-python-functions smoke-dedicated-multiturn-llamaindex smoke-dedicated-multiturn-specialist smoke-dedicated-long-memory smoke-dedicated-long-memory-langgraph smoke-dedicated-long-memory-python-functions smoke-dedicated-long-memory-llamaindex smoke-dedicated-long-memory-specialist smoke-dedicated-semantic-ingress smoke-dedicated-semantic-ingress-langgraph smoke-dedicated-semantic-ingress-python-functions smoke-dedicated-semantic-ingress-llamaindex smoke-dedicated-semantic-ingress-specialist smoke-telegram-dedicated runtime-parity-check eval-dedicated eval-orchestrator eval-control-plane-compat eval-all graphrag-benchmark-bootstrap graphrag-benchmark-bootstrap-local graphrag-benchmark-local-check graphrag-benchmark-index graphrag-benchmark-index-dry-run graphrag-benchmark-baseline graphrag-benchmark-run graphrag-benchmark-run-smoke graphrag-local-runtime-up graphrag-local-runtime-down graphrag-local-runtime-logs release-readiness release-readiness-strict promotion-gate-check promotion-gate-check-stable article-docx db-upgrade db-downgrade db-seed-foundation db-seed-school-expansion db-seed-operational-load db-seed-deep-population db-seed-benchmark-scenarios db-seed-auth-bindings keycloak-sync-runtime-users db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install telegram-public-up telegram-public-up-stable telegram-webhook-info telegram-webhook-health telegram-edge-readiness
 
 env:
 	@if [ ! -f $(ENV_FILE) ]; then cp .env.example $(ENV_FILE); fi
@@ -26,6 +27,18 @@ compose-up: env
 
 compose-up-dedicated-core: env
 	docker compose $(SPECIALIST_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build $(DEDICATED_CORE_SERVICES)
+
+compose-up-dedicated-core-gemini-flash-lite: env
+	LLM_MODEL_PROFILE=gemini_flash_lite OPENAI_API_MODE=responses docker compose $(SPECIALIST_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build $(DEDICATED_CORE_SERVICES)
+
+compose-up-dedicated-core-gemma4e4b-local: env
+	LLM_MODEL_PROFILE=gemma4e4b_local OPENAI_API_MODE=chat_completions docker compose $(SPECIALIST_PROFILE) $(LOCAL_LLM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build $(DEDICATED_CORE_SERVICES) local-llm-gemma4e4b
+
+local-llm-gemma4e4b-down: env
+	docker compose $(LOCAL_LLM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) stop local-llm-gemma4e4b
+
+local-llm-gemma4e4b-logs: env
+	docker compose $(LOCAL_LLM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs -f --tail=200 local-llm-gemma4e4b
 
 compose-up-telegram-langgraph: env
 	docker rm -f eduassist-cloudflared >/dev/null 2>&1 || true

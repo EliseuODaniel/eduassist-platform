@@ -218,6 +218,17 @@ make compose-up-telegram-langgraph
 make compose-up-telegram-specialist
 ```
 
+### Alternando o modelo por feature flag
+
+O baseline recomendado de custo-benefício agora é `Gemini 2.5 Flash-Lite`, e existe um profile experimental para `Gemma 4 E4B` local.
+
+```bash
+make compose-up-dedicated-core-gemini-flash-lite
+make compose-up-dedicated-core-gemma4e4b-local
+```
+
+O profile local usa um endpoint `OpenAI-compatible` servido por `llama.cpp` com a quantização `Q4_K_M` do `Gemma 4 E4B`. A análise de ROI e os critérios de uso experimental estão em [docs/experiments/gemma-4-e4b-evaluation-plan.md](docs/experiments/gemma-4-e4b-evaluation-plan.md).
+
 Esses comandos:
 
 - sobem a base operacional dedicada;

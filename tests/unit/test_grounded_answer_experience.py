@@ -7,6 +7,7 @@ import pytest
 
 from ai_orchestrator.grounded_answer_experience import (
     _ANSWER_FOCUS_CACHE,
+    _answer_experience_settings,
     _clarify_after_retry_message,
     _looks_like_cross_student_academic_comparison_followup,
     _looks_like_contextual_cross_student_academic_comparison_followup,
@@ -45,6 +46,7 @@ def _settings() -> SimpleNamespace:
         answer_experience_openai_api_key=None,
         answer_experience_openai_base_url=None,
         answer_experience_openai_model=None,
+        answer_experience_openai_api_mode=None,
         answer_experience_google_api_key='test-key',
         answer_experience_google_api_base_url='https://example.test',
         answer_experience_google_model='gemini-2.5-flash',
@@ -53,6 +55,7 @@ def _settings() -> SimpleNamespace:
         google_api_base_url='https://example.test',
         google_model='gemini-2.5-flash',
         openai_api_key=None,
+        openai_api_mode='responses',
         openai_base_url='https://api.openai.com/v1',
         openai_model='gpt-5.4',
         database_url='postgresql://test:test@localhost:5432/test',
@@ -231,6 +234,20 @@ def test_explicit_subject_from_message_ignores_metalinguistic_ingles() -> None:
 
 def test_explicit_subject_from_message_ignores_metalinguistic_portugues() -> None:
     assert explicit_subject_from_message('Quero que so fale portugues') is None
+
+
+def test_answer_experience_settings_carry_openai_api_mode() -> None:
+    settings = _settings()
+    settings.llm_provider = 'openai'
+    settings.openai_api_key = 'local-llm'
+    settings.openai_base_url = 'http://local-llm-gemma4e4b:8080/v1'
+    settings.openai_model = 'ggml-org/gemma-4-E4B-it-GGUF:Q4_K_M'
+    settings.openai_api_mode = 'chat_completions'
+
+    provider_settings = _answer_experience_settings(settings)
+
+    assert provider_settings.llm_provider == 'openai'
+    assert provider_settings.openai_api_mode == 'chat_completions'
 
 
 def test_answer_experience_builds_family_academic_aggregate_from_clarify(monkeypatch: pytest.MonkeyPatch) -> None:

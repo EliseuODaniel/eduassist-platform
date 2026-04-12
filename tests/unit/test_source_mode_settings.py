@@ -140,6 +140,51 @@ def test_control_plane_direct_serving_is_disabled_by_default_and_can_be_enabled(
     assert enabled_settings.control_plane_allow_direct_serving is True
 
 
+def test_orchestrator_llm_profile_switches_to_gemini_flash_lite() -> None:
+    settings = OrchestratorSettings(
+        internal_api_token="real-token",
+        llm_model_profile="gemini_flash_lite",
+        app_env="test",
+    )
+
+    assert settings.llm_provider == "google"
+    assert settings.google_model == "gemini-2.5-flash-lite"
+    assert settings.answer_experience_provider == "google"
+    assert settings.answer_experience_google_model == "gemini-2.5-flash-lite"
+
+
+def test_orchestrator_llm_profile_switches_to_local_gemma() -> None:
+    settings = OrchestratorSettings(
+        internal_api_token="real-token",
+        llm_model_profile="gemma4e4b_local",
+        app_env="test",
+    )
+
+    assert settings.llm_provider == "openai"
+    assert settings.openai_api_mode == "chat_completions"
+    assert settings.openai_api_key == "local-llm"
+    assert settings.openai_base_url == "http://local-llm-gemma4e4b:8080/v1"
+    assert settings.openai_model == "ggml-org/gemma-4-E4B-it-GGUF:Q4_K_M"
+    assert settings.answer_experience_provider == "openai"
+    assert settings.answer_experience_openai_api_mode == "chat_completions"
+
+
+def test_specialist_llm_profile_switches_to_local_gemma() -> None:
+    settings = SpecialistSettings(
+        internal_api_token="real-token",
+        llm_model_profile="gemma4e4b_local",
+        app_env="test",
+    )
+
+    assert settings.llm_provider == "openai"
+    assert settings.openai_api_mode == "chat_completions"
+    assert settings.openai_api_key == "local-llm"
+    assert settings.openai_base_url == "http://local-llm-gemma4e4b:8080/v1"
+    assert settings.openai_model == "ggml-org/gemma-4-E4B-it-GGUF:Q4_K_M"
+    assert settings.openai_fast_model == settings.openai_model
+    assert settings.openai_reasoning_model == settings.openai_model
+
+
 def test_telegram_webhook_secret_placeholder_is_allowed_in_test_env() -> None:
     gateway = TelegramGatewaySettings(
         internal_api_token="dev-internal-token",

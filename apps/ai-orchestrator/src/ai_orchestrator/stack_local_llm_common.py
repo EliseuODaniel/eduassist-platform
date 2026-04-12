@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from openai import AsyncOpenAI
-
 from .llm_provider import (
     _extract_json_object,
     _google_extract_text,
     _google_generate_content_body,
     _google_generation_config,
+    _openai_text_call,
 )
 
 
@@ -23,20 +22,15 @@ async def stack_local_text_call(
 ) -> str | None:
     provider = str(getattr(settings, 'llm_provider', 'openai') or 'openai').strip().lower()
     if provider == 'openai' and getattr(settings, 'openai_api_key', None):
-        try:
-            client = AsyncOpenAI(
-                api_key=settings.openai_api_key,
-                base_url=str(getattr(settings, 'openai_base_url', 'https://api.openai.com/v1')),
-            )
-            response = await client.responses.create(
-                model=str(getattr(settings, 'openai_model', 'gpt-5.4')),
-                instructions=instructions,
-                input=prompt,
-            )
-            text = (response.output_text or '').strip()
-        except Exception:
-            return None
-        return text or None
+        return await _openai_text_call(
+            settings=settings,
+            instructions=instructions,
+            prompt=prompt,
+            temperature=temperature,
+            max_output_tokens=max_output_tokens,
+            top_p=top_p,
+            timeout=20.0,
+        )
 
     if provider in {'google', 'gemini'} and getattr(settings, 'google_api_key', None):
         payload = {

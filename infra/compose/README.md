@@ -48,3 +48,40 @@ Fluxo dedicado-first mais comum:
 2. `make compose-up-telegram-python-functions` ou outro target equivalente por stack
 3. `make smoke-dedicated`
 4. `make smoke-telegram-dedicated`
+
+## Perfil experimental de LLM local
+
+O Compose agora inclui um perfil opcional para servir `Gemma 4 E4B` localmente em um endpoint `OpenAI-compatible`, sem mexer no baseline hospedado do projeto.
+
+Serviço:
+
+- `local-llm-gemma4e4b`
+
+Stack de serving:
+
+- imagem: `ghcr.io/ggml-org/llama.cpp:server-cuda`
+- modelo: `ggml-org/gemma-4-E4B-it-GGUF:Q4_K_M`
+- endpoint local exposto: `http://localhost:18081/v1`
+
+Targets úteis:
+
+1. baseline com `Gemini 2.5 Flash-Lite`
+   - `make compose-up-dedicated-core-gemini-flash-lite`
+2. experimento local com `Gemma 4 E4B`
+   - `make compose-up-dedicated-core-gemma4e4b-local`
+3. logs do modelo local
+   - `make local-llm-gemma4e4b-logs`
+4. parada isolada do modelo local
+   - `make local-llm-gemma4e4b-down`
+
+Feature flag principal:
+
+- `LLM_MODEL_PROFILE=gemini_flash_lite`
+- `LLM_MODEL_PROFILE=gemma4e4b_local`
+
+Quando o profile `gemma4e4b_local` estiver ativo:
+
+- o runtime principal muda para `LLM_PROVIDER=openai`;
+- `OPENAI_API_MODE=chat_completions`;
+- `OPENAI_BASE_URL` passa a apontar para `local-llm-gemma4e4b`;
+- o `semantic ingress`, o serving principal e a camada de `answer_experience` usam o endpoint local compatível.

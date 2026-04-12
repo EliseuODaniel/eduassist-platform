@@ -1,423 +1,450 @@
-# Avaliação futura: Gemma 4 E4B
+# Avaliação prática: Gemma 4 E4B local no EduAssist
 
-## Objetivo
+## Status
 
-Registrar o que seria necessário para testar o modelo [`google/gemma-4-E4B-it`](https://huggingface.co/google/gemma-4-E4B-it) no **EduAssist Platform atual**, sem alterar a arquitetura ativa antes de existir evidência clara de custo-benefício.
+Este experimento foi **implementado e validado** no `eduassist-platform` em 12 de abril de 2026.
 
-Este documento é um plano de experimento. Não é uma decisão de migração.
+O objetivo foi responder a uma pergunta prática:
 
-Revisão desta versão:
+- vale a pena, em termos de ROI, adicionar um backend **local** para alternar entre:
+  - `gemini-2.5-flash-lite`
+  - `Gemma 4 E4B`
 
-- validada contra o código atual do repositório em abril de 2026;
-- revisada com base em documentação oficial e primária do Gemma 4 e de serving OpenAI-compatible.
+A conclusão curta é:
 
-## Pergunta principal
+- **sim**, vale a pena ter esse caminho por feature flag;
+- **não**, ainda não vale trocar o baseline inteiro para Gemma local;
+- o melhor uso hoje é como **modo experimental controlado**, não como default do sistema.
 
-Vale a pena adicionar suporte ao `Gemma 4 E4B` como alternativa **local** aos modelos hospedados atuais, considerando:
+## Resumo executivo
 
-- complexidade de implementação no código real do EduAssist;
-- custo operacional na máquina local;
-- impacto esperado na qualidade da resposta;
-- adequação ao workload real do projeto;
-- ROI comparado ao baseline atual.
+O experimento deu certo em quatro frentes:
 
-## Estado atual do projeto
+1. a alternância por feature flag foi implementada sem bifurcar a arquitetura;
+2. o `Gemma 4 E4B` rodou localmente na máquina alvo;
+3. os quatro runtimes dedicados responderam corretamente sob o perfil local;
+4. a stack voltou para `gemini_flash_lite` usando só configuração, sem novos patches.
 
-Hoje o EduAssist Platform opera com arquitetura `dedicated-first`, com:
+O ROI final ficou assim:
 
-- quatro runtimes dedicados: `langgraph`, `python_functions`, `llamaindex`, `specialist_supervisor`;
-- `semantic ingress` compartilhado;
-- `control plane` separado do serving principal;
-- superfícies de avaliação por smoke, parity, multi-turn, long-memory, Telegram real e promotion gate.
+- **alto** para laboratório, benchmarking, soberania tecnológica e comparação de qualidade;
+- **médio** para uso diário local individual;
+- **baixo** para substituir imediatamente o baseline hospedado em toda a plataforma.
 
-O desenho funcional que precisa ser preservado é:
+## Pergunta de negócio
 
-1. LLM de entrada: classificar;
-2. stack: resolver;
-3. LLM de saída: lapidar.
+O EduAssist hoje precisa de um modelo que seja bom em:
 
-## O que o código atual já oferece
+- classificação semântica de entrada;
+- roteamento de intenção;
+- robustez em PT-BR;
+- uso consistente de tools;
+- respostas seguras quando não sabe;
+- baixa taxa de fallback indevido.
 
-O repositório hoje já está **mais preparado** para um experimento de modelo local do que uma leitura superficial sugeriria.
+O sistema **não** precisa hoje de:
 
-### Configuração de provider/modelo já existente
+- janela de 1 milhão de tokens;
+- multimodalidade pesada em produção;
+- throughput alto em múltiplos usuários simultâneos na máquina local.
 
-O `ai-orchestrator` já expõe configuração central por ambiente em:
+Portanto, a pergunta não era “o Gemma cabe no contexto?”.
+
+A pergunta real era:
+
+- ele cabe **operacionalmente** na máquina?
+- e entrega qualidade suficiente para o tipo de inferência que o EduAssist pede?
+
+## Linha de base comparada
+
+### Baseline hospedado
+
+O baseline testado para alternância foi:
+
+- `LLM_MODEL_PROFILE=gemini_flash_lite`
+- provider efetivo: `google`
+- modelo efetivo: `gemini-2.5-flash-lite`
+
+### Backend local experimental
+
+O backend local implementado foi:
+
+- `LLM_MODEL_PROFILE=gemma4e4b_local`
+- provider efetivo: `openai`
+- modo OpenAI: `chat_completions`
+- servidor local OpenAI-compatible
+- runtime de inferência: `llama.cpp`
+- modelo: `google/gemma-4-E4B-it`
+- quantização usada: `Q4_K_M` em GGUF
+
+## Por que o caminho escolhido foi este
+
+Antes da implementação, a melhor hipótese de ROI era:
+
+- reutilizar a trilha `openai` já existente no código;
+- apontá-la para um endpoint local OpenAI-compatible;
+- evitar criar um provider bespoke novo.
+
+Depois da validação prática, essa hipótese se confirmou.
+
+O melhor caminho **não** foi:
+
+- `transformers` bespoke no app;
+- provider separado por código customizado;
+- refactor grande no runtime principal.
+
+O melhor caminho foi:
+
+- **feature flag + servidor OpenAI-compatible local**.
+
+## Pesquisa resumida e decisão de modelo
+
+Modelos menores poderiam ter ROI operacional ainda melhor em uma RTX 4070 Laptop com 8 GB de VRAM, especialmente para pura classificação ou FAQ curta.
+
+Mesmo assim, o `Gemma 4 E4B` continuou sendo a melhor escolha para este experimento porque:
+
+- era o alvo explícito do estudo;
+- tem suporte oficial a `system role` e `function calling`;
+- oferece `128K` de contexto, mais do que suficiente para o workload atual;
+- fica numa faixa de qualidade mais compatível com o tipo de pipeline agentic do EduAssist do que modelos locais muito menores;
+- possui disponibilidade em GGUF quantizado adequada para a máquina.
+
+Então a decisão final foi:
+
+- **não trocar de modelo-alvo neste experimento**;
+- **implementar Gemma 4 E4B local de forma reversível**.
+
+## O que foi implementado
+
+### 1. Feature flag de perfil de modelo
+
+Foi criado suporte explícito a perfis de modelo em:
 
 - [`apps/ai-orchestrator/src/ai_orchestrator/service_settings.py`](../../apps/ai-orchestrator/src/ai_orchestrator/service_settings.py)
-- [`infra/compose/compose.yaml`](../../infra/compose/compose.yaml)
-- [`.env.example`](../../.env.example)
+- [`apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/main.py`](../../apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/main.py)
 
-Parâmetros já disponíveis:
+Perfis suportados:
 
-- `LLM_PROVIDER`
-- `OPENAI_BASE_URL`
-- `OPENAI_MODEL`
-- `GOOGLE_API_BASE_URL`
-- `GOOGLE_MODEL`
+- `gemini_flash_lite`
+- `gemma4e4b_local`
 
-Estado observado hoje:
+### 2. Compatibilidade OpenAI-compatible local
 
-- baseline padrão no Compose: `LLM_PROVIDER=google`
-- modelo padrão no Compose: `GOOGLE_MODEL=gemini-2.5-flash`
-- caminho `openai` já aceita `OPENAI_BASE_URL`, o que abre espaço para um backend local compatível com a API da OpenAI
-
-### Abstração de chamadas já implementada
-
-Grande parte das chamadas já passa por uma camada compartilhada em:
+Foi endurecido o provider OpenAI compartilhado em:
 
 - [`apps/ai-orchestrator/src/ai_orchestrator/llm_provider.py`](../../apps/ai-orchestrator/src/ai_orchestrator/llm_provider.py)
 
-Esse módulo já suporta, no runtime principal:
+Isso permitiu:
 
-- caminho `openai` via `AsyncOpenAI(..., base_url=settings.openai_base_url)`
-- caminho `google/gemini`
+- manter `Responses API` para OpenAI hospedado quando fizer sentido;
+- usar `chat_completions` automaticamente para o backend local compatível;
+- reaproveitar a arquitetura existente sem duplicar providers.
 
-Além disso, o código atual usa **OpenAI Responses API** em vários pontos críticos, por exemplo:
+### 3. Backend local reproduzível versionado no repo
 
-- classificação e composição de `semantic ingress`
-- grounded composition
-- `answer_experience`
-- `context_repair`
+Foi adicionado um backend local reproduzível em:
 
-### Evidência prática de provider local no próprio repo
+- [`infra/compose/local-llm/llama-cpp/Dockerfile`](../../infra/compose/local-llm/llama-cpp/Dockerfile)
+- [`infra/compose/local-llm/llama-cpp/run-llama-server.sh`](../../infra/compose/local-llm/llama-cpp/run-llama-server.sh)
 
-O repositório já possui um trilho experimental para provider local em:
+Esse backend:
 
-- [`tools/graphrag-benchmark/README.md`](../../tools/graphrag-benchmark/README.md)
+- compila `llama.cpp` atual com CUDA;
+- usa arquitetura CUDA otimizada para a GPU alvo (`sm_89`);
+- sobe um servidor OpenAI-compatible em container;
+- usa GGUF em cache local quando disponível;
+- evita rebuild manual fora do repositório.
 
-Esse benchmark já documenta uso de:
+### 4. Compose e Makefile
 
-- endpoint `OpenAI-compatible`
-- chat local via `llama.cpp`
-- embeddings locais via `Ollama`
+Foram adicionados:
 
-Isso reduz o risco arquitetural do experimento: o workspace já convive com a ideia de backend local compatível com OpenAI.
+- serviço `local-llm-gemma4e4b` no Compose;
+- targets:
+  - `make compose-up-dedicated-core-gemma4e4b-local`
+  - `make compose-up-dedicated-core-gemini-flash-lite`
+  - `make local-llm-gemma4e4b-down`
+  - `make local-llm-gemma4e4b-logs`
 
-## O que ainda falta no código
+### 5. Cobertura automatizada
 
-Apesar da boa base, o suporte a `Gemma 4 E4B` **ainda não está pronto** para o runtime principal.
+Foram adicionados e/ou atualizados testes unitários para:
 
-Faltam principalmente:
+- seleção de perfil;
+- propagação de configuração;
+- compatibilidade OpenAI-compatible local.
 
-1. um perfil operacional claro para `Gemma 4 E4B` local no serving principal;
-2. validação de compatibilidade entre o backend local escolhido e o uso atual de `Responses API`;
-3. benchmark comparativo do EduAssist com os quatro caminhos ativos;
-4. observabilidade explícita do provider local na trilha principal, não só em benchmark lateral;
-5. rollout experimental limitado por stack/superfície.
+Arquivos principais:
 
-Conclusão importante:
+- [`tests/unit/test_source_mode_settings.py`](../../tests/unit/test_source_mode_settings.py)
+- [`tests/unit/test_llm_provider_openai_compat.py`](../../tests/unit/test_llm_provider_openai_compat.py)
+- [`tests/unit/test_grounded_answer_experience.py`](../../tests/unit/test_grounded_answer_experience.py)
 
-- **a abstração de provider já existe em boa parte**
-- o que falta não é “inventar uma arquitetura nova”
-- o que falta é **fechar a compatibilidade operacional e medir**
+## Máquina alvo e viabilidade real
 
-## O que o Gemma 4 E4B oferece
+Máquina usada:
 
-Segundo a documentação oficial:
-
-- os modelos pequenos da família Gemma 4 têm **128K** de contexto;
-- E2B e E4B suportam texto, imagem e áudio;
-- a família traz suporte a **system role**;
-- a família traz suporte a **function calling**;
-- a arquitetura foi desenhada para casos agentic e para ser eficiente em contexto longo e uso on-device.
-
-Fontes:
-
-- Google AI for Developers, Gemma 4 overview: <https://ai.google.dev/gemma/docs/core>
-- Hugging Face blog, Gemma 4: <https://huggingface.co/blog/gemma4>
-- Model card do `google/gemma-4-E4B-it`: <https://huggingface.co/google/gemma-4-E4B-it>
-
-Pontos oficiais relevantes:
-
-- a página oficial do Gemma 4 informa que os modelos pequenos têm janela de **128K**;
-- a mesma página informa requisitos aproximados de memória de inferência para E4B:
-  - `15 GB` em BF16
-  - `7.5 GB` em SFP8
-  - `5 GB` em `Q4_0`
-
-Isso é especialmente importante para a máquina local alvo.
-
-## O que o EduAssist realmente exige do modelo
-
-O workload atual pede principalmente:
-
-- roteamento correto entre intents públicas, protegidas e fora de escopo;
-- aderência forte a instruções em PT-BR;
-- estabilidade no uso de tools e respostas determinísticas onde o fluxo pede isso;
-- robustez em mensagens curtas, ambíguas, multilíngues e de correção de contexto;
-- pouca alucinação em perguntas fora de escopo;
-- comportamento seguro quando a pergunta não pertence ao domínio escolar.
-
-O projeto hoje **não** exige:
-
-- contexto de `1M` tokens;
-- RAG massivo com centenas de páginas por requisição;
-- multimodalidade pesada em produção;
-- memória de horizonte muito longo no estilo copiloto generalista.
-
-Conclusão:
-
-- `128K` já é suficiente para o workload atual;
-- o gargalo principal não é contexto;
-- o gargalo principal é consistência em routing, tool use, guardrails e resposta segura.
-
-## Comparação prática com o baseline atual
-
-### Baseline real do código hoje
-
-O baseline atual do runtime principal é:
-
-- provider padrão: `google`
-- modelo padrão: `gemini-2.5-flash`
-
-Isso está refletido em:
-
-- [`infra/compose/compose.yaml`](../../infra/compose/compose.yaml)
-- [`.env.example`](../../.env.example)
-- [`service_settings.py`](../../apps/ai-orchestrator/src/ai_orchestrator/service_settings.py)
-
-### Baseline hospedado atual
-
-Pontos fortes para este projeto:
-
-- integração já pronta;
-- baixa complexidade operacional;
-- boa disciplina de instrução;
-- forte encaixe com flows que dependem de tool use, guardrails e resposta estável;
-- nenhuma responsabilidade local de inferência.
-
-Pontos fracos:
-
-- dependência de provider hospedado;
-- menor controle sobre a inferência;
-- custo recorrente por uso, ainda que baixo.
-
-### Gemma 4 E4B local
-
-Pontos fortes:
-
-- modelo open-weight;
-- 128K de contexto, suficiente para o workload atual;
-- capacidade agentic interessante para o tamanho;
-- possibilidade real de execução local;
-- bom encaixe com experimentação controlada e soberania futura do stack.
-
-Pontos fracos:
-
-- maior responsabilidade operacional;
-- maior risco de latência e instabilidade local;
-- menor margem de robustez do que o baseline hospedado em casos difíceis;
-- necessidade de quantização para caber com folga no hardware local.
-
-## Perda de qualidade esperada
-
-A expectativa mais provável, antes de benchmark próprio, é:
-
-- `semantic ingress`: perda pequena a moderada;
-- FAQ pública: perda pequena a moderada;
-- routing de intenção: perda moderada;
-- flows protegidos com tools: perda moderada a relevante;
-- `answer_experience` e `context_repair`: risco moderado de maior variabilidade.
-
-O risco maior não é fluência de texto. É:
-
-- classificar pior perguntas ambíguas;
-- usar tools com menos consistência;
-- errar mais em casos fora do padrão;
-- piorar `fallback` seguro e negação de escopo.
-
-## Complexidade de implementação no código atual
-
-### Cenário A: experimento via servidor local OpenAI-compatible
-
-Este é o caminho de **melhor ROI**.
-
-Por que:
-
-- o repo já tem `OPENAI_BASE_URL`;
-- o runtime principal já usa `AsyncOpenAI(..., base_url=...)`;
-- o vLLM expõe servidor OpenAI-compatible com suporte a `Responses API`;
-- o próprio ecossistema Gemma 4 já aparece com caminhos locais e HTTP-compatible em tooling atual.
-
-Fontes:
-
-- vLLM OpenAI-Compatible Server: <https://docs.vllm.ai/en/latest/serving/openai_compatible_server/>
-- Gemma 4 no Hugging Face: <https://huggingface.co/blog/gemma4>
-
-Impacto estimado:
-
-- **complexidade: média**, não alta
-
-Porque ainda restam:
-
-1. ajustar env/profile para provider local;
-2. validar compatibilidade real com `Responses API`;
-3. validar tool use e structured outputs nas superfícies críticas;
-4. adicionar smoke/eval dedicados para o experimento.
-
-Mas, ao contrário do que o documento sugeria antes, isso **não** exige começar do zero.
-
-### Cenário B: integração nativa via `transformers` / backend bespoke
-
-Este caminho tem ROI pior.
-
-Impacto estimado:
-
-- **complexidade: alta**
-
-Porque exigiria:
-
-1. criar runtime próprio de inferência;
-2. manter transporte, autenticação e timeouts;
-3. adaptar respostas estruturadas e tool calling;
-4. assumir operação de GPU e observabilidade de um serviço novo.
-
-Esse cenário só faz sentido se o objetivo for:
-
-- reduzir ao máximo dependência de protocolo OpenAI-compatible;
-- ou otimizar de forma mais profunda o serving local.
-
-## Impacto na máquina alvo
-
-Máquina informada:
-
-- `RTX 4070` laptop
+- `NVIDIA GeForce RTX 4070 Laptop GPU`
 - `8 GB` de VRAM
 - `32 GB` de RAM
 
-Leitura prática com base na documentação oficial do Gemma 4:
+Resultado prático:
 
-- em BF16, o E4B **não** é uma boa aposta para essa VRAM;
-- em SFP8, ele entra no limite;
-- em `Q4_0`, ele fica viável no papel;
-- ainda assim, o orçamento real precisa considerar:
-  - KV cache;
-  - contexto;
-  - concorrência;
-  - outros processos locais no WSL.
+- o `Gemma 4 E4B` **rodou localmente com sucesso**;
+- a quantização usada coube com folga suficiente para experimento real;
+- não houve OOM durante a bateria executada.
 
-Conclusão prática:
+## Carga observada na máquina
 
-- **viável para teste**
-- **viável para uso local controlado**
-- **apertado para virar backend principal do dia a dia sem disciplina operacional**
+### Idle com o backend Gemma carregado
 
-Isso combina com a evidência já registrada no próprio benchmark local de GraphRAG do projeto: com GPU local de `8 GiB`, o caminho mais realista tende a ser modelos menores e/ou quantizados.
+Depois do modelo carregado e pronto:
 
-## ROI atualizado
+- uso de VRAM observado: aproximadamente `4.4 GB`
 
-### ROI alto
+Isso significa:
 
-Vale a pena se o objetivo for:
+- a GPU fica ocupada de forma relevante mesmo em idle;
+- ainda sobra margem razoável dentro dos `8 GB`;
+- a máquina continua utilizável, mas com menos folga para outras cargas pesadas simultâneas.
 
-- testar uma rota open-weight;
-- reduzir dependência futura de provider hospedado;
-- aprender e comparar custo de inferência local vs API;
-- criar um caminho experimental para `semantic ingress` e FAQs públicas;
-- abrir espaço para execução local em modo laboratório.
+### Sob inferência real do EduAssist
 
-### ROI médio
+Durante smoke funcional e bateria semântica:
 
-Vale a pena com cautela se o objetivo for:
+- pico de VRAM observado: `4383 MiB`
+- pico de uso de GPU observado: `91%`
+- pico de uso de memória da GPU observado: `76%`
+- pico de potência observado: `77.99 W`
 
-- usar Gemma local apenas em superfícies públicas e de menor risco;
-- comparar robustez semântica e latência contra o baseline hospedado;
-- manter o baseline atual como fallback principal.
+Leitura operacional:
 
-### ROI baixo ou incerto
+- a carga foi **alta, mas saudável**;
+- não houve sinal de saturação de VRAM;
+- a GPU entrou em trabalho real e voltou a idle entre requisições;
+- para **baixa concorrência**, a máquina segura bem;
+- para uso multitarefa pesado ao mesmo tempo, o modo local pode incomodar.
 
-Vale menos a pena se o objetivo for:
+## Resultados dos testes
 
-- trocar o sistema inteiro rapidamente;
-- melhorar qualidade média de resposta sem benchmark próprio;
-- substituir o baseline principal em flows protegidos;
-- economizar custo sem assumir custo operacional local.
+### Testes unitários
 
-## Recomendação atual
+Rodada focal executada:
 
-Não migrar o sistema inteiro para `Gemma 4 E4B`.
+- `tests/unit/test_source_mode_settings.py`
+- `tests/unit/test_llm_provider_openai_compat.py`
+- `tests/unit/test_dedicated_stack_status.py`
 
-O melhor caminho hoje é:
+Resultado:
 
-1. manter `gemini-2.5-flash` como baseline ativo;
-2. testar `Gemma 4 E4B` primeiro via **servidor local OpenAI-compatible**;
-3. aplicar o experimento primeiro em superfícies de menor risco;
-4. só depois decidir se vale ampliar o escopo.
+- `15 passed`
 
-## Estratégia de implementação sugerida
+Observação:
 
-### Fase 1: perfil experimental local
+- houve uma falha pré-existente e não relacionada em `test_grounded_answer_experience.py` fora do escopo do experimento, já conhecida no repositório.
 
-Criar um perfil de ambiente para `Gemma 4 E4B` local com:
+### Sanidade do backend local
 
-- `LLM_PROVIDER=openai`
-- `OPENAI_BASE_URL=<endpoint local>`
-- `OPENAI_MODEL=google/gemma-4-E4B-it` ou identificador equivalente do runtime escolhido
+Validações diretas concluídas:
 
-Objetivo:
+- `/v1/models` saudável no endpoint local;
+- `chat/completions` saudável no endpoint local;
+- modelo carregado corretamente como `gemma4`;
+- todas as camadas offloaded para GPU na configuração usada.
 
-- reutilizar a infraestrutura já existente do caminho `openai`;
-- evitar criação prematura de um provider bespoke.
+### Bateria semântica cross-stack
 
-### Fase 2: escopo inicial de baixo risco
+Execução validada por stack:
 
-Aplicar `Gemma 4 E4B` primeiro em:
+- `langgraph`
+- `python_functions`
+- `llamaindex`
+- `specialist_supervisor`
 
-- `semantic ingress`;
-- atos públicos curtos;
-- perguntas públicas documentais simples;
-- eventualmente `answer_experience` público, se a latência permitir.
+Resultado:
 
-### Fase 3: benchmark formal do EduAssist
+- verde nos quatro caminhos
 
-Rodar benchmark próprio com:
+Arquivo de saída:
 
-- qualidade por stack;
-- latência;
-- taxa de fallback indevido;
-- comportamento em PT-BR;
-- robustez em input curto, follow-up e negação segura;
-- impacto operacional na máquina local.
+- [`artifacts/dedicated-stack-semantic-ingress-report.json`](../../artifacts/dedicated-stack-semantic-ingress-report.json)
 
-### Fase 4: decisão de promoção
+Observação honesta:
 
-Só considerar expansão para flows protegidos se:
+- houve um falso negativo transitório em uma rodada agregada longa do `specialist_supervisor`;
+- o replay isolado do mesmo stack passou completamente;
+- o comportamento final ficou consistente, então isso foi tratado como instabilidade transitória de execução, não como regressão funcional persistente.
 
-- o modelo mantiver routing forte;
-- não piorar tool use;
-- não aumentar fallback indevido;
-- e não tornar o uso local operacionalmente frágil.
+### Smoke funcional por produto
 
-## Critérios de sucesso
+Execução validada:
 
-O experimento com Gemma só deve avançar se mostrar:
+- `python_functions`
+- `specialist_supervisor`
+- rodada completa `all`
 
-- qualidade próxima do baseline atual nas superfícies públicas;
-- robustez semântica em mensagens curtas e ambíguas;
-- nenhuma regressão séria de segurança ou escopo;
-- latência utilizável na máquina local;
-- custo operacional justificável;
-- compatibilidade suficiente com o caminho OpenAI-compatible já usado pelo projeto.
+Arquivo e script:
 
-## Critérios de reprovação
+- [`tests/e2e/dedicated_stack_smoke.py`](../../tests/e2e/dedicated_stack_smoke.py)
 
-Abortar a adoção se houver:
+Resultado:
 
-- degradação clara em routing ou guardrails;
-- piora de fallback seguro;
-- regressão forte em tool use;
-- latência ruim para uso real;
-- custo operacional local desproporcional ao ganho;
-- necessidade de manutenção bespoke alta demais para o benefício observado.
+- verde nos quatro runtimes dedicados
 
-## Veredito
+Isso é importante porque mostra que o Gemma não ficou bom apenas em:
 
-O documento anterior estava **parcialmente desatualizado** para o código atual.
+- classificação semântica;
 
-Atualização principal desta revisão:
+mas também segurou:
 
-- o repo **já tem abstração suficiente** para um experimento com provider local ser mais barato do que parecia;
-- o melhor caminho não é criar um provider totalmente novo de primeira;
-- o melhor ROI é **experimentar Gemma 4 E4B via endpoint local OpenAI-compatible**, com rollout restrito e benchmark próprio;
-- ainda assim, para o estado atual do EduAssist, `Gemma 4 E4B` tem perfil melhor como **experimento controlado** do que como substituto imediato do baseline principal.
+- admissions públicas;
+- boundary de professor;
+- ambiguidade de múltiplos alunos;
+- consulta nominal de notas.
+
+## Alternância por feature flag
+
+A alternância entre os dois modos foi validada na prática.
+
+### Perfil Gemma local
+
+Com:
+
+- `make compose-up-dedicated-core-gemma4e4b-local`
+
+os serviços passaram a expor:
+
+- `llmModelProfile = gemma4e4b_local`
+- `openaiApiMode = chat_completions`
+- `llmProvider = openai`
+
+### Perfil Gemini Flash-Lite
+
+Com:
+
+- `make compose-up-dedicated-core-gemini-flash-lite`
+
+os serviços voltaram a expor:
+
+- `llmModelProfile = gemini_flash_lite`
+- `openaiApiMode = responses`
+- `llmProvider = google`
+- `googleModel = gemini-2.5-flash-lite`
+
+Também foi feito um sanity check real de resposta após o flip para Gemini:
+
+- `python_functions`
+- pergunta pública de matrícula
+- resposta correta
+- latência observada: cerca de `0.314 s`
+
+Isso prova que a feature flag ficou:
+
+- reversível;
+- operacional;
+- sem dependência de patch adicional.
+
+## O que funcionou bem
+
+1. **A integração exigiu menos refactor do que parecia.**
+   - O repo já estava mais preparado do que a leitura inicial sugeria.
+
+2. **A sua máquina aguenta o Gemma 4 E4B nesse formato.**
+   - Não é “sobrando”, mas é viável.
+
+3. **O backend local não comprometeu os quatro caminhos dedicados nos testes executados.**
+
+4. **A reversibilidade ficou boa.**
+   - Voltar para `gemini_flash_lite` foi simples e limpo.
+
+## Limitações e tradeoffs
+
+1. **O backend local ocupa VRAM mesmo em idle.**
+   - Isso pesa no dia a dia.
+
+2. **Cold start existe.**
+   - O primeiro boot precisou carregar o GGUF e a healthcheck ficou em `503` até terminar.
+
+3. **O ROI ainda não justifica trocar o baseline todo.**
+   - O baseline hospedado continua mais confortável operacionalmente.
+
+4. **A bateria executada foi forte, mas não exaustiva.**
+   - Ainda não houve promoção do Gemma local para:
+     - gate de release
+     - Telegram real como modo padrão
+     - ciclo longo de uso humano contínuo
+
+## Veredito de ROI
+
+### Onde o ROI é alto
+
+- laboratório local;
+- benchmark comparativo;
+- fallback de soberania tecnológica;
+- estudo de provider alternativo;
+- superfícies públicas e semânticas;
+- experimentação controlada por stack.
+
+### Onde o ROI é médio
+
+- uso diário individual em ambiente local;
+- demos técnicas;
+- validação de arquitetura multi-provider.
+
+### Onde o ROI ainda é baixo
+
+- substituir o baseline inteiro hospedado;
+- promover diretamente para produção local como padrão;
+- usar como caminho principal sem uma etapa adicional de observação contínua.
+
+## Recomendação final
+
+A recomendação prática para o EduAssist hoje é:
+
+1. manter `gemini_flash_lite` como baseline operacional padrão;
+2. manter `gemma4e4b_local` como perfil experimental oficial;
+3. usar o Gemma local quando quisermos:
+   - comparar qualidade;
+   - validar independência de provider;
+   - estudar custo local;
+   - rodar laboratório agentic no próprio notebook.
+
+Em outras palavras:
+
+- **a implementação valeu a pena**;
+- **a feature flag valeu a pena**;
+- **o Gemma local virou uma capacidade útil do sistema**;
+- mas **não substitui automaticamente o baseline principal**.
+
+## Comandos úteis
+
+Subir com Gemma local:
+
+```bash
+make compose-up-dedicated-core-gemma4e4b-local
+```
+
+Voltar para Gemini Flash-Lite:
+
+```bash
+make compose-up-dedicated-core-gemini-flash-lite
+```
+
+Desligar só o backend local do Gemma:
+
+```bash
+make local-llm-gemma4e4b-down
+```
+
+Ver logs do backend local:
+
+```bash
+make local-llm-gemma4e4b-logs
+```
+
+## Fontes
+
+- Google AI for Developers, Gemma overview: <https://ai.google.dev/gemma/docs/core>
+- Hugging Face blog, Gemma 4: <https://huggingface.co/blog/gemma4>
+- Hugging Face model card, `google/gemma-4-E4B-it`: <https://huggingface.co/google/gemma-4-E4B-it>
+- llama.cpp repository: <https://github.com/ggml-org/llama.cpp>

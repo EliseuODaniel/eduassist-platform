@@ -110,7 +110,9 @@ class OrchestrationPreview(BaseModel):
 
 class RuntimeCapabilities(BaseModel):
     service: str
+    llm_model_profile: str | None = None
     llm_provider: str
+    openai_api_mode: str
     openai_model: str
     google_model: str
     llm_configured: bool

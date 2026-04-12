@@ -4671,6 +4671,7 @@ def _answer_experience_settings(settings: Any) -> Any:
         openai_api_key=getattr(settings, 'answer_experience_openai_api_key', None) or getattr(settings, 'openai_api_key', None),
         openai_base_url=getattr(settings, 'answer_experience_openai_base_url', None) or getattr(settings, 'openai_base_url', None),
         openai_model=getattr(settings, 'answer_experience_openai_model', None) or getattr(settings, 'openai_model', None),
+        openai_api_mode=getattr(settings, 'answer_experience_openai_api_mode', None) or getattr(settings, 'openai_api_mode', 'responses'),
         google_api_key=getattr(settings, 'answer_experience_google_api_key', None) or getattr(settings, 'google_api_key', None),
         google_api_base_url=getattr(settings, 'answer_experience_google_api_base_url', None) or getattr(settings, 'google_api_base_url', None),
         google_model=getattr(settings, 'answer_experience_google_model', None) or getattr(settings, 'google_model', None),

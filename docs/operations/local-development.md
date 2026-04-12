@@ -358,6 +358,45 @@ Se quiser exigir borda estável no gate:
 - `make release-readiness`
 - `make release-readiness-strict`
 - `make release-readiness`
+
+## 12. Alternância de modelo por feature flag
+
+O runtime principal agora aceita um profile de modelo para alternar entre o baseline hospedado e um experimento local.
+
+Profiles suportados:
+
+- `gemini_flash_lite`
+- `gemma4e4b_local`
+
+Uso recomendado:
+
+1. baseline de alto ROI com `Gemini 2.5 Flash-Lite`
+   - `make compose-up-dedicated-core-gemini-flash-lite`
+2. experimento local com `Gemma 4 E4B`
+   - `make compose-up-dedicated-core-gemma4e4b-local`
+
+O profile `gemma4e4b_local` usa:
+
+- `llama.cpp` server com GPU;
+- quantização `Q4_K_M`;
+- endpoint local `OpenAI-compatible`;
+- `OPENAI_API_MODE=chat_completions`.
+
+Variáveis mais importantes:
+
+- `LLM_MODEL_PROFILE`
+- `OPENAI_API_MODE`
+- `LOCAL_LLM_API_KEY`
+- `LOCAL_LLM_GEMMA4E4B_HF_REPO`
+- `LOCAL_LLM_GEMMA4E4B_CTX_SIZE`
+- `LOCAL_LLM_GEMMA4E4B_THREADS`
+- `LOCAL_LLM_GEMMA4E4B_GPU_LAYERS`
+- `LOCAL_LLM_GEMMA4E4B_PORT`
+
+Critério operacional:
+
+- use `gemini_flash_lite` como baseline recomendado;
+- use `gemma4e4b_local` como experimento controlado, com smoke e leitura de carga local antes de promover qualquer uso mais amplo.
 - `make release-readiness-strict`
 - `GET /v1/foundation/summary` no `api-core`
 - `GET /v1/identity/context?user_external_code=USR-TEACH-001`

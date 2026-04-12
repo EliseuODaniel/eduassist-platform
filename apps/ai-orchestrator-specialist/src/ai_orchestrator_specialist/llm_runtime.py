@@ -68,6 +68,12 @@ def model_name_for_role(settings: Any, *, role: str) -> str:
 def agent_model(settings: Any) -> str | LitellmModel:
     provider = resolve_llm_provider(settings)
     if provider == "openai":
+        openai_api_key = str(getattr(settings, "openai_api_key", "") or "").strip()
+        openai_base_url = str(getattr(settings, "openai_base_url", "") or "").strip()
+        if openai_api_key:
+            os.environ["OPENAI_API_KEY"] = openai_api_key
+        if openai_base_url:
+            os.environ["OPENAI_BASE_URL"] = openai_base_url
         return effective_llm_model_name(settings)
     if provider == "gemini_litellm":
         google_api_key = str(getattr(settings, "google_api_key", "") or "").strip()
@@ -84,6 +90,12 @@ def agent_model_for_role(settings: Any, *, role: str) -> str | LitellmModel:
     provider = resolve_llm_provider(settings)
     role_model_name = model_name_for_role(settings, role=role)
     if provider == "openai":
+        openai_api_key = str(getattr(settings, "openai_api_key", "") or "").strip()
+        openai_base_url = str(getattr(settings, "openai_base_url", "") or "").strip()
+        if openai_api_key:
+            os.environ["OPENAI_API_KEY"] = openai_api_key
+        if openai_base_url:
+            os.environ["OPENAI_BASE_URL"] = openai_base_url
         return role_model_name
     if provider == "gemini_litellm":
         google_api_key = str(getattr(settings, "google_api_key", "") or "").strip()

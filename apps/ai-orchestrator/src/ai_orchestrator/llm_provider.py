@@ -136,6 +136,125 @@ def _google_generation_config(
     return config
 
 
+def _openai_api_mode(settings: Any) -> str:
+    raw = str(getattr(settings, 'openai_api_mode', 'responses') or 'responses').strip().lower()
+    if raw in {'chat', 'chat_completions', 'chat-completions'}:
+        return 'chat_completions'
+    if raw == 'auto':
+        base_url = str(getattr(settings, 'openai_base_url', 'https://api.openai.com/v1') or '').strip().lower()
+        if base_url and 'api.openai.com' not in base_url:
+            return 'chat_completions'
+        return 'responses'
+    return 'responses'
+
+
+def _openai_message_text(message_content: Any) -> str | None:
+    if isinstance(message_content, str):
+        cleaned = message_content.strip()
+        return cleaned or None
+    if not isinstance(message_content, list):
+        return None
+    parts: list[str] = []
+    for item in message_content:
+        if isinstance(item, dict):
+            if str(item.get('type') or '').strip().lower() == 'text':
+                text = str(item.get('text') or '').strip()
+                if text:
+                    parts.append(text)
+            continue
+        text = str(getattr(item, 'text', '') or '').strip()
+        if text:
+            parts.append(text)
+    merged = '\n'.join(part for part in parts if part).strip()
+    return merged or None
+
+
+async def _openai_chat_completions_text_call(
+    *,
+    settings: Any,
+    instructions: str,
+    prompt: str,
+    temperature: float | None = None,
+    max_output_tokens: int | None = None,
+    top_p: float | None = None,
+    timeout: float | None = None,
+) -> str | None:
+    try:
+        client = AsyncOpenAI(
+            api_key=settings.openai_api_key,
+            base_url=settings.openai_base_url,
+            timeout=timeout,
+        )
+        kwargs: dict[str, Any] = {
+            'model': settings.openai_model,
+            'messages': [
+                {'role': 'system', 'content': instructions},
+                {'role': 'user', 'content': prompt},
+            ],
+        }
+        if temperature is not None:
+            kwargs['temperature'] = temperature
+        if top_p is not None:
+            kwargs['top_p'] = top_p
+        if max_output_tokens is not None:
+            kwargs['max_tokens'] = max_output_tokens
+        response = await client.chat.completions.create(**kwargs)
+    except Exception:
+        return None
+    choices = getattr(response, 'choices', None) or []
+    if not choices:
+        return None
+    message = getattr(choices[0], 'message', None)
+    if message is None:
+        return None
+    return _openai_message_text(getattr(message, 'content', None))
+
+
+async def _openai_text_call(
+    *,
+    settings: Any,
+    instructions: str,
+    prompt: str,
+    temperature: float | None = None,
+    max_output_tokens: int | None = None,
+    top_p: float | None = None,
+    timeout: float | None = None,
+) -> str | None:
+    mode = _openai_api_mode(settings)
+    if mode == 'chat_completions':
+        return await _openai_chat_completions_text_call(
+            settings=settings,
+            instructions=instructions,
+            prompt=prompt,
+            temperature=temperature,
+            max_output_tokens=max_output_tokens,
+            top_p=top_p,
+            timeout=timeout,
+        )
+    try:
+        client = AsyncOpenAI(
+            api_key=settings.openai_api_key,
+            base_url=settings.openai_base_url,
+            timeout=timeout,
+        )
+        kwargs: dict[str, Any] = {
+            'model': settings.openai_model,
+            'instructions': instructions,
+            'input': prompt,
+        }
+        if temperature is not None:
+            kwargs['temperature'] = temperature
+        if top_p is not None:
+            kwargs['top_p'] = top_p
+        if max_output_tokens is not None:
+            kwargs['max_output_tokens'] = max_output_tokens
+        response = await client.responses.create(**kwargs)
+        text = (response.output_text or '').strip()
+        return text or None
+    except Exception:
+        return None
+
+
 def _build_context_sections(
     *,
     request_message: str,
@@ -619,17 +738,14 @@ async def compose_with_openai(
         school_profile=school_profile,
     )
 
-    try:
-        client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
-        response = await client.responses.create(
-            model=settings.openai_model,
-            instructions=instructions,
-            input=prompt,
-        )
-        text = (response.output_text or '').strip()
-        return text or None
-    except Exception:
-        return None
+    return await _openai_text_call(
+        settings=settings,
+        instructions=instructions,
+        prompt=prompt,
+        temperature=0.2,
+        max_output_tokens=700,
+        timeout=25.0,
+    )
 
 
 async def revise_with_openai(
@@ -652,19 +768,17 @@ async def revise_with_openai(
         school_profile=school_profile,
     )
 
-    try:
-        client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
-        response = await client.responses.create(
-            model=settings.openai_model,
-            instructions=instructions,
-            input=prompt,
-        )
-        text = (response.output_text or '').strip()
-        if not text or text == 'KEEP':
-            return None
-        return text
-    except Exception:
+    text = await _openai_text_call(
+        settings=settings,
+        instructions=instructions,
+        prompt=prompt,
+        temperature=0.15,
+        max_output_tokens=320,
+        timeout=20.0,
+    )
+    if not text or text == 'KEEP':
         return None
+    return text
 
 
 async def polish_structured_with_openai(
@@ -687,19 +801,17 @@ async def polish_structured_with_openai(
         school_profile=school_profile,
     )
 
-    try:
-        client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
-        response = await client.responses.create(
-            model=settings.openai_model,
-            instructions=instructions,
-            input=prompt,
-        )
-        text = (response.output_text or '').strip()
-        if not text or text == 'KEEP':
-            return None
-        return text
-    except Exception:
+    text = await _openai_text_call(
+        settings=settings,
+        instructions=instructions,
+        prompt=prompt,
+        temperature=0.1,
+        max_output_tokens=240,
+        timeout=15.0,
+    )
+    if not text or text == 'KEEP':
         return None
+    return text
 
 
 async def resolve_public_semantic_with_openai(
@@ -719,15 +831,15 @@ async def resolve_public_semantic_with_openai(
         school_profile=school_profile,
         selected_tools=selected_tools,
     )
-    try:
-        client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
-        response = await client.responses.create(
-            model=settings.openai_model,
-            instructions=instructions,
-            input=prompt,
-        )
-        text = (response.output_text or '').strip()
-    except Exception:
+    text = await _openai_text_call(
+        settings=settings,
+        instructions=instructions,
+        prompt=prompt,
+        temperature=0.0,
+        max_output_tokens=220,
+        timeout=15.0,
+    )
+    if not text:
         return None
     return _extract_json_object(text)
 
@@ -945,15 +1057,15 @@ async def judge_answer_relevance_with_openai(
         public_plan=public_plan,
         slot_memory=slot_memory,
     )
-    try:
-        client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
-        response = await client.responses.create(
-            model=settings.openai_model,
-            instructions=instructions,
-            input=prompt,
-        )
-        text = (response.output_text or '').strip()
-    except Exception:
+    text = await _openai_text_call(
+        settings=settings,
+        instructions=instructions,
+        prompt=prompt,
+        temperature=0.0,
+        max_output_tokens=160,
+        timeout=15.0,
+    )
+    if not text:
         return None
     return _extract_json_object(text)
 
@@ -1152,15 +1264,16 @@ async def compose_public_grounded_with_openai(
         conversation_context=conversation_context,
         school_profile=school_profile,
     )
-    try:
-        client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
-        response = await client.responses.create(
-            model=settings.openai_model,
-            instructions=instructions,
-            input=prompt,
-        )
-        text = (response.output_text or '').strip()
-    except Exception:
+    text = await _openai_text_call(
+        settings=settings,
+        instructions=instructions,
+        prompt=prompt,
+        temperature=0.15,
+        max_output_tokens=320,
+        top_p=0.9,
+        timeout=20.0,
+    )
+    if not text:
         return None
     return text or None
 
@@ -1276,15 +1389,16 @@ async def compose_grounded_answer_experience_with_openai(
         reason=reason,
         focus_summary=focus_summary,
     )
-    try:
-        client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
-        response = await client.responses.create(
-            model=settings.openai_model,
-            instructions=instructions,
-            input=prompt,
-        )
-        text = (response.output_text or '').strip()
-    except Exception:
+    text = await _openai_text_call(
+        settings=settings,
+        instructions=instructions,
+        prompt=prompt,
+        temperature=0.12,
+        max_output_tokens=320,
+        top_p=0.9,
+        timeout=18.0,
+    )
+    if not text:
         return None
     return text or None
 
@@ -1427,15 +1541,15 @@ async def plan_context_repair_with_openai(
         focus_summary=focus_summary,
         actor_summary=actor_summary,
     )
-    try:
-        client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
-        response = await client.responses.create(
-            model=settings.openai_model,
-            instructions=instructions,
-            input=prompt,
-        )
-        text = (response.output_text or '').strip()
-    except Exception:
+    text = await _openai_text_call(
+        settings=settings,
+        instructions=instructions,
+        prompt=prompt,
+        temperature=0.0,
+        max_output_tokens=220,
+        timeout=18.0,
+    )
+    if not text:
         return None
     return _extract_json_object(text or '')
 

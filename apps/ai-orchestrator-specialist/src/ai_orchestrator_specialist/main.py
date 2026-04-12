@@ -132,6 +132,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
     port: int = 8000
+    llm_model_profile: str | None = None
     llm_provider: str = "auto"
     api_core_url: str = "http://api-core:8000"
     orchestrator_url: str = "http://ai-orchestrator:8000"
@@ -141,6 +142,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-5.4"
+    openai_api_mode: str = "responses"
     openai_fast_model: str | None = "gpt-5-mini"
     openai_reasoning_model: str | None = "gpt-5.4"
     google_api_key: str | None = None
@@ -175,6 +177,36 @@ class Settings(BaseSettings):
     retrieval_deep_candidate_pool_size: int = 22
     retrieval_rerank_fused_weight: float = 0.35
     retrieval_rerank_late_interaction_weight: float = 0.65
+
+    @model_validator(mode="after")
+    def _apply_llm_model_profile(self) -> "Settings":
+        profile = str(self.llm_model_profile or "").strip().lower()
+        if not profile:
+            return self
+        if profile in {"gemini_flash_lite", "gemini_2_5_flash_lite", "gemini-2.5-flash-lite"}:
+            self.llm_provider = "google"
+            if not str(self.google_model or "").strip() or self.google_model == "gemini-2.5-flash":
+                self.google_model = "gemini-2.5-flash-lite"
+            if not str(self.google_fast_model or "").strip():
+                self.google_fast_model = self.google_model
+            if not str(self.google_reasoning_model or "").strip():
+                self.google_reasoning_model = self.google_model
+            return self
+        if profile in {"gemma4e4b_local", "gemma_4_e4b_local", "gemma-4-e4b-local"}:
+            self.llm_provider = "openai"
+            self.openai_api_mode = "chat_completions"
+            if not str(self.openai_api_key or "").strip():
+                self.openai_api_key = "local-llm"
+            if not str(self.openai_base_url or "").strip() or self.openai_base_url == "https://api.openai.com/v1":
+                self.openai_base_url = "http://local-llm-gemma4e4b:8080/v1"
+            if not str(self.openai_model or "").strip() or self.openai_model == "gpt-5.4":
+                self.openai_model = "ggml-org/gemma-4-E4B-it-GGUF:Q4_K_M"
+            if not str(self.openai_fast_model or "").strip() or self.openai_fast_model == "gpt-5-mini":
+                self.openai_fast_model = self.openai_model
+            if not str(self.openai_reasoning_model or "").strip() or self.openai_reasoning_model == "gpt-5.4":
+                self.openai_reasoning_model = self.openai_model
+            return self
+        return self
 
     @model_validator(mode="after")
     def _apply_source_mode_network_fallbacks(self) -> "Settings":
@@ -518,8 +550,10 @@ async def status(
         "serviceRole": "dedicated-stack-runtime",
         "primaryServingRecommended": True,
         "mode": "quality-first",
+        "llmModelProfile": settings.llm_model_profile,
         "llmProvider": llm_provider,
         "effectiveModel": _effective_llm_model_name(settings),
+        "openaiApiMode": settings.openai_api_mode,
         "openaiModel": settings.openai_model,
         "googleModel": settings.google_model,
         "llmConfigured": llm_provider != "unconfigured",
