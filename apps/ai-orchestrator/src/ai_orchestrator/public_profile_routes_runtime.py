@@ -7,6 +7,33 @@ from __future__ import annotations
 LOCAL_EXTRACTED_NAMES = {'_compose_public_feature_answer', '_try_public_channel_fast_answer', '_build_public_profile_context', '_handle_public_contacts', '_handle_public_timeline', '_compose_public_pricing_projection_answer'}
 
 from . import public_profile_runtime as _native
+from .intent_analysis_runtime import _detect_public_pricing_price_kind, _is_auth_guidance_query, _is_follow_up_query, _is_positive_requirement_query, _message_matches_term, _normalize_text, _should_reuse_public_pricing_slots
+from .public_act_rules_runtime import (
+    _is_comparative_query,
+    _is_cross_document_public_query,
+    _is_public_bolsas_and_processes_query,
+    _is_public_calendar_visibility_query,
+    _is_public_curriculum_query,
+    _is_public_document_submission_query,
+    _is_public_family_new_calendar_enrollment_query,
+    _is_public_feature_query,
+    _is_public_first_month_risks_query,
+    _is_public_health_authorization_bridge_query,
+    _is_public_health_second_call_query,
+    _is_public_permanence_family_query,
+    _is_public_policy_compare_query,
+    _is_public_policy_query,
+    _is_public_pricing_navigation_query,
+    _is_public_process_compare_query,
+    _is_public_service_credentials_bundle_query,
+    _is_public_timeline_before_after_query,
+    _is_public_timeline_lifecycle_query,
+    _is_public_timeline_query,
+    _is_public_travel_planning_query,
+    _is_public_year_three_phase_query,
+    _is_service_routing_query,
+    _matches_public_location_rule,
+)
 
 def _refresh_native_namespace() -> None:
     for name, value in vars(_native).items():
@@ -14,7 +41,7 @@ def _refresh_native_namespace() -> None:
             continue
         globals()[name] = value
 
-def _compose_public_feature_answer(
+def _compose_public_feature_answer_impl(
     *,
     profile: dict[str, Any],
     original_message: str,
@@ -160,21 +187,24 @@ def _compose_public_feature_answer(
     return '\n'.join(lines)
 
 
-def _try_public_channel_fast_answer(
-    *,
+def _try_public_channel_fast_answer_impl(
+    profile: dict[str, Any],
     message: str,
-    profile: dict[str, Any] | None,
+    *,
+    original_message: str | None = None,
+    conversation_context: dict[str, Any] | None = None,
+    semantic_plan: PublicInstitutionPlan | None = None,
 ) -> str | None:
     _refresh_native_namespace()
     if not isinstance(profile, dict):
         return None
     normalized = _normalize_text(message)
-    public_context = _build_public_profile_context(
+    public_context = _build_public_profile_context_impl(
         profile,
         message,
-        original_message=message,
-        conversation_context=None,
-        semantic_plan=None,
+        original_message=original_message or message,
+        conversation_context=conversation_context,
+        semantic_plan=semantic_plan,
     )
     if _is_public_timeline_before_after_query(message):
         before_after_answer = _compose_public_timeline_before_after_answer(profile)
@@ -185,13 +215,6 @@ def _try_public_channel_fast_answer(
             'Para consultas protegidas, como notas, faltas e financeiro, voce precisa vincular sua conta do Telegram ao portal da escola. '
             'No portal autenticado, gere o codigo de vinculacao e depois envie aqui o comando `/start link_<codigo>`. '
             'Depois disso, eu passo a consultar seus dados autorizados por este canal.'
-        )
-    if looks_like_scope_boundary_candidate(message) and not looks_like_school_scope_message(
-        message
-    ):
-        return _compose_scope_boundary_answer(
-            profile,
-            conversation_context=None,
         )
     if _is_public_timeline_query(message) and any(
         _message_matches_term(normalized, term)
@@ -408,10 +431,18 @@ def _try_public_channel_fast_answer(
                 f'Para entrar em contato por telefone, o numero da secretaria e {primary_phone.get("value")}.'
             )
         return 'Hoje a escola nao utiliza fax.'
+    if looks_like_scope_boundary_candidate(message) and not looks_like_school_scope_message(
+        message
+    ):
+        return _compose_scope_boundary_answer(
+            profile,
+            conversation_context=None,
+        )
+
     return None
 
 
-def _build_public_profile_context(
+def _build_public_profile_context_impl(
     profile: dict[str, Any],
     message: str,
     *,
@@ -521,7 +552,7 @@ def _build_public_profile_context(
     )
 
 
-def _handle_public_contacts(context: PublicProfileContext) -> str:
+def _handle_public_contacts_impl(context: PublicProfileContext) -> str:
     _refresh_native_namespace()
     wants_location = _matches_public_location_rule(context.source_message)
     wants_secretaria_guidance = any(
@@ -738,7 +769,7 @@ def _handle_public_contacts(context: PublicProfileContext) -> str:
     return '\n'.join(lines)
 
 
-def _handle_public_timeline(context: PublicProfileContext) -> str:
+def _handle_public_timeline_impl(context: PublicProfileContext) -> str:
     _refresh_native_namespace()
     entries = context.profile.get('public_timeline')
     if not isinstance(entries, list) or not entries:
@@ -865,7 +896,7 @@ def _handle_public_timeline(context: PublicProfileContext) -> str:
     return summary
 
 
-def _compose_public_pricing_projection_answer(context: PublicProfileContext) -> str | None:
+def _compose_public_pricing_projection_answer_impl(context: PublicProfileContext) -> str | None:
     _refresh_native_namespace()
     hints = resolve_entity_hints(context.source_message)
     quantity = hints.quantity_hint
@@ -1070,3 +1101,11 @@ def _compose_public_pricing_projection_answer(context: PublicProfileContext) -> 
     if sibling_discount_note:
         lines.append(f'A base publica tambem menciona: {sibling_discount_note}')
     return '\n'.join(lines)
+
+# Compatibility aliases while public_profile_runtime keeps facade imports.
+_compose_public_feature_answer = _compose_public_feature_answer_impl
+_try_public_channel_fast_answer = _try_public_channel_fast_answer_impl
+_build_public_profile_context = _build_public_profile_context_impl
+_handle_public_contacts = _handle_public_contacts_impl
+_handle_public_timeline = _handle_public_timeline_impl
+_compose_public_pricing_projection_answer = _compose_public_pricing_projection_answer_impl

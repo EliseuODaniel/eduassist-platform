@@ -4,8 +4,40 @@ from __future__ import annotations
 """Conversation-context and analysis-message helpers extracted from intent_analysis_runtime.py."""
 
 from . import runtime_core as _runtime_core
-from .intent_analysis_runtime import _message_matches_term
+from .conversation_focus_runtime import (
+    _compose_meta_repair_follow_up_answer,
+    _is_meta_repair_context_query,
+    _recent_admin_finance_combo_context,
+    _recent_conversation_focus,
+    _recent_message_lines,
+    _recent_slot_value,
+    _recent_trace_focus,
+    _recent_trace_used_tool,
+    _rewrite_restricted_public_protocol_follow_up,
+    _rewrite_service_routing_context_follow_up,
+)
+from .intent_analysis_runtime import (
+    _contains_any,
+    _detect_admin_attribute_request,
+    _is_follow_up_query,
+    _is_public_curriculum_context_follow_up,
+    _is_public_pricing_context_follow_up,
+    _message_matches_term,
+    _normalize_text,
+    _wants_upcoming_assessments,
+)
+from .protected_domain_runtime import _requested_subject_label_from_message
 from .public_orchestration_runtime import _extract_requested_date, _extract_requested_window
+from .student_scope_runtime import _is_discourse_repair_reset_query
+
+
+def _recent_messages_mention(
+    conversation_context: dict[str, Any] | None,
+    terms: set[str],
+) -> bool:
+    from .public_profile_runtime import _recent_messages_mention as _impl
+
+    return _impl(conversation_context, terms)
 
 
 def _export_runtime_core_namespace() -> None:

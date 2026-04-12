@@ -7,6 +7,43 @@ from __future__ import annotations
 LOCAL_EXTRACTED_NAMES = {'_build_conversation_slot_memory'}
 
 from . import public_profile_runtime as _native
+from .conversation_focus_runtime import _recent_conversation_focus
+from .intent_analysis_runtime import (
+    _derive_active_entity,
+    _derive_active_task,
+    _derive_pending_question_type,
+    _detect_academic_focus_kind,
+    _detect_admin_attribute_request,
+    _detect_public_pricing_price_kind,
+    _detect_time_reference,
+    _effective_academic_attribute_request,
+    _effective_finance_attribute_request,
+    _effective_finance_status_filter,
+    _extract_grade_reference,
+    _extract_public_pricing_grade_year,
+    _message_matches_term,
+    _normalize_text,
+    _primary_public_entity_hint,
+    _recent_slot_value,
+    _requested_operating_hours_attribute,
+    _should_reuse_public_context,
+    _should_reuse_public_pricing_slots,
+    _should_track_contact_subject,
+    _should_track_feature_key,
+    _wants_finance_second_copy,
+)
+from .public_profile_runtime import (
+    _recent_public_contact_subject,
+    _recent_public_feature_key,
+    _select_public_segment,
+)
+from .student_scope_runtime import (
+    _derive_pending_disambiguation,
+    _is_children_overview_query,
+    _is_student_focus_activation_query,
+    _recent_student_from_context,
+    _student_focus_candidate,
+)
 
 def _refresh_native_namespace() -> None:
     for name, value in vars(_native).items():
@@ -14,7 +51,7 @@ def _refresh_native_namespace() -> None:
             continue
         globals()[name] = value
 
-def _build_conversation_slot_memory(
+def _build_conversation_slot_memory_impl(
     *,
     actor: dict[str, Any] | None,
     profile: dict[str, Any] | None,
@@ -318,3 +355,5 @@ def _build_conversation_slot_memory(
         finance_attribute=finance_attribute,
         finance_action=finance_action,
     )
+
+_build_conversation_slot_memory = _build_conversation_slot_memory_impl

@@ -4,6 +4,19 @@ from __future__ import annotations
 """Protected academic and finance summary helpers extracted from protected_domain_runtime.py."""
 
 from . import runtime_core as _runtime_core
+from .intent_analysis_runtime import _contains_any, _message_matches_term, _normalize_text
+
+
+def _format_administrative_status(*args, **kwargs):
+    from .protected_domain_runtime import _format_administrative_status as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def _select_next_due_invoice(*args, **kwargs):
+    from .protected_domain_runtime import _select_next_due_invoice as _impl
+
+    return _impl(*args, **kwargs)
 
 
 def _export_runtime_core_namespace() -> None:

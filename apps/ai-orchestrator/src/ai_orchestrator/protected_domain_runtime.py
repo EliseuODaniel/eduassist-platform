@@ -4,6 +4,40 @@ from __future__ import annotations
 """Protected-domain formatting and answer composition helpers extracted from runtime_core.py."""
 
 from . import runtime_core as _runtime_core
+from .conversation_focus_runtime import _recent_message_lines, _recent_slot_value
+from .intent_analysis_runtime import (
+    _contains_any,
+    _is_follow_up_query,
+    _is_public_curriculum_context_follow_up,
+    _is_public_pricing_context_follow_up,
+    _message_matches_term,
+    _normalize_text,
+    _requested_public_features,
+    _is_public_curriculum_query,
+    _is_public_document_submission_query,
+    _is_service_routing_query,
+    _wants_academic_grade_requirement,
+)
+from .reply_experience_runtime import _wants_visual_response
+from .public_act_rules_runtime import (
+    _is_public_calendar_event_query,
+    _is_public_capacity_query,
+    _is_public_policy_query,
+    _is_public_timeline_query,
+    _matches_public_contact_rule,
+    _matches_public_highlight_rule,
+    _matches_public_location_rule,
+)
+from .public_known_unknowns import detect_public_known_unknown_key
+from .protected_summary_runtime import (
+    _administrative_checklist_lines,
+    _attendance_priority_rows,
+    _filter_invoice_rows,
+    _format_attendance_overview,
+    _format_grades,
+    _humanize_invoice_status,
+    _parse_invoice_amount,
+)
 
 
 def _export_runtime_core_namespace() -> None:

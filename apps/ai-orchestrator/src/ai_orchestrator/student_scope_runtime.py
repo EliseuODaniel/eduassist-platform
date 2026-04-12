@@ -4,6 +4,28 @@ from __future__ import annotations
 """Student selection and access-scope helpers extracted from reply_experience_runtime.py."""
 
 from . import runtime_core as _runtime_core
+from .conversation_focus_runtime import (
+    _recent_focus_is_fresh,
+    _recent_message_lines,
+    _recent_slot_value,
+    _recent_teacher_scope_context,
+    _recent_trace_focus,
+)
+from .intent_analysis_runtime import (
+    _contains_any,
+    _detect_academic_attribute_request,
+    _detect_academic_focus_kind,
+    _detect_admin_attribute_request,
+    _detect_finance_attribute_request,
+    _effective_finance_status_filter,
+    _is_access_scope_query,
+    _is_follow_up_query,
+    _looks_like_family_academic_aggregate_query,
+    _looks_like_family_attendance_aggregate_query,
+    _looks_like_family_finance_aggregate_query,
+    _message_matches_term,
+    _normalize_text,
+)
 
 
 def _export_runtime_core_namespace() -> None:
@@ -14,6 +36,12 @@ def _export_runtime_core_namespace() -> None:
 
 
 _export_runtime_core_namespace()
+
+
+def _looks_like_teacher_internal_scope_query(message: str) -> bool:
+    from . import public_profile_runtime as _public_profile_runtime
+
+    return _public_profile_runtime._looks_like_teacher_internal_scope_query(message)
 
 
 def _linked_students(actor: dict[str, Any] | None) -> list[dict[str, Any]]:

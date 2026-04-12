@@ -24,6 +24,7 @@ from .models import (
     RetrievalBackend,
 )
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
+from .native_runtime_preparation import build_runtime_execution_accumulators, prepare_runtime_execution
 from .llamaindex_public_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
 from .llamaindex_public_known_unknowns import detect_public_known_unknown_key, resolve_public_known_unknown_answer
 from .request_intent_guardrails import looks_like_school_domain_request
@@ -635,109 +636,48 @@ async def execute_kernel_plan(
     path_profile: PathExecutionProfile | None = None,
     replan_builder: Callable[[MessageResponseRequest, Any, str], KernelPlan] | None = None,
 ) -> KernelRunResult:
-    effective_path_profile = path_profile or get_path_execution_profile(engine_name)
-    prefer_fast_public_path = effective_path_profile.prefer_fast_public_path
-    actor = await rt._fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
-    effective_conversation_id = rt._effective_conversation_id(request)
-    conversation_context = await rt._fetch_conversation_context(
+    preparation = await prepare_runtime_execution(
+        request=request,
         settings=settings,
-        conversation_external_id=effective_conversation_id,
-        channel=request.channel.value,
-    )
-    context_payload = rt._conversation_context_payload(conversation_context)
-    analysis_message = rt._build_analysis_message(request.message, conversation_context)
-    school_profile = await rt._fetch_public_school_profile(settings=settings)
-    effective_plan = plan
-    skip_contextual_replan = _should_skip_contextual_replan_for_authenticated_combo_followup(
-        request=request,
-        conversation_context=context_payload,
-    )
-    if effective_path_profile.use_contextual_replan and not skip_contextual_replan and _needs_contextual_replan(
-        request=request,
         plan=plan,
-        analysis_message=analysis_message,
-    ):
-        contextual_request = request.model_copy(update={'message': analysis_message})
-        if replan_builder is not None:
-            candidate_plan = replan_builder(contextual_request, settings, plan.mode)
-        else:
-            candidate_plan = build_kernel_plan(
-                request=contextual_request,
-                settings=settings,
-                stack_name=plan.stack_name,
-                mode=plan.mode,
-            )
-        effective_plan = _select_better_plan(current=plan, candidate=candidate_plan)
-        if effective_plan is plan and _should_prefer_contextual_tie(request=request, current=plan, candidate=candidate_plan):
-            effective_plan = candidate_plan
-        if effective_plan is candidate_plan:
-            effective_plan = candidate_plan.model_copy(
-                update={
-                    'plan_notes': [*plan.plan_notes, 'contextual_replan'],
-                }
-            )
-    explicit_domain_override = _maybe_explicit_domain_override_plan(
-        request=request,
-        settings=settings,
-        current=effective_plan,
+        engine_name=engine_name,
+        path_profile=path_profile,
+        build_plan_fn=build_kernel_plan,
+        select_better_plan=_select_better_plan,
+        needs_contextual_replan=_needs_contextual_replan,
+        prefer_contextual_tie=_should_prefer_contextual_tie,
         replan_builder=replan_builder,
+        explicit_domain_override_resolver=_maybe_explicit_domain_override_plan,
+        contextual_replan_guard=_should_skip_contextual_replan_for_authenticated_combo_followup,
+        use_semantic_ingress=True,
+        semantic_stack_label='llamaindex',
+        protected_rescue_predicate=lambda **_: True,
     )
-    if explicit_domain_override is not None:
-        effective_plan = explicit_domain_override
-    preview = effective_plan.preview.model_copy(deep=True)
-    semantic_preview = preview.model_copy(deep=True)
-    semantic_ingress_plan = await maybe_resolve_semantic_ingress_plan(
-        settings=settings,
-        request_message=request.message,
-        conversation_context=context_payload,
-        preview=semantic_preview,
-        stack_label='llamaindex',
-    )
-    if (
-        (semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan))
-        and actor is not None
-        and request.user.authenticated
-    ):
-        rt._apply_protected_domain_rescue(
-            preview=preview,
-            actor=actor,
-            message=request.message,
-            conversation_context=context_payload,
-        )
-    if semantic_ingress_plan is not None:
-        ingress_base_preview = semantic_preview if is_terminal_semantic_ingress_plan(semantic_ingress_plan) else preview
-        preview = apply_semantic_ingress_preview(
-            preview=ingress_base_preview,
-            plan=semantic_ingress_plan,
-            stack_name='llamaindex',
-        )
-        effective_plan = effective_plan.model_copy(
-            update={
-                'plan_notes': [
-                    *effective_plan.plan_notes,
-                    f'semantic_ingress:{semantic_ingress_plan.conversation_act}',
-                ],
-            }
-        )
+    effective_path_profile = preparation.effective_path_profile
+    prefer_fast_public_path = effective_path_profile.prefer_fast_public_path
+    actor = preparation.actor
+    effective_conversation_id = preparation.effective_conversation_id
+    conversation_context = preparation.conversation_context_bundle
+    context_payload = preparation.context_payload
+    analysis_message = preparation.analysis_message
+    school_profile = preparation.school_profile
+    effective_plan = preparation.effective_plan
+    preview = preparation.preview
+    semantic_ingress_plan = preparation.semantic_ingress_plan
+    semantic_ingress_public_plan = preparation.semantic_ingress_public_plan
 
-    retrieval_hits: list[Any] = []
-    citations: list[MessageResponseCitation] = []
-    visual_assets = []
-    calendar_events = []
-    retrieval_context_pack: str | None = None
-    public_plan = None
-    deterministic_fallback_text: str | None = None
-    query_hints: set[str] = set()
-    semantic_judge_used = False
-    llm_stages: list[str] = []
-    answer_verifier_fallback_used = False
-    semantic_ingress_public_plan = (
-        build_semantic_ingress_public_plan(semantic_ingress_plan)
-        if semantic_ingress_plan is not None
-        else None
-    )
-    if semantic_ingress_plan is not None:
-        llm_stages.append('semantic_ingress_classifier')
+    accumulators = build_runtime_execution_accumulators(llm_stages=preparation.llm_stages)
+    retrieval_hits = accumulators.retrieval_hits
+    citations = accumulators.citations
+    visual_assets = accumulators.visual_assets
+    calendar_events = accumulators.calendar_events
+    retrieval_context_pack = accumulators.retrieval_context_pack
+    public_plan = accumulators.public_plan
+    deterministic_fallback_text = accumulators.deterministic_fallback_text
+    query_hints = accumulators.query_hints
+    semantic_judge_used = accumulators.semantic_judge_used
+    llm_stages = accumulators.llm_stages
+    answer_verifier_fallback_used = accumulators.answer_verifier_fallback_used
     contextual_public_answer = await _maybe_contextual_public_direct_answer(
         request=request,
         analysis_message=analysis_message,

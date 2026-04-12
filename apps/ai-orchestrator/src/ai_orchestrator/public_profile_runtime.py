@@ -13,8 +13,33 @@ is split into focused modules.
 from . import runtime_core as _runtime_core
 from .conversation_focus_runtime import _assistant_already_introduced
 from .conversation_focus_runtime import _normalize_text
+from .conversation_focus_runtime import _recent_conversation_focus
+from .conversation_focus_runtime import _recent_focus_follow_up_line
 from .conversation_focus_runtime import _recent_message_lines
-from .intent_analysis_runtime import _message_matches_term
+from .conversation_focus_runtime import _recent_trace_focus
+from .conversation_focus_runtime import _is_greeting_only
+from .intent_analysis_runtime import (
+    _contains_any,
+    _is_assistant_identity_query,
+    _is_capability_query,
+    _is_direct_service_routing_bundle_query,
+    _is_follow_up_query,
+    _is_public_pricing_navigation_query,
+    _is_service_routing_query,
+    _message_matches_term,
+    _requested_operating_hours_attribute,
+)
+from .public_act_rules_runtime import (
+    _has_public_multi_intent_signal,
+    _match_public_act_rule,
+    _matched_public_act_rules,
+    _prioritize_public_act_rules,
+)
+from .analysis_context_runtime import _extract_recent_assistant_message, _extract_recent_user_message
+from .intent_analysis_runtime import _extract_salient_terms
+from .public_act_rules_runtime import _looks_like_public_documentary_open_query, _matches_public_contact_rule
+from .public_orchestration_runtime import _build_public_institution_plan, _should_use_public_open_documentary_synthesis
+from .student_scope_runtime import _compose_public_access_scope_answer
 
 
 def _export_runtime_core_namespace() -> None:
@@ -25,6 +50,10 @@ def _export_runtime_core_namespace() -> None:
 
 
 _export_runtime_core_namespace()
+
+
+def _llm_forced_mode_enabled(*args, **kwargs):
+    return getattr(_runtime_core, '_llm_forced_mode_enabled')(*args, **kwargs)
 
 
 def _is_public_school_name_query(message: str) -> bool:
@@ -328,7 +357,7 @@ def _build_conversation_slot_memory(
     public_plan: PublicInstitutionPlan | None = None,
     preview: Any | None = None,
 ) -> ConversationSlotMemory:
-    from .public_profile_slot_memory_runtime import _build_conversation_slot_memory as _impl
+    from .public_profile_slot_memory_runtime import _build_conversation_slot_memory_impl as _impl
 
     return _impl(
         actor=actor,
@@ -467,7 +496,7 @@ def _compose_public_feature_answer(
     analysis_message: str,
     conversation_context: dict[str, Any] | None = None,
 ) -> str | None:
-    from .public_profile_routes_runtime import _compose_public_feature_answer as _impl
+    from .public_profile_routes_runtime import _compose_public_feature_answer_impl as _impl
 
     return _impl(
         profile,
@@ -2696,7 +2725,7 @@ def _try_public_channel_fast_answer(
     conversation_context: dict[str, Any] | None = None,
     semantic_plan: PublicInstitutionPlan | None = None,
 ) -> str | None:
-    from .public_profile_routes_runtime import _try_public_channel_fast_answer as _impl
+    from .public_profile_routes_runtime import _try_public_channel_fast_answer_impl as _impl
 
     return _impl(
         profile,
@@ -3375,7 +3404,7 @@ def _build_public_profile_context(
     conversation_context: dict[str, Any] | None = None,
     semantic_plan: PublicInstitutionPlan | None = None,
 ) -> PublicProfileContext:
-    from .public_profile_routes_runtime import _build_public_profile_context as _impl
+    from .public_profile_routes_runtime import _build_public_profile_context_impl as _impl
 
     return _impl(
         profile,
@@ -3398,7 +3427,6 @@ def _resolve_public_profile_act(context: PublicProfileContext) -> str:
             'comparative',
             'highlight',
             'features',
-            'curriculum',
         } and _looks_like_public_documentary_open_query(context.source_message):
             return 'canonical_fact'
         return context.semantic_act
@@ -3408,7 +3436,6 @@ def _resolve_public_profile_act(context: PublicProfileContext) -> str:
             'comparative',
             'highlight',
             'features',
-            'curriculum',
         } and _looks_like_public_documentary_open_query(context.source_message):
             return 'canonical_fact'
         return matched_rule.name
@@ -3538,7 +3565,7 @@ def _handle_public_comparative(context: PublicProfileContext) -> str:
 
 
 def _handle_public_contacts(context: PublicProfileContext) -> str | None:
-    from .public_profile_routes_runtime import _handle_public_contacts as _impl
+    from .public_profile_routes_runtime import _handle_public_contacts_impl as _impl
 
     return _impl(context)
 
@@ -3630,7 +3657,7 @@ def _handle_public_operating_hours(context: PublicProfileContext) -> str:
 
 
 def _handle_public_timeline(context: PublicProfileContext) -> str | None:
-    from .public_profile_routes_runtime import _handle_public_timeline as _impl
+    from .public_profile_routes_runtime import _handle_public_timeline_impl as _impl
 
     return _impl(context)
 
@@ -4277,21 +4304,35 @@ def _format_brl(value: Any) -> str:
     return f'R$ {formatted}'
 
 
+def _is_public_pricing_projection_context(candidate: Any) -> bool:
+    return isinstance(candidate, PublicProfileContext) or (
+        hasattr(candidate, 'source_message')
+        and hasattr(candidate, 'normalized')
+        and hasattr(candidate, 'slot_memory')
+        and hasattr(candidate, 'tuition_reference')
+    )
+
+
 def _compose_public_pricing_projection_answer(
-    profile: dict[str, Any],
-    message: str,
+    profile_or_context: dict[str, Any] | PublicProfileContext,
+    message: str | None = None,
     *,
     conversation_context: dict[str, Any] | None = None,
     semantic_plan: PublicInstitutionPlan | None = None,
 ) -> str | None:
-    from .public_profile_routes_runtime import _compose_public_pricing_projection_answer as _impl
+    from .public_profile_routes_runtime import _compose_public_pricing_projection_answer_impl as _impl
 
-    return _impl(
-        profile,
+    if message is None and _is_public_pricing_projection_context(profile_or_context):
+        return _impl(profile_or_context)
+    if message is None or not isinstance(profile_or_context, dict):
+        raise TypeError('profile + message ou PublicProfileContext sao obrigatorios')
+    context = _build_public_profile_context(
+        profile_or_context,
         message,
         conversation_context=conversation_context,
         semantic_plan=semantic_plan,
     )
+    return _impl(context)
 
 
 
@@ -4825,12 +4866,6 @@ def _compose_public_profile_answer(
     )
     if multi_intent_answer:
         return _localize_pt_br_surface_labels(multi_intent_answer)
-    fast_public_channel_answer = _try_public_channel_fast_answer(
-        message=context.source_message,
-        profile=profile,
-    )
-    if fast_public_channel_answer:
-        return _localize_pt_br_surface_labels(fast_public_channel_answer)
     normalized_source_message = _normalize_text(context.source_message)
     if (
         (
@@ -4902,6 +4937,13 @@ def _compose_public_profile_answer(
         if extra_texts:
             return _localize_pt_br_surface_labels('\n\n'.join([primary_text, *extra_texts]))
         return _localize_pt_br_surface_labels(primary_text)
+
+    fast_public_channel_answer = _try_public_channel_fast_answer(
+        message=context.source_message,
+        profile=profile,
+    )
+    if fast_public_channel_answer:
+        return _localize_pt_br_surface_labels(fast_public_channel_answer)
     return _localize_pt_br_surface_labels(
         _compose_public_profile_answer_legacy(
             profile,

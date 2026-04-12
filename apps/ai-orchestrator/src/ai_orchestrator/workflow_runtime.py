@@ -4,6 +4,19 @@ from __future__ import annotations
 """Workflow orchestration helpers extracted from runtime.py."""
 
 from . import runtime_core as _runtime_core
+from .analysis_context_runtime import (
+    _extract_protocol_code_hint,
+    _looks_like_workflow_resume_follow_up,
+)
+from .conversation_focus_runtime import (
+    _recent_conversation_focus,
+    _recent_focus_is_fresh,
+    _recent_message_lines,
+    _recent_tool_call_entries,
+    _recent_trace_focus,
+    _recent_workflow_focus,
+)
+from .public_orchestration_runtime import _extract_requested_date, _extract_requested_window
 
 
 def _export_runtime_core_namespace() -> None:

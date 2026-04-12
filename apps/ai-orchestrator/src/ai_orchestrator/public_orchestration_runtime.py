@@ -4,6 +4,12 @@ from __future__ import annotations
 """Public routing and orchestration helpers extracted from runtime_core.py."""
 
 from . import runtime_core as _runtime_core
+from .conversation_focus_runtime import (
+    _recent_conversation_focus,
+    _recent_message_lines,
+    _recent_trace_focus,
+    _recent_workflow_focus,
+)
 from .public_act_rules_runtime import _matched_public_act_rules, _prioritize_public_act_rules
 
 
@@ -38,6 +44,38 @@ def _intent_analysis_impl(name: str):
 
 def _looks_like_family_admin_aggregate_query(message: str) -> bool:
     return _intent_analysis_impl('_looks_like_family_admin_aggregate_query')(message)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
+
+
+def _normalize_text(text: str) -> str:
+    return _intent_analysis_impl('_normalize_text')(text)
+
+
+def _looks_like_workflow_resume_follow_up(message: str) -> bool:
+    from .analysis_context_runtime import _looks_like_workflow_resume_follow_up as _impl
+
+    return _impl(message)
+
+
+def _detect_visit_booking_action(message: str) -> str | None:
+    from .workflow_runtime import _detect_visit_booking_action as _impl
+
+    return _impl(message)
+
+
+def _looks_like_visit_update_follow_up(message: str) -> bool:
+    from .analysis_context_runtime import _looks_like_visit_update_follow_up as _impl
+
+    return _impl(message)
+
+
+def _detect_institutional_request_action(message: str) -> str | None:
+    from .workflow_runtime import _detect_institutional_request_action as _impl
+
+    return _impl(message)
 
 
 def _extract_school_reference_candidate(message: str) -> str | None:

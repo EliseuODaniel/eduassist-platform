@@ -6,6 +6,7 @@ import unicodedata
 """Intent analysis and preview-building helpers extracted from runtime_core.py."""
 
 from . import runtime_core as _runtime_core
+from .public_orchestration_runtime import _extract_requested_date, _extract_requested_window
 
 
 def _normalize_text(message: str | None) -> str:
@@ -34,6 +35,66 @@ def _is_public_bolsas_and_processes_query(message: str) -> bool:
     return _public_profile_impl('_is_public_bolsas_and_processes_query')(message)
 
 
+def _extract_grade_reference(message: str) -> str | None:
+    return _public_profile_impl('_extract_grade_reference')(message)
+
+
+def _requested_contact_channel(message: str) -> str | None:
+    return _public_profile_impl('_requested_contact_channel')(message)
+
+
+def _contact_is_general_school_query(message: str) -> bool:
+    return _public_profile_impl('_contact_is_general_school_query')(message)
+
+
+def _requested_public_features(message: str) -> tuple[str, ...]:
+    return _public_profile_impl('_requested_public_features')(message)
+
+
+def _select_public_segment(message: str) -> str | None:
+    return _public_profile_impl('_select_public_segment')(message)
+
+
+def _extract_public_curriculum_subject_focus(message: str) -> str | None:
+    return _public_profile_impl('_extract_public_curriculum_subject_focus')(message)
+
+
+def _compose_public_comparative_answer(profile: dict[str, Any]) -> str:
+    return _public_profile_impl('_compose_public_comparative_answer')(profile)
+
+
+def _is_public_curriculum_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_curriculum_query')(message)
+
+
+def _is_public_document_submission_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_document_submission_query')(message)
+
+
+def _student_scope_impl(name: str):
+    from . import student_scope_runtime as _student_scope_runtime
+
+    return getattr(_student_scope_runtime, name)
+
+
+def _linked_students(actor: dict[str, Any] | None) -> list[dict[str, Any]]:
+    return _student_scope_impl('_linked_students')(actor)
+
+
+def _is_access_scope_repair_query(
+    message: str,
+    actor: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None,
+) -> bool:
+    return _student_scope_impl('_is_access_scope_repair_query')(message, actor, conversation_context)
+
+
+def _is_admin_finance_combined_query(message: str) -> bool:
+    from .conversation_focus_runtime import _is_admin_finance_combined_query as _impl
+
+    return _impl(message)
+
+
 def _protected_domain_impl(name: str):
     from . import protected_domain_runtime as _protected_domain_runtime
 
@@ -59,7 +120,9 @@ def _looks_like_academic_difficulty_query(message: str, conversation_context: di
 
 
 def _should_inherit_academic_attribute_from_context(message: str, conversation_context: dict[str, Any] | None) -> bool:
-    return _protected_domain_impl('_should_inherit_academic_attribute_from_context')(message, conversation_context)
+    return _protected_domain_impl('_should_inherit_academic_attribute_from_context')(
+        message, conversation_context=conversation_context
+    )
 
 
 def _detect_finance_status_filter(message: str) -> set[str] | None:

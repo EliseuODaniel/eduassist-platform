@@ -25,6 +25,7 @@ from .models import (
     RetrievalBackend,
 )
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
+from .native_runtime_preparation import prepare_runtime_execution
 from .public_doc_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
 from .public_known_unknowns import detect_public_known_unknown_key, resolve_public_known_unknown_answer
 from .request_intent_guardrails import looks_like_school_domain_request
@@ -508,59 +509,31 @@ async def execute_kernel_plan(
     path_profile: PathExecutionProfile | None = None,
     replan_builder: Callable[[MessageResponseRequest, Any, str], KernelPlan] | None = None,
 ) -> KernelRunResult:
-    effective_path_profile = path_profile or get_path_execution_profile(engine_name)
-    prefer_fast_public_path = effective_path_profile.prefer_fast_public_path
-    actor = await rt._fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
-    effective_conversation_id = rt._effective_conversation_id(request)
-    conversation_context = await rt._fetch_conversation_context(
-        settings=settings,
-        conversation_external_id=effective_conversation_id,
-        channel=request.channel.value,
-    )
-    context_payload = rt._conversation_context_payload(conversation_context)
-    analysis_message = rt._build_analysis_message(request.message, conversation_context)
-    school_profile = await rt._fetch_public_school_profile(settings=settings)
-    effective_plan = plan
-    if effective_path_profile.use_contextual_replan and _needs_contextual_replan(
+    preparation = await prepare_runtime_execution(
         request=request,
+        settings=settings,
         plan=plan,
-        analysis_message=analysis_message,
-    ):
-        contextual_request = request.model_copy(update={'message': analysis_message})
-        if replan_builder is not None:
-            candidate_plan = replan_builder(contextual_request, settings, plan.mode)
-        else:
-            candidate_plan = build_kernel_plan(
-                request=contextual_request,
-                settings=settings,
-                stack_name=plan.stack_name,
-                mode=plan.mode,
-            )
-        effective_plan = _select_better_plan(current=plan, candidate=candidate_plan)
-        if effective_plan is plan and _should_prefer_contextual_tie(request=request, current=plan, candidate=candidate_plan):
-            effective_plan = candidate_plan
-        if effective_plan is candidate_plan:
-            effective_plan = candidate_plan.model_copy(
-                update={
-                    'plan_notes': [*plan.plan_notes, 'contextual_replan'],
-                }
-            )
-    explicit_domain_override = _maybe_explicit_domain_override_plan(
-        request=request,
-        settings=settings,
-        current=effective_plan,
+        engine_name=engine_name,
+        path_profile=path_profile,
+        build_plan_fn=build_kernel_plan,
+        select_better_plan=_select_better_plan,
+        needs_contextual_replan=_needs_contextual_replan,
+        prefer_contextual_tie=_should_prefer_contextual_tie,
         replan_builder=replan_builder,
+        explicit_domain_override_resolver=_maybe_explicit_domain_override_plan,
+        use_semantic_ingress=False,
+        protected_rescue_predicate=lambda **_: True,
     )
-    if explicit_domain_override is not None:
-        effective_plan = explicit_domain_override
-    preview = effective_plan.preview.model_copy(deep=True)
-    if actor is not None and request.user.authenticated:
-        rt._apply_protected_domain_rescue(
-            preview=preview,
-            actor=actor,
-            message=request.message,
-            conversation_context=context_payload,
-        )
+    effective_path_profile = preparation.effective_path_profile
+    prefer_fast_public_path = effective_path_profile.prefer_fast_public_path
+    actor = preparation.actor
+    effective_conversation_id = preparation.effective_conversation_id
+    conversation_context = preparation.conversation_context_bundle
+    context_payload = preparation.context_payload
+    analysis_message = preparation.analysis_message
+    school_profile = preparation.school_profile
+    effective_plan = preparation.effective_plan
+    preview = preparation.preview
 
     retrieval_hits: list[Any] = []
     citations: list[MessageResponseCitation] = []

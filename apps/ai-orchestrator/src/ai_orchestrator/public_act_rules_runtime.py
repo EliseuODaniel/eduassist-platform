@@ -4,6 +4,7 @@ from __future__ import annotations
 """Public act rule matching helpers extracted from public_orchestration_runtime.py."""
 
 from . import runtime_core as _runtime_core
+from .conversation_focus_runtime import _recent_trace_focus
 
 
 LOCAL_EXTRACTED_NAMES = {
@@ -43,6 +44,14 @@ def _intent_analysis_impl(name: str):
     return getattr(_intent_analysis_runtime, name)
 
 
+def _normalize_text(message: str | None) -> str:
+    return _intent_analysis_impl('_normalize_text')(message)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
+
+
 def _is_greeting_only(message: str) -> bool:
     return _intent_analysis_impl('_is_greeting_only')(message)
 
@@ -79,6 +88,108 @@ def _looks_like_public_documentary_open_query(message: str) -> bool:
     from . import public_orchestration_runtime as _public_orchestration_runtime
 
     return _public_orchestration_runtime._looks_like_public_documentary_open_query(message)
+
+
+def _public_profile_impl(name: str):
+    from . import public_profile_runtime as _public_profile_runtime
+
+    return getattr(_public_profile_runtime, name)
+
+
+def _extract_public_curriculum_subject_focus(message: str) -> str | None:
+    return _public_profile_impl('_extract_public_curriculum_subject_focus')(message)
+
+
+def _requested_public_attribute(message: str) -> str | None:
+    return _public_profile_impl('_requested_public_attribute')(message)
+
+
+def _requested_contact_channel(message: str) -> str | None:
+    return _public_profile_impl('_requested_contact_channel')(message)
+
+
+def _requested_public_features(message: str) -> tuple[str, ...]:
+    return _public_profile_impl('_requested_public_features')(message)
+
+
+def _extract_public_curriculum_subject_focus(message: str) -> str | None:
+    return _public_profile_impl('_extract_public_curriculum_subject_focus')(message)
+
+
+def _count_public_contact_subjects(message: str) -> int:
+    return _public_profile_impl('_count_public_contact_subjects')(message)
+
+
+def _is_public_family_new_calendar_enrollment_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_family_new_calendar_enrollment_query')(message)
+
+
+def _is_public_feature_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_feature_query')(message)
+
+
+def _is_public_timeline_lifecycle_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_timeline_lifecycle_query')(message)
+
+
+def _is_public_travel_planning_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_travel_planning_query')(message)
+
+
+def _is_public_year_three_phase_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_year_three_phase_query')(message)
+
+
+def _looks_like_teacher_internal_scope_query(message: str) -> bool:
+    return _public_profile_impl('_looks_like_teacher_internal_scope_query')(message)
+
+
+def _recent_public_feature_key(conversation_context: dict[str, Any] | None) -> str | None:
+    return _public_profile_impl('_recent_public_feature_key')(conversation_context)
+
+
+def _is_public_bolsas_and_processes_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_bolsas_and_processes_query')(message)
+
+
+def _is_public_calendar_visibility_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_calendar_visibility_query')(message)
+
+
+def _is_public_first_month_risks_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_first_month_risks_query')(message)
+
+
+def _is_public_health_authorization_bridge_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_health_authorization_bridge_query')(message)
+
+
+def _is_public_health_second_call_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_health_second_call_query')(message)
+
+
+def _is_public_permanence_family_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_permanence_family_query')(message)
+
+
+def _is_public_process_compare_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_process_compare_query')(message)
+
+
+def _is_public_timeline_before_after_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_timeline_before_after_query')(message)
+
+
+def _contains_any(message: str, terms: set[str]) -> bool:
+    return _intent_analysis_impl('_contains_any')(message, terms)
+
+
+def _is_follow_up_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_follow_up_query')(message)
+
+
+def _is_public_pricing_navigation_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_public_pricing_navigation_query')(message)
 
 
 def _matches_public_contact_rule(message: str) -> bool:

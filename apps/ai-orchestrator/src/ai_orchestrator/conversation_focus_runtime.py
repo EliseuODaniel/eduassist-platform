@@ -6,6 +6,33 @@ from __future__ import annotations
 from . import runtime_core as _runtime_core
 
 
+def _extract_protocol_code_from_text(text: str | None) -> str | None:
+    from .analysis_context_runtime import _extract_protocol_code_from_text as _impl
+
+    return _impl(text)
+
+
+def _is_public_pricing_navigation_query(message: str) -> bool:
+    from .intent_analysis_runtime import _is_public_pricing_navigation_query as _impl
+
+    return _impl(message)
+
+
+def _extract_recent_assistant_message(recent_messages: list[dict[str, Any]]) -> str | None:
+    from .analysis_context_runtime import _extract_recent_assistant_message as _impl
+
+    return _impl(recent_messages)
+
+
+def _recent_messages_mention(
+    conversation_context: dict[str, Any] | None,
+    terms: set[str],
+) -> bool:
+    from .public_profile_runtime import _recent_messages_mention as _impl
+
+    return _impl(conversation_context, terms)
+
+
 def _export_runtime_core_namespace() -> None:
     for name, value in vars(_runtime_core).items():
         if name.startswith('__'):
