@@ -644,7 +644,11 @@ services:
       CLOUDFLARED_TARGET_URL: ${CLOUDFLARED_TARGET_URL:-http://telegram-gateway:8000}
       CLOUDFLARED_TUNNEL_TOKEN: ${CLOUDFLARED_TUNNEL_TOKEN:-}
       CLOUDFLARED_ALLOW_QUICK_TUNNEL: ${CLOUDFLARED_ALLOW_QUICK_TUNNEL:-true}
-    command: ['/bin/sh', '/etc/cloudflared/run-cloudflared.sh']
+    command:
+      - tunnel
+      - --no-autoupdate
+      - --url
+      - ${CLOUDFLARED_TARGET_URL:-http://telegram-gateway:8000}
     volumes:
       - ./cloudflared:/etc/cloudflared:ro
     depends_on:

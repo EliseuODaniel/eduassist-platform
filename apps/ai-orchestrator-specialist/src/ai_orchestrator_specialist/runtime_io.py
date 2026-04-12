@@ -216,6 +216,11 @@ async def fetch_public_payload(ctx: Any, path: str, key: str) -> Any:
 
 
 async def orchestrator_preview(ctx: Any) -> dict[str, Any] | None:
+    from .semantic_ingress_runtime import (
+        apply_semantic_ingress_preview_hint,
+        maybe_resolve_semantic_ingress_plan,
+    )
+
     user = getattr(ctx.request, "user", None)
     user_role = getattr(user, "role", None)
     user_scopes = getattr(user, "scopes", ()) or ()
@@ -272,6 +277,17 @@ async def orchestrator_preview(ctx: Any) -> dict[str, Any] | None:
         "graph_path": ["specialist_supervisor", "local_preview_hint"],
         "reason": "specialist_local_preview_hint",
     }
+    semantic_ingress_plan = await maybe_resolve_semantic_ingress_plan(
+        settings=ctx.settings,
+        request_message=ctx.request.message,
+        conversation_context=getattr(ctx, "conversation_context", None),
+        preview_hint=preview,
+    )
+    if semantic_ingress_plan is not None:
+        preview = apply_semantic_ingress_preview_hint(
+            preview_hint=preview,
+            plan=semantic_ingress_plan,
+        )
     return _cache_set(
         _ORCHESTRATOR_PREVIEW_CACHE,
         cache_key,

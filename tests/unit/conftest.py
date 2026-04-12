@@ -12,6 +12,7 @@ SRC_PATHS = (
     REPO_ROOT / 'apps/telegram-gateway/src',
     REPO_ROOT / 'apps/worker/src',
     REPO_ROOT / 'packages/observability/python/src',
+    REPO_ROOT / 'packages/semantic-ingress/python/src',
 )
 
 for path in SRC_PATHS:

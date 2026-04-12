@@ -55,6 +55,13 @@ def _is_canonical_or_deterministic_reason(reason: str) -> bool:
     return normalized.startswith(deterministic_prefixes) or any(marker in normalized for marker in deterministic_contains)
 
 
+def _is_terminal_semantic_ingress_reason(reason: str, *, stack_name: str) -> bool:
+    normalized = str(reason or '').strip()
+    return normalized.startswith(f'{stack_name}_semantic_ingress:') or normalized.startswith(
+        f'{stack_name}_native_semantic_ingress:'
+    )
+
+
 def _looks_like_multidoc(*, citations_count: int, support_count: int) -> bool:
     return citations_count >= 2 or support_count >= 2
 
@@ -96,6 +103,8 @@ def build_final_polish_decision(
     public_doc_like = preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar}
 
     if normalized_stack == 'python_functions':
+        if _is_terminal_semantic_ingress_reason(response_reason, stack_name='python_functions'):
+            return FinalPolishDecision(True, True, False, 'light_polish', 'python_functions_semantic_ingress_terminal')
         if preview.mode is OrchestrationMode.hybrid_retrieval and public_doc_like and multi_doc:
             return FinalPolishDecision(True, True, False, 'light_polish', 'python_functions_public_multidoc')
         return FinalPolishDecision(False, False, False, 'skip', 'python_functions_prefers_deterministic')
@@ -120,6 +129,14 @@ def build_final_polish_decision(
         return FinalPolishDecision(False, False, False, 'skip', 'langgraph_not_eligible')
 
     if normalized_stack == 'llamaindex':
+        if _is_terminal_semantic_ingress_reason(response_reason, stack_name='llamaindex'):
+            return FinalPolishDecision(
+                True,
+                True,
+                False,
+                'light_polish',
+                'llamaindex_semantic_ingress_terminal',
+            )
         if public_doc_like and (multi_doc or 'answer_composition' in llm_stage_set or retrieval_backend is RetrievalBackend.qdrant_hybrid):
             return FinalPolishDecision(
                 True,

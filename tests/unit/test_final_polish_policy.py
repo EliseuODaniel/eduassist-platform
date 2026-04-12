@@ -115,6 +115,38 @@ def test_llamaindex_multidoc_documentary_allows_light_polish() -> None:
     assert decision.mode == 'light_polish'
 
 
+def test_python_functions_terminal_semantic_ingress_allows_light_polish() -> None:
+    decision = build_final_polish_decision(
+        settings=_settings(),
+        stack_name='python_functions',
+        request=_request(),
+        preview=_preview(mode=OrchestrationMode.structured_tool, reason='python_functions_native_semantic_ingress:greeting'),
+        response_reason='python_functions_native_semantic_ingress:greeting',
+        llm_stages=['semantic_ingress_classifier'],
+        citations_count=0,
+        support_count=0,
+        retrieval_backend=RetrievalBackend.none,
+    )
+    assert decision.apply_polish is True
+    assert decision.reason == 'python_functions_semantic_ingress_terminal'
+
+
+def test_llamaindex_terminal_semantic_ingress_allows_light_polish() -> None:
+    decision = build_final_polish_decision(
+        settings=_settings(),
+        stack_name='llamaindex',
+        request=_request(),
+        preview=_preview(mode=OrchestrationMode.structured_tool, reason='llamaindex_semantic_ingress:assistant_identity'),
+        response_reason='llamaindex_semantic_ingress:assistant_identity',
+        llm_stages=['semantic_ingress_classifier'],
+        citations_count=0,
+        support_count=0,
+        retrieval_backend=RetrievalBackend.none,
+    )
+    assert decision.apply_polish is True
+    assert decision.reason == 'llamaindex_semantic_ingress_terminal'
+
+
 def test_specialist_quality_first_always_skips() -> None:
     decision = build_final_polish_decision(
         settings=_settings(feature_flag_final_polish_stacks='langgraph,llamaindex,python_functions,specialist_supervisor'),

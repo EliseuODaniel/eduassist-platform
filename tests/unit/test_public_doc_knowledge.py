@@ -246,6 +246,13 @@ def test_shared_and_specialist_conduct_lane_match_safety_prompt() -> None:
     assert match_specialist_public_canonical_lane(prompt) == 'public_bundle.conduct_frequency_punctuality'
 
 
+def test_shared_and_specialist_conduct_lane_match_substance_prompt() -> None:
+    prompt = 'Posso fumar maconha nessa escola?'
+    assert match_public_canonical_lane(prompt) == 'public_bundle.conduct_frequency_punctuality'
+    assert match_specialist_public_canonical_lane(prompt) == 'public_bundle.conduct_frequency_punctuality'
+    assert match_python_functions_public_canonical_lane(prompt) == 'public_bundle.conduct_frequency_punctuality'
+
+
 def test_python_functions_contextual_conduct_answer_handles_severe_incident_prompt() -> None:
     answer = compose_public_conduct_policy_contextual_answer(
         'O que acontece se um aluno tacar bomba na escola?',
@@ -256,6 +263,18 @@ def test_python_functions_contextual_conduct_answer_handles_severe_incident_prom
     assert 'nao sao tratadas como comportamento permitido' in lowered
     assert 'registro formal' in lowered or 'escalonamento para a direcao' in lowered
     assert 'direcao@' not in lowered
+
+
+def test_python_functions_contextual_conduct_answer_handles_substance_prompt() -> None:
+    answer = compose_public_conduct_policy_contextual_answer(
+        'Posso fumar maconha nessa escola?',
+        profile=_sample_profile(),
+    )
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'nao aparece como comportamento permitido' in lowered
+    assert 'coordenacao' in lowered
+    assert 'cadastro' not in lowered
 
 
 def test_python_functions_contextual_conduct_answer_handles_behavior_prompt_concisely() -> None:
@@ -269,6 +288,17 @@ def test_python_functions_contextual_conduct_answer_handles_behavior_prompt_conc
     assert 'bullying' in lowered
     assert 'coordenacao' in lowered
     assert 'direcao@' not in lowered
+
+
+def test_shared_conduct_lane_matches_short_behavior_prompt() -> None:
+    prompt = 'bom comportamento'
+    assert match_public_canonical_lane(prompt) == 'public_bundle.conduct_frequency_punctuality'
+    assert match_llamaindex_public_canonical_lane(prompt) == 'public_bundle.conduct_frequency_punctuality'
+    answer = compose_public_conduct_policy_contextual_answer(prompt, profile=_sample_profile())
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'bom comportamento' in lowered
+    assert 'bullying' in lowered
 
 
 def test_python_functions_contextual_conduct_answer_keeps_frequency_and_punctuality_bundle() -> None:

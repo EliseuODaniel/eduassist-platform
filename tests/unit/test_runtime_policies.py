@@ -1389,6 +1389,104 @@ def test_compose_public_profile_answer_prefers_canonical_process_compare_before_
     assert 'cancel' in normalized
 
 
+def test_compose_public_profile_answer_terminal_greeting_ignores_previous_admin_follow_up() -> None:
+    answer = _compose_public_profile_answer(
+        {'school_name': 'Colegio Horizonte'},
+        'bom diazinho',
+        actor={'role_code': 'guardian'},
+        original_message='bom diazinho',
+        conversation_context={
+            'recent_messages': [
+                {'sender_type': 'assistant', 'content': 'Situacao administrativa do seu cadastro hoje: com pendencias.'},
+            ],
+            'recent_trace': {'active_task': 'admin:administrative_status'},
+        },
+        semantic_plan=PublicInstitutionPlan(
+            conversation_act='greeting',
+            required_tools=('get_public_school_profile',),
+            fetch_profile=True,
+            semantic_source='semantic_ingress_llm',
+            use_conversation_context=False,
+        ),
+    )
+    normalized = answer.casefold()
+    assert 'bom dia' in normalized or 'oi' in normalized
+    assert 'eduassist' in normalized
+    assert 'cadastro' not in normalized
+
+
+def test_compose_public_profile_answer_input_clarification_ignores_previous_admin_follow_up() -> None:
+    answer = _compose_public_profile_answer(
+        {'school_name': 'Colegio Horizonte'},
+        'Привет',
+        actor={'role_code': 'guardian'},
+        original_message='Привет',
+        conversation_context={
+            'recent_messages': [
+                {'sender_type': 'assistant', 'content': 'Situacao administrativa do seu cadastro hoje: com pendencias.'},
+            ],
+            'recent_trace': {'active_task': 'admin:administrative_status'},
+        },
+        semantic_plan=PublicInstitutionPlan(
+            conversation_act='input_clarification',
+            required_tools=('get_public_school_profile',),
+            fetch_profile=True,
+            semantic_source='semantic_ingress_llm',
+            use_conversation_context=False,
+        ),
+    )
+    normalized = answer.casefold()
+    assert 'nao consegui interpretar' in normalized or 'não consegui interpretar' in normalized
+    assert 'cadastro' not in normalized
+
+
+def test_compose_public_profile_answer_language_preference_explains_portuguese_label() -> None:
+    answer = _compose_public_profile_answer(
+        {'school_name': 'Colegio Horizonte'},
+        'Por que admissions ta em ingles?',
+        actor={'role_code': 'guardian'},
+        original_message='Por que admissions ta em ingles?',
+        conversation_context=None,
+        semantic_plan=PublicInstitutionPlan(
+            conversation_act='language_preference',
+            required_tools=('get_public_school_profile',),
+            fetch_profile=True,
+            semantic_source='semantic_ingress_llm',
+            use_conversation_context=False,
+        ),
+    )
+    normalized = answer.casefold()
+    assert 'portugues' in normalized or 'português' in normalized
+    assert 'matricula e atendimento comercial' in normalized
+    assert 'admissions' not in normalized
+
+
+def test_compose_public_profile_answer_language_preference_does_not_confuse_portuguese_with_subject() -> None:
+    answer = _compose_public_profile_answer(
+        {'school_name': 'Colegio Horizonte'},
+        'Quero que so fale portugues',
+        actor={'role_code': 'guardian'},
+        original_message='Quero que so fale portugues',
+        conversation_context={
+            'recent_messages': [
+                {'sender_type': 'assistant', 'content': 'Você quer consultar Língua Inglesa de qual aluno: Lucas Oliveira ou Ana Oliveira?'},
+            ],
+            'recent_trace': {'active_task': 'academic:grades'},
+        },
+        semantic_plan=PublicInstitutionPlan(
+            conversation_act='language_preference',
+            required_tools=('get_public_school_profile',),
+            fetch_profile=True,
+            semantic_source='semantic_ingress_llm',
+            use_conversation_context=False,
+        ),
+    )
+    normalized = answer.casefold()
+    assert 'portugues' in normalized or 'português' in normalized
+    assert 'lingua portuguesa' not in normalized
+    assert 'ana oliveira' not in normalized
+
+
 def test_try_public_channel_fast_answer_prefers_process_compare_lane_before_pricing() -> None:
     answer = _try_public_channel_fast_answer(
         message='Compare rematricula, transferencia e cancelamento destacando o que muda na pratica.',
@@ -1423,6 +1521,52 @@ def test_try_public_channel_fast_answer_projects_enrollment_and_monthly_for_thre
     assert '3 x' in lowered
     assert 'r$ 1.050,00' in lowered
     assert 'r$ 4.350,00' in lowered
+
+
+def test_try_public_channel_fast_answer_returns_scope_boundary_for_out_of_scope_question() -> None:
+    answer = _try_public_channel_fast_answer(
+        message='Qual o melhor filme do ano?',
+        profile={'school_name': 'Colegio Horizonte'},
+    )
+
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'fora do escopo da escola' in lowered
+    assert 'matricula' in lowered
+    assert 'calendario' in lowered
+
+
+def test_try_public_channel_fast_answer_uses_contextual_conduct_policy_for_substance_question() -> None:
+    answer = _try_public_channel_fast_answer(
+        message='Posso fumar maconha nessa escola?',
+        profile={'school_name': 'Colegio Horizonte'},
+    )
+
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'maconha' in lowered
+    assert 'nao aparece como comportamento permitido' in lowered
+    assert 'coordenacao' in lowered or 'coordenação' in lowered
+    assert 'frequencia minima' not in lowered
+
+
+def test_public_profile_answer_honors_semantic_auth_guidance_even_when_message_is_short() -> None:
+    answer = _compose_public_profile_answer(
+        {'school_name': 'Colegio Horizonte'},
+        'como vinculo minha conta no telegram?',
+        semantic_plan=PublicInstitutionPlan(
+            conversation_act='auth_guidance',
+            required_tools=('get_public_school_profile',),
+            fetch_profile=True,
+            semantic_source='semantic_ingress_llm',
+            use_conversation_context=False,
+        ),
+    )
+
+    lowered = answer.lower()
+    assert 'vincul' in lowered
+    assert 'telegram' in lowered
+    assert '/start link_' in lowered
 
 
 def test_build_public_institution_plan_keeps_teacher_directory_boundary() -> None:

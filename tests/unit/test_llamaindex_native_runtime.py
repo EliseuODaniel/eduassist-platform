@@ -10,6 +10,7 @@ from ai_orchestrator.llamaindex_native_runtime import (
     _build_llamaindex_node_postprocessors,
     _build_public_document_group_node,
     _build_public_recursive_retriever,
+    _compose_semantic_ingress_terminal_answer,
     _deterministic_llamaindex_native_public_decision,
     _extract_public_summary_store_parent_ref_keys,
     _filter_search_to_document_keys,
@@ -17,6 +18,7 @@ from ai_orchestrator.llamaindex_native_runtime import (
     _should_avoid_llamaindex_public_profile_fast_path,
     _run_public_hybrid_search,
     _resolve_early_llamaindex_public_answer,
+    _semantic_ingress_native_public_decision,
     _should_use_llamaindex_teacher_schedule_direct,
     _should_use_llamaindex_teacher_scope_guidance,
     _should_skip_llamaindex_public_fast_paths,
@@ -536,3 +538,77 @@ def test_contextual_public_direct_answer_skips_admin_finance_block_followup(monk
         )
     )
     assert result is None
+
+
+def test_semantic_ingress_native_public_decision_preserves_public_contract() -> None:
+    public_plan = SimpleNamespace(
+        conversation_act='greeting',
+        required_tools=('get_public_school_profile', 'list_assistant_capabilities'),
+        secondary_acts=(),
+        requested_attribute=None,
+        requested_channel=None,
+        focus_hint=None,
+        use_conversation_context=False,
+    )
+
+    decision = _semantic_ingress_native_public_decision(public_plan=public_plan)
+
+    assert decision.conversation_act == 'greeting'
+    assert decision.answer_mode == 'profile'
+    assert decision.required_tools == ['get_public_school_profile', 'list_assistant_capabilities']
+
+
+def test_semantic_ingress_native_public_decision_keeps_identity_contract() -> None:
+    public_plan = SimpleNamespace(
+        conversation_act='assistant_identity',
+        required_tools=('get_public_school_profile', 'get_org_directory'),
+        secondary_acts=(),
+        requested_attribute=None,
+        requested_channel=None,
+        focus_hint=None,
+        use_conversation_context=True,
+    )
+
+    decision = _semantic_ingress_native_public_decision(public_plan=public_plan)
+
+    assert decision.conversation_act == 'assistant_identity'
+    assert decision.answer_mode == 'profile'
+    assert decision.required_tools == ['get_public_school_profile', 'get_org_directory']
+    assert decision.use_conversation_context is True
+
+
+def test_semantic_ingress_native_public_decision_keeps_input_clarification_contract() -> None:
+    public_plan = SimpleNamespace(
+        conversation_act='input_clarification',
+        required_tools=('get_public_school_profile',),
+        secondary_acts=(),
+        requested_attribute=None,
+        requested_channel=None,
+        focus_hint=None,
+        use_conversation_context=False,
+    )
+
+    decision = _semantic_ingress_native_public_decision(public_plan=public_plan)
+
+    assert decision.conversation_act == 'input_clarification'
+    assert decision.answer_mode == 'profile'
+    assert decision.required_tools == ['get_public_school_profile']
+
+
+def test_compose_semantic_ingress_terminal_answer_uses_safe_input_clarification_contract() -> None:
+    public_plan = SimpleNamespace(
+        conversation_act='input_clarification',
+    )
+
+    answer = _compose_semantic_ingress_terminal_answer(
+        school_profile={'school_name': 'Colegio Horizonte'},
+        request_message='???',
+        actor=None,
+        conversation_context=None,
+        public_plan=public_plan,
+    )
+
+    lowered = answer.lower()
+    assert 'nao consegui interpretar' in lowered or 'não consegui interpretar' in lowered
+    assert 'reformule' in lowered
+    assert 'cadastro' not in lowered

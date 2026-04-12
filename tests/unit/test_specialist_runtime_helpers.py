@@ -288,6 +288,12 @@ def test_specialist_conduct_query_detects_exclusion_prompt() -> None:
     )
 
 
+def test_specialist_conduct_query_detects_substance_prompt() -> None:
+    assert _looks_like_conduct_frequency_punctuality_query(
+        'Posso fumar maconha nessa escola?'
+    )
+
+
 def test_specialist_family_attendance_aggregate_query_accepts_two_children_attention_wording() -> None:
     deps = SimpleNamespace(normalize_text=lambda value: str(value or '').casefold())
     assert looks_like_family_attendance_aggregate_query(
@@ -2485,6 +2491,156 @@ def test_fast_path_handles_public_capabilities_menu() -> None:
     assert 'matricula' in lowered
     assert 'secretaria' in lowered
     assert 'financeiro' in lowered
+
+
+def test_fast_path_handles_semantic_ingress_greeting_even_without_lexical_match() -> None:
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=False),
+            message='boa madruga',
+        ),
+        actor=None,
+        school_profile={'school_name': 'Colegio Horizonte'},
+        conversation_context={'recent_messages': []},
+        preview_hint={'semantic_ingress': {'conversation_act': 'greeting'}},
+    )
+
+    deps = FastPathDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        normalized_recent_user_messages=lambda _context: [],
+        is_simple_greeting=lambda _message: False,
+        is_auth_guidance_query=lambda _message: False,
+        compose_auth_guidance_answer=lambda _profile: '',
+        linked_students=lambda *_args, **_kwargs: [],
+        compose_authenticated_scope_answer=lambda _actor: '',
+        is_assistant_identity_query=lambda _message: False,
+        compose_assistant_identity_answer=lambda _profile: '',
+        school_name=lambda _profile: 'Colegio Horizonte',
+        safe_excerpt=lambda text, **_kwargs: text,
+        format_brl=lambda value: str(value),
+        hypothetical_children_quantity=lambda _message: None,
+        pricing_projection=lambda *_args, **_kwargs: {},
+        compose_public_bolsas_and_processes=lambda _profile: None,
+    )
+
+    answer = build_fast_path_answer(ctx, deps)
+
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_fast_path:greeting'
+    assert 'eduassist' in answer.message_text.lower()
+
+
+def test_fast_path_handles_semantic_ingress_assistant_identity_even_without_lexical_match() -> None:
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=False),
+            message='tu e quem aqui?',
+        ),
+        actor=None,
+        school_profile={'school_name': 'Colegio Horizonte'},
+        conversation_context={'recent_messages': []},
+        preview_hint={'semantic_ingress': {'conversation_act': 'assistant_identity'}},
+    )
+
+    deps = FastPathDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        normalized_recent_user_messages=lambda _context: [],
+        is_simple_greeting=lambda _message: False,
+        is_auth_guidance_query=lambda _message: False,
+        compose_auth_guidance_answer=lambda _profile: '',
+        linked_students=lambda *_args, **_kwargs: [],
+        compose_authenticated_scope_answer=lambda _actor: '',
+        is_assistant_identity_query=lambda _message: False,
+        compose_assistant_identity_answer=lambda _profile: 'Eu sou o EduAssist do Colegio Horizonte.',
+        school_name=lambda _profile: 'Colegio Horizonte',
+        safe_excerpt=lambda text, **_kwargs: text,
+        format_brl=lambda value: str(value),
+        hypothetical_children_quantity=lambda _message: None,
+        pricing_projection=lambda *_args, **_kwargs: {},
+        compose_public_bolsas_and_processes=lambda _profile: None,
+    )
+
+    answer = build_fast_path_answer(ctx, deps)
+
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_fast_path:assistant_identity'
+    assert 'eduassist' in answer.message_text.lower()
+
+
+def test_fast_path_handles_semantic_ingress_input_clarification_even_without_lexical_match() -> None:
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='Привет',
+        ),
+        actor=None,
+        school_profile={'school_name': 'Colegio Horizonte'},
+        conversation_context={'recent_messages': []},
+        preview_hint={'semantic_ingress': {'conversation_act': 'input_clarification'}},
+    )
+
+    deps = FastPathDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        normalized_recent_user_messages=lambda _context: [],
+        is_simple_greeting=lambda _message: False,
+        is_auth_guidance_query=lambda _message: False,
+        compose_auth_guidance_answer=lambda _profile: '',
+        linked_students=lambda *_args, **_kwargs: [],
+        compose_authenticated_scope_answer=lambda _actor: '',
+        is_assistant_identity_query=lambda _message: False,
+        compose_assistant_identity_answer=lambda _profile: '',
+        school_name=lambda _profile: 'Colegio Horizonte',
+        safe_excerpt=lambda text, **_kwargs: text,
+        format_brl=lambda value: str(value),
+        hypothetical_children_quantity=lambda _message: None,
+        pricing_projection=lambda *_args, **_kwargs: {},
+        compose_public_bolsas_and_processes=lambda _profile: None,
+    )
+
+    answer = build_fast_path_answer(ctx, deps)
+
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_fast_path:input_clarification'
+    assert 'nao consegui interpretar' in answer.message_text.lower()
+
+
+def test_fast_path_handles_semantic_ingress_language_preference_even_without_lexical_match() -> None:
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='Por que admissions ta em ingles?',
+        ),
+        actor=None,
+        school_profile={'school_name': 'Colegio Horizonte'},
+        conversation_context={'recent_messages': []},
+        preview_hint={'semantic_ingress': {'conversation_act': 'language_preference'}},
+    )
+
+    deps = FastPathDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        normalized_recent_user_messages=lambda _context: [],
+        is_simple_greeting=lambda _message: False,
+        is_auth_guidance_query=lambda _message: False,
+        compose_auth_guidance_answer=lambda _profile: '',
+        linked_students=lambda *_args, **_kwargs: [],
+        compose_authenticated_scope_answer=lambda _actor: '',
+        is_assistant_identity_query=lambda _message: False,
+        compose_assistant_identity_answer=lambda _profile: '',
+        school_name=lambda _profile: 'Colegio Horizonte',
+        safe_excerpt=lambda text, **_kwargs: text,
+        format_brl=lambda value: str(value),
+        hypothetical_children_quantity=lambda _message: None,
+        pricing_projection=lambda *_args, **_kwargs: {},
+        compose_public_bolsas_and_processes=lambda _profile: None,
+    )
+
+    answer = build_fast_path_answer(ctx, deps)
+
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_fast_path:language_preference'
+    lowered = answer.message_text.lower()
+    assert 'portugues' in lowered or 'português' in lowered
+    assert 'matricula e atendimento comercial' in lowered
 
 
 def test_fast_path_handles_public_admissions_opening_date() -> None:

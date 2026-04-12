@@ -8,6 +8,7 @@ from .public_doc_knowledge import (
     compose_public_calendar_visibility,
     compose_public_calendar_week,
     compose_public_canonical_lane_answer as _shared_compose_public_canonical_lane_answer,
+    compose_public_conduct_policy_contextual_answer as _shared_compose_public_conduct_policy_contextual_answer,
     compose_public_conduct_frequency_punctuality,
     compose_public_conduct_frequency_recovery_bridge,
     compose_public_facilities_and_study_support,
@@ -42,3 +43,11 @@ def compose_public_canonical_lane_answer(
     profile: dict[str, Any] | None = None,
 ) -> str | None:
     return _shared_compose_public_canonical_lane_answer(lane, profile=profile)
+
+
+def compose_public_conduct_policy_contextual_answer(
+    message: str,
+    *,
+    profile: dict[str, Any] | None = None,
+) -> str | None:
+    return _shared_compose_public_conduct_policy_contextual_answer(message, profile=profile)

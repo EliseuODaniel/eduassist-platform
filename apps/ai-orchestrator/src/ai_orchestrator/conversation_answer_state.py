@@ -5,6 +5,8 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
+from eduassist_semantic_ingress import looks_like_language_preference_feedback
+
 from .public_known_unknowns import detect_public_known_unknown_key
 
 _FINANCE_TERMS = {
@@ -810,6 +812,8 @@ def _recent_public_pricing_value_from_messages(
 
 
 def explicit_subject_from_message(message: str | None) -> str | None:
+    if looks_like_language_preference_feedback(message):
+        return None
     normalized = normalize_text(message)
     for alias, canonical in sorted(_SUBJECT_ALIASES.items(), key=lambda item: len(item[0]), reverse=True):
         normalized_alias = normalize_text(alias)

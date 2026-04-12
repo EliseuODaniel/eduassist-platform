@@ -78,13 +78,24 @@ from .models import (
     QueryDomain,
     RetrievalBackend,
 )
+from .request_intent_guardrails import looks_like_explicit_admin_status_query
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
-from .llamaindex_public_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
+from .llamaindex_public_knowledge import (
+    compose_public_canonical_lane_answer,
+    compose_public_conduct_policy_contextual_answer,
+    match_public_canonical_lane,
+)
 from .llamaindex_public_known_unknowns import (
     compose_public_known_unknown_answer,
     detect_public_known_unknown_key,
 )
 from .response_cache import get_cached_public_response, store_cached_public_response
+from .semantic_ingress_runtime import (
+    apply_semantic_ingress_preview,
+    build_semantic_ingress_public_plan,
+    is_terminal_semantic_ingress_plan,
+    maybe_resolve_semantic_ingress_plan,
+)
 from .llamaindex_retrieval import (
     can_read_restricted_documents,
     compose_restricted_document_grounded_answer_for_query,
@@ -151,6 +162,65 @@ class LlamaIndexNativePublicDecision(BaseModel):
     focus_hint: str | None = None
     unpublished_key: str | None = None
     use_conversation_context: bool = False
+
+
+def _semantic_ingress_native_public_decision(*, public_plan: Any) -> LlamaIndexNativePublicDecision:
+    return LlamaIndexNativePublicDecision(
+        conversation_act=str(public_plan.conversation_act or 'canonical_fact'),
+        answer_mode='profile',
+        required_tools=list(public_plan.required_tools),
+        secondary_acts=list(public_plan.secondary_acts),
+        requested_attribute=public_plan.requested_attribute,
+        requested_channel=public_plan.requested_channel,
+        focus_hint=public_plan.focus_hint,
+        use_conversation_context=bool(public_plan.use_conversation_context),
+    )
+
+
+def _compose_semantic_ingress_terminal_answer(
+    *,
+    school_profile: dict[str, Any],
+    request_message: str,
+    actor: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None,
+    public_plan: Any,
+) -> str:
+    act = str(getattr(public_plan, 'conversation_act', '') or '').strip().lower()
+    if act == 'input_clarification':
+        return rt._compose_input_clarification_answer(
+            school_profile,
+            conversation_context=conversation_context,
+        )
+    if act == 'scope_boundary':
+        return rt._compose_scope_boundary_answer(
+            school_profile,
+            conversation_context=conversation_context,
+        )
+    return str(
+        rt._compose_public_profile_answer(
+            school_profile,
+            request_message,
+            actor=actor,
+            original_message=request_message,
+            conversation_context=conversation_context,
+            semantic_plan=public_plan,
+        )
+        or ''
+    ).strip()
+
+
+def _canonical_lane_answer_for_message(
+    *,
+    canonical_lane: str,
+    message: str,
+    school_profile: dict[str, Any] | None,
+) -> str | None:
+    if canonical_lane == 'public_bundle.conduct_frequency_punctuality':
+        return compose_public_conduct_policy_contextual_answer(message, profile=school_profile) or compose_public_canonical_lane_answer(
+            canonical_lane,
+            profile=school_profile,
+        )
+    return compose_public_canonical_lane_answer(canonical_lane, profile=school_profile)
 
 
 def _llamaindex_execution_llm_stages(*, execution_reason: str, semantic_judge_used: bool) -> list[str]:
@@ -939,7 +1009,11 @@ async def _resolve_early_llamaindex_public_answer(
 
     canonical_lane = match_public_canonical_lane(request.message)
     if canonical_lane:
-        canonical_answer = compose_public_canonical_lane_answer(canonical_lane, profile=school_profile)
+        canonical_answer = _canonical_lane_answer_for_message(
+            canonical_lane=canonical_lane,
+            message=request.message,
+            school_profile=school_profile,
+        )
         if canonical_answer:
             return LlamaIndexEarlyPublicAnswer(
                 answer_text=canonical_answer,
@@ -1331,6 +1405,7 @@ def _llamaindex_native_fetch_profile_for_act(conversation_act: str) -> bool:
         'assistant_identity',
         'capabilities',
         'service_routing',
+        'scope_boundary',
     }
 
 
@@ -2347,7 +2422,10 @@ def _should_use_llamaindex_protected_records_fast_path(
         or rt._mentions_personal_admin_status(request.message)
         or rt._detect_admin_attribute_request(request.message, conversation_context=conversation_context) is not None
         or rt._is_private_admin_follow_up(request.message, conversation_context)
-        or bool({'get_administrative_status', 'get_student_administrative_status', 'get_actor_identity_context'} & set(preview.selected_tools))
+        or looks_like_explicit_admin_status_query(
+            request.message,
+            authenticated=bool(request.user.authenticated),
+        )
     ):
         return True
     protected_domain_hint = rt._explicit_protected_domain_hint(
@@ -2456,6 +2534,7 @@ def _route_public_query_tool(
         'careers',
         'auth_guidance',
         'access_scope',
+        'scope_boundary',
         'utility_date',
         'kpi',
         'canonical_fact',
@@ -3532,12 +3611,171 @@ async def maybe_execute_llamaindex_native_plan(
         calendar_events = await rt._fetch_public_calendar_events(settings=settings)
         if calendar_events:
             school_profile['public_calendar_events'] = calendar_events
-    early_public_canonical_lane = (
+    semantic_ingress_preview = plan.preview.model_copy(deep=True)
+    semantic_ingress_plan = await maybe_resolve_semantic_ingress_plan(
+        settings=settings,
+        request_message=request.message,
+        conversation_context=conversation_context,
+        preview=semantic_ingress_preview,
+        stack_label='llamaindex',
+    )
+    if (
+        (semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan))
+        and actor is not None
+        and request.user.authenticated
+        and match_public_canonical_lane(request.message) is None
+    ):
+        rt._apply_protected_domain_rescue(
+            preview=semantic_ingress_preview,
+            actor=actor,
+            message=request.message,
+            conversation_context=conversation_context,
+        )
+    if semantic_ingress_plan is not None:
+        semantic_ingress_preview = apply_semantic_ingress_preview(
+            preview=semantic_ingress_preview,
+            plan=semantic_ingress_plan,
+            stack_name='llamaindex',
+        )
+    semantic_ingress_public_plan = (
+        build_semantic_ingress_public_plan(semantic_ingress_plan)
+        if semantic_ingress_plan is not None
+        else None
+    )
+    semantic_ingress_native_decision = (
+        _semantic_ingress_native_public_decision(public_plan=semantic_ingress_public_plan)
+        if semantic_ingress_public_plan is not None
+        else None
+    )
+    semantic_ingress_terminal_answer = None
+    if (
+        semantic_ingress_public_plan is not None
+        and is_terminal_semantic_ingress_plan(semantic_ingress_plan)
+    ):
+        semantic_ingress_terminal_answer = _compose_semantic_ingress_terminal_answer(
+            school_profile=school_profile,
+            request_message=request.message,
+            actor=actor,
+            conversation_context=conversation_context,
+            public_plan=semantic_ingress_public_plan,
+        )
+    if semantic_ingress_terminal_answer:
+        preview = semantic_ingress_preview.model_copy(deep=True)
+        preview.mode = OrchestrationMode.structured_tool
+        preview.reason = f'llamaindex_semantic_ingress:{semantic_ingress_plan.conversation_act}'
+        preview.classification = _public_classification_for_act(
+            semantic_ingress_public_plan.conversation_act,
+            'ato terminal do semantic ingress resolvido antes de qualquer roteamento nativo do llamaindex',
+        )
+        preview.needs_authentication = False
+        preview.selected_tools = list(
+            dict.fromkeys([*preview.selected_tools, *list(semantic_ingress_public_plan.required_tools)])
+        )
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=preview.selected_tools,
+            slice_name=plan.slice_name,
+            summary='Ato terminal de semantic ingress resolvido antes do roteamento nativo do LlamaIndex.',
+        )
+        suggested_replies = rt._build_suggested_replies(
+            request=request,
+            preview=preview,
+            actor=actor,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+        )
+        message_text = rt._normalize_response_wording(semantic_ingress_terminal_answer)
+        await rt._persist_conversation_turn(
+            settings=settings,
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            actor=actor,
+            user_message=request.message,
+            assistant_message=message_text,
+        )
+        await rt._persist_operational_trace(
+            settings=settings,
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            engine_name=engine_name,
+            engine_mode=engine_mode,
+            actor=actor,
+            preview=preview,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+            public_plan=semantic_ingress_public_plan,
+            request_message=request.message,
+            message_text=message_text,
+            citations_count=0,
+            suggested_reply_count=len(suggested_replies),
+            visual_asset_count=0,
+            answer_verifier_valid=True,
+            answer_verifier_reason='llamaindex terminal semantic ingress',
+            answer_verifier_fallback_used=False,
+            deterministic_fallback_available=True,
+            answer_verifier_judge_used=False,
+        )
+        response = MessageResponse(
+            message_text=message_text,
+            mode=preview.mode,
+            classification=preview.classification,
+            retrieval_backend=RetrievalBackend.none,
+            selected_tools=preview.selected_tools,
+            citations=[],
+            visual_assets=[],
+            suggested_replies=suggested_replies,
+            calendar_events=[],
+            evidence_pack=evidence_pack,
+            needs_authentication=preview.needs_authentication,
+            graph_path=[
+                *preview.graph_path,
+                'llamaindex:public',
+                f'llamaindex:semantic_ingress:{semantic_ingress_plan.conversation_act}',
+                f'kernel:{plan.stack_name}',
+            ],
+            risk_flags=preview.risk_flags,
+            reason=preview.reason,
+            candidate_chosen='deterministic',
+            candidate_reason=f'semantic_ingress:{semantic_ingress_plan.conversation_act}',
+            retrieval_probe_topic=None,
+            response_cache_hit=False,
+            response_cache_kind=None,
+            used_llm=True,
+            llm_stages=['semantic_ingress_classifier'],
+            final_polish_eligible=False,
+            final_polish_applied=False,
+            final_polish_mode='skip',
+            final_polish_reason='semantic_ingress_terminal',
+            final_polish_changed_text=False,
+            final_polish_preserved_fallback=False,
+        )
+        reflection = KernelReflection(
+            grounded=True,
+            verifier_reason='llamaindex terminal semantic ingress',
+            fallback_used=False,
+            answer_judge_used=False,
+            notes=[
+                f'route:{preview.mode.value}',
+                f'slice:{plan.slice_name}',
+                f'semantic_ingress:{semantic_ingress_plan.conversation_act}',
+                f'evidence:{evidence_pack.strategy}',
+                *plan.plan_notes,
+            ],
+        )
+        return KernelRunResult(
+            plan=plan,
+            reflection=reflection,
+            response=response.model_dump(mode='json'),
+        )
+    early_public_canonical_lane = None if semantic_ingress_plan is not None else (
         match_public_canonical_lane(analysis_message)
         or match_public_canonical_lane(request.message)
     )
     early_public_canonical_answer = (
-        compose_public_canonical_lane_answer(early_public_canonical_lane, profile=school_profile)
+        _canonical_lane_answer_for_message(
+            canonical_lane=early_public_canonical_lane,
+            message=request.message,
+            school_profile=school_profile,
+        )
         if early_public_canonical_lane
         else None
     )
@@ -3639,13 +3877,13 @@ async def maybe_execute_llamaindex_native_plan(
             reflection=reflection,
             response=response.model_dump(mode='json'),
         )
-    deterministic_public_decision = _deterministic_llamaindex_native_public_decision(
+    deterministic_public_decision = semantic_ingress_native_decision or _deterministic_llamaindex_native_public_decision(
         message=request.message,
-        preview=plan.preview,
+        preview=semantic_ingress_preview,
         conversation_context=conversation_context,
         school_profile=school_profile,
     )
-    skip_fast_paths = _should_skip_llamaindex_public_fast_paths(
+    skip_fast_paths = semantic_ingress_plan is not None or _should_skip_llamaindex_public_fast_paths(
         request.message,
         heuristic_decision=deterministic_public_decision,
     )
@@ -3660,7 +3898,7 @@ async def maybe_execute_llamaindex_native_plan(
         contextual_fast_public_answer = await _maybe_contextual_public_direct_answer(
             request=request,
             analysis_message=analysis_message,
-            preview=plan.preview,
+            preview=semantic_ingress_preview,
             settings=settings,
             school_profile=school_profile,
             conversation_context=conversation_context,
@@ -3834,7 +4072,11 @@ async def maybe_execute_llamaindex_native_plan(
     llm_forced_mode = rt._llm_forced_mode_enabled(settings=settings, request=request)
     public_canonical_lane = None if llm_forced_mode else (match_public_canonical_lane(analysis_message) or match_public_canonical_lane(request.message))
     public_canonical_answer = (
-        compose_public_canonical_lane_answer(public_canonical_lane, profile=school_profile)
+        _canonical_lane_answer_for_message(
+            canonical_lane=public_canonical_lane,
+            message=request.message,
+            school_profile=school_profile,
+        )
         if public_canonical_lane
         else None
     )
@@ -3899,7 +4141,7 @@ async def maybe_execute_llamaindex_native_plan(
 
     llamaindex_llm = _build_llamaindex_llm(settings=settings)
     llm_native_public_decision = None
-    if _should_use_llamaindex_llm_public_resolver(
+    if semantic_ingress_native_decision is None and _should_use_llamaindex_llm_public_resolver(
         request=request,
         plan=plan,
         heuristic_decision=deterministic_public_decision,
@@ -3907,7 +4149,7 @@ async def maybe_execute_llamaindex_native_plan(
     ):
         deterministic_public_plan = rt._build_public_institution_plan(
             request.message,
-            list(getattr(plan.preview, 'selected_tools', ()) or ()),
+            list(getattr(semantic_ingress_preview, 'selected_tools', ()) or ()),
             semantic_plan=None,
             conversation_context=conversation_context,
             school_profile=school_profile,
@@ -3916,20 +4158,20 @@ async def maybe_execute_llamaindex_native_plan(
             llm=llamaindex_llm,
             settings=settings,
             message=request.message,
-            preview=plan.preview,
+            preview=semantic_ingress_preview,
             school_profile=school_profile,
             conversation_context=conversation_context,
             deterministic_plan=deterministic_public_plan,
         )
-    native_public_decision = _merge_llamaindex_native_public_decisions(
+    native_public_decision = semantic_ingress_native_decision or _merge_llamaindex_native_public_decisions(
         llm_decision=llm_native_public_decision,
         heuristic_decision=deterministic_public_decision,
     )
 
-    public_plan = await rt._resolve_public_institution_plan(
+    public_plan = semantic_ingress_public_plan or await rt._resolve_public_institution_plan(
         settings=settings,
         message=request.message,
-        preview=plan.preview,
+        preview=semantic_ingress_preview,
         conversation_context=conversation_context,
         school_profile=school_profile,
     )
@@ -3953,7 +4195,7 @@ async def maybe_execute_llamaindex_native_plan(
             conversation_context=conversation_context,
             school_profile=school_profile,
         )
-    preview = plan.preview.model_copy(deep=True)
+    preview = semantic_ingress_preview.model_copy(deep=True)
     preview.selected_tools = list(public_plan.required_tools)
     if (
         preview.mode is OrchestrationMode.clarify
@@ -3993,7 +4235,11 @@ async def maybe_execute_llamaindex_native_plan(
         else None
     )
     public_canonical_answer = (
-        compose_public_canonical_lane_answer(public_canonical_lane, profile=school_profile)
+        _canonical_lane_answer_for_message(
+            canonical_lane=public_canonical_lane,
+            message=request.message,
+            school_profile=school_profile,
+        )
         if public_canonical_lane
         else None
     )
@@ -4103,6 +4349,7 @@ async def maybe_execute_llamaindex_native_plan(
         getattr(settings, 'public_response_cache_enabled', True)
         and llamaindex_serving_policy.prefer_cache
         and not llm_forced_mode
+        and semantic_ingress_plan is None
     ):
         semantic_threshold = float(
             getattr(settings, 'public_response_semantic_jaccard_threshold', 0.84)
@@ -4184,7 +4431,19 @@ async def maybe_execute_llamaindex_native_plan(
 
     agent_workflow_result = None
     function_agent_result = None
-    if public_canonical_answer:
+    if semantic_ingress_terminal_answer:
+        preview.mode = OrchestrationMode.structured_tool
+        preview.reason = f'llamaindex_semantic_ingress:{semantic_ingress_plan.conversation_act}'
+        preview.classification = _public_classification_for_act(
+            public_plan.conversation_act,
+            'ato terminal do semantic ingress resolvido antes do roteamento pesado do llamaindex',
+        )
+        preview.needs_authentication = False
+        preview.selected_tools = list(dict.fromkeys([*preview.selected_tools, *list(public_plan.required_tools)]))
+        answer_text = semantic_ingress_terminal_answer
+        selected_tool_names = ('public_profile',)
+        execution_reason = preview.reason
+    elif public_canonical_answer:
         preview.mode = OrchestrationMode.structured_tool
         preview.reason = f'llamaindex_public_canonical_lane:{public_canonical_lane}'
         preview.classification = _public_classification_for_act(
@@ -4416,6 +4675,8 @@ async def maybe_execute_llamaindex_native_plan(
         execution_reason=execution_reason,
         semantic_judge_used=False,
     )
+    if semantic_ingress_plan is not None:
+        llm_stages.insert(0, 'semantic_ingress_classifier')
     final_polish_decision = build_final_polish_decision(
         settings=settings,
         stack_name=engine_name,
@@ -4578,7 +4839,7 @@ async def maybe_execute_llamaindex_native_plan(
     llm_stages = _llamaindex_execution_llm_stages(
         execution_reason=execution_reason,
         semantic_judge_used=semantic_judge_used,
-    ) + [stage for stage in llm_stages if stage in {'structured_polish', 'response_critic'}]
+    ) + [stage for stage in llm_stages if stage in {'semantic_ingress_classifier', 'structured_polish', 'response_critic'}]
     llm_stages = list(dict.fromkeys(llm_stages))
     deterministic_candidate_text = rt._compose_public_profile_answer(
         school_profile,
@@ -4594,7 +4855,11 @@ async def maybe_execute_llamaindex_native_plan(
     retrieval_probe_topic = llamaindex_probe.topic
     response_cache_hit = False
     response_cache_kind = None
-    if deterministic_candidate_text and getattr(settings, 'candidate_chooser_enabled', True):
+    if (
+        deterministic_candidate_text
+        and getattr(settings, 'candidate_chooser_enabled', True)
+        and semantic_ingress_plan is None
+    ):
         deterministic_candidate = build_response_candidate(
             kind='deterministic',
             text=deterministic_candidate_text,

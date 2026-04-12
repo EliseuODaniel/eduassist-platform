@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "AI orchestration service for EduAssist Platform."
 requires-python = ">=3.12"
 dependencies = [
+  "eduassist-semantic-ingress",
   "eduassist-observability",
   "fastapi>=0.115.0",
   "graphrag==3.0.6",
@@ -28,6 +29,7 @@ build-backend = "hatchling.build"
 
 [tool.uv.sources]
 eduassist-observability = { path = "../../packages/observability/python" }
+eduassist-semantic-ingress = { path = "../../packages/semantic-ingress/python" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ai_orchestrator"]

@@ -136,7 +136,7 @@ def compose_public_known_unknown_answer(
     if key == 'minimum_age':
         return (
             f'Hoje os canais publicos de {school_reference} nao publicam uma idade minima exata para ingresso. '
-            'O que aparece oficialmente sao os segmentos atendidos e o enquadramento por serie; para confirmar idade e adequacao de ingresso, o canal certo e admissions.'
+            'O que aparece oficialmente sao os segmentos atendidos e o enquadramento por serie; para confirmar idade e adequacao de ingresso, o canal certo e matricula e atendimento comercial.'
         )
     if key == 'cafeteria_menu':
         return (

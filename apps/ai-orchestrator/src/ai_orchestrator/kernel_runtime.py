@@ -27,6 +27,7 @@ from .models import (
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
 from .public_doc_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
 from .public_known_unknowns import detect_public_known_unknown_key, resolve_public_known_unknown_answer
+from .request_intent_guardrails import looks_like_school_domain_request
 from .retrieval import get_retrieval_service
 from .retrieval import (
     can_read_restricted_documents,
@@ -220,6 +221,11 @@ async def _maybe_contextual_public_direct_answer(
         return None
     is_public_context = preview.classification.access_tier is AccessTier.public or not request.user.authenticated
     if not is_public_context:
+        return None
+    if not (
+        looks_like_school_domain_request(request.message)
+        or looks_like_school_domain_request(analysis_message)
+    ):
         return None
 
     if rt._is_direct_service_routing_bundle_query(request.message):

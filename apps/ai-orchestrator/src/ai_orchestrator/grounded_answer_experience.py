@@ -11,6 +11,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import httpx
+from eduassist_semantic_ingress import is_terminal_ingress_act, looks_like_language_preference_feedback
 
 from .conversation_answer_state import (
     AnswerFocusState,
@@ -47,6 +48,7 @@ from .public_doc_knowledge import (
     compose_public_timeline_lifecycle_bundle,
     match_public_canonical_lane as match_shared_public_canonical_lane,
 )
+from .request_intent_guardrails import looks_like_school_domain_request
 from .python_functions_public_knowledge import (
     compose_public_conduct_policy_contextual_answer,
     match_public_canonical_lane as match_python_functions_public_canonical_lane,
@@ -3622,6 +3624,31 @@ def _clarify_after_retry_message(
         for item in linked_students or []
         if isinstance(item, dict) and str(item.get('full_name') or '').strip()
     ]
+    recent_school_context = False
+    if isinstance(conversation_context, dict):
+        recent_messages = conversation_context.get('recent_messages')
+        if isinstance(recent_messages, list):
+            recent_school_context = any(
+                looks_like_school_domain_request(str(item.get('content') or ''))
+                for item in recent_messages
+                if isinstance(item, dict)
+            )
+    if (
+        not looks_like_school_domain_request(request.message)
+        and not recent_school_context
+        and not focus.uses_memory
+        and not focus.is_repair_followup
+        and focus.domain in {None, 'unknown', 'public'}
+        and focus.topic in {None, 'clarify'}
+        and not focus.unknown_student_name
+        and not focus.unknown_subject_name
+        and not focus.student_name
+        and not focus.subject_name
+    ):
+        return (
+            'Nao tenho base confiavel aqui para responder esse tema fora do escopo da escola. '
+            'Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro.'
+        )
     if focus.unknown_student_name:
         names = list(linked_names)
         if names:
@@ -4833,6 +4860,50 @@ async def _attempt_second_retrieval(
     )
 
 
+def _terminal_semantic_ingress_act(response: MessageResponse) -> str | None:
+    reason = _normalize_text(getattr(response, 'reason', ''))
+    prefixes = (
+        'python_functions_semantic_ingress:',
+        'python_functions_native_semantic_ingress:',
+        'llamaindex_semantic_ingress:',
+        'llamaindex_native_semantic_ingress:',
+        'langgraph_semantic_ingress:',
+        'specialist_semantic_ingress:',
+        'specialist_supervisor_fast_path:',
+    )
+    for prefix in prefixes:
+        if reason.startswith(prefix):
+            act = reason.removeprefix(prefix).split('|', 1)[0].strip()
+            if is_terminal_ingress_act(act):
+                return act
+    for item in list(getattr(response, 'graph_path', []) or []):
+        normalized = _normalize_text(item)
+        if 'semantic_ingress:' not in normalized:
+            continue
+        act = normalized.rsplit('semantic_ingress:', 1)[-1].strip()
+        if is_terminal_ingress_act(act):
+            return act
+    return None
+
+
+def _response_has_terminal_semantic_ingress(response: MessageResponse) -> bool:
+    return _terminal_semantic_ingress_act(response) is not None
+
+
+def _localize_surface_labels_for_request(*, request_message: str, text: str) -> str:
+    localized = str(text or '').strip()
+    if not localized:
+        return localized
+    if looks_like_language_preference_feedback(request_message):
+        localized = re.sub(r'(?i)\badmissions\b', 'matricula e atendimento comercial', localized)
+        localized = re.sub(r'(?i)\bsales\b', 'atendimento comercial', localized)
+        localized = localized.replace(
+            'matricula e atendimento comercial e atendimento comercial',
+            'matricula e atendimento comercial',
+        )
+    return localized
+
+
 def _filtered_recent_messages(
     *,
     conversation_context: dict[str, Any] | None,
@@ -5278,11 +5349,32 @@ async def apply_grounded_answer_experience(
                 }
             )
 
-    if _context_repair_enabled(settings=settings, stack_name=stack_name) and _should_attempt_context_repair(
-        request=request,
-        response=response,
-        focus=focus,
-        actor=actor,
+    terminal_ingress_act = _terminal_semantic_ingress_act(response)
+    if terminal_ingress_act == 'language_preference':
+        preserved_text = _localize_surface_labels_for_request(
+            request_message=request.message,
+            text=response.message_text,
+        )
+        return response.model_copy(
+            update={
+                'message_text': preserved_text,
+                'answer_experience_eligible': True,
+                'answer_experience_applied': _answer_experience_changed(response.message_text, preserved_text),
+                'answer_experience_reason': f'{base_reason}:terminal_language_preference_preserved',
+                'answer_experience_provider': provider_settings.llm_provider,
+                'answer_experience_model': provider_settings.google_model if provider_settings.llm_provider in {'google', 'gemini'} else provider_settings.openai_model,
+            }
+        )
+
+    if (
+        not _response_has_terminal_semantic_ingress(response)
+        and _context_repair_enabled(settings=settings, stack_name=stack_name)
+        and _should_attempt_context_repair(
+            request=request,
+            response=response,
+            focus=focus,
+            actor=actor,
+        )
     ):
         deterministic_plan = _deterministic_context_repair_plan(
             request=request,

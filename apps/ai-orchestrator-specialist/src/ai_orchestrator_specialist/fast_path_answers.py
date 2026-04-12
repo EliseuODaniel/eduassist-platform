@@ -66,6 +66,7 @@ from .public_query_patterns import (
     _looks_like_service_credentials_bundle_query,
     _looks_like_service_routing_query,
 )
+from .semantic_ingress_runtime import semantic_ingress_act
 
 
 @dataclass(frozen=True)
@@ -198,6 +199,19 @@ def _compose_capabilities_fast_answer(profile: dict[str, Any] | None, *, school_
     return (
         f'Por aqui eu consigo te ajudar com {public_summary} no {school_name}. '
         f'Se sua conta estiver vinculada, eu tambem consigo consultar {protected_summary}.'
+    )
+
+
+def _compose_language_preference_fast_answer(*, school_name: str, message: str) -> str:
+    normalized = str(message or '').casefold()
+    if 'admissions' in normalized and any(term in normalized for term in {'ingles', 'inglês', 'english'}):
+        return (
+            f'Voce tem razao em estranhar isso. Aqui no EduAssist do {school_name}, eu vou responder em portugues. '
+            'Quando eu mencionar admissions, leia como matricula e atendimento comercial.'
+        )
+    return (
+        f'Perfeito. Eu sigo em portugues aqui no EduAssist do {school_name}. '
+        'Se algum termo sair em ingles, eu reformulo em portugues e explico o setor com nomes locais.'
     )
 
 
@@ -511,7 +525,9 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
                 graph_leaf="timeline_followup_repair",
             )
 
-    if deps.is_simple_greeting(ctx.request.message):
+    ingress_act = semantic_ingress_act(getattr(ctx, "preview_hint", None))
+
+    if ingress_act == "greeting" or deps.is_simple_greeting(ctx.request.message):
         return _build_fast_path_payload(
             message_text=f"Olá! Eu sou o EduAssist do {deps.school_name(profile)}. Como posso ajudar você hoje?",
             domain="institution",
@@ -523,7 +539,55 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
             graph_leaf="greeting",
         )
 
-    if _looks_like_capabilities_query(normalized):
+    if ingress_act == "input_clarification":
+        return _build_fast_path_payload(
+            message_text=(
+                "Nao consegui interpretar essa mensagem com seguranca. "
+                "Se quiser, reformule em uma frase curta dizendo o que voce precisa. "
+                "Eu consigo seguir em portugues e normalmente tambem entendo ingles e espanhol."
+            ),
+            domain="institution",
+            access_tier="public",
+            confidence=0.99,
+            reason="specialist_supervisor_fast_path:input_clarification",
+            summary="Entrada curta pouco clara resolvida como pedido de reformulacao segura antes do roteamento protegido.",
+            supports=[MessageEvidenceSupport(kind="assistant_identity", label="EduAssist", detail=deps.school_name(profile))],
+            graph_leaf="input_clarification",
+        )
+
+    if ingress_act == "scope_boundary":
+        school_name = deps.school_name(profile)
+        return _build_fast_path_payload(
+            message_text=(
+                f"Nao tenho base confiavel aqui no EduAssist do {school_name} para responder esse tema fora do escopo da escola. "
+                "Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro."
+            ),
+            domain="institution",
+            access_tier="public",
+            confidence=0.99,
+            reason="specialist_supervisor_fast_path:scope_boundary",
+            summary="Pergunta fora do escopo escolar encerrada com boundary seguro antes da malha de specialists.",
+            supports=[MessageEvidenceSupport(kind="assistant_identity", label="EduAssist", detail=school_name)],
+            graph_leaf="scope_boundary",
+        )
+
+    if ingress_act == "language_preference":
+        school_name = deps.school_name(profile)
+        return _build_fast_path_payload(
+            message_text=_compose_language_preference_fast_answer(
+                school_name=school_name,
+                message=ctx.request.message,
+            ),
+            domain="institution",
+            access_tier="public",
+            confidence=0.99,
+            reason="specialist_supervisor_fast_path:language_preference",
+            summary="Preferencia de idioma ou feedback metalinguistico resolvido antes do roteamento de dominio.",
+            supports=[MessageEvidenceSupport(kind="assistant_identity", label="EduAssist", detail=school_name)],
+            graph_leaf="language_preference",
+        )
+
+    if ingress_act == "capabilities" or _looks_like_capabilities_query(normalized):
         school_name = deps.school_name(profile)
         return _build_fast_path_payload(
             message_text=_compose_capabilities_fast_answer(profile, school_name=school_name),
@@ -536,7 +600,7 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
             graph_leaf="capabilities",
         )
 
-    if deps.is_auth_guidance_query(ctx.request.message):
+    if ingress_act == "auth_guidance" or deps.is_auth_guidance_query(ctx.request.message):
         return _build_fast_path_payload(
             message_text=deps.compose_auth_guidance_answer(profile),
             domain="institution",
@@ -789,7 +853,7 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
                 suggested_domain="institution",
             )
 
-    if deps.is_assistant_identity_query(ctx.request.message):
+    if ingress_act == "assistant_identity" or deps.is_assistant_identity_query(ctx.request.message):
         return _build_fast_path_payload(
             message_text=deps.compose_assistant_identity_answer(profile),
             domain="institution",

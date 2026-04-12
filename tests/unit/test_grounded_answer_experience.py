@@ -7,12 +7,14 @@ import pytest
 
 from ai_orchestrator.grounded_answer_experience import (
     _ANSWER_FOCUS_CACHE,
+    _clarify_after_retry_message,
     _looks_like_cross_student_academic_comparison_followup,
     _looks_like_contextual_cross_student_academic_comparison_followup,
     _preserve_deterministic_answer_surface,
     apply_grounded_answer_experience,
 )
 from ai_orchestrator.conversation_answer_state import AnswerFocusState, resolve_answer_focus
+from ai_orchestrator.conversation_answer_state import explicit_subject_from_message
 from ai_orchestrator.models import (
     AccessTier,
     ConversationChannel,
@@ -77,6 +79,21 @@ def _request(message: str) -> MessageResponseRequest:
         channel=ConversationChannel.telegram,
         user=UserContext(role='guardian', authenticated=True),
     )
+
+
+def test_clarify_after_retry_abstains_for_out_of_scope_question() -> None:
+    request = _request("Qual o melhor filme do ano?")
+    message = _clarify_after_retry_message(
+        request=request,
+        focus=AnswerFocusState(),
+        actor={"linked_students": [{"full_name": "Lucas Oliveira"}]},
+        conversation_context=None,
+    )
+
+    assert message is not None
+    lowered = message.casefold()
+    assert "fora do escopo da escola" in lowered
+    assert "matricula" in lowered
 
 
 def _response(message_text: str) -> MessageResponse:
@@ -206,6 +223,14 @@ def test_answer_experience_rewrites_to_requested_subject(monkeypatch: pytest.Mon
     assert updated.answer_experience_reason == 'protected_grounded_answer'
     assert updated.used_llm is True
     assert 'grounded_answer_experience' in updated.llm_stages
+
+
+def test_explicit_subject_from_message_ignores_metalinguistic_ingles() -> None:
+    assert explicit_subject_from_message('Por que admissions ta em ingles?') is None
+
+
+def test_explicit_subject_from_message_ignores_metalinguistic_portugues() -> None:
+    assert explicit_subject_from_message('Quero que so fale portugues') is None
 
 
 def test_answer_experience_builds_family_academic_aggregate_from_clarify(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1758,6 +1783,141 @@ def test_context_repair_returns_clarifying_question_when_missing_required_slot(m
     assert updated.message_text == 'Para qual aluno você quer ver as próximas provas: Lucas Oliveira ou Ana Oliveira?'
     assert updated.context_repair_applied is True
     assert updated.context_repair_action == 'clarify'
+
+
+def test_context_repair_does_not_override_terminal_semantic_ingress_input_clarification(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_context(*, settings, request):
+        return {'recent_messages': []}
+
+    async def fake_profile(settings):
+        return {'school_name': 'Colegio Horizonte'}
+
+    async def fake_actor(*, settings, request):
+        return {'linked_students': [{'student_id': 'student-lucas', 'full_name': 'Lucas Oliveira'}]}
+
+    async def fake_compose(**kwargs):
+        return kwargs['draft_text']
+
+    async def fail_plan(**kwargs):
+        raise AssertionError('terminal semantic ingress should not invoke context_repair_planner')
+
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_conversation_context', fake_context)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_public_school_profile', fake_profile)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_actor_context', fake_actor)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience.compose_grounded_answer_experience_with_provider', fake_compose)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience.plan_context_repair_with_provider', fail_plan)
+
+    response = _public_response('Nao consegui interpretar essa mensagem com seguranca.').model_copy(
+        update={
+            'reason': 'python_functions_native_semantic_ingress:input_clarification',
+            'graph_path': ['python_functions', 'semantic_ingress:input_clarification'],
+            'llm_stages': ['semantic_ingress_classifier'],
+        }
+    )
+    updated = asyncio.run(
+        apply_grounded_answer_experience(
+            request=_request('Nao foi isso que falei'),
+            response=response,
+            settings=_settings(),
+            stack_name='python_functions',
+        )
+    )
+
+    assert updated.message_text == 'Nao consegui interpretar essa mensagem com seguranca.'
+    assert updated.context_repair_applied is False
+    assert updated.answer_experience_reason == 'structured_grounded_answer'
+
+
+def test_context_repair_does_not_override_terminal_semantic_ingress_language_preference(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_context(*, settings, request):
+        return {'recent_messages': []}
+
+    async def fake_profile(settings):
+        return {'school_name': 'Colegio Horizonte'}
+
+    async def fake_actor(*, settings, request):
+        return {'linked_students': [{'student_id': 'student-lucas', 'full_name': 'Lucas Oliveira'}]}
+
+    async def fake_compose(**kwargs):
+        return kwargs['draft_text']
+
+    async def fail_plan(**kwargs):
+        raise AssertionError('terminal semantic ingress should not invoke context_repair_planner')
+
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_conversation_context', fake_context)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_public_school_profile', fake_profile)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_actor_context', fake_actor)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience.compose_grounded_answer_experience_with_provider', fake_compose)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience.plan_context_repair_with_provider', fail_plan)
+
+    response = _public_response('Perfeito. A partir daqui eu respondo em portugues.').model_copy(
+        update={
+            'reason': 'python_functions_native_semantic_ingress:language_preference',
+            'graph_path': ['python_functions', 'semantic_ingress:language_preference'],
+            'llm_stages': ['semantic_ingress_classifier'],
+        }
+    )
+    updated = asyncio.run(
+        apply_grounded_answer_experience(
+            request=_request('Nao foi isso que falei'),
+            response=response,
+            settings=_settings(),
+            stack_name='python_functions',
+        )
+    )
+
+    assert 'portugues' in updated.message_text.lower() or 'português' in updated.message_text.lower()
+    assert updated.context_repair_applied is False
+    assert updated.answer_experience_reason == 'structured_grounded_answer:terminal_language_preference_preserved'
+
+
+def test_terminal_language_preference_preserves_localized_surface_labels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_context(*, settings, request):
+        return {'recent_messages': []}
+
+    async def fake_profile(settings):
+        return {'school_name': 'Colegio Horizonte'}
+
+    async def fake_actor(*, settings, request):
+        return {'linked_students': [{'student_id': 'student-lucas', 'full_name': 'Lucas Oliveira'}]}
+
+    async def fail_compose(**kwargs):
+        raise AssertionError('terminal language_preference should preserve deterministic answer')
+
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_conversation_context', fake_context)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_public_school_profile', fake_profile)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_actor_context', fake_actor)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience.compose_grounded_answer_experience_with_provider', fail_compose)
+
+    response = _public_response(
+        'Entendo sua dúvida. No Colegio Horizonte, o termo "admissions" deve ser lido junto com "sales".'
+    ).model_copy(
+        update={
+            'reason': 'langgraph_semantic_ingress:language_preference',
+            'graph_path': ['langgraph', 'semantic_ingress:language_preference'],
+            'llm_stages': ['semantic_ingress_classifier'],
+        }
+    )
+    updated = asyncio.run(
+        apply_grounded_answer_experience(
+            request=_request('Por que admissions ta em ingles?'),
+            response=response,
+            settings=_settings(),
+            stack_name='langgraph',
+        )
+    )
+
+    normalized = updated.message_text.lower()
+    assert 'admissions' not in normalized
+    assert 'sales' not in normalized
+    assert 'matricula e atendimento comercial' in normalized
+    assert updated.answer_experience_reason == 'structured_grounded_answer:terminal_language_preference_preserved'
 
 
 def test_context_repair_runs_second_retrieval_before_giving_up(monkeypatch: pytest.MonkeyPatch) -> None:

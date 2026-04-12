@@ -16,6 +16,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "eduassist-observability" },
+    { name = "eduassist-semantic-ingress" },
     { name = "fastapi" },
     { name = "graphrag" },
     { name = "httpx" },
@@ -36,6 +37,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "eduassist-observability", directory = "../../packages/observability/python" },
+    { name = "eduassist-semantic-ingress", directory = "../../packages/semantic-ingress/python" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "graphrag", specifier = "==3.0.6" },
     { name = "httpx", specifier = ">=0.28.0" },
@@ -785,6 +787,23 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-sqlalchemy", specifier = ">=0.59b0" },
     { name = "opentelemetry-sdk", specifier = ">=1.38.0" },
     { name = "sqlalchemy", specifier = ">=2.0.40" },
+]
+
+[[package]]
+name = "eduassist-semantic-ingress"
+version = "0.1.0"
+source = { directory = "../../packages/semantic-ingress/python" }
+dependencies = [
+    { name = "httpx" },
+    { name = "openai" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28.0" },
+    { name = "openai", specifier = ">=1.109.1" },
+    { name = "pydantic", specifier = ">=2.8.0" },
 ]
 
 [[package]]

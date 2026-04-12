@@ -16,6 +16,8 @@ from .models import (
     QueryDomain,
     RetrievalBackend,
 )
+from .public_doc_knowledge import match_public_canonical_lane
+from .request_intent_guardrails import looks_like_explicit_admin_status_query
 
 
 class KernelExecutionStep(BaseModel):
@@ -199,15 +201,17 @@ def _contains_any(text: str, terms: set[str]) -> bool:
 
 
 def _classify_domain(message: str, *, authenticated: bool) -> QueryDomain:
+    if authenticated and looks_like_explicit_admin_status_query(message, authenticated=authenticated):
+        return QueryDomain.institution
     if authenticated and _contains_any(message, FINANCE_TERMS):
         return QueryDomain.finance
     if _contains_any(message, ACADEMIC_TERMS):
         return QueryDomain.academic
     if _contains_any(message, CALENDAR_TERMS):
         return QueryDomain.calendar
-    if _contains_any(message, PROCESS_TERMS | PUBLIC_PRICING_TERMS):
+    if match_public_canonical_lane(message) or _contains_any(message, PROCESS_TERMS | PUBLIC_PRICING_TERMS):
         return QueryDomain.institution
-    return QueryDomain.unknown if not authenticated else QueryDomain.institution
+    return QueryDomain.unknown
 
 
 def _can_read_restricted_documents(request: MessageResponseRequest) -> bool:
@@ -239,10 +243,27 @@ def _public_selected_tools_for_message(message: str) -> list[str]:
 
 def _build_preview(*, request: MessageResponseRequest, settings: Any) -> OrchestrationPreview:
     authenticated = bool(request.user.authenticated)
+    canonical_lane = match_public_canonical_lane(request.message)
     domain = _classify_domain(request.message, authenticated=authenticated)
     normalized = _normalize(request.message)
+    explicit_admin_request = looks_like_explicit_admin_status_query(
+        request.message,
+        authenticated=authenticated,
+    )
+    authenticated_public_institution_request = (
+        authenticated
+        and not explicit_admin_request
+        and (
+            match_public_canonical_lane(request.message) is not None
+            or _contains_any(request.message, PROCESS_TERMS | PUBLIC_PRICING_TERMS | CALENDAR_TERMS)
+        )
+    )
 
-    if any(normalized == greeting or normalized.startswith(f'{greeting} ') for greeting in GREETING_TERMS):
+    if canonical_lane is not None:
+        mode = OrchestrationMode.structured_tool
+        reason = f'python_functions_local_public_canonical:{canonical_lane}'
+        domain = QueryDomain.institution
+    elif any(normalized == greeting or normalized.startswith(f'{greeting} ') for greeting in GREETING_TERMS):
         mode = OrchestrationMode.clarify
         reason = 'python_functions_local_greeting'
     elif authenticated and _contains_any(request.message, RESTRICTED_DOC_TERMS):
@@ -252,27 +273,43 @@ def _build_preview(*, request: MessageResponseRequest, settings: Any) -> Orchest
         else:
             mode = OrchestrationMode.deny
             reason = 'python_functions_local_restricted_documents_denied'
-    elif authenticated:
+    elif authenticated and explicit_admin_request:
         mode = OrchestrationMode.structured_tool
-        reason = f'python_functions_local_protected:{domain.value}'
+        reason = 'python_functions_local_protected:institution'
+    elif authenticated:
+        if domain in {QueryDomain.academic, QueryDomain.finance}:
+            mode = OrchestrationMode.structured_tool
+            reason = f'python_functions_local_protected:{domain.value}'
+        elif authenticated_public_institution_request:
+            mode = OrchestrationMode.structured_tool
+            reason = f'python_functions_local_public_direct:{domain.value}'
+        else:
+            mode = OrchestrationMode.clarify
+            reason = 'python_functions_local_clarify'
     elif domain in {QueryDomain.institution, QueryDomain.calendar} and _contains_any(request.message, EXPLANATORY_TERMS):
         mode = OrchestrationMode.hybrid_retrieval
         reason = f'python_functions_local_public_explanatory:{domain.value}'
-    elif domain in {QueryDomain.institution, QueryDomain.calendar, QueryDomain.unknown}:
+    elif domain in {QueryDomain.institution, QueryDomain.calendar}:
         mode = OrchestrationMode.structured_tool
         reason = f'python_functions_local_public_direct:{domain.value}'
+    elif domain is QueryDomain.unknown:
+        mode = OrchestrationMode.clarify
+        reason = 'python_functions_local_public_unknown_safe_clarify'
     else:
         mode = OrchestrationMode.clarify
         reason = 'python_functions_local_clarify'
 
     access_tier = AccessTier.public
     if authenticated:
-        access_tier = AccessTier.sensitive if domain is QueryDomain.finance else AccessTier.authenticated
+        if explicit_admin_request or domain is QueryDomain.academic:
+            access_tier = AccessTier.authenticated
+        elif domain is QueryDomain.finance:
+            access_tier = AccessTier.sensitive
 
     if mode is OrchestrationMode.structured_tool:
         selected_tools = (
             _protected_selected_tools_for_domain(domain)
-            if authenticated
+            if authenticated and access_tier is not AccessTier.public
             else _public_selected_tools_for_message(request.message)
         )
     elif mode is OrchestrationMode.hybrid_retrieval:
@@ -301,7 +338,7 @@ def _build_preview(*, request: MessageResponseRequest, settings: Any) -> Orchest
         retrieval_backend=RetrievalBackend.qdrant_hybrid if mode is OrchestrationMode.hybrid_retrieval else RetrievalBackend.none,
         selected_tools=selected_tools,
         citations_required=mode is OrchestrationMode.hybrid_retrieval,
-        needs_authentication=authenticated and mode is not OrchestrationMode.clarify,
+        needs_authentication=access_tier is not AccessTier.public and mode is not OrchestrationMode.clarify,
         graph_path=['python_functions:planner', f'domain:{domain.value}', f'mode:{mode.value}'],
         risk_flags=['sensitive_data_path'] if access_tier is AccessTier.sensitive else [],
         reason=reason,

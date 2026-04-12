@@ -41,6 +41,12 @@ from .python_functions_public_knowledge import (
     compose_public_conduct_policy_contextual_answer,
     match_public_canonical_lane,
 )
+from .semantic_ingress_runtime import (
+    apply_semantic_ingress_preview,
+    build_semantic_ingress_public_plan,
+    is_terminal_semantic_ingress_plan,
+    maybe_resolve_semantic_ingress_plan,
+)
 from .response_cache import store_cached_public_response
 from .python_functions_retrieval import (
     can_read_restricted_documents,
@@ -246,12 +252,32 @@ async def maybe_execute_python_functions_native_plan(
     analysis_message = rt._build_analysis_message(request.message, conversation_context_bundle)
     school_profile = await rt._fetch_public_school_profile(settings=settings)
     preview = plan.preview.model_copy(deep=True)
-    if actor is not None and request.user.authenticated:
+    semantic_preview = preview.model_copy(deep=True)
+    semantic_ingress_plan = await maybe_resolve_semantic_ingress_plan(
+        settings=settings,
+        request_message=request.message,
+        conversation_context=conversation_context,
+        preview=semantic_preview,
+        stack_label='python_functions',
+    )
+    if (
+        (semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan))
+        and actor is not None
+        and request.user.authenticated
+        and match_public_canonical_lane(request.message) is None
+    ):
         rt._apply_protected_domain_rescue(
             preview=preview,
             actor=actor,
             message=request.message,
             conversation_context=conversation_context,
+        )
+    if semantic_ingress_plan is not None:
+        ingress_base_preview = semantic_preview if is_terminal_semantic_ingress_plan(semantic_ingress_plan) else preview
+        preview = apply_semantic_ingress_preview(
+            preview=ingress_base_preview,
+            plan=semantic_ingress_plan,
+            stack_name='python_functions',
         )
     if looks_like_restricted_document_query(request.message) and not can_read_restricted_documents(request.user):
         preview.mode = OrchestrationMode.deny
@@ -360,7 +386,30 @@ async def maybe_execute_python_functions_native_plan(
     semantic_judge_used = False
     llm_stages: list[str] = []
     answer_verifier_fallback_used = False
+    semantic_ingress_public_plan = (
+        build_semantic_ingress_public_plan(semantic_ingress_plan)
+        if semantic_ingress_plan is not None
+        else None
+    )
+    if semantic_ingress_plan is not None:
+        llm_stages.append('semantic_ingress_classifier')
     evidence_pack = None
+    semantic_ingress_terminal_answer = None
+    if (
+        semantic_ingress_public_plan is not None
+        and is_terminal_semantic_ingress_plan(semantic_ingress_plan)
+    ):
+        semantic_ingress_terminal_answer = str(
+            rt._compose_public_profile_answer(
+                school_profile,
+                request.message,
+                actor=actor,
+                original_message=request.message,
+                conversation_context=conversation_context,
+                semantic_plan=semantic_ingress_public_plan,
+            )
+            or ''
+        ).strip()
 
     teacher_scope_answer = None
     teacher_schedule_answer = None
@@ -524,7 +573,31 @@ async def maybe_execute_python_functions_native_plan(
 
     execution_reason = 'python_functions_native_public'
 
-    if teacher_scope_answer:
+    if semantic_ingress_terminal_answer:
+        message_text = semantic_ingress_terminal_answer
+        public_plan = semantic_ingress_public_plan
+        deterministic_fallback_text = semantic_ingress_terminal_answer
+        preview = preview.model_copy(
+            update={
+                'mode': OrchestrationMode.structured_tool,
+                'classification': IntentClassification(
+                    domain=QueryDomain.institution,
+                    access_tier=AccessTier.public,
+                    confidence=0.99,
+                    reason=f'python_functions_native_semantic_ingress:{semantic_ingress_plan.conversation_act}',
+                ),
+                'reason': f'python_functions_native_semantic_ingress:{semantic_ingress_plan.conversation_act}',
+                'selected_tools': list(dict.fromkeys([*preview.selected_tools, *list(public_plan.required_tools)])),
+                'needs_authentication': False,
+            }
+        )
+        execution_reason = preview.reason
+        evidence_pack = build_structured_tool_evidence_pack(
+            selected_tools=preview.selected_tools,
+            slice_name=plan.slice_name,
+            summary='Ato terminal do semantic ingress resolvido deterministicamente antes do fallback institucional estruturado.',
+        )
+    elif teacher_scope_answer:
         message_text = teacher_scope_answer
         deterministic_fallback_text = teacher_scope_answer
         preview = preview.model_copy(
@@ -724,8 +797,8 @@ async def maybe_execute_python_functions_native_plan(
         )
     elif preview.mode is OrchestrationMode.structured_tool:
         public_plan_sink: dict[str, Any] = {}
-        resolved_public_plan = None
-        if analysis_message.strip() != str(request.message).strip():
+        resolved_public_plan = semantic_ingress_public_plan
+        if resolved_public_plan is None and analysis_message.strip() != str(request.message).strip():
             try:
                 resolved_public_plan = await rt._resolve_public_institution_plan(
                     settings=settings,

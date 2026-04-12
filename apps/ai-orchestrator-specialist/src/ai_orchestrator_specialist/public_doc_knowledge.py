@@ -244,6 +244,22 @@ def compose_public_conduct_policy_contextual_answer(
     concise_protocol = (
         f"No {school_name}, o encaminhamento institucional passa por coordenacao, registro formal pelos canais oficiais e, em ocorrencias graves, escalonamento para a direcao."
     )
+    substance_terms = (
+        "maconha",
+        "droga",
+        "drogas",
+        "entorpecente",
+        "entorpecentes",
+        "fumar",
+        "fumo",
+        "cigarro",
+        "vape",
+        "vapear",
+        "alcool",
+        "álcool",
+        "bebida alcoolica",
+        "bebida alcoólica",
+    )
     conduct_terms = (
         "bullying",
         "assedio",
@@ -271,6 +287,7 @@ def compose_public_conduct_policy_contextual_answer(
         "explosivos",
         "seguranca",
         "segurança",
+        *substance_terms,
     )
     if not any(term in normalized for term in conduct_terms):
         return None
@@ -291,6 +308,17 @@ def compose_public_conduct_policy_contextual_answer(
                 "Pelo material publico, condutas que colocam pessoas, patrimonio ou seguranca em risco nao sao tratadas como comportamento permitido.",
                 concise_conduct,
                 concise_protocol,
+            )
+            if part
+        ).strip()
+    if any(term in normalized for term in substance_terms):
+        return " ".join(
+            part
+            for part in (
+                "Na base publica atual, eu nao encontrei uma tabela fechada por substancia, mas uso, porte ou consumo de maconha, cigarro, vape, alcool ou outras substancias nao aparece como comportamento permitido no ambiente escolar.",
+                concise_conduct,
+                concise_protocol,
+                "Se a familia precisar da regra formal exata para um caso concreto, o caminho seguro e confirmar com a coordenacao pelos canais oficiais.",
             )
             if part
         ).strip()
@@ -347,6 +375,18 @@ def _looks_like_public_conduct_policy_query(normalized: str) -> bool:
         "segurança",
         "ocorrencia disciplinar",
         "ocorrência disciplinar",
+        "maconha",
+        "droga",
+        "drogas",
+        "entorpecente",
+        "entorpecentes",
+        "fumar",
+        "fumo",
+        "cigarro",
+        "vape",
+        "vapear",
+        "alcool",
+        "álcool",
     )
     if not any(term in normalized for term in conduct_terms):
         return False
@@ -370,6 +410,13 @@ def _looks_like_public_conduct_policy_query(normalized: str) -> bool:
         "como funciona",
         "quando",
         "pode levar",
+        "posso",
+        "pode",
+        "usar",
+        "levar",
+        "consumir",
+        "porte",
+        "fumar",
     )
     return any(term in normalized for term in action_terms)
 

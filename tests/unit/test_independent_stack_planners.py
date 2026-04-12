@@ -40,10 +40,10 @@ def test_llamaindex_plan_uses_local_kernel_for_public_documentary_query() -> Non
     plan = build_llamaindex_plan(request=request, settings=_Settings(), mode='llamaindex')
 
     assert plan.__class__.__module__.endswith('llamaindex_kernel')
-    assert plan.preview.mode is OrchestrationMode.hybrid_retrieval
+    assert plan.preview.mode is OrchestrationMode.structured_tool
     assert plan.preview.classification.domain is QueryDomain.institution
     assert plan.preview.classification.access_tier is AccessTier.public
-    assert plan.preview.selected_tools == ['search_documents']
+    assert 'get_public_school_profile' in plan.preview.selected_tools
 
 
 def test_python_functions_plan_detects_authenticated_academic_risk_recut() -> None:
@@ -70,6 +70,118 @@ def test_llamaindex_plan_detects_authenticated_academic_risk_recut() -> None:
     assert plan.preview.mode is OrchestrationMode.structured_tool
     assert plan.preview.classification.domain is QueryDomain.academic
     assert 'get_student_academic_summary' in plan.preview.selected_tools
+
+
+def test_python_functions_plan_keeps_authenticated_public_conduct_query_out_of_admin_fallback() -> None:
+    request = MessageResponseRequest(
+        message='Posso fumar maconha nessa escola?',
+        user=UserContext(role=UserRole.guardian, authenticated=True),
+    )
+
+    plan = build_python_functions_plan(request=request, settings=_Settings(), mode='python_functions')
+
+    assert plan.preview.mode is OrchestrationMode.structured_tool
+    assert plan.preview.classification.domain is QueryDomain.institution
+    assert plan.preview.classification.access_tier is AccessTier.public
+    assert 'get_public_school_profile' in plan.preview.selected_tools
+    assert 'get_administrative_status' not in plan.preview.selected_tools
+
+
+def test_llamaindex_plan_keeps_authenticated_public_conduct_query_out_of_admin_fallback() -> None:
+    request = MessageResponseRequest(
+        message='Posso fumar maconha nessa escola?',
+        user=UserContext(role=UserRole.guardian, authenticated=True),
+    )
+
+    plan = build_llamaindex_plan(request=request, settings=_Settings(), mode='llamaindex')
+
+    assert plan.preview.mode is OrchestrationMode.structured_tool
+    assert plan.preview.classification.domain is QueryDomain.institution
+    assert plan.preview.classification.access_tier is AccessTier.public
+    assert 'get_public_school_profile' in plan.preview.selected_tools
+    assert 'get_administrative_status' not in plan.preview.selected_tools
+
+
+def test_python_functions_plan_keeps_public_conduct_query_public_when_not_authenticated() -> None:
+    request = MessageResponseRequest(
+        message='Posso fumar maconha nessa escola?',
+        user=UserContext(role=UserRole.anonymous, authenticated=False),
+    )
+
+    plan = build_python_functions_plan(request=request, settings=_Settings(), mode='python_functions')
+
+    assert plan.preview.mode is OrchestrationMode.structured_tool
+    assert plan.preview.classification.domain is QueryDomain.institution
+    assert plan.preview.classification.access_tier is AccessTier.public
+    assert 'get_public_school_profile' in plan.preview.selected_tools
+    assert 'get_administrative_status' not in plan.preview.selected_tools
+
+
+def test_llamaindex_plan_keeps_public_conduct_query_public_when_not_authenticated() -> None:
+    request = MessageResponseRequest(
+        message='Posso fumar maconha nessa escola?',
+        user=UserContext(role=UserRole.anonymous, authenticated=False),
+    )
+
+    plan = build_llamaindex_plan(request=request, settings=_Settings(), mode='llamaindex')
+
+    assert plan.preview.mode is OrchestrationMode.structured_tool
+    assert plan.preview.classification.domain is QueryDomain.institution
+    assert plan.preview.classification.access_tier is AccessTier.public
+    assert 'get_public_school_profile' in plan.preview.selected_tools
+    assert 'get_administrative_status' not in plan.preview.selected_tools
+
+
+def test_python_functions_plan_clarifies_authenticated_off_scope_query_instead_of_admin_fallback() -> None:
+    request = MessageResponseRequest(
+        message='Qual o melhor filme do ano?',
+        user=UserContext(role=UserRole.guardian, authenticated=True),
+    )
+
+    plan = build_python_functions_plan(request=request, settings=_Settings(), mode='python_functions')
+
+    assert plan.preview.mode is OrchestrationMode.clarify
+    assert plan.preview.classification.domain is QueryDomain.unknown
+    assert plan.preview.selected_tools == []
+
+
+def test_llamaindex_plan_clarifies_authenticated_off_scope_query_instead_of_admin_fallback() -> None:
+    request = MessageResponseRequest(
+        message='Qual o melhor filme do ano?',
+        user=UserContext(role=UserRole.guardian, authenticated=True),
+    )
+
+    plan = build_llamaindex_plan(request=request, settings=_Settings(), mode='llamaindex')
+
+    assert plan.preview.mode is OrchestrationMode.clarify
+    assert plan.preview.classification.domain is QueryDomain.unknown
+    assert plan.preview.selected_tools == []
+
+
+def test_python_functions_plan_clarifies_authenticated_opaque_input_instead_of_admin_fallback() -> None:
+    request = MessageResponseRequest(
+        message='rai',
+        user=UserContext(role=UserRole.guardian, authenticated=True),
+    )
+
+    plan = build_python_functions_plan(request=request, settings=_Settings(), mode='python_functions')
+
+    assert plan.preview.mode is OrchestrationMode.clarify
+    assert plan.preview.classification.domain is QueryDomain.unknown
+    assert plan.preview.selected_tools == []
+
+
+def test_llamaindex_plan_clarifies_authenticated_opaque_input_instead_of_admin_fallback() -> None:
+    request = MessageResponseRequest(
+        message='rai',
+        user=UserContext(role=UserRole.guardian, authenticated=True),
+    )
+
+    plan = build_llamaindex_plan(request=request, settings=_Settings(), mode='llamaindex')
+
+    assert plan.preview.mode is OrchestrationMode.clarify
+    assert plan.preview.classification.domain is QueryDomain.unknown
+    assert plan.preview.selected_tools == []
 
 
 def test_python_functions_plan_denies_teacher_internal_material_for_guardian() -> None:

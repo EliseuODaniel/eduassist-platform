@@ -22,6 +22,11 @@ from eduassist_observability import (
     set_span_attributes,
     start_span,
 )
+from eduassist_semantic_ingress import (
+    looks_like_language_preference_feedback,
+    looks_like_school_scope_message,
+    looks_like_scope_boundary_candidate,
+)
 from PIL import Image, ImageDraw, ImageFont
 
 from .candidate_builder import build_response_candidate
@@ -77,6 +82,7 @@ from .public_doc_knowledge import (
     compose_public_bolsas_and_processes,
     compose_public_calendar_visibility,
     compose_public_canonical_lane_answer,
+    compose_public_conduct_policy_contextual_answer,
     compose_public_family_new_calendar_assessment_enrollment,
     compose_public_first_month_risks,
     compose_public_health_authorizations_bridge,
@@ -88,6 +94,10 @@ from .public_doc_knowledge import (
     match_public_canonical_lane,
 )
 from .public_known_unknowns import compose_public_known_unknown_answer, detect_public_known_unknown_key
+from .request_intent_guardrails import (
+    looks_like_explicit_admin_status_query,
+    looks_like_school_domain_request,
+)
 from .response_cache import get_cached_public_response, store_cached_public_response
 from .retrieval import (
     can_read_restricted_documents,
@@ -1100,6 +1110,8 @@ PUBLIC_ACTIVE_TASK_BY_ACT = {
     'assistant_identity': 'public:assistant_identity',
     'capabilities': 'public:capabilities',
     'access_scope': 'public:access_scope',
+    'language_preference': 'public:language_preference',
+    'scope_boundary': 'public:scope_boundary',
     'service_routing': 'public:service_routing',
     'auth_guidance': 'public:auth_guidance',
     'document_submission': 'public:document_submission',
@@ -1132,6 +1144,8 @@ PUBLIC_ACTIVE_ENTITY_BY_ACT = {
     'assistant_identity': 'eduassist',
     'capabilities': 'escola',
     'access_scope': 'conta vinculada',
+    'language_preference': 'idioma da conversa',
+    'scope_boundary': 'limite de escopo',
     'service_routing': 'setores da escola',
     'auth_guidance': 'conta',
     'document_submission': 'documentos',
@@ -1174,11 +1188,15 @@ NON_STICKY_PUBLIC_TASKS = {
     'public:assistant_identity',
     'public:capabilities',
     'public:access_scope',
+    'public:language_preference',
+    'public:scope_boundary',
 }
 PUBLIC_SEMANTIC_RESCUE_ACTS = {
     'assistant_identity',
     'capabilities',
     'access_scope',
+    'language_preference',
+    'scope_boundary',
     'service_routing',
     'auth_guidance',
     'document_submission',
@@ -2656,6 +2674,10 @@ def _is_auth_guidance_query(message: str) -> bool:
     return any(_message_matches_term(normalized, term) for term in AUTH_GUIDANCE_TERMS)
 
 
+def _is_language_preference_query(message: str) -> bool:
+    return looks_like_language_preference_feedback(message)
+
+
 def _is_public_pricing_navigation_query(message: str) -> bool:
     normalized = _normalize_text(message)
     if (
@@ -3382,7 +3404,9 @@ def _is_positive_requirement_query(message: str) -> bool:
 
 def _is_comparative_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    return any(_message_matches_term(normalized, term) for term in COMPARATIVE_TERMS)
+    if not any(_message_matches_term(normalized, term) for term in COMPARATIVE_TERMS):
+        return False
+    return looks_like_school_domain_request(message)
 
 
 def _is_follow_up_query(message: str) -> bool:
@@ -5343,9 +5367,90 @@ def _compose_assistant_identity_answer(
     base = (
         f'Voce esta falando com o EduAssist, o assistente institucional do {school_name}. '
         'Eu consigo te orientar por aqui, consultar informacoes da escola e abrir solicitacoes com protocolo. '
-        'Se precisar, eu tambem te encaminho para secretaria, admissions, coordenacao, orientacao educacional, financeiro ou direcao.'
+        'Se precisar, eu tambem te encaminho para secretaria, matricula e atendimento comercial, coordenacao, orientacao educacional, financeiro ou direcao.'
     )
     return base
+
+
+def _localize_pt_br_surface_labels(text: str) -> str:
+    localized = str(text or "")
+    localized = re.sub(
+        r'(?i)\badmissions\b',
+        'matricula e atendimento comercial',
+        localized,
+    )
+    localized = localized.replace('secretaria/matricula e atendimento comercial', 'secretaria ou matricula e atendimento comercial')
+    localized = localized.replace('secretaria / matricula e atendimento comercial', 'secretaria ou matricula e atendimento comercial')
+    return localized
+
+
+def _compose_language_preference_answer(
+    profile: dict[str, Any],
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> str:
+    normalized = _normalize_text(message)
+    school_name = str(profile.get('school_name', 'Colegio Horizonte'))
+    if 'admissions' in normalized and any(term in normalized for term in {'ingles', 'inglês', 'english'}):
+        return (
+            f'Voce tem razao em estranhar isso. Aqui no EduAssist do {school_name}, eu vou responder em portugues. '
+            'Quando eu mencionar admissions, leia como matricula e atendimento comercial.'
+        )
+    if any(term in normalized for term in {'portugues', 'português'}) and any(
+        term in normalized for term in {'fale', 'fala', 'responde', 'responda', 'quero que', 'apenas', 'so', 'só'}
+    ):
+        return (
+            'Perfeito. A partir daqui eu respondo em portugues. '
+            'Se eu mencionar admissions, entenda como matricula e atendimento comercial.'
+        )
+    if _assistant_already_introduced(conversation_context):
+        return (
+            'Perfeito. Eu sigo em portugues. '
+            'Se algum termo sair em ingles, eu reformulo em portugues e explico o setor com nomes locais.'
+        )
+    return (
+        f'Perfeito. Eu sigo em portugues aqui no EduAssist do {school_name}. '
+        'Se algum termo sair em ingles, eu reformulo em portugues e explico o setor com nomes locais.'
+    )
+
+
+def _compose_input_clarification_answer(
+    profile: dict[str, Any],
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> str:
+    school_name = str(profile.get('school_name', 'Colegio Horizonte'))
+    if _assistant_already_introduced(conversation_context):
+        return (
+            'Nao consegui interpretar essa mensagem com seguranca. '
+            'Se quiser, reformule em uma frase curta dizendo o que voce precisa. '
+            'Eu consigo seguir em portugues e normalmente tambem entendo ingles e espanhol. '
+            'Se a mensagem era so uma saudacao, pode mandar algo como "oi" ou "bom dia".'
+        )
+    return (
+        f'Nao consegui interpretar essa mensagem com seguranca aqui no EduAssist do {school_name}. '
+        'Se quiser, reformule em uma frase curta dizendo o que voce precisa. '
+        'Eu consigo seguir em portugues e normalmente tambem entendo ingles e espanhol. '
+        'Se a mensagem era so uma saudacao, pode mandar algo como "oi" ou "bom dia".'
+    )
+
+
+def _compose_scope_boundary_answer(
+    profile: dict[str, Any],
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> str:
+    school_name = str(profile.get('school_name', 'Colegio Horizonte'))
+    if _assistant_already_introduced(conversation_context):
+        return (
+            'Nao tenho base confiavel aqui para responder esse tema fora do escopo da escola. '
+            'Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro.'
+        )
+    return (
+        f'Nao tenho base confiavel aqui no EduAssist do {school_name} para responder esse tema fora do escopo da escola. '
+        'Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro.'
+    )
 
 
 def _is_public_document_submission_query(message: str) -> bool:
@@ -6037,6 +6142,17 @@ def _try_public_channel_fast_answer(
         before_after_answer = _compose_public_timeline_before_after_answer(profile)
         if before_after_answer:
             return before_after_answer
+    if _is_auth_guidance_query(message):
+        return (
+            'Para consultas protegidas, como notas, faltas e financeiro, voce precisa vincular sua conta do Telegram ao portal da escola. '
+            'No portal autenticado, gere o codigo de vinculacao e depois envie aqui o comando `/start link_<codigo>`. '
+            'Depois disso, eu passo a consultar seus dados autorizados por este canal.'
+        )
+    if looks_like_scope_boundary_candidate(message) and not looks_like_school_scope_message(message):
+        return _compose_scope_boundary_answer(
+            profile,
+            conversation_context=None,
+        )
     if (
         _is_public_timeline_query(message)
         and any(
@@ -6049,7 +6165,14 @@ def _try_public_channel_fast_answer(
             return order_only_answer
     canonical_lane = match_public_canonical_lane(message)
     if canonical_lane:
-        canonical_answer = compose_public_canonical_lane_answer(canonical_lane, profile=profile)
+        canonical_answer = (
+            compose_public_conduct_policy_contextual_answer(
+                message,
+                profile=profile,
+            )
+            if canonical_lane == 'public_bundle.conduct_frequency_punctuality'
+            else None
+        ) or compose_public_canonical_lane_answer(canonical_lane, profile=profile)
         if canonical_answer:
             return canonical_answer
     multi_intent_answer = _compose_public_multi_intent_answer(
@@ -6564,7 +6687,7 @@ def _compose_service_routing_answer(
                 conversation_context=conversation_context,
             )
         return (
-            'Voce fala comigo, o EduAssist. Eu consigo te orientar e te encaminhar para secretaria, admissions, '
+            'Voce fala comigo, o EduAssist. Eu consigo te orientar e te encaminhar para secretaria, matricula e atendimento comercial, '
             f'coordenacao, orientacao educacional, financeiro ou direcao. {_compose_service_routing_menu(profile)} '
             'Se quiser, me diga o assunto em uma frase curta e eu te indico o melhor caminho sem voce precisar adivinhar o setor.'
         )
@@ -6827,14 +6950,33 @@ def _compose_public_profile_answer_legacy(
     if semantic_act == 'greeting' or _is_greeting_only(source_message):
         return _compose_concierge_greeting(profile, source_message, conversation_context)
 
+    if semantic_act == 'input_clarification':
+        return _compose_input_clarification_answer(
+            profile,
+            conversation_context=conversation_context,
+        )
+
+    if semantic_act == 'scope_boundary':
+        return _compose_scope_boundary_answer(
+            profile,
+            conversation_context=conversation_context,
+        )
+
     if semantic_act == 'utility_date' or _is_public_date_query(source_message):
         return f'Hoje e {_format_brazilian_date(date.today())}.'
 
-    if _is_auth_guidance_query(source_message):
+    if semantic_act == 'auth_guidance' or _is_auth_guidance_query(source_message):
         return (
             'Para consultas protegidas, como notas, faltas e financeiro, voce precisa vincular sua conta do Telegram ao portal da escola. '
             'No portal autenticado, gere o codigo de vinculacao e depois envie aqui o comando `/start link_<codigo>`. '
             'Depois disso, eu passo a consultar seus dados autorizados por este canal.'
+        )
+
+    if semantic_act == 'language_preference' or _is_language_preference_query(source_message):
+        return _compose_language_preference_answer(
+            profile,
+            source_message,
+            conversation_context=conversation_context,
         )
 
     if semantic_act == 'assistant_identity' or _is_assistant_identity_query(source_message):
@@ -7193,18 +7335,23 @@ def _build_public_profile_context(
     conversation_context: dict[str, Any] | None = None,
     semantic_plan: PublicInstitutionPlan | None = None,
 ) -> PublicProfileContext:
+    effective_conversation_context = conversation_context
+    if semantic_plan is not None and semantic_plan.conversation_act == 'greeting':
+        # A terminal greeting classified at ingress should not inherit the
+        # previous workflow as if it were a follow-up.
+        effective_conversation_context = None
     source_message = original_message or message
     normalized = _normalize_text(source_message)
     analysis_normalized = _normalize_text(message)
     slot_memory = _build_conversation_slot_memory(
         actor=None,
         profile=profile,
-        conversation_context=conversation_context,
+        conversation_context=effective_conversation_context,
         request_message=source_message,
         public_plan=semantic_plan,
     )
     school_name = str(profile.get('school_name', 'Colegio Horizonte'))
-    school_reference = 'a escola' if _assistant_already_introduced(conversation_context) else school_name
+    school_reference = 'a escola' if _assistant_already_introduced(effective_conversation_context) else school_name
     school_reference_capitalized = 'A escola' if school_reference == 'a escola' else school_reference
     postal_code_raw = profile.get('postal_code')
     website_url_raw = profile.get('website_url')
@@ -7222,13 +7369,13 @@ def _build_public_profile_context(
         profile=profile,
         source_message=source_message,
         analysis_message=message,
-        conversation_context=conversation_context,
+        conversation_context=effective_conversation_context,
     )
     preferred_contact_labels = tuple(
         _preferred_contact_labels_from_context(
             profile,
             source_message,
-            conversation_context,
+            effective_conversation_context,
         )
     )
     if _contact_is_general_school_query(contact_reference_message):
@@ -7279,7 +7426,7 @@ def _build_public_profile_context(
             else None
         ),
         slot_memory=slot_memory,
-        conversation_context=conversation_context,
+        conversation_context=effective_conversation_context,
         semantic_plan=semantic_plan,
     )
 
@@ -7315,6 +7462,20 @@ def _handle_public_greeting(context: PublicProfileContext) -> str:
     return _compose_concierge_greeting(context.profile, context.source_message, context.conversation_context)
 
 
+def _handle_public_input_clarification(context: PublicProfileContext) -> str:
+    return _compose_input_clarification_answer(
+        context.profile,
+        conversation_context=context.conversation_context,
+    )
+
+
+def _handle_public_scope_boundary(context: PublicProfileContext) -> str:
+    return _compose_scope_boundary_answer(
+        context.profile,
+        conversation_context=context.conversation_context,
+    )
+
+
 def _handle_public_utility_date(_: PublicProfileContext) -> str:
     return f'Hoje e {_format_brazilian_date(date.today())}.'
 
@@ -7324,6 +7485,14 @@ def _handle_public_auth_guidance(_: PublicProfileContext) -> str:
         'Para consultas protegidas, como notas, faltas e financeiro, voce precisa vincular sua conta do Telegram ao portal da escola. '
         'No portal autenticado, gere o codigo de vinculacao e depois envie aqui o comando `/start link_<codigo>`. '
         'Depois disso, eu passo a consultar seus dados autorizados por este canal.'
+    )
+
+
+def _handle_public_language_preference(context: PublicProfileContext) -> str:
+    return _compose_language_preference_answer(
+        context.profile,
+        context.source_message,
+        conversation_context=context.conversation_context,
     )
 
 
@@ -8836,9 +9005,12 @@ def _public_profile_handler_registry() -> dict[str, Callable[[PublicProfileConte
     return {
         'acknowledgement': _handle_public_acknowledgement,
         'greeting': _handle_public_greeting,
+        'input_clarification': _handle_public_input_clarification,
+        'scope_boundary': _handle_public_scope_boundary,
         'utility_date': _handle_public_utility_date,
         'auth_guidance': _handle_public_auth_guidance,
         'access_scope': _handle_public_access_scope,
+        'language_preference': _handle_public_language_preference,
         'assistant_identity': _handle_public_assistant_identity,
         'service_routing': _handle_public_service_routing,
         'service_credentials_bundle': _handle_public_service_credentials_bundle,
@@ -9018,6 +9190,21 @@ def _compose_public_profile_answer(
         conversation_context=conversation_context,
         semantic_plan=semantic_plan,
     )
+    registry = _public_profile_handler_registry()
+    if semantic_plan is not None and semantic_plan.conversation_act in {
+        'greeting',
+        'assistant_identity',
+        'auth_guidance',
+        'capabilities',
+        'input_clarification',
+        'language_preference',
+        'scope_boundary',
+    }:
+        semantic_handler = registry.get(semantic_plan.conversation_act)
+        if semantic_handler is not None:
+            semantic_answer = semantic_handler(context)
+            if semantic_answer:
+                return _localize_pt_br_surface_labels(semantic_answer)
     semantic_requires_multi_intent = bool(
         semantic_plan is not None
         and (
@@ -9031,25 +9218,25 @@ def _compose_public_profile_answer(
     if canonical_lane:
         lane_answer = compose_public_canonical_lane_answer(canonical_lane, profile=profile)
         if lane_answer:
-            return lane_answer
+            return _localize_pt_br_surface_labels(lane_answer)
     if _is_public_pricing_navigation_query(context.source_message) and not (
         semantic_requires_multi_intent or _has_public_multi_intent_signal(context.source_message)
     ):
         pricing_answer = _handle_public_pricing(context)
         if pricing_answer:
-            return pricing_answer
+            return _localize_pt_br_surface_labels(pricing_answer)
     multi_intent_answer = _compose_public_multi_intent_answer(
         context,
         semantic_plan=semantic_plan,
     )
     if multi_intent_answer:
-        return multi_intent_answer
+        return _localize_pt_br_surface_labels(multi_intent_answer)
     fast_public_channel_answer = _try_public_channel_fast_answer(
         message=context.source_message,
         profile=profile,
     )
     if fast_public_channel_answer:
-        return fast_public_channel_answer
+        return _localize_pt_br_surface_labels(fast_public_channel_answer)
     normalized_source_message = _normalize_text(context.source_message)
     if (
         (
@@ -9070,8 +9257,7 @@ def _compose_public_profile_answer(
     ):
         school_year_start_answer = _compose_public_school_year_start_answer(profile, context.school_reference)
         if school_year_start_answer:
-            return school_year_start_answer
-    registry = _public_profile_handler_registry()
+            return _localize_pt_br_surface_labels(school_year_start_answer)
     resolved_act = _resolve_public_profile_act(context)
     handler = registry.get(resolved_act)
     if handler is not None:
@@ -9103,15 +9289,15 @@ def _compose_public_profile_answer(
                     continue
                 extra_texts.append(candidate)
         if extra_texts:
-            return '\n\n'.join([primary_text, *extra_texts])
-        return primary_text
-    return _compose_public_profile_answer_legacy(
+            return _localize_pt_br_surface_labels('\n\n'.join([primary_text, *extra_texts]))
+        return _localize_pt_br_surface_labels(primary_text)
+    return _localize_pt_br_surface_labels(_compose_public_profile_answer_legacy(
         profile,
         message,
         original_message=original_message,
         conversation_context=conversation_context,
         semantic_plan=semantic_plan,
-    )
+    ))
 
 
 def _compose_negative_requirement_answer() -> str:
@@ -10794,6 +10980,7 @@ PUBLIC_ACT_RULES: tuple[PublicActRule, ...] = (
     PublicActRule('utility_date', _is_public_date_query, (), False),
     PublicActRule('auth_guidance', _is_auth_guidance_query, (), False),
     PublicActRule('access_scope', _is_access_scope_query, ('list_assistant_capabilities',), False),
+    PublicActRule('language_preference', _is_language_preference_query, ('get_public_school_profile',), False),
     PublicActRule('service_routing', _is_service_routing_query, ('get_service_directory',), False),
     PublicActRule('service_credentials_bundle', _is_public_service_credentials_bundle_query, ('get_service_directory',), False),
     PublicActRule('assistant_identity', _is_assistant_identity_query, ('get_org_directory',), False),
@@ -10916,6 +11103,8 @@ def _prioritize_public_act_rules(
         'utility_date': 100,
         'auth_guidance': 95,
         'access_scope': 94,
+        'language_preference': 95,
+        'scope_boundary': 95,
         'assistant_identity': 95,
         'service_routing': 95,
         'capabilities': 90,
@@ -10964,6 +11153,8 @@ PUBLIC_SEMANTIC_ACTS = {
     'greeting',
     'auth_guidance',
     'access_scope',
+    'language_preference',
+    'scope_boundary',
     'assistant_identity',
     'capabilities',
     'service_routing',
@@ -11030,6 +11221,8 @@ def _should_run_public_semantic_resolver(
             'utility_date',
             'auth_guidance',
             'access_scope',
+            'language_preference',
+            'scope_boundary',
             'assistant_identity',
             'service_routing',
             'capabilities',
@@ -12262,7 +12455,7 @@ def _build_public_institution_specialists(plan: PublicInstitutionPlan) -> tuple[
         for tool_name in plan.required_tools
         if tool_name in {'list_assistant_capabilities', 'get_service_directory'}
     )
-    if plan.conversation_act in {'greeting', 'capabilities', 'assistant_identity', 'service_routing'} or concierge_tools:
+    if plan.conversation_act in {'greeting', 'capabilities', 'assistant_identity', 'input_clarification', 'scope_boundary', 'service_routing'} or concierge_tools:
         specialists.append(
             InternalSpecialistPlan(
                 name='concierge',
@@ -18709,11 +18902,33 @@ async def _compose_structured_tool_answer(
         )
         if orphan_workflow_follow_up:
             return orphan_workflow_follow_up
-        use_admin_path = (
-            {'get_administrative_status', 'get_student_administrative_status', 'get_actor_identity_context'}
-            & set(preview.selected_tools)
-        ) or (
-            request.telegram_chat_id is not None and _is_private_admin_follow_up(request.message, conversation_context)
+        direct_canonical_lane = match_public_canonical_lane(analysis_message) or match_public_canonical_lane(request.message)
+        explicit_admin_query = looks_like_explicit_admin_status_query(
+            request.message,
+            authenticated=bool(request.user.authenticated),
+        )
+        if direct_canonical_lane and not explicit_admin_query:
+            direct_canonical_answer = (
+                compose_public_conduct_policy_contextual_answer(
+                    request.message,
+                    profile=school_profile,
+                )
+                if direct_canonical_lane == 'public_bundle.conduct_frequency_punctuality'
+                else None
+            ) or compose_public_canonical_lane_answer(direct_canonical_lane, profile=school_profile)
+            if direct_canonical_answer:
+                if public_plan_sink is not None:
+                    public_plan_sink['deterministic_text'] = direct_canonical_answer
+                return direct_canonical_answer
+        use_admin_path = request.telegram_chat_id is not None and preview.classification.access_tier is not AccessTier.public and (
+            explicit_admin_query
+            or _mentions_personal_admin_status(request.message)
+            or _detect_admin_attribute_request(
+                request.message,
+                conversation_context=conversation_context,
+            )
+            is not None
+            or _is_private_admin_follow_up(request.message, conversation_context)
         )
         if preview.classification.domain is QueryDomain.institution and use_admin_path:
             if not {'get_administrative_status', 'get_student_administrative_status', 'get_actor_identity_context'} & set(preview.selected_tools):

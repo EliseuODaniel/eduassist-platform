@@ -26,6 +26,12 @@ from .retrieval import (
     looks_like_restricted_document_query,
     select_relevant_restricted_hits,
 )
+from .semantic_ingress_runtime import (
+    apply_semantic_ingress_preview,
+    build_semantic_ingress_public_plan,
+    is_terminal_semantic_ingress_plan,
+    maybe_resolve_semantic_ingress_plan,
+)
 
 
 class LangGraphMessageState(TypedDict, total=False):
@@ -41,6 +47,7 @@ class LangGraphMessageState(TypedDict, total=False):
     analysis_message: str
     school_profile: dict[str, Any] | None
     preview: Any
+    semantic_ingress_plan: Any
     langgraph_thread_id: str | None
     langgraph_trace_metadata: dict[str, Any] | None
     route: str
@@ -459,7 +466,11 @@ async def _public_compound(state: LangGraphMessageState) -> LangGraphMessageStat
 
     canonical_lane = rt.match_public_canonical_lane(analysis_message) or rt.match_public_canonical_lane(request.message)
     if canonical_lane:
-        message_text = rt.compose_public_canonical_lane_answer(canonical_lane, profile=school_profile)
+        message_text = (
+            rt.compose_public_conduct_policy_contextual_answer(request.message, profile=school_profile)
+            if canonical_lane == 'public_bundle.conduct_frequency_punctuality'
+            else rt.compose_public_canonical_lane_answer(canonical_lane, profile=school_profile)
+        )
         if message_text:
             if rt._message_matches_term(rt._normalize_text(request.message), 'apenas o que e publico nesse tema'):
                 message_text = (
@@ -739,13 +750,35 @@ async def _bootstrap_context(state: LangGraphMessageState) -> LangGraphMessageSt
         thread_id=langgraph_thread_id,
     )
     preview = rt.to_preview(graph_state)
-    if actor is not None and request.user.authenticated:
+    semantic_preview = preview.model_copy(deep=True)
+    semantic_ingress_plan = await maybe_resolve_semantic_ingress_plan(
+        settings=settings,
+        request_message=request.message,
+        conversation_context=conversation_context,
+        preview=semantic_preview,
+        stack_label='langgraph',
+    )
+    if (
+        (semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan))
+        and actor is not None
+        and request.user.authenticated
+        and rt.match_public_canonical_lane(request.message) is None
+    ):
         rt._apply_protected_domain_rescue(
             preview=preview,
             actor=actor,
             message=request.message,
             conversation_context=conversation_context,
         )
+    route = _route_native_path(preview, request.message, analysis_message)
+    if semantic_ingress_plan is not None:
+        ingress_base_preview = semantic_preview if is_terminal_semantic_ingress_plan(semantic_ingress_plan) else preview
+        preview = apply_semantic_ingress_preview(
+            preview=ingress_base_preview,
+            plan=semantic_ingress_plan,
+            stack_name='langgraph',
+        )
+        route = 'semantic_ingress'
     langgraph_trace_metadata = rt._capture_langgraph_trace_metadata(
         graph=langgraph_artifacts.graph,
         thread_id=langgraph_thread_id,
@@ -760,9 +793,10 @@ async def _bootstrap_context(state: LangGraphMessageState) -> LangGraphMessageSt
         'analysis_message': analysis_message,
         'school_profile': school_profile,
         'preview': preview,
+        'semantic_ingress_plan': semantic_ingress_plan,
         'langgraph_thread_id': langgraph_thread_id,
         'langgraph_trace_metadata': langgraph_trace_metadata,
-        'route': _route_native_path(preview, request.message, analysis_message),
+        'route': route,
     }
 
 
@@ -776,6 +810,129 @@ async def _delegate_runtime(state: LangGraphMessageState) -> LangGraphMessageSta
         settings=state['settings'],
         engine_name=state['engine_name'],
         engine_mode=state['engine_mode'],
+    )
+    return {'response': response}
+
+
+async def _semantic_ingress(state: LangGraphMessageState) -> LangGraphMessageState:
+    request = state['request']
+    settings = state['settings']
+    preview = state['preview']
+    actor = state['actor']
+    conversation_context = state['conversation_context']
+    school_profile = state['school_profile']
+    effective_conversation_id = state['effective_conversation_id']
+    semantic_ingress_plan = state.get('semantic_ingress_plan')
+    if semantic_ingress_plan is None:
+        return await _delegate_runtime(state)
+
+    public_plan = build_semantic_ingress_public_plan(semantic_ingress_plan)
+    public_plan_sink: dict[str, Any] = {}
+    if is_terminal_semantic_ingress_plan(semantic_ingress_plan):
+        message_text = rt._compose_public_profile_answer(
+            school_profile or {},
+            request.message,
+            actor=actor,
+            original_message=request.message,
+            conversation_context=conversation_context,
+            semantic_plan=public_plan,
+        )
+    else:
+        message_text = await rt._compose_structured_tool_answer(
+            settings=settings,
+            request=request,
+            analysis_message=request.message,
+            preview=preview,
+            actor=actor,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+            public_plan_sink=public_plan_sink,
+            resolved_public_plan=public_plan,
+            prefer_fast_public_path=False,
+        )
+    llm_stages = ['semantic_ingress_classifier']
+    if semantic_ingress_plan.conversation_act != 'language_preference':
+        polished_text = await polish_langgraph_with_provider(
+            settings=settings,
+            request_message=request.message,
+            preview=preview,
+            draft_text=message_text,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
+        if polished_text:
+            message_text = polished_text
+            llm_stages.append('structured_polish')
+    effective_public_plan = public_plan_sink.get('plan') or public_plan
+    suggested_replies = rt._build_suggested_replies(
+        request=request,
+        preview=preview,
+        actor=actor,
+        school_profile=school_profile,
+        conversation_context=conversation_context,
+    )
+    evidence_pack = rt._build_runtime_evidence_pack(
+        request_message=request.message,
+        message_text=message_text,
+        preview=preview,
+        selected_tools=list(preview.selected_tools),
+        citations=[],
+        school_profile=school_profile,
+        actor=actor,
+        conversation_context=conversation_context,
+        public_plan=effective_public_plan,
+        retrieval_backend=RetrievalBackend.none,
+    )
+    await rt._persist_operational_trace(
+        settings=settings,
+        conversation_external_id=effective_conversation_id,
+        channel=request.channel.value,
+        engine_name=state['engine_name'],
+        engine_mode=state['engine_mode'],
+        actor=actor,
+        preview=preview,
+        school_profile=school_profile,
+        conversation_context=conversation_context,
+        public_plan=effective_public_plan,
+        request_message=request.message,
+        message_text=message_text,
+        citations_count=0,
+        suggested_reply_count=len(suggested_replies),
+        visual_asset_count=0,
+        answer_verifier_valid=True,
+        answer_verifier_reason=f'langgraph_semantic_ingress:{semantic_ingress_plan.conversation_act}',
+        answer_verifier_fallback_used=False,
+        deterministic_fallback_available=True,
+        answer_verifier_judge_used=False,
+        langgraph_trace_metadata=state.get('langgraph_trace_metadata'),
+    )
+    await rt._persist_conversation_turn(
+        settings=settings,
+        conversation_external_id=effective_conversation_id,
+        channel=request.channel.value,
+        actor=actor,
+        user_message=request.message,
+        assistant_message=message_text,
+    )
+    response = MessageResponse(
+        message_text=message_text,
+        mode=preview.mode,
+        classification=preview.classification,
+        retrieval_backend=RetrievalBackend.none,
+        selected_tools=list(preview.selected_tools),
+        citations=[],
+        suggested_replies=suggested_replies,
+        evidence_pack=evidence_pack,
+        needs_authentication=False,
+        graph_path=[*list(preview.graph_path), 'langgraph_response_workflow', 'semantic_ingress'],
+        risk_flags=rt._build_runtime_risk_flags(
+            request_message=request.message,
+            message_text=message_text,
+            preview=preview,
+        ),
+        reason=f'langgraph_semantic_ingress:{semantic_ingress_plan.conversation_act}',
+        used_llm=True,
+        llm_stages=llm_stages,
     )
     return {'response': response}
 
@@ -1305,6 +1462,7 @@ async def _restricted_retrieval(state: LangGraphMessageState) -> LangGraphMessag
 def _build_langgraph_message_workflow() -> Any:
     workflow = StateGraph(LangGraphMessageState)
     workflow.add_node('bootstrap_context', _bootstrap_context)
+    workflow.add_node('semantic_ingress', _semantic_ingress)
     workflow.add_node('public_compound', _public_compound)
     workflow.add_node('public_retrieval', _public_retrieval)
     workflow.add_node('restricted_retrieval', _restricted_retrieval)
@@ -1314,12 +1472,14 @@ def _build_langgraph_message_workflow() -> Any:
         'bootstrap_context',
         _after_bootstrap,
         {
+            'semantic_ingress': 'semantic_ingress',
             'public_compound': 'public_compound',
             'public_retrieval': 'public_retrieval',
             'restricted_retrieval': 'restricted_retrieval',
             'delegate_runtime': 'delegate_runtime',
         },
     )
+    workflow.add_edge('semantic_ingress', END)
     workflow.add_edge('public_compound', END)
     workflow.add_edge('public_retrieval', END)
     workflow.add_edge('restricted_retrieval', END)

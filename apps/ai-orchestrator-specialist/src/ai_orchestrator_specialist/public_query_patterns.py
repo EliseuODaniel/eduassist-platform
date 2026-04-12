@@ -511,6 +511,18 @@ def _looks_like_conduct_frequency_punctuality_query(message: str) -> bool:
         'explosivos',
         'seguranca',
         'segurança',
+        'maconha',
+        'droga',
+        'drogas',
+        'entorpecente',
+        'entorpecentes',
+        'fumar',
+        'fumo',
+        'cigarro',
+        'vape',
+        'vapear',
+        'alcool',
+        'álcool',
     }
     return any(term in normalized for term in conduct_terms)
 

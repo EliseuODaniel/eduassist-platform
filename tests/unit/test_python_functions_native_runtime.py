@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 from types import SimpleNamespace
 
+from eduassist_semantic_ingress import IngressSemanticPlan
+
 from ai_orchestrator.models import (
     AccessTier,
     IntentClassification,
@@ -270,3 +272,239 @@ def test_python_functions_native_forces_teacher_boundary_from_public_clarify(mon
     assert result is not None
     assert result.response['reason'] == 'python_functions_native_canonical_lane:public_bundle.teacher_directory_boundary'
     assert 'coordenacao pedagogica' in result.response['message_text'].lower()
+
+
+def test_python_functions_native_uses_semantic_ingress_plan_before_admin_fallback(monkeypatch) -> None:
+    async def _fetch_actor_context(**kwargs):
+        return {'full_name': 'Maria Oliveira', 'linked_students': [{'student_id': 'stu-lucas'}]}
+
+    async def _fetch_conversation_context(**kwargs):
+        return {'recent_messages': []}
+
+    async def _fetch_public_school_profile(**kwargs):
+        return {'school_name': 'Colegio Horizonte'}
+
+    async def _persist_turn(**kwargs):
+        return None
+
+    async def _persist_trace(**kwargs):
+        return None
+
+    async def _semantic_ingress(**kwargs):
+        return IngressSemanticPlan(
+            conversation_act='greeting',
+            use_conversation_context=False,
+            confidence_bucket='high',
+            reason='saudacao informal reconhecida',
+        )
+
+    async def _no_contextual_public_answer(**kwargs):
+        return None
+
+    def _unexpected_rescue(**kwargs):
+        raise AssertionError('protected_domain_rescue_should_not_run')
+
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._fetch_actor_context', _fetch_actor_context)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._fetch_conversation_context', _fetch_conversation_context)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._conversation_context_payload', lambda bundle: {})
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._recent_conversation_focus', lambda ctx: None)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._build_analysis_message', lambda message, bundle: message)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._fetch_public_school_profile', _fetch_public_school_profile)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._build_suggested_replies', lambda **kwargs: [])
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._persist_conversation_turn', _persist_turn)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._persist_operational_trace', _persist_trace)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.record_stack_outcome', lambda **kwargs: None)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._apply_protected_domain_rescue', _unexpected_rescue)
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_native_runtime.maybe_resolve_semantic_ingress_plan',
+        _semantic_ingress,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_native_runtime._maybe_contextual_public_direct_answer',
+        _no_contextual_public_answer,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_native_runtime._maybe_public_unpublished_direct_answer',
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_native_runtime._maybe_hypothetical_public_pricing_answer',
+        lambda **kwargs: None,
+    )
+
+    result = asyncio.run(
+        maybe_execute_python_functions_native_plan(
+            request=_request('boa madruga'),
+            settings=SimpleNamespace(),
+            plan=_plan(),
+            engine_name='python_functions',
+            engine_mode='native',
+        )
+    )
+
+    assert result is not None
+    assert result.response['reason'] == 'python_functions_native_semantic_ingress:greeting'
+    assert 'semantic_ingress_classifier' in result.response['llm_stages']
+    lowered = result.response['message_text'].lower()
+    assert 'como posso ajudar' in lowered or 'eduassist' in lowered
+    assert 'cadastro' not in lowered
+
+
+def test_python_functions_native_uses_language_preference_semantic_ingress_before_subject_disambiguation(
+    monkeypatch,
+) -> None:
+    async def _fetch_actor_context(**kwargs):
+        return {'full_name': 'Maria Oliveira', 'linked_students': [{'student_id': 'stu-lucas'}]}
+
+    async def _fetch_conversation_context(**kwargs):
+        return {
+            'recent_messages': [
+                {'sender_type': 'assistant', 'content': 'Você quer consultar Língua Inglesa de qual aluno: Lucas Oliveira ou Ana Oliveira?'}
+            ]
+        }
+
+    async def _fetch_public_school_profile(**kwargs):
+        return {'school_name': 'Colegio Horizonte'}
+
+    async def _persist_turn(**kwargs):
+        return None
+
+    async def _persist_trace(**kwargs):
+        return None
+
+    async def _semantic_ingress(**kwargs):
+        return IngressSemanticPlan(
+            conversation_act='language_preference',
+            use_conversation_context=False,
+            confidence_bucket='high',
+            reason='preferencia de idioma detectada',
+        )
+
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._fetch_actor_context', _fetch_actor_context)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._fetch_conversation_context', _fetch_conversation_context)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._conversation_context_payload', lambda bundle: {})
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._recent_conversation_focus', lambda ctx: None)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._build_analysis_message', lambda message, bundle: message)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._fetch_public_school_profile', _fetch_public_school_profile)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._build_suggested_replies', lambda **kwargs: [])
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._persist_conversation_turn', _persist_turn)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._persist_operational_trace', _persist_trace)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.record_stack_outcome', lambda **kwargs: None)
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_native_runtime.maybe_resolve_semantic_ingress_plan',
+        _semantic_ingress,
+    )
+    async def _no_contextual_public_answer(**kwargs):
+        return None
+
+    def _no_unpublished_public_answer(**kwargs):
+        return None
+
+    def _no_hypothetical_public_pricing(**kwargs):
+        return None
+
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_native_runtime._maybe_contextual_public_direct_answer',
+        _no_contextual_public_answer,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_native_runtime._maybe_public_unpublished_direct_answer',
+        _no_unpublished_public_answer,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_native_runtime._maybe_hypothetical_public_pricing_answer',
+        _no_hypothetical_public_pricing,
+    )
+
+    result = asyncio.run(
+        maybe_execute_python_functions_native_plan(
+            request=_request('Quero que só fale português'),
+            settings=SimpleNamespace(),
+            plan=_plan(),
+            engine_name='python_functions',
+            engine_mode='native',
+        )
+    )
+
+    assert result is not None
+    assert result.response['reason'] == 'python_functions_native_semantic_ingress:language_preference'
+    lowered = result.response['message_text'].lower()
+    assert 'portugues' in lowered or 'português' in lowered
+    assert 'língua portuguesa' not in lowered and 'lingua portuguesa' not in lowered
+
+
+def test_python_functions_native_uses_input_clarification_semantic_ingress_before_admin_fallback(
+    monkeypatch,
+) -> None:
+    async def _fetch_actor_context(**kwargs):
+        return {'full_name': 'Maria Oliveira', 'linked_students': [{'student_id': 'stu-lucas'}]}
+
+    async def _fetch_conversation_context(**kwargs):
+        return {'recent_messages': []}
+
+    async def _fetch_public_school_profile(**kwargs):
+        return {'school_name': 'Colegio Horizonte'}
+
+    async def _persist_turn(**kwargs):
+        return None
+
+    async def _persist_trace(**kwargs):
+        return None
+
+    async def _semantic_ingress(**kwargs):
+        return IngressSemanticPlan(
+            conversation_act='input_clarification',
+            use_conversation_context=False,
+            confidence_bucket='medium',
+            reason='opaque_short_input',
+        )
+
+    def _unexpected_rescue(**kwargs):
+        raise AssertionError('protected_domain_rescue_should_not_run')
+
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._fetch_actor_context', _fetch_actor_context)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._fetch_conversation_context', _fetch_conversation_context)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._conversation_context_payload', lambda bundle: {})
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._recent_conversation_focus', lambda ctx: None)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._build_analysis_message', lambda message, bundle: message)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._fetch_public_school_profile', _fetch_public_school_profile)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._build_suggested_replies', lambda **kwargs: [])
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._persist_conversation_turn', _persist_turn)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._persist_operational_trace', _persist_trace)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.record_stack_outcome', lambda **kwargs: None)
+    monkeypatch.setattr('ai_orchestrator.python_functions_native_runtime.rt._apply_protected_domain_rescue', _unexpected_rescue)
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_native_runtime.maybe_resolve_semantic_ingress_plan',
+        _semantic_ingress,
+    )
+    async def _no_contextual_public_answer(**kwargs):
+        return None
+
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_native_runtime._maybe_contextual_public_direct_answer',
+        _no_contextual_public_answer,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_native_runtime._maybe_public_unpublished_direct_answer',
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_native_runtime._maybe_hypothetical_public_pricing_answer',
+        lambda **kwargs: None,
+    )
+
+    result = asyncio.run(
+        maybe_execute_python_functions_native_plan(
+            request=_request('rai'),
+            settings=SimpleNamespace(),
+            plan=_plan(),
+            engine_name='python_functions',
+            engine_mode='native',
+        )
+    )
+
+    assert result is not None
+    assert result.response['reason'] == 'python_functions_native_semantic_ingress:input_clarification'
+    lowered = result.response['message_text'].lower()
+    assert 'nao consegui' in lowered or 'não consegui' in lowered
+    assert 'cadastro' not in lowered

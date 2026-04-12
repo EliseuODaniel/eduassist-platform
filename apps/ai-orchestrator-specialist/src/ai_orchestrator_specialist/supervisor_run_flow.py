@@ -280,6 +280,17 @@ async def run_specialist_supervisor(
 
         fast_answer = None if llm_forced_mode and not context.request.user.authenticated else deps.fast_path_answer(context)
         if fast_answer is not None:
+            semantic_ingress_payload = (
+                context.preview_hint.get("semantic_ingress")
+                if isinstance(context.preview_hint, dict)
+                else None
+            )
+            semantic_ingress_used = isinstance(semantic_ingress_payload, dict)
+            semantic_ingress_act = (
+                str(semantic_ingress_payload.get("conversation_act") or "").strip()
+                if semantic_ingress_used
+                else ""
+            )
             return await _persist_and_dump(
                 deps,
                 context,
@@ -288,7 +299,14 @@ async def run_specialist_supervisor(
                 metadata=_provider_metadata(
                     deps,
                     settings,
+                    used_llm=semantic_ingress_used,
+                    llm_stages=["semantic_ingress_classifier"] if semantic_ingress_used else None,
                     extra={"fast_path": True, "preview_hint": context.preview_hint or {}},
+                )
+                | (
+                    {"semantic_ingress_act": semantic_ingress_act}
+                    if semantic_ingress_act
+                    else {}
                 ),
             )
 

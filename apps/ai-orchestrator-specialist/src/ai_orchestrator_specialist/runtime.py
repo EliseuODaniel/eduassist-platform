@@ -476,7 +476,7 @@ def _compose_assistant_identity_answer(profile: dict[str, Any] | None) -> str:
     return (
         f"Voce esta falando com o EduAssist, o assistente institucional do {school_name}. "
         "Eu consigo te orientar por aqui, consultar informacoes da escola e abrir solicitacoes com protocolo. "
-        "Se precisar, eu tambem te encaminho para secretaria, admissions, coordenacao, orientacao educacional, financeiro ou direcao."
+        "Se precisar, eu tambem te encaminho para secretaria, matricula e atendimento comercial, coordenacao, orientacao educacional, financeiro ou direcao."
     )
 
 

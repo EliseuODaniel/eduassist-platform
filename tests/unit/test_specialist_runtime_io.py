@@ -4,6 +4,7 @@ import asyncio
 from types import SimpleNamespace
 
 import httpx
+from eduassist_semantic_ingress import IngressSemanticPlan
 
 from ai_orchestrator_specialist import runtime_io
 
@@ -100,5 +101,36 @@ def test_orchestrator_preview_is_local_and_marks_academic_queries_as_structured_
         assert preview["classification"]["domain"] == "academic"
         assert preview["mode"] == "structured_tool"
         assert preview["retrieval_backend"] == "none"
+    finally:
+        runtime_io._ORCHESTRATOR_PREVIEW_CACHE.clear()
+
+
+def test_orchestrator_preview_applies_semantic_ingress_hint_for_informal_greeting(
+    monkeypatch,
+) -> None:
+    runtime_io._ORCHESTRATOR_PREVIEW_CACHE.clear()
+    try:
+        async def fake_semantic_plan(**_kwargs):
+            return IngressSemanticPlan(
+                conversation_act="greeting",
+                use_conversation_context=False,
+                confidence_bucket="high",
+                reason="saudacao informal",
+            )
+
+        monkeypatch.setattr(
+            "ai_orchestrator_specialist.semantic_ingress_runtime.maybe_resolve_semantic_ingress_plan",
+            fake_semantic_plan,
+        )
+
+        ctx = _ctx(client=_FakeClient())
+        ctx.request.message = "boa madruga"
+        preview = asyncio.run(runtime_io.orchestrator_preview(ctx))
+
+        assert preview is not None
+        assert preview["classification"]["domain"] == "institution"
+        assert preview["classification"]["access_tier"] == "public"
+        assert preview["reason"] == "specialist_semantic_ingress:greeting"
+        assert preview["semantic_ingress"]["conversation_act"] == "greeting"
     finally:
         runtime_io._ORCHESTRATOR_PREVIEW_CACHE.clear()

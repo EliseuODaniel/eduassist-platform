@@ -9,6 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /workspace/apps/ai-orchestrator-specialist
 
 COPY packages/observability/python /workspace/packages/observability/python
+COPY packages/semantic-ingress/python /workspace/packages/semantic-ingress/python
 COPY apps/ai-orchestrator-specialist/pyproject.toml ./
 COPY apps/ai-orchestrator-specialist/uv.lock ./
 COPY apps/ai-orchestrator-specialist/src ./src

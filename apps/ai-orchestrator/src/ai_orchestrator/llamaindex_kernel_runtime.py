@@ -26,6 +26,7 @@ from .models import (
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
 from .llamaindex_public_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
 from .llamaindex_public_known_unknowns import detect_public_known_unknown_key, resolve_public_known_unknown_answer
+from .request_intent_guardrails import looks_like_school_domain_request
 from .llamaindex_local_llm import (
     compose_llamaindex_with_provider,
     polish_llamaindex_with_provider,
@@ -39,6 +40,12 @@ from .llamaindex_retrieval import (
     compose_restricted_document_no_match_answer,
     looks_like_restricted_document_query,
     select_relevant_restricted_hits,
+)
+from .semantic_ingress_runtime import (
+    apply_semantic_ingress_preview,
+    build_semantic_ingress_public_plan,
+    is_terminal_semantic_ingress_plan,
+    maybe_resolve_semantic_ingress_plan,
 )
 
 
@@ -287,6 +294,11 @@ async def _maybe_contextual_public_direct_answer(
         or rewritten_public_followup
     )
     if not is_public_context:
+        return None
+    if not (
+        looks_like_school_domain_request(request.message)
+        or looks_like_school_domain_request(analysis_message)
+    ):
         return None
 
     contextual_public_message = (
@@ -673,12 +685,39 @@ async def execute_kernel_plan(
     if explicit_domain_override is not None:
         effective_plan = explicit_domain_override
     preview = effective_plan.preview.model_copy(deep=True)
-    if actor is not None and request.user.authenticated:
+    semantic_preview = preview.model_copy(deep=True)
+    semantic_ingress_plan = await maybe_resolve_semantic_ingress_plan(
+        settings=settings,
+        request_message=request.message,
+        conversation_context=context_payload,
+        preview=semantic_preview,
+        stack_label='llamaindex',
+    )
+    if (
+        (semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan))
+        and actor is not None
+        and request.user.authenticated
+    ):
         rt._apply_protected_domain_rescue(
             preview=preview,
             actor=actor,
             message=request.message,
             conversation_context=context_payload,
+        )
+    if semantic_ingress_plan is not None:
+        ingress_base_preview = semantic_preview if is_terminal_semantic_ingress_plan(semantic_ingress_plan) else preview
+        preview = apply_semantic_ingress_preview(
+            preview=ingress_base_preview,
+            plan=semantic_ingress_plan,
+            stack_name='llamaindex',
+        )
+        effective_plan = effective_plan.model_copy(
+            update={
+                'plan_notes': [
+                    *effective_plan.plan_notes,
+                    f'semantic_ingress:{semantic_ingress_plan.conversation_act}',
+                ],
+            }
         )
 
     retrieval_hits: list[Any] = []
@@ -692,6 +731,13 @@ async def execute_kernel_plan(
     semantic_judge_used = False
     llm_stages: list[str] = []
     answer_verifier_fallback_used = False
+    semantic_ingress_public_plan = (
+        build_semantic_ingress_public_plan(semantic_ingress_plan)
+        if semantic_ingress_plan is not None
+        else None
+    )
+    if semantic_ingress_plan is not None:
+        llm_stages.append('semantic_ingress_classifier')
     contextual_public_answer = await _maybe_contextual_public_direct_answer(
         request=request,
         analysis_message=analysis_message,
@@ -746,11 +792,14 @@ async def execute_kernel_plan(
         )
     elif preview.mode is OrchestrationMode.structured_tool:
         public_plan_sink: dict[str, Any] = {}
-        resolved_public_plan = None
+        resolved_public_plan = semantic_ingress_public_plan
         if (
+            resolved_public_plan is None
+            and (
             preview.classification.access_tier is AccessTier.public
             and preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar}
             and analysis_message.strip() != str(request.message).strip()
+            )
         ):
             try:
                 resolved_public_plan = await rt._resolve_public_institution_plan(

@@ -19,6 +19,7 @@ src = [
   "apps/ai-orchestrator-specialist/src",
   "apps/telegram-gateway/src",
   "apps/worker/src",
+  "packages/semantic-ingress/python/src",
   "tests",
 ]
 
