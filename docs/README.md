@@ -21,7 +21,9 @@ Este diretório concentra a documentação formal do projeto.
 - [Matriz de controle de acesso](security/access-control-matrix.md)
 - [Modelo de dados](data/data-model.md)
 - [Operação local](operations/local-development.md)
+- [Layout local do workspace](operations/local-workspace-layout.md)
 - [Workflow de Codex, MCP, Skills e AGENTS.md](operations/codex-workflow.md)
+- [Experimentos futuros](experiments/README.md)
 - [Pesquisa de tecnologias de IA](research/ai-technology-review.md)
 - [Roadmap de implementação](roadmap/implementation-roadmap.md)
 
@@ -37,6 +39,7 @@ Se você estiver chegando agora ao projeto, a ordem mais útil é:
 2. [Estado de referência dedicated-first](architecture/dedicated-first-reference-state.md)
 3. [Operação local](operations/local-development.md)
 4. [Segurança da informação](security/security-architecture.md)
+5. [Layout local do workspace](operations/local-workspace-layout.md)
 
 Essa sequência já reflete a arquitetura atual com:
 

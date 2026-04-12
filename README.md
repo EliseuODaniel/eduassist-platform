@@ -25,6 +25,26 @@ Isso mantém coerência de produto sem apagar a diferenciação arquitetural ent
 2. stack: resolve com ferramentas, retrieval, memória e planejamento próprios;
 3. LLM de saída: lapida sem reabrir um fallback indevido.
 
+## Fonte única de verdade
+
+Este repositório é a fonte única de verdade do EduAssist Platform.
+
+Na prática:
+
+- trabalho ativo de produto, runtime, testes e documentação deve acontecer aqui;
+- worktrees temporários não devem sobreviver ao merge ou abandono da branch;
+- protótipos antigos e estudos locais não devem competir com este repositório como se fossem outra versão oficial do sistema.
+
+## Comece por aqui
+
+Se você está chegando agora ao repositório, a ordem mais útil é:
+
+1. este `README.md`, para visão geral e bootstrap;
+2. [Estado de referência dedicated-first](docs/architecture/dedicated-first-reference-state.md), para a verdade operacional atual;
+3. [Operação local](docs/operations/local-development.md), para subir e testar a stack;
+4. [Tests](tests/README.md), para entender as superfícies de validação;
+5. [Documentação](docs/README.md), para navegar pelos documentos formais.
+
 ## O que o projeto faz
 
 - atende perguntas públicas sobre calendário, matrícula, bolsas, secretaria e rotinas escolares;
@@ -362,6 +382,8 @@ uv run --project apps/ai-orchestrator \
 ```text
 eduassist-platform/
 ├── apps/
+├── artifacts/
+├── data/
 ├── docs/
 ├── infra/
 ├── packages/
@@ -369,6 +391,18 @@ eduassist-platform/
 ├── tools/
 └── tmp/
 ```
+
+Resumo por diretório:
+
+- `apps/`: aplicações executáveis do produto e dos runtimes dedicados.
+- `artifacts/`: saídas operacionais e relatórios gerados por smokes, evals, gates e exportadores.
+- `data/`: corpus e insumos de dados versionados usados na plataforma e nas avaliações.
+- `docs/`: documentação formal do sistema, arquitetura, segurança, operação e roadmap.
+- `infra/`: Compose, bootstrap de infraestrutura, políticas e utilitários de ambiente.
+- `packages/`: bibliotecas compartilhadas, como observabilidade e `semantic-ingress`.
+- `tests/`: suítes unitárias, e2e e evals.
+- `tools/`: scripts operacionais, exportadores e utilitários de benchmark.
+- `tmp/`: material local e temporário; não faz parte da documentação pública do repositório.
 
 ## Documentação principal
 
