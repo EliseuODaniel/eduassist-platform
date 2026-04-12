@@ -138,6 +138,24 @@ PROCESS_TERMS = {
     'horario',
     'horário',
 }
+PUBLIC_DIRECTORY_TERMS = {
+    'contato',
+    'contatos',
+    'telefone',
+    'fone',
+    'email',
+    'e-mail',
+    'whatsapp',
+    'diretor',
+    'diretora',
+    'direcao',
+    'direção',
+    'diretoria',
+    'coordenador',
+    'coordenadora',
+    'coordenacao',
+    'coordenação',
+}
 PUBLIC_FACT_TERMS = {
     'site',
     'instagram',
@@ -207,7 +225,10 @@ def _classify_domain(message: str, *, authenticated: bool) -> QueryDomain:
         return QueryDomain.academic
     if _contains_any(message, CALENDAR_TERMS):
         return QueryDomain.calendar
-    if match_public_canonical_lane(message) or _contains_any(message, PROCESS_TERMS | PUBLIC_PRICING_TERMS):
+    if match_public_canonical_lane(message) or _contains_any(
+        message,
+        PROCESS_TERMS | PUBLIC_PRICING_TERMS | PUBLIC_DIRECTORY_TERMS,
+    ):
         return QueryDomain.institution
     return QueryDomain.unknown
 
@@ -297,7 +318,7 @@ def _build_preview(*, request: MessageResponseRequest, settings: Any) -> Orchest
     )
     authenticated_public_profile_request = authenticated and (
         match_public_canonical_lane(request.message) is not None
-        or _contains_any(request.message, PROCESS_TERMS)
+        or _contains_any(request.message, PROCESS_TERMS | PUBLIC_DIRECTORY_TERMS)
         or _looks_like_explicit_public_pricing_request(request.message)
         or (
             _contains_any(request.message, DOCUMENTARY_TERMS)
@@ -343,7 +364,7 @@ def _build_preview(*, request: MessageResponseRequest, settings: Any) -> Orchest
     elif _contains_any(request.message, DOCUMENTARY_TERMS):
         mode = OrchestrationMode.hybrid_retrieval
         reason = f'llamaindex_local_public_documentary:{domain.value}'
-    elif _contains_any(request.message, PUBLIC_FACT_TERMS | CALENDAR_TERMS):
+    elif _contains_any(request.message, PUBLIC_FACT_TERMS | PUBLIC_DIRECTORY_TERMS | CALENDAR_TERMS):
         mode = OrchestrationMode.structured_tool
         reason = f'llamaindex_local_public_fact:{domain.value}'
     elif domain is QueryDomain.unknown:
@@ -356,7 +377,7 @@ def _build_preview(*, request: MessageResponseRequest, settings: Any) -> Orchest
     public_institution_request = authenticated_public_profile_request or (
         match_public_canonical_lane(request.message) is not None
         or
-        _contains_any(request.message, PROCESS_TERMS)
+        _contains_any(request.message, PROCESS_TERMS | PUBLIC_DIRECTORY_TERMS)
         or _looks_like_explicit_public_pricing_request(request.message)
     ) and not _looks_like_protected_family_finance_request(request.message)
     access_tier = AccessTier.public

@@ -16,7 +16,23 @@ from .conversation_focus_runtime import (
     _recent_trace_focus,
     _recent_workflow_focus,
 )
+from .public_act_rules_runtime import (
+    _is_assistant_identity_query,
+    _is_auth_guidance_query,
+    _is_capability_query,
+    _is_follow_up_query,
+    _is_greeting_only,
+    _is_public_feature_query,
+    _is_public_pricing_navigation_query,
+    _is_service_routing_query,
+    _requested_public_features,
+)
 from .public_orchestration_runtime import _extract_requested_date, _extract_requested_window
+from .public_profile_runtime import (
+    _feature_suggestion_replies,
+    _routing_follow_up_context_message,
+    _service_matches_from_message,
+)
 
 
 def _export_runtime_core_namespace() -> None:
@@ -1110,6 +1126,7 @@ def _institution_suggested_replies(
     school_profile: dict[str, Any] | None,
     conversation_context: dict[str, Any] | None,
 ) -> list[str]:
+    _export_runtime_core_namespace()
     normalized = _normalize_text(request.message)
     profile = school_profile or {}
     recent_focus = _recent_conversation_focus(conversation_context)

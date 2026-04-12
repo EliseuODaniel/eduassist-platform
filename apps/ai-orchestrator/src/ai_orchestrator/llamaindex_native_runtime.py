@@ -12,7 +12,7 @@ from llama_index.core import VectorStoreIndex
 from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
 from llama_index.core.base.base_retriever import BaseRetriever
 from llama_index.core.base.embeddings.base import BaseEmbedding
-from llama_index.core.base.llms.types import ChatMessage, MessageRole
+from llama_index.core.base.llms.types import ChatMessage, LLMMetadata, MessageRole
 from llama_index.core.base.response.schema import Response
 from llama_index.core.indices.vector_store.retrievers import VectorIndexAutoRetriever
 from llama_index.core.memory import Memory
@@ -117,6 +117,45 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     LlamaIndexOpenAI = None  # type: ignore[assignment]
     LLAMAINDEX_OPENAI_AVAILABLE = False
+
+
+if LLAMAINDEX_OPENAI_AVAILABLE:
+    class _LocalOpenAICompatibleLlamaIndexLLM(LlamaIndexOpenAI):  # type: ignore[misc,valid-type]
+        """Relax OpenAI model metadata assumptions for local OpenAI-compatible servers."""
+
+        _eduassist_context_window: int = PrivateAttr(default=131072)
+        _eduassist_is_chat_model: bool = PrivateAttr(default=True)
+        _eduassist_supports_function_calling: bool = PrivateAttr(default=False)
+
+        def __init__(
+            self,
+            *args: Any,
+            context_window: int = 131072,
+            is_chat_model: bool = True,
+            supports_function_calling: bool = False,
+            **kwargs: Any,
+        ) -> None:
+            super().__init__(*args, **kwargs)
+            self._eduassist_context_window = int(context_window)
+            self._eduassist_is_chat_model = bool(is_chat_model)
+            self._eduassist_supports_function_calling = bool(supports_function_calling)
+
+        @property
+        def _tokenizer(self):  # pragma: no cover - runtime convenience for local OpenAI-compatible models
+            return None
+
+        @property
+        def metadata(self) -> LLMMetadata:
+            return LLMMetadata(
+                context_window=self._eduassist_context_window,
+                num_output=self.max_tokens or -1,
+                is_chat_model=self._eduassist_is_chat_model,
+                is_function_calling_model=self._eduassist_supports_function_calling,
+                model_name=self.model,
+                system_role=MessageRole.SYSTEM,
+            )
+else:  # pragma: no cover - import-time fallback when llamaindex openai extras are unavailable
+    _LocalOpenAICompatibleLlamaIndexLLM = None  # type: ignore[assignment]
 
 try:
     from llama_index.llms.google_genai import GoogleGenAI as LlamaIndexGoogleGenAI
@@ -2208,10 +2247,28 @@ def _build_llamaindex_llm(*, settings: Any) -> Any | None:
             return None
         if not getattr(settings, 'openai_api_key', None):
             return None
+        model = str(getattr(settings, 'openai_model', 'gpt-5.4'))
+        api_base = str(getattr(settings, 'openai_base_url', 'https://api.openai.com/v1'))
+        llm_profile = str(getattr(settings, 'llm_model_profile', '') or '').strip().lower()
+        local_openai_compatible = llm_profile in {
+            'gemma4e4b_local',
+            'gemma_4_e4b_local',
+            'gemma-4-e4b-local',
+        } or '127.0.0.1' in api_base or 'local-llm-' in api_base or 'host.docker.internal' in api_base
+        if local_openai_compatible:
+            return _LocalOpenAICompatibleLlamaIndexLLM(
+                model=model,
+                api_key=str(settings.openai_api_key),
+                api_base=api_base,
+                temperature=0,
+                context_window=131072,
+                is_chat_model=True,
+                supports_function_calling=False,
+            )
         return LlamaIndexOpenAI(
-            model=str(getattr(settings, 'openai_model', 'gpt-5.4')),
+            model=model,
             api_key=str(settings.openai_api_key),
-            api_base=str(getattr(settings, 'openai_base_url', 'https://api.openai.com/v1')),
+            api_base=api_base,
             temperature=0,
         )
     if provider in {'google', 'gemini'}:
@@ -2316,23 +2373,21 @@ async def _maybe_execute_llamaindex_router_query_engine(
 def _build_public_retrieval_query_engine(
     *,
     settings: Any,
-    qdrant_client: Any,
-    async_qdrant_client: Any,
-    collection_name: str,
-    llm: Any,
-    embedding_model: str,
-    citation_retriever: NativeCitationRetriever | None = None,
-) -> QueryEngineTool | None:
+    preview: Any,
+    original_message: str,
+    llm: Any | None,
+    prefer_citation_engine: bool,
+    prefer_native_qdrant_autoretriever: bool,
+) -> tuple[Any, PublicHybridCitationRetriever | None]:
     from .llamaindex_native_support_runtime import _build_public_retrieval_query_engine as _impl
 
     return _impl(
         settings=settings,
-        qdrant_client=qdrant_client,
-        async_qdrant_client=async_qdrant_client,
-        collection_name=collection_name,
+        preview=preview,
+        original_message=original_message,
         llm=llm,
-        embedding_model=embedding_model,
-        citation_retriever=citation_retriever,
+        prefer_citation_engine=prefer_citation_engine,
+        prefer_native_qdrant_autoretriever=prefer_native_qdrant_autoretriever,
     )
 
 

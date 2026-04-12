@@ -26,6 +26,7 @@ from .intent_analysis_runtime import (
     _message_matches_term,
     _normalize_text,
 )
+from .public_orchestration_runtime import _recent_student_disambiguation_domain
 
 
 def _export_runtime_core_namespace() -> None:

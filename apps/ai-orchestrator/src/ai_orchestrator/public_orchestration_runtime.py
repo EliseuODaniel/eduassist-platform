@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from . import runtime_core as _runtime_core
 from .conversation_focus_runtime import (
+    _extract_recent_assistant_message,
     _recent_conversation_focus,
     _recent_message_lines,
     _recent_trace_focus,

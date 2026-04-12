@@ -846,7 +846,10 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
     if (
         not _looks_like_service_routing_query(contextual_message)
         and any(term in normalized for term in {"diretora", "diretor", "direcao", "direção", "diretoria"})
-        and any(term in normalized for term in {"quem", "nome", "comando", "manda", "lidera"})
+        and (
+            any(term in normalized for term in {"quem", "nome", "comando", "manda", "lidera"})
+            or _looks_like_public_leadership_contact_query(contextual_message)
+        )
     ):
         leadership_team = profile.get("leadership_team")
         if isinstance(leadership_team, list):

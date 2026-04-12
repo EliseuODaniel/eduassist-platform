@@ -204,6 +204,18 @@ def _build_suggested_replies(
     school_profile: dict[str, Any] | None,
     conversation_context: dict[str, Any] | None,
 ) -> list[MessageResponseSuggestedReply]:
+    # This module is imported while runtime_core is still wiring extracted namespaces.
+    # Refresh lazily at call time so helpers moved to sibling extracted modules remain available.
+    _export_runtime_core_namespace()
+    from .workflow_runtime import (
+        _dedupe_suggested_replies as workflow_dedupe_suggested_replies,
+    )
+    from .workflow_runtime import (
+        _default_public_suggested_replies as workflow_default_public_suggested_replies,
+    )
+    from .workflow_runtime import (
+        _institution_suggested_replies as workflow_institution_suggested_replies,
+    )
     candidate_texts: list[str]
     if preview.mode is OrchestrationMode.deny:
         candidate_texts = _deny_suggested_replies()
@@ -225,7 +237,7 @@ def _build_suggested_replies(
             conversation_context=conversation_context,
         )
     elif preview.classification.domain is QueryDomain.institution:
-        candidate_texts = _institution_suggested_replies(
+        candidate_texts = workflow_institution_suggested_replies(
             request=request,
             preview=preview,
             school_profile=school_profile,
@@ -239,12 +251,14 @@ def _build_suggested_replies(
             'Agendar visita',
         ]
     else:
-        candidate_texts = _default_public_suggested_replies()
-    return _dedupe_suggested_replies(candidate_texts)
+        candidate_texts = workflow_default_public_suggested_replies()
+    return workflow_dedupe_suggested_replies(candidate_texts)
 
 
 def _wants_visual_response(message: str) -> bool:
-    return _contains_any(message, VISUAL_TERMS)
+    from .public_act_rules_runtime import _contains_any as public_contains_any
+
+    return public_contains_any(message, VISUAL_TERMS)
 
 
 def _load_font(size: int):
@@ -432,7 +446,9 @@ async def _maybe_build_visual_assets(
     school_profile: dict[str, Any] | None,
     conversation_context: dict[str, Any] | None = None,
 ) -> list[MessageResponseVisualAsset]:
-    specialists = _build_visual_specialists(preview=preview, message=request.message)
+    from .protected_domain_runtime import _build_visual_specialists as protected_build_visual_specialists
+
+    specialists = protected_build_visual_specialists(preview=preview, message=request.message)
     if not specialists:
         return []
 

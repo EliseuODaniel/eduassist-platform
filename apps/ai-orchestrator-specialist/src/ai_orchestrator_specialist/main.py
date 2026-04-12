@@ -16,6 +16,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from eduassist_observability import build_runtime_diagnostics, configure_observability, detect_runtime_mode
 
 from .models import SpecialistSupervisorRequest, SpecialistSupervisorResponse
+from .telegram_debug_footer import attach_telegram_debug_footer
 
 
 _ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / ".env"
@@ -131,6 +132,7 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     log_level: str = "INFO"
+    feature_flag_telegram_debug_trace_footer_enabled: bool = False
     port: int = 8000
     llm_model_profile: str | None = None
     llm_provider: str = "auto"
@@ -610,4 +612,6 @@ async def respond_message_contract(
     _require_internal_api_token(x_internal_api_token)
     settings = get_settings()
     payload = await _run_specialist(request=request, settings=settings)
-    return JSONResponse(content=jsonable_encoder(_message_response_payload(payload, request=request)))
+    message_payload = _message_response_payload(payload, request=request)
+    message_payload = attach_telegram_debug_footer(message_payload, request=request, settings=settings)
+    return JSONResponse(content=jsonable_encoder(message_payload))

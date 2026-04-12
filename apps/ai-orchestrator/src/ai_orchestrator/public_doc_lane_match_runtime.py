@@ -5,6 +5,7 @@ from __future__ import annotations
 LOCAL_EXTRACTED_NAMES = {'match_public_canonical_lane'}
 
 from . import public_doc_knowledge as _native
+from .public_act_rules_runtime import _is_leadership_specific_query
 
 
 def _refresh_native_namespace() -> None:
@@ -18,6 +19,10 @@ def match_public_canonical_lane(message: str) -> str | None:
     _refresh_native_namespace()
     normalized = _normalize_space(message).lower()
     if not normalized:
+        return None
+    # Leadership-specific public contact queries should stay on the structured
+    # profile directory path instead of being swallowed by bundle heuristics.
+    if _is_leadership_specific_query(message):
         return None
     if (
         any(term in normalized for term in ("compare", "comparar", "comparacao", "comparação"))

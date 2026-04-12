@@ -152,6 +152,24 @@ PROCESS_TERMS = {
     'horario',
     'horário',
 }
+PUBLIC_DIRECTORY_TERMS = {
+    'contato',
+    'contatos',
+    'telefone',
+    'fone',
+    'email',
+    'e-mail',
+    'whatsapp',
+    'diretor',
+    'diretora',
+    'direcao',
+    'direção',
+    'diretoria',
+    'coordenador',
+    'coordenadora',
+    'coordenacao',
+    'coordenação',
+}
 EXPLANATORY_TERMS = {
     'como funciona',
     'como e',
@@ -209,7 +227,10 @@ def _classify_domain(message: str, *, authenticated: bool) -> QueryDomain:
         return QueryDomain.academic
     if _contains_any(message, CALENDAR_TERMS):
         return QueryDomain.calendar
-    if match_public_canonical_lane(message) or _contains_any(message, PROCESS_TERMS | PUBLIC_PRICING_TERMS):
+    if match_public_canonical_lane(message) or _contains_any(
+        message,
+        PROCESS_TERMS | PUBLIC_PRICING_TERMS | PUBLIC_DIRECTORY_TERMS,
+    ):
         return QueryDomain.institution
     return QueryDomain.unknown
 
@@ -255,7 +276,10 @@ def _build_preview(*, request: MessageResponseRequest, settings: Any) -> Orchest
         and not explicit_admin_request
         and (
             match_public_canonical_lane(request.message) is not None
-            or _contains_any(request.message, PROCESS_TERMS | PUBLIC_PRICING_TERMS | CALENDAR_TERMS)
+            or _contains_any(
+                request.message,
+                PROCESS_TERMS | PUBLIC_PRICING_TERMS | PUBLIC_DIRECTORY_TERMS | CALENDAR_TERMS,
+            )
         )
     )
 

@@ -11,6 +11,7 @@ from .intent_analysis_runtime import _detect_public_pricing_price_kind, _is_auth
 from .public_act_rules_runtime import (
     _is_comparative_query,
     _is_cross_document_public_query,
+    _is_leadership_specific_query,
     _is_public_bolsas_and_processes_query,
     _is_public_calendar_visibility_query,
     _is_public_curriculum_query,
@@ -554,6 +555,13 @@ def _build_public_profile_context_impl(
 
 def _handle_public_contacts_impl(context: PublicProfileContext) -> str:
     _refresh_native_namespace()
+    if _is_leadership_specific_query(context.source_message):
+        return _compose_public_leadership_answer(
+            context.profile,
+            context.source_message,
+            requested_attribute_override=_requested_public_attribute(context.contact_reference_message)
+            or 'contact',
+        )
     wants_location = _matches_public_location_rule(context.source_message)
     wants_secretaria_guidance = any(
         _message_matches_term(context.normalized, term)

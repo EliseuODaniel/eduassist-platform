@@ -67,6 +67,11 @@ def test_teacher_directory_boundary_lane_matches() -> None:
     assert 'proximo passo' in answer.lower()
 
 
+def test_leadership_contact_query_does_not_fall_into_canonical_document_bundle() -> None:
+    lane = match_public_canonical_lane('qual contato do diretor?')
+    assert lane is None
+
+
 def test_calendar_week_lane_matches() -> None:
     lane = match_public_canonical_lane('Quais eventos desta semana importam para as familias?')
     assert lane == 'public_bundle.calendar_week'

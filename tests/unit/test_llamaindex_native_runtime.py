@@ -7,6 +7,7 @@ from llama_index.core.postprocessor import LongContextReorder, SentenceEmbedding
 from ai_orchestrator.llamaindex_native_runtime import (
     LlamaIndexEarlyPublicAnswer,
     LlamaIndexNativePublicDecision,
+    _build_llamaindex_llm,
     _build_llamaindex_node_postprocessors,
     _build_public_document_group_node,
     _build_public_recursive_retriever,
@@ -179,6 +180,23 @@ def test_selector_router_allows_true_ambiguity() -> None:
         llm=object(),
         profile=profile,
     )
+
+
+def test_build_llamaindex_llm_uses_local_openai_compatible_metadata_for_gemma_profile() -> None:
+    settings = SimpleNamespace(
+        llm_provider='openai',
+        llm_model_profile='gemma4e4b_local',
+        openai_api_key='test-key',
+        openai_base_url='http://local-llm-gemma4e4b:8080/v1',
+        openai_model='ggml-org/gemma-4-E4B-it-GGUF:Q4_K_M',
+    )
+    llm = _build_llamaindex_llm(settings=settings)
+    assert llm is not None
+    metadata = llm.metadata
+    assert metadata.context_window == 131072
+    assert metadata.is_chat_model is True
+    assert metadata.is_function_calling_model is False
+    assert metadata.model_name == 'ggml-org/gemma-4-E4B-it-GGUF:Q4_K_M'
 
 
 def test_filter_search_to_document_keys_keeps_only_selected_group_and_hits() -> None:

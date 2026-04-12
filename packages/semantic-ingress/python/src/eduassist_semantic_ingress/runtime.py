@@ -232,11 +232,71 @@ _SCHOOL_SCOPE_TERMS = {
     'álcool',
     'visita',
     'portal',
+    'biblioteca',
+    'library',
+    'acervo',
+    'laboratorio',
+    'laboratório',
+    'laboratorios',
+    'laboratórios',
     'coordenacao',
     'coordenação',
+    'coordenador',
+    'coordenadora',
     'direcao',
     'direção',
+    'diretoria',
+    'diretor',
+    'diretora',
     'admissions',
+}
+
+_SCHOOL_PUBLIC_FACILITY_TERMS = {
+    'biblioteca',
+    'library',
+    'acervo',
+    'laboratorio',
+    'laboratório',
+    'laboratorios',
+    'laboratórios',
+}
+
+_SCHOOL_PUBLIC_LEADERSHIP_TERMS = {
+    'diretor',
+    'diretora',
+    'diretoria',
+    'direcao',
+    'direção',
+    'coordenador',
+    'coordenadora',
+    'coordenacao',
+    'coordenação',
+    'secretaria',
+    'professor',
+    'professora',
+}
+
+_PUBLIC_INFO_INTENT_TERMS = {
+    'horario',
+    'horário',
+    'horarios',
+    'horários',
+    'funciona',
+    'abre',
+    'fecha',
+    'nome',
+    'contato',
+    'telefone',
+    'email',
+    'e-mail',
+    'whatsapp',
+    'whats',
+    'canal',
+    'como falar',
+    'como falo',
+    'falar com',
+    'quero falar com',
+    'conversar com',
 }
 
 
@@ -364,7 +424,20 @@ def looks_like_school_scope_message(message: str | None) -> bool:
     normalized = normalize_ingress_text(message)
     if not normalized:
         return False
-    return any(_contains_term(normalized, term) for term in _SCHOOL_SCOPE_TERMS)
+    if any(_contains_term(normalized, term) for term in _SCHOOL_SCOPE_TERMS):
+        return True
+    has_school_public_facility = any(
+        _contains_term(normalized, term) for term in _SCHOOL_PUBLIC_FACILITY_TERMS
+    )
+    if has_school_public_facility:
+        return True
+    has_school_public_leadership = any(
+        _contains_term(normalized, term) for term in _SCHOOL_PUBLIC_LEADERSHIP_TERMS
+    )
+    has_public_info_intent = any(
+        _contains_term(normalized, term) for term in _PUBLIC_INFO_INTENT_TERMS
+    )
+    return has_school_public_leadership and has_public_info_intent
 
 
 def looks_like_scope_boundary_candidate(message: str | None) -> bool:

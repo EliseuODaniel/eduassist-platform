@@ -128,10 +128,17 @@ def test_looks_like_school_scope_message_detects_school_policy_query() -> None:
     assert looks_like_school_scope_message("qual o melhor filme do ano?") is False
 
 
+def test_looks_like_school_scope_message_detects_public_school_information_queries() -> None:
+    assert looks_like_school_scope_message("Qual o horario da biblioteca?") is True
+    assert looks_like_school_scope_message("qual contato do diretor?") is True
+
+
 def test_looks_like_scope_boundary_candidate_detects_out_of_scope_question() -> None:
     assert looks_like_scope_boundary_candidate("Qual o melhor filme do ano?") is True
     assert looks_like_scope_boundary_candidate("Como faco lasanha?") is True
     assert looks_like_scope_boundary_candidate("Posso fumar maconha nessa escola?") is False
+    assert looks_like_scope_boundary_candidate("Qual o horario da biblioteca?") is False
+    assert looks_like_scope_boundary_candidate("qual contato do diretor?") is False
 
 
 def test_resolve_semantic_ingress_with_provider_parses_structured_payload(monkeypatch) -> None:
@@ -268,6 +275,14 @@ def test_resolve_semantic_ingress_with_provider_falls_back_to_scope_boundary_for
 def test_validated_conversation_act_rejects_scope_boundary_for_school_scope_message() -> None:
     assert _validated_conversation_act(
         request_message="Posso fumar maconha nessa escola?",
+        act="scope_boundary",
+    ) == "none"
+    assert _validated_conversation_act(
+        request_message="Qual o horario da biblioteca?",
+        act="scope_boundary",
+    ) == "none"
+    assert _validated_conversation_act(
+        request_message="qual contato do diretor?",
         act="scope_boundary",
     ) == "none"
 

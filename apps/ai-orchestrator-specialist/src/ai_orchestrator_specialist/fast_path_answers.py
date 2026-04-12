@@ -61,6 +61,7 @@ from .public_query_patterns import (
     _looks_like_bolsas_and_processes_query,
     _looks_like_cross_document_public_query,
     _looks_like_health_second_call_query,
+    _looks_like_public_leadership_contact_query,
     _looks_like_policy_compare_query,
     _looks_like_public_teacher_identity_query,
     _looks_like_service_credentials_bundle_query,

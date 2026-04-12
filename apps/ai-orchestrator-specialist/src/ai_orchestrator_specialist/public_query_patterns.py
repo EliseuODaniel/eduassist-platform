@@ -199,6 +199,35 @@ def _looks_like_public_teacher_identity_query(message: str) -> bool:
     )
 
 
+def _looks_like_public_leadership_contact_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if not any(
+        term in normalized
+        for term in {'diretor', 'diretora', 'direcao', 'direção', 'diretoria', 'coordenacao', 'coordenação'}
+    ):
+        return False
+    return any(
+        term in normalized
+        for term in {
+            'nome',
+            'contato',
+            'telefone',
+            'email',
+            'e-mail',
+            'whatsapp',
+            'whats',
+            'canal',
+            'como falar',
+            'como falo',
+            'falar com',
+            'quero falar com',
+            'conversar com',
+            'falar direto com',
+            'falar diretamente com',
+        }
+    )
+
+
 def _extract_teacher_subject(message: str) -> str | None:
     normalized = _normalize_text(message)
     patterns = [
