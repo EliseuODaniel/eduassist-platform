@@ -17,6 +17,7 @@ Este diretório concentra a documentação formal do projeto.
 - [Arquitetura dos orquestradores independentes](architecture/independent-orchestrators-architecture-20260406.md)
 - [Fechamento da rodada dedicada-first](architecture/independent-orchestrators-eval-closeout-20260406.md)
 - [Catálogo de serviços](architecture/service-catalog.md)
+- [Auditoria do walkthrough versus código real](architecture/walkthrough-audit-20260412.md)
 - [Segurança da informação](security/security-architecture.md)
 - [Matriz de controle de acesso](security/access-control-matrix.md)
 - [Modelo de dados](data/data-model.md)

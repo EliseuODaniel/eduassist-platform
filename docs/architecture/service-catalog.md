@@ -1,253 +1,145 @@
 # Catálogo de Serviços
 
-## 1. Objetivo
+## Objetivo
 
-Definir responsabilidades, fronteiras e dependências dos principais serviços planejados no sistema.
+Registrar as fronteiras reais do sistema no estado `dedicated-first` atual.
 
-## 2. `telegram-gateway`
+## `telegram-gateway`
 
 ### Responsabilidades
 
 - receber webhook do Telegram;
-- validar `secret_token`;
-- normalizar eventos;
-- controlar idempotência;
-- aplicar rate limiting;
-- resolver contexto de ator via `api-core`;
-- encaminhar mensagens conversacionais para o `ai-orchestrator` com token interno de serviço.
-- expor metadados operacionais apenas por endpoints internos autenticados.
-
-### Dependências
-
-- `api-core`
-- `ai-orchestrator`
-- `redis`
+- validar segredo do canal e token interno de serviço;
+- normalizar update, idempotência e serialização por chat;
+- encaminhar a mensagem para um runtime dedicado configurado;
+- expor diagnósticos operacionais mínimos para troubleshooting.
 
 ### Não responsabilidades
 
-- lógica de domínio;
-- consultas a dados escolares;
-- decisão de autorização.
+- roteamento profundo de domínio;
+- autorização escolar;
+- acesso direto a dados acadêmicos ou financeiros.
 
-## 3. `api-core`
+## `api-core`
 
 ### Responsabilidades
 
-- autenticação e sessão;
-- integração com `Keycloak`;
+- autenticação e resolução de ator;
 - consulta a `OPA`;
-- aplicação de contexto de ator por sessão para enforcement de `RLS` no banco;
-- coordenação de workflows;
-- chamada ao `ai-orchestrator`;
-- acesso a services de domínio;
-- registro de auditoria.
+- aplicação de contexto de sessão para `RLS`;
+- serviços canônicos públicos e protegidos;
+- auditoria, fila operacional e memória persistida do produto.
 
-### Dependências
+## `ai-orchestrator`
 
-- `postgres`
-- `redis`
-- `keycloak`
-- `opa`
-- `ai-orchestrator`
+### Papel real atual
 
-## 4. `ai-orchestrator`
+`ai-orchestrator` é `control plane/router`.
 
 ### Responsabilidades
 
-- classificação de intenção;
-- execução de fluxo LangGraph;
-- tool calling;
-- retrieval documental;
-- composição de resposta via provider configurável de LLM, com suporte atual a `Google Gemini` e `OpenAI`;
-- recuperação e persistência de memória curta de conversa para follow-ups controlados;
-- combinação de fatos públicos canônicos do `api-core` com retrieval documental para perguntas institucionais simples;
-- consulta a calendário público estruturado no `api-core`;
-- consulta a dados protegidos do `api-core` por rotas internas autenticadas entre serviços;
-- criação de handoffs humanos reais no `api-core` quando o fluxo entrar em suporte operacional;
-- execução real do caminho `GraphRAG` quando o modo avançado estiver habilitado e o workspace estiver pronto;
-- composição da resposta final;
-- emissão de metadados de confiança e fontes.
+- status agregado das stacks;
+- scorecard, promotion gate e rollout controlado;
+- metadados e comparações cross-stack;
+- compat mode apenas quando explicitamente habilitado.
 
-### Dependências
+### Não responsabilidades
 
-- API remota de LLM
-- `postgres`
-- `qdrant`
-- `minio`
-- `redis`
-- `api-core`
+- serving principal do usuário final em produção local normal;
+- competir semanticamente com os runtimes dedicados como “quinta stack”.
 
-### Regras
-
-- não acessa banco diretamente fora de contracts aprovados;
-- não executa SQL livre;
-- só recebe dados mínimos por tool.
-- quando a base não sustenta comparação, exceção ou dispensa, deve abster e oferecer reformulação útil.
-- endpoints diagnósticos sensíveis exigem `X-Internal-Api-Token`.
-
-## 5. `worker`
+## `ai-orchestrator-langgraph`
 
 ### Responsabilidades
 
-- ingestão documental;
-- parsing documental por backend configurável, com baseline local em `Markdown` e interface pronta para `Docling`;
-- embeddings densos para recuperação vetorial local;
-- publicação de chunks e metadados em `Postgres`;
-- indexação vetorial em `Qdrant` com publicação por alias para reduzir janela de indisponibilidade;
-- geração de artefatos de `GraphRAG`;
-- reindexação;
-- mock data generation;
-- backfills;
-- jobs de avaliação offline.
+- workflow nativo `LangGraph`;
+- checkpoints, governança de estado e routing por grafo;
+- serving dedicado por `FastAPI`.
 
-### Dependências
+## `ai-orchestrator-python-functions`
 
-- `postgres`
-- `minio`
-- `qdrant`
-- APIs de modelo/embedding quando a trilha remota for habilitada
+### Responsabilidades
 
-## 6. `admin-web`
+- resolução determinística e lanes tipadas;
+- paths curtos de baixa latência;
+- abstention e clarificação seguras para entradas incertas.
+
+## `ai-orchestrator-llamaindex`
+
+### Responsabilidades
+
+- workflow nativo do `LlamaIndex`;
+- respostas documentais e de recuperação orientada a fontes;
+- serving dedicado via runtime próprio.
+
+## `ai-orchestrator-specialist`
+
+### Responsabilidades
+
+- caminho quality-first especializado;
+- coordenação supervisor/specialists;
+- serving dedicado isolado do control plane.
+
+## `worker`
+
+### Responsabilidades
+
+- parsing e ingestão documental;
+- embeddings, indexação e artefatos de retrieval;
+- jobs offline e evals.
+
+## `admin-web`
 
 ### Responsabilidades
 
 - operação do sistema;
-- login web autenticado com `Keycloak`;
-- leitura de sessão autenticada no `api-core`;
-- leitura de overview operacional autenticado no `api-core`, incluindo agregados globais da fila humana, alertas críticos e tendências recentes de volume/tempo;
-- leitura e gestão da fila de handoffs humanos no `api-core`, com detalhe da conversa, nota operacional, atribuição, SLA mockado e filtros operacionais por status, fila, atribuição e criticidade;
-- leitura e gestão da fila de handoffs humanos com paginação explícita para suportar volume operacional crescente no painel;
-- leitura detalhada do transcript da conversa com exploração local por remetente, busca textual e navegação por janela no painel operacional;
-- geração de challenge de vínculo para o Telegram;
-- curadoria documental;
-- revisão de conversas;
-- dashboards;
-- visualização de auditoria;
-- gestão de handoff.
+- revisão de conversas e fila humana;
+- visão administrativa do estado do produto.
 
-### Dependências
-
-- `api-core`
-- `keycloak`
-
-## 7. `document-service`
-
-### Responsabilidades
-
-- catalogar documentos;
-- normalizar documentos processados pelo pipeline;
-- resolver visibilidade;
-- devolver chunks elegíveis;
-- gerenciar versões e metadados;
-- publicar material pronto para indexação híbrida e pipelines de `GraphRAG`.
-
-## 8. `academic-service`
-
-### Responsabilidades
-
-- consultar notas, frequência, boletins, horários e avaliações;
-- aplicar filtros por vínculo e papel;
-- devolver contratos mínimos para tools.
-
-## 9. `finance-service`
-
-### Responsabilidades
-
-- consultar contratos, cobranças, pagamentos e bolsas;
-- aplicar políticas de acesso;
-- registrar consultas sensíveis.
-
-## 10. `calendar-service`
-
-### Responsabilidades
-
-- responder consultas de calendário letivo, provas, reuniões e eventos;
-- distinguir informações públicas e internas.
-
-## 11. `ticket-service`
-
-### Responsabilidades
-
-- abrir chamados;
-- registrar encaminhamentos;
-- controlar status de atendimento humano;
-- devolver protocolo operacional e fila ao bot e ao painel;
-- permitir visão pessoal para usuários finais autenticados e visão global para perfis internos.
-
-## 12. Infra serviços
+## Infra dados
 
 ### `postgres`
 
 - source of truth relacional;
-- RLS;
+- `RLS`;
 - auditoria;
 - busca textual;
-- suporte a metadata filtering e fallback experimental via `pgvector`.
-- separação entre papel administrativo de migração/seed e papel de aplicação para runtime.
+- persistência operacional.
 
 ### `qdrant`
 
-- engine principal de retrieval vetorial e híbrido;
-- suporte a dense + sparse retrieval;
-- suporte a multivectors e estratégias de late interaction;
-- coleções de documentos institucionais e índices auxiliares de conhecimento;
-- publicação por alias para permitir rebuild seguro do índice ativo.
+- retrieval vetorial e híbrido;
+- late interaction quando habilitado;
+- coleções documentais e auxiliares.
 
 ### `redis`
 
-- cache;
-- locks;
-- idempotência;
-- filas leves.
+- locks, cache, idempotência e coordenação leve.
 
 ### `minio`
 
-- documentos;
-- anexos;
-- objetos de ingestão.
+- objetos, anexos e documentos brutos.
 
-### `keycloak`
-
-- identidade;
-- SSO;
-- papéis;
-- OIDC/OAuth2.
-
-### `opa`
-
-- decisão de autorização contextual.
+## Observabilidade
 
 ### `otel-collector`
 
-- recebe spans OTLP dos serviços instrumentados;
-- faz batch e exporta traces para o `tempo`;
-- permite observabilidade distribuida sem acoplar os apps ao backend final.
+- recebe OTLP;
+- aplica `tail sampling`;
+- exporta traces e métricas.
 
 ### `tempo`
 
-- armazena traces distribuidos;
-- permite busca por `trace_id` e consulta operacional do fluxo entre serviços;
-- sustenta a investigacao do caminho `telegram-gateway -> ai-orchestrator -> api-core`.
-
-### `grafana`
-
-- expõe a visualização dos traces armazenados no `tempo`;
-- hospeda dashboards e drill-down operacional do ambiente local;
-- já sobe com datasources de `tempo`, `loki` e `prometheus` provisionados;
-- já inclui dashboards provisionados para tracing e metricas do fluxo `Telegram -> AI -> API Core`.
-
-### `loki`
-
-- agrega logs centralizados do ambiente local;
-- serve como backend de investigacao textual no `Grafana`.
-
-### `promtail`
-
-- coleta logs dos containers do Docker local;
-- publica esses logs no `loki` com labels de container e serviço do Compose.
+- armazenamento e consulta de traces distribuídos.
 
 ### `prometheus`
 
-- raspa o endpoint de metricas do `otel-collector`;
-- expõe PromQL para leitura analitica das metricas OTEL do dominio;
-- sustenta o dashboard de metricas operacionais no `Grafana`.
+- métricas OTEL e métricas de domínio/GenAI.
+
+### `grafana`
+
+- dashboards operacionais, tracing e GenAI.
+
+### `loki` e `promtail`
+
+- logs centralizados e investigação textual.
