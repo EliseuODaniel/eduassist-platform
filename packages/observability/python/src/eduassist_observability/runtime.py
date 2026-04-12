@@ -5,14 +5,15 @@ import os
 from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
 from datetime import date, datetime
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
 from fastapi import FastAPI
 from opentelemetry import metrics, trace
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
@@ -22,31 +23,30 @@ from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.trace import Span, Status, StatusCode
+from opentelemetry.trace import Span, SpanKind, Status, StatusCode
 from sqlalchemy.engine import Engine
-from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 
 _CONFIGURED_SERVICES: set[str] = set()
 _COUNTERS: dict[tuple[str, str, str | None, str | None], Any] = {}
 _HISTOGRAMS: dict[tuple[str, str, str | None, str | None], Any] = {}
-_LOCALHOST_HOSTS = {"127.0.0.1", "localhost"}
+_LOCALHOST_HOSTS = {'127.0.0.1', 'localhost'}
 _CONTAINER_SERVICE_HOSTS = {
-    "admin-web",
-    "ai-orchestrator",
-    "ai-orchestrator-crewai",
-    "ai-orchestrator-specialist",
-    "api-core",
-    "grafana",
-    "keycloak",
-    "minio",
-    "opa",
-    "otel-collector",
-    "postgres",
-    "prometheus",
-    "qdrant",
-    "redis",
-    "telegram-gateway",
-    "worker",
+    'admin-web',
+    'ai-orchestrator',
+    'ai-orchestrator-crewai',
+    'ai-orchestrator-specialist',
+    'api-core',
+    'grafana',
+    'keycloak',
+    'minio',
+    'opa',
+    'otel-collector',
+    'postgres',
+    'prometheus',
+    'qdrant',
+    'redis',
+    'telegram-gateway',
+    'worker',
 }
 
 
@@ -54,35 +54,35 @@ def _env_flag(name: str, default: bool = False) -> bool:
     raw = os.getenv(name)
     if raw is None:
         return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
+    return raw.strip().lower() in {'1', 'true', 'yes', 'on'}
 
 
 def _normalize_traces_endpoint() -> str | None:
-    direct = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+    direct = os.getenv('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT')
     if direct:
         return direct
 
-    base = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    base = os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT')
     if not base:
         return None
 
-    if base.endswith("/v1/traces"):
+    if base.endswith('/v1/traces'):
         return base
-    return f"{base.rstrip('/')}/v1/traces"
+    return f'{base.rstrip("/")}/v1/traces'
 
 
 def _normalize_metrics_endpoint() -> str | None:
-    direct = os.getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT")
+    direct = os.getenv('OTEL_EXPORTER_OTLP_METRICS_ENDPOINT')
     if direct:
         return direct
 
-    base = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    base = os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT')
     if not base:
         return None
 
-    if base.endswith("/v1/metrics"):
+    if base.endswith('/v1/metrics'):
         return base
-    return f"{base.rstrip('/')}/v1/metrics"
+    return f'{base.rstrip("/")}/v1/metrics'
 
 
 def _parse_headers(raw: str | None) -> dict[str, str] | None:
@@ -90,10 +90,10 @@ def _parse_headers(raw: str | None) -> dict[str, str] | None:
         return None
 
     headers: dict[str, str] = {}
-    for item in raw.split(","):
-        if "=" not in item:
+    for item in raw.split(','):
+        if '=' not in item:
             continue
-        key, value = item.split("=", 1)
+        key, value = item.split('=', 1)
         key = key.strip()
         value = value.strip()
         if key and value:
@@ -135,25 +135,27 @@ def _normalize_attribute_value(value: Any) -> Any:
 
 
 def detect_runtime_mode() -> str:
-    return "container" if Path("/.dockerenv").exists() else "source"
+    return 'container' if Path('/.dockerenv').exists() else 'source'
 
 
-def _normalize_env_file_candidates(candidates: Sequence[str | os.PathLike[str]] | None) -> list[dict[str, Any]]:
+def _normalize_env_file_candidates(
+    candidates: Sequence[str | os.PathLike[str]] | None,
+) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
     for raw in candidates or ():
         path = Path(raw)
         normalized.append(
             {
-                "path": str(path),
-                "exists": path.exists(),
+                'path': str(path),
+                'exists': path.exists(),
             }
         )
     return normalized
 
 
 def _endpoint_host(endpoint: str) -> str | None:
-    parsed = urlparse(str(endpoint or "").strip())
-    host = parsed.hostname or ""
+    parsed = urlparse(str(endpoint or '').strip())
+    host = parsed.hostname or ''
     return host.strip().lower() or None
 
 
@@ -166,12 +168,23 @@ def _service_check_status(
 ) -> tuple[str, str | None]:
     host = _endpoint_host(endpoint)
     if not host:
-        return "invalid", "endpoint inválido ou sem host"
-    if runtime_mode == "container" and host in _LOCALHOST_HOSTS and not allow_localhost_in_container:
-        return "mode_mismatch", "host local em runtime container tende a causar drift"
-    if runtime_mode == "source" and host in _CONTAINER_SERVICE_HOSTS and not allow_service_dns_in_source:
-        return "mode_mismatch", "host de compose em runtime source tende a falhar fora da rede docker"
-    return "ok", None
+        return 'invalid', 'endpoint inválido ou sem host'
+    if (
+        runtime_mode == 'container'
+        and host in _LOCALHOST_HOSTS
+        and not allow_localhost_in_container
+    ):
+        return 'mode_mismatch', 'host local em runtime container tende a causar drift'
+    if (
+        runtime_mode == 'source'
+        and host in _CONTAINER_SERVICE_HOSTS
+        and not allow_service_dns_in_source
+    ):
+        return (
+            'mode_mismatch',
+            'host de compose em runtime source tende a falhar fora da rede docker',
+        )
+    return 'ok', None
 
 
 def build_runtime_diagnostics(
@@ -188,103 +201,123 @@ def build_runtime_diagnostics(
     checks: list[dict[str, Any]] = []
 
     for spec in service_checks or ():
-        name = str(spec.get("name") or "service").strip() or "service"
-        endpoint = str(spec.get("endpoint") or "").strip()
-        required = bool(spec.get("required", False))
+        name = str(spec.get('name') or 'service').strip() or 'service'
+        endpoint = str(spec.get('endpoint') or '').strip()
+        required = bool(spec.get('required', False))
         if not endpoint:
             checks.append(
                 {
-                    "name": name,
-                    "kind": "service",
-                    "configured": False,
-                    "required": required,
-                    "status": "missing",
-                    "endpoint": None,
+                    'name': name,
+                    'kind': 'service',
+                    'configured': False,
+                    'required': required,
+                    'status': 'missing',
+                    'endpoint': None,
                 }
             )
             if required:
-                blockers.append({"code": f"{name}_missing", "message": f"{name} nao esta configurado"})
+                blockers.append(
+                    {'code': f'{name}_missing', 'message': f'{name} nao esta configurado'}
+                )
             continue
 
         status, detail = _service_check_status(
             endpoint=endpoint,
             runtime_mode=runtime_mode,
-            allow_localhost_in_container=bool(spec.get("allow_localhost_in_container", False)),
-            allow_service_dns_in_source=bool(spec.get("allow_service_dns_in_source", False)),
+            allow_localhost_in_container=bool(spec.get('allow_localhost_in_container', False)),
+            allow_service_dns_in_source=bool(spec.get('allow_service_dns_in_source', False)),
         )
         checks.append(
             {
-                "name": name,
-                "kind": "service",
-                "configured": True,
-                "required": required,
-                "status": status,
-                "endpoint": endpoint,
-                "detail": detail,
+                'name': name,
+                'kind': 'service',
+                'configured': True,
+                'required': required,
+                'status': status,
+                'endpoint': endpoint,
+                'detail': detail,
             }
         )
-        if status == "mode_mismatch":
-            warnings.append({"code": f"{name}_mode_mismatch", "message": detail or f"{name} com host desalinhado"})
-        elif status == "invalid" and required:
-            blockers.append({"code": f"{name}_invalid", "message": detail or f"{name} invalido"})
+        if status == 'mode_mismatch':
+            warnings.append(
+                {
+                    'code': f'{name}_mode_mismatch',
+                    'message': detail or f'{name} com host desalinhado',
+                }
+            )
+        elif status == 'invalid' and required:
+            blockers.append({'code': f'{name}_invalid', 'message': detail or f'{name} invalido'})
 
     for spec in secret_checks or ():
-        name = str(spec.get("name") or "secret").strip() or "secret"
-        value = spec.get("value")
-        required = bool(spec.get("required", False))
-        placeholder_values = {str(item).strip() for item in spec.get("placeholder_values", ()) if str(item).strip()}
-        rendered_value = str(value or "").strip()
-        configured = bool(rendered_value) if "configured" not in spec else bool(spec.get("configured"))
+        name = str(spec.get('name') or 'secret').strip() or 'secret'
+        value = spec.get('value')
+        required = bool(spec.get('required', False))
+        placeholder_values = {
+            str(item).strip() for item in spec.get('placeholder_values', ()) if str(item).strip()
+        }
+        rendered_value = str(value or '').strip()
+        configured = (
+            bool(rendered_value) if 'configured' not in spec else bool(spec.get('configured'))
+        )
         is_placeholder = bool(configured and rendered_value in placeholder_values)
-        status = "ok" if configured and not is_placeholder else "placeholder" if is_placeholder else "missing"
+        status = (
+            'ok'
+            if configured and not is_placeholder
+            else 'placeholder'
+            if is_placeholder
+            else 'missing'
+        )
         checks.append(
             {
-                "name": name,
-                "kind": "secret",
-                "configured": configured,
-                "required": required,
-                "status": status,
+                'name': name,
+                'kind': 'secret',
+                'configured': configured,
+                'required': required,
+                'status': status,
             }
         )
         if required and not configured:
-            blockers.append({"code": f"{name}_missing", "message": f"{name} nao esta configurado"})
+            blockers.append({'code': f'{name}_missing', 'message': f'{name} nao esta configurado'})
         elif is_placeholder:
-            warnings.append({"code": f"{name}_placeholder", "message": f"{name} ainda usa valor placeholder"})
+            warnings.append(
+                {'code': f'{name}_placeholder', 'message': f'{name} ainda usa valor placeholder'}
+            )
 
     for item in extra_findings or ():
-        level = str(item.get("level") or "warning").strip().lower()
+        level = str(item.get('level') or 'warning').strip().lower()
         payload = {
-            "code": str(item.get("code") or "runtime_finding").strip() or "runtime_finding",
-            "message": str(item.get("message") or "diagnostico adicional").strip() or "diagnostico adicional",
+            'code': str(item.get('code') or 'runtime_finding').strip() or 'runtime_finding',
+            'message': str(item.get('message') or 'diagnostico adicional').strip()
+            or 'diagnostico adicional',
         }
-        if level == "blocker":
+        if level == 'blocker':
             blockers.append(payload)
         else:
             warnings.append(payload)
 
-    drift_risk = "low"
+    drift_risk = 'low'
     if blockers:
-        drift_risk = "high"
+        drift_risk = 'high'
     elif warnings:
-        drift_risk = "medium"
+        drift_risk = 'medium'
 
     return {
-        "service": service_name,
-        "runtimeMode": runtime_mode,
-        "operationalReadiness": not blockers,
-        "sourceContainerDriftRisk": drift_risk,
-        "envFiles": _normalize_env_file_candidates(env_file_candidates),
-        "checks": checks,
-        "warnings": warnings,
-        "blockers": blockers,
+        'service': service_name,
+        'runtimeMode': runtime_mode,
+        'operationalReadiness': not blockers,
+        'sourceContainerDriftRisk': drift_risk,
+        'envFiles': _normalize_env_file_candidates(env_file_candidates),
+        'checks': checks,
+        'warnings': warnings,
+        'blockers': blockers,
     }
 
 
-def get_tracer(name: str = "eduassist") -> trace.Tracer:
+def get_tracer(name: str = 'eduassist') -> trace.Tracer:
     return trace.get_tracer(name)
 
 
-def get_meter(name: str = "eduassist"):
+def get_meter(name: str = 'eduassist'):
     return metrics.get_meter(name)
 
 
@@ -313,7 +346,9 @@ def _normalize_metric_value(value: Any) -> str | bool | int | float | None:
     return str(value)
 
 
-def _normalize_metric_attributes(attributes: Mapping[str, Any] | None = None) -> dict[str, str | bool | int | float]:
+def _normalize_metric_attributes(
+    attributes: Mapping[str, Any] | None = None,
+) -> dict[str, str | bool | int | float]:
     if not attributes:
         return {}
 
@@ -340,8 +375,8 @@ def _get_counter(
 
     counter = get_meter(meter_name).create_counter(
         name,
-        description=description or "",
-        unit=unit or "",
+        description=description or '',
+        unit=unit or '',
     )
     _COUNTERS[cache_key] = counter
     return counter
@@ -361,8 +396,8 @@ def _get_histogram(
 
     histogram = get_meter(meter_name).create_histogram(
         name,
-        description=description or "",
-        unit=unit or "",
+        description=description or '',
+        unit=unit or '',
     )
     _HISTOGRAMS[cache_key] = histogram
     return histogram
@@ -372,7 +407,7 @@ def record_counter(
     name: str,
     value: int | float = 1,
     *,
-    meter_name: str = "eduassist",
+    meter_name: str = 'eduassist',
     attributes: Mapping[str, Any] | None = None,
     description: str | None = None,
     unit: str | None = None,
@@ -390,7 +425,7 @@ def record_histogram(
     name: str,
     value: int | float,
     *,
-    meter_name: str = "eduassist",
+    meter_name: str = 'eduassist',
     attributes: Mapping[str, Any] | None = None,
     description: str | None = None,
     unit: str | None = None,
@@ -408,11 +443,12 @@ def record_histogram(
 def start_span(
     name: str,
     *,
-    tracer_name: str = "eduassist",
+    tracer_name: str = 'eduassist',
+    kind: SpanKind = SpanKind.INTERNAL,
     **attributes: Any,
 ):
     tracer = get_tracer(tracer_name)
-    with tracer.start_as_current_span(name) as span:
+    with tracer.start_as_current_span(name, kind=kind) as span:
         set_span_attributes(span, **attributes)
         try:
             yield span
@@ -430,12 +466,12 @@ def configure_observability(
     app: FastAPI | None = None,
     sqlalchemy_engine: Engine | None = None,
     instrument_httpx: bool = True,
-    excluded_urls: str = "",
+    excluded_urls: str = '',
 ) -> None:
     if service_name in _CONFIGURED_SERVICES:
         return
 
-    if not _env_flag("OTEL_ENABLED", default=False):
+    if not _env_flag('OTEL_ENABLED', default=False):
         _CONFIGURED_SERVICES.add(service_name)
         return
 
@@ -446,13 +482,13 @@ def configure_observability(
         return
 
     resource_attributes: dict[str, Any] = {
-        "service.name": service_name,
-        "service.version": service_version,
-        "deployment.environment": environment,
+        'service.name': service_name,
+        'service.version': service_version,
+        'deployment.environment': environment,
     }
-    namespace = os.getenv("OTEL_SERVICE_NAMESPACE")
+    namespace = os.getenv('OTEL_SERVICE_NAMESPACE')
     if namespace:
-        resource_attributes["service.namespace"] = namespace
+        resource_attributes['service.namespace'] = namespace
 
     resource = Resource.create(resource_attributes)
 
@@ -461,7 +497,7 @@ def configure_observability(
         BatchSpanProcessor(
             OTLPSpanExporter(
                 endpoint=traces_endpoint,
-                headers=_parse_headers(os.getenv("OTEL_EXPORTER_OTLP_HEADERS")),
+                headers=_parse_headers(os.getenv('OTEL_EXPORTER_OTLP_HEADERS')),
             )
         )
     )
@@ -472,23 +508,24 @@ def configure_observability(
         metric_reader = PeriodicExportingMetricReader(
             OTLPMetricExporter(
                 endpoint=metrics_endpoint,
-                headers=_parse_headers(os.getenv("OTEL_EXPORTER_OTLP_HEADERS")),
+                headers=_parse_headers(os.getenv('OTEL_EXPORTER_OTLP_HEADERS')),
             ),
-            export_interval_millis=int(os.getenv("OTEL_METRIC_EXPORT_INTERVAL_MILLIS", "5000")),
-            export_timeout_millis=int(os.getenv("OTEL_METRIC_EXPORT_TIMEOUT_MILLIS", "10000")),
+            export_interval_millis=int(os.getenv('OTEL_METRIC_EXPORT_INTERVAL_MILLIS', '5000')),
+            export_timeout_millis=int(os.getenv('OTEL_METRIC_EXPORT_TIMEOUT_MILLIS', '10000')),
         )
         meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
         metrics.set_meter_provider(meter_provider)
 
     if app is not None:
-        @app.middleware("http")
+
+        @app.middleware('http')
         async def add_trace_response_headers(request, call_next):
             response = await call_next(request)
             current_span = trace.get_current_span()
             span_context = current_span.get_span_context()
             if span_context.is_valid:
-                response.headers["X-Trace-Id"] = f"{span_context.trace_id:032x}"
-                response.headers["X-Span-Id"] = f"{span_context.span_id:016x}"
+                response.headers['X-Trace-Id'] = f'{span_context.trace_id:032x}'
+                response.headers['X-Span-Id'] = f'{span_context.span_id:016x}'
             return response
 
         FastAPIInstrumentor.instrument_app(

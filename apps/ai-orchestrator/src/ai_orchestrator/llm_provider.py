@@ -7,6 +7,13 @@ from typing import Any
 import httpx
 from openai import AsyncOpenAI
 
+from eduassist_observability import (
+    extract_google_usage,
+    extract_openai_usage,
+    normalize_gen_ai_provider_name,
+    start_gen_ai_client_operation,
+)
+
 from .models import CalendarEventCard, MessageResponseCitation
 
 PROJECT_CONTEXT = (
@@ -18,6 +25,10 @@ PROJECT_CONTEXT = (
     'nao afirme superioridade sobre concorrentes sem base explicita; em vez disso, resuma os diferenciais documentados desta escola '
     'e ofereca uma comparacao limitada apenas se houver base ou se o usuario informar a instituicao especifica.'
 )
+
+
+def _llm_model_profile(settings: Any) -> str | None:
+    return str(getattr(settings, 'llm_model_profile', '') or '').strip() or None
 
 
 def _extract_json_object(text: str) -> dict[str, Any] | None:
@@ -85,21 +96,41 @@ async def _google_generate_content_body(
         'Content-Type': 'application/json',
         'x-goog-api-key': settings.google_api_key,
     }
+    provider_name = normalize_gen_ai_provider_name('google', base_url=settings.google_api_base_url)
     async with httpx.AsyncClient(timeout=timeout) as client:
         for model_name in _google_model_candidates(settings.google_model):
-            endpoint = f"{settings.google_api_base_url.rstrip('/')}/models/{model_name}:generateContent"
-            try:
-                response = await client.post(endpoint, headers=headers, json=payload)
-            except Exception:
-                return None
-            if _google_response_requires_model_fallback(response):
-                continue
-            try:
-                response.raise_for_status()
-                body = response.json()
-            except Exception:
-                return None
-            return body if isinstance(body, dict) else None
+            endpoint = (
+                f'{settings.google_api_base_url.rstrip("/")}/models/{model_name}:generateContent'
+            )
+            with start_gen_ai_client_operation(
+                provider_name=provider_name,
+                operation_name='generate_content',
+                request_model=model_name,
+                base_url=settings.google_api_base_url,
+                request_temperature=payload.get('generationConfig', {}).get('temperature'),
+                request_max_tokens=payload.get('generationConfig', {}).get('maxOutputTokens'),
+                request_top_p=payload.get('generationConfig', {}).get('topP'),
+                llm_model_profile=_llm_model_profile(settings),
+            ) as operation:
+                try:
+                    response = await client.post(endpoint, headers=headers, json=payload)
+                except Exception as exc:
+                    operation.finish(error_type=exc.__class__.__name__)
+                    return None
+                if _google_response_requires_model_fallback(response):
+                    operation.finish(error_type=f'http_{response.status_code}')
+                    continue
+                try:
+                    response.raise_for_status()
+                    body = response.json()
+                except Exception as exc:
+                    operation.finish(error_type=exc.__class__.__name__)
+                    return None
+                if not isinstance(body, dict):
+                    operation.finish(error_type='invalid_payload')
+                    return None
+                operation.finish(usage=extract_google_usage(body, request_model=model_name))
+                return body
     return None
 
 
@@ -141,7 +172,11 @@ def _openai_api_mode(settings: Any) -> str:
     if raw in {'chat', 'chat_completions', 'chat-completions'}:
         return 'chat_completions'
     if raw == 'auto':
-        base_url = str(getattr(settings, 'openai_base_url', 'https://api.openai.com/v1') or '').strip().lower()
+        base_url = (
+            str(getattr(settings, 'openai_base_url', 'https://api.openai.com/v1') or '')
+            .strip()
+            .lower()
+        )
         if base_url and 'api.openai.com' not in base_url:
             return 'chat_completions'
         return 'responses'
@@ -179,28 +214,47 @@ async def _openai_chat_completions_text_call(
     top_p: float | None = None,
     timeout: float | None = None,
 ) -> str | None:
-    try:
-        client = AsyncOpenAI(
-            api_key=settings.openai_api_key,
-            base_url=settings.openai_base_url,
-            timeout=timeout,
+    provider_name = normalize_gen_ai_provider_name('openai', base_url=settings.openai_base_url)
+    with start_gen_ai_client_operation(
+        provider_name=provider_name,
+        operation_name='chat',
+        request_model=settings.openai_model,
+        base_url=settings.openai_base_url,
+        request_temperature=temperature,
+        request_max_tokens=max_output_tokens,
+        request_top_p=top_p,
+        llm_model_profile=_llm_model_profile(settings),
+    ) as operation:
+        try:
+            client = AsyncOpenAI(
+                api_key=settings.openai_api_key,
+                base_url=settings.openai_base_url,
+                timeout=timeout,
+            )
+            kwargs: dict[str, Any] = {
+                'model': settings.openai_model,
+                'messages': [
+                    {'role': 'system', 'content': instructions},
+                    {'role': 'user', 'content': prompt},
+                ],
+            }
+            if temperature is not None:
+                kwargs['temperature'] = temperature
+            if top_p is not None:
+                kwargs['top_p'] = top_p
+            if max_output_tokens is not None:
+                kwargs['max_tokens'] = max_output_tokens
+            response = await client.chat.completions.create(**kwargs)
+        except Exception as exc:
+            operation.finish(error_type=exc.__class__.__name__)
+            return None
+        operation.finish(
+            usage=extract_openai_usage(
+                response,
+                request_model=settings.openai_model,
+                provider_name=provider_name,
+            )
         )
-        kwargs: dict[str, Any] = {
-            'model': settings.openai_model,
-            'messages': [
-                {'role': 'system', 'content': instructions},
-                {'role': 'user', 'content': prompt},
-            ],
-        }
-        if temperature is not None:
-            kwargs['temperature'] = temperature
-        if top_p is not None:
-            kwargs['top_p'] = top_p
-        if max_output_tokens is not None:
-            kwargs['max_tokens'] = max_output_tokens
-        response = await client.chat.completions.create(**kwargs)
-    except Exception:
-        return None
     choices = getattr(response, 'choices', None) or []
     if not choices:
         return None
@@ -231,28 +285,47 @@ async def _openai_text_call(
             top_p=top_p,
             timeout=timeout,
         )
-    try:
-        client = AsyncOpenAI(
-            api_key=settings.openai_api_key,
-            base_url=settings.openai_base_url,
-            timeout=timeout,
+    provider_name = normalize_gen_ai_provider_name('openai', base_url=settings.openai_base_url)
+    with start_gen_ai_client_operation(
+        provider_name=provider_name,
+        operation_name='text_completion',
+        request_model=settings.openai_model,
+        base_url=settings.openai_base_url,
+        request_temperature=temperature,
+        request_max_tokens=max_output_tokens,
+        request_top_p=top_p,
+        llm_model_profile=_llm_model_profile(settings),
+    ) as operation:
+        try:
+            client = AsyncOpenAI(
+                api_key=settings.openai_api_key,
+                base_url=settings.openai_base_url,
+                timeout=timeout,
+            )
+            kwargs: dict[str, Any] = {
+                'model': settings.openai_model,
+                'instructions': instructions,
+                'input': prompt,
+            }
+            if temperature is not None:
+                kwargs['temperature'] = temperature
+            if top_p is not None:
+                kwargs['top_p'] = top_p
+            if max_output_tokens is not None:
+                kwargs['max_output_tokens'] = max_output_tokens
+            response = await client.responses.create(**kwargs)
+        except Exception as exc:
+            operation.finish(error_type=exc.__class__.__name__)
+            return None
+        operation.finish(
+            usage=extract_openai_usage(
+                response,
+                request_model=settings.openai_model,
+                provider_name=provider_name,
+            )
         )
-        kwargs: dict[str, Any] = {
-            'model': settings.openai_model,
-            'instructions': instructions,
-            'input': prompt,
-        }
-        if temperature is not None:
-            kwargs['temperature'] = temperature
-        if top_p is not None:
-            kwargs['top_p'] = top_p
-        if max_output_tokens is not None:
-            kwargs['max_output_tokens'] = max_output_tokens
-        response = await client.responses.create(**kwargs)
         text = (response.output_text or '').strip()
         return text or None
-    except Exception:
-        return None
 
 
 def _build_context_sections(
@@ -271,22 +344,36 @@ def _build_context_sections(
         city = profile.get('city')
         state = profile.get('state')
         unit = profile.get('school_unit_code')
-        segments = ', '.join(str(item) for item in profile.get('segments', [])[:4] if isinstance(item, str)) or 'nao informado'
-        leadership = '; '.join(
-            f"{item.get('title', 'lideranca')}: {item.get('name', 'nao informado')}"
-            for item in profile.get('leadership_team', [])[:4]
-            if isinstance(item, dict)
-        ) or 'nao informado'
-        services = '; '.join(
-            f"{item.get('title', 'servico')} ({item.get('request_channel', 'canal institucional')})"
-            for item in profile.get('service_catalog', [])[:6]
-            if isinstance(item, dict)
-        ) or 'nao informado'
-        highlights = '; '.join(
-            str(item.get('title', 'diferencial'))
-            for item in profile.get('highlights', [])[:4]
-            if isinstance(item, dict)
-        ) or 'nao informado'
+        segments = (
+            ', '.join(
+                str(item) for item in profile.get('segments', [])[:4] if isinstance(item, str)
+            )
+            or 'nao informado'
+        )
+        leadership = (
+            '; '.join(
+                f'{item.get("title", "lideranca")}: {item.get("name", "nao informado")}'
+                for item in profile.get('leadership_team', [])[:4]
+                if isinstance(item, dict)
+            )
+            or 'nao informado'
+        )
+        services = (
+            '; '.join(
+                f'{item.get("title", "servico")} ({item.get("request_channel", "canal institucional")})'
+                for item in profile.get('service_catalog', [])[:6]
+                if isinstance(item, dict)
+            )
+            or 'nao informado'
+        )
+        highlights = (
+            '; '.join(
+                str(item.get('title', 'diferencial'))
+                for item in profile.get('highlights', [])[:4]
+                if isinstance(item, dict)
+            )
+            or 'nao informado'
+        )
         return (
             f'nome={name or "nao informado"}, cidade={city or "nao informado"}, '
             f'estado={state or "nao informado"}, unidade={unit or "nao informado"}, '
@@ -454,9 +541,14 @@ def _build_public_semantic_resolution_sections(
                 recent_messages.append(f'- {sender_type}: {content}')
     memory_block = '\n'.join(recent_messages) or 'nenhum'
     school_name = str((school_profile or {}).get('school_name') or 'Colegio Horizonte')
-    segments = ', '.join(
-        str(item) for item in (school_profile or {}).get('segments', [])[:4] if isinstance(item, str)
-    ) or 'nao informado'
+    segments = (
+        ', '.join(
+            str(item)
+            for item in (school_profile or {}).get('segments', [])[:4]
+            if isinstance(item, str)
+        )
+        or 'nao informado'
+    )
     available_tools = [
         'get_public_school_profile',
         'list_assistant_capabilities',
@@ -484,9 +576,7 @@ def _build_public_semantic_resolution_sections(
         'Use access_scope quando o usuario perguntar o que consegue ver, quais dados pode consultar ou qual acesso ja tem neste Telegram vinculado. '
         'Use calendar_events para agendas e eventos publicos concretos, como reuniao de pais, feira, mostra ou eventos desta semana. '
         'Se a pergunta pedir horario e nome do mesmo espaco, como a biblioteca, prefira operating_hours como ato principal e use features como secondary_act. '
-        'required_tools deve usar apenas: '
-        + ', '.join(available_tools)
-        + '. '
+        'required_tools deve usar apenas: ' + ', '.join(available_tools) + '. '
         'requested_attribute deve ser um entre: name, age, whatsapp, phone, email, contact, open_time, close_time, none. '
         'requested_channel deve ser um entre: telefone, whatsapp, email, none. '
         'focus_hint deve ser curto e opcional. '
@@ -533,7 +623,9 @@ def _build_public_grounded_composition_sections(
         'Nao adicione fatos fora das evidencias. '
         'Nao use tom de menu, FAQ engessada, slogan ou call center robotico. '
         'Se o usuario estiver corrigindo algo que acabou de ser entendido errado, reconheca isso brevemente e corrija o rumo sem se defender. '
-        'Se o usuario mencionar outra escola, deixe claro que voce representa apenas o ' + school_name + ' e nao invente informacoes sobre a outra instituicao. '
+        'Se o usuario mencionar outra escola, deixe claro que voce representa apenas o '
+        + school_name
+        + ' e nao invente informacoes sobre a outra instituicao. '
         'Se a pergunta pedir algo fora do escopo publicado, admita esse limite com clareza e aproveite apenas a parte realmente suportada pela evidencia. '
         'Se a pergunta pedir comparacao, mantenha a comparacao restrita ao que as evidencias documentam desta escola. '
         'Se houver secondary_acts ou mais de um fato pedido no mesmo turno, cubra cada parte explicitamente; nao deixe cair nenhum item importante. '
@@ -569,7 +661,9 @@ def _build_grounded_answer_experience_sections(
     focus_summary: str | None = None,
 ) -> tuple[str, str]:
     school_name = str((school_profile or {}).get('school_name') or 'Colegio Horizonte')
-    evidence_block = '\n'.join(f'- {line}' for line in evidence_lines[:10]) or '- nenhuma evidencia adicional'
+    evidence_block = (
+        '\n'.join(f'- {line}' for line in evidence_lines[:10]) or '- nenhuma evidencia adicional'
+    )
     memory_block = '\n'.join(f'- {line}' for line in recent_messages[-6:]) or '- nenhum'
     tools_block = ', '.join(selected_tools) if selected_tools else 'nenhuma'
     instructions = (
@@ -626,7 +720,9 @@ def _build_context_repair_sections(
     actor_summary: str | None = None,
 ) -> tuple[str, str]:
     school_name = str((school_profile or {}).get('school_name') or 'Colegio Horizonte')
-    evidence_block = '\n'.join(f'- {line}' for line in evidence_lines[:10]) or '- nenhuma evidencia adicional'
+    evidence_block = (
+        '\n'.join(f'- {line}' for line in evidence_lines[:10]) or '- nenhuma evidencia adicional'
+    )
     memory_block = '\n'.join(f'- {line}' for line in recent_messages[-6:]) or '- nenhum'
     tools_block = ', '.join(selected_tools) if selected_tools else 'nenhuma'
     instructions = (

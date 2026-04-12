@@ -31,11 +31,7 @@ def test_openai_text_call_uses_chat_completions_for_local_mode(monkeypatch) -> N
             calls.append(kwargs)
             return SimpleNamespace(
                 choices=[
-                    SimpleNamespace(
-                        message=SimpleNamespace(
-                            content='Resposta local do Gemma'
-                        )
-                    )
+                    SimpleNamespace(message=SimpleNamespace(content='Resposta local do Gemma'))
                 ]
             )
 
@@ -74,11 +70,7 @@ def test_compose_with_openai_works_in_local_chat_completions_mode(monkeypatch) -
             calls.append(kwargs)
             return SimpleNamespace(
                 choices=[
-                    SimpleNamespace(
-                        message=SimpleNamespace(
-                            content='Resposta grounded local'
-                        )
-                    )
+                    SimpleNamespace(message=SimpleNamespace(content='Resposta grounded local'))
                 ]
             )
 

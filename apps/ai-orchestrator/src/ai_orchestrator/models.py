@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Callable
 
 from pydantic import BaseModel, Field
 
@@ -320,3 +321,138 @@ class MessageResponse(BaseModel):
     retrieval_retry_applied: bool = False
     retrieval_retry_reason: str | None = None
     debug_trace: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class PublicAnswerabilityAssessment:
+    enough_support: bool
+    salient_terms: set[str]
+    matched_terms: set[str]
+    unsupported_terms: set[str]
+    coverage_ratio: float
+    high_risk_reasoning: bool
+
+
+@dataclass(frozen=True)
+class ConversationContextBundle:
+    conversation_external_id: str | None
+    recent_messages: list[dict[str, Any]]
+    recent_tool_calls: list[dict[str, Any]]
+    message_count: int
+
+
+@dataclass(frozen=True)
+class StructuredAnswerFrame:
+    lead: str
+    facts: tuple[str, ...] = ()
+    next_step: str | None = None
+    offer: str | None = None
+
+
+@dataclass(frozen=True)
+class PublicInstitutionPlan:
+    conversation_act: str
+    required_tools: tuple[str, ...]
+    fetch_profile: bool
+    secondary_acts: tuple[str, ...] = ()
+    requested_attribute: str | None = None
+    requested_channel: str | None = None
+    focus_hint: str | None = None
+    semantic_source: str = 'rules'
+    use_conversation_context: bool = False
+
+
+@dataclass(frozen=True)
+class PublicActRule:
+    name: str
+    matcher: Callable[[str], bool]
+    required_tools: tuple[str, ...] = ()
+    fetch_profile: bool = True
+
+
+@dataclass(frozen=True)
+class ConversationSlotMemory:
+    focus_kind: str | None = None
+    protocol_code: str | None = None
+    contact_subject: str | None = None
+    feature_key: str | None = None
+    active_task: str | None = None
+    active_entity: str | None = None
+    pending_question_type: str | None = None
+    pending_disambiguation: str | None = None
+    public_entity: str | None = None
+    public_attribute: str | None = None
+    public_pricing_segment: str | None = None
+    public_pricing_grade_year: str | None = None
+    public_pricing_quantity: str | None = None
+    public_pricing_price_kind: str | None = None
+    requested_channel: str | None = None
+    time_reference: str | None = None
+    academic_student_name: str | None = None
+    academic_focus_kind: str | None = None
+    academic_attribute: str | None = None
+    admin_attribute: str | None = None
+    finance_student_name: str | None = None
+    finance_status_filter: str | None = None
+    finance_attribute: str | None = None
+    finance_action: str | None = None
+
+
+@dataclass(frozen=True)
+class PublicProfileContext:
+    profile: dict[str, Any]
+    actor: dict[str, Any] | None
+    message: str
+    source_message: str
+    normalized: str
+    analysis_normalized: str
+    school_name: str
+    school_reference: str
+    school_reference_capitalized: str
+    city: str
+    state: str
+    district: str
+    address_line: str
+    postal_code: str
+    website_url: str
+    fax_number: str
+    curriculum_basis: str
+    curriculum_components: tuple[str, ...]
+    confessional_status: str
+    segment: str | None
+    schedule_context_normalized: str
+    shift_offers: tuple[dict[str, Any], ...]
+    tuition_reference: tuple[dict[str, Any], ...]
+    semantic_act: str | None
+    contact_reference_message: str
+    preferred_contact_labels: tuple[str, ...]
+    requested_channel: str | None
+    requested_attribute_override: str | None
+    slot_memory: ConversationSlotMemory
+    conversation_context: dict[str, Any] | None
+    semantic_plan: PublicInstitutionPlan | None
+
+
+@dataclass(frozen=True)
+class ProtectedAttributeRequest:
+    domain: str
+    attribute: str
+
+
+@dataclass(frozen=True)
+class AnswerVerificationResult:
+    valid: bool
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
+class InternalSpecialistPlan:
+    name: str
+    purpose: str
+    tool_names: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ClarifyRepairPlan:
+    kind: str
+    student_name: str | None = None

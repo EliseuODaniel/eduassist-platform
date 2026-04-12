@@ -11,6 +11,41 @@ extensions:
     endpoint: 0.0.0.0:13133
 
 processors:
+  tail_sampling:
+    decision_wait: 5s
+    num_traces: 10000
+    expected_new_traces_per_sec: 250
+    policies:
+      - name: error-traces
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: gen-ai-spans
+        type: string_attribute
+        string_attribute:
+          key: gen_ai.operation.name
+          values:
+            - chat
+            - text_completion
+            - generate_content
+            - semantic_classification
+      - name: slow-traces
+        type: latency
+        latency:
+          threshold_ms: 1500
+      - name: dedicated-runtime-traces
+        type: string_attribute
+        string_attribute:
+          key: service.name
+          values:
+            - ai-orchestrator
+            - ai-orchestrator-specialist
+            - api-core
+            - telegram-gateway
+      - name: probabilistic-default
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 20
   batch:
 
 exporters:
@@ -28,7 +63,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [tail_sampling, batch]
       exporters: [otlp/tempo, debug]
     metrics:
       receivers: [otlp]

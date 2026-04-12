@@ -20,6 +20,7 @@ src = [
   "apps/telegram-gateway/src",
   "apps/worker/src",
   "packages/semantic-ingress/python/src",
+  "packages/observability/python/src",
   "tests",
 ]
 

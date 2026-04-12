@@ -1,0 +1,103 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "content": "# EduAssist GenAI overview\n\nEste dashboard acompanha custo estimado, latencia e consumo de tokens das chamadas de LLM instrumentadas com semantica GenAI do OpenTelemetry.\n\nLeitura recomendada:\n\n1. confira o volume por provider e modelo\n2. acompanhe p95 de latencia por operacao\n3. monitore tokens de entrada e saida\n4. use o custo estimado apenas como aproximacao operacional\n",
+        "mode": "markdown"
+      },
+      "pluginVersion": "11.6.0",
+      "title": "Visao geral",
+      "type": "text"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 2,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(gen_ai_client_operation_duration_count[5m])) by (gen_ai_provider_name, gen_ai_request_model)",
+          "legendFormat": "{{gen_ai_provider_name}} / {{gen_ai_request_model}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Chamadas GenAI por provider/modelo",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 3,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum(rate(gen_ai_client_operation_duration_bucket[5m])) by (le, gen_ai_operation_name, gen_ai_request_model))",
+          "legendFormat": "p95 {{gen_ai_operation_name}} / {{gen_ai_request_model}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Latencia p95 GenAI",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 4,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(increase(gen_ai_client_token_usage_sum[15m])) by (gen_ai_token_type, gen_ai_request_model)",
+          "legendFormat": "{{gen_ai_token_type}} / {{gen_ai_request_model}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Tokens GenAI por janela",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "currencyUSD" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 5,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(increase(eduassist_gen_ai_estimated_cost_usd_sum[1h])) by (gen_ai_request_model, eduassist_llm_model_profile)",
+          "legendFormat": "{{eduassist_llm_model_profile}} / {{gen_ai_request_model}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Custo estimado GenAI por hora",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["eduassist", "genai", "otel"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "EduAssist GenAI Overview",
+  "uid": "eduassist-genai-overview",
+  "version": 1,
+  "weekStart": ""
+}

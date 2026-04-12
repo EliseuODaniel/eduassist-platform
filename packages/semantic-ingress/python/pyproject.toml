@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Shared semantic ingress classification contract for EduAssist runtimes."
 requires-python = ">=3.12"
 dependencies = [
+  "eduassist-observability",
   "httpx>=0.28.0",
   "openai>=1.109.1",
   "pydantic>=2.8.0",
@@ -15,3 +16,5 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/eduassist_semantic_ingress"]
+[tool.uv.sources]
+eduassist-observability = { path = "../../observability/python" }
