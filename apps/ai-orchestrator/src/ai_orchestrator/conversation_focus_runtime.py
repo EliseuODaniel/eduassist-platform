@@ -22,6 +22,12 @@ def _normalize_text(text: str) -> str:
     return without_accents.replace('º', 'o').replace('ª', 'a').lower()
 
 
+def _message_matches_term(message: str, term: str) -> bool:
+    from .intent_analysis_runtime import _message_matches_term as _impl
+
+    return _impl(message, term)
+
+
 def _is_greeting_only(text: str) -> bool:
     normalized = _normalize_text(text).strip()
     normalized = re.sub(r'[!?.,;:]+', '', normalized)

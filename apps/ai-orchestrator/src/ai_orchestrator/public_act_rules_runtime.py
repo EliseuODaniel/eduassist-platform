@@ -6,6 +6,20 @@ from __future__ import annotations
 from . import runtime_core as _runtime_core
 
 
+LOCAL_EXTRACTED_NAMES = {
+    '_intent_analysis_impl',
+    '_is_greeting_only',
+    '_is_auth_guidance_query',
+    '_is_access_scope_query',
+    '_is_language_preference_query',
+    '_is_service_routing_query',
+    '_is_assistant_identity_query',
+    '_is_capability_query',
+    '_is_comparative_query',
+    '_looks_like_public_documentary_open_query',
+}
+
+
 def _export_runtime_core_namespace() -> None:
     for name, value in vars(_runtime_core).items():
         if name.startswith('__'):
@@ -13,7 +27,58 @@ def _export_runtime_core_namespace() -> None:
         globals()[name] = value
 
 
+def _refresh_runtime_core_namespace() -> None:
+    for name, value in vars(_runtime_core).items():
+        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
+            continue
+        globals()[name] = value
+
+
 _export_runtime_core_namespace()
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _is_greeting_only(message: str) -> bool:
+    return _intent_analysis_impl('_is_greeting_only')(message)
+
+
+def _is_auth_guidance_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_auth_guidance_query')(message)
+
+
+def _is_access_scope_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_access_scope_query')(message)
+
+
+def _is_language_preference_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_language_preference_query')(message)
+
+
+def _is_service_routing_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_service_routing_query')(message)
+
+
+def _is_assistant_identity_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_assistant_identity_query')(message)
+
+
+def _is_capability_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_capability_query')(message)
+
+
+def _is_comparative_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_comparative_query')(message)
+
+
+def _looks_like_public_documentary_open_query(message: str) -> bool:
+    from . import public_orchestration_runtime as _public_orchestration_runtime
+
+    return _public_orchestration_runtime._looks_like_public_documentary_open_query(message)
 
 
 def _matches_public_contact_rule(message: str) -> bool:
@@ -554,6 +619,7 @@ PUBLIC_ACT_RULES: tuple[PublicActRule, ...] = (
 
 
 def _match_public_act_rule(message: str) -> PublicActRule | None:
+    _refresh_runtime_core_namespace()
     for rule in PUBLIC_ACT_RULES:
         try:
             if rule.matcher(message):
@@ -568,6 +634,7 @@ def _matched_public_act_rules(
     *,
     conversation_context: dict[str, Any] | None = None,
 ) -> tuple[PublicActRule, ...]:
+    _refresh_runtime_core_namespace()
     matched: list[PublicActRule] = []
     for rule in PUBLIC_ACT_RULES:
         try:
@@ -633,6 +700,7 @@ def _prioritize_public_act_rules(
     message: str,
     matched_rules: tuple[PublicActRule, ...],
 ) -> tuple[PublicActRule, ...]:
+    _refresh_runtime_core_namespace()
     if len(matched_rules) < 2:
         return matched_rules
     if _looks_like_public_documentary_open_query(message):

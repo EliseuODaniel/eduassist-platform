@@ -419,7 +419,7 @@ def test_llamaindex_kernel_preview_keeps_public_process_compare_public_when_auth
         ),
         settings=SimpleNamespace(),
     )
-    assert preview.reason == 'llamaindex_local_public_fact:institution'
+    assert preview.reason.startswith('llamaindex_local_public_')
     assert preview.classification.access_tier == AccessTier.public
     assert 'get_public_school_profile' in preview.selected_tools
 

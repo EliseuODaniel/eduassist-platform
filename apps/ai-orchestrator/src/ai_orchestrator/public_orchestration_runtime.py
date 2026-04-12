@@ -4,6 +4,13 @@ from __future__ import annotations
 """Public routing and orchestration helpers extracted from runtime_core.py."""
 
 from . import runtime_core as _runtime_core
+from .public_act_rules_runtime import _matched_public_act_rules, _prioritize_public_act_rules
+
+
+LOCAL_EXTRACTED_NAMES = {
+    '_intent_analysis_impl',
+    '_looks_like_family_admin_aggregate_query',
+}
 
 
 def _export_runtime_core_namespace() -> None:
@@ -13,7 +20,24 @@ def _export_runtime_core_namespace() -> None:
         globals()[name] = value
 
 
+def _refresh_runtime_core_namespace() -> None:
+    for name, value in vars(_runtime_core).items():
+        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
+            continue
+        globals()[name] = value
+
+
 _export_runtime_core_namespace()
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _looks_like_family_admin_aggregate_query(message: str) -> bool:
+    return _intent_analysis_impl('_looks_like_family_admin_aggregate_query')(message)
 
 
 def _extract_school_reference_candidate(message: str) -> str | None:
@@ -474,6 +498,7 @@ def _explicit_protected_domain_hint(
     actor: dict[str, Any] | None = None,
     conversation_context: dict[str, Any] | None = None,
 ) -> QueryDomain | None:
+    _refresh_runtime_core_namespace()
     normalized = _normalize_text(message)
     if _looks_like_family_admin_aggregate_query(message):
         return QueryDomain.institution
@@ -1538,6 +1563,7 @@ def _build_public_institution_plan(
     conversation_context: dict[str, Any] | None = None,
     school_profile: dict[str, Any] | None = None,
 ) -> PublicInstitutionPlan:
+    _refresh_runtime_core_namespace()
     required_tools: list[str] = []
     secondary_acts: tuple[str, ...] = semantic_plan.secondary_acts if semantic_plan else ()
 

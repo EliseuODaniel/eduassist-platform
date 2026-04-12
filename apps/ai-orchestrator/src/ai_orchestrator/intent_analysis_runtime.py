@@ -1,9 +1,93 @@
 from __future__ import annotations
 
+import unicodedata
+
 # ruff: noqa: F401,F403,F405
 """Intent analysis and preview-building helpers extracted from runtime_core.py."""
 
 from . import runtime_core as _runtime_core
+
+
+def _normalize_text(message: str | None) -> str:
+    normalized = unicodedata.normalize('NFKD', str(message or ''))
+    without_accents = ''.join(char for char in normalized if not unicodedata.combining(char))
+    return without_accents.replace('º', 'o').replace('ª', 'a').lower()
+
+
+def _recent_slot_value(conversation_context: dict[str, Any] | None, key: str) -> str | None:
+    from .conversation_focus_runtime import _recent_slot_value as _impl
+
+    return _impl(conversation_context, key)
+
+
+def _public_profile_impl(name: str):
+    from . import public_profile_runtime as _public_profile_runtime
+
+    return getattr(_public_profile_runtime, name)
+
+
+def _is_public_process_compare_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_process_compare_query')(message)
+
+
+def _is_public_bolsas_and_processes_query(message: str) -> bool:
+    return _public_profile_impl('_is_public_bolsas_and_processes_query')(message)
+
+
+def _protected_domain_impl(name: str):
+    from . import protected_domain_runtime as _protected_domain_runtime
+
+    return getattr(_protected_domain_runtime, name)
+
+
+def _protected_summary_impl(name: str):
+    from . import protected_summary_runtime as _protected_summary_runtime
+
+    return getattr(_protected_summary_runtime, name)
+
+
+def _detect_academic_focus_kind(message: str) -> str | None:
+    return _protected_domain_impl('_detect_academic_focus_kind')(message)
+
+
+def _looks_like_finance_open_amount_query(message: str) -> bool:
+    return _protected_domain_impl('_looks_like_finance_open_amount_query')(message)
+
+
+def _looks_like_academic_difficulty_query(message: str, conversation_context: dict[str, Any] | None = None) -> bool:
+    return _protected_domain_impl('_looks_like_academic_difficulty_query')(message, conversation_context=conversation_context)
+
+
+def _should_inherit_academic_attribute_from_context(message: str, conversation_context: dict[str, Any] | None) -> bool:
+    return _protected_domain_impl('_should_inherit_academic_attribute_from_context')(message, conversation_context)
+
+
+def _detect_finance_status_filter(message: str) -> set[str] | None:
+    return _protected_summary_impl('_detect_finance_status_filter')(message)
+
+
+def _looks_like_family_academic_aggregate_query(message: str) -> bool:
+    return _protected_summary_impl('_looks_like_family_academic_aggregate_query')(message)
+
+
+def _looks_like_family_attendance_aggregate_query(message: str) -> bool:
+    return _protected_summary_impl('_looks_like_family_attendance_aggregate_query')(message)
+
+
+def _looks_like_family_finance_aggregate_query(message: str) -> bool:
+    return _protected_summary_impl('_looks_like_family_finance_aggregate_query')(message)
+
+
+def _wants_attendance_timeline(message: str) -> bool:
+    return _protected_summary_impl('_wants_attendance_timeline')(message)
+
+
+def _wants_profile_update_guidance(message: str) -> bool:
+    return _protected_summary_impl('_wants_profile_update_guidance')(message)
+
+
+def _wants_upcoming_assessments(message: str) -> bool:
+    return _protected_summary_impl('_wants_upcoming_assessments')(message)
 
 
 def _export_runtime_core_namespace() -> None:

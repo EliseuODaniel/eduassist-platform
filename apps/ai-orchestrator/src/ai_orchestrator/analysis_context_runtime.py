@@ -4,6 +4,8 @@ from __future__ import annotations
 """Conversation-context and analysis-message helpers extracted from intent_analysis_runtime.py."""
 
 from . import runtime_core as _runtime_core
+from .intent_analysis_runtime import _message_matches_term
+from .public_orchestration_runtime import _extract_requested_date, _extract_requested_window
 
 
 def _export_runtime_core_namespace() -> None:
