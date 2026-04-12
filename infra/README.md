@@ -21,3 +21,4 @@ Estado atual relevante:
 - bootstrap do papel `eduassist_app` versionado em `postgres/init/02-create-app-role.sh`;
 - observabilidade dedicada ja integrada ao Compose com `OpenTelemetry`, `Tempo`, `Prometheus`, `Loki` e `Grafana`.
 - backup operacional local de `Postgres`, `Qdrant` e `MinIO` disponivel em `tools/ops`, com restore de verificacao nao-destrutivo.
+- o Compose principal já contempla a arquitetura `dedicated-first`, com runtimes dedicados, `telegram-gateway` apontando para stack dedicada e `ai-orchestrator` central em papel de `control plane`.

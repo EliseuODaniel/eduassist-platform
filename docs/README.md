@@ -28,3 +28,19 @@ Este diretório concentra a documentação formal do projeto.
 ## Observação
 
 Materiais acadêmicos de TCC, textos de banca e anotações relacionadas são mantidos apenas no ambiente local de desenvolvimento e não fazem parte da documentação pública publicada neste repositório.
+
+## Leitura recomendada hoje
+
+Se você estiver chegando agora ao projeto, a ordem mais útil é:
+
+1. [Arquitetura do sistema](architecture/system-architecture.md)
+2. [Estado de referência dedicated-first](architecture/dedicated-first-reference-state.md)
+3. [Operação local](operations/local-development.md)
+4. [Segurança da informação](security/security-architecture.md)
+
+Essa sequência já reflete a arquitetura atual com:
+
+- `control plane` central;
+- runtimes dedicados como caminho principal de serving;
+- `semantic ingress` compartilhado para atos de entrada críticos;
+- e a superfície de aceite baseada em smoke, memória longa, Telegram real, parity e promotion gate.

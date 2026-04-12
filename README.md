@@ -9,6 +9,22 @@ O repositório compara quatro caminhos de orquestração sobre a mesma base comp
 - `llamaindex`
 - `specialist_supervisor`
 
+Todos os quatro caminhos compartilham um contrato semântico de entrada para atos conversacionais de baixo risco e alta precedência, como:
+
+- saudação;
+- identidade do assistente;
+- capabilities;
+- guidance de vinculação/autenticação;
+- preferência de idioma;
+- clarificação de entrada opaca;
+- limite de escopo.
+
+Isso mantém coerência de produto sem apagar a diferenciação arquitetural entre as stacks. A regra de alto nível hoje é:
+
+1. LLM de entrada: classifica o ato da mensagem;
+2. stack: resolve com ferramentas, retrieval, memória e planejamento próprios;
+3. LLM de saída: lapida sem reabrir um fallback indevido.
+
 ## O que o projeto faz
 
 - atende perguntas públicas sobre calendário, matrícula, bolsas, secretaria e rotinas escolares;
@@ -23,17 +39,20 @@ O fluxo principal é simples de entender:
 
 1. o usuário envia a pergunta pelo Telegram;
 2. o `telegram-gateway` recebe e normaliza a mensagem;
-3. o `ai-orchestrator` atua como control plane e router interno, enquanto os runtimes dedicados executam o serving principal por stack;
-4. perguntas estruturadas seguem para serviços internos confiáveis no `api-core`;
-5. perguntas documentais passam pela camada de recuperação de informação;
-6. se faltar contexto, o sistema pode pedir esclarecimento ou tentar nova busca com mais contexto;
-7. a camada final organiza a resposta em linguagem natural, sem perder o vínculo com a evidência;
-8. o Telegram recebe a resposta final.
+3. uma camada compartilhada de `semantic ingress` pode classificar atos curtos ou ambíguos antes do roteamento profundo;
+4. o runtime dedicado da stack alvo executa o serving principal;
+5. o `ai-orchestrator` central atua como `control plane/router` e superfície interna compartilhada, não como entrypoint principal de serving;
+6. perguntas estruturadas seguem para serviços internos confiáveis no `api-core`;
+7. perguntas documentais passam pela camada de recuperação de informação;
+8. se faltar contexto, o sistema pede esclarecimento ou retorna limite de escopo com segurança, em vez de inventar um fallback administrativo;
+9. a camada final organiza a resposta em linguagem natural, sem perder o vínculo com a evidência;
+10. o Telegram recebe a resposta final.
 
 ```mermaid
 flowchart LR
     U["Usuário no Telegram"] --> TG["telegram-gateway"]
-    TG --> ORQ["dedicated runtime\n(ex.: python_functions, llamaindex)"]
+    TG --> ING["semantic ingress\n(shared semantic contract)"]
+    ING --> ORQ["dedicated runtime\n(ex.: python_functions, llamaindex)"]
     ORQ -. control plane .-> CPR["ai-orchestrator"]
     ORQ --> DEC["Decisão de estratégia"]
     DEC -->|Dado estruturado| API["api-core"]
@@ -102,6 +121,26 @@ O desenho atual combina:
 - `GraphRAG` seletivo, usado apenas quando faz sentido.
 
 Perguntas sobre notas, frequência, financeiro e protocolos estruturados não dependem prioritariamente dessa camada. Nesses casos, o sistema prefere serviços determinísticos no `api-core`.
+
+## Semantic ingress e fallback seguro
+
+O projeto não depende apenas de listas lexicais para entender entradas curtas ou pouco claras. A arquitetura atual usa uma camada compartilhada de `semantic ingress` para classificar atos de entrada que exigem precedência forte, como:
+
+- `greeting`
+- `assistant_identity`
+- `capabilities`
+- `auth_guidance`
+- `input_clarification`
+- `language_preference`
+- `scope_boundary`
+
+Essa camada não responde livremente ao usuário. Ela só classifica o ato. Depois:
+
+- a stack resolve o caso com sua própria arquitetura;
+- a camada final pode lapidar a resposta;
+- e, se a entrada continuar incerta ou fora de escopo, o sistema prefere clarificar ou declarar limite de escopo com segurança.
+
+Na prática, isso evita que uma mensagem pouco clara de usuário autenticado caia por engano em `situação administrativa do cadastro`.
 
 ## Arquitetura de dados
 
@@ -201,6 +240,8 @@ Serviços principais:
 make compose-up-dedicated-core
 make smoke-dedicated
 make smoke-dedicated-multiturn
+make smoke-dedicated-long-memory
+make smoke-dedicated-semantic-ingress
 make smoke-telegram-dedicated
 make runtime-parity-check
 make smoke-local
@@ -213,6 +254,8 @@ Observação:
 
 - `make smoke-dedicated` é o smoke recomendado para a arquitetura atual.
 - `make smoke-dedicated-multiturn` é a bateria recomendada para validar continuidade conversacional nos runtimes dedicados.
+- `make smoke-dedicated-long-memory` valida retorno a contexto anterior, correção tardia e retomada de workflow.
+- `make smoke-dedicated-semantic-ingress` valida a superfície semântica compartilhada de entrada, incluindo greetings multilíngues, `input_clarification`, `language_preference`, `auth_guidance` e `scope_boundary`.
 - `make smoke-telegram-dedicated` valida o caminho real `telegram-gateway -> runtime dedicado -> api-core`, com verificação da persistência interna no `api-core`.
 - `make runtime-parity-check` valida que gateway, control plane e runtimes dedicados estão sem drift operacional entre `source mode` e Docker.
 - `make smoke-local` e `make eval-orchestrator` existem por compatibilidade com o control plane e exigem subir o `ai-orchestrator` central com `CONTROL_PLANE_ALLOW_DIRECT_SERVING=true`, por exemplo via `make compose-up-control-plane-compat`.
@@ -343,8 +386,9 @@ Textos acadêmicos, rascunhos de TCC, artigos de banca, anotações da ZAI e mat
 
 ## Limites conhecidos
 
-- o recorte `restricted` ainda é o mais fraco da superfície experimental;
-- alguns casos compostos de preço público, agregados protegidos e diferenciação entre `deny`, `no-match` e `allowed but unavailable` ainda concentram backlog residual;
+- o maior risco operacional restante fora do código continua sendo a borda pública quando o ambiente depende de `TryCloudflare`;
+- o recorte `restricted` segue mais caro e mais sensível do que o público;
+- ainda existe backlog residual em alguns casos compostos de preço público, agregados protegidos e diferenciação entre `deny`, `no-match` e `allowed but unavailable`;
 - o `specialist_supervisor` entrega boa qualidade no recorte protegido, mas continua com maior custo médio.
 
 ## Repositório público

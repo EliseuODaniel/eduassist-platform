@@ -6,6 +6,10 @@ Diretório reservado para aplicações executáveis do projeto:
 - `api-core`
 - `telegram-gateway`
 - `ai-orchestrator`
+- `ai-orchestrator-langgraph`
+- `ai-orchestrator-python-functions`
+- `ai-orchestrator-llamaindex`
+- `ai-orchestrator-specialist`
 - `worker`
 
 No bootstrap atual:
@@ -14,4 +18,7 @@ No bootstrap atual:
 - o painel usa `Next.js`;
 - todos os apps já possuem `Dockerfile` e endpoints/comportamentos mínimos para validação da stack;
 - o `api-core` já possui schema foundation, migracao Alembic e endpoint de resumo do banco;
-- o `ai-orchestrator` já possui grafo LangGraph, preview de roteamento e catálogo inicial de tools.
+- o `ai-orchestrator` central opera como `control plane/router`;
+- os runtimes dedicados executam o serving principal por stack;
+- o `telegram-gateway` deve apontar para um runtime dedicado;
+- os quatro caminhos compartilham guardrails, observabilidade, retrieval e `semantic ingress`, mas preservam suas diferenças de resolução e polish.

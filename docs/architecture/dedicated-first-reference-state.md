@@ -11,6 +11,7 @@ Depois do merge da arquitetura de orquestradores independentes, a referência op
   - `llamaindex`
   - `specialist_supervisor`
 - validação composta por smoke single-turn, multi-turn, memória longa, Telegram real e parity operacional.
+- um contrato compartilhado de `semantic ingress` para atos de entrada de alta precedência, como `greeting`, `auth_guidance`, `language_preference`, `input_clarification` e `scope_boundary`.
 
 ## Superfícies de validação recomendadas
 
@@ -30,6 +31,12 @@ Depois do merge da arquitetura de orquestradores independentes, a referência op
 - alvo: `make smoke-dedicated-long-memory`
 - artefato local típico: `artifacts/dedicated-stack-long-memory-report.json`
 - objetivo: cobrir digressões longas, retorno a contexto anterior, correção tardia e retomada de workflow.
+
+### Dedicated semantic ingress
+
+- alvo: `make smoke-dedicated-semantic-ingress`
+- artefato local típico: `artifacts/dedicated-stack-semantic-ingress-report.json`
+- objetivo: validar a superfície semântica compartilhada de entrada, incluindo saudações variáveis, guidance de autenticação, preferência de idioma, clarificação segura de entradas opacas e abstention segura fora do escopo.
 
 ### Telegram dedicated smoke
 
@@ -82,9 +89,10 @@ Hoje, a melhor forma de afirmar que o sistema está saudável não é olhar apen
 
 1. serving correto por runtime dedicado;
 2. estabilidade de conversa curta e longa;
-3. caminho real do Telegram;
-4. parity operacional;
-5. gate de promoção coerente com o scorecard e com a borda pública disponível.
+3. surface semântica de entrada consistente entre as stacks;
+4. caminho real do Telegram;
+5. parity operacional;
+6. gate de promoção coerente com o scorecard e com a borda pública disponível.
 
 ## Risco restante mais importante
 

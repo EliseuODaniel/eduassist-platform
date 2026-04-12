@@ -41,6 +41,13 @@ Estado atual:
   - workflow retomado depois de um assunto nao relacionado
   - agregado familiar protegido com desvio para politica publica e retorno
   - correcao tardia de aluno depois de follow-up por disciplina
+- `tests/e2e/dedicated_stack_semantic_ingress.py` cobre a camada compartilhada de semantic ingress:
+  - variacoes de saudacao, inclusive multilíngues
+  - guidance de autenticacao no Telegram
+  - preferencia de idioma e metalinguagem
+  - clarificacao segura para entradas opacas
+  - abstencao segura para perguntas fora do escopo
+  - garantia de que perguntas escolares nao caiam em `scope_boundary`
 - `tests/e2e/telegram_gateway_dedicated_smoke.py` cobre o caminho real `telegram-gateway -> runtime dedicado -> api-core`:
   - webhook com secret valido
   - enfileiramento assíncrono do gateway
@@ -109,10 +116,15 @@ Comandos uteis:
 - `make smoke-dedicated-specialist`
 - `make smoke-dedicated-multiturn`
 - `make smoke-dedicated-long-memory`
+- `make smoke-dedicated-semantic-ingress`
 - `make smoke-dedicated-multiturn-langgraph`
 - `make smoke-dedicated-multiturn-python-functions`
 - `make smoke-dedicated-multiturn-llamaindex`
 - `make smoke-dedicated-multiturn-specialist`
+- `make smoke-dedicated-semantic-ingress-langgraph`
+- `make smoke-dedicated-semantic-ingress-python-functions`
+- `make smoke-dedicated-semantic-ingress-llamaindex`
+- `make smoke-dedicated-semantic-ingress-specialist`
 - `make telegram-edge-readiness`
 - `make smoke-telegram-dedicated`
 - `make runtime-parity-check`

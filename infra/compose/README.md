@@ -25,9 +25,26 @@ Serviços-base já contemplados:
 - `worker`
 - `admin-web`
 
+Arquitetura atual relevante:
+
+- o `ai-orchestrator` central opera como `control plane/router`;
+- o serving principal de usuário sai dos runtimes dedicados:
+  - `ai-orchestrator-langgraph`
+  - `ai-orchestrator-python-functions`
+  - `ai-orchestrator-llamaindex`
+  - `ai-orchestrator-specialist`
+- o `telegram-gateway` deve apontar para um runtime dedicado, não para o control plane, salvo em modo explícito de compatibilidade.
+
 Uso rápido:
 
 1. `cp .env.example .env`
 2. `make compose-config`
 3. `make compose-up`
 4. `make db-bootstrap-app-role`
+
+Fluxo dedicado-first mais comum:
+
+1. `make compose-up-dedicated-core`
+2. `make compose-up-telegram-python-functions` ou outro target equivalente por stack
+3. `make smoke-dedicated`
+4. `make smoke-telegram-dedicated`
