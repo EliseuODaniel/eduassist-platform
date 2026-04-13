@@ -251,6 +251,37 @@ def test_derive_focus_frame_uses_recent_public_capability_for_followup() -> None
     assert focus.scope == "public"
 
 
+def test_derive_focus_frame_prefers_recent_trace_slot_memory_when_available() -> None:
+    focus = derive_focus_frame(
+        conversation_context={
+            "recent_messages": [
+                {"sender_type": "user", "content": "E quando fecha?"},
+                {"sender_type": "assistant", "content": "A biblioteca funciona em horario comercial."},
+            ],
+            "recent_tool_calls": [
+                {
+                    "tool_name": "orchestration.trace",
+                    "request_payload": {
+                        "slot_memory": {
+                            "active_task": "public:operating_hours",
+                            "public_entity": "library",
+                            "public_attribute": "close_time",
+                            "pending_question_type": "follow_up",
+                        }
+                    },
+                }
+            ],
+        },
+        authenticated=False,
+    )
+
+    assert focus.source == "recent_trace"
+    assert focus.scope == "public"
+    assert focus.capability_id == "public.facilities.library.hours"
+    assert focus.active_entity == "library"
+    assert focus.active_attribute == "close_time"
+
+
 def test_build_turn_frame_hint_carries_recent_finance_focus_for_next_due_followup() -> None:
     frame = build_turn_frame_hint(
         message="Qual o proximo vencimento?",

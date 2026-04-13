@@ -207,6 +207,43 @@ Medidas:
 - nada de contexto bruto com tabelas inteiras;
 - negação explícita quando policy não permitir.
 
+## 7.1 Contexto longo local com Gemma
+
+Para o baseline local atual, a recomendação não é perseguir imediatamente técnicas frontier de compressão de `KV cache`.
+
+Leitura atual:
+
+- `Gemma 4 E4B` oferece uma janela nativa muito maior do que a atualmente exposta no serving local;
+- o repositório, porém, opera em modo `retrieval-first`, com histórico curto, `TurnFrame`, `FocusFrame` e evidência selecionada;
+- por isso, o principal limitante hoje tende a ser `packing`, memória curta, retrieval e composição grounded, e não apenas a memória bruta de `KV cache`.
+
+Implicação arquitetural:
+
+- primeiro: telemetria de uso real de contexto;
+- depois: packing de evidência, memória episódica e tuning de retrieval/rerank;
+- só depois: aumento gradual de `ctx-size`;
+- e apenas como trilha posterior: avaliação de `TurboQuant`.
+
+Estado atual no repositório:
+
+- telemetria de contexto já entrou no baseline compartilhado;
+- packing por budget de tokens já está ativo no `turn_router` e no `public_answer_composer`;
+- os adapters locais e a camada de answer experience já começaram a convergir para o mesmo baseline de packing;
+- a memória episódica de curto prazo já aproveita `recent_tool_calls` e `slot_memory` para reforçar follow-up e carryover;
+- a próxima fronteira de ROI continua sendo memória episódica e tuning de retrieval, não compressão avançada de `KV cache`.
+
+### Avaliação de `TurboQuant`
+
+- forte como técnica de compressão de `KV cache`;
+- promissora para Gemma em contextos realmente longos;
+- mas ainda de baixo ROI imediato para o baseline local atual, que não depende de prompts enormes na maior parte dos turnos.
+
+### Avaliação de `TriAttention`
+
+- forte como pesquisa para `long reasoning`;
+- pior ajuste pragmático para o projeto hoje, por depender de stack e calibração mais especializados;
+- deve ser tratada como trilha experimental separada, não como próximo passo natural do baseline.
+
 ## 8. Evals
 
 A literatura e a documentação atual reforçam que sistemas de IA confiáveis exigem avaliação contínua.

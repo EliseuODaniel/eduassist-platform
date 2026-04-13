@@ -19,15 +19,6 @@ from .intent_analysis_runtime import (
     _wants_academic_grade_requirement,
 )
 from .reply_experience_runtime import _wants_visual_response
-from .public_act_rules_runtime import (
-    _is_public_calendar_event_query,
-    _is_public_capacity_query,
-    _is_public_policy_query,
-    _is_public_timeline_query,
-    _matches_public_contact_rule,
-    _matches_public_highlight_rule,
-    _matches_public_location_rule,
-)
 from .public_known_unknowns import detect_public_known_unknown_key
 from .protected_summary_runtime import (
     _administrative_checklist_lines,
@@ -48,6 +39,40 @@ def _export_runtime_core_namespace() -> None:
 
 
 _export_runtime_core_namespace()
+
+
+def _public_act_rules_impl(name: str):
+    from . import public_act_rules_runtime as _public_act_rules_runtime
+
+    return getattr(_public_act_rules_runtime, name)
+
+
+def _is_public_calendar_event_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_calendar_event_query')(message)
+
+
+def _is_public_capacity_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_capacity_query')(message)
+
+
+def _is_public_policy_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_policy_query')(message)
+
+
+def _is_public_timeline_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_timeline_query')(message)
+
+
+def _matches_public_contact_rule(message: str) -> bool:
+    return _public_act_rules_impl('_matches_public_contact_rule')(message)
+
+
+def _matches_public_highlight_rule(message: str) -> bool:
+    return _public_act_rules_impl('_matches_public_highlight_rule')(message)
+
+
+def _matches_public_location_rule(message: str) -> bool:
+    return _public_act_rules_impl('_matches_public_location_rule')(message)
 
 
 def _public_profile_impl(name: str):

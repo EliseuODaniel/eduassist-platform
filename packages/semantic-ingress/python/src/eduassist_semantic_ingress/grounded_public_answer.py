@@ -7,6 +7,13 @@ from typing import Any
 import httpx
 from openai import AsyncOpenAI
 
+from .context_budget import (
+    ContextBudgetSnapshot,
+    build_context_section_budget,
+    estimate_text_tokens,
+    pack_context_items,
+    record_context_budget,
+)
 from eduassist_observability import (
     extract_google_usage,
     extract_openai_usage,
@@ -141,17 +148,25 @@ def _openai_message_text(message_content: Any) -> str | None:
     return merged or None
 
 
-def _recent_messages_block(conversation_context: dict[str, Any] | None, *, limit: int = 4) -> str:
+def _grounded_public_history_budget_tokens(settings: Any) -> int:
+    return max(64, int(getattr(settings, "grounded_public_history_budget_tokens", 180) or 180))
+
+
+def _grounded_public_evidence_budget_tokens(settings: Any) -> int:
+    return max(96, int(getattr(settings, "grounded_public_evidence_budget_tokens", 320) or 320))
+
+
+def _recent_message_lines(conversation_context: dict[str, Any] | None) -> list[str]:
     lines: list[str] = []
     if isinstance(conversation_context, dict):
-        for item in (conversation_context.get("recent_messages") or [])[-limit:]:
+        for item in conversation_context.get("recent_messages") or []:
             if not isinstance(item, dict):
                 continue
             sender = str(item.get("sender_type", "desconhecido")).strip()
             content = str(item.get("content", "")).strip()
             if content:
                 lines.append(f"- {sender}: {content}")
-    return "\n".join(lines) or "- nenhum"
+    return lines
 
 
 def _school_name(school_profile: dict[str, Any] | None) -> str:
@@ -160,6 +175,7 @@ def _school_name(school_profile: dict[str, Any] | None) -> str:
 
 def _build_sections(
     *,
+    settings: Any,
     stack_label: str,
     request_message: str,
     draft_text: str,
@@ -167,8 +183,18 @@ def _build_sections(
     evidence_lines: list[str],
     conversation_context: dict[str, Any] | None,
     school_profile: dict[str, Any] | None,
-) -> tuple[str, str]:
-    evidence_block = "\n".join(f"- {line}" for line in evidence_lines[:10]) or "- nenhuma evidencia"
+) -> tuple[str, str, Any, Any]:
+    history_budget = pack_context_items(
+        _recent_message_lines(conversation_context),
+        token_budget=_grounded_public_history_budget_tokens(settings),
+        empty_text="- nenhum",
+        keep_last=True,
+    )
+    evidence_budget = pack_context_items(
+        [f"- {line}" for line in evidence_lines if str(line).strip()],
+        token_budget=_grounded_public_evidence_budget_tokens(settings),
+        empty_text="- nenhuma evidencia",
+    )
     requested_attribute = str((public_plan or {}).get("requested_attribute") or "").strip().lower() or "none"
     instructions = (
         f"Voce e o compositor grounded de respostas publicas do caminho {stack_label} no EduAssist. "
@@ -206,11 +232,42 @@ def _build_sections(
         f"Escola:\n{_school_name(school_profile)}\n\n"
         f"Pergunta do usuario:\n{request_message}\n\n"
         f"Plano publico:\n{json.dumps(public_plan or {}, ensure_ascii=False)}\n\n"
-        f"Historico recente:\n{_recent_messages_block(conversation_context)}\n\n"
-        f"Evidencias:\n{evidence_block}\n\n"
+        f"Historico recente:\n{history_budget.rendered_text}\n\n"
+        f"Evidencias:\n{evidence_budget.rendered_text}\n\n"
         f"Rascunho grounded atual:\n{draft_text}"
     )
-    return instructions, prompt
+    return instructions, prompt, history_budget, evidence_budget
+
+
+def _record_public_answer_context_budget(
+    *,
+    stack_label: str,
+    request_message: str,
+    draft_text: str,
+    instructions: str,
+    prompt: str,
+    history_budget: Any,
+    evidence_budget: Any,
+) -> None:
+    snapshot = ContextBudgetSnapshot(
+        pipeline="public_answer_composer",
+        stack_label=stack_label,
+        estimated_prompt_tokens=estimate_text_tokens(prompt),
+        estimated_instruction_tokens=estimate_text_tokens(instructions),
+        estimated_request_tokens=estimate_text_tokens(request_message),
+        estimated_draft_tokens=estimate_text_tokens(draft_text),
+        history=build_context_section_budget(
+            rendered_text=history_budget.rendered_text,
+            total_items=history_budget.total_items,
+            used_items=history_budget.used_items,
+        ),
+        evidence=build_context_section_budget(
+            rendered_text=evidence_budget.rendered_text,
+            total_items=evidence_budget.total_items,
+            used_items=evidence_budget.used_items,
+        ),
+    )
+    record_context_budget(snapshot)
 
 
 def _answer_text_from_model_output(raw_text: str | None) -> str | None:
@@ -446,7 +503,8 @@ async def compose_grounded_public_answer_with_provider(
         return None
     if not [line for line in evidence_lines if str(line).strip()]:
         return None
-    instructions, prompt = _build_sections(
+    instructions, prompt, history_budget, evidence_budget = _build_sections(
+        settings=settings,
         stack_label=stack_label,
         request_message=request_message,
         draft_text=draft_text,
@@ -454,6 +512,15 @@ async def compose_grounded_public_answer_with_provider(
         evidence_lines=evidence_lines,
         conversation_context=conversation_context,
         school_profile=school_profile,
+    )
+    _record_public_answer_context_budget(
+        stack_label=stack_label,
+        request_message=request_message,
+        draft_text=draft_text,
+        instructions=instructions,
+        prompt=prompt,
+        history_budget=history_budget,
+        evidence_budget=evidence_budget,
     )
     provider = _resolve_provider(settings)
     answer_text: str | None = None

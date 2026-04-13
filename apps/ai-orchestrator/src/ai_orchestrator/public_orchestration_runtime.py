@@ -12,24 +12,6 @@ from .conversation_focus_runtime import (
     _recent_workflow_focus,
 )
 from eduassist_semantic_ingress import looks_like_high_confidence_public_school_faq
-from .public_act_rules_runtime import (
-    _is_service_routing_query,
-    _is_public_capacity_query,
-    _is_public_careers_query,
-    _is_public_curriculum_query,
-    _is_public_document_submission_query,
-    _is_public_feature_query,
-    _is_public_policy_query,
-    _is_public_pricing_navigation_query,
-    _is_public_timeline_lifecycle_query,
-    _is_public_timeline_query,
-    _is_leadership_specific_query,
-    _matches_public_contact_rule,
-    _matches_public_highlight_rule,
-    _matches_public_location_rule,
-    _matched_public_act_rules,
-    _prioritize_public_act_rules,
-)
 
 
 LOCAL_EXTRACTED_NAMES = {
@@ -63,6 +45,12 @@ def _intent_analysis_impl(name: str):
     from . import intent_analysis_runtime as _intent_analysis_runtime
 
     return getattr(_intent_analysis_runtime, name)
+
+
+def _public_act_rules_impl(name: str):
+    from . import public_act_rules_runtime as _public_act_rules_runtime
+
+    return getattr(_public_act_rules_runtime, name)
 
 
 def _looks_like_family_admin_aggregate_query(message: str) -> bool:
@@ -127,6 +115,77 @@ def _looks_like_workflow_resume_follow_up(message: str) -> bool:
     from .analysis_context_runtime import _looks_like_workflow_resume_follow_up as _impl
 
     return _impl(message)
+
+
+def _is_service_routing_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_service_routing_query')(message)
+
+
+def _is_public_capacity_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_capacity_query')(message)
+
+
+def _is_public_careers_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_careers_query')(message)
+
+
+def _is_public_curriculum_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_curriculum_query')(message)
+
+
+def _is_public_document_submission_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_document_submission_query')(message)
+
+
+def _is_public_feature_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_feature_query')(message)
+
+
+def _is_public_policy_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_policy_query')(message)
+
+
+def _is_public_pricing_navigation_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_pricing_navigation_query')(message)
+
+
+def _is_public_timeline_lifecycle_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_timeline_lifecycle_query')(message)
+
+
+def _is_public_timeline_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_timeline_query')(message)
+
+
+def _is_leadership_specific_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_leadership_specific_query')(message)
+
+
+def _matches_public_contact_rule(message: str) -> bool:
+    return _public_act_rules_impl('_matches_public_contact_rule')(message)
+
+
+def _matches_public_highlight_rule(message: str) -> bool:
+    return _public_act_rules_impl('_matches_public_highlight_rule')(message)
+
+
+def _matches_public_location_rule(message: str) -> bool:
+    return _public_act_rules_impl('_matches_public_location_rule')(message)
+
+
+def _matched_public_act_rules(
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+):
+    return _public_act_rules_impl('_matched_public_act_rules')(
+        message,
+        conversation_context=conversation_context,
+    )
+
+
+def _prioritize_public_act_rules(matched_rules):
+    return _public_act_rules_impl('_prioritize_public_act_rules')(matched_rules)
 
 
 def _detect_visit_booking_action(message: str) -> str | None:

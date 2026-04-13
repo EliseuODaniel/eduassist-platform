@@ -8,41 +8,126 @@ LOCAL_EXTRACTED_NAMES = {'_compose_public_feature_answer', '_try_public_channel_
 
 from . import public_profile_runtime as _native
 from .intent_analysis_runtime import _compose_required_documents_answer, _detect_public_pricing_price_kind, _is_auth_guidance_query, _is_follow_up_query, _is_positive_requirement_query, _message_matches_term, _normalize_text, _should_reuse_public_pricing_slots
-from .public_act_rules_runtime import (
-    _is_comparative_query,
-    _is_cross_document_public_query,
-    _is_leadership_specific_query,
-    _is_public_bolsas_and_processes_query,
-    _is_public_calendar_visibility_query,
-    _is_public_curriculum_query,
-    _is_public_document_submission_query,
-    _is_public_family_new_calendar_enrollment_query,
-    _is_public_feature_query,
-    _is_public_first_month_risks_query,
-    _is_public_health_authorization_bridge_query,
-    _is_public_health_second_call_query,
-    _is_public_operating_hours_query,
-    _is_public_permanence_family_query,
-    _is_public_policy_compare_query,
-    _is_public_policy_query,
-    _is_public_pricing_navigation_query,
-    _is_public_process_compare_query,
-    _is_public_service_credentials_bundle_query,
-    _is_public_timeline_before_after_query,
-    _is_public_timeline_lifecycle_query,
-    _is_public_timeline_query,
-    _is_public_travel_planning_query,
-    _is_public_year_three_phase_query,
-    _is_service_routing_query,
-    _matches_public_location_rule,
-    _matches_public_schedule_rule,
-)
 
 def _refresh_native_namespace() -> None:
     for name, value in vars(_native).items():
         if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
             continue
         globals()[name] = value
+
+
+def _public_act_rules_impl(name: str):
+    from . import public_act_rules_runtime as _public_act_rules_runtime
+
+    return getattr(_public_act_rules_runtime, name)
+
+
+def _is_comparative_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_comparative_query')(message)
+
+
+def _is_cross_document_public_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_cross_document_public_query')(message)
+
+
+def _is_leadership_specific_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_leadership_specific_query')(message)
+
+
+def _is_public_bolsas_and_processes_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_bolsas_and_processes_query')(message)
+
+
+def _is_public_calendar_visibility_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_calendar_visibility_query')(message)
+
+
+def _is_public_curriculum_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_curriculum_query')(message)
+
+
+def _is_public_document_submission_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_document_submission_query')(message)
+
+
+def _is_public_family_new_calendar_enrollment_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_family_new_calendar_enrollment_query')(message)
+
+
+def _is_public_feature_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_feature_query')(message)
+
+
+def _is_public_first_month_risks_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_first_month_risks_query')(message)
+
+
+def _is_public_health_authorization_bridge_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_health_authorization_bridge_query')(message)
+
+
+def _is_public_health_second_call_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_health_second_call_query')(message)
+
+
+def _is_public_operating_hours_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_operating_hours_query')(message)
+
+
+def _is_public_permanence_family_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_permanence_family_query')(message)
+
+
+def _is_public_policy_compare_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_policy_compare_query')(message)
+
+
+def _is_public_policy_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_policy_query')(message)
+
+
+def _is_public_pricing_navigation_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_pricing_navigation_query')(message)
+
+
+def _is_public_process_compare_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_process_compare_query')(message)
+
+
+def _is_public_service_credentials_bundle_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_service_credentials_bundle_query')(message)
+
+
+def _is_public_timeline_before_after_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_timeline_before_after_query')(message)
+
+
+def _is_public_timeline_lifecycle_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_timeline_lifecycle_query')(message)
+
+
+def _is_public_timeline_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_timeline_query')(message)
+
+
+def _is_public_travel_planning_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_travel_planning_query')(message)
+
+
+def _is_public_year_three_phase_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_year_three_phase_query')(message)
+
+
+def _is_service_routing_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_service_routing_query')(message)
+
+
+def _matches_public_location_rule(message: str) -> bool:
+    return _public_act_rules_impl('_matches_public_location_rule')(message)
+
+
+def _matches_public_schedule_rule(message: str) -> bool:
+    return _public_act_rules_impl('_matches_public_schedule_rule')(message)
 
 def _compose_public_feature_answer_impl(
     *,

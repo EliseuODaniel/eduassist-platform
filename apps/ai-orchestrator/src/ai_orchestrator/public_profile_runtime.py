@@ -31,15 +31,8 @@ from .intent_analysis_runtime import (
     _message_matches_term,
     _requested_operating_hours_attribute,
 )
-from .public_act_rules_runtime import (
-    _has_public_multi_intent_signal,
-    _match_public_act_rule,
-    _matched_public_act_rules,
-    _prioritize_public_act_rules,
-)
 from .analysis_context_runtime import _extract_recent_assistant_message, _extract_recent_user_message
 from .intent_analysis_runtime import _extract_salient_terms
-from .public_act_rules_runtime import _looks_like_public_documentary_open_query, _matches_public_contact_rule
 from .public_orchestration_runtime import _build_public_institution_plan, _should_use_public_open_documentary_synthesis
 from .student_scope_runtime import _compose_public_access_scope_answer
 
@@ -54,8 +47,45 @@ def _export_runtime_core_namespace() -> None:
 _export_runtime_core_namespace()
 
 
+def _public_act_rules_impl(name: str):
+    from . import public_act_rules_runtime as _public_act_rules_runtime
+
+    return getattr(_public_act_rules_runtime, name)
+
+
 def _llm_forced_mode_enabled(*args, **kwargs):
     return getattr(_runtime_core, '_llm_forced_mode_enabled')(*args, **kwargs)
+
+
+def _has_public_multi_intent_signal(message: str) -> bool:
+    return _public_act_rules_impl('_has_public_multi_intent_signal')(message)
+
+
+def _match_public_act_rule(message: str):
+    return _public_act_rules_impl('_match_public_act_rule')(message)
+
+
+def _matched_public_act_rules(
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+):
+    return _public_act_rules_impl('_matched_public_act_rules')(
+        message,
+        conversation_context=conversation_context,
+    )
+
+
+def _prioritize_public_act_rules(matched_rules):
+    return _public_act_rules_impl('_prioritize_public_act_rules')(matched_rules)
+
+
+def _looks_like_public_documentary_open_query(message: str) -> bool:
+    return _public_act_rules_impl('_looks_like_public_documentary_open_query')(message)
+
+
+def _matches_public_contact_rule(message: str) -> bool:
+    return _public_act_rules_impl('_matches_public_contact_rule')(message)
 
 
 def _is_public_school_name_query(message: str) -> bool:

@@ -9,6 +9,14 @@ import httpx
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
+from .context_budget import (
+    ContextBudgetSnapshot,
+    build_context_section_budget,
+    estimate_text_tokens,
+    pack_context_items,
+    pack_context_json_items,
+    record_context_budget,
+)
 from .runtime import (
     _extract_json_object,
     _preview_compact,
@@ -55,6 +63,12 @@ class FocusFrame(BaseModel):
     domain: str | None = None
     access_tier: str | None = None
     scope: TurnScope = "unknown"
+    active_entity: str | None = None
+    active_attribute: str | None = None
+    active_actor: str | None = None
+    pending_question_type: str | None = None
+    requested_channel: str | None = None
+    time_reference: str | None = None
     source: str = "none"
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     recent_user_message: str | None = None
@@ -515,6 +529,115 @@ def _normalize_lines(conversation_context: dict[str, Any] | None) -> list[tuple[
     return lines
 
 
+def _recent_trace_slot_memory(conversation_context: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not isinstance(conversation_context, dict):
+        return None
+    recent_tool_calls = conversation_context.get("recent_tool_calls")
+    if not isinstance(recent_tool_calls, list):
+        return None
+    for item in reversed(recent_tool_calls[-8:]):
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("tool_name") or "").strip() != "orchestration.trace":
+            continue
+        request_payload = item.get("request_payload")
+        if not isinstance(request_payload, dict):
+            continue
+        slot_memory = request_payload.get("slot_memory")
+        if isinstance(slot_memory, dict) and slot_memory:
+            return slot_memory
+    return None
+
+
+def _focus_frame_from_trace(conversation_context: dict[str, Any] | None) -> FocusFrame | None:
+    slot_memory = _recent_trace_slot_memory(conversation_context)
+    if not isinstance(slot_memory, dict):
+        return None
+    active_task = str(slot_memory.get("active_task") or "").strip().lower()
+    public_entity = str(
+        slot_memory.get("public_entity")
+        or slot_memory.get("active_entity")
+        or ""
+    ).strip() or None
+    active_attribute = str(
+        slot_memory.get("public_attribute")
+        or slot_memory.get("finance_attribute")
+        or slot_memory.get("academic_attribute")
+        or slot_memory.get("admin_attribute")
+        or ""
+    ).strip() or None
+    active_actor = str(
+        slot_memory.get("student_name")
+        or slot_memory.get("finance_student_name")
+        or slot_memory.get("academic_student_name")
+        or ""
+    ).strip() or None
+    pending_question_type = str(slot_memory.get("pending_question_type") or "").strip() or None
+    requested_channel = str(slot_memory.get("requested_channel") or "").strip() or None
+    time_reference = str(slot_memory.get("time_reference") or "").strip() or None
+    capability_id = None
+    if public_entity == "library" or active_task == "public:operating_hours":
+        capability_id = "public.facilities.library.hours"
+    elif active_task == "public:pricing":
+        capability_id = "public.enrollment.pricing"
+    elif active_task == "public:leadership":
+        capability_id = "public.contacts.leadership"
+    elif active_task == "finance:summary":
+        capability_id = "protected.finance.summary"
+    elif active_task == "finance:next_due" or active_attribute == "next_due":
+        capability_id = "protected.finance.next_due"
+    elif active_task == "academic:grades":
+        capability_id = "protected.academic.grades"
+    elif active_task == "academic:attendance":
+        capability_id = "protected.academic.attendance"
+    if active_task.startswith("finance:"):
+        return FocusFrame(
+            capability_id=capability_id,
+            domain="finance",
+            access_tier="sensitive",
+            scope="protected",
+            active_entity=public_entity,
+            active_attribute=active_attribute,
+            active_actor=active_actor,
+            pending_question_type=pending_question_type,
+            requested_channel=requested_channel,
+            time_reference=time_reference,
+            source="recent_trace",
+            confidence=0.84,
+        )
+    if active_task.startswith("academic:"):
+        return FocusFrame(
+            capability_id=capability_id,
+            domain="academic",
+            access_tier="authenticated",
+            scope="protected",
+            active_entity=public_entity,
+            active_attribute=active_attribute,
+            active_actor=active_actor,
+            pending_question_type=pending_question_type,
+            requested_channel=requested_channel,
+            time_reference=time_reference,
+            source="recent_trace",
+            confidence=0.84,
+        )
+    if active_task.startswith("public:") or public_entity or active_attribute:
+        return FocusFrame(
+            capability_id=capability_id,
+            domain="institution",
+            access_tier="public",
+            scope="public",
+            active_entity=public_entity,
+            active_attribute=active_attribute,
+            active_actor=active_actor,
+            pending_question_type=pending_question_type,
+            requested_channel=requested_channel,
+            time_reference=time_reference,
+            source="recent_trace",
+            confidence=0.78,
+        )
+    return None
+
+
 def _looks_like_follow_up(normalized_message: str) -> bool:
     if not normalized_message:
         return False
@@ -552,6 +675,14 @@ def derive_focus_frame(
     recent_lines = _normalize_lines(conversation_context)
     recent_user_message = next((content for sender, content in reversed(recent_lines) if sender == "user"), None)
     recent_assistant_message = next((content for sender, content in reversed(recent_lines) if sender == "assistant"), None)
+    traced_focus = _focus_frame_from_trace(conversation_context)
+    if traced_focus is not None:
+        return traced_focus.model_copy(
+            update={
+                "recent_user_message": recent_user_message,
+                "recent_assistant_message": recent_assistant_message,
+            }
+        )
     for source_name, message in (
         ("recent_user", recent_user_message),
         ("recent_assistant", recent_assistant_message),
@@ -573,6 +704,8 @@ def derive_focus_frame(
             domain=top.domain,
             access_tier=top.access_tier,
             scope=top.scope,
+            active_attribute=top.requested_attribute,
+            active_entity=top.public_focus_hint,
             source=source_name,
             confidence=min(0.95, 0.45 + top.score / 10.0),
             recent_user_message=recent_user_message,
@@ -631,6 +764,26 @@ def build_capability_candidates(
         elif focus.domain == spec.domain and focus.scope == spec.scope and follow_up:
             score += 1.2
             reasons.append("follow_up_same_domain")
+        if follow_up and focus.active_entity:
+            entity_normalized = normalize_ingress_text(focus.active_entity)
+            if entity_normalized and _contains_term(normalized, entity_normalized):
+                score += 1.4
+                reasons.append("follow_up_same_entity")
+        requested_attribute = _requested_attribute_for_spec(
+            spec=spec,
+            normalized_message=normalized,
+        )
+        if follow_up and focus.active_attribute and requested_attribute == focus.active_attribute:
+            score += 0.9
+            reasons.append("follow_up_same_attribute")
+        if (
+            follow_up
+            and focus.scope == "protected"
+            and focus.active_actor
+            and spec.scope == "protected"
+        ):
+            score += 0.6
+            reasons.append("follow_up_same_actor")
         if spec.scope == "public" and any(
             _contains_term(normalized, alias) for alias in ("escola", "colegio", "colégio")
         ):
@@ -647,10 +800,7 @@ def build_capability_candidates(
                 reason=";".join(reasons) or "alias_match",
                 public_conversation_act=spec.public_conversation_act,
                 public_focus_hint=spec.public_focus_hint,
-                requested_attribute=_requested_attribute_for_spec(
-                    spec=spec,
-                    normalized_message=normalized,
-                ),
+                requested_attribute=requested_attribute,
             )
         )
     candidates.sort(key=lambda item: (-item.score, item.capability_id))
@@ -750,29 +900,33 @@ def _router_instructions(stack_label: str) -> str:
     )
 
 
+def _semantic_router_history_budget_tokens(settings: Any) -> int:
+    return max(64, int(getattr(settings, "semantic_router_history_budget_tokens", 180) or 180))
+
+
+def _semantic_router_candidate_budget_tokens(settings: Any) -> int:
+    return max(96, int(getattr(settings, "semantic_router_candidate_budget_tokens", 220) or 220))
+
+
+def _recent_history_lines(conversation_context: dict[str, Any] | None) -> list[str]:
+    history_block = _recent_messages(conversation_context, limit=32)
+    if not history_block or history_block.strip() == "- nenhum":
+        return []
+    return [line for line in history_block.splitlines() if line.strip()]
+
+
 def _router_prompt(
     *,
     request_message: str,
-    conversation_context: dict[str, Any] | None,
     preview: dict[str, Any] | None,
-    candidates: list[CapabilityCandidate],
+    history_block: str,
+    candidates_payload: list[dict[str, Any]],
     focus: FocusFrame,
 ) -> str:
-    candidates_payload = [
-        {
-            "capability_id": candidate.capability_id,
-            "domain": candidate.domain,
-            "access_tier": candidate.access_tier,
-            "scope": candidate.scope,
-            "reason": candidate.reason,
-            "score": round(candidate.score, 2),
-        }
-        for candidate in candidates
-    ]
     return (
         "Escolha a capability mais adequada para o turno atual.\n\n"
         f"Preview atual:\n{_preview_compact(preview)}\n\n"
-        f"Historico recente:\n{_recent_messages(conversation_context)}\n\n"
+        f"Historico recente:\n{history_block}\n\n"
         f"Focus frame:\n{json.dumps(focus.model_dump(mode='json'), ensure_ascii=False, sort_keys=True)}\n\n"
         f"Candidatas:\n{json.dumps(candidates_payload, ensure_ascii=False, sort_keys=True)}\n\n"
         f"Mensagem atual:\n{request_message}\n\n"
@@ -783,6 +937,42 @@ def _router_prompt(
         "- perguntas como 'qual o proximo vencimento' so vao para protegido se houver contexto financeiro recente ou ancoras pessoais.\n"
         "- se a escolha mais segura for pedir esclarecimento, use capability_id=none e needs_clarification=true."
     )
+
+
+def _record_turn_router_context_budget(
+    *,
+    stack_label: str,
+    request_message: str,
+    instructions: str,
+    prompt: str,
+    history_budget: Any,
+    candidate_budget: Any,
+    preview: dict[str, Any] | None,
+    focus: FocusFrame,
+) -> None:
+    snapshot = ContextBudgetSnapshot(
+        pipeline="turn_router",
+        stack_label=stack_label,
+        estimated_prompt_tokens=estimate_text_tokens(prompt),
+        estimated_instruction_tokens=estimate_text_tokens(instructions),
+        estimated_request_tokens=estimate_text_tokens(request_message),
+        estimated_candidate_tokens=candidate_budget.estimated_tokens,
+        candidate_count=candidate_budget.total_items,
+        history=build_context_section_budget(
+            rendered_text=history_budget.rendered_text,
+            total_items=history_budget.total_items,
+            used_items=history_budget.used_items,
+        ),
+    )
+    record_context_budget(snapshot)
+    preview_reason = str((preview or {}).get("reason") or "").strip()
+    if preview_reason or focus.capability_id:
+        extra_attrs: dict[str, Any] = {}
+        if preview_reason:
+            extra_attrs["eduassist.context.preview_reason"] = preview_reason
+        if focus.capability_id:
+            extra_attrs["eduassist.context.focus_capability_id"] = focus.capability_id
+        set_span_attributes(**extra_attrs)
 
 
 async def _turn_router_text_call(
@@ -796,11 +986,43 @@ async def _turn_router_text_call(
     focus: FocusFrame,
 ) -> str | None:
     instructions = _router_instructions(stack_label)
+    history_budget = pack_context_items(
+        _recent_history_lines(conversation_context),
+        token_budget=_semantic_router_history_budget_tokens(settings),
+        empty_text="- nenhum",
+        keep_last=True,
+    )
+    candidate_payloads = [
+        {
+            "capability_id": candidate.capability_id,
+            "domain": candidate.domain,
+            "access_tier": candidate.access_tier,
+            "scope": candidate.scope,
+            "reason": candidate.reason,
+            "score": round(candidate.score, 2),
+        }
+        for candidate in candidates
+    ]
+    packed_candidates, candidate_budget = pack_context_json_items(
+        candidate_payloads,
+        token_budget=_semantic_router_candidate_budget_tokens(settings),
+        empty_text="[]",
+    )
     prompt = _router_prompt(
         request_message=request_message,
-        conversation_context=conversation_context,
         preview=preview,
-        candidates=candidates,
+        history_block=history_budget.rendered_text,
+        candidates_payload=packed_candidates,
+        focus=focus,
+    )
+    _record_turn_router_context_budget(
+        stack_label=stack_label,
+        request_message=request_message,
+        instructions=instructions,
+        prompt=prompt,
+        history_budget=history_budget,
+        candidate_budget=candidate_budget,
+        preview=preview,
         focus=focus,
     )
     provider = str(getattr(settings, "llm_provider", "openai") or "openai").strip().lower()

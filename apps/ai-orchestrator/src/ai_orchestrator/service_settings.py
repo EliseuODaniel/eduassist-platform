@@ -179,6 +179,13 @@ class Settings(BaseSettings):
     feature_flag_context_repair_enabled: bool = True
     feature_flag_context_repair_stacks: str = 'langgraph,llamaindex,python_functions,specialist_supervisor'
     feature_flag_context_repair_retry_top_k: int = 6
+    semantic_router_history_budget_tokens: int = 180
+    semantic_router_candidate_budget_tokens: int = 220
+    grounded_public_history_budget_tokens: int = 180
+    grounded_public_evidence_budget_tokens: int = 320
+    stack_local_llm_history_budget_tokens: int = 220
+    stack_local_llm_evidence_budget_tokens: int = 360
+    stack_local_llm_calendar_budget_tokens: int = 140
     answer_experience_provider: str | None = None
     answer_experience_openai_api_key: str | None = None
     answer_experience_openai_base_url: str | None = None

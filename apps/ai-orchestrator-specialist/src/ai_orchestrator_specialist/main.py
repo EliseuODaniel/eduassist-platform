@@ -179,6 +179,10 @@ class Settings(BaseSettings):
     retrieval_deep_candidate_pool_size: int = 22
     retrieval_rerank_fused_weight: float = 0.35
     retrieval_rerank_late_interaction_weight: float = 0.65
+    semantic_router_history_budget_tokens: int = 180
+    semantic_router_candidate_budget_tokens: int = 220
+    grounded_public_history_budget_tokens: int = 180
+    grounded_public_evidence_budget_tokens: int = 320
 
     @model_validator(mode="after")
     def _apply_llm_model_profile(self) -> "Settings":

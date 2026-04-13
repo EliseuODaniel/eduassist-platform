@@ -16,17 +16,6 @@ from .conversation_focus_runtime import (
     _recent_trace_focus,
     _recent_workflow_focus,
 )
-from .public_act_rules_runtime import (
-    _is_assistant_identity_query,
-    _is_auth_guidance_query,
-    _is_capability_query,
-    _is_follow_up_query,
-    _is_greeting_only,
-    _is_public_feature_query,
-    _is_public_pricing_navigation_query,
-    _is_service_routing_query,
-    _requested_public_features,
-)
 from .public_orchestration_runtime import _extract_requested_date, _extract_requested_window
 from .public_profile_runtime import (
     _feature_suggestion_replies,
@@ -43,6 +32,48 @@ def _export_runtime_core_namespace() -> None:
 
 
 _export_runtime_core_namespace()
+
+
+def _public_act_rules_impl(name: str):
+    from . import public_act_rules_runtime as _public_act_rules_runtime
+
+    return getattr(_public_act_rules_runtime, name)
+
+
+def _is_assistant_identity_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_assistant_identity_query')(message)
+
+
+def _is_auth_guidance_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_auth_guidance_query')(message)
+
+
+def _is_capability_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_capability_query')(message)
+
+
+def _is_follow_up_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_follow_up_query')(message)
+
+
+def _is_greeting_only(message: str) -> bool:
+    return _public_act_rules_impl('_is_greeting_only')(message)
+
+
+def _is_public_feature_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_feature_query')(message)
+
+
+def _is_public_pricing_navigation_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_public_pricing_navigation_query')(message)
+
+
+def _is_service_routing_query(message: str) -> bool:
+    return _public_act_rules_impl('_is_service_routing_query')(message)
+
+
+def _requested_public_features(message: str) -> tuple[str, ...]:
+    return _public_act_rules_impl('_requested_public_features')(message)
 
 
 def _detect_visit_booking_action(message: str) -> str | None:

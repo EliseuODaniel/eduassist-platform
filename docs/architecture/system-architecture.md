@@ -144,6 +144,33 @@ A arquitetura de retrieval atual combina:
 
 `GraphRAG` continua seletivo, nunca padrão cego.
 
+## Estratégia de contexto local com Gemma
+
+O projeto não trata a janela máxima do modelo como objetivo em si. A estratégia arquitetural para `Gemma 4 E4B` local é:
+
+- `retrieval-first`, não `stuff-everything-in-context`;
+- histórico curto e memória explícita antes de histórico bruto longo;
+- packing de evidência por budget de tokens, não por contagem fixa de linhas;
+- aumento gradual de contexto apenas nas rotas em que isso mostrar ganho mensurável.
+
+Isso implica:
+
+- telemetria de contexto e truncamento por stack;
+- `evidence packing` compartilhado e orientado a resposta;
+- memória curta/episódica compartilhada para follow-up;
+- rerank e seleção de trechos calibrados por capability;
+- composição grounded que adapte a resposta ao foco da pergunta sem despejar toda a evidência disponível.
+
+Baseline atual implementado:
+
+- `turn_router` com packing por budget para histórico e candidatas;
+- `public_answer_composer` com packing por budget para histórico e evidência;
+- adapters locais com packing compartilhado para histórico, evidência e blocos estruturados;
+- `FocusFrame` enriquecido com memória episódica vinda de `recent_tool_calls` e `slot_memory`;
+- budgets iniciais explícitos e configuráveis nas settings dos runtimes.
+
+Técnicas de memória longa baseadas em compressão de `KV cache`, como `TurboQuant` e `TriAttention`, ficam fora do baseline atual. Elas só entram em avaliação se os ganhos acima se esgotarem e o sistema passar a depender materialmente de janelas muito maiores no serving local.
+
 ## Observabilidade
 
 O stack observável atual é:

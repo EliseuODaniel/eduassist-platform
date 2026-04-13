@@ -5,7 +5,12 @@ from __future__ import annotations
 LOCAL_EXTRACTED_NAMES = {'match_public_canonical_lane'}
 
 from . import public_doc_knowledge as _native
-from .public_act_rules_runtime import _is_leadership_specific_query
+
+
+def _is_leadership_specific_query(message: str) -> bool:
+    from . import public_act_rules_runtime as _public_act_rules_runtime
+
+    return _public_act_rules_runtime._is_leadership_specific_query(message)
 
 
 def _refresh_native_namespace() -> None:

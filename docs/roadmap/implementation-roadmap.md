@@ -114,6 +114,97 @@ O rollout deve seguir esta ordem:
 8. `specialist adapter`
 9. `legacy heuristic cleanup`
 
+## 1.2 Programa complementar atual - Eficiência de contexto local com Gemma
+
+O baseline local com `Gemma 4 E4B` não deve evoluir por expansão cega de `ctx-size`. O ganho de ROI mais forte vem de usar melhor o contexto disponível com medição explícita, packing melhor, memória curta mais forte e retrieval calibrado por capability.
+
+### Resultado esperado
+
+- mais groundedness e menos truncamento silencioso;
+- melhor aproveitamento do `Gemma` local sem sacrificar latência ou estabilidade;
+- follow-ups mais robustos sem depender de histórico bruto longo;
+- base técnica preparada para, só depois, testar contexto maior ou compressão de KV cache.
+
+### Ordem de rollout
+
+1. telemetria de contexto e truncamento;
+2. evidence packing orientado a budget de tokens;
+3. memória curta e episódica explícita;
+4. tuning de retrieval e rerank por capability;
+5. composição grounded estruturada;
+6. aumento gradual de `ctx-size` por rota;
+7. reavaliação de `TurboQuant` apenas se os passos anteriores saturarem.
+
+### Fase K - Telemetria de contexto
+
+- registrar `prompt_tokens`, `completion_tokens`, `history_tokens`, `evidence_tokens` e truncamento por stack;
+- distinguir custo de histórico, evidência, tools e polish final;
+- expor no trace quando o budget de contexto foi insuficiente para a resposta ideal.
+
+Status atual:
+
+- implementada no `turn_router` e no `public_answer_composer`;
+- o trace agora registra estimativas de tokens para `prompt`, `instructions`, `request`, `history`, `evidence`, `draft` e `candidates`;
+- truncamento de histórico e evidência já é sinalizado como evento operacional explícito.
+
+### Fase L - Evidence packing
+
+- trocar limites implícitos por budget explícito de tokens;
+- deduplicar trechos por documento e fundir chunks adjacentes;
+- priorizar sentenças answer-bearing e evidências com maior valor para a pergunta atual.
+
+Status atual:
+
+- baseline compartilhado implementado no pacote `semantic-ingress`;
+- `turn_router` usa budget de tokens para histórico e payload de candidatas;
+- `public_answer_composer` usa budget de tokens para histórico curto e evidência pública grounded;
+- os adapters locais de `langgraph`, `python_functions` e `llamaindex` já usam o mesmo baseline de packing para histórico, evidência e eventos estruturados;
+- defaults atuais do baseline:
+  - `semantic_router_history_budget_tokens=180`
+  - `semantic_router_candidate_budget_tokens=220`
+  - `grounded_public_history_budget_tokens=180`
+  - `grounded_public_evidence_budget_tokens=320`
+  - `stack_local_llm_history_budget_tokens=220`
+  - `stack_local_llm_evidence_budget_tokens=360`
+  - `stack_local_llm_calendar_budget_tokens=140`
+
+### Fase M - Memória curta e episódica
+
+- consolidar memória curta compartilhada por conversa com entidade ativa, capability ativa, ator/aluno ativo, fatos grounded recentes e slots pendentes;
+- usar resumo episódico curto em vez de histórico bruto sempre que possível;
+- manter fronteira explícita entre memória pública, protegida e operacional.
+
+Status atual:
+
+- `FocusFrame` agora absorve sinais episódicos vindos de `recent_tool_calls`/`orchestration.trace`;
+- o semantic router já preserva `active_entity`, `active_attribute`, `active_actor`, `requested_channel`, `time_reference` e `pending_question_type`;
+- follow-ups curtos agora podem herdar capability e slots recentes com mais precisão, sem depender apenas de match lexical do último turno.
+
+### Fase N - Retrieval e rerank por capability
+
+- calibrar `top-k`, query variants e rerank por família de capability;
+- separar melhor fato direto, síntese documental e busca multi-documento;
+- medir `answerable@k`, groundedness e latência por capability, não apenas score agregado.
+
+### Fase O - Composição grounded mais forte
+
+- evoluir a composição final para um `AnswerFrame` com `direct_answer`, `supported_claims`, `omitted_context` e `uncertainty`;
+- deixar a LLM adaptar a resposta só em cima de evidência auditável;
+- preservar respostas determinísticas em domínios sensíveis.
+
+### Fase P - Contexto maior, com perfilamento
+
+- subir `ctx-size` de forma gradual e reversível, começando por rotas documentais e multi-documento;
+- testar `8K -> 12K -> 16K` antes de qualquer salto maior;
+- só considerar técnicas como `TurboQuant` depois que packing, memória e retrieval estiverem maduros.
+
+### Critérios de aceite do programa complementar
+
+- ganho mensurável de groundedness e answerability sem regressão material de latência;
+- menor taxa de truncamento silencioso;
+- melhora de follow-up curto sem ampliar falsos cruzamentos de domínio;
+- evidência melhor compactada antes de qualquer aumento agressivo de contexto.
+
 ## 2. Fase 0 - Fundação
 
 Objetivos:

@@ -4,6 +4,11 @@ import json
 from typing import Any
 
 from .models import CalendarEventCard, MessageResponseCitation
+from .prompt_packing_runtime import (
+    pack_calendar_lines,
+    pack_evidence_lines,
+    pack_recent_history,
+)
 from .stack_local_llm_common import stack_local_json_call, stack_local_text_call
 
 _STACK_LABEL = 'LangGraph'
@@ -13,40 +18,27 @@ def _school_name(school_profile: dict[str, Any] | None) -> str:
     return str((school_profile or {}).get('school_name') or 'Colegio Horizonte')
 
 
-def _recent_messages(conversation_context: dict[str, Any] | None, *, limit: int = 6) -> str:
-    lines: list[str] = []
-    if isinstance(conversation_context, dict):
-        for item in (conversation_context.get('recent_messages') or [])[-limit:]:
-            if not isinstance(item, dict):
-                continue
-            sender = str(item.get('sender_type', 'desconhecido')).strip()
-            content = str(item.get('content', '')).strip()
-            if content:
-                lines.append(f'- {sender}: {content}')
-    return '\n'.join(lines) or '- nenhum'
-
-
-def _citations_block(citations: list[MessageResponseCitation], context_pack: str | None) -> str:
-    evidence_lines = [
+def _citation_lines(citations: list[MessageResponseCitation], context_pack: str | None) -> list[str]:
+    lines = [
         f'- {citation.document_title}: {citation.excerpt}'
         for citation in citations[:6]
         if str(citation.excerpt).strip()
     ]
     if context_pack:
-        evidence_lines.append(f'- Contexto agrupado: {context_pack}')
-    return '\n'.join(evidence_lines) or '- nenhuma evidencia documental'
+        lines.append(f'Contexto agrupado: {context_pack}')
+    return lines
 
 
-def _calendar_block(calendar_events: list[CalendarEventCard]) -> str:
-    lines = [
+def _calendar_lines(calendar_events: list[CalendarEventCard]) -> list[str]:
+    return [
         f'- {event.title}: {event.description or "sem descricao"} ({event.starts_at.isoformat()} -> {event.ends_at.isoformat()})'
         for event in calendar_events[:4]
     ]
-    return '\n'.join(lines) or '- nenhum evento estruturado'
 
 
 def _compose_sections(
     *,
+    settings: Any,
     request_message: str,
     analysis_message: str,
     preview: Any,
@@ -56,6 +48,20 @@ def _compose_sections(
     school_profile: dict[str, Any] | None,
     context_pack: str | None,
 ) -> tuple[str, str]:
+    history_block = pack_recent_history(
+        settings=settings,
+        conversation_context=conversation_context,
+    )
+    evidence_block = pack_evidence_lines(
+        settings=settings,
+        evidence_lines=_citation_lines(citations, context_pack),
+        empty_text='- nenhuma evidencia documental',
+    )
+    calendar_block = pack_calendar_lines(
+        settings=settings,
+        calendar_lines=_calendar_lines(calendar_events),
+        empty_text='- nenhum evento estruturado',
+    )
     instructions = (
         f'Voce e o compositor final do caminho {_STACK_LABEL} no EduAssist. '
         'Este caminho e stateful e dirigido por grafo, entao preserve o foco atual da conversa e o recorte exato pedido pelo usuario. '
@@ -73,15 +79,16 @@ def _compose_sections(
         f'Modo: {preview.mode.value}\n'
         f'Dominio: {preview.classification.domain.value}\n'
         f'Acesso: {preview.classification.access_tier.value}\n\n'
-        f'Historico recente:\n{_recent_messages(conversation_context)}\n\n'
-        f'Eventos estruturados:\n{_calendar_block(calendar_events)}\n\n'
-        f'Evidencias:\n{_citations_block(citations, context_pack)}'
+        f'Historico recente:\n{history_block}\n\n'
+        f'Eventos estruturados:\n{calendar_block}\n\n'
+        f'Evidencias:\n{evidence_block}'
     )
     return instructions, prompt
 
 
 def _revision_sections(
     *,
+    settings: Any,
     request_message: str,
     preview: Any,
     draft_text: str,
@@ -89,6 +96,10 @@ def _revision_sections(
     school_profile: dict[str, Any] | None,
     purpose: str,
 ) -> tuple[str, str]:
+    history_block = pack_recent_history(
+        settings=settings,
+        conversation_context=conversation_context,
+    )
     instructions = (
         f'Voce esta refinando uma resposta do caminho {_STACK_LABEL}. '
         'Melhore apenas clareza, fluidez e adaptacao ao pedido do usuario. '
@@ -102,7 +113,7 @@ def _revision_sections(
         f'Pergunta do usuario:\n{request_message}\n\n'
         f'Modo: {preview.mode.value}\n'
         f'Dominio: {preview.classification.domain.value}\n\n'
-        f'Historico recente:\n{_recent_messages(conversation_context, limit=4)}\n\n'
+        f'Historico recente:\n{history_block}\n\n'
         f'Rascunho atual:\n{draft_text}'
     )
     return instructions, prompt
@@ -149,6 +160,7 @@ async def compose_langgraph_with_provider(
     context_pack: str | None = None,
 ) -> str | None:
     instructions, prompt = _compose_sections(
+        settings=settings,
         request_message=request_message,
         analysis_message=analysis_message,
         preview=preview,
@@ -178,6 +190,7 @@ async def polish_langgraph_with_provider(
     school_profile: dict[str, Any] | None,
 ) -> str | None:
     instructions, prompt = _revision_sections(
+        settings=settings,
         request_message=request_message,
         preview=preview,
         draft_text=draft_text,
@@ -208,6 +221,7 @@ async def revise_langgraph_with_provider(
     school_profile: dict[str, Any] | None,
 ) -> str | None:
     instructions, prompt = _revision_sections(
+        settings=settings,
         request_message=request_message,
         preview=preview,
         draft_text=draft_text,

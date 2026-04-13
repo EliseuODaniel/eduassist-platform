@@ -15,6 +15,7 @@ from eduassist_observability import (
 )
 
 from .models import CalendarEventCard, MessageResponseCitation
+from .prompt_packing_runtime import pack_evidence_lines, pack_recent_history, pack_recent_history_lines
 
 PROJECT_CONTEXT = (
     'Contexto do projeto EduAssist: voce atua como assistente institucional de uma escola de ensino fundamental II e ensino medio. '
@@ -596,6 +597,7 @@ def _build_public_semantic_resolution_sections(
 
 def _build_public_grounded_composition_sections(
     *,
+    settings: Any,
     request_message: str,
     draft_text: str,
     public_plan: dict[str, Any],
@@ -603,18 +605,16 @@ def _build_public_grounded_composition_sections(
     conversation_context: dict[str, Any] | None,
     school_profile: dict[str, Any] | None,
 ) -> tuple[str, str]:
-    recent_messages = []
-    if isinstance(conversation_context, dict):
-        for item in conversation_context.get('recent_messages', [])[-4:]:
-            if not isinstance(item, dict):
-                continue
-            sender_type = str(item.get('sender_type', 'desconhecido'))
-            content = str(item.get('content', '')).strip()
-            if content:
-                recent_messages.append(f'- {sender_type}: {content}')
-    memory_block = '\n'.join(recent_messages) or 'nenhum'
+    memory_block = pack_recent_history(
+        settings=settings,
+        conversation_context=conversation_context,
+    )
     school_name = str((school_profile or {}).get('school_name') or 'Colegio Horizonte')
-    evidence_block = '\n'.join(f'- {line}' for line in evidence_lines) or '- nenhum'
+    evidence_block = pack_evidence_lines(
+        settings=settings,
+        evidence_lines=evidence_lines,
+        empty_text='- nenhum',
+    )
     instructions = (
         'Voce e o compositor grounded de respostas publicas do EduAssist. '
         f'{PROJECT_CONTEXT} '
@@ -648,6 +648,7 @@ def _build_public_grounded_composition_sections(
 
 def _build_grounded_answer_experience_sections(
     *,
+    settings: Any,
     request_message: str,
     draft_text: str,
     mode: str,
@@ -661,10 +662,15 @@ def _build_grounded_answer_experience_sections(
     focus_summary: str | None = None,
 ) -> tuple[str, str]:
     school_name = str((school_profile or {}).get('school_name') or 'Colegio Horizonte')
-    evidence_block = (
-        '\n'.join(f'- {line}' for line in evidence_lines[:10]) or '- nenhuma evidencia adicional'
+    evidence_block = pack_evidence_lines(
+        settings=settings,
+        evidence_lines=evidence_lines,
+        empty_text='- nenhuma evidencia adicional',
     )
-    memory_block = '\n'.join(f'- {line}' for line in recent_messages[-6:]) or '- nenhum'
+    memory_block = pack_recent_history_lines(
+        settings=settings,
+        recent_messages=recent_messages,
+    )
     tools_block = ', '.join(selected_tools) if selected_tools else 'nenhuma'
     instructions = (
         'Voce e a camada final de experiencia conversacional grounded do EduAssist. '
@@ -706,6 +712,7 @@ def _build_grounded_answer_experience_sections(
 
 def _build_context_repair_sections(
     *,
+    settings: Any,
     request_message: str,
     draft_text: str,
     mode: str,
@@ -720,10 +727,15 @@ def _build_context_repair_sections(
     actor_summary: str | None = None,
 ) -> tuple[str, str]:
     school_name = str((school_profile or {}).get('school_name') or 'Colegio Horizonte')
-    evidence_block = (
-        '\n'.join(f'- {line}' for line in evidence_lines[:10]) or '- nenhuma evidencia adicional'
+    evidence_block = pack_evidence_lines(
+        settings=settings,
+        evidence_lines=evidence_lines,
+        empty_text='- nenhuma evidencia adicional',
     )
-    memory_block = '\n'.join(f'- {line}' for line in recent_messages[-6:]) or '- nenhum'
+    memory_block = pack_recent_history_lines(
+        settings=settings,
+        recent_messages=recent_messages,
+    )
     tools_block = ', '.join(selected_tools) if selected_tools else 'nenhuma'
     instructions = (
         'Voce e o planejador de reparo de contexto e grounding do EduAssist. '
@@ -1353,6 +1365,7 @@ async def compose_public_grounded_with_openai(
     if settings.llm_provider != 'openai' or not settings.openai_api_key:
         return None
     instructions, prompt = _build_public_grounded_composition_sections(
+        settings=settings,
         request_message=request_message,
         draft_text=draft_text,
         public_plan=public_plan,
@@ -1387,6 +1400,7 @@ async def compose_public_grounded_with_google(
     if settings.llm_provider not in {'google', 'gemini'} or not settings.google_api_key:
         return None
     instructions, prompt = _build_public_grounded_composition_sections(
+        settings=settings,
         request_message=request_message,
         draft_text=draft_text,
         public_plan=public_plan,
@@ -1464,6 +1478,7 @@ async def compose_grounded_answer_experience_with_openai(
     if not settings.openai_api_key:
         return None
     instructions, prompt = _build_grounded_answer_experience_sections(
+        settings=settings,
         request_message=request_message,
         draft_text=draft_text,
         mode=mode,
@@ -1508,6 +1523,7 @@ async def compose_grounded_answer_experience_with_google(
     if not settings.google_api_key:
         return None
     instructions, prompt = _build_grounded_answer_experience_sections(
+        settings=settings,
         request_message=request_message,
         draft_text=draft_text,
         mode=mode,
@@ -1615,6 +1631,7 @@ async def plan_context_repair_with_openai(
     if not settings.openai_api_key:
         return None
     instructions, prompt = _build_context_repair_sections(
+        settings=settings,
         request_message=request_message,
         draft_text=draft_text,
         mode=mode,
@@ -1660,6 +1677,7 @@ async def plan_context_repair_with_google(
     if not settings.google_api_key:
         return None
     instructions, prompt = _build_context_repair_sections(
+        settings=settings,
         request_message=request_message,
         draft_text=draft_text,
         mode=mode,
