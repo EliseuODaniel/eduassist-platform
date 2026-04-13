@@ -32,7 +32,18 @@ class SpecialistAgentDeps:
 
 
 def supports_tool_json_outputs(settings: Any, *, deps: SpecialistAgentDeps) -> bool:
-    return deps.resolve_llm_provider(settings) == "openai"
+    if deps.resolve_llm_provider(settings) != "openai":
+        return False
+    model_profile = str(getattr(settings, "llm_model_profile", "") or "").strip().lower()
+    openai_base_url = str(getattr(settings, "openai_base_url", "") or "").strip().lower()
+    openai_model = str(getattr(settings, "openai_model", "") or "").strip().lower()
+    if model_profile.startswith("gemma"):
+        return False
+    if openai_base_url and openai_base_url != "https://api.openai.com/v1":
+        return False
+    if openai_model.startswith("ggml-org") or openai_model.endswith(".gguf"):
+        return False
+    return True
 
 
 def tool_model_settings(

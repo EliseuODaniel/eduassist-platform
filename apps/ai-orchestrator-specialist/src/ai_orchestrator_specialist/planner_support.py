@@ -194,6 +194,22 @@ def fallback_specialists_for_domain(domain: str, retrieval_backend: str) -> tupl
     return ["institution_specialist"], "direct_answer"
 
 
+def _supports_structured_planner_outputs(settings: Any) -> bool:
+    provider = str(getattr(settings, "llm_provider", "auto") or "auto").strip().lower()
+    model_profile = str(getattr(settings, "llm_model_profile", "") or "").strip().lower()
+    openai_base_url = str(getattr(settings, "openai_base_url", "") or "").strip().lower()
+    openai_model = str(getattr(settings, "openai_model", "") or "").strip().lower()
+    if provider != "openai":
+        return False
+    if model_profile.startswith("gemma"):
+        return False
+    if openai_base_url and openai_base_url != "https://api.openai.com/v1":
+        return False
+    if openai_model.startswith("ggml-org") or openai_model.endswith(".gguf"):
+        return False
+    return True
+
+
 def preferred_direct_specialist_for_category(
     ctx: Any,
     *,
@@ -442,6 +458,27 @@ async def run_retrieval_planner(
     execution_specialists: set[str],
     logger: Any,
 ) -> RetrievalPlannerAdvice:
+    structured = _supports_structured_planner_outputs(ctx.settings)
+    if not structured:
+        preview = ctx.preview_hint or {}
+        classification = deps.preview_classification_dict(ctx.preview_hint)
+        domain = str(classification.get("domain") or "institution").strip().lower() or "institution"
+        retrieval_backend = str(preview.get("retrieval_backend") or "none").strip().lower()
+        specialists, strategy = fallback_specialists_for_domain(domain, retrieval_backend)
+        advice = RetrievalPlannerAdvice(
+            normalized_query=ctx.request.message.strip(),
+            primary_domain=domain,
+            retrieval_strategy=strategy,
+            recommended_specialists=specialists,
+            preferred_category=None,
+            evidence_queries=[ctx.request.message.strip()],
+            requires_grounding=strategy != "direct_answer",
+            rationale="retrieval_planner_preview_fallback_local_llm",
+            confidence=0.35,
+        )
+        normalized = normalize_retrieval_advice(ctx, advice, deps=deps, execution_specialists=execution_specialists)
+        ctx.retrieval_advice = normalized
+        return normalized
     agent = Agent(
         name="Retrieval Planner Specialist",
         model=deps.agent_model_for_role(ctx.settings, role="planner"),
@@ -488,6 +525,39 @@ async def run_planner(
     execution_specialists: set[str],
     logger: Any,
 ) -> SupervisorPlan:
+    structured = _supports_structured_planner_outputs(ctx.settings)
+    if not structured:
+        advice = ctx.retrieval_advice
+        if advice is not None:
+            specialists = [item for item in advice.recommended_specialists if item in execution_specialists]
+            strategy = advice.retrieval_strategy
+            domain = advice.primary_domain
+            secondary_domains = [item for item in advice.secondary_domains if item and item != advice.primary_domain]
+        else:
+            preview = ctx.preview_hint or {}
+            classification = deps.preview_classification_dict(ctx.preview_hint)
+            domain = str(classification.get("domain") or "institution").strip().lower() or "institution"
+            retrieval_backend = str(preview.get("retrieval_backend") or "none").strip().lower()
+            specialists, strategy = fallback_specialists_for_domain(domain, retrieval_backend)
+            secondary_domains = []
+        return normalize_plan(
+            ctx,
+            SupervisorPlan(
+                request_kind="question",
+                primary_domain=domain,
+                secondary_domains=secondary_domains,
+                specialists=specialists,
+                retrieval_strategy=strategy,
+                requires_clarification=False,
+                clarification_question=None,
+                should_deny=False,
+                denial_reason=None,
+                reasoning_summary="planner_preview_fallback_local_llm",
+                confidence=0.35,
+            ),
+            deps=deps,
+            execution_specialists=execution_specialists,
+        )
     agent = Agent(
         name="Retrieval Planner",
         model=deps.agent_model_for_role(ctx.settings, role="planner"),

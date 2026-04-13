@@ -35,6 +35,24 @@ _TURN_FRAME_PUBLIC_TOOL_MAP: dict[str, tuple[str, ...]] = {
     "operating_hours": ("get_public_school_profile",),
 }
 
+_TURN_FRAME_PROTECTED_TOOL_MAP: dict[str, tuple[str, ...]] = {
+    "protected.finance.summary": ("get_financial_summary",),
+    "protected.finance.next_due": ("get_financial_summary",),
+    "protected.academic.grades": (
+        "get_student_academic_summary",
+        "get_student_grades",
+        "get_student_upcoming_assessments",
+    ),
+    "protected.academic.attendance": (
+        "get_student_attendance",
+        "get_student_attendance_timeline",
+    ),
+    "protected.administrative.status": (
+        "get_student_administrative_status",
+        "get_administrative_status",
+    ),
+}
+
 
 def _preview_payload(preview: OrchestrationPreview) -> dict[str, Any]:
     payload = {
@@ -157,6 +175,15 @@ def apply_turn_frame_preview(
                 _TURN_FRAME_PUBLIC_TOOL_MAP.get(
                     str(turn_frame.public_conversation_act or "").strip(),
                     ("get_public_school_profile",),
+                )
+            )
+        )
+    elif turn_frame.scope == "protected":
+        selected_tools = list(
+            dict.fromkeys(
+                _TURN_FRAME_PROTECTED_TOOL_MAP.get(
+                    str(turn_frame.capability_id or "").strip(),
+                    tuple(preview.selected_tools),
                 )
             )
         )

@@ -381,12 +381,21 @@ Na prática, isso significa:
 Exemplo de execução manual:
 
 ```bash
-uv run --project apps/ai-orchestrator \
-  python tools/evals/compare_four_chatbot_paths.py \
-  --prompt-file tests/evals/datasets/retrieval_50q_probe_cases.generated.20260406.json \
-  --report docs/architecture/retrieval-50q-cross-path-report-20260406.md \
-  --json-report docs/architecture/retrieval-50q-cross-path-report-20260406.json
+OTEL_SDK_DISABLED=true uv run python tools/evals/run_retrieval_cross_stack_suite.py \
+  --count 50 \
+  --seed 260413 \
+  --guardian-chat-id 1649845499 \
+  --timeout-seconds 40
 ```
+
+Esse runner gera:
+
+- `docs/architecture/retrieval-50q-cross-path-report.md`
+- `docs/architecture/retrieval-50q-cross-path-report.json`
+- `docs/architecture/retrieval-50q-trace-calibration-report.md`
+- `docs/architecture/retrieval-50q-trace-calibration-report.json`
+- `docs/architecture/retrieval-50q-combined-evaluation-report.md`
+- `docs/architecture/retrieval-50q-combined-evaluation-report.json`
 
 ## Estrutura do repositório
 

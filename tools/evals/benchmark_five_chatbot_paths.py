@@ -17,6 +17,9 @@ if str(REPO_ROOT) not in sys.path:
 AI_ORCHESTRATOR_SRC = REPO_ROOT / 'apps/ai-orchestrator/src'
 if str(AI_ORCHESTRATOR_SRC) not in sys.path:
     sys.path.insert(0, str(AI_ORCHESTRATOR_SRC))
+SEMANTIC_INGRESS_SRC = REPO_ROOT / 'packages/semantic-ingress/python/src'
+if str(SEMANTIC_INGRESS_SRC) not in sys.path:
+    sys.path.insert(0, str(SEMANTIC_INGRESS_SRC))
 
 from ai_orchestrator.engine_selector import build_engine_bundle
 from ai_orchestrator.main import Settings

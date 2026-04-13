@@ -65,6 +65,10 @@ from ai_orchestrator_specialist.tool_first_protected_answers import (
     _compose_attendance_primary_alert,
     maybe_tool_first_protected_answer,
 )
+from ai_orchestrator_specialist.tool_first_answers import (
+    ToolFirstStructuredDeps,
+    maybe_tool_first_structured_answer,
+)
 from ai_orchestrator_specialist.tool_first_workflows import (
     ToolFirstWorkflowDeps,
     maybe_tool_first_workflow_answer,
@@ -1980,6 +1984,122 @@ def test_tool_first_protected_attendance_aggregate_wins_before_academic_aggregat
     assert "Quem exige maior atencao agora: Lucas Oliveira." in answer.message_text
 
 
+def test_tool_first_structured_prioritizes_protected_family_panorama_before_public_conduct(
+    monkeypatch,
+) -> None:
+    public_called = False
+    protected_called = False
+
+    async def _restricted_none(*_args, **_kwargs):
+        return None
+
+    async def _workflow_none(*_args, **_kwargs):
+        return None
+
+    async def _public_answer(*_args, **_kwargs):
+        nonlocal public_called
+        public_called = True
+        return SupervisorAnswerPayload(
+            message_text="PUBLIC",
+            mode="structured_tool",
+            classification=MessageIntentClassification(
+                domain="academic",
+                access_tier="public",
+                confidence=0.99,
+                reason="public",
+            ),
+            evidence_pack=MessageEvidencePack(
+                strategy="structured_tools",
+                summary="public",
+                source_count=1,
+                support_count=0,
+                supports=[],
+            ),
+            suggested_replies=[],
+            graph_path=["specialist_supervisor", "tool_first", "conduct_frequency_punctuality"],
+            reason="public",
+        )
+
+    async def _protected_answer(*_args, **_kwargs):
+        nonlocal protected_called
+        protected_called = True
+        return SupervisorAnswerPayload(
+            message_text="PROTECTED",
+            mode="structured_tool",
+            classification=MessageIntentClassification(
+                domain="academic",
+                access_tier="authenticated",
+                confidence=0.99,
+                reason="protected",
+            ),
+            evidence_pack=MessageEvidencePack(
+                strategy="structured_tools",
+                summary="protected",
+                source_count=1,
+                support_count=0,
+                supports=[],
+            ),
+            suggested_replies=[],
+            graph_path=["specialist_supervisor", "tool_first", "attendance_summary_aggregate"],
+            reason="protected",
+        )
+
+    monkeypatch.setattr(
+        "ai_orchestrator_specialist.tool_first_answers.maybe_tool_first_public_answer",
+        _public_answer,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator_specialist.tool_first_answers.maybe_tool_first_protected_answer",
+        _protected_answer,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator_specialist.tool_first_answers.maybe_tool_first_workflow_answer",
+        _workflow_none,
+    )
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            message="Faca um panorama academico da familia com notas, frequencia e pendencias principais.",
+            user=SimpleNamespace(authenticated=True),
+            allow_handoff=False,
+        ),
+        actor=None,
+        school_profile={"attendance_policy": {"minimum_percentage": 75}},
+        preview_hint={"turn_frame": {"capability_id": "protected.academic.grades", "access_tier": "authenticated"}},
+        operational_memory=OperationalMemory(),
+    )
+    deps = ToolFirstStructuredDeps(
+        normalize_text=lambda value: str(value or "").casefold(),
+        effective_multi_intent_domains=lambda *_args, **_kwargs: [],
+        create_support_handoff_payload=_restricted_none,
+        maybe_restricted_document_tool_first_answer=_restricted_none,
+        public_deps=SimpleNamespace(),
+        workflow_deps=SimpleNamespace(),
+        protected_deps=SimpleNamespace(
+            looks_like_admin_finance_combo_query=lambda _message: False,
+            looks_like_family_finance_aggregate_query=lambda _message: False,
+            looks_like_family_academic_aggregate_query=lambda _message: True,
+            looks_like_family_attendance_aggregate_query=lambda _message: False,
+        ),
+        student_hint_from_message=lambda *_args, **_kwargs: None,
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        fetch_academic_summary_payload=_restricted_none,
+        fetch_financial_summary_payload=_restricted_none,
+        build_academic_finance_combo_payload=lambda **_kwargs: None,
+        safe_excerpt=lambda text, **_kwargs: text,
+        fetch_public_payload=_restricted_none,
+        format_brl=lambda value: str(value),
+    )
+
+    answer = asyncio.run(maybe_tool_first_structured_answer(ctx, deps=deps))
+
+    assert answer is not None
+    assert answer.reason == "protected"
+    assert answer.message_text == "PROTECTED"
+    assert protected_called is True
+    assert public_called is False
+
+
 def test_operational_memory_resumes_upcoming_assessments_student_selection() -> None:
     async def _fetch_upcoming(*_args, **_kwargs):
         return {
@@ -2616,6 +2736,13 @@ def test_academic_risk_followup_detects_acende_mais_alerta_prompt() -> None:
 def test_academic_risk_followup_detects_disciplina_preocupa_mais_prompt() -> None:
     assert looks_like_academic_risk_followup(
         'e qual disciplina preocupa mais?',
+        deps=SimpleNamespace(normalize_text=lambda value: str(value or '').casefold()),
+    )
+
+
+def test_academic_risk_followup_detects_menores_medias_componentes_prompt() -> None:
+    assert looks_like_academic_risk_followup(
+        'Quais sao hoje as menores medias da Ana e em que componentes isso aparece com mais clareza?',
         deps=SimpleNamespace(normalize_text=lambda value: str(value or '').casefold()),
     )
 

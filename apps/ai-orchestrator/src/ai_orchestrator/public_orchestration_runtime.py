@@ -21,6 +21,7 @@ LOCAL_EXTRACTED_NAMES = {
     '_is_public_pricing_context_follow_up',
     '_is_public_curriculum_context_follow_up',
     '_is_public_teacher_directory_follow_up',
+    '_should_prioritize_protected_sql_query',
 }
 
 
@@ -73,6 +74,19 @@ def _normalize_text(text: str) -> str:
 
 def _is_positive_requirement_query(message: str) -> bool:
     return _intent_analysis_impl('_is_positive_requirement_query')(message)
+
+
+def _should_prioritize_protected_sql_query(
+    message: str,
+    *,
+    actor: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None = None,
+) -> bool:
+    return _intent_analysis_impl('_should_prioritize_protected_sql_query')(
+        message,
+        actor=actor,
+        conversation_context=conversation_context,
+    )
 
 
 def _is_public_pricing_context_follow_up(

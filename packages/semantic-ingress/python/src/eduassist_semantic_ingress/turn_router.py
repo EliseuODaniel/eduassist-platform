@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 import httpx
+from eduassist_observability import set_span_attributes
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
@@ -152,6 +153,25 @@ _PROTECTED_ACADEMIC_PERSONAL_TERMS = {
     "boletim do",
     "frequencia do",
     "frequência do",
+}
+
+_PROTECTED_ADMIN_PERSONAL_TERMS = {
+    "documentacao da ana",
+    "documentação da ana",
+    "documentos da ana",
+    "pendencias da ana",
+    "pendências da ana",
+    "pendencias documentais",
+    "pendências documentais",
+    "situacao documental",
+    "situação documental",
+    "pendencia documental",
+    "pendência documental",
+    "pendencia administrativa",
+    "pendência administrativa",
+    "status administrativo",
+    "status documental",
+    "cadastro da ana",
 }
 
 _EXTERNAL_PUBLIC_FACILITY_TERMS = {
@@ -499,6 +519,31 @@ _CAPABILITY_SPECS: tuple[CapabilitySpec, ...] = (
         ),
         priority=31,
     ),
+    CapabilitySpec(
+        capability_id="protected.administrative.status",
+        domain="institution",
+        access_tier="authenticated",
+        scope="protected",
+        description="status documental e administrativo protegido",
+        aliases=(
+            "pendencias documentais",
+            "pendências documentais",
+            "pendencia documental",
+            "pendência documental",
+            "pendencias administrativas",
+            "pendências administrativas",
+            "pendencia administrativa",
+            "pendência administrativa",
+            "status administrativo",
+            "status documental",
+            "documentacao da ana",
+            "documentação da ana",
+            "documentos da ana",
+            "cadastro da ana",
+        ),
+        follow_up_aliases=("e a documentacao", "e a documentação", "e o cadastro"),
+        priority=29,
+    ),
 )
 
 _SPEC_BY_ID = {spec.capability_id: spec for spec in _CAPABILITY_SPECS}
@@ -590,6 +635,8 @@ def _focus_frame_from_trace(conversation_context: dict[str, Any] | None) -> Focu
         capability_id = "protected.academic.grades"
     elif active_task == "academic:attendance":
         capability_id = "protected.academic.attendance"
+    elif active_task in {"admin:administrative_status", "admin:student_administrative_status"}:
+        capability_id = "protected.administrative.status"
     if active_task.startswith("finance:"):
         return FocusFrame(
             capability_id=capability_id,
@@ -609,6 +656,21 @@ def _focus_frame_from_trace(conversation_context: dict[str, Any] | None) -> Focu
         return FocusFrame(
             capability_id=capability_id,
             domain="academic",
+            access_tier="authenticated",
+            scope="protected",
+            active_entity=public_entity,
+            active_attribute=active_attribute,
+            active_actor=active_actor,
+            pending_question_type=pending_question_type,
+            requested_channel=requested_channel,
+            time_reference=time_reference,
+            source="recent_trace",
+            confidence=0.84,
+        )
+    if active_task.startswith("admin:"):
+        return FocusFrame(
+            capability_id=capability_id,
+            domain="institution",
             access_tier="authenticated",
             scope="protected",
             active_entity=public_entity,
@@ -754,6 +816,8 @@ def build_capability_candidates(
                 _PROTECTED_FINANCE_PERSONAL_TERMS
                 if spec.domain == "finance"
                 else _PROTECTED_ACADEMIC_PERSONAL_TERMS
+                if spec.domain == "academic"
+                else _PROTECTED_ADMIN_PERSONAL_TERMS
             )
         ):
             score += 1.6

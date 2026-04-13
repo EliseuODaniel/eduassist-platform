@@ -276,6 +276,23 @@ Se quiser exigir borda estável no gate:
 
 - `make promotion-gate-check-stable`
 
+Benchmark comparativo completo (`50Q`) com contexto real de guardião:
+
+```bash
+OTEL_SDK_DISABLED=true uv run python tools/evals/run_retrieval_cross_stack_suite.py \
+  --count 50 \
+  --seed 260413 \
+  --guardian-chat-id 1649845499 \
+  --timeout-seconds 40
+```
+
+Esse fluxo:
+
+- gera um dataset inédito;
+- compara `langgraph`, `python_functions`, `llamaindex` e `specialist_supervisor`;
+- injeta o `telegram_chat_id` do guardião nos slices protegidos para manter a avaliação fiel ao serving real;
+- produz relatórios automatizados em `docs/architecture/`.
+
 ## 9. Variáveis de ambiente previstas
 
 - `DATABASE_URL`

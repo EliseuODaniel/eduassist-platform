@@ -185,6 +185,40 @@ def test_specialist_llm_profile_switches_to_local_gemma() -> None:
     assert settings.openai_reasoning_model == settings.openai_model
 
 
+def test_specialist_local_gemma_disables_strict_tool_json_outputs() -> None:
+    pytest.importorskip("agents")
+    from ai_orchestrator_specialist.agent_builders import SpecialistAgentDeps, supports_tool_json_outputs
+
+    settings = SpecialistSettings(
+        internal_api_token="real-token",
+        llm_model_profile="gemma4e4b_local",
+        app_env="test",
+    )
+    deps = SpecialistAgentDeps(
+        resolve_llm_provider=lambda cfg: "openai",
+        get_public_profile_bundle=None,
+        fetch_academic_policy=None,
+        search_public_documents=None,
+        search_private_documents=None,
+        run_graph_rag_query=None,
+        project_public_pricing=None,
+        fetch_actor_identity=None,
+        fetch_academic_summary=None,
+        fetch_upcoming_assessments=None,
+        fetch_attendance_timeline=None,
+        calculate_grade_requirement=None,
+        fetch_financial_summary=None,
+        fetch_workflow_status=None,
+        create_support_handoff=None,
+        create_visit_booking=None,
+        update_visit_booking=None,
+        create_institutional_request=None,
+        update_institutional_request=None,
+    )
+
+    assert supports_tool_json_outputs(settings, deps=deps) is False
+
+
 def test_telegram_webhook_secret_placeholder_is_allowed_in_test_env() -> None:
     gateway = TelegramGatewaySettings(
         internal_api_token="dev-internal-token",

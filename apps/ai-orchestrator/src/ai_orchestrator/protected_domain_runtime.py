@@ -110,6 +110,16 @@ def _public_profile_impl(name: str):
     return getattr(_public_profile_runtime, name)
 
 
+def _student_scope_impl(name: str):
+    from . import student_scope_runtime as _student_scope_runtime
+
+    return getattr(_student_scope_runtime, name)
+
+
+def _select_linked_student(*args, **kwargs):
+    return _student_scope_impl('_select_linked_student')(*args, **kwargs)
+
+
 def _build_public_profile_context(*args, **kwargs):
     return _public_profile_impl('_build_public_profile_context')(*args, **kwargs)
 

@@ -68,6 +68,30 @@ class ToolFirstStructuredDeps:
     format_brl: Callable[[Any], str]
 
 
+def _should_prioritize_protected_before_public(
+    ctx: Any,
+    *,
+    preview: dict[str, Any],
+    deps: ToolFirstStructuredDeps,
+) -> bool:
+    if not bool(getattr(ctx.request.user, "authenticated", False)):
+        return False
+    turn_frame = preview.get("turn_frame") if isinstance(preview.get("turn_frame"), dict) else {}
+    capability_id = str(turn_frame.get("capability_id") or "").strip()
+    if capability_id.startswith("protected."):
+        return True
+    message = ctx.request.message
+    protected_deps = deps.protected_deps
+    return any(
+        (
+            protected_deps.looks_like_admin_finance_combo_query(message),
+            protected_deps.looks_like_family_finance_aggregate_query(message),
+            protected_deps.looks_like_family_academic_aggregate_query(message),
+            protected_deps.looks_like_family_attendance_aggregate_query(message),
+        )
+    )
+
+
 def _build_tool_first_payload(
     *,
     message_text: str,
@@ -153,6 +177,17 @@ async def maybe_tool_first_structured_answer(
                 graph_path=["specialist_supervisor", "tool_first", "human_handoff"],
                 reason="specialist_supervisor_tool_first:human_handoff",
             )
+
+    if _should_prioritize_protected_before_public(ctx, preview=preview, deps=deps):
+        protected_tool_answer = await maybe_tool_first_protected_answer(
+            ctx,
+            normalized=normalized,
+            preview=preview,
+            memory=memory,
+            deps=deps.protected_deps,
+        )
+        if protected_tool_answer is not None:
+            return protected_tool_answer
 
     public_tool_answer = await maybe_tool_first_public_answer(
         ctx,

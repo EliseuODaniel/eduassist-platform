@@ -152,8 +152,22 @@ def looks_like_academic_risk_followup(message: str, *, deps: ProtectedAnswerDeps
             "qual foi a menor nota",
             "qual e a menor nota",
             "qual é a menor nota",
+            "qual foi a menor media",
+            "qual foi a menor média",
+            "qual e a menor media",
+            "qual é a menor média",
+            "menor media",
+            "menor média",
+            "menores medias",
+            "menores médias",
             "onde esta a menor nota",
             "onde está a menor nota",
+            "em que componente isso aparece",
+            "em que componentes isso aparece",
+            "em quais componentes isso aparece",
+            "em que componente isso aparece com mais clareza",
+            "em que componentes isso aparece com mais clareza",
+            "em quais componentes isso aparece com mais clareza",
             "pontos academicos que mais preocupam",
             "pontos acadêmicos que mais preocupam",
             "o que mais preocupa academicamente",
@@ -192,7 +206,10 @@ def looks_like_academic_risk_followup(message: str, *, deps: ProtectedAnswerDeps
 
 def compose_academic_risk_answer(summary: dict[str, Any], *, deps: ProtectedAnswerDeps) -> str | None:
     student_name = str(summary.get("student_name") or "Aluno").strip()
-    snapshots = subject_grade_snapshot(summary, deps=deps)
+    snapshots = sorted(
+        subject_grade_snapshot(summary, deps=deps, preferred_subjects=()),
+        key=lambda item: (item[1], deps.normalize_text(item[0])),
+    )
     if not snapshots:
         return None
     lines = [f"As disciplinas que mais preocupam academicamente em {student_name} hoje sao:"]

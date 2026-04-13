@@ -19,6 +19,8 @@ from .conversation_focus_runtime import (
 from .intent_analysis_runtime import (
     _contains_any,
     _detect_admin_attribute_request,
+    _extract_public_entity_hints,
+    _follow_up_context_phrase,
     _is_follow_up_query,
     _is_public_curriculum_context_follow_up,
     _is_public_pricing_context_follow_up,
@@ -668,5 +670,3 @@ def _filter_retrieval_hits_by_query_hints(
         if any(hint in haystack for hint in query_hints):
             filtered_hits.append(hit)
     return filtered_hits or retrieval_hits
-
-

@@ -10,7 +10,10 @@ from ai_orchestrator.models import (
     QueryDomain,
     RetrievalBackend,
 )
-from ai_orchestrator.semantic_ingress_runtime import apply_semantic_ingress_preview
+from ai_orchestrator.semantic_ingress_runtime import (
+    apply_semantic_ingress_preview,
+    apply_turn_frame_preview,
+)
 from eduassist_semantic_ingress import (
     build_capability_candidates,
     build_turn_frame_hint,
@@ -298,6 +301,55 @@ def test_build_turn_frame_hint_carries_recent_finance_focus_for_next_due_followu
     assert frame is not None
     assert frame.capability_id == "protected.finance.next_due"
     assert frame.follow_up_of == "protected.finance.summary"
+
+
+def test_build_turn_frame_hint_detects_protected_administrative_status() -> None:
+    frame = build_turn_frame_hint(
+        message="Quais pendencias documentais da Ana ainda pedem acao e qual e o proximo passo recomendado?",
+        conversation_context=None,
+        preview={"mode": "structured_tool", "domain": "institution", "access_tier": "authenticated"},
+        authenticated=True,
+    )
+
+    assert frame is not None
+    assert frame.capability_id == "protected.administrative.status"
+    assert frame.domain == "institution"
+    assert frame.access_tier == "authenticated"
+    assert frame.scope == "protected"
+
+
+def test_apply_turn_frame_preview_maps_protected_admin_tools() -> None:
+    preview = _preview().model_copy(
+        update={
+            "classification": IntentClassification(
+                domain=QueryDomain.unknown,
+                access_tier=AccessTier.public,
+                confidence=0.4,
+                reason="before",
+            ),
+            "selected_tools": ["get_financial_summary"],
+        }
+    )
+
+    updated = apply_turn_frame_preview(
+        preview=preview,
+        turn_frame=SimpleNamespace(
+            capability_id="protected.administrative.status",
+            conversation_act="protected_answer",
+            scope="protected",
+            access_tier="authenticated",
+            domain="institution",
+            confidence=0.92,
+            needs_clarification=False,
+            public_conversation_act=None,
+            follow_up_of=None,
+        ),
+        stack_name="python_functions",
+    )
+
+    assert updated.classification.access_tier is AccessTier.authenticated
+    assert "get_student_administrative_status" in updated.selected_tools
+    assert "get_administrative_status" in updated.selected_tools
 
 
 def test_resolve_turn_frame_with_provider_keeps_deterministic_high_confidence_path_without_llm(monkeypatch) -> None:

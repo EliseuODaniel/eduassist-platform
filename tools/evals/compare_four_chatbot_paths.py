@@ -36,6 +36,9 @@ if str(AI_ORCHESTRATOR_SRC) not in sys.path:
 OBSERVABILITY_SRC = REPO_ROOT / 'packages/observability/python/src'
 if str(OBSERVABILITY_SRC) not in sys.path:
     sys.path.insert(0, str(OBSERVABILITY_SRC))
+SEMANTIC_INGRESS_SRC = REPO_ROOT / 'packages/semantic-ingress/python/src'
+if str(SEMANTIC_INGRESS_SRC) not in sys.path:
+    sys.path.insert(0, str(SEMANTIC_INGRESS_SRC))
 
 from tools.evals.eval_quality_utils import (  # noqa: E402
     _contains_expected_keywords,
@@ -58,6 +61,7 @@ from ai_orchestrator.models import (  # noqa: E402
 DEFAULT_PROMPTS = REPO_ROOT / 'artifacts/two_stack_random_strict_llm_live_20260327_v1_dataset.json'
 DEFAULT_REPORT = REPO_ROOT / 'docs/architecture/four-path-chatbot-comparison-report.md'
 DEFAULT_JSON_REPORT = REPO_ROOT / 'docs/architecture/four-path-chatbot-comparison-report.json'
+DEFAULT_GUARDIAN_CHAT_ID = os.getenv('EVAL_GUARDIAN_CHAT_ID', '1649845499')
 STACKS = ('langgraph', 'python_functions', 'llamaindex', 'specialist_supervisor')
 STACK_URLS = {
     'langgraph': os.getenv('AI_ORCHESTRATOR_LANGGRAPH_BENCH_URL', 'http://127.0.0.1:8006'),
@@ -105,13 +109,35 @@ def _user_for_slice(entry: dict[str, Any]) -> UserContext:
     return UserContext(role=UserRole.anonymous, authenticated=False)
 
 
-async def _run_turn(*, stack: str, entry: dict[str, Any], llm_forced: bool = False) -> dict[str, Any]:
+def _effective_telegram_chat_id(entry: dict[str, Any], *, guardian_chat_id: str | None) -> str | int | None:
+    explicit = entry.get('telegram_chat_id')
+    if explicit is not None:
+        return explicit
+    slice_name = str(entry.get('slice') or 'public')
+    category = str(entry.get('category') or '').strip()
+    if guardian_chat_id and (
+        slice_name == 'protected'
+        or category in {'restricted_doc_positive', 'restricted_doc_negative', 'restricted_doc_denied'}
+    ):
+        return guardian_chat_id
+    return None
+
+
+async def _run_turn(
+    *,
+    stack: str,
+    entry: dict[str, Any],
+    llm_forced: bool = False,
+    guardian_chat_id: str | None = None,
+    timeout_seconds: float = 25.0,
+) -> dict[str, Any]:
     run_prefix = str(entry.get('run_prefix') or 'debug:four-path')
     conversation_id = f"{run_prefix}:{entry.get('thread_id') or 'single'}:{stack}"
+    telegram_chat_id = _effective_telegram_chat_id(entry, guardian_chat_id=guardian_chat_id)
     request = MessageResponseRequest(
         message=str(entry['prompt']),
         conversation_id=conversation_id,
-        telegram_chat_id=entry.get('telegram_chat_id'),
+        telegram_chat_id=telegram_chat_id,
         channel=ConversationChannel.telegram,
         user=_user_for_slice(entry),
         allow_graph_rag=True,
@@ -121,14 +147,15 @@ async def _run_turn(*, stack: str, entry: dict[str, Any], llm_forced: bool = Fal
     target_url = str(STACK_URLS[stack]).rstrip('/')
     started = perf_counter()
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(25.0, connect=5.0)) as client:
+        connect_timeout = min(5.0, max(1.0, timeout_seconds / 5.0))
+        async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds, connect=connect_timeout)) as client:
             http_response = await asyncio.wait_for(
                 client.post(
                     f'{target_url}/v1/messages/respond',
                     headers={'X-Internal-Api-Token': INTERNAL_API_TOKEN},
                     json=request.model_dump(mode='json'),
                 ),
-                timeout=26.0,
+                timeout=timeout_seconds + 1.0,
             )
         http_response.raise_for_status()
         latency_ms = round((perf_counter() - started) * 1000, 1)
@@ -242,7 +269,13 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     return '\n'.join(lines).replace('\n  - ', '\n  - ')
 
 
-async def _run_all(entries: list[dict[str, Any]], *, llm_forced: bool = False) -> dict[str, Any]:
+async def _run_all(
+    entries: list[dict[str, Any]],
+    *,
+    llm_forced: bool = False,
+    guardian_chat_id: str | None = None,
+    timeout_seconds: float = 25.0,
+) -> dict[str, Any]:
     run_kind = 'llm-forced' if llm_forced else 'normal'
     run_prefix = f"debug:four-path:{run_kind}:{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
     previous_answers: dict[str, dict[str, str]] = {stack: {} for stack in STACKS}
@@ -261,7 +294,13 @@ async def _run_all(entries: list[dict[str, Any]], *, llm_forced: bool = False) -
             'run_prefix': run_prefix,
         }
         for stack in STACKS:
-            raw = await _run_turn(stack=stack, entry=entry_with_run_prefix, llm_forced=llm_forced)
+            raw = await _run_turn(
+                stack=stack,
+                entry=entry_with_run_prefix,
+                llm_forced=llm_forced,
+                guardian_chat_id=guardian_chat_id,
+                timeout_seconds=timeout_seconds,
+            )
             answer_text = _extract_answer_text(raw['body'])
             thread_key = str(entry.get('thread_id') or '')
             previous_answer = previous_answers[stack].get(thread_key, '') if thread_key else ''
@@ -357,6 +396,8 @@ async def _run_all(entries: list[dict[str, Any]], *, llm_forced: bool = False) -
         'generated_at': datetime.now(UTC).isoformat(),
         'llm_forced': bool(llm_forced),
         'run_prefix': run_prefix,
+        'guardian_chat_id': guardian_chat_id,
+        'timeout_seconds': timeout_seconds,
         'summary': {
             'by_stack': summary_by_stack,
             'by_slice': summary_by_slice,
@@ -372,10 +413,19 @@ def main() -> int:
     parser.add_argument('--report', default=str(DEFAULT_REPORT))
     parser.add_argument('--json-report', default=str(DEFAULT_JSON_REPORT))
     parser.add_argument('--llm-forced', action='store_true')
+    parser.add_argument('--guardian-chat-id', default=DEFAULT_GUARDIAN_CHAT_ID)
+    parser.add_argument('--timeout-seconds', type=float, default=25.0)
     args = parser.parse_args()
 
     entries = _load_four_path_prompts(args.prompt_file)
-    payload = asyncio.run(_run_all(entries, llm_forced=bool(args.llm_forced)))
+    payload = asyncio.run(
+        _run_all(
+            entries,
+            llm_forced=bool(args.llm_forced),
+            guardian_chat_id=str(args.guardian_chat_id or '').strip() or None,
+            timeout_seconds=float(args.timeout_seconds),
+        )
+    )
     payload['dataset'] = str(Path(args.prompt_file).resolve())
 
     report_path = Path(args.report)

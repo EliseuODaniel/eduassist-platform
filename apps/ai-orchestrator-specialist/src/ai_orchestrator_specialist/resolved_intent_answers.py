@@ -1470,6 +1470,9 @@ async def maybe_resolved_intent_answer(
     *,
     deps: ResolvedIntentDeps,
 ) -> SupervisorAnswerPayload | None:
+    recent_context_answer = await _maybe_recent_context_followup_answer(ctx, deps=deps)
+    if recent_context_answer is not None:
+        return recent_context_answer
     resolved = ctx.resolved_turn
     if resolved is None or resolved.domain == "unknown":
         return None
@@ -1485,9 +1488,6 @@ async def maybe_resolved_intent_answer(
         and resolved.capability not in handlers
     ):
         return None
-    recent_context_answer = await _maybe_recent_context_followup_answer(ctx, deps=deps)
-    if recent_context_answer is not None:
-        return recent_context_answer
     if _looks_like_public_pricing_navigation_query(
         ctx.request.message,
         deps=deps,

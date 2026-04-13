@@ -25,6 +25,24 @@ def _format_public_date_text(*args, **kwargs):
     return _impl(*args, **kwargs)
 
 
+def _recent_multi_student_summary_context(*args, **kwargs):
+    from .student_scope_runtime import _recent_multi_student_summary_context as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def _eligible_students(*args, **kwargs):
+    from .student_scope_runtime import _eligible_students as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def _focus_marked_student_from_message(*args, **kwargs):
+    from .student_scope_runtime import _focus_marked_student_from_message as _impl
+
+    return _impl(*args, **kwargs)
+
+
 def _export_runtime_core_namespace() -> None:
     for name, value in vars(_runtime_core).items():
         if name.startswith('__'):

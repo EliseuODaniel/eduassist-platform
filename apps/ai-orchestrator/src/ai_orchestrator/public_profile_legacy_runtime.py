@@ -8,6 +8,20 @@ LOCAL_EXTRACTED_NAMES = {'_compose_public_profile_answer_legacy'}
 
 from . import public_profile_runtime as _native
 
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _is_auth_guidance_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_auth_guidance_query')(message)
+
+
+def _is_language_preference_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_language_preference_query')(message)
+
 def _refresh_native_namespace() -> None:
     for name, value in vars(_native).items():
         if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
