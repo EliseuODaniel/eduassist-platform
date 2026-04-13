@@ -1691,6 +1691,42 @@ def test_try_public_channel_fast_answer_answers_school_year_start_queries() -> N
     assert '2 de fevereiro de 2026' in lowered
 
 
+def test_try_public_channel_fast_answer_answers_morning_class_schedule_queries() -> None:
+    answer = _try_public_channel_fast_answer(
+        message='Que horas começa a aula de manhã?',
+        profile={
+            'school_name': 'Colegio Horizonte',
+            'shift_offers': [
+                {
+                    'segment': 'Ensino Fundamental II',
+                    'shift_label': 'Manhã',
+                    'starts_at': '07:15',
+                    'ends_at': '12:30',
+                    'notes': 'Turno regular da manhã.',
+                },
+                {
+                    'segment': 'Ensino Medio',
+                    'shift_label': 'Manhã',
+                    'starts_at': '07:15',
+                    'ends_at': '12:50',
+                    'notes': 'Turno regular da manhã.',
+                },
+                {
+                    'segment': 'Fundamental II e Ensino Medio',
+                    'shift_label': 'Integral opcional',
+                    'starts_at': '07:00',
+                    'ends_at': '17:30',
+                    'notes': 'Contraturno opcional.',
+                },
+            ],
+        },
+    )
+    assert answer is not None
+    lowered = answer.lower()
+    assert '07:15' in answer
+    assert 'manhã' in lowered or 'manha' in lowered
+
+
 def test_request_guardrails_keep_enrollment_documents_out_of_admin_status() -> None:
     prompt = 'Quais documentos preciso para matricula?'
     assert looks_like_high_confidence_public_school_faq(prompt) is True

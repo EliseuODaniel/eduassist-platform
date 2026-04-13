@@ -4,6 +4,116 @@
 
 O projeto será construído em fases, com marcos claros e validação contínua. A ordem prioriza fundação técnica, segurança, dados e só então capacidades conversacionais mais profundas.
 
+## 1.1 Programa prioritário atual - Modernização do entendimento do turno
+
+O programa prioritário atual do EduAssist é substituir a expansão incremental de heurísticas locais por um desenho canônico de:
+
+- `semantic router` compartilhado;
+- contrato estruturado de turno (`TurnFrame`);
+- memória curta explícita para follow-up (`FocusFrame`);
+- adapters de execução por stack;
+- regressão cross-stack obrigatória.
+
+### Resultado esperado
+
+- a mesma pergunta, sob a mesma autenticação, deve convergir para a mesma `capability` final nas quatro stacks;
+- perguntas públicas fortes não podem cair em domínio protegido por causa do estado autenticado;
+- follow-ups curtos como “e que horas fecha?” ou “qual o próximo vencimento?” devem herdar contexto só quando a pergunta atual for realmente elíptica;
+- `scope_boundary` e `safe_fallback` deixam de ser mecanismos de compensação para perguntas que o sistema deveria entender.
+
+### Arquitetura de rollout
+
+O rollout deve seguir esta ordem:
+
+1. baseline e dataset de regressão compartilhados;
+2. ontologia canônica de `capabilities`;
+3. `TurnFrame` compartilhado;
+4. geração de candidatos `top-k`;
+5. classificador estruturado;
+6. adapter `python_functions`;
+7. adapter `langgraph`;
+8. adapter `llamaindex`;
+9. adapter `specialist_supervisor`;
+10. remoção controlada das heurísticas legadas.
+
+### Fases detalhadas do programa
+
+#### Fase A - Baseline e regressão
+
+- consolidar dataset de perguntas reais e adversariais;
+- marcar `capability`, `scope`, `access_tier` e comportamento esperado;
+- tornar a regressão cross-stack um gate de mudança arquitetural.
+
+#### Fase B - Ontologia canônica
+
+- consolidar `intent_registry`, lanes públicas, sinais de kernel e `semantic-ingress` em um único catálogo;
+- publicar aliases, exemplos positivos e negativos por `capability`.
+
+#### Fase C - Contrato estruturado
+
+- criar `TurnFrame` compartilhado;
+- criar `FocusFrame` com TTL explícito;
+- expor ambos em traces, debug footer e avaliação.
+
+#### Fase D - Candidate generation
+
+- promover `candidate_builder` e `candidate_chooser` para a camada de roteamento;
+- gerar candidatos por ontologia, auth, memória curta e sinais do turno;
+- reduzir o espaço de decisão da LLM antes da classificação.
+
+#### Fase E - Classificador semântico
+
+- usar LLM rápida com saída estrita em schema;
+- classificar apenas, sem compor resposta final;
+- cair em `clarify` ou `scope_boundary` só com baixa confiança real.
+
+#### Fase F - Adapter `python_functions`
+
+- mapear `TurnFrame.capability` para handlers tipados;
+- manter a stack como referência de execução determinística e baixa latência.
+
+#### Fase G - Adapter `langgraph`
+
+- criar subgrafo `semantic_router`;
+- usar edges condicionais e estado explícito para follow-up;
+- reduzir heurísticas locais no workflow.
+
+#### Fase H - Adapter `llamaindex`
+
+- usar o `TurnFrame` para escolher o conjunto pequeno de query engines elegíveis;
+- deixar a stack explorar melhor routing documental e síntese por fonte.
+
+#### Fase I - Adapter `specialist_supervisor`
+
+- reservar o orçamento premium para ambiguidade real, multi-intent, repair e composição rica;
+- evitar gastar supervisor/specialists em perguntas cuja `capability` já ficou clara no núcleo compartilhado.
+
+#### Fase J - Desligamento das heurísticas legadas
+
+- manter só `policy`, `auth`, `precedence`, safety e rendering como regras duras;
+- remover gradualmente classificações semânticas duplicadas e drift local.
+
+### Critérios de aceite do programa
+
+- `capability` correta nas quatro stacks para o dataset compartilhado;
+- ganho consistente em follow-ups curtos;
+- redução de falsos `scope_boundary`;
+- redução de falsos `safe_fallback`;
+- redução de divergência entre stack autenticada e pública;
+- manutenção do budget/latência dentro dos limites atuais por stack.
+
+### Fatiamento sugerido por PR
+
+1. `capability registry + TurnFrame`
+2. `FocusFrame + carryover policy`
+3. `candidate generation`
+4. `structured classifier`
+5. `python_functions adapter`
+6. `langgraph adapter`
+7. `llamaindex adapter`
+8. `specialist adapter`
+9. `legacy heuristic cleanup`
+
 ## 2. Fase 0 - Fundação
 
 Objetivos:
@@ -147,6 +257,15 @@ Entregáveis:
 - gates mínimos de release.
 
 Estado atual:
+
+- o programa prioritário de modernização do entendimento do turno já possui implementação ativa no código:
+  - ontologia canônica inicial de `capabilities`;
+  - `TurnFrame` e `FocusFrame`;
+  - candidate generation `top-k`;
+  - classificador estruturado por provider;
+  - adapters integrados em `python_functions`, `langgraph`, `llamaindex` e `specialist_supervisor`;
+  - gate unitário cross-stack para consistência de `capability`.
+- a fase atual do programa deixa de ser “criar a fundação” e passa a ser “expandir cobertura de capabilities e mover regressões E2E para cima do novo contrato”.
 
 - os gates minimos de release ja existem em `make release-readiness`;
 - o benchmark seletivo de `GraphRAG` ja possui trilha experimental pronta;

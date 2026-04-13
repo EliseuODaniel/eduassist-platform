@@ -113,6 +113,7 @@ Quer monitorar qualidade, incidentes, handoffs e bases documentais.
 - Reprodutibilidade por containers
 - Arquitetura modular
 - Portabilidade futura para Kubernetes
+- Consistência cross-stack na interpretação do turno sob o mesmo contexto de autenticação e policy
 
 ## 9. Restrições
 
@@ -131,6 +132,8 @@ Quer monitorar qualidade, incidentes, handoffs e bases documentais.
 - latência média por tipo de fluxo
 - custo médio por conversa
 - satisfação por feedback explícito
+- taxa de concordância de `capability` entre stacks no dataset compartilhado
+- taxa de follow-up curto resolvido corretamente sem cair em `scope_boundary` ou `safe_fallback`
 
 ## 11. Critérios de aceitação do MVP
 
@@ -160,4 +163,3 @@ Priorizar:
 4. consulta acadêmica protegida
 5. consulta financeira protegida
 6. handoff e painel básico
-

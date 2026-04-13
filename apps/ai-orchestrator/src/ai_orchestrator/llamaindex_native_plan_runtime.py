@@ -8,6 +8,11 @@ LOCAL_EXTRACTED_NAMES = {'maybe_execute_llamaindex_native_plan'}
 
 from . import llamaindex_native_runtime as _native
 from .llamaindex_native_preflight_runtime import maybe_execute_llamaindex_native_preflight
+from .semantic_ingress_runtime import (
+    apply_turn_frame_preview,
+    build_turn_frame_public_plan,
+    maybe_resolve_turn_frame,
+)
 
 def _refresh_native_namespace() -> None:
     for name, value in vars(_native).items():
@@ -257,6 +262,24 @@ async def maybe_execute_llamaindex_native_plan(
         if semantic_ingress_plan is not None
         else None
     )
+    turn_frame = None
+    turn_frame_public_plan = None
+    if semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan):
+        turn_frame = await maybe_resolve_turn_frame(
+            settings=settings,
+            request_message=request.message,
+            conversation_context=conversation_context,
+            preview=semantic_ingress_preview,
+            stack_label='llamaindex',
+            authenticated=bool(request.user.authenticated),
+        )
+        if turn_frame is not None:
+            semantic_ingress_preview = apply_turn_frame_preview(
+                preview=semantic_ingress_preview,
+                turn_frame=turn_frame,
+                stack_name='llamaindex',
+            )
+            turn_frame_public_plan = build_turn_frame_public_plan(turn_frame)
     semantic_ingress_native_decision = (
         _semantic_ingress_native_public_decision(public_plan=semantic_ingress_public_plan)
         if semantic_ingress_public_plan is not None
@@ -783,7 +806,7 @@ async def maybe_execute_llamaindex_native_plan(
         heuristic_decision=deterministic_public_decision,
     )
 
-    public_plan = semantic_ingress_public_plan or await rt._resolve_public_institution_plan(
+    public_plan = semantic_ingress_public_plan or turn_frame_public_plan or await rt._resolve_public_institution_plan(
         settings=settings,
         message=request.message,
         preview=semantic_ingress_preview,

@@ -8,7 +8,7 @@
     "priority": 10,
     "requires_auth": false,
     "requires_grounding": true,
-    "any_terms": ["turno", "turnos", "turma", "turmas", "matutivo", "matutino", "vespertino", "noturno"],
+    "any_terms": ["turno", "turnos", "turma", "turmas", "matutivo", "matutino", "matutina", "vespertino", "vespertina", "noturno", "noturna", "manha", "manhã", "horario de aula", "horário de aula", "horario da aula", "horário da aula", "que horas comeca a aula", "que horas começa a aula", "aula de manha", "aula de manhã", "aula da manha", "aula da manhã", "turno da manha", "turno da manhã"],
     "none_terms": ["nota", "notas", "boletim", "disciplina", "disciplinas"],
     "preview_domains": ["institution", "calendar"],
     "memory_domains": ["institution"],

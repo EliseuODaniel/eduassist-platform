@@ -68,6 +68,58 @@ Justificativa:
 - o `Agents SDK` já formaliza ferramentas, handoffs e traces, então é útil como adapter OpenAI-native para workflows específicos e benchmarking;
 - manter `LangGraph` como camada principal preserva portabilidade entre provedores e maior controle arquitetural.
 
+## 4.1 Estratégia recomendada para entendimento do turno
+
+### Conclusão executiva
+
+A melhor prática atual para este projeto não é continuar expandindo `if/else` por stack para entender o que o usuário quis dizer.
+
+A abordagem recomendada é um modelo híbrido:
+
+- `guardrails` determinísticos para `policy`, `auth` e `precedence`;
+- um classificador semântico com saída estruturada;
+- geração prévia de candidatos de `capability` antes da decisão da LLM;
+- roteamento determinístico para a stack depois da classificação;
+- memória curta explícita para follow-ups elípticos.
+
+### Por que não usar heurística como estratégia principal
+
+Heurísticas locais continuam úteis para:
+
+- segurança;
+- regras duras;
+- fallback conservador;
+- formatação da resposta;
+- compatibilidade temporária.
+
+Mas elas são fracas como mecanismo principal de interpretação porque:
+
+- escalam mal com sinônimos e variações naturais;
+- geram drift entre stacks;
+- ficam frágeis a follow-ups curtos;
+- degradam a experiência para um comportamento “robótico”.
+
+### Padrão alvo
+
+O padrão alvo para o EduAssist é:
+
+1. gerar um pequeno conjunto de `capabilities` candidatas;
+2. pedir que uma LLM rápida escolha entre elas em schema rígido;
+3. consolidar o resultado em um `TurnFrame` canônico;
+4. deixar cada stack resolver do jeito que faz melhor.
+
+Estado atual do projeto:
+
+- esse desenho já foi implementado para a primeira onda de capabilities de FAQ pública e consultas protegidas de maior recorrência;
+- o próximo ganho de ROI vem menos da arquitetura-base e mais da ampliação do catálogo canônico e das evals E2E sobre o novo contrato.
+
+### Ajuste por stack
+
+- `python_functions`: melhor como executor determinístico do `TurnFrame`.
+- `langgraph`: melhor como workflow stateful para follow-up e branching.
+- `llamaindex`: melhor quando o `TurnFrame` já restringe qual engine documental usar.
+- `specialist_supervisor`: melhor quando entra depois da classificação, para casos ambíguos, compostos ou de maior valor.
+
 ## 5. Retrieval
 
 ### Estratégia escolhida para o baseline forte
@@ -203,6 +255,7 @@ Para o desenvolvimento deste repositório, eles devem ser tratados como recursos
 - avaliação: datasets + evals contínuos
 - segurança: `OPA + RLS + audit trail`
 - workflow de engenharia: `AGENTS.md + Docs MCP + skills + custom agents`
+- entendimento do turno: `semantic router` compartilhado + adapters por stack
 
 ## 11. Fontes pesquisadas
 
@@ -212,12 +265,16 @@ Para o desenvolvimento deste repositório, eles devem ser tratados como recursos
 - OpenAI MCP: https://developers.openai.com/api/docs/mcp
 - OpenAI Responses API: https://developers.openai.com/api/docs/guides/migrate-to-responses
 - OpenAI Agents SDK: https://openai.github.io/openai-agents-python/quickstart/
+- OpenAI Structured Outputs: https://openai.com/index/introducing-structured-outputs-in-the-api/
+- OpenAI Guardrails: https://openai.github.io/openai-guardrails-js/quickstart/
 - Codex AGENTS.md: https://developers.openai.com/codex/guides/agents-md
 - Codex MCP: https://developers.openai.com/codex/mcp
 - Codex Skills: https://developers.openai.com/codex/skills
 - Codex Subagents: https://developers.openai.com/codex/subagents
 - Docs MCP: https://developers.openai.com/learn/docs-mcp
 - LangGraph overview: https://docs.langchain.com/oss/python/langgraph/overview
+- LangGraph custom workflows: https://docs.langchain.com/oss/python/langchain/multi-agent/custom-workflow
+- LangGraph memory: https://docs.langchain.com/oss/python/langgraph/add-memory
 - Microsoft GraphRAG: https://microsoft.github.io/graphrag/
 - Docling: https://docling-project.github.io/docling/
 - Anthropic Contextual Retrieval: https://www.anthropic.com/engineering/contextual-retrieval

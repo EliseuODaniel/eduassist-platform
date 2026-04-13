@@ -28,9 +28,12 @@ from .retrieval import (
 )
 from .semantic_ingress_runtime import (
     apply_semantic_ingress_preview,
+    apply_turn_frame_preview,
     build_semantic_ingress_public_plan,
+    build_turn_frame_public_plan,
     is_terminal_semantic_ingress_plan,
     maybe_resolve_semantic_ingress_plan,
+    maybe_resolve_turn_frame,
 )
 
 
@@ -48,6 +51,8 @@ class LangGraphMessageState(TypedDict, total=False):
     school_profile: dict[str, Any] | None
     preview: Any
     semantic_ingress_plan: Any
+    turn_frame: Any
+    turn_frame_public_plan: Any
     langgraph_thread_id: str | None
     langgraph_trace_metadata: dict[str, Any] | None
     route: str
@@ -67,7 +72,7 @@ def _deterministic_retrieval_fallback(*, citations: list[Any], context_pack: str
 def _route_native_path(preview: Any, request_message: str, analysis_message: str | None = None) -> str:
     analysis_message = analysis_message or request_message
     if analysis_message.strip() != str(request_message).strip():
-        if rt.match_public_canonical_lane(request.message) or rt.match_public_canonical_lane(analysis_message):
+        if rt.match_public_canonical_lane(request_message) or rt.match_public_canonical_lane(analysis_message):
             return 'public_compound'
         if rt._is_public_timeline_query(analysis_message):
             return 'public_compound'
@@ -167,6 +172,26 @@ async def _bootstrap_context(state: LangGraphMessageState) -> LangGraphMessageSt
             stack_name='langgraph',
         )
         route = 'semantic_ingress'
+    turn_frame = None
+    turn_frame_public_plan = None
+    if semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan):
+        turn_frame = await maybe_resolve_turn_frame(
+            settings=settings,
+            request_message=request.message,
+            conversation_context=conversation_context,
+            preview=preview,
+            stack_label='langgraph',
+            authenticated=bool(request.user.authenticated),
+        )
+        if turn_frame is not None:
+            preview = apply_turn_frame_preview(
+                preview=preview,
+                turn_frame=turn_frame,
+                stack_name='langgraph',
+            )
+            turn_frame_public_plan = build_turn_frame_public_plan(turn_frame)
+            if route != 'semantic_ingress' and turn_frame.scope == 'public':
+                route = 'semantic_ingress'
     langgraph_trace_metadata = rt._capture_langgraph_trace_metadata(
         graph=langgraph_artifacts.graph,
         thread_id=langgraph_thread_id,
@@ -182,6 +207,8 @@ async def _bootstrap_context(state: LangGraphMessageState) -> LangGraphMessageSt
         'school_profile': school_profile,
         'preview': preview,
         'semantic_ingress_plan': semantic_ingress_plan,
+        'turn_frame': turn_frame,
+        'turn_frame_public_plan': turn_frame_public_plan,
         'langgraph_thread_id': langgraph_thread_id,
         'langgraph_trace_metadata': langgraph_trace_metadata,
         'route': route,
@@ -211,12 +238,14 @@ async def _semantic_ingress(state: LangGraphMessageState) -> LangGraphMessageSta
     school_profile = state['school_profile']
     effective_conversation_id = state['effective_conversation_id']
     semantic_ingress_plan = state.get('semantic_ingress_plan')
-    if semantic_ingress_plan is None:
+    turn_frame_public_plan = state.get('turn_frame_public_plan')
+    if semantic_ingress_plan is None and turn_frame_public_plan is None:
         return await _delegate_runtime(state)
 
-    public_plan = build_semantic_ingress_public_plan(semantic_ingress_plan)
+    public_plan = build_semantic_ingress_public_plan(semantic_ingress_plan) if semantic_ingress_plan is not None else None
+    public_plan = public_plan or turn_frame_public_plan
     public_plan_sink: dict[str, Any] = {}
-    if is_terminal_semantic_ingress_plan(semantic_ingress_plan):
+    if semantic_ingress_plan is not None and is_terminal_semantic_ingress_plan(semantic_ingress_plan):
         message_text = rt._compose_public_profile_answer(
             school_profile or {},
             request.message,
@@ -238,8 +267,8 @@ async def _semantic_ingress(state: LangGraphMessageState) -> LangGraphMessageSta
             resolved_public_plan=public_plan,
             prefer_fast_public_path=False,
         )
-    llm_stages = ['semantic_ingress_classifier']
-    if semantic_ingress_plan.conversation_act != 'language_preference':
+    llm_stages = ['semantic_ingress_classifier'] if semantic_ingress_plan is not None else ['turn_frame_classifier']
+    if semantic_ingress_plan is None or semantic_ingress_plan.conversation_act != 'language_preference':
         polished_text = await polish_langgraph_with_provider(
             settings=settings,
             request_message=request.message,

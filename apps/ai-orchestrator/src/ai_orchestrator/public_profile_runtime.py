@@ -4617,14 +4617,63 @@ def _handle_public_schedule(context: PublicProfileContext) -> str:
             topic='horarios',
         )
     grade_reference = _extract_grade_reference(context.source_message)
+    normalized_message = _normalize_text(context.source_message)
+    requested_shift: str | None = None
+    if any(term in normalized_message for term in {'manha', 'manhã', 'matutino', 'matutina'}):
+        requested_shift = 'manha'
+    elif any(term in normalized_message for term in {'vespertino', 'vespertina', 'tarde'}):
+        requested_shift = 'vespertino'
+    elif any(term in normalized_message for term in {'noturno', 'noturna', 'noite'}):
+        requested_shift = 'noturno'
+    elif 'integral' in normalized_message:
+        requested_shift = 'integral'
     relevant_rows = [
         row
         for row in context.shift_offers
         if isinstance(row, dict)
         and _public_segment_matches(str(row.get('segment')), context.segment)
+        and (
+            requested_shift is None
+            or (
+                requested_shift == 'manha'
+                and any(
+                    term in _normalize_text(str(row.get('shift_label')))
+                    for term in {'manha', 'manhã', 'matut'}
+                )
+            )
+            or (requested_shift != 'manha' and requested_shift in _normalize_text(str(row.get('shift_label'))))
+        )
     ]
     if not relevant_rows:
+        relevant_rows = [
+            row
+            for row in context.shift_offers
+            if isinstance(row, dict)
+            and (
+                requested_shift is None
+                or (
+                    requested_shift == 'manha'
+                    and any(
+                        term in _normalize_text(str(row.get('shift_label')))
+                        for term in {'manha', 'manhã', 'matut'}
+                    )
+                )
+                or (requested_shift != 'manha' and requested_shift in _normalize_text(str(row.get('shift_label'))))
+            )
+        ]
+    if not relevant_rows:
         relevant_rows = [row for row in context.shift_offers if isinstance(row, dict)]
+    if requested_shift == 'manha':
+        morning_rows = [
+            row
+            for row in relevant_rows
+            if any(
+                term in _normalize_text(str(row.get('shift_label')))
+                for term in {'manha', 'manhã', 'matut'}
+            )
+        ]
+        if morning_rows:
+            relevant_rows = morning_rows
     if len(relevant_rows) == 1:
         row = relevant_rows[0]
         if grade_reference:
@@ -4654,7 +4703,16 @@ def _handle_public_schedule(context: PublicProfileContext) -> str:
                 ).rstrip()
             )
         return '\n'.join(lines)
-    lines = ['Turnos e horarios documentados:']
+    if requested_shift == 'manha' and any(
+        term in normalized_message for term in {'que horas', 'comeca', 'começa', 'inicio', 'início'}
+    ):
+        lines = ['Horarios de inicio documentados para o turno da manha:']
+    elif requested_shift == 'manha' and any(
+        term in normalized_message for term in {'fecha', 'termina', 'acabam', 'acaba'}
+    ):
+        lines = ['Horarios de encerramento documentados para o turno da manha:']
+    else:
+        lines = ['Turnos e horarios documentados:']
     for row in relevant_rows:
         lines.append(
             '- {segment} ({shift_label}): {starts_at} as {ends_at}. {notes}'.format(

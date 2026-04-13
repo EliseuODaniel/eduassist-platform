@@ -636,16 +636,54 @@ def _compose_shift_offers_answer(profile: dict[str, Any] | None, *, message: str
     if not rendered_rows:
         return None
     requested_segment: str | None = None
+    requested_shift: str | None = None
     if "ensino medio" in normalized or "ensino médio" in normalized:
         requested_segment = "medio"
     elif "fundamental" in normalized:
         requested_segment = "fundamental"
+    if any(term in normalized for term in {"manha", "manhã", "matutino", "matutina"}):
+        requested_shift = "manha"
+    elif any(term in normalized for term in {"vespertino", "vespertina", "tarde"}):
+        requested_shift = "vespertino"
+    elif any(term in normalized for term in {"noturno", "noturna", "noite"}):
+        requested_shift = "noturno"
+    elif "integral" in normalized:
+        requested_shift = "integral"
     selected = [
-        row for row in rendered_rows if requested_segment is None or requested_segment in _normalize_text(row["segment"])
+        row
+        for row in rendered_rows
+        if (requested_segment is None or requested_segment in _normalize_text(row["segment"]))
+        and (
+            requested_shift is None
+            or (
+                requested_shift == "manha"
+                and any(term in _normalize_text(row["shift_label"]) for term in {"manha", "manhã", "matut"})
+            )
+            or (requested_shift != "manha" and requested_shift in _normalize_text(row["shift_label"]))
+        )
     ]
     if not selected:
+        selected = [
+            row for row in rendered_rows if requested_segment is None or requested_segment in _normalize_text(row["segment"])
+        ]
+    if not selected:
         selected = rendered_rows
-    lines = ["Hoje o Colegio Horizonte publica estes turnos de atendimento escolar:"]
+    if requested_shift == "manha":
+        morning_rows = [
+            row
+            for row in selected
+            if any(term in _normalize_text(row["shift_label"]) for term in {"manha", "manhã", "matut"})
+        ]
+        if morning_rows:
+            selected = morning_rows
+    asks_start = any(term in normalized for term in {"que horas", "comeca", "começa", "inicio", "início"})
+    asks_end = any(term in normalized for term in {"fecha", "termina", "acabam", "acaba"})
+    if requested_shift == "manha" and asks_start:
+        lines = ["Hoje os turnos regulares da manhã publicados pelo Colegio Horizonte começam assim:"]
+    elif requested_shift == "manha" and asks_end:
+        lines = ["Hoje os turnos regulares da manhã publicados pelo Colegio Horizonte terminam assim:"]
+    else:
+        lines = ["Hoje o Colegio Horizonte publica estes turnos de atendimento escolar:"]
     for row in selected:
         lines.append(f"- {row['segment']}: {row['shift_label']} ({row['starts_at']} as {row['ends_at']}).")
     offered_shift_labels = {_normalize_text(row["shift_label"]) for row in rendered_rows}

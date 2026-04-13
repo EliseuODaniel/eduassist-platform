@@ -450,7 +450,7 @@ def test_llamaindex_kernel_preview_keeps_family_finance_aggregate_protected_when
         ),
         settings=SimpleNamespace(),
     )
-    assert preview.reason == 'llamaindex_local_protected:finance'
+    assert preview.reason.startswith('llamaindex_local_protected:finance')
     assert preview.classification.access_tier == AccessTier.sensitive
     assert 'get_financial_summary' in preview.selected_tools
     assert 'project_public_pricing' not in preview.selected_tools

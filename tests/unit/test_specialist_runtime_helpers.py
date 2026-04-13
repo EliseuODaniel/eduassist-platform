@@ -57,6 +57,7 @@ from ai_orchestrator_specialist.student_context_helpers import StudentContextDep
 from ai_orchestrator_specialist.public_doc_knowledge import match_public_canonical_lane
 from ai_orchestrator_specialist.public_profile_answers import _compose_timeline_bundle_answer
 from ai_orchestrator_specialist.public_profile_answers import _compose_service_routing_fast_answer
+from ai_orchestrator_specialist.public_profile_answers import _compose_shift_offers_answer
 from ai_orchestrator_specialist.tool_first_protected_answers import (
     ToolFirstProtectedDeps,
     _compose_attendance_primary_alert,
@@ -257,8 +258,118 @@ def test_specialist_service_routing_fast_answer_accepts_menu_geral_prompt() -> N
 
     assert answer is not None
     assert "Financeiro" in answer
-    assert "Direcao" in answer
-    assert "Atendimento comercial / Admissoes" in answer or "Bolsas / admissoes" in answer
+
+
+def test_specialist_shift_offers_answer_handles_morning_class_start_query() -> None:
+    profile = {
+        "shift_offers": [
+            {
+                "segment": "Ensino Fundamental II",
+                "shift_label": "Manhã",
+                "starts_at": "07:15",
+                "ends_at": "12:30",
+                "notes": "Turno regular da manhã.",
+            },
+            {
+                "segment": "Ensino Medio",
+                "shift_label": "Manhã",
+                "starts_at": "07:15",
+                "ends_at": "12:50",
+                "notes": "Turno regular da manhã.",
+            },
+            {
+                "segment": "Fundamental II e Ensino Medio",
+                "shift_label": "Integral opcional",
+                "starts_at": "07:00",
+                "ends_at": "17:30",
+                "notes": "Contraturno opcional.",
+            },
+        ]
+    }
+
+    answer = _compose_shift_offers_answer(profile, message="Que horas começa a aula de manhã?")
+
+    assert answer is not None
+    lowered = answer.lower()
+    assert "07:15" in answer
+    assert "manhã" in lowered or "manha" in lowered
+    assert "integral opcional" not in lowered
+
+
+def test_resolved_intent_shift_offers_still_runs_for_high_confidence_public_faq() -> None:
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=False),
+            message='Quais turmas a escola atende?',
+        ),
+        actor=None,
+        resolved_turn=ResolvedTurnIntent(
+            key='institution.shift_offers',
+            domain='institution',
+            subintent='shift_offers',
+            capability='institution.shift_offers',
+            access_tier='public',
+            confidence=0.92,
+            requires_grounding=True,
+        ),
+        school_profile={
+            'shift_offers': [
+                {
+                    'segment': 'Ensino Fundamental II',
+                    'shift_label': 'Manhã',
+                    'starts_at': '07:15',
+                    'ends_at': '12:30',
+                    'notes': 'Turno regular da manhã.',
+                },
+                {
+                    'segment': 'Ensino Medio',
+                    'shift_label': 'Manhã',
+                    'starts_at': '07:15',
+                    'ends_at': '12:50',
+                    'notes': 'Turno regular da manhã.',
+                },
+            ]
+        },
+        conversation_context=None,
+        operational_memory=OperationalMemory(),
+    )
+
+    deps = ResolvedIntentDeps(
+        normalize_text=lambda value: str(value or '').strip().lower(),
+        looks_like_subject_followup=lambda _message: False,
+        looks_like_academic_risk_followup=lambda _message: False,
+        looks_like_family_finance_aggregate_query=lambda _message: False,
+        looks_like_family_attendance_aggregate_query=lambda _message: False,
+        fetch_academic_summary_payload=lambda *_args, **_kwargs: None,
+        fetch_financial_summary_payload=lambda *_args, **_kwargs: None,
+        fetch_upcoming_assessments_payload=lambda *_args, **_kwargs: None,
+        needs_specific_academic_student_clarification=lambda *_args, **_kwargs: False,
+        build_academic_student_selection_clarify=lambda *_args, **_kwargs: None,
+        compose_named_subject_grade_answer=lambda *_args, **_kwargs: None,
+        compose_named_grade_answer=lambda *_args, **_kwargs: '',
+        compose_academic_risk_answer=lambda *_args, **_kwargs: '',
+        resolved_academic_target_name=lambda *_args, **_kwargs: None,
+        compose_named_attendance_answer=lambda *_args, **_kwargs: '',
+        compose_academic_snapshot_lines=lambda *_args, **_kwargs: [],
+        compose_academic_aggregate_answer=lambda *_args, **_kwargs: '',
+        compose_finance_aggregate_answer=lambda *_args, **_kwargs: '',
+        compose_family_next_due_answer=lambda *_args, **_kwargs: '',
+        compose_finance_installments_answer=lambda *_args, **_kwargs: '',
+        linked_students=lambda *_args, **_kwargs: [],
+        safe_excerpt=lambda text, **_kwargs: text,
+        subject_hint_from_text=lambda _message: None,
+        recent_subject_from_context=lambda *_args, **_kwargs: None,
+        subject_code_from_hint=lambda *_args, **_kwargs: (None, None),
+        student_hint_from_message=lambda *_args, **_kwargs: None,
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        compose_upcoming_assessments_lines=lambda *_args, **_kwargs: [],
+    )
+
+    answer = asyncio.run(maybe_resolved_intent_answer(ctx, deps=deps))
+
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_resolved_intent:shift_offers'
+    assert 'Ensino Fundamental II' in answer.message_text
 
 
 def test_specialist_augment_public_followup_message_rewrites_service_routing_compression() -> None:

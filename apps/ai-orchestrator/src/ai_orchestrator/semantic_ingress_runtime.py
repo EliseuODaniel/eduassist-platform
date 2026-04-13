@@ -4,9 +4,11 @@ from typing import Any
 
 from eduassist_semantic_ingress import (
     IngressSemanticPlan,
+    TurnFrame,
     is_terminal_ingress_act,
     looks_like_school_scope_message,
     resolve_semantic_ingress_with_provider,
+    resolve_turn_frame_with_provider,
     should_run_semantic_ingress_classifier,
 )
 
@@ -23,15 +25,29 @@ _SEMANTIC_INGRESS_TOOL_MAP: dict[str, tuple[str, ...]] = {
     "scope_boundary": ("get_public_school_profile", "list_assistant_capabilities"),
 }
 
+_TURN_FRAME_PUBLIC_TOOL_MAP: dict[str, tuple[str, ...]] = {
+    "pricing": ("get_public_school_profile", "project_public_pricing"),
+    "leadership": ("get_public_school_profile", "get_org_directory"),
+    "document_submission": ("get_public_school_profile",),
+    "schedule": ("get_public_school_profile",),
+    "timeline": ("get_public_school_profile",),
+    "features": ("get_public_school_profile",),
+    "operating_hours": ("get_public_school_profile",),
+}
+
 
 def _preview_payload(preview: OrchestrationPreview) -> dict[str, Any]:
-    return {
+    payload = {
         "mode": preview.mode.value,
         "domain": preview.classification.domain.value,
         "access_tier": preview.classification.access_tier.value,
         "reason": preview.reason,
         "selected_tools": list(preview.selected_tools),
     }
+    turn_frame = getattr(preview, "turn_frame", None)
+    if isinstance(turn_frame, dict):
+        payload["turn_frame"] = turn_frame
+    return payload
 
 
 async def maybe_resolve_semantic_ingress_plan(
@@ -104,6 +120,113 @@ def build_semantic_ingress_public_plan(plan: IngressSemanticPlan) -> Any:
         fetch_profile=True,
         semantic_source="semantic_ingress_llm",
         use_conversation_context=bool(plan.use_conversation_context),
+    )
+
+
+async def maybe_resolve_turn_frame(
+    *,
+    settings: Any,
+    request_message: str,
+    conversation_context: dict[str, Any] | None,
+    preview: OrchestrationPreview,
+    stack_label: str,
+    authenticated: bool,
+) -> TurnFrame | None:
+    return await resolve_turn_frame_with_provider(
+        settings=settings,
+        stack_label=stack_label,
+        request_message=request_message,
+        conversation_context=conversation_context,
+        preview=_preview_payload(preview),
+        authenticated=authenticated,
+    )
+
+
+def apply_turn_frame_preview(
+    *,
+    preview: OrchestrationPreview,
+    turn_frame: TurnFrame,
+    stack_name: str,
+) -> OrchestrationPreview:
+    if turn_frame.capability_id is None and turn_frame.conversation_act == "none":
+        return preview
+    selected_tools = list(preview.selected_tools)
+    if turn_frame.scope == "public":
+        selected_tools = list(
+            dict.fromkeys(
+                _TURN_FRAME_PUBLIC_TOOL_MAP.get(
+                    str(turn_frame.public_conversation_act or "").strip(),
+                    ("get_public_school_profile",),
+                )
+            )
+        )
+    access_tier = (
+        AccessTier.public
+        if turn_frame.access_tier == "public"
+        else AccessTier.authenticated
+        if turn_frame.access_tier == "authenticated"
+        else AccessTier.sensitive
+    )
+    domain = (
+        QueryDomain.institution
+        if turn_frame.domain == "institution"
+        else QueryDomain.calendar
+        if turn_frame.domain == "calendar"
+        else QueryDomain.academic
+        if turn_frame.domain == "academic"
+        else QueryDomain.finance
+        if turn_frame.domain == "finance"
+        else QueryDomain.support
+        if turn_frame.domain == "support"
+        else QueryDomain.unknown
+    )
+    mode = (
+        OrchestrationMode.clarify
+        if turn_frame.needs_clarification
+        else OrchestrationMode.structured_tool
+    )
+    graph_path = [
+        *list(preview.graph_path),
+        f"turn_frame:{turn_frame.capability_id or turn_frame.conversation_act}",
+    ]
+    return preview.model_copy(
+        update={
+            "mode": mode,
+            "classification": IntentClassification(
+                domain=domain,
+                access_tier=access_tier,
+                confidence=turn_frame.confidence,
+                reason=f"{stack_name}_turn_frame:{turn_frame.capability_id or turn_frame.conversation_act}",
+            ),
+            "retrieval_backend": RetrievalBackend.none
+            if mode is OrchestrationMode.structured_tool
+            else preview.retrieval_backend,
+            "selected_tools": selected_tools,
+            "needs_authentication": access_tier is not AccessTier.public
+            and mode is not OrchestrationMode.clarify,
+            "graph_path": graph_path,
+            "reason": f"{stack_name}_turn_frame:{turn_frame.capability_id or turn_frame.conversation_act}",
+            "output_contract": "turno estruturado pelo semantic router e resolvido pela stack",
+        }
+    )
+
+
+def build_turn_frame_public_plan(turn_frame: TurnFrame | None) -> Any:
+    if turn_frame is None or turn_frame.scope != "public":
+        return None
+    act = str(turn_frame.public_conversation_act or "").strip()
+    if not act:
+        return None
+    from . import runtime as rt
+
+    return rt.PublicInstitutionPlan(
+        conversation_act=act,
+        required_tools=_TURN_FRAME_PUBLIC_TOOL_MAP.get(act, ("get_public_school_profile",)),
+        fetch_profile=True,
+        requested_attribute=turn_frame.requested_attribute,
+        focus_hint=turn_frame.public_focus_hint,
+        semantic_source="turn_frame",
+        use_conversation_context=bool(turn_frame.follow_up_of),
     )
 
 

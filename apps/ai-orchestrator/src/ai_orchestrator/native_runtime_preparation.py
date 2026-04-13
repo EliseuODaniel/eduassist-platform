@@ -7,9 +7,12 @@ from . import runtime as rt
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
 from .semantic_ingress_runtime import (
     apply_semantic_ingress_preview,
+    apply_turn_frame_preview,
     build_semantic_ingress_public_plan,
+    build_turn_frame_public_plan,
     is_terminal_semantic_ingress_plan,
     maybe_resolve_semantic_ingress_plan,
+    maybe_resolve_turn_frame,
 )
 
 
@@ -26,6 +29,8 @@ class RuntimeExecutionPreparation:
     preview: Any
     semantic_ingress_plan: Any | None = None
     semantic_ingress_public_plan: Any | None = None
+    turn_frame: Any | None = None
+    turn_frame_public_plan: Any | None = None
     llm_stages: list[str] = field(default_factory=list)
 
 
@@ -128,6 +133,8 @@ async def prepare_runtime_execution(
     preview = effective_plan.preview.model_copy(deep=True)
     semantic_ingress_plan = None
     semantic_ingress_public_plan = None
+    turn_frame = None
+    turn_frame_public_plan = None
     llm_stages: list[str] = []
 
     if use_semantic_ingress and semantic_stack_label:
@@ -176,6 +183,31 @@ async def prepare_runtime_execution(
             )
             semantic_ingress_public_plan = build_semantic_ingress_public_plan(semantic_ingress_plan)
             llm_stages.append('semantic_ingress_classifier')
+    if semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan):
+        turn_frame = await maybe_resolve_turn_frame(
+            settings=settings,
+            request_message=request.message,
+            conversation_context=context_payload,
+            preview=preview,
+            stack_label=semantic_stack_label or engine_name,
+            authenticated=bool(getattr(request.user, "authenticated", False)),
+        )
+        if turn_frame is not None:
+            preview = apply_turn_frame_preview(
+                preview=preview,
+                turn_frame=turn_frame,
+                stack_name=semantic_stack_label or engine_name,
+            )
+            turn_frame_public_plan = build_turn_frame_public_plan(turn_frame)
+            effective_plan = effective_plan.model_copy(
+                update={
+                    'plan_notes': [
+                        *effective_plan.plan_notes,
+                        f'turn_frame:{getattr(turn_frame, "capability_id", None) or getattr(turn_frame, "conversation_act", "none")}',
+                    ]
+                }
+            )
+            llm_stages.append('turn_frame_classifier')
     else:
         should_apply_rescue = actor is not None and bool(getattr(request.user, 'authenticated', False))
         if should_apply_rescue and (protected_rescue_predicate is None or protected_rescue_predicate(
@@ -203,5 +235,7 @@ async def prepare_runtime_execution(
         preview=preview,
         semantic_ingress_plan=semantic_ingress_plan,
         semantic_ingress_public_plan=semantic_ingress_public_plan,
+        turn_frame=turn_frame,
+        turn_frame_public_plan=turn_frame_public_plan,
         llm_stages=llm_stages,
     )

@@ -6,7 +6,9 @@ from eduassist_semantic_ingress import (
     IngressSemanticPlan,
     looks_like_school_scope_message,
     resolve_semantic_ingress_with_provider,
+    resolve_turn_frame_with_provider,
     should_run_semantic_ingress_classifier,
+    turn_frame_preview_metadata,
 )
 
 
@@ -72,6 +74,25 @@ def apply_semantic_ingress_preview_hint(
     preview["reason"] = f"specialist_semantic_ingress:{plan.conversation_act}"
     preview["semantic_ingress"] = plan.model_dump(mode="json")
     return preview
+
+
+async def maybe_resolve_turn_frame(
+    *,
+    settings: Any,
+    request_message: str,
+    conversation_context: dict[str, Any] | None,
+    preview_hint: dict[str, Any] | None,
+    authenticated: bool,
+) -> dict[str, Any] | None:
+    frame = await resolve_turn_frame_with_provider(
+        settings=settings,
+        stack_label="specialist_supervisor",
+        request_message=request_message,
+        conversation_context=conversation_context,
+        preview=_preview_payload(preview_hint),
+        authenticated=authenticated,
+    )
+    return turn_frame_preview_metadata(frame)
 
 
 def semantic_ingress_act(preview_hint: dict[str, Any] | None) -> str | None:

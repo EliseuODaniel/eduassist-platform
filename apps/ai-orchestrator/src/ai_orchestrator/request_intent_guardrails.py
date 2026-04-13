@@ -158,18 +158,6 @@ def looks_like_high_confidence_public_school_faq(
     normalized = normalize_guardrail_text(message)
     if not normalized:
         return False
-    try:
-        from .public_orchestration_runtime import _is_high_confidence_public_profile_query
-
-        return bool(
-            _is_high_confidence_public_profile_query(
-                message,
-                conversation_context=conversation_context,
-                school_profile=school_profile,
-            )
-        )
-    except Exception:
-        pass
     enrollment_documents_terms = {
         'quais documentos preciso',
         'documentos exigidos',
@@ -199,6 +187,30 @@ def looks_like_high_confidence_public_school_faq(
         return True
     if 'biblioteca' in normalized and any(
         term in normalized for term in {'tem biblioteca', 'horario', 'horário', 'abre', 'fecha', 'funciona'}
+    ):
+        return True
+    if any(
+        term in normalized
+        for term in {
+            'que horas comeca a aula',
+            'que horas começa a aula',
+            'horario da manha',
+            'horário da manhã',
+            'turno da manha',
+            'turno da manhã',
+            'aula de manha',
+            'aula de manhã',
+            'aula da manha',
+            'aula da manhã',
+            'tem aula de manha',
+            'tem aula de manhã',
+            'qual horario da aula',
+            'qual horário da aula',
+        }
+    ):
+        return True
+    if any(term in normalized for term in {'manha', 'manhã', 'matutino', 'matutina'}) and any(
+        term in normalized for term in {'aula', 'turno', 'turma', 'horario', 'horário', 'comeca', 'começa', 'inicio', 'início'}
     ):
         return True
     if any(

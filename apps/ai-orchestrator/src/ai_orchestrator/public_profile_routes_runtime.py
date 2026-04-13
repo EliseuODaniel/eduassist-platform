@@ -35,6 +35,7 @@ from .public_act_rules_runtime import (
     _is_public_year_three_phase_query,
     _is_service_routing_query,
     _matches_public_location_rule,
+    _matches_public_schedule_rule,
 )
 
 def _refresh_native_namespace() -> None:
@@ -298,6 +299,10 @@ def _try_public_channel_fast_answer_impl(
         timeline_answer = _handle_public_timeline(public_context)
         if timeline_answer:
             return timeline_answer
+    if _matches_public_schedule_rule(message):
+        schedule_answer = _handle_public_schedule(public_context)
+        if schedule_answer:
+            return schedule_answer
     if _is_public_operating_hours_query(message):
         operating_hours_answer = _handle_public_operating_hours(public_context)
         if operating_hours_answer:

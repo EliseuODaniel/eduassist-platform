@@ -5,6 +5,11 @@ from __future__ import annotations
 LOCAL_EXTRACTED_NAMES = {'maybe_execute_python_functions_native_plan'}
 
 from . import python_functions_native_runtime as _native
+from .semantic_ingress_runtime import (
+    apply_turn_frame_preview,
+    build_turn_frame_public_plan,
+    maybe_resolve_turn_frame,
+)
 
 
 def _refresh_native_namespace() -> None:
@@ -187,8 +192,27 @@ async def maybe_execute_python_functions_native_plan(
         if semantic_ingress_plan is not None
         else None
     )
+    turn_frame = None
+    turn_frame_public_plan = None
     if semantic_ingress_plan is not None:
         llm_stages.append('semantic_ingress_classifier')
+    if semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan):
+        turn_frame = await maybe_resolve_turn_frame(
+            settings=settings,
+            request_message=request.message,
+            conversation_context=conversation_context,
+            preview=preview,
+            stack_label='python_functions',
+            authenticated=bool(request.user.authenticated),
+        )
+        if turn_frame is not None:
+            preview = apply_turn_frame_preview(
+                preview=preview,
+                turn_frame=turn_frame,
+                stack_name='python_functions',
+            )
+            turn_frame_public_plan = build_turn_frame_public_plan(turn_frame)
+            llm_stages.append('turn_frame_classifier')
     evidence_pack = None
     semantic_ingress_terminal_answer = None
     if (
@@ -593,7 +617,7 @@ async def maybe_execute_python_functions_native_plan(
         )
     elif preview.mode is OrchestrationMode.structured_tool:
         public_plan_sink: dict[str, Any] = {}
-        resolved_public_plan = semantic_ingress_public_plan
+        resolved_public_plan = semantic_ingress_public_plan or turn_frame_public_plan
         if resolved_public_plan is None and analysis_message.strip() != str(request.message).strip():
             try:
                 resolved_public_plan = await rt._resolve_public_institution_plan(

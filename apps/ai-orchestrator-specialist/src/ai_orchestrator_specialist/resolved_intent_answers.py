@@ -1470,14 +1470,24 @@ async def maybe_resolved_intent_answer(
     *,
     deps: ResolvedIntentDeps,
 ) -> SupervisorAnswerPayload | None:
-    if looks_like_high_confidence_public_school_faq(ctx.request.message):
+    resolved = ctx.resolved_turn
+    if resolved is None or resolved.domain == "unknown":
+        return None
+    handlers: dict[str, Any] = {
+        "institution.shift_offers": _resolved_shift_offers_answer,
+        "institution.interval_schedule": _resolved_interval_schedule_answer,
+        "academic.student_grades": _resolved_academic_student_grades_answer,
+        "academic.attendance_summary": _resolved_academic_attendance_summary_answer,
+        "finance.student_summary": _resolved_finance_student_summary_answer,
+    }
+    if (
+        looks_like_high_confidence_public_school_faq(ctx.request.message)
+        and resolved.capability not in handlers
+    ):
         return None
     recent_context_answer = await _maybe_recent_context_followup_answer(ctx, deps=deps)
     if recent_context_answer is not None:
         return recent_context_answer
-    resolved = ctx.resolved_turn
-    if resolved is None or resolved.domain == "unknown":
-        return None
     if _looks_like_public_pricing_navigation_query(
         ctx.request.message,
         deps=deps,
@@ -1488,13 +1498,6 @@ async def maybe_resolved_intent_answer(
         term in normalized_message for term in {"financeiro", "bloque", "boleto", "mensalidade", "fatura"}
     ):
         return None
-    handlers: dict[str, Any] = {
-        "institution.shift_offers": _resolved_shift_offers_answer,
-        "institution.interval_schedule": _resolved_interval_schedule_answer,
-        "academic.student_grades": _resolved_academic_student_grades_answer,
-        "academic.attendance_summary": _resolved_academic_attendance_summary_answer,
-        "finance.student_summary": _resolved_finance_student_summary_answer,
-    }
     handler = handlers.get(resolved.capability)
     if handler is None:
         return None

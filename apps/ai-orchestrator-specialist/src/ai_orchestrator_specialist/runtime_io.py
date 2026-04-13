@@ -219,6 +219,7 @@ async def orchestrator_preview(ctx: Any) -> dict[str, Any] | None:
     from .semantic_ingress_runtime import (
         apply_semantic_ingress_preview_hint,
         maybe_resolve_semantic_ingress_plan,
+        maybe_resolve_turn_frame,
     )
 
     user = getattr(ctx.request, "user", None)
@@ -288,6 +289,50 @@ async def orchestrator_preview(ctx: Any) -> dict[str, Any] | None:
             preview_hint=preview,
             plan=semantic_ingress_plan,
         )
+    turn_frame = await maybe_resolve_turn_frame(
+        settings=ctx.settings,
+        request_message=ctx.request.message,
+        conversation_context=getattr(ctx, "conversation_context", None),
+        preview_hint=preview,
+        authenticated=bool(getattr(user, "authenticated", False)),
+    )
+    if isinstance(turn_frame, dict):
+        preview["turn_frame"] = turn_frame
+        capability_id = str(turn_frame.get("capability_id") or "").strip()
+        capability_domain = str(turn_frame.get("domain") or "").strip()
+        capability_access_tier = str(turn_frame.get("access_tier") or "").strip()
+        capability_scope = str(turn_frame.get("scope") or "").strip()
+        public_conversation_act = str(turn_frame.get("public_conversation_act") or "").strip()
+        if capability_id:
+            preview["reason"] = f"specialist_turn_frame:{capability_id}"
+            preview["graph_path"] = [
+                *list(preview.get("graph_path") or ["specialist_supervisor", "local_preview_hint"]),
+                f"turn_frame:{capability_id}",
+            ]
+        if capability_scope == "public" and capability_id:
+            preview["mode"] = "structured_tool"
+            preview["retrieval_backend"] = "none"
+            selected_tools = ["get_public_profile_bundle"]
+            if public_conversation_act == "pricing":
+                selected_tools.append("project_public_pricing")
+            preview["selected_tools"] = list(dict.fromkeys(selected_tools))
+        elif capability_scope == "protected" and capability_id:
+            preview["mode"] = "structured_tool"
+            preview["retrieval_backend"] = "none"
+            selected_tools: list[str] = []
+            if capability_domain == "finance":
+                selected_tools.append("fetch_financial_summary")
+            elif capability_domain == "academic":
+                selected_tools.append("fetch_academic_summary")
+            preview["selected_tools"] = list(dict.fromkeys(selected_tools))
+        classification = preview.get("classification") if isinstance(preview.get("classification"), dict) else {}
+        if capability_domain:
+            classification["domain"] = capability_domain
+        if capability_access_tier:
+            classification["access_tier"] = capability_access_tier
+        if capability_id:
+            classification["reason"] = f"specialist_turn_frame:{capability_id}"
+        preview["classification"] = classification
     return _cache_set(
         _ORCHESTRATOR_PREVIEW_CACHE,
         cache_key,

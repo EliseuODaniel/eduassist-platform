@@ -306,6 +306,54 @@ _PUBLIC_INFO_INTENT_TERMS = {
     'conversar com',
 }
 
+_PUBLIC_SCHEDULE_INTENT_TERMS = {
+    'turno',
+    'turnos',
+    'turma',
+    'turmas',
+    'matutino',
+    'matutina',
+    'manha',
+    'manhã',
+    'vespertino',
+    'vespertina',
+    'noturno',
+    'noturna',
+    'integral',
+    'aula de manha',
+    'aula de manhã',
+    'aula da manha',
+    'aula da manhã',
+    'turno da manha',
+    'turno da manhã',
+    'turno de manha',
+    'turno de manhã',
+    'horario de aula',
+    'horário de aula',
+    'horario da aula',
+    'horário da aula',
+    'horario da manha',
+    'horário da manhã',
+    'horario do turno',
+    'horário do turno',
+}
+
+_PUBLIC_SCHEDULE_TIME_TERMS = {
+    'que horas',
+    'qual horario',
+    'qual horário',
+    'horario',
+    'horário',
+    'horarios',
+    'horários',
+    'comeca',
+    'começa',
+    'inicio',
+    'início',
+    'tem',
+    'atende',
+}
+
 _PUBLIC_PRICING_TERMS = {
     'valor da matricula',
     'valor da matrícula',
@@ -534,6 +582,13 @@ def looks_like_high_confidence_public_school_faq(message: str | None) -> bool:
     ):
         return True
     if any(_contains_term(normalized, term) for term in _SCHOOL_YEAR_START_TERMS):
+        return True
+    has_schedule_scope = any(
+        _contains_term(normalized, term) for term in _PUBLIC_SCHEDULE_INTENT_TERMS
+    )
+    if has_schedule_scope and any(
+        _contains_term(normalized, term) for term in _PUBLIC_SCHEDULE_TIME_TERMS
+    ):
         return True
     if any(_contains_term(normalized, term) for term in _PUBLIC_PRICING_TERMS) and not any(
         _contains_term(normalized, term)

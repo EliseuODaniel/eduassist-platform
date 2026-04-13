@@ -282,7 +282,43 @@ def _matches_public_pricing_rule(message: str) -> bool:
 
 def _matches_public_schedule_rule(message: str) -> bool:
     normalized = _normalize_text(message)
-    return any(_message_matches_term(normalized, term) for term in PUBLIC_SCHEDULE_TERMS)
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_SCHEDULE_TERMS):
+        return True
+    asks_schedule_time = any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'que horas',
+            'qual horario',
+            'qual horário',
+            'comeca',
+            'começa',
+            'inicio',
+            'início',
+            'horario',
+            'horário',
+        }
+    )
+    school_shift_scope = any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'aula',
+            'aulas',
+            'turno',
+            'turnos',
+            'turma',
+            'turmas',
+            'manha',
+            'manhã',
+            'matutino',
+            'matutina',
+            'vespertino',
+            'vespertina',
+            'noturno',
+            'noturna',
+            'integral',
+        }
+    )
+    return asks_schedule_time and school_shift_scope
 
 
 def _matches_public_feature_rule(message: str) -> bool:

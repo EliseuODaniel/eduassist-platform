@@ -5,6 +5,7 @@ import unicodedata
 from typing import Any
 
 from pydantic import BaseModel, Field
+from eduassist_semantic_ingress import build_turn_frame_hint
 
 from .entity_resolution import ResolvedEntityHints, resolve_entity_hints
 from .models import (
@@ -20,6 +21,14 @@ from .public_doc_knowledge import match_public_canonical_lane
 from .request_intent_guardrails import (
     looks_like_explicit_admin_status_query,
     looks_like_high_confidence_public_school_faq,
+)
+from .turn_frame_policy import (
+    append_turn_frame_graph_path,
+    append_turn_frame_reason,
+    turn_frame_access_tier,
+    turn_frame_canonical_lane,
+    turn_frame_public_selected_tools,
+    turn_frame_query_domain,
 )
 
 
@@ -313,9 +322,20 @@ def _looks_like_explicit_public_pricing_request(message: str) -> bool:
 
 
 def _build_preview(*, request: MessageResponseRequest, settings: Any) -> OrchestrationPreview:
+    turn_frame = build_turn_frame_hint(
+        message=request.message,
+        conversation_context=None,
+        preview=None,
+        authenticated=bool(request.user.authenticated),
+    )
     authenticated = bool(request.user.authenticated)
     canonical_lane = match_public_canonical_lane(request.message)
+    if canonical_lane is None and turn_frame is not None and turn_frame.scope == "public":
+        canonical_lane = turn_frame_canonical_lane(turn_frame)
     domain = _classify_domain(request.message, authenticated=authenticated)
+    turn_frame_domain = turn_frame_query_domain(turn_frame) if turn_frame is not None else None
+    if turn_frame_domain is not None:
+        domain = turn_frame_domain
     normalized = _normalize(request.message)
     explicit_admin_request = looks_like_explicit_admin_status_query(
         request.message,
@@ -392,6 +412,9 @@ def _build_preview(*, request: MessageResponseRequest, settings: Any) -> Orchest
             access_tier = AccessTier.authenticated
         elif domain is QueryDomain.finance:
             access_tier = AccessTier.sensitive
+    turn_frame_access = turn_frame_access_tier(turn_frame) if turn_frame is not None else None
+    if turn_frame_access is not None:
+        access_tier = turn_frame_access
 
     if mode is OrchestrationMode.structured_tool:
         selected_tools = (
@@ -399,6 +422,8 @@ def _build_preview(*, request: MessageResponseRequest, settings: Any) -> Orchest
             if authenticated and access_tier is not AccessTier.public
             else _public_selected_tools_for_message(request.message)
         )
+        if turn_frame is not None and turn_frame.scope == "public":
+            selected_tools = turn_frame_public_selected_tools(turn_frame)
     elif mode is OrchestrationMode.hybrid_retrieval:
         selected_tools = ['search_documents']
     elif mode is OrchestrationMode.deny:
@@ -414,21 +439,27 @@ def _build_preview(*, request: MessageResponseRequest, settings: Any) -> Orchest
     elif mode is OrchestrationMode.clarify:
         output_contract = 'pedido curto de esclarecimento'
 
+    preview_reason = append_turn_frame_reason(reason, turn_frame)
+
     return OrchestrationPreview(
         mode=mode,
         classification=IntentClassification(
             domain=domain,
             access_tier=access_tier,
             confidence=0.88 if mode is not OrchestrationMode.clarify else 0.64,
-            reason=reason,
+            reason=preview_reason,
         ),
         retrieval_backend=RetrievalBackend.qdrant_hybrid if mode is OrchestrationMode.hybrid_retrieval else RetrievalBackend.none,
         selected_tools=selected_tools,
         citations_required=mode is OrchestrationMode.hybrid_retrieval,
         needs_authentication=access_tier is not AccessTier.public and mode is not OrchestrationMode.clarify,
-        graph_path=['llamaindex:planner', f'domain:{domain.value}', f'mode:{mode.value}'],
+        graph_path=append_turn_frame_graph_path([
+            'llamaindex:planner',
+            f'domain:{domain.value}',
+            f'mode:{mode.value}',
+        ], turn_frame),
         risk_flags=['sensitive_data_path'] if access_tier is AccessTier.sensitive else [],
-        reason=reason,
+        reason=preview_reason,
         output_contract=output_contract,
     )
 

@@ -11,6 +11,12 @@ from ai_orchestrator.models import (
     RetrievalBackend,
 )
 from ai_orchestrator.semantic_ingress_runtime import apply_semantic_ingress_preview
+from eduassist_semantic_ingress import (
+    build_capability_candidates,
+    build_turn_frame_hint,
+    derive_focus_frame,
+    resolve_turn_frame_with_provider,
+)
 from eduassist_semantic_ingress.runtime import (
     _validated_conversation_act,
     IngressSemanticPlan,
@@ -139,6 +145,7 @@ def test_looks_like_high_confidence_public_school_faq_detects_public_faq_familie
     assert looks_like_high_confidence_public_school_faq("tem biblioteca nessa escola?") is True
     assert looks_like_high_confidence_public_school_faq("qual valor da matricula?") is True
     assert looks_like_high_confidence_public_school_faq("quando iniciam as aulas?") is True
+    assert looks_like_high_confidence_public_school_faq("que horas começa a aula de manhã?") is True
     assert looks_like_high_confidence_public_school_faq("quais documentos preciso para matricula?") is True
     assert looks_like_high_confidence_public_school_faq("qual o proximo vencimento?") is False
     assert (
@@ -155,6 +162,106 @@ def test_looks_like_scope_boundary_candidate_detects_out_of_scope_question() -> 
     assert looks_like_scope_boundary_candidate("Posso fumar maconha nessa escola?") is False
     assert looks_like_scope_boundary_candidate("Qual o horario da biblioteca?") is False
     assert looks_like_scope_boundary_candidate("qual contato do diretor?") is False
+    assert looks_like_scope_boundary_candidate("que horas começa a aula de manhã?") is False
+
+
+def test_build_capability_candidates_prefers_public_schedule_for_morning_class_query() -> None:
+    candidates = build_capability_candidates(
+        message="Que horas começa a aula de manhã?",
+        conversation_context=None,
+        authenticated=True,
+    )
+
+    assert candidates
+    assert candidates[0].capability_id == "public.schedule.class_start_time"
+
+
+def test_derive_focus_frame_uses_recent_public_capability_for_followup() -> None:
+    focus = derive_focus_frame(
+        conversation_context={
+            "messages": [
+                {"role": "user", "content": "Qual o horario da biblioteca?"},
+                {"role": "assistant", "content": "A biblioteca funciona das 7h30 as 18h00."},
+            ]
+        },
+        authenticated=False,
+    )
+
+    assert focus.capability_id == "public.facilities.library.hours"
+    assert focus.scope == "public"
+
+
+def test_build_turn_frame_hint_carries_recent_finance_focus_for_next_due_followup() -> None:
+    frame = build_turn_frame_hint(
+        message="Qual o proximo vencimento?",
+        conversation_context={
+            "messages": [
+                {"role": "user", "content": "Quero ver meu financeiro"},
+                {"role": "assistant", "content": "Resumo financeiro da familia."},
+            ]
+        },
+        preview={"mode": "structured_tool", "domain": "finance", "access_tier": "authenticated"},
+        authenticated=True,
+    )
+
+    assert frame is not None
+    assert frame.capability_id == "protected.finance.next_due"
+    assert frame.follow_up_of == "protected.finance.summary"
+
+
+def test_resolve_turn_frame_with_provider_keeps_deterministic_high_confidence_path_without_llm(monkeypatch) -> None:
+    async def fake_router(**_kwargs) -> str | None:
+        raise AssertionError("router llm should not run for high-confidence deterministic turn")
+
+    monkeypatch.setattr("eduassist_semantic_ingress.turn_router._turn_router_text_call", fake_router)
+
+    import asyncio
+
+    frame = asyncio.run(
+        resolve_turn_frame_with_provider(
+            settings=SimpleNamespace(),
+            stack_label="python_functions",
+            request_message="Qual o horario da biblioteca?",
+            conversation_context=None,
+            preview={"mode": "structured_tool", "domain": "institution", "access_tier": "public"},
+            authenticated=False,
+        )
+    )
+
+    assert frame is not None
+    assert frame.capability_id == "public.facilities.library.hours"
+
+
+def test_resolve_turn_frame_with_provider_uses_llm_to_disambiguate_candidates(monkeypatch) -> None:
+    async def fake_router(**_kwargs) -> str:
+        return (
+            '{"capability_id":"public.facilities.library.hours","confidence_bucket":"high",'
+            '"needs_clarification":false,"follow_up_of":"public.facilities.library.hours","reason":"followup biblioteca"}'
+        )
+
+    monkeypatch.setattr("eduassist_semantic_ingress.turn_router._turn_router_text_call", fake_router)
+
+    import asyncio
+
+    frame = asyncio.run(
+        resolve_turn_frame_with_provider(
+            settings=SimpleNamespace(),
+            stack_label="specialist_supervisor",
+            request_message="E que horas fecha?",
+            conversation_context={
+                "messages": [
+                    {"role": "user", "content": "Qual o horario da biblioteca?"},
+                    {"role": "assistant", "content": "A biblioteca funciona das 7h30 as 18h00."},
+                ]
+            },
+            preview={"mode": "structured_tool", "domain": "institution", "access_tier": "public"},
+            authenticated=False,
+        )
+    )
+
+    assert frame is not None
+    assert frame.capability_id == "public.facilities.library.hours"
+    assert frame.follow_up_of == "public.facilities.library.hours"
 
 
 def test_resolve_semantic_ingress_with_provider_parses_structured_payload(monkeypatch) -> None:

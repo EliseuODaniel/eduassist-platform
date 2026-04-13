@@ -77,10 +77,19 @@ def school_domain_terms() -> set[str]:
         "turnos",
         "turma",
         "turmas",
+        "manha",
+        "manhã",
         "matutivo",
         "matutino",
+        "matutina",
         "vespertino",
+        "vespertina",
         "noturno",
+        "noturna",
+        "horario de aula",
+        "horário de aula",
+        "horario da aula",
+        "horário da aula",
         "intervalo",
         "intervalos",
         "recreio",
@@ -289,11 +298,53 @@ def _resolve_student_reference_for_spec(
     return None, False
 
 
+def _resolved_turn_from_turn_frame(ctx: Any) -> ResolvedTurnIntent | None:
+    preview_hint = ctx.preview_hint if isinstance(getattr(ctx, "preview_hint", None), dict) else {}
+    turn_frame = preview_hint.get("turn_frame") if isinstance(preview_hint, dict) else None
+    if not isinstance(turn_frame, dict):
+        return None
+    capability_id = str(turn_frame.get("capability_id") or "").strip()
+    if not capability_id:
+        return None
+    mapping = {
+        "public.schedule.shift_offers": ("institution.shift_offers", "institution", "shift_offers", "institution.shift_offers"),
+        "public.schedule.class_start_time": ("institution.shift_offers", "institution", "shift_offers", "institution.shift_offers"),
+        "public.schedule.class_end_time": ("institution.shift_offers", "institution", "shift_offers", "institution.shift_offers"),
+        "public.calendar.year_start": ("institution.shift_offers", "institution", "shift_offers", "institution.shift_offers"),
+        "public.facilities.library.exists": ("institution.facilities", "institution", "facilities", "institution.facilities"),
+        "public.facilities.library.hours": ("institution.facilities", "institution", "facilities", "institution.facilities"),
+        "public.contacts.leadership": ("institution.facilities", "institution", "facilities", "institution.facilities"),
+        "public.enrollment.required_documents": ("institution.facilities", "institution", "facilities", "institution.facilities"),
+        "public.enrollment.pricing": ("institution.facilities", "institution", "facilities", "institution.facilities"),
+        "protected.finance.summary": ("finance.student_summary", "finance", "student_summary", "finance.student_summary"),
+        "protected.finance.next_due": ("finance.student_summary", "finance", "student_summary", "finance.student_summary"),
+        "protected.academic.grades": ("academic.student_grades", "academic", "student_grades", "academic.student_grades"),
+        "protected.academic.attendance": ("academic.attendance_summary", "academic", "attendance_summary", "academic.attendance_summary"),
+    }
+    resolved = mapping.get(capability_id)
+    if resolved is None:
+        return None
+    key, domain, subintent, capability = resolved
+    return ResolvedTurnIntent(
+        key=key,
+        domain=domain,
+        subintent=subintent,
+        capability=capability,
+        access_tier=str(turn_frame.get("access_tier") or "public"),
+        confidence=float(turn_frame.get("confidence") or 0.9),
+        requires_grounding=domain in {"institution", "finance", "academic"},
+        rationale=f"turn_frame:{capability_id}",
+    )
+
+
 def resolve_turn_intent(
     ctx: Any,
     *,
     deps: IntentResolutionDeps,
 ) -> ResolvedTurnIntent:
+    turn_frame_resolved = _resolved_turn_from_turn_frame(ctx)
+    if turn_frame_resolved is not None:
+        return turn_frame_resolved
     normalized = deps.normalize_text(ctx.request.message)
     preview_domain = deps.preview_domain(ctx.preview_hint)
     memory = ctx.operational_memory or OperationalMemory()
