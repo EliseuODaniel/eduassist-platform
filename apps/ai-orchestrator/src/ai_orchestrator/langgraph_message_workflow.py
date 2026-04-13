@@ -240,7 +240,26 @@ async def _semantic_ingress(state: LangGraphMessageState) -> LangGraphMessageSta
     effective_conversation_id = state['effective_conversation_id']
     semantic_ingress_plan = state.get('semantic_ingress_plan')
     turn_frame_public_plan = state.get('turn_frame_public_plan')
-    if semantic_ingress_plan is None and turn_frame_public_plan is None:
+    normalized_message = rt._normalize_text(request.message)
+    explicit_external_library_boundary = 'biblioteca' in normalized_message and any(
+        rt._message_matches_term(normalized_message, term)
+        for term in {
+            'biblioteca publica',
+            'biblioteca pública',
+            'publica da cidade',
+            'pública da cidade',
+            'da cidade',
+            'municipal',
+            'prefeitura',
+        }
+    )
+    if (
+        not explicit_external_library_boundary
+        and
+        semantic_ingress_plan is None
+        and turn_frame_public_plan is None
+        and getattr(state.get('turn_frame'), 'conversation_act', '') != 'scope_boundary'
+    ):
         return await _delegate_runtime(state)
 
     public_plan = build_semantic_ingress_public_plan(semantic_ingress_plan) if semantic_ingress_plan is not None else None
@@ -253,7 +272,21 @@ async def _semantic_ingress(state: LangGraphMessageState) -> LangGraphMessageSta
         )
     )
     public_plan_sink: dict[str, Any] = {}
-    if semantic_ingress_plan is not None and is_terminal_semantic_ingress_plan(semantic_ingress_plan):
+    turn_frame = state.get('turn_frame')
+    if explicit_external_library_boundary:
+        message_text = rt._compose_scope_boundary_answer(
+            school_profile or {},
+            conversation_context=conversation_context,
+        )
+        semantic_reason = 'langgraph_turn_frame:scope_boundary'
+        public_plan = None
+    elif semantic_ingress_plan is None and getattr(turn_frame, 'conversation_act', '') == 'scope_boundary':
+        message_text = rt._compose_scope_boundary_answer(
+            school_profile or {},
+            conversation_context=conversation_context,
+        )
+        semantic_reason = 'langgraph_turn_frame:scope_boundary'
+    elif public_plan is not None:
         message_text = await rt._compose_public_profile_answer_agentic(
             settings=settings,
             profile=school_profile or {},
@@ -277,7 +310,9 @@ async def _semantic_ingress(state: LangGraphMessageState) -> LangGraphMessageSta
             prefer_fast_public_path=False,
         )
     llm_stages = ['semantic_ingress_classifier'] if semantic_ingress_plan is not None else ['turn_frame_classifier']
-    if semantic_ingress_plan is None or semantic_ingress_plan.conversation_act != 'language_preference':
+    if (
+        semantic_ingress_plan is None or semantic_ingress_plan.conversation_act != 'language_preference'
+    ) and semantic_reason != 'langgraph_turn_frame:scope_boundary':
         polished_text = await polish_langgraph_with_provider(
             settings=settings,
             request_message=request.message,

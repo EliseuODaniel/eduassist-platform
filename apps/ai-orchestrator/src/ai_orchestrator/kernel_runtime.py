@@ -126,6 +126,26 @@ def _message_mentions_library_entity(message: str) -> bool:
     )
 
 
+def _message_mentions_external_library_entity(message: str) -> bool:
+    normalized = rt._normalize_text(message)
+    if not _message_mentions_library_entity(message):
+        return False
+    if any(rt._message_matches_term(normalized, term) for term in {'escola', 'colegio', 'colégio', 'horizonte'}):
+        return False
+    return any(
+        rt._message_matches_term(normalized, term)
+        for term in {
+            'cidade',
+            'municipal',
+            'prefeitura',
+            'biblioteca publica',
+            'biblioteca pública',
+            'publica da cidade',
+            'pública da cidade',
+        }
+    )
+
+
 def _message_switches_public_entity_away_from_library(message: str) -> bool:
     normalized = rt._normalize_text(message)
     non_library_terms = {
@@ -150,6 +170,13 @@ def _message_switches_public_entity_away_from_library(message: str) -> bool:
         'quadra',
         'professores',
         'secretaria',
+        'cidade',
+        'municipal',
+        'prefeitura',
+        'biblioteca publica',
+        'biblioteca pública',
+        'publica da cidade',
+        'pública da cidade',
     }
     return any(rt._message_matches_term(normalized, term) for term in non_library_terms)
 
@@ -220,6 +247,12 @@ async def _maybe_contextual_public_direct_answer(
 ) -> str | None:
     if rt._llm_forced_mode_enabled(settings=settings, request=request):
         return None
+    if _message_mentions_external_library_entity(request.message):
+        return rt._compose_scope_boundary_answer(
+            school_profile or {},
+            conversation_context=conversation_context,
+        )
+    preview_graph_path = tuple(getattr(preview, 'graph_path', ()) or ())
     is_public_context = preview.classification.access_tier is AccessTier.public or not request.user.authenticated
     if not is_public_context:
         return None
@@ -274,6 +307,7 @@ async def _maybe_contextual_public_direct_answer(
     recent_context_lines = [rt._normalize_text(content) for _, content in rt._recent_message_lines(conversation_context)]
     recent_context_mentions_library = any('biblioteca' in content or 'biblioteca aurora' in content for content in recent_context_lines)
     current_message_mentions_library = _message_mentions_library_entity(request.message)
+    current_message_mentions_external_library = _message_mentions_external_library_entity(request.message)
     current_message_mentions_leadership = any(
         rt._message_matches_term(normalized_request, term)
         for term in {'diretora', 'diretor', 'direcao', 'direção', 'diretoria'}
@@ -287,6 +321,20 @@ async def _maybe_contextual_public_direct_answer(
         'qual o nome da biblioteca',
     }
     library_hours_followup_terms = {
+        'que horas abre',
+        'horario de abertura da biblioteca',
+        'horário de abertura da biblioteca',
+        'abre',
+        'abertura',
+        'ate que horas fecha',
+        'até que horas fecha',
+        'que horas fecha',
+        'horario de fechamento da biblioteca',
+        'horário de fechamento da biblioteca',
+        'fechamento da biblioteca',
+        'fecha',
+        'fechamento',
+        'encerra',
         'ate que horas funciona',
         'até que horas funciona',
         'horario',
@@ -312,12 +360,26 @@ async def _maybe_contextual_public_direct_answer(
         (
             (
                 current_message_mentions_library
+                and not current_message_mentions_external_library
                 and any(
                     rt._message_matches_term(normalized_request, term)
                     for term in {
                         'como ela se chama',
                         'qual o nome da biblioteca',
                         'nome da biblioteca',
+                        'que horas abre',
+                        'horario de abertura da biblioteca',
+                        'horário de abertura da biblioteca',
+                        'abre',
+                        'ate que horas fecha',
+                        'até que horas fecha',
+                        'que horas fecha',
+                        'horario de fechamento da biblioteca',
+                        'horário de fechamento da biblioteca',
+                        'fechamento da biblioteca',
+                        'fecha',
+                        'fechamento',
+                        'encerra',
                         'ate que horas funciona',
                         'até que horas funciona',
                         'horario da biblioteca',
@@ -342,7 +404,18 @@ async def _maybe_contextual_public_direct_answer(
         )
     )
     if asks_library_name_and_hours:
-        return 'A biblioteca se chama Biblioteca Aurora e funciona de segunda a sexta, das 7h30 as 18h00.'
+        return await rt._compose_public_profile_answer_agentic(
+            settings=settings,
+            profile=school_profile,
+            message=request.message,
+            original_message=request.message,
+            conversation_context=conversation_context,
+            semantic_plan=rt._build_public_institution_plan(
+                request.message,
+                ['get_public_school_profile'],
+                conversation_context=conversation_context,
+            ),
+        )
 
     asks_school_year_start = (
         any(

@@ -603,6 +603,44 @@ def test_contextual_public_direct_answer_refines_library_closing_focus(monkeypat
     assert result == 'A biblioteca fecha as 18h00.'
 
 
+def test_contextual_public_direct_answer_respects_external_city_library_scope_boundary(monkeypatch) -> None:
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._llm_forced_mode_enabled',
+        lambda **_: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._compose_scope_boundary_answer',
+        lambda *_args, **_kwargs: 'Boundary seguro.',
+    )
+
+    result = __import__('asyncio').run(
+        _maybe_contextual_public_direct_answer(
+            request=SimpleNamespace(
+                message='qual horário de fechamento da biblioteca pública da cidade?',
+                user=SimpleNamespace(authenticated=False),
+            ),
+            analysis_message='qual horário de fechamento da biblioteca pública da cidade?',
+            preview=SimpleNamespace(
+                classification=SimpleNamespace(
+                    access_tier=AccessTier.public,
+                    domain=QueryDomain.institution,
+                ),
+                graph_path=['turn_frame:scope_boundary'],
+            ),
+            settings=SimpleNamespace(),
+            school_profile={
+                'school_name': 'Colegio Horizonte',
+                'feature_catalog': [
+                    {'name': 'Biblioteca Aurora', 'label': 'Biblioteca Aurora', 'note': 'de segunda a sexta, das 7h30 as 18h00'}
+                ],
+            },
+            conversation_context={'recent_messages': []},
+        )
+    )
+
+    assert result == 'Boundary seguro.'
+
+
 def test_semantic_ingress_native_public_decision_preserves_public_contract() -> None:
     public_plan = SimpleNamespace(
         conversation_act='greeting',

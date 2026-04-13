@@ -215,6 +215,7 @@ async def maybe_execute_python_functions_native_plan(
             llm_stages.append('turn_frame_classifier')
     evidence_pack = None
     semantic_ingress_terminal_answer = None
+    external_turn_boundary_answer = None
     if (
         semantic_ingress_public_plan is not None
         and is_terminal_semantic_ingress_plan(semantic_ingress_plan)
@@ -231,6 +232,15 @@ async def maybe_execute_python_functions_native_plan(
             )
             or ''
         ).strip()
+    elif (
+        turn_frame is not None
+        and turn_frame.conversation_act == 'scope_boundary'
+        and str(turn_frame.reason or '').strip() == 'external_public_facility_turn_hint'
+    ):
+        external_turn_boundary_answer = rt._compose_scope_boundary_answer(
+            school_profile,
+            conversation_context=conversation_context,
+        )
 
     teacher_scope_answer = None
     teacher_schedule_answer = None
@@ -394,7 +404,36 @@ async def maybe_execute_python_functions_native_plan(
 
     execution_reason = 'python_functions_native_public'
 
-    if semantic_ingress_terminal_answer:
+    if external_turn_boundary_answer:
+        message_text = external_turn_boundary_answer
+        deterministic_fallback_text = external_turn_boundary_answer
+        preview = preview.model_copy(
+            update={
+                'mode': OrchestrationMode.structured_tool,
+                'classification': IntentClassification(
+                    domain=QueryDomain.unknown,
+                    access_tier=AccessTier.public,
+                    confidence=0.99,
+                    reason='python_functions_native_external_public_facility_boundary',
+                ),
+                'reason': 'python_functions_native_external_public_facility_boundary',
+                'selected_tools': list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
+                'needs_authentication': False,
+            }
+        )
+        execution_reason = preview.reason
+        evidence_pack = build_direct_answer_evidence_pack(
+            strategy='scope_boundary',
+            summary='Consulta explicita sobre entidade publica externa mantida fora do escopo institucional da escola.',
+            supports=[
+                MessageEvidenceSupport(
+                    kind='policy',
+                    label='external_public_facility_boundary',
+                    detail='turn_frame marcou biblioteca publica externa como fora do escopo da escola',
+                )
+            ],
+        )
+    elif semantic_ingress_terminal_answer:
         message_text = semantic_ingress_terminal_answer
         public_plan = semantic_ingress_public_plan
         deterministic_fallback_text = semantic_ingress_terminal_answer

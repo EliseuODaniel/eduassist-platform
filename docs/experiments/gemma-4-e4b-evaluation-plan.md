@@ -57,9 +57,9 @@ A pergunta real era:
 
 ## Linha de base comparada
 
-### Baseline hospedado
+### Override hospedado
 
-O baseline testado para alternância foi:
+O override hospedado para comparação e fallback fica em:
 
 - `LLM_MODEL_PROFILE=gemini_flash_lite`
 - provider efetivo: `google`
@@ -76,6 +76,8 @@ O backend local implementado foi:
 - runtime de inferência: `llama.cpp`
 - modelo: `google/gemma-4-E4B-it`
 - quantização usada: `Q4_K_M` em GGUF
+
+No estado atual do repositório, `gemma4e4b_local` passou a ser o default operacional local; `gemini_flash_lite` permanece como feature flag explícita para comparação.
 
 ## Por que o caminho escolhido foi este
 

@@ -5,7 +5,8 @@ ENV_FILE := .env
 SPECIALIST_PROFILE := --profile specialist-supervisor
 TELEGRAM_PROFILE := --profile telegram-public
 LOCAL_LLM_PROFILE := --profile local-llm-gemma4e4b
-DEDICATED_CORE_SERVICES := postgres redis qdrant minio minio-init keycloak opa api-core ai-orchestrator ai-orchestrator-langgraph ai-orchestrator-python-functions ai-orchestrator-llamaindex ai-orchestrator-specialist telegram-gateway
+DEDICATED_CORE_SERVICES_BASE := postgres redis qdrant minio minio-init keycloak opa api-core ai-orchestrator ai-orchestrator-langgraph ai-orchestrator-python-functions ai-orchestrator-llamaindex ai-orchestrator-specialist telegram-gateway
+DEDICATED_CORE_SERVICES := $(DEDICATED_CORE_SERVICES_BASE) local-llm-gemma4e4b
 
 .PHONY: env bootstrap compose-config compose-build compose-up compose-up-dedicated-core compose-up-dedicated-core-gemini-flash-lite compose-up-dedicated-core-gemma4e4b-local local-llm-gemma4e4b-down local-llm-gemma4e4b-logs compose-up-telegram-langgraph compose-up-telegram-python-functions compose-up-telegram-llamaindex compose-up-telegram-specialist compose-up-control-plane-compat compose-down compose-logs observability-up observability-down observability-logs smoke-local smoke-control-plane-compat smoke-authz smoke-adversarial smoke-all smoke-dedicated smoke-dedicated-langgraph smoke-dedicated-python-functions smoke-dedicated-llamaindex smoke-dedicated-specialist smoke-dedicated-multiturn smoke-dedicated-multiturn-langgraph smoke-dedicated-multiturn-python-functions smoke-dedicated-multiturn-llamaindex smoke-dedicated-multiturn-specialist smoke-dedicated-long-memory smoke-dedicated-long-memory-langgraph smoke-dedicated-long-memory-python-functions smoke-dedicated-long-memory-llamaindex smoke-dedicated-long-memory-specialist smoke-dedicated-semantic-ingress smoke-dedicated-semantic-ingress-langgraph smoke-dedicated-semantic-ingress-python-functions smoke-dedicated-semantic-ingress-llamaindex smoke-dedicated-semantic-ingress-specialist smoke-telegram-dedicated runtime-parity-check eval-dedicated eval-orchestrator eval-control-plane-compat eval-all graphrag-benchmark-bootstrap graphrag-benchmark-bootstrap-local graphrag-benchmark-local-check graphrag-benchmark-index graphrag-benchmark-index-dry-run graphrag-benchmark-baseline graphrag-benchmark-run graphrag-benchmark-run-smoke graphrag-local-runtime-up graphrag-local-runtime-down graphrag-local-runtime-logs release-readiness release-readiness-strict promotion-gate-check promotion-gate-check-stable article-docx db-upgrade db-downgrade db-seed-foundation db-seed-school-expansion db-seed-operational-load db-seed-deep-population db-seed-benchmark-scenarios db-seed-auth-bindings keycloak-sync-runtime-users db-bootstrap-app-role db-check-runtime-role db-check-rls backup-local backup-verify documents-sync python-fmt python-lint admin-install telegram-public-up telegram-public-up-stable telegram-webhook-info telegram-webhook-health telegram-edge-readiness
 
@@ -20,19 +21,19 @@ compose-config: env
 	@echo "Compose configuration is valid."
 
 compose-build: env
-	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) build
+	docker compose $(LOCAL_LLM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) build
 
 compose-up: env
-	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build
+	docker compose $(LOCAL_LLM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build
 
 compose-up-dedicated-core: env
-	docker compose $(SPECIALIST_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build $(DEDICATED_CORE_SERVICES)
+	docker compose $(SPECIALIST_PROFILE) $(LOCAL_LLM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build $(DEDICATED_CORE_SERVICES)
 
 compose-up-dedicated-core-gemini-flash-lite: env
-	LLM_MODEL_PROFILE=gemini_flash_lite OPENAI_API_MODE=responses docker compose $(SPECIALIST_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build $(DEDICATED_CORE_SERVICES)
+	LLM_MODEL_PROFILE=gemini_flash_lite OPENAI_API_MODE=responses docker compose $(SPECIALIST_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build $(DEDICATED_CORE_SERVICES_BASE)
 
 compose-up-dedicated-core-gemma4e4b-local: env
-	LLM_MODEL_PROFILE=gemma4e4b_local OPENAI_API_MODE=chat_completions docker compose $(SPECIALIST_PROFILE) $(LOCAL_LLM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build $(DEDICATED_CORE_SERVICES) local-llm-gemma4e4b
+	LLM_MODEL_PROFILE=gemma4e4b_local OPENAI_API_MODE=chat_completions docker compose $(SPECIALIST_PROFILE) $(LOCAL_LLM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build $(DEDICATED_CORE_SERVICES)
 
 local-llm-gemma4e4b-down: env
 	docker compose $(LOCAL_LLM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) stop local-llm-gemma4e4b
@@ -42,26 +43,26 @@ local-llm-gemma4e4b-logs: env
 
 compose-up-telegram-langgraph: env
 	docker rm -f eduassist-cloudflared >/dev/null 2>&1 || true
-	docker compose $(SPECIALIST_PROFILE) $(TELEGRAM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f infra/compose/telegram-langgraph.override.yaml up -d --build $(DEDICATED_CORE_SERVICES) cloudflared
+	docker compose $(SPECIALIST_PROFILE) $(TELEGRAM_PROFILE) $(LOCAL_LLM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f infra/compose/telegram-langgraph.override.yaml up -d --build $(DEDICATED_CORE_SERVICES) cloudflared
 	python3 tools/ops/telegram_webhook.py register
 
 compose-up-telegram-python-functions: env
 	docker rm -f eduassist-cloudflared >/dev/null 2>&1 || true
-	docker compose $(SPECIALIST_PROFILE) $(TELEGRAM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f infra/compose/telegram-python-functions.override.yaml up -d --build $(DEDICATED_CORE_SERVICES) cloudflared
+	docker compose $(SPECIALIST_PROFILE) $(TELEGRAM_PROFILE) $(LOCAL_LLM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f infra/compose/telegram-python-functions.override.yaml up -d --build $(DEDICATED_CORE_SERVICES) cloudflared
 	python3 tools/ops/telegram_webhook.py register
 
 compose-up-telegram-llamaindex: env
 	docker rm -f eduassist-cloudflared >/dev/null 2>&1 || true
-	docker compose $(SPECIALIST_PROFILE) $(TELEGRAM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f infra/compose/telegram-llamaindex.override.yaml up -d --build $(DEDICATED_CORE_SERVICES) cloudflared
+	docker compose $(SPECIALIST_PROFILE) $(TELEGRAM_PROFILE) $(LOCAL_LLM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f infra/compose/telegram-llamaindex.override.yaml up -d --build $(DEDICATED_CORE_SERVICES) cloudflared
 	python3 tools/ops/telegram_webhook.py register
 
 compose-up-telegram-specialist: env
 	docker rm -f eduassist-cloudflared >/dev/null 2>&1 || true
-	docker compose $(SPECIALIST_PROFILE) $(TELEGRAM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f infra/compose/telegram-specialist.override.yaml up -d --build $(DEDICATED_CORE_SERVICES) cloudflared
+	docker compose $(SPECIALIST_PROFILE) $(TELEGRAM_PROFILE) $(LOCAL_LLM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f infra/compose/telegram-specialist.override.yaml up -d --build $(DEDICATED_CORE_SERVICES) cloudflared
 	python3 tools/ops/telegram_webhook.py register
 
 compose-up-control-plane-compat: env
-	CONTROL_PLANE_ALLOW_DIRECT_SERVING=true docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build ai-orchestrator
+	CONTROL_PLANE_ALLOW_DIRECT_SERVING=true docker compose $(LOCAL_LLM_PROFILE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build ai-orchestrator local-llm-gemma4e4b
 	@echo "Control plane compatibility mode enabled for ai-orchestrator (/v1/messages/respond)."
 
 compose-down: env

@@ -304,6 +304,27 @@ async def _resolve_early_llamaindex_public_answer(
             reason='contextual_boundary',
         )
 
+    normalized_message = rt._normalize_text(request.message)
+    if 'biblioteca' in normalized_message and any(
+        rt._message_matches_term(normalized_message, term)
+        for term in {
+            'biblioteca publica',
+            'biblioteca pública',
+            'publica da cidade',
+            'pública da cidade',
+            'da cidade',
+            'municipal',
+            'prefeitura',
+        }
+    ):
+        return LlamaIndexEarlyPublicAnswer(
+            answer_text=rt._compose_scope_boundary_answer(
+                school_profile or {},
+                conversation_context=conversation_context,
+            ),
+            reason='contextual_boundary',
+        )
+
     if rt._is_explicit_public_pricing_projection_query(
         request.message,
         conversation_context=conversation_context,

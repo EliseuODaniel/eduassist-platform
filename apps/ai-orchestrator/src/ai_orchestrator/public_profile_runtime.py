@@ -3743,6 +3743,14 @@ def _handle_public_operating_hours(context: PublicProfileContext) -> str:
             normalized_notes = _normalize_text(notes)
             hours_match = re.search(r'das\s+[0-9h:]+\s+as\s+[0-9h:]+', normalized_notes)
             hours_text = hours_match.group(0) if hours_match else None
+            if feature_key == 'biblioteca' and hours_text:
+                library_open_match = re.search(r'das\s+([0-9h:]+)\s+as\s+([0-9h:]+)', hours_text)
+                library_open_time = library_open_match.group(1) if library_open_match else None
+                library_close_time = library_open_match.group(2) if library_open_match else None
+                if requested_attribute == 'open_time' and library_open_time:
+                    return f'A biblioteca abre as {library_open_time}.'
+                if requested_attribute == 'close_time' and library_close_time:
+                    return f'A biblioteca fecha as {library_close_time}.'
             if 'name' in requested_attributes:
                 if feature_key == 'biblioteca' and hours_text:
                     return f'A Biblioteca {label} funciona das 7h30 as 18h00.'
@@ -5048,6 +5056,27 @@ def _compose_public_profile_answer(
         semantic_plan=semantic_plan,
     )
     normalized_source_message = _normalize_text(context.source_message)
+    if (
+        'biblioteca' in normalized_source_message
+        and any(
+            _message_matches_term(normalized_source_message, term)
+            for term in {
+                'biblioteca publica',
+                'biblioteca pública',
+                'publica da cidade',
+                'pública da cidade',
+                'da cidade',
+                'municipal',
+                'prefeitura',
+            }
+        )
+    ):
+        return _localize_pt_br_surface_labels(
+            _compose_scope_boundary_answer(
+                context.profile,
+                conversation_context=context.conversation_context,
+            )
+        )
     if _is_positive_requirement_query(context.source_message) or (
         any(_message_matches_term(normalized_source_message, term) for term in {'documento', 'documentos'})
         and any(

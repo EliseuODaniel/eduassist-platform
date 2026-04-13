@@ -25,6 +25,22 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
         deps=deps,
     )
     contextual_normalized = deps.normalize_text(contextual_message)
+    external_public_library_query = (
+        "biblioteca" in normalized
+        and not any(term in normalized for term in {"escola", "colegio", "colégio", "horizonte"})
+        and any(
+            term in normalized
+            for term in {
+                "cidade",
+                "municipal",
+                "prefeitura",
+                "biblioteca publica",
+                "biblioteca pública",
+                "publica da cidade",
+                "pública da cidade",
+            }
+        )
+    )
     contextual_canonical_lane = match_public_canonical_lane(contextual_message) if contextual_message.strip() != str(ctx.request.message).strip() else None
     pricing_segment_hint = _public_pricing_segment_hint([normalized, *recent_user_messages])
     pricing_query_active = _looks_like_public_pricing_query(normalized) or _public_pricing_context_follow_up(
@@ -170,6 +186,22 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
             confidence=0.99,
             reason="specialist_supervisor_fast_path:scope_boundary",
             summary="Pergunta fora do escopo escolar encerrada com boundary seguro antes da malha de specialists.",
+            supports=[MessageEvidenceSupport(kind="assistant_identity", label="EduAssist", detail=school_name)],
+            graph_leaf="scope_boundary",
+        )
+
+    if external_public_library_query:
+        school_name = deps.school_name(profile)
+        return _build_fast_path_payload(
+            message_text=(
+                f"Nao tenho base confiavel aqui no EduAssist do {school_name} para responder esse tema fora do escopo da escola. "
+                "Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro."
+            ),
+            domain="institution",
+            access_tier="public",
+            confidence=0.99,
+            reason="specialist_supervisor_fast_path:scope_boundary",
+            summary="Consulta explicita sobre biblioteca publica externa encerrada com boundary seguro antes da malha de specialists.",
             supports=[MessageEvidenceSupport(kind="assistant_identity", label="EduAssist", detail=school_name)],
             graph_leaf="scope_boundary",
         )

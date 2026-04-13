@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 import httpx
@@ -12,6 +13,7 @@ from eduassist_observability import (
     normalize_gen_ai_provider_name,
     start_gen_ai_client_operation,
 )
+from .runtime import _extract_json_object
 
 
 _PROJECT_CONTEXT = (
@@ -167,6 +169,7 @@ def _build_sections(
     school_profile: dict[str, Any] | None,
 ) -> tuple[str, str]:
     evidence_block = "\n".join(f"- {line}" for line in evidence_lines[:10]) or "- nenhuma evidencia"
+    requested_attribute = str((public_plan or {}).get("requested_attribute") or "").strip().lower() or "none"
     instructions = (
         f"Voce e o compositor grounded de respostas publicas do caminho {stack_label} no EduAssist. "
         f"{_PROJECT_CONTEXT} "
@@ -190,7 +193,14 @@ def _build_sections(
         "Trate o rascunho grounded atual apenas como ponto de partida: se ele estiver mais amplo do que a pergunta, enxugue a resposta final. "
         "Se a evidencia nao permitir responder exatamente o recorte pedido, seja honesto sobre o limite e diga apenas o que ela de fato sustenta. "
         "Responda em portugues do Brasil, com tom humano, direto e natural. "
-        "Prefira 1 a 3 frases curtas. Devolva apenas a resposta final."
+        "Prefira 1 a 3 frases curtas. "
+        "Devolva somente JSON valido, sem markdown, com as chaves: "
+        "answer_text, answer_focus, used_entity_name, enough_evidence. "
+        "answer_text deve conter apenas a resposta final ao usuario. "
+        "answer_focus deve resumir o recorte atendido, por exemplo open_time, close_time, hours, existence, contact, name ou summary. "
+        "used_entity_name deve ser false quando voce usar referente generico como 'A biblioteca'. "
+        "enough_evidence deve ser true quando a evidencia sustenta a resposta final. "
+        f"O requested_attribute atual do plano e: {requested_attribute}."
     )
     prompt = (
         f"Escola:\n{_school_name(school_profile)}\n\n"
@@ -201,6 +211,84 @@ def _build_sections(
         f"Rascunho grounded atual:\n{draft_text}"
     )
     return instructions, prompt
+
+
+def _answer_text_from_model_output(raw_text: str | None) -> str | None:
+    cleaned = str(raw_text or "").strip()
+    if not cleaned:
+        return None
+    payload = _extract_json_object(cleaned)
+    if isinstance(payload, dict):
+        answer_text = str(payload.get("answer_text") or "").strip()
+        if answer_text:
+            return answer_text
+    return cleaned
+
+
+def _generic_subject(
+    *,
+    request_message: str,
+    public_plan: dict[str, Any] | None,
+) -> str:
+    normalized = str(request_message or "").casefold()
+    focus_hint = str((public_plan or {}).get("focus_hint") or "").strip().lower()
+    if "biblioteca" in normalized or focus_hint == "library":
+        return "A biblioteca"
+    if "secretaria" in normalized:
+        return "A secretaria"
+    if "cantina" in normalized:
+        return "A cantina"
+    return "O atendimento"
+
+
+def _extract_hours_range(text: str) -> tuple[str | None, str | None]:
+    cleaned = str(text or "").strip()
+    if not cleaned:
+        return None, None
+    interval_match = re.search(
+        r"das?\s+(\d{1,2}h\d{2})\s+(?:as|às)\s+(\d{1,2}h\d{2})",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    if interval_match:
+        return interval_match.group(1), interval_match.group(2)
+    until_match = re.search(r"até\s+as?\s+(\d{1,2}h\d{2})", cleaned, flags=re.IGNORECASE)
+    if until_match:
+        return None, until_match.group(1)
+    at_match = re.search(r"\bàs?\s+(\d{1,2}h\d{2})", cleaned, flags=re.IGNORECASE)
+    if at_match:
+        value = at_match.group(1)
+        return value, value
+    return None, None
+
+
+def _normalize_attribute_focused_answer(
+    *,
+    answer_text: str | None,
+    request_message: str,
+    public_plan: dict[str, Any] | None,
+    evidence_lines: list[str],
+) -> str | None:
+    cleaned = str(answer_text or "").strip()
+    if not cleaned:
+        return None
+    requested_attribute = str((public_plan or {}).get("requested_attribute") or "").strip().lower()
+    if requested_attribute not in {"open_time", "close_time"}:
+        return cleaned
+
+    start_time, end_time = _extract_hours_range(cleaned)
+    if not start_time or not end_time:
+        evidence_text = " ".join(str(line or "").strip() for line in evidence_lines[:5])
+        evidence_start, evidence_end = _extract_hours_range(evidence_text)
+        start_time = start_time or evidence_start
+        end_time = end_time or evidence_end
+
+    subject = _generic_subject(request_message=request_message, public_plan=public_plan)
+    if requested_attribute == "open_time" and start_time:
+        return f"{subject} abre às {start_time}."
+    if requested_attribute == "close_time" and end_time:
+        return f"{subject} fecha às {end_time}."
+    return cleaned
 
 
 async def _openai_text_call(
@@ -255,7 +343,9 @@ async def _openai_text_call(
                 message = getattr(choices[0], "message", None)
                 if message is None:
                     return None
-                return _openai_message_text(getattr(message, "content", None))
+                return _answer_text_from_model_output(
+                    _openai_message_text(getattr(message, "content", None))
+                )
             response = await client.responses.create(
                 model=model,
                 instructions=instructions,
@@ -271,8 +361,7 @@ async def _openai_text_call(
                     provider_name=provider_name,
                 )
             )
-            text = (response.output_text or "").strip()
-            return text or None
+            return _answer_text_from_model_output(response.output_text)
         except Exception as exc:
             operation.finish(error_type=exc.__class__.__name__)
             return None
@@ -339,8 +428,7 @@ async def _google_text_call(
     if not isinstance(parts, list):
         return None
     texts = [str(part.get("text") or "").strip() for part in parts if isinstance(part, dict)]
-    merged = "\n".join(text for text in texts if text).strip()
-    return merged or None
+    return _answer_text_from_model_output("\n".join(text for text in texts if text).strip())
 
 
 async def compose_grounded_public_answer_with_provider(
@@ -368,8 +456,9 @@ async def compose_grounded_public_answer_with_provider(
         school_profile=school_profile,
     )
     provider = _resolve_provider(settings)
+    answer_text: str | None = None
     if provider == "openai":
-        return await _openai_text_call(
+        answer_text = await _openai_text_call(
             settings=settings,
             instructions=instructions,
             prompt=prompt,
@@ -377,8 +466,8 @@ async def compose_grounded_public_answer_with_provider(
             max_output_tokens=220,
             top_p=0.9,
         )
-    if provider == "google":
-        return await _google_text_call(
+    elif provider == "google":
+        answer_text = await _google_text_call(
             settings=settings,
             instructions=instructions,
             prompt=prompt,
@@ -386,4 +475,9 @@ async def compose_grounded_public_answer_with_provider(
             max_output_tokens=220,
             top_p=0.9,
         )
-    return None
+    return _normalize_attribute_focused_answer(
+        answer_text=answer_text,
+        request_message=request_message,
+        public_plan=public_plan,
+        evidence_lines=evidence_lines,
+    )

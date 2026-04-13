@@ -202,6 +202,22 @@ def _try_public_channel_fast_answer_impl(
     if not isinstance(profile, dict):
         return None
     normalized = _normalize_text(message)
+    if 'biblioteca' in normalized and any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'biblioteca publica',
+            'biblioteca pública',
+            'publica da cidade',
+            'pública da cidade',
+            'da cidade',
+            'municipal',
+            'prefeitura',
+        }
+    ):
+        return _compose_scope_boundary_answer(
+            profile,
+            conversation_context=conversation_context,
+        )
     public_context = _build_public_profile_context_impl(
         profile,
         message,

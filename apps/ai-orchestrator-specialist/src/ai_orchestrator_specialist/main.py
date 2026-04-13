@@ -134,7 +134,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     feature_flag_telegram_debug_trace_footer_enabled: bool = False
     port: int = 8000
-    llm_model_profile: str | None = None
+    llm_model_profile: str | None = "gemma4e4b_local"
     llm_provider: str = "auto"
     api_core_url: str = "http://api-core:8000"
     orchestrator_url: str = "http://ai-orchestrator:8000"
@@ -144,7 +144,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-5.4"
-    openai_api_mode: str = "responses"
+    openai_api_mode: str = "chat_completions"
     openai_fast_model: str | None = "gpt-5-mini"
     openai_reasoning_model: str | None = "gpt-5.4"
     google_api_key: str | None = None

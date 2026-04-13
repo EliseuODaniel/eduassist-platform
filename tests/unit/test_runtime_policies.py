@@ -13,6 +13,7 @@ from ai_orchestrator.runtime import (
     _build_analysis_message,
     _build_conversation_slot_memory,
     _build_public_institution_plan,
+    _build_public_profile_context,
     _compose_public_profile_answer,
     _compose_public_pricing_projection_answer,
     _compose_service_routing_answer,
@@ -75,6 +76,7 @@ from ai_orchestrator.runtime import (
     _detect_subject_filter,
     _requested_subject_label_from_message,
     _looks_like_academic_difficulty_query,
+    _handle_public_operating_hours,
     _try_public_channel_fast_answer,
     _detect_visit_booking_action,
     _is_public_teacher_directory_follow_up,
@@ -1566,6 +1568,64 @@ def test_compose_public_profile_answer_language_preference_does_not_confuse_port
     assert 'portugues' in normalized or 'português' in normalized
     assert 'lingua portuguesa' not in normalized
     assert 'ana oliveira' not in normalized
+
+
+def test_compose_public_profile_answer_refines_library_closing_focus() -> None:
+    profile = {
+        'school_name': 'Colegio Horizonte',
+        'feature_inventory': [
+            {
+                'feature_key': 'biblioteca',
+                'available': True,
+                'label': 'Biblioteca Aurora',
+                'notes': 'Atendimento ao publico de segunda a sexta, das 7h30 as 18h00.',
+            }
+        ],
+    }
+    semantic_plan = PublicInstitutionPlan(
+        conversation_act='operating_hours',
+        required_tools=('get_public_school_profile',),
+        fetch_profile=True,
+        semantic_source='semantic_ingress_llm',
+        requested_attribute='close_time',
+    )
+    context = _build_public_profile_context(
+        profile,
+        'qual horário de fechamento da biblioteca?',
+        original_message='qual horário de fechamento da biblioteca?',
+        semantic_plan=semantic_plan,
+    )
+
+    answer = _handle_public_operating_hours(context)
+
+    assert answer == 'A biblioteca fecha as 18h00.'
+
+
+def test_compose_public_profile_answer_blocks_external_city_library_query() -> None:
+    answer = _compose_public_profile_answer(
+        {'school_name': 'Colegio Horizonte'},
+        'qual horário de fechamento da biblioteca pública da cidade?',
+        original_message='qual horário de fechamento da biblioteca pública da cidade?',
+        semantic_plan=PublicInstitutionPlan(
+            conversation_act='scope_boundary',
+            required_tools=('get_public_school_profile',),
+            fetch_profile=True,
+            semantic_source='semantic_ingress_llm',
+        ),
+    )
+
+    normalized = answer.casefold()
+    assert 'fora do escopo da escola' in normalized
+
+
+def test_try_public_channel_fast_answer_blocks_external_city_library_query() -> None:
+    answer = _try_public_channel_fast_answer(
+        message='qual horário de fechamento da biblioteca pública da cidade?',
+        profile={'school_name': 'Colegio Horizonte'},
+    )
+
+    assert answer is not None
+    assert 'fora do escopo da escola' in answer.casefold()
 
 
 def test_try_public_channel_fast_answer_prefers_process_compare_lane_before_pricing() -> None:

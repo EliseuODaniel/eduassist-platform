@@ -370,9 +370,11 @@ Profiles suportados:
 
 Uso recomendado:
 
-1. baseline de alto ROI com `Gemini 2.5 Flash-Lite`
+1. baseline operacional padrão com `Gemma 4 E4B` local
+   - `make compose-up-dedicated-core`
+2. override explícito para `Gemini 2.5 Flash-Lite`
    - `make compose-up-dedicated-core-gemini-flash-lite`
-2. experimento local com `Gemma 4 E4B`
+3. bootstrap explícito do stack local com `Gemma 4 E4B`
    - `make compose-up-dedicated-core-gemma4e4b-local`
 
 O profile `gemma4e4b_local` usa:
@@ -395,8 +397,8 @@ Variáveis mais importantes:
 
 Critério operacional:
 
-- use `gemini_flash_lite` como baseline recomendado;
-- use `gemma4e4b_local` como experimento controlado, com smoke e leitura de carga local antes de promover qualquer uso mais amplo.
+- `gemma4e4b_local` é o baseline local recomendado;
+- `gemini_flash_lite` agora é override explícito por feature flag para comparação e fallback hospedado.
 - `make release-readiness-strict`
 - `GET /v1/foundation/summary` no `api-core`
 - `GET /v1/identity/context?user_external_code=USR-TEACH-001`

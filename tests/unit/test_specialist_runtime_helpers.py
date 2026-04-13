@@ -580,6 +580,51 @@ def test_specialist_fast_path_answers_library_close_followup() -> None:
     assert "18h00" in answer.message_text
 
 
+def test_specialist_fast_path_blocks_external_city_library_query() -> None:
+    profile = {
+        "school_name": "Colegio Horizonte",
+        "feature_catalog": [
+            {
+                "name": "Biblioteca Aurora",
+                "label": "Biblioteca Aurora",
+                "note": "de segunda a sexta, das 7h30 as 18h00",
+            }
+        ],
+    }
+    ctx = SimpleNamespace(
+        school_profile=profile,
+        actor=None,
+        request=SimpleNamespace(
+            message="qual horário de fechamento da biblioteca pública da cidade?",
+            user=SimpleNamespace(authenticated=False),
+        ),
+        conversation_context={"recent_messages": []},
+        preview_hint=None,
+    )
+    deps = FastPathDeps(
+        normalize_text=lambda value: str(value or "").casefold(),
+        normalized_recent_user_messages=lambda context: [],
+        is_simple_greeting=lambda message: False,
+        is_auth_guidance_query=lambda message: False,
+        compose_auth_guidance_answer=lambda profile: "",
+        linked_students=lambda *args, **kwargs: [],
+        compose_authenticated_scope_answer=lambda actor: "",
+        is_assistant_identity_query=lambda message: False,
+        compose_assistant_identity_answer=lambda profile: "",
+        school_name=lambda profile: "Colegio Horizonte",
+        safe_excerpt=lambda text, limit=220: str(text or "")[:limit],
+        format_brl=lambda value: str(value),
+        hypothetical_children_quantity=lambda message: None,
+        pricing_projection=lambda *args, **kwargs: {},
+        compose_public_bolsas_and_processes=lambda profile: None,
+    )
+
+    answer = build_fast_path_answer(ctx, deps)
+
+    assert answer is not None
+    assert answer.reason == "specialist_supervisor_fast_path:scope_boundary"
+
+
 def test_specialist_fast_path_answers_leadership_contact_query() -> None:
     profile = {
         "school_name": "Colegio Horizonte",

@@ -200,6 +200,31 @@ def test_build_capability_candidates_prefers_public_end_time_for_last_class_quer
     assert candidates[0].capability_id == "public.schedule.class_end_time"
 
 
+def test_build_capability_candidates_preserves_library_closing_attribute() -> None:
+    candidates = build_capability_candidates(
+        message="Qual horário de fechamento da biblioteca?",
+        conversation_context=None,
+        authenticated=False,
+    )
+
+    assert candidates
+    assert candidates[0].capability_id == "public.facilities.library.hours"
+    assert candidates[0].requested_attribute == "close_time"
+
+
+def test_build_turn_frame_hint_marks_external_city_library_query_as_scope_boundary() -> None:
+    frame = build_turn_frame_hint(
+        message="Qual horário de fechamento da biblioteca pública da cidade?",
+        conversation_context=None,
+        preview=None,
+        authenticated=False,
+    )
+
+    assert frame is not None
+    assert frame.conversation_act == "scope_boundary"
+    assert frame.reason == "external_public_facility_turn_hint"
+
+
 def test_build_capability_candidates_prefers_public_curriculum_for_bncc_query() -> None:
     candidates = build_capability_candidates(
         message="O que é BNCC?",

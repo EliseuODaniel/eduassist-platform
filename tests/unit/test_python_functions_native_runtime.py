@@ -554,3 +554,88 @@ def test_python_functions_contextual_public_direct_answer_refines_library_openin
     )
 
     assert result == 'A biblioteca abre as 7h30.'
+
+
+def test_python_functions_contextual_public_direct_answer_refines_library_closing_focus(monkeypatch) -> None:
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_kernel_runtime.rt._llm_forced_mode_enabled',
+        lambda **_: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_kernel_runtime.rt._base_profile_supports_fast_public_answer',
+        lambda **_: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_kernel_runtime.rt._try_public_channel_fast_answer',
+        lambda **_: None,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_kernel_runtime.rt._compose_public_profile_answer_agentic',
+        lambda **_: asyncio.sleep(0, result='A biblioteca fecha as 18h00.'),
+    )
+
+    result = asyncio.run(
+        _maybe_contextual_public_direct_answer(
+            request=SimpleNamespace(
+                message='qual horário de fechamento da biblioteca?',
+                user=SimpleNamespace(authenticated=False),
+            ),
+            analysis_message='qual horário de fechamento da biblioteca?',
+            preview=SimpleNamespace(
+                classification=SimpleNamespace(
+                    access_tier=AccessTier.public,
+                    domain=QueryDomain.institution,
+                ),
+            ),
+            settings=SimpleNamespace(),
+            school_profile={
+                'school_name': 'Colegio Horizonte',
+                'feature_catalog': [
+                    {'name': 'Biblioteca Aurora', 'label': 'Biblioteca Aurora', 'note': 'de segunda a sexta, das 7h30 as 18h00'}
+                ],
+            },
+            conversation_context={'recent_messages': []},
+        )
+    )
+
+    assert result == 'A biblioteca fecha as 18h00.'
+
+
+def test_python_functions_contextual_public_direct_answer_respects_external_city_library_scope_boundary(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_kernel_runtime.rt._llm_forced_mode_enabled',
+        lambda **_: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_kernel_runtime.rt._compose_scope_boundary_answer',
+        lambda *_args, **_kwargs: 'Boundary seguro.',
+    )
+
+    result = asyncio.run(
+        _maybe_contextual_public_direct_answer(
+            request=SimpleNamespace(
+                message='qual horário de fechamento da biblioteca pública da cidade?',
+                user=SimpleNamespace(authenticated=False),
+            ),
+            analysis_message='qual horário de fechamento da biblioteca pública da cidade?',
+            preview=SimpleNamespace(
+                classification=SimpleNamespace(
+                    access_tier=AccessTier.public,
+                    domain=QueryDomain.unknown,
+                ),
+                graph_path=['turn_frame:scope_boundary'],
+            ),
+            settings=SimpleNamespace(),
+            school_profile={
+                'school_name': 'Colegio Horizonte',
+                'feature_catalog': [
+                    {'name': 'Biblioteca Aurora', 'label': 'Biblioteca Aurora', 'note': 'de segunda a sexta, das 7h30 as 18h00'}
+                ],
+            },
+            conversation_context={'recent_messages': []},
+        )
+    )
+
+    assert result == 'Boundary seguro.'

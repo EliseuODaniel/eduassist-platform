@@ -112,7 +112,7 @@ class Settings(BaseSettings):
     app_env: str = 'development'
     log_level: str = 'INFO'
     port: int = 8000
-    llm_model_profile: str | None = None
+    llm_model_profile: str | None = 'gemma4e4b_local'
     llm_provider: str = 'openai'
     api_core_url: str = 'http://api-core:8000'
     internal_api_token: str = 'dev-internal-token'
@@ -120,7 +120,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_base_url: str = 'https://api.openai.com/v1'
     openai_model: str = 'gpt-5.4'
-    openai_api_mode: str = 'responses'
+    openai_api_mode: str = 'chat_completions'
     google_api_key: str | None = None
     google_api_base_url: str = 'https://generativelanguage.googleapis.com/v1beta'
     google_model: str = 'gemini-2.5-flash'

@@ -116,7 +116,10 @@ async def maybe_execute_llamaindex_native_plan(
         )
         message_text = early_public_answer.answer_text
         composer_used = False
-        if isinstance(contextual_public_profile, dict):
+        if (
+            isinstance(contextual_public_profile, dict)
+            and early_public_answer.reason != 'contextual_boundary'
+        ):
             resolved_public_plan = early_turn_frame_public_plan or rt._build_public_institution_plan(
                 request.message,
                 list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),

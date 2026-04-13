@@ -49,9 +49,9 @@ Fluxo dedicado-first mais comum:
 3. `make smoke-dedicated`
 4. `make smoke-telegram-dedicated`
 
-## Perfil experimental de LLM local
+## Perfil de LLM local padrão
 
-O Compose agora inclui um perfil opcional para servir `Gemma 4 E4B` localmente em um endpoint `OpenAI-compatible`, sem mexer no baseline hospedado do projeto.
+O Compose agora sobe `Gemma 4 E4B` localmente por padrão em um endpoint `OpenAI-compatible`. `Gemini` continua disponível como override explícito por feature flag.
 
 Serviço:
 
@@ -65,9 +65,11 @@ Stack de serving:
 
 Targets úteis:
 
-1. baseline com `Gemini 2.5 Flash-Lite`
+1. baseline local com `Gemma 4 E4B`
+   - `make compose-up-dedicated-core`
+2. override com `Gemini 2.5 Flash-Lite`
    - `make compose-up-dedicated-core-gemini-flash-lite`
-2. experimento local com `Gemma 4 E4B`
+3. bootstrap explícito do local LLM com `Gemma 4 E4B`
    - `make compose-up-dedicated-core-gemma4e4b-local`
 3. logs do modelo local
    - `make local-llm-gemma4e4b-logs`
@@ -76,8 +78,8 @@ Targets úteis:
 
 Feature flag principal:
 
-- `LLM_MODEL_PROFILE=gemini_flash_lite`
-- `LLM_MODEL_PROFILE=gemma4e4b_local`
+- padrão: `LLM_MODEL_PROFILE=gemma4e4b_local`
+- override: `LLM_MODEL_PROFILE=gemini_flash_lite`
 
 Quando o profile `gemma4e4b_local` estiver ativo:
 

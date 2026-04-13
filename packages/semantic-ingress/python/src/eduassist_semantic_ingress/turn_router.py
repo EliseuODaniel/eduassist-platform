@@ -140,6 +140,21 @@ _PROTECTED_ACADEMIC_PERSONAL_TERMS = {
     "frequência do",
 }
 
+_EXTERNAL_PUBLIC_FACILITY_TERMS = {
+    "da cidade",
+    "municipal",
+    "prefeitura",
+    "publica da cidade",
+    "pública da cidade",
+    "biblioteca publica",
+    "biblioteca pública",
+    "publica municipal",
+    "pública municipal",
+}
+
+_OPEN_TIME_TERMS = {"abre", "abertura"}
+_CLOSE_TIME_TERMS = {"fecha", "fechar", "fechamento", "encerra", "encerramento"}
+
 _CAPABILITY_SPECS: tuple[CapabilitySpec, ...] = (
     CapabilitySpec(
         capability_id="public.facilities.library.exists",
@@ -167,6 +182,12 @@ _CAPABILITY_SPECS: tuple[CapabilitySpec, ...] = (
         aliases=(
             "horario da biblioteca",
             "horário da biblioteca",
+            "horario de fechamento da biblioteca",
+            "horário de fechamento da biblioteca",
+            "horario de abertura da biblioteca",
+            "horário de abertura da biblioteca",
+            "fechamento da biblioteca",
+            "abertura da biblioteca",
             "que horas fecha a biblioteca",
             "que horas abre a biblioteca",
             "ate que horas funciona a biblioteca",
@@ -504,6 +525,25 @@ def _looks_like_follow_up(normalized_message: str) -> bool:
     return normalized_message.startswith(("e ", "mas ", "agora ", "entao ", "então "))
 
 
+def _looks_like_external_public_facility_query(normalized_message: str) -> bool:
+    if not normalized_message:
+        return False
+    if not any(_contains_term(normalized_message, term) for term in ("biblioteca", "library")):
+        return False
+    if any(_contains_term(normalized_message, term) for term in ("escola", "colegio", "colégio", "horizonte")):
+        return False
+    return any(_contains_term(normalized_message, term) for term in _EXTERNAL_PUBLIC_FACILITY_TERMS)
+
+
+def _requested_attribute_for_spec(*, spec: CapabilitySpec, normalized_message: str) -> str | None:
+    if spec.capability_id == "public.facilities.library.hours":
+        if any(_contains_term(normalized_message, term) for term in _CLOSE_TIME_TERMS):
+            return "close_time"
+        if any(_contains_term(normalized_message, term) for term in _OPEN_TIME_TERMS):
+            return "open_time"
+    return spec.requested_attribute
+
+
 def derive_focus_frame(
     *,
     conversation_context: dict[str, Any] | None,
@@ -552,6 +592,8 @@ def build_capability_candidates(
 ) -> list[CapabilityCandidate]:
     normalized = normalize_ingress_text(message)
     if not normalized:
+        return []
+    if _looks_like_external_public_facility_query(normalized):
         return []
     focus = derive_focus_frame(conversation_context=conversation_context, authenticated=authenticated)
     follow_up = _looks_like_follow_up(normalized)
@@ -605,7 +647,10 @@ def build_capability_candidates(
                 reason=";".join(reasons) or "alias_match",
                 public_conversation_act=spec.public_conversation_act,
                 public_focus_hint=spec.public_focus_hint,
-                requested_attribute=spec.requested_attribute,
+                requested_attribute=_requested_attribute_for_spec(
+                    spec=spec,
+                    normalized_message=normalized,
+                ),
             )
         )
     candidates.sort(key=lambda item: (-item.score, item.capability_id))
@@ -622,6 +667,14 @@ def build_turn_frame_hint(
     normalized = normalize_ingress_text(message)
     if not normalized:
         return None
+    if _looks_like_external_public_facility_query(normalized):
+        return TurnFrame(
+            conversation_act="scope_boundary",
+            confidence=0.82,
+            confidence_bucket="high",
+            reason="external_public_facility_turn_hint",
+            source="heuristic",
+        )
     candidates = build_capability_candidates(
         message=message,
         conversation_context=conversation_context,
@@ -926,6 +979,9 @@ async def resolve_turn_frame_with_provider(
         follow_up_of=str(payload.get("follow_up_of") or "").strip() or deterministic.follow_up_of if deterministic else None,
         public_conversation_act=spec.public_conversation_act,
         public_focus_hint=spec.public_focus_hint,
-        requested_attribute=spec.requested_attribute,
+        requested_attribute=_requested_attribute_for_spec(
+            spec=spec,
+            normalized_message=normalize_ingress_text(request_message),
+        ),
         candidate_capability_ids=[candidate.capability_id for candidate in candidates],
     )
