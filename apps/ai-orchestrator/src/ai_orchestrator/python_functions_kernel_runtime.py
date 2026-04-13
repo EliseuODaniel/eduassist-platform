@@ -378,6 +378,9 @@ async def _maybe_contextual_public_direct_answer(
         'qual o nome da biblioteca',
     }
     library_hours_followup_terms = {
+        'que horas abre',
+        'abre',
+        'abertura',
         'ate que horas funciona',
         'até que horas funciona',
         'ate que horas fecha',
@@ -414,6 +417,8 @@ async def _maybe_contextual_public_direct_answer(
                         'como ela se chama',
                         'qual o nome da biblioteca',
                         'nome da biblioteca',
+                        'que horas abre',
+                        'abre',
                         'ate que horas funciona',
                         'até que horas funciona',
                         'ate que horas fecha',
@@ -443,7 +448,18 @@ async def _maybe_contextual_public_direct_answer(
         )
     )
     if asks_library_name_and_hours:
-        return 'A biblioteca se chama Biblioteca Aurora e funciona de segunda a sexta, das 7h30 as 18h00.'
+        return await rt._compose_public_profile_answer_agentic(
+            settings=settings,
+            profile=school_profile,
+            message=request.message,
+            original_message=request.message,
+            conversation_context=conversation_context,
+            semantic_plan=rt._build_public_institution_plan(
+                request.message,
+                ['get_public_school_profile'],
+                conversation_context=conversation_context,
+            ),
+        )
 
     asks_school_year_start = (
         any(

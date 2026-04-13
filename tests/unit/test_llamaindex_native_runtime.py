@@ -558,6 +558,51 @@ def test_contextual_public_direct_answer_skips_admin_finance_block_followup(monk
     assert result is None
 
 
+def test_contextual_public_direct_answer_refines_library_closing_focus(monkeypatch) -> None:
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._llm_forced_mode_enabled',
+        lambda **_: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._base_profile_supports_fast_public_answer',
+        lambda **_: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._try_public_channel_fast_answer',
+        lambda **_: None,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._compose_public_profile_answer_agentic',
+        lambda **_: __import__('asyncio').sleep(0, result='A biblioteca fecha as 18h00.'),
+    )
+
+    result = __import__('asyncio').run(
+        _maybe_contextual_public_direct_answer(
+            request=SimpleNamespace(
+                message='que horas fecha a biblioteca?',
+                user=SimpleNamespace(authenticated=False),
+            ),
+            analysis_message='que horas fecha a biblioteca?',
+            preview=SimpleNamespace(
+                classification=SimpleNamespace(
+                    access_tier=AccessTier.public,
+                    domain=QueryDomain.institution,
+                ),
+            ),
+            settings=SimpleNamespace(),
+            school_profile={
+                'school_name': 'Colegio Horizonte',
+                'feature_catalog': [
+                    {'name': 'Biblioteca Aurora', 'label': 'Biblioteca Aurora', 'note': 'de segunda a sexta, das 7h30 as 18h00'}
+                ],
+            },
+            conversation_context={'recent_messages': []},
+        )
+    )
+
+    assert result == 'A biblioteca fecha as 18h00.'
+
+
 def test_semantic_ingress_native_public_decision_preserves_public_contract() -> None:
     public_plan = SimpleNamespace(
         conversation_act='greeting',

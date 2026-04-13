@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
 import httpx
+from eduassist_semantic_ingress import compose_grounded_public_answer_with_provider
 
 from .models import (
     MessageIntentClassification,
@@ -87,6 +88,130 @@ def _llm_forced_mode(request: SpecialistSupervisorRequest) -> bool:
     return bool((request.debug_options or {}).get('llm_forced_mode'))
 
 
+def _specialist_public_composer_plan(
+    *,
+    context: Any,
+    answer: SupervisorAnswerPayload,
+) -> dict[str, Any] | None:
+    preview_hint = context.preview_hint if isinstance(context.preview_hint, dict) else {}
+    turn_frame = preview_hint.get('turn_frame') if isinstance(preview_hint.get('turn_frame'), dict) else {}
+    public_act = str(turn_frame.get('public_conversation_act') or '').strip()
+    if public_act:
+        return {
+            'conversation_act': public_act,
+            'requested_attribute': turn_frame.get('requested_attribute'),
+            'focus_hint': turn_frame.get('public_focus_hint'),
+            'capability_id': turn_frame.get('capability_id'),
+            'semantic_source': turn_frame.get('source') or 'turn_frame',
+        }
+    reason = str(getattr(answer, 'reason', '') or '').strip().lower()
+    fallback_map = {
+        'specialist_supervisor_fast_path:library_hours': {
+            'conversation_act': 'operating_hours',
+            'focus_hint': 'library',
+        },
+        'specialist_supervisor_fast_path:library_exists': {
+            'conversation_act': 'features',
+            'focus_hint': 'library',
+        },
+        'specialist_supervisor_resolved_intent:shift_offers': {
+            'conversation_act': 'schedule',
+            'focus_hint': 'shift_offers',
+        },
+    }
+    return fallback_map.get(reason)
+
+
+def _specialist_public_composer_evidence(answer: SupervisorAnswerPayload) -> list[str]:
+    evidence_pack = answer.evidence_pack
+    if evidence_pack is None:
+        return []
+    lines: list[str] = []
+    for support in evidence_pack.supports:
+        label = str(getattr(support, 'label', '') or '').strip()
+        detail = str(getattr(support, 'detail', '') or getattr(support, 'excerpt', '') or '').strip()
+        if detail and label:
+            lines.append(f'{label}: {detail}')
+        elif detail:
+            lines.append(detail)
+        elif label:
+            lines.append(label)
+    return [line for line in lines if line]
+
+
+async def _maybe_apply_public_answer_composer(
+    *,
+    context: Any,
+    settings: Any,
+    answer: SupervisorAnswerPayload,
+    metadata: dict[str, Any] | None,
+) -> tuple[SupervisorAnswerPayload, dict[str, Any] | None]:
+    if settings is None:
+        return answer, metadata
+    access_tier = str(getattr(answer.classification, 'access_tier', '') or '').strip().lower()
+    if access_tier != 'public':
+        return answer, metadata
+    reason = str(getattr(answer, 'reason', '') or '').strip().lower()
+    if any(
+        token in reason
+        for token in (
+            'scope_boundary',
+            'input_clarification',
+            'assistant_identity',
+            'greeting',
+            'auth_guidance',
+            'capabilities',
+            'language_preference',
+        )
+    ):
+        return answer, metadata
+    if not isinstance(context.school_profile, dict):
+        return answer, metadata
+    evidence_lines = _specialist_public_composer_evidence(answer)
+    if not evidence_lines:
+        return answer, metadata
+    public_plan = _specialist_public_composer_plan(context=context, answer=answer)
+    if public_plan is None:
+        return answer, metadata
+    composed = await compose_grounded_public_answer_with_provider(
+        settings=settings,
+        stack_label='specialist_supervisor',
+        request_message=context.request.message,
+        draft_text=answer.message_text,
+        public_plan=public_plan,
+        evidence_lines=evidence_lines,
+        conversation_context=context.conversation_context,
+        school_profile=context.school_profile,
+    )
+    composed_text = str(composed or '').strip()
+    if not composed_text:
+        return answer, metadata
+    changed = composed_text != str(answer.message_text or '').strip()
+    merged_metadata = dict(metadata or {})
+    llm_stages = [
+        str(item).strip()
+        for item in (
+            merged_metadata.get('llm_stages')
+            if 'llm_stages' in merged_metadata
+            else getattr(answer, 'llm_stages', [])
+        )
+        if str(item).strip()
+    ]
+    llm_stages = list(dict.fromkeys([*llm_stages, 'public_answer_composer']))
+    merged_metadata.update(
+        {
+            'used_llm': True,
+            'llm_stages': llm_stages,
+            'final_polish_eligible': True,
+            'final_polish_applied': changed,
+            'final_polish_mode': 'grounded_public_composition',
+            'final_polish_reason': 'public_answer_composer',
+            'final_polish_changed_text': changed,
+        }
+    )
+    return answer.model_copy(update={'message_text': composed_text}), merged_metadata
+
+
 async def _persist_and_dump(
     deps: SupervisorRunFlowDeps,
     context: Any,
@@ -98,6 +223,12 @@ async def _persist_and_dump(
     repair_payload: tuple[Any, Any] | None = None,
     timeout_seconds: float | None = None,
 ) -> dict[str, Any]:
+    answer, metadata = await _maybe_apply_public_answer_composer(
+        context=context,
+        settings=getattr(context, 'settings', None),
+        answer=answer,
+        metadata=metadata,
+    )
     if metadata is not None:
         metadata = dict(metadata)
         answer_used_llm = bool(metadata['used_llm']) if 'used_llm' in metadata else bool(getattr(answer, 'used_llm', False))

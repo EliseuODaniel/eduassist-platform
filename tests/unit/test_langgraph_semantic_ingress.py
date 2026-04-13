@@ -177,6 +177,82 @@ def test_langgraph_semantic_ingress_language_preference_stays_terminal(monkeypat
     assert response.llm_stages == ["semantic_ingress_classifier"]
 
 
+def test_langgraph_semantic_ingress_supports_turn_frame_only_public_plan(monkeypatch) -> None:
+    async def fake_compose_structured_tool_answer(**_kwargs):
+        return "A biblioteca abre as 7h30."
+
+    async def fake_polish(**_kwargs):
+        return None
+
+    async def fake_persist_trace(**_kwargs):
+        return None
+
+    async def fake_persist_turn(**_kwargs):
+        return None
+
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._compose_structured_tool_answer",
+        fake_compose_structured_tool_answer,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.polish_langgraph_with_provider",
+        fake_polish,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_suggested_replies",
+        lambda **_kwargs: [],
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_runtime_evidence_pack",
+        lambda **_kwargs: MessageEvidencePack(strategy="semantic_ingress", summary="ok"),
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._persist_operational_trace",
+        fake_persist_trace,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._persist_conversation_turn",
+        fake_persist_turn,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_runtime_risk_flags",
+        lambda **_kwargs: [],
+    )
+
+    preview = SimpleNamespace(
+        mode=OrchestrationMode.structured_tool,
+        classification=IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.97,
+            reason="langgraph_turn_frame:public.facilities.library.hours",
+        ),
+        selected_tools=["get_public_school_profile"],
+        graph_path=["langgraph", "turn_frame:public.facilities.library.hours"],
+    )
+    state = {
+        "request": SimpleNamespace(message="que horas abre a biblioteca?", channel=SimpleNamespace(value="web")),
+        "settings": SimpleNamespace(),
+        "preview": preview,
+        "actor": None,
+        "conversation_context": {"recent_messages": []},
+        "school_profile": {"school_name": "Colegio Horizonte"},
+        "effective_conversation_id": "conv-turn-frame",
+        "engine_name": "langgraph",
+        "engine_mode": "dedicated",
+        "semantic_ingress_plan": None,
+        "turn_frame_public_plan": SimpleNamespace(capability="public.facilities.library.hours"),
+        "langgraph_trace_metadata": {},
+    }
+
+    result = asyncio.run(_semantic_ingress(state))
+    response = result["response"]
+
+    assert response.message_text == "A biblioteca abre as 7h30."
+    assert response.reason == "langgraph_turn_frame:public.facilities.library.hours"
+    assert response.llm_stages == ["turn_frame_classifier"]
+
+
 def test_langgraph_bootstrap_prioritizes_terminal_semantic_ingress_before_protected_rescue(monkeypatch) -> None:
     preview = OrchestrationPreview(
         mode=OrchestrationMode.clarify,

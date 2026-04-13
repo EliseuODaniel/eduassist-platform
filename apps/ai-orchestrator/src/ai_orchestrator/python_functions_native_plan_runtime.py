@@ -220,10 +220,11 @@ async def maybe_execute_python_functions_native_plan(
         and is_terminal_semantic_ingress_plan(semantic_ingress_plan)
     ):
         semantic_ingress_terminal_answer = str(
-            rt._compose_public_profile_answer(
-                school_profile,
-                request.message,
+            await rt._compose_public_profile_answer_agentic(
+                settings=settings,
+                profile=school_profile,
                 actor=actor,
+                message=request.message,
                 original_message=request.message,
                 conversation_context=conversation_context,
                 semantic_plan=semantic_ingress_public_plan,
@@ -513,6 +514,28 @@ async def maybe_execute_python_functions_native_plan(
         )
     elif early_public_canonical_answer:
         message_text = early_public_canonical_answer
+        if isinstance(school_profile, dict):
+            resolved_public_plan = semantic_ingress_public_plan or turn_frame_public_plan
+            if resolved_public_plan is None:
+                resolved_public_plan = rt._build_public_institution_plan(
+                    request.message,
+                    list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
+                    conversation_context=conversation_context,
+                    school_profile=school_profile,
+                )
+            composed_public_answer = await rt._compose_public_profile_answer_agentic(
+                settings=settings,
+                profile=school_profile,
+                actor=actor,
+                message=request.message,
+                original_message=request.message,
+                conversation_context=conversation_context,
+                semantic_plan=resolved_public_plan,
+            )
+            if composed_public_answer:
+                message_text = composed_public_answer
+                deterministic_fallback_text = composed_public_answer
+                llm_stages.append('public_answer_composer')
         deterministic_fallback_text = early_public_canonical_answer
         preview = preview.model_copy(
             update={
@@ -559,6 +582,28 @@ async def maybe_execute_python_functions_native_plan(
             else 'python_functions_native_contextual_public_answer'
         )
         message_text = contextual_public_answer
+        if isinstance(school_profile, dict):
+            resolved_public_plan = semantic_ingress_public_plan or turn_frame_public_plan
+            if resolved_public_plan is None:
+                resolved_public_plan = rt._build_public_institution_plan(
+                    request.message,
+                    list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
+                    conversation_context=conversation_context,
+                    school_profile=school_profile,
+                )
+            composed_public_answer = await rt._compose_public_profile_answer_agentic(
+                settings=settings,
+                profile=school_profile,
+                actor=actor,
+                message=request.message,
+                original_message=request.message,
+                conversation_context=conversation_context,
+                semantic_plan=resolved_public_plan,
+            )
+            if composed_public_answer:
+                message_text = composed_public_answer
+                deterministic_fallback_text = composed_public_answer
+                llm_stages.append('public_answer_composer')
         deterministic_fallback_text = contextual_public_answer
         preview = preview.model_copy(
             update={
@@ -889,7 +934,11 @@ async def maybe_execute_python_functions_native_plan(
     )
     if semantic_judge_used and 'answer_verifier_judge' not in llm_stages:
         llm_stages.append('answer_verifier_judge')
-    if not verification.valid and deterministic_fallback_text:
+    if (
+        not verification.valid
+        and deterministic_fallback_text
+        and 'public_answer_composer' not in llm_stages
+    ):
         message_text = deterministic_fallback_text
         answer_verifier_fallback_used = True
 
@@ -910,6 +959,7 @@ async def maybe_execute_python_functions_native_plan(
         getattr(settings, 'candidate_chooser_enabled', True)
         and preview.classification.access_tier is AccessTier.public
         and deterministic_fallback_text
+        and 'public_answer_composer' not in llm_stages
     ):
         canonical_lane = match_public_canonical_lane(request.message)
         retrieval_probe_search = None

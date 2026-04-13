@@ -266,28 +266,17 @@ async def compose_langgraph_public_grounded_with_provider(
     conversation_context: dict[str, Any] | None,
     school_profile: dict[str, Any] | None,
 ) -> str | None:
-    instructions = (
-        f'Voce e o compositor publico grounded do caminho {_STACK_LABEL}. '
-        'Receba um rascunho grounded e um plano publico semantico, e responda de forma humana, curta e precisa. '
-        'Cubra os itens pedidos pelo usuario sem ampliar o escopo. '
-        'Nao invente fatos nem elimine dados importantes ja presentes no rascunho grounded. '
-        'Devolva apenas a resposta final.'
-    )
-    prompt = (
-        f'Escola: {_school_name(school_profile)}\n'
-        f'Pergunta do usuario:\n{request_message}\n\n'
-        f'Plano publico:\n{json.dumps(public_plan, ensure_ascii=False)}\n\n'
-        f'Historico recente:\n{_recent_messages(conversation_context, limit=4)}\n\n'
-        f'Evidencias:\n' + ('\n'.join(f'- {item}' for item in evidence_lines[:8]) or '- nenhuma') + '\n\n'
-        f'Rascunho grounded:\n{draft_text}'
-    )
-    return await stack_local_text_call(
+    from eduassist_semantic_ingress import compose_grounded_public_answer_with_provider
+
+    return await compose_grounded_public_answer_with_provider(
         settings=settings,
-        instructions=instructions,
-        prompt=prompt,
-        temperature=0.08,
-        max_output_tokens=280,
-        top_p=0.9,
+        stack_label=_STACK_LABEL,
+        request_message=request_message,
+        draft_text=draft_text,
+        public_plan=public_plan,
+        evidence_lines=evidence_lines,
+        conversation_context=conversation_context,
+        school_profile=school_profile,
     )
 
 

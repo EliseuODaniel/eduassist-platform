@@ -24,6 +24,7 @@ async def _public_compound(state: LangGraphMessageState) -> LangGraphMessageStat
     conversation_context = state['conversation_context']
     effective_conversation_id = state['effective_conversation_id']
     analysis_message = state['analysis_message']
+    turn_frame_public_plan = state.get('turn_frame_public_plan')
 
     if not isinstance(school_profile, dict):
         return await _delegate_runtime(state)
@@ -318,7 +319,27 @@ async def _public_compound(state: LangGraphMessageState) -> LangGraphMessageStat
             profile=school_profile,
         )
         if fast_public_answer:
-            message_text = rt._normalize_response_wording(fast_public_answer)
+            composer_used = False
+            message_text = fast_public_answer
+            resolved_public_plan = turn_frame_public_plan or rt._build_public_institution_plan(
+                request.message,
+                list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
+                conversation_context=conversation_context,
+                school_profile=school_profile,
+            )
+            composed_public_answer = await rt._compose_public_profile_answer_agentic(
+                settings=settings,
+                profile=school_profile,
+                actor=actor,
+                message=request.message,
+                original_message=request.message,
+                conversation_context=conversation_context,
+                semantic_plan=resolved_public_plan,
+            )
+            if composed_public_answer:
+                message_text = composed_public_answer
+                composer_used = True
+            message_text = rt._normalize_response_wording(message_text)
             suggested_replies = rt._build_suggested_replies(
                 request=request,
                 preview=preview,
@@ -386,18 +407,37 @@ async def _public_compound(state: LangGraphMessageState) -> LangGraphMessageStat
                     preview=preview,
                 ),
                 reason='langgraph_public_compound_contextual_direct',
-                used_llm=False,
-                llm_stages=[],
+                used_llm=composer_used,
+                llm_stages=['public_answer_composer'] if composer_used else [],
             )
             return {'response': response}
 
     canonical_lane = rt.match_public_canonical_lane(request.message) or rt.match_public_canonical_lane(analysis_message)
     if canonical_lane:
+        composer_used = False
         message_text = (
             rt.compose_public_conduct_policy_contextual_answer(request.message, profile=school_profile)
             if canonical_lane == 'public_bundle.conduct_frequency_punctuality'
             else rt.compose_public_canonical_lane_answer(canonical_lane, profile=school_profile)
         )
+        resolved_public_plan = turn_frame_public_plan or rt._build_public_institution_plan(
+            request.message,
+            list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
+        composed_public_answer = await rt._compose_public_profile_answer_agentic(
+            settings=settings,
+            profile=school_profile,
+            actor=actor,
+            message=request.message,
+            original_message=request.message,
+            conversation_context=conversation_context,
+            semantic_plan=resolved_public_plan,
+        )
+        if composed_public_answer:
+            message_text = composed_public_answer
+            composer_used = True
         if message_text:
             if rt._message_matches_term(rt._normalize_text(request.message), 'apenas o que e publico nesse tema'):
                 message_text = (
@@ -472,8 +512,8 @@ async def _public_compound(state: LangGraphMessageState) -> LangGraphMessageStat
                     preview=preview,
                 ),
                 reason='langgraph_public_compound_canonical',
-                used_llm=False,
-                llm_stages=[],
+                used_llm=composer_used,
+                llm_stages=['public_answer_composer'] if composer_used else [],
             )
             return {'response': response}
 
@@ -564,10 +604,11 @@ async def _public_compound(state: LangGraphMessageState) -> LangGraphMessageStat
         conversation_context=conversation_context,
         school_profile=school_profile,
     )
-    message_text = rt._compose_public_profile_answer(
-        school_profile,
-        analysis_message,
+    message_text = await rt._compose_public_profile_answer_agentic(
+        settings=settings,
+        profile=school_profile,
         actor=actor,
+        message=analysis_message,
         original_message=request.message,
         conversation_context=conversation_context,
         semantic_plan=public_plan,

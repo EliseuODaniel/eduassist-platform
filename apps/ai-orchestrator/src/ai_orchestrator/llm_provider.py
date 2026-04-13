@@ -1432,27 +1432,18 @@ async def compose_public_grounded_with_provider(
     conversation_context: dict[str, Any] | None,
     school_profile: dict[str, Any] | None,
 ) -> str | None:
-    if settings.llm_provider == 'openai':
-        return await compose_public_grounded_with_openai(
-            settings=settings,
-            request_message=request_message,
-            draft_text=draft_text,
-            public_plan=public_plan,
-            evidence_lines=evidence_lines,
-            conversation_context=conversation_context,
-            school_profile=school_profile,
-        )
-    if settings.llm_provider in {'google', 'gemini'}:
-        return await compose_public_grounded_with_google(
-            settings=settings,
-            request_message=request_message,
-            draft_text=draft_text,
-            public_plan=public_plan,
-            evidence_lines=evidence_lines,
-            conversation_context=conversation_context,
-            school_profile=school_profile,
-        )
-    return None
+    from eduassist_semantic_ingress import compose_grounded_public_answer_with_provider
+
+    return await compose_grounded_public_answer_with_provider(
+        settings=settings,
+        stack_label='ai_orchestrator',
+        request_message=request_message,
+        draft_text=draft_text,
+        public_plan=public_plan,
+        evidence_lines=evidence_lines,
+        conversation_context=conversation_context,
+        school_profile=school_profile,
+    )
 
 
 async def compose_grounded_answer_experience_with_openai(

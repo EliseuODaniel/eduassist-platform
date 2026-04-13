@@ -89,6 +89,7 @@ def _route_native_path(preview: Any, request_message: str, analysis_message: str
                 rt._is_public_timeline_query,
                 rt._is_public_calendar_event_query,
                 rt._is_public_curriculum_query,
+                rt._is_public_operating_hours_query,
             )
         )
     ):
@@ -244,12 +245,20 @@ async def _semantic_ingress(state: LangGraphMessageState) -> LangGraphMessageSta
 
     public_plan = build_semantic_ingress_public_plan(semantic_ingress_plan) if semantic_ingress_plan is not None else None
     public_plan = public_plan or turn_frame_public_plan
+    semantic_reason = (
+        f'langgraph_semantic_ingress:{semantic_ingress_plan.conversation_act}'
+        if semantic_ingress_plan is not None
+        else (
+            f'langgraph_turn_frame:{getattr(turn_frame_public_plan, "capability", None) or getattr(turn_frame_public_plan, "plan_kind", "public_answer")}'
+        )
+    )
     public_plan_sink: dict[str, Any] = {}
     if semantic_ingress_plan is not None and is_terminal_semantic_ingress_plan(semantic_ingress_plan):
-        message_text = rt._compose_public_profile_answer(
-            school_profile or {},
-            request.message,
+        message_text = await rt._compose_public_profile_answer_agentic(
+            settings=settings,
+            profile=school_profile or {},
             actor=actor,
+            message=request.message,
             original_message=request.message,
             conversation_context=conversation_context,
             semantic_plan=public_plan,
@@ -317,7 +326,7 @@ async def _semantic_ingress(state: LangGraphMessageState) -> LangGraphMessageSta
         suggested_reply_count=len(suggested_replies),
         visual_asset_count=0,
         answer_verifier_valid=True,
-        answer_verifier_reason=f'langgraph_semantic_ingress:{semantic_ingress_plan.conversation_act}',
+        answer_verifier_reason=semantic_reason,
         answer_verifier_fallback_used=False,
         deterministic_fallback_available=True,
         answer_verifier_judge_used=False,
@@ -347,7 +356,7 @@ async def _semantic_ingress(state: LangGraphMessageState) -> LangGraphMessageSta
             message_text=message_text,
             preview=preview,
         ),
-        reason=f'langgraph_semantic_ingress:{semantic_ingress_plan.conversation_act}',
+        reason=semantic_reason,
         used_llm=True,
         llm_stages=llm_stages,
     )

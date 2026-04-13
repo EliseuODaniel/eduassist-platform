@@ -4884,12 +4884,16 @@ def _public_profile_handler_registry() -> dict[str, Callable[[PublicProfileConte
     }
 
 
-AGENTIC_PUBLIC_COMPOSITION_ACTS = {
-    'canonical_fact',
-    'comparative',
-    'curriculum',
-    'highlight',
-    'confessional',
+NON_AGENTIC_PUBLIC_COMPOSITION_ACTS = {
+    'greeting',
+    'input_clarification',
+    'scope_boundary',
+    'utility_date',
+    'auth_guidance',
+    'access_scope',
+    'language_preference',
+    'assistant_identity',
+    'capabilities',
 }
 
 
@@ -4904,6 +4908,18 @@ async def _compose_public_profile_answer_agentic(
     semantic_plan: PublicInstitutionPlan | None = None,
     deterministic_text_sink: dict[str, Any] | None = None,
 ) -> str:
+    if semantic_plan is not None and not isinstance(semantic_plan, PublicInstitutionPlan):
+        semantic_plan = PublicInstitutionPlan(
+            conversation_act=str(getattr(semantic_plan, 'conversation_act', 'canonical_fact') or 'canonical_fact'),
+            required_tools=tuple(getattr(semantic_plan, 'required_tools', ()) or ()),
+            fetch_profile=bool(getattr(semantic_plan, 'fetch_profile', True)),
+            secondary_acts=tuple(getattr(semantic_plan, 'secondary_acts', ()) or ()),
+            requested_attribute=getattr(semantic_plan, 'requested_attribute', None),
+            requested_channel=getattr(semantic_plan, 'requested_channel', None),
+            focus_hint=getattr(semantic_plan, 'focus_hint', None),
+            semantic_source=str(getattr(semantic_plan, 'semantic_source', 'rules') or 'rules'),
+            use_conversation_context=bool(getattr(semantic_plan, 'use_conversation_context', False)),
+        )
     llm_forced_mode = _llm_forced_mode_enabled(settings=settings)
     deterministic_text = _compose_public_profile_answer(
         profile,
@@ -4926,7 +4942,7 @@ async def _compose_public_profile_answer_agentic(
         semantic_plan=semantic_plan,
     )
     resolved_act = _resolve_public_profile_act(context)
-    if resolved_act not in AGENTIC_PUBLIC_COMPOSITION_ACTS and not llm_forced_mode:
+    if resolved_act in NON_AGENTIC_PUBLIC_COMPOSITION_ACTS and not llm_forced_mode:
         return deterministic_text
 
     evidence_bundle = build_public_evidence_bundle(

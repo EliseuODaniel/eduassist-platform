@@ -69,6 +69,21 @@ async def maybe_execute_llamaindex_native_plan(
         return native_preflight_result
 
     contextual_public_profile = school_profile
+    early_turn_frame = None
+    early_turn_frame_public_plan = None
+    try:
+        early_turn_frame = await maybe_resolve_turn_frame(
+            settings=settings,
+            request_message=request.message,
+            conversation_context=conversation_context,
+            preview=plan.preview.model_copy(deep=True),
+            stack_label='llamaindex',
+            authenticated=bool(getattr(request.user, 'authenticated', False)),
+        )
+        early_turn_frame_public_plan = build_turn_frame_public_plan(early_turn_frame)
+    except Exception:
+        early_turn_frame = None
+        early_turn_frame_public_plan = None
     early_public_answer = await _resolve_early_llamaindex_public_answer(
         request=request,
         plan=plan,
@@ -99,7 +114,28 @@ async def maybe_execute_llamaindex_native_plan(
             school_profile=contextual_public_profile if isinstance(contextual_public_profile, dict) else {},
             conversation_context=conversation_context,
         )
-        message_text = rt._normalize_response_wording(early_public_answer.answer_text)
+        message_text = early_public_answer.answer_text
+        composer_used = False
+        if isinstance(contextual_public_profile, dict):
+            resolved_public_plan = early_turn_frame_public_plan or rt._build_public_institution_plan(
+                request.message,
+                list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
+                conversation_context=conversation_context,
+                school_profile=contextual_public_profile,
+            )
+            composed_public_answer = await rt._compose_public_profile_answer_agentic(
+                settings=settings,
+                profile=contextual_public_profile,
+                actor=actor,
+                message=request.message,
+                original_message=request.message,
+                conversation_context=conversation_context,
+                semantic_plan=resolved_public_plan,
+            )
+            if composed_public_answer:
+                message_text = composed_public_answer
+                composer_used = True
+        message_text = rt._normalize_response_wording(message_text)
         early_reason_label = {
             'canonical_lane': (
                 f'llamaindex canonical public lane fast path:{early_public_answer.canonical_lane}'
@@ -195,6 +231,14 @@ async def maybe_execute_llamaindex_native_plan(
             retrieval_probe_topic=None,
             response_cache_hit=False,
             response_cache_kind=None,
+            used_llm=composer_used,
+            llm_stages=['public_answer_composer'] if composer_used else [],
+            final_polish_eligible=composer_used,
+            final_polish_applied=composer_used,
+            final_polish_mode='grounded_public_composition' if composer_used else None,
+            final_polish_reason='public_answer_composer' if composer_used else None,
+            final_polish_changed_text=composer_used,
+            final_polish_preserved_fallback=False,
         )
         reflection = KernelReflection(
             grounded=True,
@@ -1106,10 +1150,11 @@ async def maybe_execute_llamaindex_native_plan(
         selected_tool_names = ('public_profile',)
         execution_reason = 'llamaindex_public_unpublished_fact'
     elif native_public_decision is not None and native_public_decision.answer_mode == 'profile':
-        direct_profile_answer = rt._compose_public_profile_answer(
-            school_profile,
-            request.message,
+        direct_profile_answer = await rt._compose_public_profile_answer_agentic(
+            settings=settings,
+            profile=school_profile,
             actor=actor,
+            message=request.message,
             original_message=request.message,
             conversation_context=conversation_context,
             semantic_plan=public_plan,
@@ -1257,10 +1302,11 @@ async def maybe_execute_llamaindex_native_plan(
         and public_plan.conversation_act in {'highlight', 'pricing', 'comparative', 'curriculum'}
     )
     if low_confidence_documentary_answer:
-        fallback_text = rt._compose_public_profile_answer(
-            school_profile,
-            request.message,
+        fallback_text = await rt._compose_public_profile_answer_agentic(
+            settings=settings,
+            profile=school_profile,
             actor=actor,
+            message=request.message,
             original_message=request.message,
             conversation_context=conversation_context,
             semantic_plan=public_plan,
@@ -1273,10 +1319,11 @@ async def maybe_execute_llamaindex_native_plan(
             retrieval_backend = RetrievalBackend.none
             execution_reason = 'llamaindex_public_retrieval_profile_fallback'
     if not answer_text and not llm_forced_mode:
-        deterministic_public_fallback = rt._compose_public_profile_answer(
-            school_profile,
-            request.message,
+        deterministic_public_fallback = await rt._compose_public_profile_answer_agentic(
+            settings=settings,
+            profile=school_profile,
             actor=actor,
+            message=request.message,
             original_message=request.message,
             conversation_context=conversation_context,
             semantic_plan=public_plan,
@@ -1479,10 +1526,11 @@ async def maybe_execute_llamaindex_native_plan(
         semantic_judge_used=semantic_judge_used,
     ) + [stage for stage in llm_stages if stage in {'semantic_ingress_classifier', 'structured_polish', 'response_critic'}]
     llm_stages = list(dict.fromkeys(llm_stages))
-    deterministic_candidate_text = rt._compose_public_profile_answer(
-        school_profile,
-        request.message,
+    deterministic_candidate_text = await rt._compose_public_profile_answer_agentic(
+        settings=settings,
+        profile=school_profile,
         actor=actor,
+        message=request.message,
         original_message=request.message,
         conversation_context=conversation_context,
         semantic_plan=public_plan,

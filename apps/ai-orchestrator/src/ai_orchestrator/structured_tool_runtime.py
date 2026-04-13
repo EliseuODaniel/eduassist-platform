@@ -111,10 +111,29 @@ async def _compose_structured_tool_answer(
             profile=school_profile,
         )
         if fast_public_channel_answer:
+            resolved_fast_public_plan = resolved_public_plan or _build_public_institution_plan(
+                request.message,
+                list(preview.selected_tools),
+                semantic_plan=None,
+                conversation_context=conversation_context,
+                school_profile=school_profile,
+            )
+            composed_fast_public_answer = await _compose_public_profile_answer_agentic(
+                settings=settings,
+                profile=school_profile,
+                actor=actor,
+                message=request.message,
+                original_message=request.message,
+                conversation_context=conversation_context,
+                semantic_plan=resolved_fast_public_plan,
+            )
+            if composed_fast_public_answer:
+                fast_public_channel_answer = composed_fast_public_answer
             if public_plan_sink is not None:
                 public_plan_sink['deterministic_text'] = fast_public_channel_answer
                 public_plan_sink['candidate_chosen'] = 'deterministic'
                 public_plan_sink['candidate_reason'] = 'fast_public_channel_answer'
+                public_plan_sink['plan'] = resolved_fast_public_plan
             return fast_public_channel_answer
     if (
         actor is not None
@@ -158,8 +177,27 @@ async def _compose_structured_tool_answer(
                 else None
             ) or compose_public_canonical_lane_answer(direct_canonical_lane, profile=school_profile)
             if direct_canonical_answer:
+                resolved_canonical_plan = resolved_public_plan or _build_public_institution_plan(
+                    request.message,
+                    list(preview.selected_tools),
+                    semantic_plan=None,
+                    conversation_context=conversation_context,
+                    school_profile=school_profile,
+                )
+                composed_canonical_answer = await _compose_public_profile_answer_agentic(
+                    settings=settings,
+                    profile=school_profile,
+                    actor=actor,
+                    message=request.message,
+                    original_message=request.message,
+                    conversation_context=conversation_context,
+                    semantic_plan=resolved_canonical_plan,
+                )
+                if composed_canonical_answer:
+                    direct_canonical_answer = composed_canonical_answer
                 if public_plan_sink is not None:
                     public_plan_sink['deterministic_text'] = direct_canonical_answer
+                    public_plan_sink['plan'] = resolved_canonical_plan
                 return direct_canonical_answer
         use_admin_path = (
             request.telegram_chat_id is not None
@@ -226,8 +264,27 @@ async def _compose_structured_tool_answer(
                 profile=school_profile,
             )
         if fast_public_channel_answer:
+            resolved_fast_public_plan = resolved_public_plan or _build_public_institution_plan(
+                request.message,
+                list(preview.selected_tools),
+                semantic_plan=None,
+                conversation_context=conversation_context,
+                school_profile=school_profile,
+            )
+            composed_fast_public_answer = await _compose_public_profile_answer_agentic(
+                settings=settings,
+                profile=school_profile,
+                actor=actor,
+                message=request.message,
+                original_message=request.message,
+                conversation_context=conversation_context,
+                semantic_plan=resolved_fast_public_plan,
+            )
+            if composed_fast_public_answer:
+                fast_public_channel_answer = composed_fast_public_answer
             if public_plan_sink is not None:
                 public_plan_sink['deterministic_text'] = fast_public_channel_answer
+                public_plan_sink['plan'] = resolved_fast_public_plan
             return fast_public_channel_answer
         if prefer_fast_public_path:
             plan = resolved_public_plan or _build_public_institution_plan(
@@ -308,10 +365,11 @@ async def _compose_structured_tool_answer(
             and (prefer_fast_public_path or should_prefer_deterministic_public_answer)
             and profile
         ):
-            deterministic_public_answer = _compose_public_profile_answer(
-                profile,
-                analysis_message,
+            deterministic_public_answer = await _compose_public_profile_answer_agentic(
+                settings=settings,
+                profile=profile,
                 actor=actor,
+                message=analysis_message,
                 original_message=request.message,
                 conversation_context=conversation_context,
                 semantic_plan=plan,
@@ -329,6 +387,16 @@ async def _compose_structured_tool_answer(
                 profile=profile,
             )
         if fast_public_channel_answer:
+            if profile:
+                fast_public_channel_answer = await _compose_public_profile_answer_agentic(
+                    settings=settings,
+                    profile=profile,
+                    actor=actor,
+                    message=request.message,
+                    original_message=request.message,
+                    conversation_context=conversation_context,
+                    semantic_plan=plan,
+                )
             if public_plan_sink is not None:
                 public_plan_sink['deterministic_text'] = fast_public_channel_answer
                 public_plan_sink['candidate_chosen'] = 'deterministic'
@@ -340,10 +408,11 @@ async def _compose_structured_tool_answer(
             and prefer_fast_public_path
             and profile
         ):
-            deterministic_public_answer = _compose_public_profile_answer(
-                profile,
-                analysis_message,
+            deterministic_public_answer = await _compose_public_profile_answer_agentic(
+                settings=settings,
+                profile=profile,
                 actor=actor,
+                message=analysis_message,
                 original_message=request.message,
                 conversation_context=conversation_context,
                 semantic_plan=plan,
@@ -501,10 +570,11 @@ async def _compose_structured_tool_answer(
 
         deterministic_candidate = build_response_candidate(
             kind='deterministic',
-            text=_compose_public_profile_answer(
-                profile,
-                analysis_message,
+            text=await _compose_public_profile_answer_agentic(
+                settings=settings,
+                profile=profile,
                 actor=actor,
+                message=analysis_message,
                 original_message=request.message,
                 conversation_context=conversation_context,
                 semantic_plan=plan,

@@ -4,6 +4,8 @@ import asyncio
 from types import SimpleNamespace
 
 from ai_orchestrator_specialist.models import (
+    MessageEvidencePack,
+    MessageEvidenceSupport,
     MessageIntentClassification,
     OperationalMemory,
     ResolvedTurnIntent,
@@ -1381,6 +1383,72 @@ def test_persist_and_dump_preserves_answer_used_llm_when_metadata_is_silent() ->
     assert persisted['answer'].llm_stages == ['general_knowledge_fast_path']
     assert payload['answer']['used_llm'] is True
     assert payload['answer']['llm_stages'] == ['general_knowledge_fast_path']
+
+
+def test_persist_and_dump_refines_public_answer_with_grounded_composer(monkeypatch) -> None:
+    persisted: dict[str, object] = {}
+
+    async def _persist_final_answer(_context, **kwargs):
+        persisted.update(kwargs)
+
+    async def _fake_compose(**_kwargs):
+        return 'A biblioteca abre as 7h30.'
+
+    monkeypatch.setattr(
+        'ai_orchestrator_specialist.supervisor_run_flow.compose_grounded_public_answer_with_provider',
+        _fake_compose,
+    )
+
+    deps = SimpleNamespace(persist_final_answer=_persist_final_answer)
+    context = SimpleNamespace(
+        settings=SimpleNamespace(),
+        school_profile={'school_name': 'Colegio Horizonte'},
+        conversation_context={'recent_messages': []},
+        preview_hint={
+            'turn_frame': {
+                'public_conversation_act': 'operating_hours',
+                'requested_attribute': 'open_time',
+                'public_focus_hint': 'library',
+            }
+        },
+        request=SimpleNamespace(message='que horas abre a biblioteca?'),
+    )
+    answer = SupervisorAnswerPayload(
+        message_text='A biblioteca se chama Biblioteca Aurora e funciona de segunda a sexta, das 7h30 as 18h00.',
+        mode='structured_tool',
+        classification=MessageIntentClassification(
+            domain='institution',
+            access_tier='public',
+            confidence=1.0,
+            reason='specialist_supervisor_fast_path:library_hours',
+        ),
+        evidence_pack=MessageEvidencePack(
+            strategy='direct_answer',
+            summary='ok',
+            supports=[MessageEvidenceSupport(kind='profile_fact', label='Biblioteca Aurora', detail='de segunda a sexta, das 7h30 as 18h00.', excerpt=None)],
+        ),
+        graph_path=['specialist_supervisor', 'fast_path', 'library_hours'],
+        reason='specialist_supervisor_fast_path:library_hours',
+        used_llm=False,
+        llm_stages=[],
+    )
+
+    payload = asyncio.run(
+        _persist_and_dump(
+            deps,
+            context,
+            answer=answer,
+            route='fast_path',
+            metadata={'provider': 'openai', 'model': 'ggml'},
+        )
+    )
+
+    assert persisted['answer'].message_text == 'A biblioteca abre as 7h30.'
+    assert persisted['answer'].used_llm is True
+    assert 'public_answer_composer' in persisted['answer'].llm_stages
+    assert persisted['answer'].final_polish_mode == 'grounded_public_composition'
+    assert persisted['answer'].final_polish_applied is True
+    assert payload['answer']['message_text'] == 'A biblioteca abre as 7h30.'
 
 
 def test_operational_memory_does_not_reuse_subject_answer_for_unrelated_admin_finance_prompt() -> None:

@@ -17,6 +17,7 @@ from ai_orchestrator.models import (
 )
 from ai_orchestrator.entity_resolution import resolve_entity_hints
 from ai_orchestrator.python_functions_kernel import KernelPlan
+from ai_orchestrator.python_functions_kernel_runtime import _maybe_contextual_public_direct_answer
 from ai_orchestrator.python_functions_native_runtime import maybe_execute_python_functions_native_plan
 
 
@@ -508,3 +509,48 @@ def test_python_functions_native_uses_input_clarification_semantic_ingress_befor
     lowered = result.response['message_text'].lower()
     assert 'nao consegui' in lowered or 'não consegui' in lowered
     assert 'cadastro' not in lowered
+
+
+def test_python_functions_contextual_public_direct_answer_refines_library_opening_focus(monkeypatch) -> None:
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_kernel_runtime.rt._llm_forced_mode_enabled',
+        lambda **_: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_kernel_runtime.rt._base_profile_supports_fast_public_answer',
+        lambda **_: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_kernel_runtime.rt._try_public_channel_fast_answer',
+        lambda **_: None,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.python_functions_kernel_runtime.rt._compose_public_profile_answer_agentic',
+        lambda **_: asyncio.sleep(0, result='A biblioteca abre as 7h30.'),
+    )
+
+    result = asyncio.run(
+        _maybe_contextual_public_direct_answer(
+            request=SimpleNamespace(
+                message='que horas abre a biblioteca?',
+                user=SimpleNamespace(authenticated=False),
+            ),
+            analysis_message='que horas abre a biblioteca?',
+            preview=SimpleNamespace(
+                classification=SimpleNamespace(
+                    access_tier=AccessTier.public,
+                    domain=QueryDomain.institution,
+                ),
+            ),
+            settings=SimpleNamespace(),
+            school_profile={
+                'school_name': 'Colegio Horizonte',
+                'feature_catalog': [
+                    {'name': 'Biblioteca Aurora', 'label': 'Biblioteca Aurora', 'note': 'de segunda a sexta, das 7h30 as 18h00'}
+                ],
+            },
+            conversation_context={'recent_messages': []},
+        )
+    )
+
+    assert result == 'A biblioteca abre as 7h30.'
