@@ -75,6 +75,58 @@ def test_turn_frame_cross_stack_public_schedule_alignment() -> None:
     assert resolved.key == "institution.shift_offers"
 
 
+def test_turn_frame_cross_stack_public_schedule_end_alignment() -> None:
+    message = "Qual horário da última aula?"
+    request = MessageResponseRequest(
+        message=message,
+        user=UserContext(role=UserRole.guardian, authenticated=False),
+    )
+
+    frame = build_turn_frame_hint(
+        message=message,
+        conversation_context=None,
+        preview=None,
+        authenticated=False,
+    )
+    python_plan = build_python_functions_plan(request=request, settings=_Settings(), mode="python_functions")
+    llamaindex_plan = build_llamaindex_plan(request=request, settings=_Settings(), mode="llamaindex")
+    resolved = resolve_turn_intent(
+        SimpleNamespace(
+            request=SimpleNamespace(message=message, user=SimpleNamespace(authenticated=False)),
+            preview_hint={
+                "turn_frame": {
+                    "capability_id": frame.capability_id,
+                    "access_tier": frame.access_tier,
+                    "confidence": frame.confidence,
+                }
+            },
+            operational_memory=None,
+            actor=None,
+            resolved_turn=None,
+        ),
+        deps=_specialist_deps(),
+    )
+
+    assert frame is not None
+    assert frame.capability_id == "public.schedule.class_end_time"
+    assert "turn_frame=public.schedule.class_end_time" in python_plan.preview.reason
+    assert "turn_frame=public.schedule.class_end_time" in llamaindex_plan.preview.reason
+    assert resolved.key == "institution.shift_offers"
+
+
+def test_turn_frame_cross_stack_curriculum_alignment() -> None:
+    message = "Qual o conteúdo ensinado em biologia?"
+    frame = build_turn_frame_hint(
+        message=message,
+        conversation_context=None,
+        preview=None,
+        authenticated=False,
+    )
+
+    assert frame is not None
+    assert frame.capability_id == "public.curriculum.overview"
+
+
 def test_turn_frame_cross_stack_protected_finance_followup_alignment() -> None:
     message = "Qual o proximo vencimento?"
     conversation_context = {

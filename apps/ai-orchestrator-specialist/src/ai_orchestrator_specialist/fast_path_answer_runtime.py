@@ -713,6 +713,31 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
                 graph_leaf="attendance_hours",
             )
 
+    if any(
+        term in normalized
+        for term in {
+            "ultima aula",
+            "última aula",
+            "madrugada",
+            "que horas começa a aula",
+            "que horas comeca a aula",
+            "que horas termina a aula",
+            "que horas acaba a aula",
+        }
+    ):
+        shift_answer = _compose_shift_offers_answer(profile, message=ctx.request.message)
+        if shift_answer:
+            return _build_fast_path_payload(
+                message_text=shift_answer,
+                domain="institution",
+                access_tier="public",
+                confidence=0.98,
+                reason="specialist_supervisor_fast_path:shift_offers_extended",
+                summary="Pergunta publica de turnos ou horarios letivos resolvida diretamente no perfil institucional.",
+                supports=[MessageEvidenceSupport(kind="profile_fact", label="Turnos publicos", detail="shift_offers")],
+                graph_leaf="shift_offers_extended",
+            )
+
     if "matematica" in normalized or "matemática" in normalized:
         curriculum_answer = _compose_curriculum_components_answer(profile, segment_hint="Ensino Medio")
         if curriculum_answer and any(term in normalized for term in {"tem aula", "tem matéria", "tem materia", "tem "}):
@@ -742,6 +767,73 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
                 supports=[MessageEvidenceSupport(kind="curriculum", label="Ensino Medio", detail="curriculum_components + curriculum_basis")],
                 graph_leaf="curriculum_components",
             )
+
+    if any(
+        term in normalized
+        for term in {
+            "o que e bncc",
+            "o que é bncc",
+            "conteudo ensinado em",
+            "conteúdo ensinado em",
+            "qual o conteudo ensinado em",
+            "qual o conteúdo ensinado em",
+        }
+    ):
+        curriculum_subject_answer = _compose_curriculum_subject_answer(profile, message=ctx.request.message)
+        if curriculum_subject_answer is None and "bncc" in normalized:
+            basis = str(profile.get("curriculum_basis", "") or "").strip()
+            if basis:
+                curriculum_subject_answer = f"Sim. A base curricular publicada pela escola informa o seguinte: {basis}"
+        if curriculum_subject_answer:
+            return _build_fast_path_payload(
+                message_text=curriculum_subject_answer,
+                domain="institution",
+                access_tier="public",
+                confidence=0.98,
+                reason="specialist_supervisor_fast_path:curriculum_subject",
+                summary="Pergunta publica de curriculo ou componente respondida com base no perfil institucional.",
+                supports=[MessageEvidenceSupport(kind="curriculum", label="Curriculo publico", detail="curriculum_components + curriculum_basis")],
+                graph_leaf="curriculum_subject",
+            )
+
+    if any(
+        term in normalized
+        for term in {"confessional", "laica", "religiosa", "colegio confessional", "colégio confessional"}
+    ):
+        confessional_answer = _compose_confessional_status_answer(profile)
+        if confessional_answer:
+            return _build_fast_path_payload(
+                message_text=confessional_answer,
+                domain="institution",
+                access_tier="public",
+                confidence=0.98,
+                reason="specialist_supervisor_fast_path:confessional_status",
+                summary="Identidade confessional ou laica respondida diretamente pelo perfil institucional.",
+                supports=[MessageEvidenceSupport(kind="profile_fact", label="Status confessional", detail=str(profile.get("confessional_status") or ""))],
+                graph_leaf="confessional_status",
+            )
+
+    if any(
+        term in normalized
+        for term in {
+            "ultima noticia",
+            "última notícia",
+            "noticias da escola",
+            "notícias da escola",
+            "noticia sobre a escola",
+            "notícia sobre a escola",
+        }
+    ) and any(term in normalized for term in {"escola", "colegio", "colégio"}):
+        return _build_fast_path_payload(
+            message_text=_compose_public_news_boundary_answer(profile),
+            domain="institution",
+            access_tier="public",
+            confidence=0.97,
+            reason="specialist_supervisor_fast_path:public_news_boundary",
+            summary="Consulta sobre noticias recentes tratada com boundary publico seguro e canal oficial.",
+            supports=[MessageEvidenceSupport(kind="profile_fact", label="Website", detail=str(profile.get("website_url") or ""))],
+            graph_leaf="public_news_boundary",
+        )
 
     if _looks_like_visit_reschedule_follow_up(normalized, recent_user_messages):
         visit_service = next(

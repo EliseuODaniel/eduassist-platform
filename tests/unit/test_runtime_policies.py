@@ -38,6 +38,7 @@ from ai_orchestrator.runtime import (
     _extract_unknown_subject_reference,
     _explicit_unmatched_student_reference,
     _foreign_school_reference,
+    _is_high_confidence_public_profile_query,
     _is_greeting_only,
     _is_access_scope_query,
     _is_direct_service_routing_bundle_query,
@@ -598,6 +599,28 @@ def test_foreign_school_reference_ignores_generic_regularization_phrase() -> Non
         school_profile={'school_name': 'Colégio Horizonte'},
         conversation_context=None,
     ) is None
+
+
+def test_foreign_school_reference_ignores_confessional_attribute_query() -> None:
+    assert _foreign_school_reference(
+        message='É um colégio confessional?',
+        school_profile={'school_name': 'Colégio Horizonte'},
+        conversation_context=None,
+    ) is None
+
+
+def test_high_confidence_public_profile_query_accepts_confessional_attribute_question() -> None:
+    assert (
+        _is_high_confidence_public_profile_query(
+            'É um colégio confessional?',
+            school_profile={
+                'school_name': 'Colégio Horizonte',
+                'confessional_status': 'laica',
+            },
+            conversation_context=None,
+        )
+        is True
+    )
 
 
 def test_public_pricing_followup_does_not_trigger_explicit_protected_domain_hint() -> None:

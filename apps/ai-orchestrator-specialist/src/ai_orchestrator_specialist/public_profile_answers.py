@@ -649,6 +649,18 @@ def _compose_shift_offers_answer(profile: dict[str, Any] | None, *, message: str
         requested_shift = "noturno"
     elif "integral" in normalized:
         requested_shift = "integral"
+    asks_start = any(term in normalized for term in {"que horas", "comeca", "começa", "inicio", "início"})
+    asks_end = any(
+        term in normalized for term in {"fecha", "termina", "acabam", "acaba", "ultima aula", "última aula"}
+    )
+    if "madrugada" in normalized:
+        lines = [
+            "Hoje o Colegio Horizonte nao publica turnos regulares de madrugada.",
+            "Os turnos documentados atualmente sao:",
+        ]
+        for row in rendered_rows:
+            lines.append(f"- {row['segment']}: {row['shift_label']} ({row['starts_at']} as {row['ends_at']}).")
+        return "\n".join(lines)
     selected = [
         row
         for row in rendered_rows
@@ -676,12 +688,14 @@ def _compose_shift_offers_answer(profile: dict[str, Any] | None, *, message: str
         ]
         if morning_rows:
             selected = morning_rows
-    asks_start = any(term in normalized for term in {"que horas", "comeca", "começa", "inicio", "início"})
-    asks_end = any(term in normalized for term in {"fecha", "termina", "acabam", "acaba"})
     if requested_shift == "manha" and asks_start:
         lines = ["Hoje os turnos regulares da manhã publicados pelo Colegio Horizonte começam assim:"]
     elif requested_shift == "manha" and asks_end:
         lines = ["Hoje os turnos regulares da manhã publicados pelo Colegio Horizonte terminam assim:"]
+    elif asks_end:
+        lines = ["Hoje os horarios de encerramento publicados pelo Colegio Horizonte sao estes:"]
+    elif asks_start:
+        lines = ["Hoje os horarios de inicio publicados pelo Colegio Horizonte sao estes:"]
     else:
         lines = ["Hoje o Colegio Horizonte publica estes turnos de atendimento escolar:"]
     for row in selected:
@@ -752,6 +766,71 @@ def _compose_curriculum_components_answer(profile: dict[str, Any] | None, *, seg
     if basis:
         answer += f" A base curricular segue {basis}"
     return answer
+
+
+def _compose_curriculum_subject_answer(profile: dict[str, Any] | None, *, message: str) -> str | None:
+    normalized = _normalize_text(message)
+    components = (profile or {}).get("curriculum_components")
+    if not isinstance(components, list):
+        return None
+    normalized_components = [
+        str(item).strip()
+        for item in components
+        if isinstance(item, str) and str(item).strip()
+    ]
+    if not normalized_components:
+        return None
+    matched = next(
+        (
+            label
+            for label in normalized_components
+            if _normalize_text(label) in normalized
+        ),
+        None,
+    )
+    if matched is None and any(term in normalized for term in {"conteudo ensinado em", "conteúdo ensinado em"}):
+        matched = next(
+            (
+                label
+                for label in normalized_components
+                if any(token in normalized for token in _normalize_text(label).split())
+            ),
+            None,
+        )
+    if matched is None:
+        return None
+    basis = str((profile or {}).get("curriculum_basis") or "").strip()
+    answer = (
+        f"Sim. No Colegio Horizonte, {matched} aparece como componente da base curricular publica."
+    )
+    if basis:
+        answer += f" A referencia institucional segue {basis}."
+    answer += " Se quiser, eu tambem posso listar as outras disciplinas do mesmo segmento."
+    return answer
+
+
+def _compose_confessional_status_answer(profile: dict[str, Any] | None) -> str | None:
+    status = _normalize_text((profile or {}).get("confessional_status"))
+    if not status:
+        return None
+    if status == "laica":
+        return (
+            "O Colegio Horizonte e uma escola laica. A proposta institucional publicada hoje e plural e nao confessional."
+        )
+    return f"Hoje o perfil institucional publico classifica o Colegio Horizonte como {status}."
+
+
+def _compose_public_news_boundary_answer(profile: dict[str, Any] | None) -> str:
+    website = str((profile or {}).get("website_url") or "").strip()
+    if website:
+        return (
+            "Hoje eu nao tenho um feed publico de noticias recentes validado aqui no EduAssist. "
+            f"O melhor canal oficial para acompanhar novidades do Colegio Horizonte e {website}."
+        )
+    return (
+        "Hoje eu nao tenho um feed publico de noticias recentes validado aqui no EduAssist. "
+        "Se quiser, eu posso te passar os canais institucionais oficiais da escola."
+    )
 
 
 def _academic_policy(profile: dict[str, Any] | None) -> dict[str, Any] | None:

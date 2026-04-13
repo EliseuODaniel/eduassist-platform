@@ -256,6 +256,20 @@ _SCHOOL_SCOPE_TERMS = {
     'diretor',
     'diretora',
     'admissions',
+    'bncc',
+    'curriculo',
+    'currículo',
+    'conteudo',
+    'conteúdo',
+    'ensinado',
+    'confessional',
+    'laica',
+    'religiosa',
+    'noticia',
+    'notícias',
+    'ultima aula',
+    'última aula',
+    'madrugada',
 }
 
 _SCHOOL_PUBLIC_FACILITY_TERMS = {
@@ -311,6 +325,8 @@ _PUBLIC_SCHEDULE_INTENT_TERMS = {
     'turnos',
     'turma',
     'turmas',
+    'aula',
+    'aulas',
     'matutino',
     'matutina',
     'manha',
@@ -336,6 +352,8 @@ _PUBLIC_SCHEDULE_INTENT_TERMS = {
     'horário da manhã',
     'horario do turno',
     'horário do turno',
+    'ultima aula',
+    'última aula',
 }
 
 _PUBLIC_SCHEDULE_TIME_TERMS = {
@@ -350,8 +368,14 @@ _PUBLIC_SCHEDULE_TIME_TERMS = {
     'começa',
     'inicio',
     'início',
+    'termina',
+    'acaba',
+    'fecha',
     'tem',
     'atende',
+    'ultima aula',
+    'última aula',
+    'madrugada',
 }
 
 _PUBLIC_PRICING_TERMS = {
@@ -430,6 +454,41 @@ _SCHOOL_YEAR_START_TERMS = {
     'comeco das aulas',
     'começo das aulas',
     'ano letivo',
+}
+
+_PUBLIC_CURRICULUM_TERMS = {
+    'bncc',
+    'curriculo',
+    'currículo',
+    'conteudo ensinado',
+    'conteúdo ensinado',
+    'o que e bncc',
+    'o que é bncc',
+    'disciplina de',
+    'materia de',
+    'matéria de',
+}
+
+_PUBLIC_IDENTITY_TERMS = {
+    'confessional',
+    'laica',
+    'religiosa',
+    'colegio confessional',
+    'colégio confessional',
+    'escola confessional',
+}
+
+_PUBLIC_NEWS_TERMS = {
+    'ultima noticia',
+    'última notícia',
+    'ultima noticia sobre',
+    'última notícia sobre',
+    'noticia sobre a escola',
+    'notícia sobre a escola',
+    'noticias da escola',
+    'notícias da escola',
+    'noticias do colegio',
+    'notícias do colégio',
 }
 
 
@@ -582,6 +641,15 @@ def looks_like_high_confidence_public_school_faq(message: str | None) -> bool:
     ):
         return True
     if any(_contains_term(normalized, term) for term in _SCHOOL_YEAR_START_TERMS):
+        return True
+    if any(_contains_term(normalized, term) for term in _PUBLIC_CURRICULUM_TERMS):
+        return True
+    if any(_contains_term(normalized, term) for term in _PUBLIC_IDENTITY_TERMS):
+        return True
+    if any(_contains_term(normalized, term) for term in _PUBLIC_NEWS_TERMS) and any(
+        _contains_term(normalized, term)
+        for term in {'escola', 'colegio', 'colégio', 'colegio horizonte', 'colégio horizonte'}
+    ):
         return True
     has_schedule_scope = any(
         _contains_term(normalized, term) for term in _PUBLIC_SCHEDULE_INTENT_TERMS

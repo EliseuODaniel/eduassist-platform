@@ -69,6 +69,12 @@ def _looks_like_family_admin_aggregate_query(message: str) -> bool:
     return _intent_analysis_impl('_looks_like_family_admin_aggregate_query')(message)
 
 
+def _base_profile_supports_fast_public_answer(*, message: str, profile: dict[str, Any]) -> bool:
+    from .public_profile_runtime import _base_profile_supports_fast_public_answer as _impl
+
+    return _impl(message=message, profile=profile)
+
+
 def _message_matches_term(message: str, term: str) -> bool:
     return _intent_analysis_impl('_message_matches_term')(message, term)
 
@@ -208,6 +214,9 @@ def _extract_school_reference_candidate(message: str) -> str | None:
         'telefone',
         'whatsapp',
         'email',
+        'confessional',
+        'laica',
+        'religiosa',
         'descreve',
         'explica',
         'explique',

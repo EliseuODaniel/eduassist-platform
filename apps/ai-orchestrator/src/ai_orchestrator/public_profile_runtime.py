@@ -3623,6 +3623,27 @@ def _handle_public_leadership(context: PublicProfileContext) -> str:
 
 
 def _handle_public_web_presence(context: PublicProfileContext) -> str:
+    requested_attribute = str(context.requested_attribute_override or '').strip().lower()
+    normalized_message = _normalize_text(context.source_message)
+    if requested_attribute == 'news' or any(
+        _message_matches_term(normalized_message, term)
+        for term in {
+            'ultima noticia',
+            'última notícia',
+            'noticias da escola',
+            'notícias da escola',
+        }
+    ):
+        if context.website_url:
+            return (
+                f'Hoje eu nao tenho um feed publico de noticias recentes validado aqui para {context.school_reference}. '
+                f'O melhor canal oficial para acompanhar novidades e {context.website_url}. '
+                'Se quiser, eu tambem posso te passar os canais institucionais de atendimento.'
+            )
+        return (
+            f'Hoje eu nao tenho um feed publico de noticias recentes validado aqui para {context.school_reference}. '
+            'Se quiser, eu posso te passar os canais institucionais oficiais para acompanhar atualizacoes.'
+        )
     if context.website_url:
         return f'O site oficial {_school_object_reference(context.school_reference)} hoje e {context.website_url}.'
     return (
@@ -4627,6 +4648,30 @@ def _handle_public_schedule(context: PublicProfileContext) -> str:
         requested_shift = 'noturno'
     elif 'integral' in normalized_message:
         requested_shift = 'integral'
+    asks_end = any(
+        term in normalized_message
+        for term in {'fecha', 'termina', 'acabam', 'acaba', 'ultima aula', 'última aula'}
+    )
+    asks_start = any(
+        term in normalized_message
+        for term in {'que horas', 'comeca', 'começa', 'inicio', 'início'}
+    )
+    if 'madrugada' in normalized_message:
+        lines = [
+            f'Hoje {context.school_reference} nao publica turnos regulares de madrugada.',
+            'Os turnos documentados atualmente sao:',
+        ]
+        for row in [row for row in context.shift_offers if isinstance(row, dict)]:
+            lines.append(
+                '- {segment} ({shift_label}): {starts_at} as {ends_at}. {notes}'.format(
+                    segment=row.get('segment', 'Segmento'),
+                    shift_label=row.get('shift_label', 'turno'),
+                    starts_at=row.get('starts_at', '--:--'),
+                    ends_at=row.get('ends_at', '--:--'),
+                    notes=row.get('notes', '').strip(),
+                ).rstrip()
+            )
+        return '\n'.join(lines)
     relevant_rows = [
         row
         for row in context.shift_offers
@@ -4703,14 +4748,14 @@ def _handle_public_schedule(context: PublicProfileContext) -> str:
                 ).rstrip()
             )
         return '\n'.join(lines)
-    if requested_shift == 'manha' and any(
-        term in normalized_message for term in {'que horas', 'comeca', 'começa', 'inicio', 'início'}
-    ):
+    if requested_shift == 'manha' and asks_start:
         lines = ['Horarios de inicio documentados para o turno da manha:']
-    elif requested_shift == 'manha' and any(
-        term in normalized_message for term in {'fecha', 'termina', 'acabam', 'acaba'}
-    ):
+    elif requested_shift == 'manha' and asks_end:
         lines = ['Horarios de encerramento documentados para o turno da manha:']
+    elif asks_end:
+        lines = ['Horarios de encerramento documentados:']
+    elif asks_start:
+        lines = ['Horarios de inicio documentados:']
     else:
         lines = ['Turnos e horarios documentados:']
     for row in relevant_rows:

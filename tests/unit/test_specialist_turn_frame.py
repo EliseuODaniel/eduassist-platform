@@ -79,6 +79,30 @@ def test_resolve_turn_intent_prefers_turn_frame_for_finance_followup() -> None:
     assert resolved.access_tier == "authenticated"
 
 
+def test_resolve_turn_intent_prefers_turn_frame_for_public_curriculum() -> None:
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            message="Qual o conteúdo ensinado em biologia?",
+            user=SimpleNamespace(authenticated=False),
+        ),
+        preview_hint={
+            "turn_frame": {
+                "capability_id": "public.curriculum.overview",
+                "access_tier": "public",
+                "confidence": 0.9,
+            }
+        },
+        operational_memory=None,
+        actor=None,
+        resolved_turn=None,
+    )
+
+    resolved = resolve_turn_intent(ctx, deps=_deps())
+
+    assert resolved.key == "institution.facilities"
+    assert resolved.rationale == "turn_frame:public.curriculum.overview"
+
+
 def test_orchestrator_preview_converts_public_turn_frame_into_structured_tool(monkeypatch) -> None:
     async def fake_semantic_ingress_plan(**_kwargs):
         return None

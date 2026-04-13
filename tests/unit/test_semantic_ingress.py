@@ -139,6 +139,9 @@ def test_looks_like_school_scope_message_detects_public_school_information_queri
     assert looks_like_school_scope_message("Qual o horario da biblioteca?") is True
     assert looks_like_school_scope_message("qual contato do diretor?") is True
     assert looks_like_school_scope_message("Qual o proximo vencimento?") is True
+    assert looks_like_school_scope_message("o que é bncc?") is True
+    assert looks_like_school_scope_message("qual o conteúdo ensinado em biologia?") is True
+    assert looks_like_school_scope_message("é um colégio confessional?") is True
 
 
 def test_looks_like_high_confidence_public_school_faq_detects_public_faq_families() -> None:
@@ -146,7 +149,12 @@ def test_looks_like_high_confidence_public_school_faq_detects_public_faq_familie
     assert looks_like_high_confidence_public_school_faq("qual valor da matricula?") is True
     assert looks_like_high_confidence_public_school_faq("quando iniciam as aulas?") is True
     assert looks_like_high_confidence_public_school_faq("que horas começa a aula de manhã?") is True
+    assert looks_like_high_confidence_public_school_faq("qual horário da última aula?") is True
+    assert looks_like_high_confidence_public_school_faq("tem aula de madrugada?") is True
     assert looks_like_high_confidence_public_school_faq("quais documentos preciso para matricula?") is True
+    assert looks_like_high_confidence_public_school_faq("o que é bncc?") is True
+    assert looks_like_high_confidence_public_school_faq("qual o conteúdo ensinado em biologia?") is True
+    assert looks_like_high_confidence_public_school_faq("é um colégio confessional?") is True
     assert looks_like_high_confidence_public_school_faq("qual o proximo vencimento?") is False
     assert (
         looks_like_high_confidence_public_school_faq(
@@ -163,6 +171,11 @@ def test_looks_like_scope_boundary_candidate_detects_out_of_scope_question() -> 
     assert looks_like_scope_boundary_candidate("Qual o horario da biblioteca?") is False
     assert looks_like_scope_boundary_candidate("qual contato do diretor?") is False
     assert looks_like_scope_boundary_candidate("que horas começa a aula de manhã?") is False
+    assert looks_like_scope_boundary_candidate("qual horário da última aula?") is False
+    assert looks_like_scope_boundary_candidate("tem aula de madrugada?") is False
+    assert looks_like_scope_boundary_candidate("o que é bncc?") is False
+    assert looks_like_scope_boundary_candidate("qual o conteúdo ensinado em biologia?") is False
+    assert looks_like_scope_boundary_candidate("é um colégio confessional?") is False
 
 
 def test_build_capability_candidates_prefers_public_schedule_for_morning_class_query() -> None:
@@ -174,6 +187,28 @@ def test_build_capability_candidates_prefers_public_schedule_for_morning_class_q
 
     assert candidates
     assert candidates[0].capability_id == "public.schedule.class_start_time"
+
+
+def test_build_capability_candidates_prefers_public_end_time_for_last_class_query() -> None:
+    candidates = build_capability_candidates(
+        message="Qual horário da última aula?",
+        conversation_context=None,
+        authenticated=False,
+    )
+
+    assert candidates
+    assert candidates[0].capability_id == "public.schedule.class_end_time"
+
+
+def test_build_capability_candidates_prefers_public_curriculum_for_bncc_query() -> None:
+    candidates = build_capability_candidates(
+        message="O que é BNCC?",
+        conversation_context=None,
+        authenticated=False,
+    )
+
+    assert candidates
+    assert candidates[0].capability_id == "public.curriculum.overview"
 
 
 def test_derive_focus_frame_uses_recent_public_capability_for_followup() -> None:

@@ -21,10 +21,13 @@ from .models import (
 )
 from .public_profile_answers import (
     _compose_contact_bundle_answer,
+    _compose_confessional_status_answer,
     _compose_curriculum_components_answer,
+    _compose_curriculum_subject_answer,
     _compose_human_handoff_answer,
     _compose_policy_compare_answer,
     _compose_public_attendance_hours_answer,
+    _compose_public_news_boundary_answer,
     _compose_public_pedagogical_answer,
     _compose_public_pitch_answer,
     _compose_public_teacher_directory_answer,
@@ -32,6 +35,7 @@ from .public_profile_answers import (
     _compose_service_routing_fast_answer,
     _compose_support_process_boundary_answer,
     _compose_timeline_bundle_answer,
+    _compose_shift_offers_answer,
     _feature_label,
     _feature_note,
     _select_contact_channel,
