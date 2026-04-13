@@ -1070,6 +1070,28 @@ def _cross_document_variants(query: str) -> list[str]:
     return _dedupe_strings(variants)
 
 
+def _restricted_document_variants(query: str) -> list[str]:
+    normalized = _normalize_text(query)
+    variants: list[str] = []
+    if any(term in normalized for term in ('professor', 'devolutiva', 'pedagog', 'avaliac', 'comunic')):
+        variants.append(
+            'manual interno professor registro de avaliacoes comunicacao pedagogica devolutiva ao estudante'
+        )
+    if any(term in normalized for term in ('telegram', 'escopo', 'parcial', 'responsavel', 'responsável')):
+        variants.append(
+            'protocolo interno telegram escopo parcial de responsaveis permissoes de acesso e limites do canal'
+        )
+    if any(term in normalized for term in ('negoci', 'financeir', 'familia', 'família')):
+        variants.append(
+            'playbook interno negociacao financeira com familias parametros de abordagem e encaminhamento'
+        )
+    if any(term in normalized for term in ('intercambio', 'intercâmbio', 'internacional', 'hospedagem', 'viagem', 'excursao', 'excursão')):
+        variants.append(
+            'programa interno de intercambio internacional hospedagem viagem externa e protocolo correlato'
+        )
+    return _dedupe_strings(variants)
+
+
 def _topic_families_for_query(query: str) -> list[str]:
     terms = set(_query_terms(query))
     normalized = _normalize_text(query)
@@ -1441,6 +1463,8 @@ def _build_query_plan(
         variants.append(keyword_variant)
     if enable_query_variants:
         variants.extend(subqueries)
+    if visibility != 'public' and enable_query_variants:
+        variants.extend(_restricted_document_variants(query))
     expansion = _INTENT_EXPANSIONS.get(intent)
     if enable_query_variants and expansion:
         variants.append(f'{query} {expansion}'.strip())
@@ -1471,6 +1495,11 @@ def _build_query_plan(
         vector_limit = max(top_k * 4, deep_candidate_pool_size)
         rerank_limit = max(top_k * 3, min(deep_candidate_pool_size, 14))
         max_chunks_per_document = 1
+    if visibility != 'public':
+        lexical_limit = max(lexical_limit, top_k * 5)
+        vector_limit = max(vector_limit, top_k * 5)
+        rerank_limit = max(rerank_limit, top_k * 3)
+        max_chunks_per_document = max(max_chunks_per_document, 2)
     elif intent in {'corpus_overview', 'policy_lookup', 'service_overview'}:
         lexical_limit = max(top_k * 4, candidate_pool_size)
         vector_limit = max(top_k * 4, candidate_pool_size)
@@ -1669,26 +1698,42 @@ def can_read_restricted_documents(user: UserContext) -> bool:
     )
 
 
-def select_relevant_restricted_hits(query: str, hits: list[Any], *, max_hits: int = 3) -> list[Any]:
+def select_relevant_restricted_hits(query: str, hits: list[Any], *, max_hits: int = 4) -> list[Any]:
     if not hits:
         return []
     scored: list[tuple[float, int, Any]] = []
     for index, hit in enumerate(hits):
         score = _restricted_document_hit_score(query=query, hit=hit)
-        if score > 0.18:
+        if score > 0.14:
             scored.append((score, index, hit))
     if not scored:
         return []
     scored.sort(key=lambda item: (item[0], -item[1]), reverse=True)
     selected: list[Any] = []
-    seen_titles: set[str] = set()
+    title_counts: dict[str, int] = {}
+    seen_sections: set[tuple[str, str]] = set()
     for _, _, hit in scored:
         title = _normalize_text(_hit_value(hit, 'document_title'))
+        section = _normalize_text(
+            ' '.join(
+                part
+                for part in (
+                    _hit_value(hit, 'section_parent'),
+                    _hit_value(hit, 'section_title'),
+                    _hit_value(hit, 'section_path'),
+                )
+                if part
+            )
+        )
         title_key = title or _normalize_text(_hit_value(hit, 'chunk_id'))
-        if title_key in seen_titles:
+        section_key = (title_key, section or _normalize_text(_hit_value(hit, 'chunk_id')))
+        if section_key in seen_sections:
+            continue
+        if title_counts.get(title_key, 0) >= 2:
             continue
         selected.append(hit)
-        seen_titles.add(title_key)
+        seen_sections.add(section_key)
+        title_counts[title_key] = title_counts.get(title_key, 0) + 1
         if len(selected) >= max_hits:
             break
     return selected

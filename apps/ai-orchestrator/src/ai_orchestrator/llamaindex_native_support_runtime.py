@@ -7,6 +7,7 @@ from __future__ import annotations
 LOCAL_EXTRACTED_NAMES = {'_maybe_execute_llamaindex_restricted_doc_fast_path', '_resolve_early_llamaindex_public_answer', '_build_llamaindex_direct_result', '_build_public_retrieval_query_engine', '_maybe_execute_llamaindex_agent_workflow'}
 
 from . import llamaindex_native_runtime as _native
+from .models import RetrievalProfile
 
 def _refresh_native_namespace() -> None:
     for name, value in vars(_native).items():

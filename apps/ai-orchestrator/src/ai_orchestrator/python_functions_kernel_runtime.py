@@ -876,8 +876,7 @@ async def execute_kernel_plan(
     elif preview.mode is OrchestrationMode.hybrid_retrieval:
         used_canonical_lane = False
         restricted_document_query = (
-            preview.classification.access_tier is AccessTier.authenticated
-            and looks_like_restricted_document_query(request.message)
+            looks_like_restricted_document_query(request.message)
             and can_read_restricted_documents(request.user)
         )
         canonical_lane = (

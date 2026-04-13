@@ -979,6 +979,60 @@ def _question_mentions_unasked_attendance_scope(question: str) -> bool:
     return _contains_any(question, _QUESTION_ATTENDANCE_HINTS)
 
 
+def _question_requests_operational_public_synthesis(question: str) -> bool:
+    normalized = _plain_text(question)
+    return any(
+        term in normalized
+        for term in (
+            'na pratica',
+            'de forma concreta',
+            'forma concreta',
+            'objetivo e grounded',
+            'objetivo e grounded',
+            'qual ordem',
+            'em ordem',
+            'ordem evita retrabalho',
+            'sem se perder',
+            'como se distribuem',
+            'como a familia acompanha',
+            'como a família acompanha',
+            'de que forma',
+            'o que fazer',
+            'como usar',
+            'proximo passo',
+            'próximo passo',
+        )
+    )
+
+
+def _response_has_operational_actionability(answer: str) -> bool:
+    normalized = _plain_text(answer)
+    return any(
+        term in normalized
+        for term in (
+            'primeiro',
+            'depois',
+            'em seguida',
+            'por fim',
+            'proximo passo',
+            'próximo passo',
+            'passo a passo',
+            'se a familia',
+            'se a família',
+            'se a necessidade',
+            'se o foco',
+            'confirma',
+            'confirme',
+            'valida',
+            'valide',
+            'aciona',
+            'acione',
+            'acompanha',
+            'acompanhe',
+        )
+    )
+
+
 def _question_mentions_upcoming_scope(question: str) -> bool:
     return any(term in _plain_text(question) for term in ('prova', 'avaliac', 'entrega'))
 
@@ -2623,6 +2677,12 @@ def _looks_like_attendance_alert_request(question: str) -> bool:
             'faltas recentes',
             'ausencias recentes',
             'ausências recentes',
+            'ponto mais critico da frequencia',
+            'ponto mais crítico da frequência',
+            'componentes as ausencias pesam mais',
+            'componentes as ausências pesam mais',
+            'em quais componentes as ausencias pesam mais',
+            'em quais componentes as ausências pesam mais',
         )
     )
 

@@ -95,3 +95,59 @@ def test_langgraph_native_route_prefers_public_retrieval_for_public_documentary_
     )
 
     assert route == 'public_retrieval'
+
+
+def test_restricted_query_plan_uses_internal_variants_and_allows_two_chunks_per_document() -> None:
+    query = 'Quero o protocolo interno do Telegram com escopo parcial para responsaveis e limites de acesso.'
+
+    plans = (
+        core_retrieval._build_query_plan(
+            query=query,
+            top_k=5,
+            category=None,
+            visibility='restricted',
+            enable_query_variants=True,
+            candidate_pool_size=8,
+            cheap_candidate_pool_size=6,
+            deep_candidate_pool_size=12,
+            profile_override=None,
+        ),
+        python_functions_retrieval._build_query_plan(
+            query=query,
+            top_k=5,
+            category=None,
+            visibility='restricted',
+            enable_query_variants=True,
+            candidate_pool_size=8,
+            cheap_candidate_pool_size=6,
+            deep_candidate_pool_size=12,
+            profile_override=None,
+        ),
+        llamaindex_retrieval._build_query_plan(
+            query=query,
+            top_k=5,
+            category=None,
+            visibility='restricted',
+            enable_query_variants=True,
+            candidate_pool_size=8,
+            cheap_candidate_pool_size=6,
+            deep_candidate_pool_size=12,
+            profile_override=None,
+        ),
+        specialist_retrieval._build_query_plan(
+            query=query,
+            top_k=5,
+            category=None,
+            visibility='restricted',
+            enable_query_variants=True,
+            candidate_pool_size=8,
+            cheap_candidate_pool_size=6,
+            deep_candidate_pool_size=12,
+            profile_override=None,
+        ),
+    )
+
+    for plan in plans:
+        assert any('telegram' in item.lower() and 'escopo parcial' in item.lower() for item in plan.query_variants)
+        assert plan.max_chunks_per_document >= 2
+        assert plan.lexical_limit >= 25

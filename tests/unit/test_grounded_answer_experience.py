@@ -5039,6 +5039,68 @@ def test_answer_experience_repairs_attendance_next_step_followup(monkeypatch: py
     assert updated.answer_experience_reason.endswith(':protected_attendance_direct')
 
 
+def test_answer_experience_rewrites_attendance_component_risk_wording(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_context(*, settings, request):
+        return None
+
+    async def fake_profile(settings):
+        return {'school_name': 'Colegio Horizonte'}
+
+    async def fake_actor(*, settings, request):
+        return {
+            'linked_students': [
+                {'student_id': 'lucas-id', 'full_name': 'Lucas Oliveira', 'can_view_academic': True},
+            ]
+        }
+
+    async def fake_api_core_get(*, settings, path, params=None):
+        if path == '/v1/students/lucas-id/academic-summary':
+            return {
+                'summary': {
+                    'student_name': 'Lucas Oliveira',
+                    'attendance': [
+                        {'subject_name': 'Fisica', 'present_count': 18, 'late_count': 4, 'absent_count': 5, 'absent_minutes': 100},
+                        {'subject_name': 'Biologia', 'present_count': 22, 'late_count': 0, 'absent_count': 1, 'absent_minutes': 15},
+                    ],
+                }
+            }
+        raise AssertionError(f'unexpected_path:{path}')
+
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_conversation_context', fake_context)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_public_school_profile', fake_profile)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_actor_context', fake_actor)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._api_core_get', fake_api_core_get)
+
+    response = _response('Lucas Oliveira tem media 6,1 em Fisica e 7,8 em Biologia.').model_copy(
+        update={
+            'reason': 'python_functions_native_structured:academic',
+            'candidate_reason': 'python_functions_native_structured:academic',
+            'classification': IntentClassification(
+                domain=QueryDomain.academic,
+                access_tier=AccessTier.authenticated,
+                confidence=1.0,
+                reason='test',
+            ),
+            'selected_tools': ['get_student_grades'],
+        }
+    )
+    updated = asyncio.run(
+        apply_grounded_answer_experience(
+            request=_request('Quero ver o ponto mais critico da frequencia do Lucas e em quais componentes as ausencias pesam mais.'),
+            response=response,
+            settings=_settings(),
+            stack_name='python_functions',
+        )
+    )
+
+    lowered = updated.message_text.lower()
+    assert 'frequencia de lucas oliveira' in lowered or 'alerta de frequencia de lucas oliveira' in lowered
+    assert 'fisica' in lowered
+    assert updated.answer_experience_reason.endswith(':protected_attendance_direct')
+
+
 def test_answer_experience_repairs_restricted_outings_public_followup(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_context(*, settings, request):
         return {

@@ -94,6 +94,11 @@ Hoje, a melhor forma de afirmar que o sistema está saudável não é olhar apen
 5. parity operacional;
 6. gate de promoção coerente com o scorecard e com a borda pública disponível.
 
+Os artefatos mais úteis da rodada atual para essa leitura de referência são:
+
+- [retrieval-60q-combined-evaluation-report.md](/home/edann/projects/eduassist-platform/docs/architecture/retrieval-60q-combined-evaluation-report.md)
+- [retrieval-60q-manual-analysis-20260413.md](/home/edann/projects/eduassist-platform/docs/architecture/retrieval-60q-manual-analysis-20260413.md)
+
 ## Risco restante mais importante
 
 O maior risco operacional que ainda pode existir fora do código é a borda pública:

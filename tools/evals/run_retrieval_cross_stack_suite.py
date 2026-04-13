@@ -35,7 +35,13 @@ def _load_json(path: Path) -> dict[str, Any]:
 def _render_markdown(payload: dict[str, Any]) -> str:
     comparison = payload["comparison"]
     trace = payload["trace"]
-    lines = ["# Retrieval 50Q Combined Evaluation Report", ""]
+    case_count = 0
+    try:
+        case_count = max(int(bucket.get("count", 0)) for bucket in comparison["summary"]["by_stack"].values())
+    except Exception:
+        case_count = 0
+    title_count = case_count or 50
+    lines = [f"# Retrieval {title_count}Q Combined Evaluation Report", ""]
     lines.append(f"Generated at: {payload['generated_at']}")
     lines.append("")
     lines.append(f"Dataset: `{payload['dataset']}`")

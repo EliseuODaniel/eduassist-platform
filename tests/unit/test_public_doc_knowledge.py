@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from ai_orchestrator.public_doc_knowledge import (
     compose_public_canonical_lane_answer,
+    compose_public_facilities_and_study_support,
     compose_public_outings_authorizations,
+    compose_public_permanence_and_family_support,
     match_public_canonical_lane,
 )
 from ai_orchestrator.llamaindex_public_knowledge import (
@@ -256,6 +258,36 @@ def test_shared_and_specialist_conduct_lane_match_substance_prompt() -> None:
     assert match_public_canonical_lane(prompt) == 'public_bundle.conduct_frequency_punctuality'
     assert match_specialist_public_canonical_lane(prompt) == 'public_bundle.conduct_frequency_punctuality'
     assert match_python_functions_public_canonical_lane(prompt) == 'public_bundle.conduct_frequency_punctuality'
+
+
+def test_public_permanence_support_answer_is_operationally_actionable() -> None:
+    answer = compose_public_permanence_and_family_support(_sample_profile())
+
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'primeiro acompanha rotina' in lowered
+    assert 'depois aciona monitoria' in lowered or 'depois aciona apoio' in lowered
+    assert 'proximo passo' in lowered
+
+
+def test_permanence_support_lane_beats_outings_when_question_mentions_family_risk() -> None:
+    prompt = 'Na pratica, como a familia acompanha permanencia escolar e o que fazer primeiro quando surgem sinais de risco?'
+    lane = match_public_canonical_lane(
+        prompt
+    )
+
+    assert lane == 'public_bundle.permanence_family_support'
+    assert match_specialist_public_canonical_lane(prompt) == 'public_bundle.permanence_family_support'
+
+
+def test_public_facilities_support_answer_guides_which_space_to_use() -> None:
+    answer = compose_public_facilities_and_study_support()
+
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'se a necessidade principal for pesquisa' in lowered
+    assert 'se o foco for aula pratica' in lowered
+    assert 'estudo orientado' in lowered
 
 
 def test_python_functions_contextual_conduct_answer_handles_severe_incident_prompt() -> None:

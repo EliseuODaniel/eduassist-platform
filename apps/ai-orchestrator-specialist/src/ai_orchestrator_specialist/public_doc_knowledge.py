@@ -501,7 +501,8 @@ def compose_public_permanence_and_family_support(profile: dict[str, Any] | None)
         f"Comunicacao com a familia: {_first_line(family)}" if family else "",
         f"Frequencia e permanencia: {_first_line(attendance)}" if attendance else "",
         f"Projeto de vida e acompanhamento: {_first_line(project)}" if project else "",
-        "Na pratica, esses temas se complementam: a escola observa frequencia e rotina, aciona apoio quando surgem sinais de risco e mantem a familia no circuito pelos canais institucionais.",
+        "Na pratica, a familia usa isso em tres movimentos: primeiro acompanha rotina, frequencia e devolutivas; depois aciona monitoria, apoio ou orientacao quando surgem sinais de risco; por fim, mantem a comunicacao com a escola pelos canais institucionais para nao perder o acompanhamento.",
+        "O proximo passo mais util e observar cedo faltas recorrentes, queda de rotina ou dificuldade em componentes e acionar apoio antes que o caso vire recuperacao ou risco de permanencia.",
     ]
     return " ".join(part for part in parts if part).strip()
 
@@ -827,6 +828,7 @@ def compose_public_facilities_and_study_support() -> str | None:
             _first_line(activities),
             "No ensino medio, isso se conecta a monitorias, pesquisa, cultura digital e projetos praticos no contraturno.",
             "Na pratica, biblioteca, laboratorios e estudo orientado funcionam como tres apoios complementares: pesquisa e leitura, experimentacao e producao, e organizacao da rotina de estudo.",
+            "Se a necessidade principal for pesquisa, leitura ou projeto escrito, a referencia mais direta e a biblioteca. Se o foco for aula pratica, prototipo ou experimento, o caminho mais aderente sao os laboratorios. Se a duvida for organizar tarefas, leitura e habitos de estudo, o estudo orientado entra como apoio mais direto.",
         )
         if part
     ).strip()
@@ -1064,7 +1066,20 @@ def match_public_canonical_lane(message: str) -> str | None:
     ):
         return "public_bundle.outings_authorizations"
     if (
-        any(term in normalized for term in ("atividade externa", "atividades externas", "risco", "anuencia", "anuência", "retorno"))
+        any(
+            term in normalized
+            for term in (
+                "atividade externa",
+                "atividades externas",
+                "risco da atividade",
+                "risco do evento",
+                "risco da saida",
+                "risco da saída",
+                "anuencia",
+                "anuência",
+                "retorno",
+            )
+        )
         and any(term in normalized for term in ("autoriz", "saude", "saúde", "impedimento", "familia", "família"))
     ):
         return "public_bundle.outings_authorizations"

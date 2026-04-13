@@ -748,8 +748,7 @@ async def _run_retrieval_stage(
         ):
             retrieval_service = _build_retrieval_service(settings=settings)
             flow_state.restricted_document_query = (
-                preview.classification.access_tier is AccessTier.authenticated
-                and looks_like_restricted_document_query(request.message)
+                looks_like_restricted_document_query(request.message)
                 and can_read_restricted_documents(effective_user)
             )
             if flow_state.restricted_document_query:

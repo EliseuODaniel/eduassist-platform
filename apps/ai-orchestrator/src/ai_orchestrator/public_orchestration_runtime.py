@@ -76,6 +76,10 @@ def _is_positive_requirement_query(message: str) -> bool:
     return _intent_analysis_impl('_is_positive_requirement_query')(message)
 
 
+def _is_follow_up_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_follow_up_query')(message)
+
+
 def _should_prioritize_protected_sql_query(
     message: str,
     *,

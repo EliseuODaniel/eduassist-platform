@@ -96,6 +96,51 @@ _CAPABILITY_POLICY_DEFAULTS: dict[str, _CapabilityPolicyDefaults] = {
     ),
 }
 
+_RESTRICTED_QUERY_COMPLEXITY_HINTS = {
+    "telegram",
+    "escopo",
+    "parcial",
+    "professor",
+    "devolutiva",
+    "pedagogica",
+    "pedagógica",
+    "comunicacao",
+    "comunicação",
+    "avaliacoes",
+    "avaliações",
+    "negociacao",
+    "negociação",
+    "financeira",
+    "financeiro",
+    "intercambio",
+    "intercâmbio",
+    "internacional",
+    "hospedagem",
+    "viagem",
+    "excursao",
+    "excursão",
+}
+
+
+def _normalize_text(value: str | None) -> str:
+    return " ".join(str(value or "").strip().lower().split())
+
+
+def _restricted_query_complexity_bonus(query: str) -> int:
+    normalized = _normalize_text(query)
+    if not normalized:
+        return 0
+    matched = sum(
+        1
+        for hint in _RESTRICTED_QUERY_COMPLEXITY_HINTS
+        if hint in normalized
+    )
+    if matched >= 3:
+        return 2
+    if matched >= 1:
+        return 1
+    return 0
+
 
 def _policy_profile_value(policy: RetrievalExecutionPolicy) -> str:
     return policy.profile.value if isinstance(policy.profile, RetrievalProfile) else "baseline"
@@ -266,13 +311,18 @@ def resolve_retrieval_execution_policy(
         )
 
     if visibility != "public":
+        complexity_bonus = _restricted_query_complexity_bonus(query)
         return _finalize_policy(
             visibility=visibility,
             policy=RetrievalExecutionPolicy(
             profile=RetrievalProfile.deep,
-            top_k=max(baseline_top_k, 5),
+            top_k=max(baseline_top_k, 5 + complexity_bonus),
             category=baseline_category,
-            reason="restricted_visibility",
+            reason=(
+                "restricted_visibility:complex_query"
+                if complexity_bonus
+                else "restricted_visibility"
+            ),
             capability_id=capability_id,
             ),
         )

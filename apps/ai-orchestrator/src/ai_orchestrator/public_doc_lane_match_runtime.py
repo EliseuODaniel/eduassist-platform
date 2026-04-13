@@ -126,7 +126,20 @@ def match_public_canonical_lane(message: str) -> str | None:
     ):
         return "public_bundle.outings_authorizations"
     if (
-        any(term in normalized for term in ("atividade externa", "atividades externas", "risco", "anuencia", "anuência", "retorno"))
+        any(
+            term in normalized
+            for term in (
+                "atividade externa",
+                "atividades externas",
+                "risco da atividade",
+                "risco do evento",
+                "risco da saida",
+                "risco da saída",
+                "anuencia",
+                "anuência",
+                "retorno",
+            )
+        )
         and any(term in normalized for term in ("autoriz", "saude", "saúde", "impedimento", "familia", "família"))
     ):
         return "public_bundle.outings_authorizations"

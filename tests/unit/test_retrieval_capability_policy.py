@@ -102,6 +102,19 @@ def test_restricted_visibility_prefers_deep_profile() -> None:
     assert policy.top_k == 5
 
 
+def test_restricted_complex_query_expands_top_k_and_reason() -> None:
+    policy = resolve_retrieval_execution_policy(
+        query='Quero o protocolo interno do Telegram com escopo parcial para responsaveis e limites de acesso.',
+        visibility='restricted',
+        baseline_top_k=3,
+        preview=_preview(QueryDomain.institution),
+    )
+
+    assert policy.profile is RetrievalProfile.deep
+    assert policy.top_k >= 6
+    assert policy.reason == 'restricted_visibility:complex_query'
+
+
 def test_builds_retrieval_trace_metadata_with_query_plan_and_answerability() -> None:
     policy = resolve_retrieval_execution_policy(
         query="Que horas fecha a biblioteca?",

@@ -168,42 +168,71 @@ async def apply_grounded_answer_experience(
             }
         )
 
-    deterministic_protected_academic = await _deterministic_protected_academic_direct_answer(
-        request=request,
-        response=response,
-        actor=actor,
-        settings=settings,
-        conversation_context=conversation_context,
+    prefer_attendance_before_academic = bool(
+        focus.topic == 'attendance'
+        or _question_mentions_unasked_attendance_scope(request.message)
+        or any('attendance' in str(tool or '').lower() for tool in response.selected_tools)
+        or _recent_family_attendance_context(conversation_context)
     )
-    if deterministic_protected_academic:
-        return response.model_copy(
-            update={
-                'message_text': deterministic_protected_academic,
-                'mode': OrchestrationMode.structured_tool,
-                'answer_experience_eligible': True,
-                'answer_experience_applied': _answer_experience_changed(response.message_text, deterministic_protected_academic),
-                'answer_experience_reason': f'{base_reason}:protected_academic_direct',
-                'answer_experience_provider': provider_settings.llm_provider,
-                'answer_experience_model': provider_settings.google_model if provider_settings.llm_provider in {'google', 'gemini'} else provider_settings.openai_model,
-            }
+    protected_direct_sequence = (
+        (
+            (
+                'attendance',
+                await _deterministic_protected_attendance_direct_answer(
+                    request=request,
+                    response=response,
+                    focus=focus,
+                    actor=actor,
+                    settings=settings,
+                    conversation_context=conversation_context,
+                ),
+            ),
+            (
+                'academic',
+                await _deterministic_protected_academic_direct_answer(
+                    request=request,
+                    response=response,
+                    actor=actor,
+                    settings=settings,
+                    conversation_context=conversation_context,
+                ),
+            ),
         )
-
-    deterministic_protected_attendance = await _deterministic_protected_attendance_direct_answer(
-        request=request,
-        response=response,
-        focus=focus,
-        actor=actor,
-        settings=settings,
-        conversation_context=conversation_context,
+        if prefer_attendance_before_academic
+        else (
+            (
+                'academic',
+                await _deterministic_protected_academic_direct_answer(
+                    request=request,
+                    response=response,
+                    actor=actor,
+                    settings=settings,
+                    conversation_context=conversation_context,
+                ),
+            ),
+            (
+                'attendance',
+                await _deterministic_protected_attendance_direct_answer(
+                    request=request,
+                    response=response,
+                    focus=focus,
+                    actor=actor,
+                    settings=settings,
+                    conversation_context=conversation_context,
+                ),
+            ),
+        )
     )
-    if deterministic_protected_attendance:
+    for protected_kind, protected_text in protected_direct_sequence:
+        if not protected_text:
+            continue
         return response.model_copy(
             update={
-                'message_text': deterministic_protected_attendance,
+                'message_text': protected_text,
                 'mode': OrchestrationMode.structured_tool,
                 'answer_experience_eligible': True,
-                'answer_experience_applied': _answer_experience_changed(response.message_text, deterministic_protected_attendance),
-                'answer_experience_reason': f'{base_reason}:protected_attendance_direct',
+                'answer_experience_applied': _answer_experience_changed(response.message_text, protected_text),
+                'answer_experience_reason': f'{base_reason}:protected_{protected_kind}_direct',
                 'answer_experience_provider': provider_settings.llm_provider,
                 'answer_experience_model': provider_settings.google_model if provider_settings.llm_provider in {'google', 'gemini'} else provider_settings.openai_model,
             }

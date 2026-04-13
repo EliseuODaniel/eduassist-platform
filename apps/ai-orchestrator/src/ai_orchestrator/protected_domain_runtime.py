@@ -12,6 +12,7 @@ from .intent_analysis_runtime import (
     _is_public_pricing_context_follow_up,
     _message_matches_term,
     _normalize_text,
+    _render_source_lines,
     _requested_public_features,
     _is_public_curriculum_query,
     _is_public_document_submission_query,

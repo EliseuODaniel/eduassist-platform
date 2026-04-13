@@ -276,11 +276,11 @@ Se quiser exigir borda estável no gate:
 
 - `make promotion-gate-check-stable`
 
-Benchmark comparativo completo (`50Q`) com contexto real de guardião:
+Benchmark comparativo completo (`60Q`) com contexto real de guardião:
 
 ```bash
 OTEL_SDK_DISABLED=true uv run python tools/evals/run_retrieval_cross_stack_suite.py \
-  --count 50 \
+  --count 60 \
   --seed 260413 \
   --guardian-chat-id 1649845499 \
   --timeout-seconds 40
@@ -292,6 +292,13 @@ Esse fluxo:
 - compara `langgraph`, `python_functions`, `llamaindex` e `specialist_supervisor`;
 - injeta o `telegram_chat_id` do guardião nos slices protegidos para manter a avaliação fiel ao serving real;
 - produz relatórios automatizados em `docs/architecture/`.
+
+Artefatos manuais e automatizados mais recentes desta bateria:
+
+- [retrieval-60q-cross-path-report.md](/home/edann/projects/eduassist-platform/docs/architecture/retrieval-60q-cross-path-report.md)
+- [retrieval-60q-trace-calibration-report.md](/home/edann/projects/eduassist-platform/docs/architecture/retrieval-60q-trace-calibration-report.md)
+- [retrieval-60q-combined-evaluation-report.md](/home/edann/projects/eduassist-platform/docs/architecture/retrieval-60q-combined-evaluation-report.md)
+- [retrieval-60q-manual-analysis-20260413.md](/home/edann/projects/eduassist-platform/docs/architecture/retrieval-60q-manual-analysis-20260413.md)
 
 ## 9. Variáveis de ambiente previstas
 
