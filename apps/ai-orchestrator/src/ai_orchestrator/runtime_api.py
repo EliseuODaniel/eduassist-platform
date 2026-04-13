@@ -11,6 +11,7 @@ is split into focused modules.
 """
 
 from . import runtime_core as _runtime_core
+from .engine_trace import build_engine_trace_sections
 
 
 def _export_runtime_core_namespace() -> None:
@@ -267,6 +268,13 @@ async def _persist_operational_trace(
         )
         if langgraph_trace_sections.get('request'):
             trace_request_payload['langgraph'] = langgraph_trace_sections['request']
+    if engine_name != 'specialist_supervisor' and isinstance(engine_trace_metadata, dict) and engine_trace_metadata:
+        engine_trace_sections = build_engine_trace_sections(
+            engine_trace_metadata,
+            graph_path=list(getattr(preview, 'graph_path', []) or []),
+        )
+        if engine_trace_sections.get('request'):
+            trace_request_payload[engine_name] = engine_trace_sections['request']
     trace_response_payload = {
         'mode': preview.mode.value,
         'domain': preview.classification.domain.value,
@@ -299,6 +307,13 @@ async def _persist_operational_trace(
         )
         if langgraph_trace_sections.get('response'):
             trace_response_payload['langgraph'] = langgraph_trace_sections['response']
+    if engine_name != 'specialist_supervisor' and isinstance(engine_trace_metadata, dict) and engine_trace_metadata:
+        engine_trace_sections = build_engine_trace_sections(
+            engine_trace_metadata,
+            graph_path=list(getattr(preview, 'graph_path', []) or []),
+        )
+        if engine_trace_sections.get('response'):
+            trace_response_payload[engine_name] = engine_trace_sections['response']
     if engine_name == 'specialist_supervisor':
         specialist_trace_sections = build_specialist_trace_sections(
             engine_trace_metadata,

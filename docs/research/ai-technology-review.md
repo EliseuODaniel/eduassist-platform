@@ -230,6 +230,7 @@ Estado atual no repositório:
 - packing por budget de tokens já está ativo no `turn_router` e no `public_answer_composer`;
 - os adapters locais e a camada de answer experience já começaram a convergir para o mesmo baseline de packing;
 - a memória episódica de curto prazo já aproveita `recent_tool_calls` e `slot_memory` para reforçar follow-up e carryover;
+- retrieval por capability já entrou no baseline com política compartilhada de `retrieval_profile`, `top-k` e categoria antes do dispatch por stack;
 - a próxima fronteira de ROI continua sendo memória episódica e tuning de retrieval, não compressão avançada de `KV cache`.
 
 ### Avaliação de `TurboQuant`

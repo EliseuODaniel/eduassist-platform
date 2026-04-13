@@ -12,6 +12,7 @@ we continue decomposing the legacy module.
 """
 
 from . import runtime_core as _runtime_core
+from .retrieval_capability_policy import resolve_retrieval_execution_policy
 
 
 def _export_runtime_core_namespace() -> None:
@@ -752,11 +753,18 @@ async def _run_retrieval_stage(
                 and can_read_restricted_documents(effective_user)
             )
             if flow_state.restricted_document_query:
+                restricted_policy = resolve_retrieval_execution_policy(
+                    query=analysis_message,
+                    visibility='restricted',
+                    baseline_top_k=5,
+                    preview=preview,
+                )
                 search = retrieval_service.hybrid_search(
                     query=analysis_message,
-                    top_k=5,
+                    top_k=restricted_policy.top_k,
                     visibility='restricted',
-                    category=None,
+                    category=restricted_policy.category,
+                    profile=restricted_policy.profile,
                 )
                 flow_state.retrieval_hits = select_relevant_restricted_hits(
                     analysis_message, list(search.hits)
@@ -773,11 +781,19 @@ async def _run_retrieval_stage(
                     }
                 )
             else:
+                public_retrieval_policy = resolve_retrieval_execution_policy(
+                    query=analysis_message,
+                    visibility='public',
+                    baseline_top_k=4,
+                    baseline_category=_category_for_domain(preview.classification.domain),
+                    preview=preview,
+                )
                 search = retrieval_service.hybrid_search(
                     query=analysis_message,
-                    top_k=4,
+                    top_k=public_retrieval_policy.top_k,
                     visibility='public',
-                    category=_category_for_domain(preview.classification.domain),
+                    category=public_retrieval_policy.category,
+                    profile=public_retrieval_policy.profile,
                 )
                 flow_state.canonical_lane = (
                     (search.query_plan.canonical_lane if search.query_plan is not None else None)
@@ -853,11 +869,18 @@ async def _run_retrieval_stage(
                 )
             else:
                 retrieval_service = _build_retrieval_service(settings=settings)
+                graph_rag_fallback_policy = resolve_retrieval_execution_policy(
+                    query=analysis_message,
+                    visibility='public',
+                    baseline_top_k=4,
+                    preview=preview,
+                )
                 search = retrieval_service.hybrid_search(
                     query=analysis_message,
-                    top_k=4,
+                    top_k=graph_rag_fallback_policy.top_k,
                     visibility='public',
-                    category=None,
+                    category=graph_rag_fallback_policy.category,
+                    profile=graph_rag_fallback_policy.profile,
                 )
                 flow_state.canonical_lane = (
                     search.query_plan.canonical_lane if search.query_plan is not None else None

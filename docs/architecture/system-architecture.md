@@ -167,6 +167,8 @@ Baseline atual implementado:
 - `public_answer_composer` com packing por budget para histórico e evidência;
 - adapters locais com packing compartilhado para histórico, evidência e blocos estruturados;
 - `FocusFrame` enriquecido com memória episódica vinda de `recent_tool_calls` e `slot_memory`;
+- política compartilhada de retrieval por capability, calibrando `retrieval_profile`, `top-k` e categoria documental antes do dispatch por stack;
+- traces operacionais agora também registram a política escolhida e o resultado efetivo do retrieval por capability, preparando tuning com `answerable@k`, cobertura e latência por família;
 - budgets iniciais explícitos e configuráveis nas settings dos runtimes.
 
 Técnicas de memória longa baseadas em compressão de `KV cache`, como `TurboQuant` e `TriAttention`, ficam fora do baseline atual. Elas só entram em avaliação se os ganhos acima se esgotarem e o sistema passar a depender materialmente de janelas muito maiores no serving local.

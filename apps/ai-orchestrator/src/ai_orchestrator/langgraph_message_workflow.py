@@ -35,6 +35,10 @@ from .semantic_ingress_runtime import (
     maybe_resolve_semantic_ingress_plan,
     maybe_resolve_turn_frame,
 )
+from .retrieval_capability_policy import (
+    build_retrieval_trace_metadata,
+    resolve_retrieval_execution_policy,
+)
 
 
 class LangGraphMessageState(TypedDict, total=False):
@@ -430,14 +434,31 @@ async def _restricted_retrieval(state: LangGraphMessageState) -> LangGraphMessag
         rerank_fused_weight=float(settings.retrieval_rerank_fused_weight),
         rerank_late_interaction_weight=float(settings.retrieval_rerank_late_interaction_weight),
     )
+    retrieval_policy = resolve_retrieval_execution_policy(
+        query=request.message,
+        visibility='restricted',
+        baseline_top_k=3,
+        preview=preview,
+        turn_frame=state.get('turn_frame'),
+        public_plan=state.get('turn_frame_public_plan'),
+        profile_override=RetrievalProfile.deep,
+    )
     search = retrieval_service.hybrid_search(
         query=request.message,
-        top_k=3,
+        top_k=retrieval_policy.top_k,
         visibility='restricted',
-        profile=RetrievalProfile.deep,
+        category=retrieval_policy.category,
+        profile=retrieval_policy.profile,
     )
     relevant_hits = select_relevant_restricted_hits(request.message, list(search.hits))
     citations = rt._collect_citations(relevant_hits[:3], limit=3)
+    retrieval_trace_metadata = build_retrieval_trace_metadata(
+        visibility='restricted',
+        policy=retrieval_policy,
+        search=search,
+        selected_hit_count=len(relevant_hits[:3]),
+        citations_count=len(citations),
+    )
     restricted_reason = 'langgraph_restricted_doc_grounded' if relevant_hits else 'langgraph_restricted_doc_no_match'
     message_text = rt._normalize_response_wording(
         (
@@ -487,6 +508,7 @@ async def _restricted_retrieval(state: LangGraphMessageState) -> LangGraphMessag
         deterministic_fallback_available=True,
         answer_verifier_judge_used=False,
         langgraph_trace_metadata=state.get('langgraph_trace_metadata'),
+        engine_trace_metadata=retrieval_trace_metadata,
     )
     await rt._persist_conversation_turn(
         settings=settings,

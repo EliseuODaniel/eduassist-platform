@@ -186,6 +186,13 @@ Status atual:
 - separar melhor fato direto, síntese documental e busca multi-documento;
 - medir `answerable@k`, groundedness e latência por capability, não apenas score agregado.
 
+Estado atual:
+
+- a base compartilhada já possui `RetrievalExecutionPolicy` por capability;
+- `python_functions`, `langgraph`, `llamaindex` e os kernels públicos já consomem essa política antes do retrieval híbrido;
+- o baseline já passou a registrar nos traces a policy escolhida e o resultado efetivo da busca, por engine e por capability;
+- o próximo passo desta fase deixa de ser "introduzir capability-aware retrieval" e passa a ser calibração fina por família, com métricas reais de `answerable@k` e latência.
+
 ### Fase O - Composição grounded mais forte
 
 - evoluir a composição final para um `AnswerFrame` com `direct_answer`, `supported_claims`, `omitted_context` e `uncertainty`;

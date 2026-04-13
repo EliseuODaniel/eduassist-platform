@@ -139,6 +139,8 @@ Status atual:
 - os caminhos compartilhados de `turn_router` e `public_answer_composer` agora também emitem telemetria de contexto montado, incluindo estimativa de tokens de `prompt`, `instructions`, `history`, `evidence`, `candidates` e eventos de truncamento de seções;
 - o baseline local tambem passou a usar budgets explícitos de contexto nesses dois caminhos, substituindo limites fixos de `4 mensagens` e `10 evidencias` por packing orientado a tokens;
 - os adapters locais de stack e a camada de answer experience tambem passaram a reutilizar esse baseline, em vez de montar prompts com limites fixos próprios;
+- o retrieval publico também passou a aplicar uma política compartilhada por capability antes da busca híbrida, ajustando `retrieval_profile`, `top-k` e categoria documental por tipo de pergunta;
+- os traces operacionais agora também incluem a policy escolhida e o resultado resumido do retrieval para as execuções que passam por busca híbrida;
 - a observabilidade local agora cobre traces, logs e metricas centralizadas.
 
 Observacao:

@@ -25,6 +25,10 @@ from .models import (
 )
 from .path_profiles import PathExecutionProfile, get_path_execution_profile
 from .native_runtime_preparation import build_runtime_execution_accumulators, prepare_runtime_execution
+from .retrieval_capability_policy import (
+    build_retrieval_trace_metadata,
+    resolve_retrieval_execution_policy,
+)
 from .llamaindex_public_knowledge import compose_public_canonical_lane_answer, match_public_canonical_lane
 from .llamaindex_public_known_unknowns import detect_public_known_unknown_key, resolve_public_known_unknown_answer
 from .request_intent_guardrails import looks_like_school_domain_request
@@ -755,6 +759,7 @@ async def execute_kernel_plan(
     visual_assets = accumulators.visual_assets
     calendar_events = accumulators.calendar_events
     retrieval_context_pack = accumulators.retrieval_context_pack
+    retrieval_trace_metadata = accumulators.retrieval_trace_metadata
     public_plan = accumulators.public_plan
     deterministic_fallback_text = accumulators.deterministic_fallback_text
     query_hints = accumulators.query_hints
@@ -935,6 +940,13 @@ async def execute_kernel_plan(
                     }
                 )
         if restricted_document_query:
+            restricted_policy = resolve_retrieval_execution_policy(
+                query=analysis_message,
+                visibility='restricted',
+                baseline_top_k=5,
+                preview=preview,
+                public_plan=public_plan,
+            )
             retrieval_service = get_retrieval_service(
                 database_url=settings.database_url,
                 qdrant_url=settings.qdrant_url,
@@ -951,13 +963,21 @@ async def execute_kernel_plan(
             )
             search = retrieval_service.hybrid_search(
                 query=analysis_message,
-                top_k=5,
+                top_k=restricted_policy.top_k,
                 visibility='restricted',
-                category=None,
+                category=restricted_policy.category,
+                profile=restricted_policy.profile,
             )
             retrieval_context_pack = search.context_pack
             retrieval_hits = select_relevant_restricted_hits(analysis_message, list(search.hits))
             citations = rt._collect_citations(retrieval_hits)
+            retrieval_trace_metadata = build_retrieval_trace_metadata(
+                visibility='restricted',
+                policy=restricted_policy,
+                search=search,
+                selected_hit_count=len(retrieval_hits),
+                citations_count=len(citations),
+            )
             if retrieval_hits:
                 message_text = compose_restricted_document_grounded_answer_for_query(
                     request.message,
@@ -970,6 +990,13 @@ async def execute_kernel_plan(
                 deterministic_fallback_text = message_text
                 preview = preview.model_copy(update={'reason': 'kernel_restricted_document_no_match'})
         elif not used_canonical_lane:
+            public_retrieval_policy = resolve_retrieval_execution_policy(
+                query=analysis_message,
+                visibility='public',
+                baseline_top_k=4,
+                preview=preview,
+                public_plan=public_plan,
+            )
             retrieval_service = get_retrieval_service(
                 database_url=settings.database_url,
                 qdrant_url=settings.qdrant_url,
@@ -986,9 +1013,10 @@ async def execute_kernel_plan(
             )
             search = retrieval_service.hybrid_search(
                 query=analysis_message,
-                top_k=4,
+                top_k=public_retrieval_policy.top_k,
                 visibility='public',
-                category=None,
+                category=public_retrieval_policy.category,
+                profile=public_retrieval_policy.profile,
             )
             retrieval_context_pack = search.context_pack
             query_hints = {
@@ -1003,6 +1031,17 @@ async def execute_kernel_plan(
                 analysis_message,
                 retrieval_hits,
                 query_hints,
+            )
+            retrieval_trace_metadata = build_retrieval_trace_metadata(
+                visibility='public',
+                policy=public_retrieval_policy,
+                search=search,
+                selected_hit_count=len(retrieval_hits),
+                citations_count=len(citations),
+                query_hints=query_hints,
+                hints_supported=rt._retrieval_hits_cover_query_hints(search.hits, query_hints),
+                canonical_lane=canonical_lane,
+                answerability=public_answerability,
             )
             if preview.classification.domain is QueryDomain.calendar:
                 calendar_events = await rt._fetch_public_calendar(settings=settings)
@@ -1186,6 +1225,7 @@ async def execute_kernel_plan(
         deterministic_fallback_available=bool(deterministic_fallback_text),
         answer_verifier_judge_used=semantic_judge_used,
         langgraph_trace_metadata={},
+        engine_trace_metadata=retrieval_trace_metadata,
     )
 
     selected_tools = list(preview.selected_tools)

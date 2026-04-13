@@ -8,9 +8,25 @@ from . import public_doc_knowledge as _native
 
 
 def _is_leadership_specific_query(message: str) -> bool:
-    from . import public_act_rules_runtime as _public_act_rules_runtime
+    from .intent_analysis_runtime import _message_matches_term, _normalize_text
+    from .public_profile_runtime import _requested_public_attribute
 
-    return _public_act_rules_runtime._is_leadership_specific_query(message)
+    normalized = _normalize_text(message)
+    leadership_terms = {
+        'diretor',
+        'diretora',
+        'direcao',
+        'direção',
+        'coordenador',
+        'coordenadora',
+        'coordenacao',
+        'coordenação',
+        'lideranca',
+        'liderança',
+    }
+    if not any(_message_matches_term(normalized, term) for term in leadership_terms):
+        return False
+    return _requested_public_attribute(message) is not None
 
 
 def _refresh_native_namespace() -> None:

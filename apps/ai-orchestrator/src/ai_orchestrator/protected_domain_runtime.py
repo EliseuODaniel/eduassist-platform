@@ -48,31 +48,60 @@ def _public_act_rules_impl(name: str):
 
 
 def _is_public_calendar_event_query(message: str) -> bool:
-    return _public_act_rules_impl('_is_public_calendar_event_query')(message)
+    from .public_profile_runtime import _is_public_calendar_event_query as _impl
+
+    return _impl(message)
 
 
 def _is_public_capacity_query(message: str) -> bool:
-    return _public_act_rules_impl('_is_public_capacity_query')(message)
+    from .public_profile_runtime import _is_public_capacity_query as _impl
+
+    return _impl(message)
 
 
 def _is_public_policy_query(message: str) -> bool:
-    return _public_act_rules_impl('_is_public_policy_query')(message)
+    from .public_profile_runtime import _is_public_policy_query as _impl
+
+    return _impl(message)
 
 
 def _is_public_timeline_query(message: str) -> bool:
-    return _public_act_rules_impl('_is_public_timeline_query')(message)
+    from .public_profile_runtime import _is_public_timeline_query as _impl
+
+    return _impl(message)
 
 
 def _matches_public_contact_rule(message: str) -> bool:
-    return _public_act_rules_impl('_matches_public_contact_rule')(message)
+    from .public_profile_runtime import _count_public_contact_subjects
+
+    normalized = _normalize_text(message)
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_CONTACT_TERMS):
+        return True
+    if any(_message_matches_term(normalized, term) for term in {'canais', 'canal', 'falar'}) and (
+        _count_public_contact_subjects(message) >= 1
+    ):
+        return True
+    return False
 
 
 def _matches_public_highlight_rule(message: str) -> bool:
-    return _public_act_rules_impl('_matches_public_highlight_rule')(message)
+    normalized = _normalize_text(message)
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_HIGHLIGHT_TERMS):
+        return True
+    return any(
+        phrase in normalized
+        for phrase in (
+            'se eu fosse uma familia nova',
+            'se eu fosse uma família nova',
+            'por que eu colocaria meus filhos',
+            'por que deveria colocar meus filhos',
+        )
+    )
 
 
 def _matches_public_location_rule(message: str) -> bool:
-    return _public_act_rules_impl('_matches_public_location_rule')(message)
+    normalized = _normalize_text(message)
+    return any(_message_matches_term(normalized, term) for term in PUBLIC_LOCATION_TERMS)
 
 
 def _public_profile_impl(name: str):

@@ -5,6 +5,10 @@ from __future__ import annotations
 LOCAL_EXTRACTED_NAMES = {'_public_retrieval'}
 
 from . import langgraph_message_workflow as _native
+from .retrieval_capability_policy import (
+    build_retrieval_trace_metadata,
+    resolve_retrieval_execution_policy,
+)
 
 
 def _refresh_native_namespace() -> None:
@@ -274,12 +278,21 @@ async def _public_retrieval(state: LangGraphMessageState) -> LangGraphMessageSta
         rerank_fused_weight=float(settings.retrieval_rerank_fused_weight),
         rerank_late_interaction_weight=float(settings.retrieval_rerank_late_interaction_weight),
     )
+    retrieval_policy = resolve_retrieval_execution_policy(
+        query=analysis_message,
+        visibility='public',
+        baseline_top_k=4,
+        baseline_category=rt._category_for_domain(preview.classification.domain),
+        preview=preview,
+        turn_frame=state.get('turn_frame'),
+        public_plan=state.get('turn_frame_public_plan'),
+    )
     search = retrieval_service.hybrid_search(
         query=analysis_message,
-        top_k=4,
+        top_k=retrieval_policy.top_k,
         visibility='public',
-        category=rt._category_for_domain(preview.classification.domain),
-        profile=RetrievalProfile.deep if preview.classification.domain in {QueryDomain.institution, QueryDomain.calendar} else None,
+        category=retrieval_policy.category,
+        profile=retrieval_policy.profile,
     )
     citations = rt._collect_citations(search.hits, limit=3)
     deterministic_fallback_text = _deterministic_retrieval_fallback(
@@ -343,6 +356,14 @@ async def _public_retrieval(state: LangGraphMessageState) -> LangGraphMessageSta
     if not verification.valid:
         message_text = deterministic_fallback_text
         llm_stages = []
+    retrieval_trace_metadata = build_retrieval_trace_metadata(
+        visibility='public',
+        policy=retrieval_policy,
+        search=search,
+        selected_hit_count=len(search.hits),
+        citations_count=len(citations),
+        canonical_lane=(search.query_plan.canonical_lane if search.query_plan is not None else None),
+    )
 
     message_text = rt._normalize_response_wording(message_text)
     suggested_replies = rt._build_suggested_replies(
@@ -386,6 +407,7 @@ async def _public_retrieval(state: LangGraphMessageState) -> LangGraphMessageSta
         deterministic_fallback_available=True,
         answer_verifier_judge_used=semantic_judge_used,
         langgraph_trace_metadata=state.get('langgraph_trace_metadata'),
+        engine_trace_metadata=retrieval_trace_metadata,
     )
     await rt._persist_conversation_turn(
         settings=settings,

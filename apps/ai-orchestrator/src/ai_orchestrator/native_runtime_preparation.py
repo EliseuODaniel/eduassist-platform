@@ -41,6 +41,7 @@ class RuntimeExecutionAccumulators:
     visual_assets: list[Any] = field(default_factory=list)
     calendar_events: list[Any] = field(default_factory=list)
     retrieval_context_pack: str | None = None
+    retrieval_trace_metadata: dict[str, Any] | None = None
     public_plan: Any | None = None
     deterministic_fallback_text: str | None = None
     query_hints: set[str] = field(default_factory=set)

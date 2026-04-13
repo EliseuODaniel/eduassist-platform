@@ -122,11 +122,15 @@ def _is_service_routing_query(message: str) -> bool:
 
 
 def _is_public_capacity_query(message: str) -> bool:
-    return _public_act_rules_impl('_is_public_capacity_query')(message)
+    from .public_profile_runtime import _is_public_capacity_query as _impl
+
+    return _impl(message)
 
 
 def _is_public_careers_query(message: str) -> bool:
-    return _public_act_rules_impl('_is_public_careers_query')(message)
+    from .public_profile_runtime import _is_public_careers_query as _impl
+
+    return _impl(message)
 
 
 def _is_public_curriculum_query(message: str) -> bool:
@@ -138,39 +142,73 @@ def _is_public_document_submission_query(message: str) -> bool:
 
 
 def _is_public_feature_query(message: str) -> bool:
-    return _public_act_rules_impl('_is_public_feature_query')(message)
+    from .public_profile_runtime import _is_public_feature_query as _impl
+
+    return _impl(message)
 
 
 def _is_public_policy_query(message: str) -> bool:
-    return _public_act_rules_impl('_is_public_policy_query')(message)
+    from .public_profile_runtime import _is_public_policy_query as _impl
+
+    return _impl(message)
 
 
 def _is_public_pricing_navigation_query(message: str) -> bool:
-    return _public_act_rules_impl('_is_public_pricing_navigation_query')(message)
+    return _intent_analysis_impl('_is_public_pricing_navigation_query')(message)
 
 
 def _is_public_timeline_lifecycle_query(message: str) -> bool:
-    return _public_act_rules_impl('_is_public_timeline_lifecycle_query')(message)
+    from .public_profile_runtime import _is_public_timeline_lifecycle_query as _impl
+
+    return _impl(message)
 
 
 def _is_public_timeline_query(message: str) -> bool:
-    return _public_act_rules_impl('_is_public_timeline_query')(message)
+    from .public_profile_runtime import _is_public_timeline_query as _impl
+
+    return _impl(message)
 
 
 def _is_leadership_specific_query(message: str) -> bool:
-    return _public_act_rules_impl('_is_leadership_specific_query')(message)
+    normalized = _normalize_text(message)
+    if not any(_message_matches_term(normalized, term) for term in PUBLIC_LEADERSHIP_TERMS):
+        return False
+    return _requested_public_attribute(message) is not None
 
 
 def _matches_public_contact_rule(message: str) -> bool:
-    return _public_act_rules_impl('_matches_public_contact_rule')(message)
+    from .public_profile_runtime import _count_public_contact_subjects
+
+    normalized = _normalize_text(message)
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_CONTACT_TERMS):
+        return True
+    if any(_message_matches_term(normalized, term) for term in {'canais', 'canal', 'falar'}) and (
+        _count_public_contact_subjects(message) >= 1
+    ):
+        return True
+    return False
 
 
 def _matches_public_highlight_rule(message: str) -> bool:
-    return _public_act_rules_impl('_matches_public_highlight_rule')(message)
+    if _is_cross_document_public_query(message):
+        return False
+    normalized = _normalize_text(message)
+    if any(_message_matches_term(normalized, term) for term in PUBLIC_HIGHLIGHT_TERMS):
+        return True
+    return any(
+        phrase in normalized
+        for phrase in (
+            'se eu fosse uma familia nova',
+            'se eu fosse uma família nova',
+            'por que eu colocaria meus filhos',
+            'por que deveria colocar meus filhos',
+        )
+    )
 
 
 def _matches_public_location_rule(message: str) -> bool:
-    return _public_act_rules_impl('_matches_public_location_rule')(message)
+    normalized = _normalize_text(message)
+    return any(_message_matches_term(normalized, term) for term in PUBLIC_LOCATION_TERMS)
 
 
 def _matched_public_act_rules(
@@ -178,14 +216,105 @@ def _matched_public_act_rules(
     *,
     conversation_context: dict[str, Any] | None = None,
 ):
-    return _public_act_rules_impl('_matched_public_act_rules')(
-        message,
-        conversation_context=conversation_context,
-    )
+    from .public_act_rules_runtime import PUBLIC_ACT_RULES
+    from .public_profile_runtime import _recent_public_feature_key
+
+    matched: list[Any] = []
+    for rule in PUBLIC_ACT_RULES:
+        try:
+            if rule.matcher(message):
+                matched.append(rule)
+        except Exception:
+            continue
+    normalized = _normalize_text(message)
+    recent_feature_key = _recent_public_feature_key(conversation_context)
+    if (
+        recent_feature_key
+        and _is_follow_up_query(message)
+        and (
+            any(_message_matches_term(normalized, term) for term in PUBLIC_SCHEDULE_TERMS)
+            or bool(_requested_contact_channel(message))
+            or _message_matches_term(normalized, 'nome')
+        )
+    ):
+        feature_rule = next((rule for rule in PUBLIC_ACT_RULES if rule.name == 'features'), None)
+        if feature_rule is not None and all(rule.name != 'features' for rule in matched):
+            matched.append(feature_rule)
+    recent_focus = _recent_trace_focus(conversation_context) or {}
+    if (
+        isinstance(recent_focus, dict)
+        and str(recent_focus.get('active_task', '')).strip() == 'public:features'
+        and _is_follow_up_query(message)
+    ):
+        feature_rule = next((rule for rule in PUBLIC_ACT_RULES if rule.name == 'features'), None)
+        if feature_rule is not None and all(rule.name != 'features' for rule in matched):
+            matched.append(feature_rule)
+    return tuple(matched)
 
 
-def _prioritize_public_act_rules(matched_rules):
-    return _public_act_rules_impl('_prioritize_public_act_rules')(matched_rules)
+def _prioritize_public_act_rules(
+    message: str,
+    matched_rules,
+):
+    if len(matched_rules) < 2:
+        return matched_rules
+    if _looks_like_public_documentary_open_query(message):
+        blocked = {'comparative', 'highlight', 'features', 'curriculum'}
+        filtered_rules = tuple(rule for rule in matched_rules if rule.name not in blocked)
+        if filtered_rules:
+            matched_rules = filtered_rules
+
+    feature_requested = bool(_requested_public_features(message))
+    channel_requested = _requested_contact_channel(message) is not None
+    base_priority = {
+        'greeting': 100,
+        'utility_date': 100,
+        'auth_guidance': 95,
+        'access_scope': 94,
+        'language_preference': 95,
+        'scope_boundary': 95,
+        'assistant_identity': 95,
+        'service_routing': 95,
+        'capabilities': 90,
+        'policy': 89,
+        'comparative': 89,
+        'document_submission': 84,
+        'capacity': 88,
+        'careers': 88,
+        'teacher_directory': 88,
+        'leadership': 86,
+        'contacts': 84,
+        'social_presence': 83,
+        'web_presence': 82,
+        'location': 82,
+        'curriculum': 82,
+        'calendar_events': 82,
+        'timeline': 81,
+        'features': 80,
+        'operating_hours': 70,
+        'schedule': 65,
+        'pricing': 64,
+        'visit': 64,
+        'kpi': 62,
+        'highlight': 62,
+        'segments': 58,
+        'school_name': 56,
+        'confessional': 54,
+    }
+
+    ranked: list[tuple[int, int, Any]] = []
+    for index, rule in enumerate(matched_rules):
+        score = base_priority.get(rule.name, 40)
+        if rule.name == 'features' and feature_requested:
+            score += 18
+        if rule.name == 'schedule' and feature_requested:
+            score -= 18
+        if rule.name == 'contacts' and channel_requested:
+            score += 8
+        ranked.append((-score, index, rule))
+
+    ranked.sort()
+    return tuple(rule for _score, _index, rule in ranked)
 
 
 def _detect_visit_booking_action(message: str) -> str | None:
@@ -1213,21 +1342,14 @@ def _is_high_confidence_public_profile_query(
 ) -> bool:
     if match_public_canonical_lane(message) is not None:
         return True
+    if looks_like_high_confidence_public_school_faq(message):
+        return True
     explicit_public_signal = any(
         matcher(message)
         for matcher in (
-            _is_service_routing_query,
             _matches_public_contact_rule,
             _matches_public_location_rule,
-            _is_public_document_submission_query,
-            _is_public_policy_query,
-            _is_public_timeline_query,
-            _is_public_timeline_lifecycle_query,
-            _is_public_capacity_query,
-            _is_public_careers_query,
-            _is_public_feature_query,
             _is_leadership_specific_query,
-            _is_public_curriculum_query,
             _is_public_pricing_navigation_query,
             _is_positive_requirement_query,
         )

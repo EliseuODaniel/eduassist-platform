@@ -76,8 +76,11 @@ def _matched_public_act_rules(
     )
 
 
-def _prioritize_public_act_rules(matched_rules):
-    return _public_act_rules_impl('_prioritize_public_act_rules')(matched_rules)
+def _prioritize_public_act_rules(
+    message: str,
+    matched_rules,
+):
+    return _public_act_rules_impl('_prioritize_public_act_rules')(message, matched_rules)
 
 
 def _looks_like_public_documentary_open_query(message: str) -> bool:

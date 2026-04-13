@@ -38,6 +38,8 @@ from llama_index.core.vector_stores.types import (
     VectorStoreInfo,
 )
 from pydantic import BaseModel, Field, PrivateAttr
+
+from .retrieval_capability_policy import resolve_retrieval_execution_policy
 from qdrant_client import AsyncQdrantClient, QdrantClient, models
 from eduassist_semantic_ingress import looks_like_high_confidence_public_school_faq
 
@@ -848,6 +850,7 @@ class PublicRetrievalQueryEngine(CustomQueryEngine):
             retrieval_service=retrieval_service,
             query=query_str,
             settings=self.settings,
+            preview=self.preview,
         )
         query_hints = {
             *rt._extract_public_entity_hints(self.original_message),
@@ -925,6 +928,7 @@ class PublicHybridCitationRetriever(BaseRetriever):
             retrieval_service=retrieval_service,
             query=query_str,
             settings=self._settings,
+            preview=None,
         )
         query_hints = {
             *rt._extract_public_entity_hints(self._original_message),
@@ -1728,21 +1732,34 @@ def _run_public_hybrid_search(
     retrieval_service: Any,
     query: str,
     settings: Any,
+    preview: Any | None = None,
+    turn_frame: Any | None = None,
+    public_plan: Any | None = None,
 ) -> Any:
     parent_ref_keys = _query_public_summary_store_parent_ref_keys(query=query, settings=settings)
+    retrieval_policy = resolve_retrieval_execution_policy(
+        query=query,
+        visibility='public',
+        baseline_top_k=4,
+        preview=preview,
+        turn_frame=turn_frame,
+        public_plan=public_plan,
+    )
     search = retrieval_service.hybrid_search(
         query=query,
-        top_k=4,
+        top_k=retrieval_policy.top_k,
         visibility='public',
-        category=None,
+        category=retrieval_policy.category,
+        profile=retrieval_policy.profile,
         parent_ref_keys=parent_ref_keys or None,
     )
     if parent_ref_keys and not list(getattr(search, 'hits', []) or []):
         search = retrieval_service.hybrid_search(
             query=query,
-            top_k=4,
+            top_k=retrieval_policy.top_k,
             visibility='public',
-            category=None,
+            category=retrieval_policy.category,
+            profile=retrieval_policy.profile,
         )
     return _maybe_apply_public_summary_stage(search=search, query=query, settings=settings)
 

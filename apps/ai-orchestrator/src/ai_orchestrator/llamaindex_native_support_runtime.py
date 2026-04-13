@@ -162,11 +162,19 @@ async def _maybe_execute_llamaindex_restricted_doc_fast_path(
         rerank_fused_weight=float(settings.retrieval_rerank_fused_weight),
         rerank_late_interaction_weight=float(settings.retrieval_rerank_late_interaction_weight),
     )
+    retrieval_policy = resolve_retrieval_execution_policy(
+        query=request.message,
+        visibility='restricted',
+        baseline_top_k=3,
+        preview=preview,
+        profile_override=RetrievalProfile.deep,
+    )
     retrieval_result = retrieval_service.hybrid_search(
         query=request.message,
-        top_k=3,
+        top_k=retrieval_policy.top_k,
         visibility='private',
-        category=None,
+        category=retrieval_policy.category,
+        profile=retrieval_policy.profile,
     )
     relevant_hits = select_relevant_restricted_hits(request.message, list(retrieval_result.hits))
     citations = [
