@@ -422,6 +422,35 @@ class ResolvedIntentDeps:
     compose_upcoming_assessments_lines: Callable[[dict[str, Any]], list[str]]
 
 
+def _looks_like_admin_finance_combo_hint(message: str, *, deps: ResolvedIntentDeps) -> bool:
+    normalized = deps.normalize_text(message)
+    admin_terms = {
+        "documentacao",
+        "documentação",
+        "documental",
+        "administrativo",
+        "administrativa",
+        "cadastro",
+        "pendencia",
+        "pendência",
+        "bloqueio",
+        "bloqueando atendimento",
+    }
+    finance_terms = {
+        "financeiro",
+        "mensalidade",
+        "mensalidades",
+        "fatura",
+        "faturas",
+        "boleto",
+        "boletos",
+        "vencimento",
+        "vencida",
+        "vencidas",
+    }
+    return any(term in normalized for term in admin_terms) and any(term in normalized for term in finance_terms)
+
+
 def _academic_grade_requirement(
     summary: dict[str, Any],
     *,
@@ -1338,6 +1367,8 @@ async def _resolved_finance_student_summary_answer(
     if not ctx.request.user.authenticated:
         return None
     normalized_message = deps.normalize_text(ctx.request.message)
+    if _looks_like_admin_finance_combo_hint(ctx.request.message, deps=deps):
+        return None
     wants_family_next_due = any(
         term in normalized_message
         for term in {

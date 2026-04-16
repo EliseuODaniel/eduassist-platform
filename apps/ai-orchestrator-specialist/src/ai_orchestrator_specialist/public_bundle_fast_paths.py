@@ -617,21 +617,6 @@ def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message:
                 ],
             )
 
-    if _looks_like_family_new_calendar_enrollment_query(message) and not _looks_like_first_month_risks_query(message):
-        answer_text = compose_public_family_new_calendar_assessment_enrollment()
-        if answer_text:
-            return _institution_preflight_answer(
-                answer_text=answer_text,
-                reason="specialist_supervisor_preflight:family_new_calendar_enrollment",
-                graph_leaf="family_new_calendar_enrollment",
-                summary="Sintese deterministica de familia nova antes do loop premium.",
-                supports=[
-                    MessageEvidenceSupport(kind="document", label="Calendario Letivo 2026", detail="data/corpus/public/calendario-letivo-2026.md"),
-                    MessageEvidenceSupport(kind="document", label="Agenda de Avaliacoes 2026", detail="data/corpus/public/agenda-avaliacoes-recuperacoes-e-simulados-2026.md"),
-                    MessageEvidenceSupport(kind="document", label="Manual de Matricula", detail="data/corpus/public/manual-matricula-ensino-medio.md"),
-                ],
-            )
-
     if _looks_like_permanence_family_query(message):
         answer_text = compose_public_permanence_and_family_support(profile)
         if answer_text:
@@ -765,5 +750,20 @@ def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message:
                 MessageEvidenceSupport(kind="document", label="Politica de Uso do Portal, Aplicativo e Credenciais", detail="data/corpus/public/politica-uso-do-portal-aplicativo-e-credenciais.md"),
             ],
         )
+
+    if _looks_like_family_new_calendar_enrollment_query(message) and not _looks_like_first_month_risks_query(message):
+        answer_text = compose_public_family_new_calendar_assessment_enrollment()
+        if answer_text:
+            return _institution_preflight_answer(
+                answer_text=answer_text,
+                reason="specialist_supervisor_preflight:family_new_calendar_enrollment",
+                graph_leaf="family_new_calendar_enrollment",
+                summary="Sintese deterministica de familia nova antes do loop premium.",
+                supports=[
+                    MessageEvidenceSupport(kind="document", label="Calendario Letivo 2026", detail="data/corpus/public/calendario-letivo-2026.md"),
+                    MessageEvidenceSupport(kind="document", label="Agenda de Avaliacoes 2026", detail="data/corpus/public/agenda-avaliacoes-recuperacoes-e-simulados-2026.md"),
+                    MessageEvidenceSupport(kind="document", label="Manual de Matricula", detail="data/corpus/public/manual-matricula-ensino-medio.md"),
+                ],
+            )
 
     return None

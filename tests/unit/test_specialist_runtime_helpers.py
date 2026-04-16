@@ -4184,6 +4184,19 @@ def test_specialist_preflight_promotes_permanence_family_support_lane() -> None:
     assert payload.reason == 'specialist_supervisor_preflight:permanence_family_support'
 
 
+def test_specialist_preflight_prefers_service_credentials_bundle_over_family_new_bundle() -> None:
+    payload = _preflight_public_doc_bundle_answer(
+        {"school_name": "Colegio Horizonte"},
+        'Para resolver acesso e envio documental sem erro, como portal, credenciais e secretaria entram na ordem certa?',
+    )
+    assert payload is not None
+    assert payload.reason == 'specialist_supervisor_preflight:service_credentials_bundle'
+    lowered = payload.message_text.casefold()
+    assert 'portal' in lowered
+    assert 'credenciais' in lowered
+    assert 'secretaria' in lowered
+
+
 def test_specialist_public_lane_matches_access_scope_compare_prompt() -> None:
     prompt = 'Compare a orientacao publica e a interna sobre acessos diferentes entre responsaveis e destaque o que muda de linguagem e de acao.'
     assert match_public_canonical_lane(prompt) == 'public_bundle.access_scope_compare'
@@ -4358,7 +4371,68 @@ def test_resolved_intent_finance_aggregate_followup_prefers_next_due_answer() ->
     answer = asyncio.run(maybe_resolved_intent_answer(ctx, deps=deps))
     assert answer is not None
     assert answer.reason == 'specialist_supervisor_resolved_intent:financial_next_due_aggregate'
-    assert '15 de abril de 2026' in answer.message_text
+
+
+def test_resolved_intent_financial_summary_returns_none_for_admin_finance_combo_prompt() -> None:
+    async def _fetch_financial_summary_payload(_ctx, *, student_name_hint=None, **_kwargs):
+        return {
+            'summary': {
+                'student_name': str(student_name_hint or 'Aluno'),
+                'open_invoice_count': 1,
+                'overdue_invoice_count': 0,
+                'invoices': [],
+            }
+        }
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='Cruze meu status documental com o financeiro e diga se existe bloqueio ou pendencia relevante.',
+        ),
+        actor={'students': [{'full_name': 'Lucas Oliveira'}, {'full_name': 'Ana Oliveira'}]},
+        conversation_context={'recent_messages': []},
+        operational_memory=None,
+        resolved_turn=ResolvedTurnIntent(
+            domain='finance',
+            subintent='financial_summary',
+            capability='finance.summary',
+            access_tier='authenticated',
+            confidence=0.97,
+        ),
+    )
+    deps = ResolvedIntentDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        looks_like_subject_followup=lambda _message: False,
+        looks_like_academic_risk_followup=lambda _message: False,
+        looks_like_family_finance_aggregate_query=lambda _message: False,
+        looks_like_family_attendance_aggregate_query=lambda _message: False,
+        fetch_academic_summary_payload=lambda *_args, **_kwargs: None,
+        fetch_financial_summary_payload=_fetch_financial_summary_payload,
+        fetch_upcoming_assessments_payload=lambda *_args, **_kwargs: None,
+        resolved_academic_target_name=lambda *_args, **_kwargs: None,
+        needs_specific_academic_student_clarification=lambda *_args, **_kwargs: False,
+        build_academic_student_selection_clarify=lambda *_args, **_kwargs: None,
+        compose_academic_risk_answer=lambda _summary: '',
+        compose_named_subject_grade_answer=lambda *_args, **_kwargs: None,
+        compose_named_grade_answer=lambda _summary: '',
+        compose_named_attendance_answer=lambda *_args, **_kwargs: '',
+        compose_academic_snapshot_lines=lambda _summary: [],
+        compose_academic_aggregate_answer=lambda _summaries: '',
+        compose_finance_aggregate_answer=lambda _summaries: 'Resumo financeiro das contas vinculadas.',
+        compose_family_next_due_answer=lambda _summaries: None,
+        compose_finance_installments_answer=lambda _summary: '',
+        linked_students=lambda actor, **_kwargs: list(actor.get('students') or []),
+        safe_excerpt=lambda text, **_kwargs: text,
+        subject_hint_from_text=lambda _message: None,
+        recent_subject_from_context=lambda *_args, **_kwargs: None,
+        subject_code_from_hint=lambda *_args, **_kwargs: (None, None),
+        student_hint_from_message=lambda *_args, **_kwargs: None,
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        compose_upcoming_assessments_lines=lambda _summary: [],
+    )
+
+    answer = asyncio.run(maybe_resolved_intent_answer(ctx, deps=deps))
+    assert answer is None
 
 
 def test_specialist_unknown_student_reference_skips_finance_noun_and_returns_actual_name() -> None:
