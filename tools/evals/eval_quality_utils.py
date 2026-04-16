@@ -511,7 +511,22 @@ def _looks_like_comparative_reasoning_mismatch(prompt: str, answer_text: str) ->
 
 def _looks_like_weak_actionability(prompt: str, answer_text: str) -> bool:
     normalized_prompt = _normalize_match_text(prompt)
-    if not any(marker in normalized_prompt for marker in ('como', 'na pratica', 'sequencia', 'sequência', 'proximo passo', 'próximo passo', 'o que fazer')):
+    persona_framing_prefixes = (
+        'como aluno autenticado',
+        'como aluna autenticada',
+        'como professor',
+        'como professora',
+        'como responsavel autenticado',
+        'como responsável autenticado',
+        'como guardian autenticado',
+        'como estudante autenticado',
+    )
+    persona_framing = normalized_prompt.startswith(persona_framing_prefixes)
+    has_actionability_anchor = any(
+        marker in normalized_prompt
+        for marker in ('na pratica', 'sequencia', 'sequência', 'proximo passo', 'próximo passo', 'o que fazer')
+    ) or ('como' in normalized_prompt and not persona_framing)
+    if not has_actionability_anchor:
         return False
     normalized_answer = _normalize_match_text(answer_text)
     if 'dividir o ano' in normalized_prompt and all(

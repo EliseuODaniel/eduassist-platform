@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from tools.evals.eval_quality_utils import _contains_forbidden_keywords, _detect_error_types
+from tools.evals.eval_quality_utils import (
+    _contains_forbidden_keywords,
+    _detect_error_types,
+    _looks_like_weak_actionability,
+)
 
 
 def test_forbidden_keywords_ignore_punctuation_only_false_positive() -> None:
@@ -122,3 +126,23 @@ def test_detect_error_types_flags_comparative_reasoning_mismatch() -> None:
         note='',
     )
     assert 'comparative_reasoning_mismatch' in errors
+
+
+def test_weak_actionability_ignores_persona_framing_prompt() -> None:
+    assert (
+        _looks_like_weak_actionability(
+            'Como aluno autenticado, me diga qual materia esta melhor, qual esta pior e o que falta para fechar a media em fisica.',
+            'Hoje, a melhor disciplina e Portugues. A pior e Fisica. Em Fisica, nao falta mais nada para fechar a media.',
+        )
+        is False
+    )
+
+
+def test_weak_actionability_still_flags_real_how_to_prompt_without_steps() -> None:
+    assert (
+        _looks_like_weak_actionability(
+            'Como a familia deve agir para resolver isso no comeco do ano?',
+            'A escola possui calendario e atendimento comercial para esse tema.',
+        )
+        is True
+    )
