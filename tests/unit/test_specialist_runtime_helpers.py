@@ -733,6 +733,45 @@ def test_specialist_fast_path_promotes_explicit_open_world_boundary_over_input_c
     assert "fora do escopo da escola" in answer.message_text.casefold()
 
 
+def test_specialist_fast_path_promotes_open_world_recommendation_boundary_without_explicit_school_marker() -> None:
+    ctx = SimpleNamespace(
+        school_profile={"school_name": "Colegio Horizonte"},
+        actor=None,
+        request=SimpleNamespace(
+            message="Me ajuda a escolher um filme para o fim de semana.",
+            user=SimpleNamespace(authenticated=False),
+        ),
+        conversation_context={"recent_messages": []},
+        preview_hint={
+            "semantic_ingress": {"conversation_act": "input_clarification"},
+            "turn_frame": {"conversation_act": "input_clarification", "scope": "public"},
+        },
+    )
+    deps = FastPathDeps(
+        normalize_text=lambda value: " ".join(str(value or "").casefold().split()),
+        normalized_recent_user_messages=lambda context: [],
+        is_simple_greeting=lambda message: False,
+        is_auth_guidance_query=lambda message: False,
+        compose_auth_guidance_answer=lambda profile: "",
+        linked_students=lambda *args, **kwargs: [],
+        compose_authenticated_scope_answer=lambda actor: "",
+        is_assistant_identity_query=lambda message: False,
+        compose_assistant_identity_answer=lambda profile: "",
+        school_name=lambda profile: "Colegio Horizonte",
+        safe_excerpt=lambda text, limit=220: str(text or "")[:limit],
+        format_brl=lambda value: str(value),
+        hypothetical_children_quantity=lambda message: None,
+        pricing_projection=lambda *args, **kwargs: {},
+        compose_public_bolsas_and_processes=lambda profile: None,
+    )
+
+    answer = build_fast_path_answer(ctx, deps)
+
+    assert answer is not None
+    assert answer.reason == "specialist_supervisor_fast_path:scope_boundary"
+    assert "fora do escopo da escola" in answer.message_text.casefold()
+
+
 def test_specialist_fast_path_answers_leadership_contact_query() -> None:
     profile = {
         "school_name": "Colegio Horizonte",
@@ -3242,6 +3281,13 @@ def test_academic_risk_followup_detects_menores_medias_componentes_prompt() -> N
 def test_academic_risk_followup_detects_corre_mais_risco_prompt() -> None:
     assert looks_like_academic_risk_followup(
         'Pensando no caso pratico, continuando o panorama, olhe so a Ana e diga em quais componentes ela corre mais risco agora.',
+        deps=SimpleNamespace(normalize_text=lambda value: str(value or '').casefold()),
+    )
+
+
+def test_academic_risk_followup_detects_fragilizada_academicamente_prompt() -> None:
+    assert looks_like_academic_risk_followup(
+        'Sem sair do escopo do projeto, seguindo o panorama anterior, isole a Ana e diga onde ela aparece mais fragilizada academicamente.',
         deps=SimpleNamespace(normalize_text=lambda value: str(value or '').casefold()),
     )
 

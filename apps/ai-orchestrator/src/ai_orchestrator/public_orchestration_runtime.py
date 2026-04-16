@@ -265,7 +265,7 @@ def _resolve_deterministic_public_guardrail_answer(
 
 def _is_explicit_open_world_scope_boundary_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    return any(
+    if any(
         term in normalized or _message_matches_term(normalized, term)
         for term in {
             'sem relacao com escola',
@@ -280,6 +280,40 @@ def _is_explicit_open_world_scope_boundary_query(message: str) -> bool:
             'nada a ver com a escola',
             'sem relacao com ensino',
         }
+    ):
+        return True
+    open_world_topic_terms = {
+        'filme',
+        'filmes',
+        'serie',
+        'série',
+        'series',
+        'séries',
+        'jogo',
+        'jogos',
+        'receita',
+        'receitas',
+        'livro',
+        'livros',
+        'netflix',
+        'cinema',
+        'restaurante',
+        'restaurantes',
+    }
+    open_world_request_starters = (
+        'me ajuda a escolher',
+        'me ajuda a decidir',
+        'me indica',
+        'me recomenda',
+        'recomenda',
+        'indique',
+        'quero uma recomendacao',
+        'quero uma recomendação',
+        'sugere',
+        'sugira',
+    )
+    return any(_message_matches_term(normalized, term) for term in open_world_topic_terms) and any(
+        normalized.startswith(starter) or starter in normalized for starter in open_world_request_starters
     )
 
 

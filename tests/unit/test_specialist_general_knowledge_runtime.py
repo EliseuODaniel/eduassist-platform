@@ -96,3 +96,34 @@ def test_looks_like_general_knowledge_query_accepts_explicit_out_of_scope_movie_
         )
         is True
     )
+
+
+def test_looks_like_general_knowledge_query_accepts_open_world_recommendation_prompt_without_question_mark() -> None:
+    deps = IntentResolutionDeps(
+        normalize_text=lambda s: " ".join(str(s or "").lower().split()),
+        contains_any=lambda text, terms: any(term in text for term in terms),
+        preview_domain=lambda _preview: "",
+        linked_students=lambda *_args, **_kwargs: [],
+        resolve_student=lambda *_args, **_kwargs: None,
+        subject_hint_from_text=lambda _message: None,
+        pending_kind_from_answer=lambda _answer: None,
+        topic_from_reason=lambda _reason: None,
+        effective_multi_intent_domains=lambda *_args: [],
+        student_hint_from_message=lambda *_args, **_kwargs: None,
+        unknown_explicit_student_reference=lambda *_args, **_kwargs: None,
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        find_student_by_hint=lambda *_args, **_kwargs: None,
+        looks_like_other_student_followup=lambda _message: False,
+        student_from_memory=lambda *_args, **_kwargs: None,
+        other_linked_student=lambda *_args, **_kwargs: None,
+        looks_like_student_pronoun_followup=lambda _message: False,
+        looks_like_subject_followup=lambda _message: False,
+    )
+
+    assert (
+        looks_like_general_knowledge_query(
+            "Me ajuda a escolher um filme para o fim de semana.",
+            deps=deps,
+        )
+        is True
+    )

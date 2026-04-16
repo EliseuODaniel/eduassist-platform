@@ -97,12 +97,28 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
         "politica",
         "política",
     }
+    open_world_request_starters = (
+        "me ajuda a escolher",
+        "me ajuda a decidir",
+        "me indica",
+        "me recomenda",
+        "recomenda",
+        "indique",
+        "quero uma recomendacao",
+        "quero uma recomendação",
+        "sugere",
+        "sugira",
+    )
     explicit_general_knowledge_boundary = any(
         term in normalized for term in explicit_out_of_scope_markers
     ) and (
         str(ctx.request.message or "").strip().endswith("?")
         or any(term in normalized for term in open_world_topic_terms)
     )
+    if not explicit_general_knowledge_boundary and any(term in normalized for term in open_world_topic_terms):
+        explicit_general_knowledge_boundary = any(
+            normalized.startswith(starter) or starter in normalized for starter in open_world_request_starters
+        )
     pricing_segment_hint = _public_pricing_segment_hint([normalized, *recent_user_messages])
     pricing_query_active = _looks_like_public_pricing_query(normalized) or _public_pricing_context_follow_up(
         normalized,

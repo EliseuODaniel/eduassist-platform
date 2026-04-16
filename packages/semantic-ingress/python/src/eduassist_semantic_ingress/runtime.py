@@ -722,6 +722,38 @@ def looks_like_scope_boundary_candidate(message: str | None) -> bool:
         return False
     if len(effective_text.split()) > 18:
         return False
+    open_world_topic_terms = (
+        'filme',
+        'filmes',
+        'serie',
+        'series',
+        'jogo',
+        'jogos',
+        'receita',
+        'receitas',
+        'livro',
+        'livros',
+        'netflix',
+        'cinema',
+        'restaurante',
+        'restaurantes',
+    )
+    open_world_request_starters = (
+        'me ajuda a escolher',
+        'me ajuda a decidir',
+        'me indica',
+        'me recomenda',
+        'recomenda',
+        'indique',
+        'quero uma recomendacao',
+        'quero uma recomendação',
+        'sugere',
+        'sugira',
+    )
+    if any(_contains_term(normalized, term) for term in open_world_topic_terms) and any(
+        normalized.startswith(starter) or starter in normalized for starter in open_world_request_starters
+    ):
+        return True
     if any(ch == '?' for ch in raw_text):
         return True
     return any(

@@ -171,6 +171,7 @@ def test_looks_like_high_confidence_public_school_faq_detects_public_faq_familie
 def test_looks_like_scope_boundary_candidate_detects_out_of_scope_question() -> None:
     assert looks_like_scope_boundary_candidate("Qual o melhor filme do ano?") is True
     assert looks_like_scope_boundary_candidate("Como faco lasanha?") is True
+    assert looks_like_scope_boundary_candidate("Me ajuda a escolher um filme para o fim de semana.") is True
     assert looks_like_scope_boundary_candidate("Posso fumar maconha nessa escola?") is False
     assert looks_like_scope_boundary_candidate("Qual o horario da biblioteca?") is False
     assert looks_like_scope_boundary_candidate("qual contato do diretor?") is False

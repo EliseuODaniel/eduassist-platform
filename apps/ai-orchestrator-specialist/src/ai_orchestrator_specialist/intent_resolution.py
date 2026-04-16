@@ -151,10 +151,14 @@ def looks_like_general_knowledge_query(
         "política",
     }
     open_world_starters = (
+        "me ajuda a escolher ",
+        "me ajuda a decidir ",
         "me indica ",
         "me recomenda ",
         "recomenda ",
         "indique ",
+        "quero uma recomendacao ",
+        "quero uma recomendação ",
         "me fala ",
         "me diga ",
     )
@@ -163,6 +167,10 @@ def looks_like_general_knowledge_query(
     if any(marker in normalized for marker in explicit_out_of_scope_markers) and (
         normalized.endswith("?")
         or any(term in normalized for term in open_world_topic_terms)
+    ):
+        return True
+    if any(term in normalized for term in open_world_topic_terms) and any(
+        normalized.startswith(starter) or starter in normalized for starter in open_world_starters
     ):
         return True
     if deps.contains_any(normalized, school_domain_terms()) or has_registered_school_signal(normalized):

@@ -3465,6 +3465,12 @@ def test_explicit_open_world_scope_boundary_query_detects_sem_relacao_com_escola
     ) is True
 
 
+def test_explicit_open_world_scope_boundary_query_detects_recommendation_prompt_without_question_mark() -> None:
+    assert _is_explicit_open_world_scope_boundary_query(
+        'Me ajuda a escolher um filme para o fim de semana.'
+    ) is True
+
+
 def test_public_conduct_policy_query_ignores_contextual_student_attendance_cut() -> None:
     assert _looks_like_public_conduct_policy_query(
         'mantendo o contexto corta para o lucas e resume qual e o risco mais concreto dele em frequencia'
