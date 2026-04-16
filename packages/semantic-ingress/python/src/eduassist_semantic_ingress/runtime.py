@@ -330,6 +330,7 @@ _EXPLICIT_NON_SCHOOL_SCOPE_MARKERS = {
     'sem relacao com colegio',
     'sem relação com colégio',
     'fora do tema escolar',
+    'fora do tema da escola',
     'fora do escopo da escola',
     'sem ligar para a escola',
     'sem relação com atendimento escolar',
@@ -632,6 +633,28 @@ def looks_like_high_confidence_public_school_faq(message: str | None) -> bool:
     normalized = normalize_ingress_text(message)
     if not normalized:
         return False
+    if (
+        any(_contains_term(normalized, term) for term in {'calendario', 'calendário', 'agenda', 'eventos'})
+        and any(_contains_term(normalized, term) for term in {'familias', 'famílias', 'responsaveis', 'responsáveis'})
+        and any(
+            _contains_term(normalized, term)
+            for term in {
+                'publicos',
+                'públicos',
+                'publico',
+                'público',
+                'aparecem nesta base',
+                'aparecem na base',
+                'aparecem agora',
+                'nesta base agora',
+                'visiveis',
+                'visíveis',
+                'principais',
+                'mais importantes',
+            }
+        )
+    ):
+        return True
     has_facility = any(_contains_term(normalized, term) for term in _SCHOOL_PUBLIC_FACILITY_TERMS)
     if has_facility and (
         any(_contains_term(normalized, term) for term in _PUBLIC_INFO_INTENT_TERMS)
@@ -716,6 +739,8 @@ def looks_like_scope_boundary_candidate(message: str | None) -> bool:
         return False
     if looks_like_opaque_short_input(message):
         return False
+    if any(_contains_term(normalized, term) for term in _EXPLICIT_NON_SCHOOL_SCOPE_MARKERS):
+        return True
     if looks_like_school_scope_message(message):
         return False
     if len(effective_text) < 6:

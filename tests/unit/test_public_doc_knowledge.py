@@ -87,8 +87,6 @@ def test_calendar_week_lane_matches_generic_family_prompt() -> None:
         'Dentro do calendario publico, quais eventos parecem mais importantes para familias e responsaveis?'
     )
     assert lane == 'public_bundle.calendar_week'
-
-
 def test_timeline_lifecycle_lane_wins_over_calendar_week_for_marcos_entre_prompt() -> None:
     lane = match_public_canonical_lane(
         'Quais sao os marcos entre matricula, inicio do ano letivo e reuniao de responsaveis no calendario publico de 2026?'

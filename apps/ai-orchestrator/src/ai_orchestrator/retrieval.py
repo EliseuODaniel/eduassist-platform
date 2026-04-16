@@ -199,12 +199,20 @@ _RESTRICTED_DOC_STOPWORDS = {
     'internas',
     'interno',
     'internos',
+    'bem',
+    'objetiva',
+    'objetivo',
+    'objetivamente',
+    'qualquer',
+    'antecedem',
+    'antecede',
     'segundo',
     'diz',
     'orienta',
     'orientam',
     'sobre',
 }
+_RESTRICTED_DOC_FALLBACK_QUERY_LIMIT = 6
 _RESTRICTED_DOC_GENERIC_TERMS = {
     'aluno',
     'alunos',
@@ -1140,8 +1148,14 @@ def _restricted_document_fallback_queries(query: str) -> list[str]:
             score += 3.0
         if {first, second} == {'escopo', 'parcial'}:
             score += 3.0
-        if {first, second} == {'prometer', 'quitacao'}:
-            score += 1.5
+        if any(token.startswith('negoci') for token in {first, second}) and any(
+            token.startswith('financeir') for token in {first, second}
+        ):
+            score += 3.0
+        if any(token.startswith('promess') for token in {first, second}) and any(
+            token.startswith('quitac') for token in {first, second}
+        ):
+            score += 3.0
         phrases.append((score, -index, f'{first} {second}'))
     phrases.sort(reverse=True)
     variants: list[str] = [*_restricted_document_variants(query), *(phrase for _, _, phrase in phrases[:6])]
@@ -1812,7 +1826,9 @@ def retrieve_relevant_restricted_hits_with_fallback(
     if selected:
         return selected
     fallback_sources: dict[str, list[dict[str, Any]]] = {}
-    for index, fallback_query in enumerate(_restricted_document_fallback_queries(query)[:4]):
+    for index, fallback_query in enumerate(
+        _restricted_document_fallback_queries(query)[:_RESTRICTED_DOC_FALLBACK_QUERY_LIMIT]
+    ):
         rows = service._lexical_search(
             query=fallback_query,
             top_k=max(top_k * 2, 6),

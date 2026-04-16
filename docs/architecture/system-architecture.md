@@ -171,6 +171,13 @@ Baseline atual implementado:
 - traces operacionais agora também registram a política escolhida e o resultado efetivo do retrieval por capability, preparando tuning com `answerable@k`, cobertura e latência por família;
 - budgets iniciais explícitos e configuráveis nas settings dos runtimes.
 
+Estado operacional do hardening em 2026-04-16:
+
+- o benchmark amplo `60Q` fechou com `quality 100.0` e `keyword_pass 100%` nas quatro stacks;
+- o benchmark de stress `40Q` também fechou com `quality 100.0` em `c1` nas quatro stacks e em `c2` para `langgraph`, `llamaindex` e `specialist_supervisor`;
+- o principal gap remanescente deixou de ser semântico e passou a ser operacional: sob `c4`, os non-specialists ainda sofrem `request_failed` em bundles públicos multi-documento, enquanto o `specialist_supervisor` permanece estável;
+- a próxima frente arquitetural, portanto, é throughput e queueing para caminhos públicos pesados, não novo endurecimento de roteamento básico.
+
 Técnicas de memória longa baseadas em compressão de `KV cache`, como `TurboQuant` e `TriAttention`, ficam fora do baseline atual. Elas só entram em avaliação se os ganhos acima se esgotarem e o sistema passar a depender materialmente de janelas muito maiores no serving local.
 
 ## Observabilidade

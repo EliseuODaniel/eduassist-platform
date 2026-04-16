@@ -4269,6 +4269,8 @@ async def apply_grounded_answer_experience(
         for term in {
             'sem relacao com escola',
             'sem relacao com a escola',
+            'fora do tema escolar',
+            'fora do tema da escola',
             'fora do escopo da escola',
             'fora do contexto da escola',
             'sem relacao com o colegio',

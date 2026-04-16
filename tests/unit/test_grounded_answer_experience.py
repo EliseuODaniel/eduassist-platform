@@ -1165,6 +1165,40 @@ def test_answer_experience_builds_public_known_unknown_answer(monkeypatch: pytes
     assert updated.mode == OrchestrationMode.structured_tool
 
 
+def test_answer_experience_builds_public_known_unknown_minimum_age_answer_with_admissions(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_context(*, settings, request):
+        return None
+
+    async def fake_profile(settings):
+        return {'school_name': 'Colegio Horizonte'}
+
+    async def fake_actor(*, settings, request):
+        return None
+
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_conversation_context', fake_context)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_public_school_profile', fake_profile)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_actor_context', fake_actor)
+
+    updated = asyncio.run(
+        apply_grounded_answer_experience(
+            request=MessageResponseRequest(
+                message='Se eu quiser confirmar idade minima para ingresso, isso aparece publicamente ou depende de admissions?',
+                telegram_chat_id=999,
+                channel=ConversationChannel.telegram,
+                user=UserContext(role='anonymous', authenticated=False),
+            ),
+            response=_public_response('Nao tenho esse dado no momento.', mode=OrchestrationMode.clarify),
+            settings=_settings(),
+            stack_name='python_functions',
+        )
+    )
+
+    lowered = updated.message_text.lower()
+    assert 'idade minima' in lowered
+    assert 'admissions' in lowered
+    assert updated.mode == OrchestrationMode.structured_tool
+
+
 def test_answer_experience_prefers_public_teacher_directory_boundary(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_context(*, settings, request):
         return None

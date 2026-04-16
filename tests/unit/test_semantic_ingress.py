@@ -146,6 +146,9 @@ def test_looks_like_school_scope_message_detects_public_school_information_queri
     assert looks_like_school_scope_message("o que é bncc?") is True
     assert looks_like_school_scope_message("qual o conteúdo ensinado em biologia?") is True
     assert looks_like_school_scope_message("é um colégio confessional?") is True
+    assert looks_like_school_scope_message(
+        "Quais eventos publicos para familias e responsaveis aparecem nesta base agora?"
+    ) is True
 
 
 def test_looks_like_high_confidence_public_school_faq_detects_public_faq_families() -> None:
@@ -159,6 +162,9 @@ def test_looks_like_high_confidence_public_school_faq_detects_public_faq_familie
     assert looks_like_high_confidence_public_school_faq("o que é bncc?") is True
     assert looks_like_high_confidence_public_school_faq("qual o conteúdo ensinado em biologia?") is True
     assert looks_like_high_confidence_public_school_faq("é um colégio confessional?") is True
+    assert looks_like_high_confidence_public_school_faq(
+        "Quais eventos publicos para familias e responsaveis aparecem nesta base agora?"
+    ) is True
     assert looks_like_high_confidence_public_school_faq("qual o proximo vencimento?") is False
     assert (
         looks_like_high_confidence_public_school_faq(
@@ -172,6 +178,12 @@ def test_looks_like_scope_boundary_candidate_detects_out_of_scope_question() -> 
     assert looks_like_scope_boundary_candidate("Qual o melhor filme do ano?") is True
     assert looks_like_scope_boundary_candidate("Como faco lasanha?") is True
     assert looks_like_scope_boundary_candidate("Me ajuda a escolher um filme para o fim de semana.") is True
+    assert (
+        looks_like_scope_boundary_candidate(
+            "Pensando no caso pratico, fora do tema escolar, qual filme voce acha que mais vale a pena ver agora?"
+        )
+        is True
+    )
     assert looks_like_scope_boundary_candidate("Posso fumar maconha nessa escola?") is False
     assert looks_like_scope_boundary_candidate("Qual o horario da biblioteca?") is False
     assert looks_like_scope_boundary_candidate("qual contato do diretor?") is False
@@ -181,6 +193,23 @@ def test_looks_like_scope_boundary_candidate_detects_out_of_scope_question() -> 
     assert looks_like_scope_boundary_candidate("o que é bncc?") is False
     assert looks_like_scope_boundary_candidate("qual o conteúdo ensinado em biologia?") is False
     assert looks_like_scope_boundary_candidate("é um colégio confessional?") is False
+    assert (
+        looks_like_scope_boundary_candidate(
+            "Quais eventos publicos para familias e responsaveis aparecem nesta base agora?"
+        )
+        is False
+    )
+
+
+def test_build_turn_frame_hint_does_not_mark_calendar_week_bundle_as_scope_boundary() -> None:
+    frame = build_turn_frame_hint(
+        message="Quais eventos publicos para familias e responsaveis aparecem nesta base agora?",
+        conversation_context=None,
+        preview=None,
+        authenticated=False,
+    )
+
+    assert frame is None or frame.conversation_act != "scope_boundary"
 
 
 def test_build_capability_candidates_prefers_public_schedule_for_morning_class_query() -> None:

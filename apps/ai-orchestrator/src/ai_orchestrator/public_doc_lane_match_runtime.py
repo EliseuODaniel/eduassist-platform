@@ -308,6 +308,10 @@ def match_public_canonical_lane(message: str) -> str | None:
                 "principais",
                 "publicos",
                 "públicos",
+                "aparecem nesta base",
+                "aparecem na base",
+                "aparecem agora",
+                "nesta base agora",
             )
         )
     ):

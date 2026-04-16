@@ -443,6 +443,50 @@ def test_restricted_document_fallback_uses_compact_lexical_retry() -> None:
     assert 'pagamento parcial' in lexical_calls
 
 
+def test_restricted_document_fallback_reaches_semantic_finance_retry_beyond_fourth_query() -> None:
+    lexical_calls: list[str] = []
+    fallback_hit = {
+        'chunk_id': 'chunk-2',
+        'document_title': 'Procedimento interno para pagamento parcial e negociacao',
+        'section_parent': 'Procedimento interno para pagamento parcial e negociacao',
+        'section_title': 'Validacoes antes de prometer quitacao',
+        'section_path': 'Procedimento interno para pagamento parcial e negociacao',
+        'text_content': 'Na rotina de negociacao financeira, valide historico, alcada e aprovacao antes de prometer quitacao.',
+        'text_excerpt': 'Na negociacao financeira, valide historico, alcada e aprovacao antes de prometer quitacao.',
+        'contextual_summary': 'Negociacao financeira e promessa de quitacao',
+        'category': 'private_docs',
+        'document_set_slug': 'interno',
+        'labels': {},
+        'visibility': 'restricted',
+    }
+
+    class _FakeRetrievalService:
+        def _lexical_search(self, *, query: str, top_k: int, visibility: str, category: str | None):
+            lexical_calls.append(query)
+            if query == 'negociacao financeira':
+                return [fallback_hit]
+            return []
+
+        def _fuse_hits(self, *, lexical_sources, vector_sources, top_k, category_bias, max_chunks_per_document, intent, normalized_query):
+            return list(next(iter(lexical_sources.values())))
+
+        def _rerank_hits(self, *, query: str, hits, rerank_limit: int, top_k: int):
+            return list(hits), False
+
+    selected = retrieve_relevant_restricted_hits_with_fallback(
+        _FakeRetrievalService(),
+        query='De forma bem objetiva, na rotina interna de negociacao financeira, quais validacoes antecedem qualquer promessa de quitacao?',
+        hits=[],
+        top_k=4,
+        visibility='restricted',
+        category='private_docs',
+    )
+
+    assert selected
+    assert selected[0]['document_title'] == fallback_hit['document_title']
+    assert 'negociacao financeira' in lexical_calls
+
+
 def test_compose_family_next_due_answer_prefers_earliest_due_invoice() -> None:
     answer = _compose_family_next_due_answer(
         [
@@ -618,6 +662,16 @@ def test_deterministic_public_guardrail_prefers_teacher_directory_boundary_befor
 def test_deterministic_public_guardrail_skips_restricted_document_queries() -> None:
     answer = _resolve_deterministic_public_guardrail_answer(
         'No playbook interno de negociacao financeira, quais criterios orientam a conversa com a familia?',
+        school_profile={'school_name': 'Colegio Horizonte'},
+        conversation_context=None,
+    )
+
+    assert answer is None
+
+
+def test_deterministic_public_guardrail_skips_scope_boundary_when_public_calendar_lane_matches() -> None:
+    answer = _resolve_deterministic_public_guardrail_answer(
+        'Quais eventos publicos para familias e responsaveis aparecem nesta base agora?',
         school_profile={'school_name': 'Colegio Horizonte'},
         conversation_context=None,
     )
@@ -3462,6 +3516,12 @@ def test_should_skip_public_contextual_answer_for_contextual_attendance_followup
 def test_explicit_open_world_scope_boundary_query_detects_sem_relacao_com_escola() -> None:
     assert _is_explicit_open_world_scope_boundary_query(
         'Quero uma recomendacao de filme, sem relacao com escola.'
+    ) is True
+
+
+def test_explicit_open_world_scope_boundary_query_detects_fora_do_tema_escolar() -> None:
+    assert _is_explicit_open_world_scope_boundary_query(
+        'Pensando no caso pratico, fora do tema escolar, qual filme voce acha que mais vale a pena ver agora?'
     ) is True
 
 

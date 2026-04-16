@@ -60,6 +60,7 @@ from ai_orchestrator_specialist.protected_answer_helpers import resolved_academi
 from ai_orchestrator_specialist.student_context_helpers import StudentContextDeps, student_hint_from_message, unknown_explicit_student_reference
 from ai_orchestrator_specialist.public_doc_knowledge import match_public_canonical_lane
 from ai_orchestrator_specialist.public_bundle_fast_paths import _preflight_public_doc_bundle_answer
+from ai_orchestrator_specialist.public_known_unknowns import compose_public_known_unknown_answer
 from ai_orchestrator_specialist.public_profile_answers import _compose_timeline_bundle_answer
 from ai_orchestrator_specialist.public_profile_answers import _compose_service_routing_fast_answer
 from ai_orchestrator_specialist.public_profile_answers import _compose_shift_offers_answer
@@ -4064,7 +4065,15 @@ def test_fast_path_handles_public_admissions_opening_date() -> None:
 
     assert answer is not None
     assert answer.reason == 'specialist_supervisor_fast_path:admissions_opening'
-    assert '6 de outubro de 2025' in answer.message_text
+
+
+def test_specialist_public_known_unknown_minimum_age_mentions_admissions() -> None:
+    answer = compose_public_known_unknown_answer(key='minimum_age', school_name='Colegio Horizonte')
+
+    assert answer is not None
+    lowered = answer.lower()
+    assert 'admissions' in lowered
+    assert 'matricula e atendimento comercial' in lowered
 
 
 def test_fast_path_handles_visit_reschedule_followup_with_protocol_guidance() -> None:

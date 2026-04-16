@@ -278,6 +278,7 @@ _FAMILY_FINANCE_AGGREGATE_TERMS = {
 _NON_ENTITY_FILLER_TERMS = {
     'forma',
     'bem',
+    'saber',
     'objetiva',
     'objetivo',
     'objetivamente',
@@ -699,8 +700,17 @@ def _extract_unknown_student_reference(actor: dict[str, Any] | None, message: st
         return None
     if not _linked_students(actor):
         return None
+    from .intent_analysis_runtime import _is_admin_finance_combined_query as _is_admin_finance_combined_query_local
+
     if (
-        _looks_like_family_finance_aggregate_query(message)
+        _is_admin_finance_combined_query_local(message)
+        or 'documentacao e financeiro' in normalized_message
+        or 'documentação e financeiro' in normalized_message
+        or 'quadro unico de documentacao e financeiro' in normalized_message
+        or 'quadro único de documentação e financeiro' in normalized_message
+        or 'pendencia esta bloqueando atendimento' in normalized_message
+        or 'pendência está bloqueando atendimento' in normalized_message
+        or _looks_like_family_finance_aggregate_query(message)
         or _looks_like_family_academic_aggregate_query(message)
         or _looks_like_family_admin_aggregate_query(message)
         or _looks_like_public_pricing_query(message)

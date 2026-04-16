@@ -209,10 +209,16 @@ def _resolve_deterministic_public_guardrail_answer(
     conversation_context: dict[str, Any] | None = None,
 ) -> DeterministicPublicGuardrailAnswer | None:
     from .public_doc_knowledge import compose_public_teacher_directory_boundary
+    from .public_doc_knowledge import match_public_canonical_lane
     from .public_known_unknowns import compose_public_known_unknown_answer, detect_public_known_unknown_key
     from .public_profile_runtime import _compose_scope_boundary_answer as _compose_scope_boundary_answer_local
 
     if looks_like_restricted_document_query(message):
+        return None
+
+    # Canonical public-document bundles should stay on the institutional path
+    # even when the phrasing is broad enough to resemble a generic question.
+    if match_public_canonical_lane(message):
         return None
 
     if _is_explicit_open_world_scope_boundary_query(message):
@@ -270,6 +276,8 @@ def _is_explicit_open_world_scope_boundary_query(message: str) -> bool:
         for term in {
             'sem relacao com escola',
             'sem relacao com a escola',
+            'fora do tema escolar',
+            'fora do tema da escola',
             'fora do escopo da escola',
             'fora do contexto da escola',
             'sem relacao com o colegio',
