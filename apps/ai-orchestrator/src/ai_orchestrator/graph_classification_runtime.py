@@ -223,6 +223,11 @@ def classify_request(state: OrchestrationState) -> OrchestrationState:
 
 def route_request(state: OrchestrationState, runtime: GraphRuntimeConfig) -> OrchestrationState:
     _refresh_native_namespace()
+    from .runtime_core import (
+        looks_like_school_scope_message as _looks_like_school_scope_message_local,
+        looks_like_scope_boundary_candidate as _looks_like_scope_boundary_candidate_local,
+    )
+
     request = state['request']
     classification = state['classification']
     message = request.message.lower()
@@ -242,6 +247,9 @@ def route_request(state: OrchestrationState, runtime: GraphRuntimeConfig) -> Orc
     elif _is_restricted_document_query(message):
         route = OrchestrationMode.hybrid_retrieval.value
         reason = 'consulta autenticada de documento interno deve usar retrieval restrito com grounding'
+    elif _looks_like_scope_boundary_candidate_local(message) and not _looks_like_school_scope_message_local(message):
+        route = OrchestrationMode.structured_tool.value
+        reason = 'mensagem explicitamente fora do escopo escolar e deve responder por boundary deterministico'
     elif _is_known_public_doc_bundle_query(message):
         route = OrchestrationMode.structured_tool.value
         reason = 'bundle publico canonico deve seguir lane publica mesmo se a classificacao superestimar autenticacao'

@@ -66,6 +66,117 @@ class MessageResponseFlowState:
     public_canonical_lane_request: str | None = None
 
 
+_PROTECTED_FOCUS_TOOLS = {
+    'get_student_academic_summary',
+    'get_student_upcoming_assessments',
+    'get_student_attendance_timeline',
+    'get_student_financial_summary',
+}
+
+
+def _coerce_preview_update(preview: Any, **update: Any) -> Any:
+    if hasattr(preview, 'model_copy'):
+        return preview.model_copy(update=update)
+    for field_name, value in update.items():
+        setattr(preview, field_name, value)
+    return preview
+
+
+def _preview_uses_protected_scope(preview: Any) -> bool:
+    classification = getattr(preview, 'classification', None)
+    if classification is None:
+        return False
+    graph_path = tuple(getattr(preview, 'graph_path', ()) or ())
+    if any(str(node).startswith('turn_frame:protected.') for node in graph_path):
+        return True
+    selected_tools = {
+        str(tool_name).strip()
+        for tool_name in (getattr(preview, 'selected_tools', None) or [])
+        if str(tool_name).strip()
+    }
+    if selected_tools & _PROTECTED_FOCUS_TOOLS:
+        return True
+    return (
+        getattr(classification, 'domain', None) in {QueryDomain.academic, QueryDomain.finance}
+        and getattr(classification, 'access_tier', None) is not AccessTier.public
+    )
+
+
+def _protected_domain_hint_for_message(
+    *,
+    message: str,
+    actor: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None,
+) -> QueryDomain | None:
+    from .public_orchestration_runtime import _explicit_protected_domain_hint
+
+    return _explicit_protected_domain_hint(
+        message,
+        actor=actor,
+        conversation_context=conversation_context,
+    )
+
+
+def _realign_preview_to_protected_domain(preview: Any, *, protected_domain: QueryDomain) -> Any:
+    from .public_orchestration_runtime import (
+        _align_protected_preview_tools,
+        _protected_selected_tools_for_domain,
+    )
+
+    classification = IntentClassification(
+        domain=protected_domain,
+        access_tier=AccessTier.authenticated,
+        confidence=max(
+            0.92,
+            float(getattr(getattr(preview, 'classification', None), 'confidence', 0.0) or 0.0),
+        ),
+        reason=f'deterministic_protected_{protected_domain.value}_focus',
+    )
+    updated_preview = _coerce_preview_update(
+        preview,
+        mode=OrchestrationMode.structured_tool,
+        classification=classification,
+        reason=f'deterministic_protected_{protected_domain.value}_focus',
+        needs_authentication=True,
+    )
+    if hasattr(updated_preview, 'model_copy'):
+        return _align_protected_preview_tools(updated_preview)
+    return _coerce_preview_update(
+        updated_preview,
+        selected_tools=_protected_selected_tools_for_domain(protected_domain),
+    )
+
+
+def _should_apply_deterministic_scope_boundary(
+    *,
+    message: str,
+    preview: Any,
+    actor: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None,
+    authenticated: bool,
+) -> bool:
+    if looks_like_restricted_document_query(message):
+        return False
+    explicit_open_world = _is_explicit_open_world_scope_boundary_query(message)
+    if explicit_open_world:
+        return True
+    if not (
+        looks_like_scope_boundary_candidate(message)
+        and not looks_like_school_scope_message(message)
+    ):
+        return False
+    if not authenticated:
+        return True
+    protected_domain_hint = _protected_domain_hint_for_message(
+        message=message,
+        actor=actor,
+        conversation_context=conversation_context,
+    )
+    if protected_domain_hint in {QueryDomain.academic, QueryDomain.finance}:
+        return False
+    return not _preview_uses_protected_scope(preview)
+
+
 def _build_response(
     *,
     request: MessageResponseRequest,
@@ -249,6 +360,7 @@ async def _load_runtime_request_state(
     settings: Any,
 ) -> RuntimeRequestState:
     actor = await _fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
+    actor = _build_effective_actor_context(actor, request.user)
     effective_user = _merge_user_context(actor, request.user)
     effective_conversation_id = _effective_conversation_id(request)
     conversation_context = await _fetch_conversation_context(
@@ -574,6 +686,63 @@ async def _run_preflight_stage(
                 'eduassist.orchestration.protected_domain_rescue_applied': True,
                 'eduassist.orchestration.protected_domain_rescue_domain': preview.classification.domain.value,
             }
+        )
+
+    protected_domain_hint = None
+    if effective_user.authenticated:
+        protected_domain_hint = _protected_domain_hint_for_message(
+            message=request.message,
+            actor=actor,
+            conversation_context=context_payload,
+        )
+        if protected_domain_hint in {QueryDomain.academic, QueryDomain.finance}:
+            preview = _realign_preview_to_protected_domain(
+                preview,
+                protected_domain=protected_domain_hint,
+            )
+            set_span_attributes(
+                **{
+                    'eduassist.orchestration.protected_focus_override_applied': True,
+                    'eduassist.orchestration.protected_focus_override_domain': protected_domain_hint.value,
+                }
+            )
+
+    if _should_apply_deterministic_scope_boundary(
+        message=request.message,
+        preview=preview,
+        actor=actor,
+        conversation_context=context_payload,
+        authenticated=bool(effective_user.authenticated),
+    ):
+        preview.mode = OrchestrationMode.structured_tool
+        preview.classification = IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.99,
+            reason='deterministic_scope_boundary',
+        )
+        preview.selected_tools = list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile']))
+        preview.needs_authentication = False
+        message_text = _compose_scope_boundary_answer(
+            school_profile or {},
+            conversation_context=context_payload,
+        )
+        return flow_state, await _finalize_direct_guardrail_response(
+            settings=settings,
+            request=request,
+            engine_name=engine_name,
+            engine_mode=engine_mode,
+            effective_conversation_id=effective_conversation_id,
+            actor=actor,
+            preview=preview,
+            school_profile=school_profile,
+            conversation_context=context_payload,
+            langgraph_trace_metadata=langgraph_trace_metadata,
+            message_text=message_text,
+            answer_verifier_valid=True,
+            answer_verifier_reason='deterministic_scope_boundary',
+            deterministic_fallback_available=True,
+            answer_verifier_judge_used=False,
         )
 
     linked_students = _linked_students(actor)

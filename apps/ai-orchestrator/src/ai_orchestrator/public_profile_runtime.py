@@ -21,6 +21,7 @@ from .conversation_focus_runtime import _is_greeting_only
 from .intent_analysis_runtime import (
     _compose_required_documents_answer,
     _contains_any,
+    _is_explicit_public_pricing_projection_query,
     _is_assistant_identity_query,
     _is_capability_query,
     _is_direct_service_routing_bundle_query,
@@ -1603,6 +1604,14 @@ def _is_public_teacher_identity_query(message: str) -> bool:
         return False
     if _requested_public_attribute(message) in {'name', 'whatsapp', 'email', 'phone', 'contact'}:
         return True
+    if (
+        any(_message_matches_term(normalized, term) for term in {'nome', 'contato', 'canal'})
+        and any(
+            _message_matches_term(normalized, term)
+            for term in {'publico', 'público', 'coordenacao', 'coordenação'}
+        )
+    ):
+        return True
     return any(
         _message_matches_term(normalized, term)
         for term in {
@@ -1933,6 +1942,21 @@ def _compose_scope_boundary_answer(
     return (
         f'Nao tenho base confiavel aqui no EduAssist do {school_name} para responder esse tema fora do escopo da escola. '
         'Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro.'
+    )
+
+
+def _compose_external_public_facility_boundary_answer(
+    profile: dict[str, Any],
+    *,
+    facility_label: str = 'essa entidade publica externa',
+    conversation_context: dict[str, Any] | None = None,
+) -> str:
+    school_name = str(profile.get('school_name', 'Colegio Horizonte'))
+    assistant_prefix = '' if _assistant_already_introduced(conversation_context) else f'No EduAssist do {school_name}, '
+    return (
+        f'{assistant_prefix}eu consigo responder apenas sobre servicos, documentos e canais da escola. '
+        f'Como sua pergunta fala de {facility_label}, esse assunto fica fora do escopo da escola e eu nao tenho base aqui para informar esse dado externo. '
+        'Se quiser, eu posso te dizer o equivalente publicado sobre a estrutura ou os canais do colegio.'
     )
 
 
@@ -3228,8 +3252,6 @@ def _explicit_service_routing_lines(profile: dict[str, Any], message: str) -> li
         if not any(_message_matches_term(normalized, term) for term in terms):
             continue
         item = catalog.get(service_key)
-        if not isinstance(item, dict):
-            continue
         extra_contacts = ''
         if service_key == 'atendimento_admissoes':
             extra_contacts = contact_suffix(
@@ -3237,9 +3259,16 @@ def _explicit_service_routing_lines(profile: dict[str, Any], message: str) -> li
             )
         elif service_key == 'financeiro_escolar':
             extra_contacts = contact_suffix(label_terms={'financeiro'}, include_whatsapp=False)
-        add(
-            f'- {label}: {str(item.get("request_channel") or "canal institucional").strip()}.{extra_contacts}'
-        )
+        if isinstance(item, dict):
+            add(
+                f'- {label}: {str(item.get("request_channel") or "canal institucional").strip()}.{extra_contacts}'
+            )
+            continue
+        if service_key == 'financeiro_escolar':
+            add('- Financeiro: bot, portal autenticado ou e-mail institucional.')
+            continue
+        if service_key == 'atendimento_admissoes':
+            add('- Atendimento comercial / Admissoes: bot, WhatsApp comercial, admissions ou visita agendada.')
 
     return lines
 
@@ -4937,6 +4966,79 @@ NON_AGENTIC_PUBLIC_COMPOSITION_ACTS = {
     'capabilities',
 }
 
+_ACTION_READY_CANONICAL_PUBLIC_LANES = {
+    'public_bundle.academic_policy_overview',
+    'public_bundle.governance_protocol',
+    'public_bundle.facilities_study_support',
+    'public_bundle.secretaria_portal_credentials',
+    'public_bundle.first_month_risks',
+    'public_bundle.family_new_calendar_assessment_enrollment',
+    'public_bundle.timeline_lifecycle',
+    'public_bundle.bolsas_and_processes',
+    'public_bundle.transport_uniform_bundle',
+    'public_bundle.outings_authorizations',
+    'public_bundle.permanence_family_support',
+    'public_bundle.health_emergency_bundle',
+}
+
+
+def _should_preserve_deterministic_public_answer(
+    *,
+    resolved_act: str,
+    request_message: str,
+    original_message: str | None,
+    conversation_context: dict[str, Any] | None,
+    deterministic_text: str,
+    canonical_lane: str | None,
+) -> bool:
+    if resolved_act in NON_AGENTIC_PUBLIC_COMPOSITION_ACTS:
+        return True
+    if _is_explicit_public_pricing_projection_query(
+        original_message or request_message,
+        conversation_context=conversation_context,
+    ):
+        return True
+    normalized_message = _normalize_text(original_message or request_message)
+    normalized_deterministic = _normalize_text(deterministic_text)
+    if (
+        '/start link_<codigo>' in deterministic_text
+        or '/start link_<código>' in deterministic_text
+        or 'portal autenticado' in normalized_deterministic
+    ):
+        return True
+    if canonical_lane not in _ACTION_READY_CANONICAL_PUBLIC_LANES:
+        return False
+    if any(
+        _message_matches_term(normalized_message, term)
+        for term in {
+            'como',
+            'de que forma',
+            'na pratica',
+            'na prática',
+            'passo a passo',
+            'conectados',
+            'conectado',
+            'protocolo',
+            'fluxo',
+            'suporte',
+            'apoio',
+            'encaminhamento',
+        }
+    ):
+        return True
+    return any(
+        hint in normalized_deterministic
+        for hint in {
+            'na pratica',
+            'proximo passo',
+            'protocolo formal',
+            'passo a passo',
+            'primeiro',
+            'depois',
+            'por fim',
+        }
+    )
+
 
 async def _compose_public_profile_answer_agentic(
     *,
@@ -4983,7 +5085,17 @@ async def _compose_public_profile_answer_agentic(
         semantic_plan=semantic_plan,
     )
     resolved_act = _resolve_public_profile_act(context)
-    if resolved_act in NON_AGENTIC_PUBLIC_COMPOSITION_ACTS and not llm_forced_mode:
+    canonical_lane = match_public_canonical_lane(
+        context.source_message
+    ) or match_public_canonical_lane(original_message or message)
+    if not llm_forced_mode and _should_preserve_deterministic_public_answer(
+        resolved_act=resolved_act,
+        request_message=message,
+        original_message=original_message,
+        conversation_context=conversation_context,
+        deterministic_text=deterministic_text,
+        canonical_lane=canonical_lane,
+    ):
         return deterministic_text
 
     evidence_bundle = build_public_evidence_bundle(

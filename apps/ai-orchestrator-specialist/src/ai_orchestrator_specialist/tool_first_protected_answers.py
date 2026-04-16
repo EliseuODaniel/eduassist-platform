@@ -23,6 +23,8 @@ from .public_query_patterns import (
     _looks_like_public_doc_bundle_request,
 )
 
+_PASSING_GRADE_TARGET = 7.0
+
 
 @dataclass(frozen=True, kw_only=True)
 class ToolFirstProtectedDeps:
@@ -41,6 +43,9 @@ class ToolFirstProtectedDeps:
         default=lambda _summaries: None
     )
     looks_like_academic_risk_followup: Callable[[str], bool]
+    looks_like_academic_progression_followup: Callable[[str], bool] = field(
+        default=lambda _message: False
+    )
     looks_like_family_academic_aggregate_query: Callable[[str], bool]
     looks_like_family_attendance_aggregate_query: Callable[[str], bool]
     looks_like_upcoming_assessments_query: Callable[[str], bool]
@@ -54,6 +59,9 @@ class ToolFirstProtectedDeps:
     fetch_upcoming_assessments_payload: Callable[..., Awaitable[dict[str, Any] | None]]
     fetch_attendance_timeline_payload: Callable[..., Awaitable[dict[str, Any] | None]]
     compose_academic_risk_answer: Callable[[dict[str, Any]], str]
+    compose_academic_progression_answer: Callable[..., str | None] = field(
+        default=lambda *_args, **_kwargs: None
+    )
     compose_named_subject_grade_answer: Callable[..., str | None]
     compose_named_grade_answer: Callable[[dict[str, Any]], str]
     compose_named_attendance_answer: Callable[..., str | None]
@@ -110,6 +118,90 @@ def _looks_like_admin_finance_combo_followup(
     mentions_admin = any(term in recent_blob for term in {"documentacao", "documentação", "cadastro", "pendencia", "pendência", "administrativo", "administrativa"})
     mentions_finance = any(term in recent_blob for term in {"financeiro", "fatura", "faturas", "mensalidade", "mensalidades", "boleto", "boletos", "bloqueando atendimento", "bloqueio"})
     return mentions_admin and mentions_finance
+
+
+def _academic_subject_averages_from_summary(summary: dict[str, Any]) -> list[tuple[str, float]]:
+    grades = summary.get("grades")
+    if not isinstance(grades, list):
+        return []
+    rows: list[tuple[str, float]] = []
+    for row in grades:
+        if not isinstance(row, dict):
+            continue
+        score = row.get("score")
+        if score is None:
+            continue
+        try:
+            score_value = float(str(score))
+        except Exception:
+            continue
+        subject_name = str(row.get("subject_name") or "Disciplina").strip() or "Disciplina"
+        rows.append((subject_name, score_value))
+    return rows
+
+
+def _family_academic_ranking_local(
+    summaries: list[dict[str, Any]],
+    *,
+    deps: ToolFirstProtectedDeps,
+) -> list[dict[str, Any]]:
+    ranking: list[dict[str, Any]] = []
+    for summary in summaries:
+        student_name = str(summary.get("student_name") or "Aluno").strip() or "Aluno"
+        averages = _academic_subject_averages_from_summary(summary)
+        if not averages:
+            continue
+        below_target = [(name, value) for name, value in averages if value < _PASSING_GRADE_TARGET]
+        if below_target:
+            subject_name, value = min(
+                below_target,
+                key=lambda item: (item[1], deps.normalize_text(item[0])),
+            )
+            signature = (1, _PASSING_GRADE_TARGET - value, student_name)
+        else:
+            subject_name, value = min(
+                averages,
+                key=lambda item: (abs(item[1] - _PASSING_GRADE_TARGET), deps.normalize_text(item[0])),
+            )
+            signature = (0, _PASSING_GRADE_TARGET - value, student_name)
+        ranking.append(
+            {
+                "student_name": student_name,
+                "subject_name": subject_name,
+                "value": value,
+                "signature": signature,
+            }
+        )
+    ranking.sort(key=lambda item: item["signature"], reverse=True)
+    return ranking
+
+
+def _compose_cross_student_academic_comparison_direct_local(
+    summaries: list[dict[str, Any]],
+    *,
+    deps: ToolFirstProtectedDeps,
+    preferred_order: list[str] | None = None,
+) -> str | None:
+    ranking = _family_academic_ranking_local(summaries, deps=deps)
+    if len(ranking) < 2:
+        return None
+    by_name = {str(item["student_name"]): item for item in ranking}
+    ordered_names = [name for name in (preferred_order or []) if name in by_name]
+    if len(ordered_names) < 2:
+        ordered_names = list(by_name.keys())[:2]
+    if len(ordered_names) < 2:
+        return None
+    base = by_name[ordered_names[0]]
+    other = by_name[ordered_names[1]]
+    most_critical = base if float(base["value"]) <= float(other["value"]) else other
+    base_value = f"{float(base['value']):.1f}".replace(".", ",")
+    other_value = f"{float(other['value']):.1f}".replace(".", ",")
+    return (
+        f"Comparando {base['student_name']} com {other['student_name']}: "
+        f"{base['student_name']} tem o ponto academico mais sensivel em {base['subject_name']}, com media parcial {base_value}/10, "
+        f"enquanto {other['student_name']} aparece com menor media em {other['subject_name']}, com {other_value}/10. "
+        f"Hoje quem esta mais perto da media minima entre os dois e {most_critical['student_name']}, puxado por {most_critical['subject_name']}."
+    )
 
 
 def _attendance_totals(summary: dict[str, Any]) -> tuple[int, int, int]:
@@ -224,6 +316,49 @@ async def maybe_tool_first_protected_answer(
 ) -> SupervisorAnswerPayload | None:
     if looks_like_high_confidence_public_school_faq(ctx.request.message):
         return None
+
+    def _named_academic_students_in_message() -> list[str]:
+        normalized_message = deps.normalize_text(ctx.request.message)
+        excluded_names: set[str] = set()
+        exclusion_markers = ("tira", "tirando", "ignora", "ignore", "remove", "sem", "menos", "exceto", "fora")
+        matches: list[str] = []
+        for student in deps.linked_students(ctx.actor, capability="academic"):
+            if not isinstance(student, dict):
+                continue
+            full_name = str(student.get("full_name") or "").strip()
+            if not full_name:
+                continue
+            normalized_full_name = deps.normalize_text(full_name)
+            first_name = normalized_full_name.split(" ")[0] if normalized_full_name else ""
+            candidate_forms = tuple(value for value in {normalized_full_name, first_name} if value)
+            if any(
+                f"{marker} {candidate}" in normalized_message
+                or f"{marker} o {candidate}" in normalized_message
+                or f"{marker} a {candidate}" in normalized_message
+                for marker in exclusion_markers
+                for candidate in candidate_forms
+            ):
+                excluded_names.add(full_name)
+                continue
+            if normalized_full_name and normalized_full_name in normalized_message:
+                matches.append(full_name)
+                continue
+            if first_name and f" {first_name}" in f" {normalized_message}":
+                matches.append(full_name)
+        ordered_matches = [name for name in list(dict.fromkeys(matches)) if name not in excluded_names]
+        if ordered_matches:
+            return ordered_matches
+        if excluded_names:
+            remaining = [
+                str(student.get("full_name") or "").strip()
+                for student in deps.linked_students(ctx.actor, capability="academic")
+                if isinstance(student, dict)
+                and str(student.get("full_name") or "").strip()
+                and str(student.get("full_name") or "").strip() not in excluded_names
+            ]
+            if len(remaining) == 1:
+                return remaining
+        return ordered_matches
 
     def _compose_family_upcoming_answer(rows: list[tuple[str, dict[str, Any], dict[str, Any]]]) -> str:
         lines = ["Proximas avaliacoes das contas vinculadas:"]
@@ -407,6 +542,7 @@ async def maybe_tool_first_protected_answer(
             )
 
     if ctx.request.user.authenticated and deps.looks_like_upcoming_assessments_query(ctx.request.message):
+        named_academic_students = _named_academic_students_in_message()
         aggregate_upcoming_query = any(
             term in normalized
             for term in {
@@ -419,7 +555,7 @@ async def maybe_tool_first_protected_answer(
                 "visao rapida",
                 "visão rápida",
             }
-        )
+        ) or len(named_academic_students) >= 2
         student_hint = deps.resolved_academic_target_name(ctx, resolved=ctx.resolved_turn)
         if not aggregate_upcoming_query and deps.needs_specific_academic_student_clarification(ctx, target_name=student_hint, subject_hint=None):
             return deps.build_academic_student_selection_clarify(
@@ -427,7 +563,7 @@ async def maybe_tool_first_protected_answer(
                 reason="specialist_supervisor_tool_first:upcoming_assessments_student_clarify",
                 graph_path=["specialist_supervisor", "tool_first", "upcoming_assessments_student_clarify"],
             )
-        if student_hint:
+        if student_hint and not aggregate_upcoming_query:
             payload = await deps.fetch_upcoming_assessments_payload(ctx, student_name_hint=student_hint)
             student = payload.get("student") if isinstance(payload, dict) else None
             summary = payload.get("summary") if isinstance(payload, dict) else None
@@ -454,6 +590,8 @@ async def maybe_tool_first_protected_answer(
         for student in deps.linked_students(ctx.actor, capability="academic"):
             student_name = str(student.get("full_name") or "").strip()
             if not student_name:
+                continue
+            if named_academic_students and student_name not in named_academic_students:
                 continue
             academic_payload = await deps.fetch_academic_summary_payload(ctx, student_name_hint=student_name)
             upcoming_payload = await deps.fetch_upcoming_assessments_payload(ctx, student_name_hint=student_name)
@@ -514,6 +652,33 @@ async def maybe_tool_first_protected_answer(
         term in normalized for term in {"administrativa", "administrativo", "administrativas", "administrativos", "regularidade"}
     ):
         family_attendance_query = deps.looks_like_family_attendance_aggregate_query(ctx.request.message)
+        named_academic_students = _named_academic_students_in_message()
+        attendance_comparison_query = len(named_academic_students) >= 2 and any(
+            term in normalized
+            for term in {
+                "entre ",
+                "quem esta mais delicado por frequencia",
+                "quem está mais delicado por frequência",
+                "mais delicado por frequencia",
+                "mais delicado por frequência",
+                "por que esse alerta pesa mais",
+                "por que esse alerta pesa mais",
+                "frequencia hoje",
+                "frequência hoje",
+            }
+        ) and any(
+            term in normalized
+            for term in {
+                "frequencia",
+                "frequência",
+                "falta",
+                "faltas",
+                "presenca",
+                "presença",
+                "alerta",
+            }
+        )
+        family_attendance_query = family_attendance_query or attendance_comparison_query
         single_attendance_focus = any(
             term in normalized
             for term in {
@@ -533,11 +698,48 @@ async def maybe_tool_first_protected_answer(
                 "por que a frequência",
             }
         )
-        family_aggregate_query = deps.looks_like_family_academic_aggregate_query(ctx.request.message)
+        family_aggregate_query = deps.looks_like_family_academic_aggregate_query(ctx.request.message) or len(named_academic_students) >= 2
+        comparison_query = len(named_academic_students) >= 2 and any(
+            term in normalized
+            for term in {
+                "compare",
+                "comparar",
+                "comparacao",
+                "comparação",
+                "veredito academico",
+                "veredito acadêmico",
+                "quem está mais perto de reprovar",
+                "quem esta mais perto de reprovar",
+                "entre ",
+            }
+        )
+        single_named_focus_query = len(named_academic_students) == 1 and any(
+            term in normalized
+            for term in {
+                "qual componente",
+                "qual disciplina",
+                "mais alerta",
+                "acende mais alerta",
+                "chama mais atencao",
+                "chama mais atenção",
+                "mais fragil",
+                "mais frágil",
+                "mais vulneravel",
+                "mais vulnerável",
+                "mais critico",
+                "mais crítico",
+                "ponto mais fraco",
+                "ponto academico mais fraco",
+                "ponto acadêmico mais fraco",
+                "mais claro",
+            }
+        )
         subject_hint = deps.subject_hint_from_text(ctx.request.message) or (
             memory.active_subject if deps.looks_like_subject_followup(ctx.request.message) else None
         )
         student_hint = deps.resolved_academic_target_name(ctx, resolved=ctx.resolved_turn)
+        if single_named_focus_query:
+            student_hint = named_academic_students[0]
         if family_attendance_query:
             summaries: list[dict[str, Any]] = []
             for student in deps.linked_students(ctx.actor, capability="academic"):
@@ -564,6 +766,8 @@ async def maybe_tool_first_protected_answer(
                     graph_leaf="attendance_summary_aggregate",
                     suggested_domain="academic",
                 )
+        if single_named_focus_query:
+            family_aggregate_query = False
         if not family_aggregate_query and deps.needs_specific_academic_student_clarification(
             ctx,
             target_name=student_hint,
@@ -574,7 +778,7 @@ async def maybe_tool_first_protected_answer(
                 reason="specialist_supervisor_tool_first:academic_student_clarify",
                 graph_path=["specialist_supervisor", "tool_first", "academic_student_clarify"],
             )
-        if student_hint:
+        if student_hint and not family_aggregate_query:
             payload = await deps.fetch_academic_summary_payload(ctx, student_name_hint=student_hint)
             summary = payload.get("summary") if isinstance(payload, dict) else None
             if isinstance(summary, dict):
@@ -601,7 +805,14 @@ async def maybe_tool_first_protected_answer(
                             graph_leaf="attendance_summary",
                             suggested_domain="academic",
                         )
-                if deps.looks_like_academic_risk_followup(ctx.request.message):
+                if deps.looks_like_academic_progression_followup(ctx.request.message):
+                    answer_text = deps.compose_academic_progression_answer(
+                        summary,
+                        message=ctx.request.message,
+                    )
+                elif single_named_focus_query:
+                    answer_text = deps.compose_academic_risk_answer(summary)
+                elif deps.looks_like_academic_risk_followup(ctx.request.message):
                     answer_text = deps.compose_academic_risk_answer(summary)
                 else:
                     answer_text = deps.compose_named_subject_grade_answer(summary, subject_hint=subject_hint)
@@ -637,11 +848,63 @@ async def maybe_tool_first_protected_answer(
             )
         summaries: list[dict[str, Any]] = []
         for student in deps.linked_students(ctx.actor, capability="academic"):
+            if named_academic_students:
+                full_name = str(student.get("full_name") or "").strip()
+                if full_name not in named_academic_students:
+                    continue
             payload = await deps.fetch_academic_summary_payload(ctx, student_name_hint=str(student.get("full_name") or ""))
             summary = payload.get("summary") if isinstance(payload, dict) else None
             if isinstance(summary, dict):
                 summaries.append(summary)
         if summaries:
+            if comparison_query and len(summaries) >= 2:
+                comparison_answer = _compose_cross_student_academic_comparison_direct_local(
+                    summaries,
+                    deps=deps,
+                    preferred_order=named_academic_students,
+                )
+                if comparison_answer:
+                    return _build_protected_tool_payload(
+                        message_text=comparison_answer,
+                        domain="academic",
+                        access_tier=_access_tier_for_domain("academic", True),
+                        confidence=0.99,
+                        reason="specialist_supervisor_tool_first:academic_comparison",
+                        summary="Comparacao academica deterministica entre alunos vinculados.",
+                        supports=[
+                            MessageEvidenceSupport(
+                                kind="academic_summary",
+                                label=str(summary.get("student_name") or "Aluno"),
+                                detail=deps.safe_excerpt(deps.compose_academic_snapshot_lines(summary)[0], limit=180),
+                            )
+                            for summary in summaries[:4]
+                        ],
+                        graph_leaf="academic_comparison",
+                        suggested_domain="academic",
+                    )
+            if len(summaries) == 1 and deps.looks_like_academic_progression_followup(ctx.request.message):
+                progression_answer = deps.compose_academic_progression_answer(
+                    summaries[0],
+                    message=ctx.request.message,
+                )
+                if progression_answer:
+                    return _build_protected_tool_payload(
+                        message_text=progression_answer,
+                        domain="academic",
+                        access_tier=_access_tier_for_domain("academic", True),
+                        confidence=0.99,
+                        reason="specialist_supervisor_tool_first:academic_progression",
+                        summary="Resposta academica personalizada sobre melhor disciplina, pior disciplina e distancia para a media.",
+                        supports=[
+                            MessageEvidenceSupport(
+                                kind="academic_summary",
+                                label=str(summaries[0].get("student_name") or "Aluno"),
+                                detail=deps.safe_excerpt(progression_answer, limit=180),
+                            )
+                        ],
+                        graph_leaf="academic_progression",
+                        suggested_domain="academic",
+                    )
             return _build_protected_tool_payload(
                 message_text=deps.compose_academic_aggregate_answer(summaries),
                 domain="academic",

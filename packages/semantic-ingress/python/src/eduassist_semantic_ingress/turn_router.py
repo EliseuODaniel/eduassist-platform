@@ -43,6 +43,58 @@ from eduassist_observability import (
 TurnScope = Literal["public", "protected", "meta", "unknown"]
 TurnRouterConfidenceBucket = Literal["low", "medium", "high"]
 
+_EXPLICIT_UNAUTHENTICATED_TERMS = {
+    "nao estou autenticado",
+    "não estou autenticado",
+    "nao estou logado",
+    "não estou logado",
+    "sem autenticacao",
+    "sem autenticação",
+    "sem login",
+    "nao tenho acesso",
+    "não tenho acesso",
+    "nao vinculei",
+    "não vinculei",
+    "ainda nao vinculei",
+    "ainda não vinculei",
+    "nao estou vinculado",
+    "não estou vinculado",
+    "sem vinculo",
+    "sem vínculo",
+}
+
+_AUTH_GUIDANCE_TERMS = {
+    "como vinculo minha conta",
+    "como eu vinculo minha conta",
+    "como vinculo meu telegram",
+    "como eu vinculo meu telegram",
+    "como faco o vinculo",
+    "como faço o vinculo",
+    "codigo de vinculacao",
+    "código de vinculação",
+    "link_",
+}
+
+
+def _looks_like_explicit_unauthenticated_request(message: str) -> bool:
+    normalized = normalize_ingress_text(message)
+    if not normalized:
+        return False
+    return any(term in normalized for term in _EXPLICIT_UNAUTHENTICATED_TERMS | _AUTH_GUIDANCE_TERMS)
+
+
+def effective_turn_frame_authenticated(
+    *,
+    authenticated: bool,
+    actor_present: bool,
+    message: str,
+) -> bool:
+    if authenticated:
+        return True
+    if _looks_like_explicit_unauthenticated_request(message):
+        return False
+    return actor_present
+
 
 @dataclass(frozen=True)
 class CapabilitySpec:
@@ -67,6 +119,7 @@ class FocusFrame(BaseModel):
     active_entity: str | None = None
     active_attribute: str | None = None
     active_actor: str | None = None
+    active_targets: list[str] = Field(default_factory=list)
     pending_question_type: str | None = None
     requested_channel: str | None = None
     time_reference: str | None = None
@@ -174,6 +227,113 @@ _PROTECTED_ADMIN_PERSONAL_TERMS = {
     "cadastro da ana",
 }
 
+_PROTECTED_ACCESS_SCOPE_TERMS = {
+    "o que eu consigo consultar",
+    "o que eu consigo ver",
+    "o que consigo ver",
+    "o que eu posso ver",
+    "o que posso ver",
+    "quero meu escopo",
+    "meu escopo",
+    "escopo exato",
+    "escopo entre academico e financeiro",
+    "escopo entre acadêmico e financeiro",
+    "quais alunos estao vinculados",
+    "quais alunos estão vinculados",
+    "quem esta vinculado",
+    "quem está vinculado",
+}
+
+_TEACHER_SCHEDULE_TERMS = {
+    "sou professor",
+    "sou professora",
+    "meu horario",
+    "meu horário",
+    "minhas turmas",
+    "minhas disciplinas",
+    "grade docente",
+    "rotina docente",
+    "deste ano",
+}
+
+_TEACHER_SEGMENT_FOLLOWUP_TERMS = {
+    "ensino medio",
+    "ensino médio",
+    "medio",
+    "médio",
+    "fundamental",
+    "so a parte",
+    "só a parte",
+    "apenas a parte",
+}
+
+_ADMIN_FINANCE_COMBO_ADMIN_TERMS = {
+    "documentacao",
+    "documentação",
+    "documental",
+    "cadastro",
+    "administrativ",
+    "pendenc",
+    "regularidade",
+}
+
+_ADMIN_FINANCE_COMBO_FINANCE_TERMS = {
+    "financeir",
+    "mensalidade",
+    "fatura",
+    "boleto",
+    "vencimento",
+    "pagamento",
+    "cobranca",
+    "cobrança",
+}
+
+_ADMIN_FINANCE_COMBO_LINK_TERMS = {
+    "junto",
+    "ao mesmo tempo",
+    "ao mesmo passo",
+    "impedimento de atendimento",
+    "impedimento do atendimento",
+    "bloqueio de atendimento",
+    "ha impedimento",
+    "há impedimento",
+}
+
+_ACADEMIC_UPCOMING_TERMS = {
+    "proximas provas",
+    "próximas provas",
+    "proximas avaliacoes",
+    "próximas avaliações",
+    "avaliacoes previstas",
+    "avaliações previstas",
+    "cronograma avaliativo",
+    "provas e avaliacoes",
+    "provas e avaliações",
+    "entregas previstas",
+}
+
+_ACADEMIC_COMPARISON_TERMS = {
+    "compare",
+    "compar",
+    "comparar",
+    "contra",
+    "entre ",
+    "veredito academico",
+    "veredito acadêmico",
+}
+
+_ACADEMIC_COMPARISON_ANCHORS = {
+    "reprovar",
+    "reprov",
+    "academ",
+    "media minima",
+    "média mínima",
+    "media parcial",
+    "média parcial",
+    "componente",
+    "disciplina",
+}
+
 _EXTERNAL_PUBLIC_FACILITY_TERMS = {
     "da cidade",
     "municipal",
@@ -184,6 +344,88 @@ _EXTERNAL_PUBLIC_FACILITY_TERMS = {
     "biblioteca pública",
     "publica municipal",
     "pública municipal",
+}
+
+_EXTERNAL_PUBLIC_FACILITY_BOUNDARY_TERMS = {
+    "fora do colegio",
+    "fora do colégio",
+    "fora da escola",
+    "nao e a biblioteca da escola",
+    "não é a biblioteca da escola",
+    "nao e biblioteca da escola",
+    "não é biblioteca da escola",
+    "nao e da escola",
+    "não é da escola",
+    "nao e do colegio",
+    "não é do colégio",
+    "fora do colegio horizonte",
+    "fora do colégio horizonte",
+    "na cidade",
+    "da cidade",
+    "externa",
+    "fora daqui",
+}
+
+_RESTRICTED_DOC_ANCHOR_TERMS = {
+    "manual interno",
+    "protocolo interno",
+    "playbook interno",
+    "documento interno",
+    "documentos internos",
+    "material interno",
+    "orientacao interna",
+    "orientação interna",
+    "procedimento interno",
+    "fluxo interno",
+    "rotina interna",
+    "rotinas internas",
+    "validacao interna",
+    "validação interna",
+    "validacoes internas",
+    "validações internas",
+}
+
+_RESTRICTED_DOC_NOUN_TERMS = {
+    "manual",
+    "protocolo",
+    "playbook",
+    "documento",
+    "documentos",
+    "material",
+    "orientacao",
+    "orientação",
+    "procedimento",
+    "fluxo",
+    "rotina",
+    "validacao",
+    "validação",
+    "validacoes",
+    "validações",
+}
+
+_RESTRICTED_DOC_SIGNAL_TERMS = {
+    "escopo",
+    "telegram",
+    "parcial",
+    "professor",
+    "docente",
+    "avaliac",
+    "comunic",
+    "pedagog",
+    "negoci",
+    "financeir",
+    "quitacao",
+    "quitação",
+    "promessa de quitacao",
+    "promessa de quitação",
+    "pagamento",
+    "transferenc",
+    "secretaria",
+    "internacional",
+    "hospedagem",
+    "viagem",
+    "excursao",
+    "excursão",
 }
 
 _OPEN_TIME_TERMS = {"abre", "abertura"}
@@ -456,6 +698,60 @@ _CAPABILITY_SPECS: tuple[CapabilitySpec, ...] = (
         priority=3,
     ),
     CapabilitySpec(
+        capability_id="protected.account.access_scope",
+        domain="institution",
+        access_tier="authenticated",
+        scope="protected",
+        description="explicar o escopo autenticado da conta entre acadêmico e financeiro",
+        aliases=(
+            "o que eu consigo consultar",
+            "o que eu consigo ver",
+            "o que eu posso ver",
+            "quero meu escopo",
+            "meu escopo exato",
+            "escopo entre academico e financeiro",
+            "escopo entre acadêmico e financeiro",
+            "quais alunos estao vinculados",
+            "quais alunos estão vinculados",
+        ),
+        follow_up_aliases=("e sobre cada um", "e por aluno", "e no telegram"),
+        priority=18,
+    ),
+    CapabilitySpec(
+        capability_id="protected.documents.restricted_lookup",
+        domain="support",
+        access_tier="sensitive",
+        scope="protected",
+        description="consultar manual, protocolo, playbook ou procedimento interno restrito",
+        aliases=(
+            "manual interno",
+            "protocolo interno",
+            "playbook interno",
+            "documento interno",
+            "material interno",
+            "procedimento interno",
+            "fluxo interno",
+        ),
+        priority=18,
+    ),
+    CapabilitySpec(
+        capability_id="protected.institution.admin_finance_status",
+        domain="institution",
+        access_tier="sensitive",
+        scope="protected",
+        description="combinar regularidade administrativa e financeiro para apontar impedimentos",
+        aliases=(
+            "documentacao e financeiro",
+            "documentação e financeiro",
+            "administrativo e financeiro",
+            "administrativa e financeiro",
+            "impedimento de atendimento",
+            "bloqueio de atendimento",
+        ),
+        follow_up_aliases=("e isso bloqueia atendimento", "e ha impedimento", "e há impedimento"),
+        priority=21,
+    ),
+    CapabilitySpec(
         capability_id="protected.finance.summary",
         domain="finance",
         access_tier="sensitive",
@@ -488,6 +784,84 @@ _CAPABILITY_SPECS: tuple[CapabilitySpec, ...] = (
         ),
         follow_up_aliases=("e o proximo vencimento", "e o próximo vencimento"),
         priority=19,
+    ),
+    CapabilitySpec(
+        capability_id="protected.teacher.schedule",
+        domain="academic",
+        access_tier="authenticated",
+        scope="protected",
+        description="consultar grade docente, turmas e disciplinas do professor autenticado",
+        aliases=(
+            "sou professor",
+            "sou professora",
+            "meu horario",
+            "meu horário",
+            "minhas turmas",
+            "minhas disciplinas",
+            "grade docente",
+            "rotina docente",
+        ),
+        follow_up_aliases=("ensino medio", "ensino médio", "só a parte", "so a parte"),
+        priority=28,
+    ),
+    CapabilitySpec(
+        capability_id="protected.academic.upcoming_assessments",
+        domain="academic",
+        access_tier="authenticated",
+        scope="protected",
+        description="consultar próximas avaliações por aluno ou agregado familiar",
+        aliases=(
+            "proximas provas",
+            "próximas provas",
+            "proximas avaliacoes",
+            "próximas avaliações",
+            "avaliacoes previstas",
+            "avaliações previstas",
+            "provas e avaliacoes",
+            "provas e avaliações",
+        ),
+        follow_up_aliases=("e as proximas provas", "e as próximas provas"),
+        priority=29,
+    ),
+    CapabilitySpec(
+        capability_id="protected.academic.family_comparison",
+        domain="academic",
+        access_tier="authenticated",
+        scope="protected",
+        description="comparar academicamente dois alunos vinculados e apontar o maior risco",
+        aliases=(
+            "veredito academico",
+            "veredito acadêmico",
+            "quem esta mais perto de reprovar",
+            "quem está mais perto de reprovar",
+            "entre ana e lucas",
+            "entre lucas e ana",
+        ),
+        follow_up_aliases=(
+            "tira o",
+            "mostra so",
+            "mostra só",
+            "só a ana",
+            "so a ana",
+            "agora quero apenas",
+            "agora quero só",
+            "agora quero so",
+            "fique apenas com",
+            "foque só",
+            "foque so",
+            "recorte só",
+            "recorte so",
+            "em quais materias",
+            "em quais matérias",
+            "em quais disciplinas",
+            "mais exposta",
+            "mais exposto",
+            "mais vulneravel",
+            "mais vulnerável",
+            "mais fragilizada",
+            "mais fragilizado",
+        ),
+        priority=30,
     ),
     CapabilitySpec(
         capability_id="protected.academic.grades",
@@ -557,6 +931,38 @@ def capability_spec(capability_id: str | None) -> CapabilitySpec | None:
     return _SPEC_BY_ID.get(str(capability_id or "").strip())
 
 
+def _merge_focus_with_candidate(
+    focus: FocusFrame,
+    *,
+    candidate: CapabilityCandidate,
+    recent_user_message: str | None,
+    recent_assistant_message: str | None,
+) -> FocusFrame:
+    merged_domain = focus.domain if focus.domain and focus.domain != "unknown" else candidate.domain
+    merged_scope = focus.scope if focus.scope != "unknown" else candidate.scope
+    merged_access_tier = (
+        focus.access_tier
+        if focus.access_tier and focus.access_tier not in {"public", "unknown"}
+        else candidate.access_tier
+    )
+    merged_attribute = focus.active_attribute or candidate.requested_attribute
+    merged_entity = focus.active_entity or candidate.public_focus_hint
+    merged_confidence = max(focus.confidence, min(0.92, 0.42 + candidate.score / 10.0))
+    return focus.model_copy(
+        update={
+            "capability_id": candidate.capability_id,
+            "domain": merged_domain,
+            "scope": merged_scope,
+            "access_tier": merged_access_tier,
+            "active_attribute": merged_attribute,
+            "active_entity": merged_entity,
+            "confidence": merged_confidence,
+            "recent_user_message": recent_user_message,
+            "recent_assistant_message": recent_assistant_message,
+        }
+    )
+
+
 def _normalize_lines(conversation_context: dict[str, Any] | None) -> list[tuple[str, str]]:
     if not isinstance(conversation_context, dict):
         return []
@@ -594,9 +1000,40 @@ def _recent_trace_slot_memory(conversation_context: dict[str, Any] | None) -> di
     return None
 
 
+def _recent_trace_used_tool(conversation_context: dict[str, Any] | None, tool_name: str) -> bool:
+    if not isinstance(conversation_context, dict):
+        return False
+    recent_tool_calls = conversation_context.get("recent_tool_calls")
+    if not isinstance(recent_tool_calls, list):
+        return False
+    for item in reversed(recent_tool_calls[-8:]):
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("tool_name") or "").strip() != "orchestration.trace":
+            continue
+        request_payload = item.get("request_payload")
+        if not isinstance(request_payload, dict):
+            continue
+        selected_tools = request_payload.get("selected_tools")
+        if not isinstance(selected_tools, list):
+            continue
+        if any(str(value).strip() == tool_name for value in selected_tools):
+            return True
+    return False
+
+
 def _focus_frame_from_trace(conversation_context: dict[str, Any] | None) -> FocusFrame | None:
     slot_memory = _recent_trace_slot_memory(conversation_context)
     if not isinstance(slot_memory, dict):
+        if _recent_trace_used_tool(conversation_context, "get_teacher_schedule"):
+            return FocusFrame(
+                capability_id="protected.teacher.schedule",
+                domain="academic",
+                access_tier="authenticated",
+                scope="protected",
+                source="recent_trace",
+                confidence=0.76,
+            )
         return None
     active_task = str(slot_memory.get("active_task") or "").strip().lower()
     public_entity = str(
@@ -617,6 +1054,14 @@ def _focus_frame_from_trace(conversation_context: dict[str, Any] | None) -> Focu
         or slot_memory.get("academic_student_name")
         or ""
     ).strip() or None
+    active_targets = [
+        value
+        for value in (
+            str(slot_memory.get("academic_student_name") or "").strip() or None,
+            str(slot_memory.get("finance_student_name") or "").strip() or None,
+        )
+        if value
+    ]
     pending_question_type = str(slot_memory.get("pending_question_type") or "").strip() or None
     requested_channel = str(slot_memory.get("requested_channel") or "").strip() or None
     time_reference = str(slot_memory.get("time_reference") or "").strip() or None
@@ -633,10 +1078,16 @@ def _focus_frame_from_trace(conversation_context: dict[str, Any] | None) -> Focu
         capability_id = "protected.finance.next_due"
     elif active_task == "academic:grades":
         capability_id = "protected.academic.grades"
+    elif active_task == "academic:upcoming" or active_attribute == "upcoming_assessments":
+        capability_id = "protected.academic.upcoming_assessments"
     elif active_task == "academic:attendance":
         capability_id = "protected.academic.attendance"
+    elif active_task == "admin:access_scope":
+        capability_id = "protected.account.access_scope"
     elif active_task in {"admin:administrative_status", "admin:student_administrative_status"}:
         capability_id = "protected.administrative.status"
+    elif _recent_trace_used_tool(conversation_context, "get_teacher_schedule"):
+        capability_id = "protected.teacher.schedule"
     if active_task.startswith("finance:"):
         return FocusFrame(
             capability_id=capability_id,
@@ -646,6 +1097,7 @@ def _focus_frame_from_trace(conversation_context: dict[str, Any] | None) -> Focu
             active_entity=public_entity,
             active_attribute=active_attribute,
             active_actor=active_actor,
+            active_targets=active_targets,
             pending_question_type=pending_question_type,
             requested_channel=requested_channel,
             time_reference=time_reference,
@@ -661,6 +1113,7 @@ def _focus_frame_from_trace(conversation_context: dict[str, Any] | None) -> Focu
             active_entity=public_entity,
             active_attribute=active_attribute,
             active_actor=active_actor,
+            active_targets=active_targets,
             pending_question_type=pending_question_type,
             requested_channel=requested_channel,
             time_reference=time_reference,
@@ -676,6 +1129,7 @@ def _focus_frame_from_trace(conversation_context: dict[str, Any] | None) -> Focu
             active_entity=public_entity,
             active_attribute=active_attribute,
             active_actor=active_actor,
+            active_targets=active_targets,
             pending_question_type=pending_question_type,
             requested_channel=requested_channel,
             time_reference=time_reference,
@@ -691,6 +1145,23 @@ def _focus_frame_from_trace(conversation_context: dict[str, Any] | None) -> Focu
             active_entity=public_entity,
             active_attribute=active_attribute,
             active_actor=active_actor,
+            active_targets=active_targets,
+            pending_question_type=pending_question_type,
+            requested_channel=requested_channel,
+            time_reference=time_reference,
+            source="recent_trace",
+            confidence=0.78,
+        )
+    if capability_id == "protected.teacher.schedule":
+        return FocusFrame(
+            capability_id=capability_id,
+            domain="academic",
+            access_tier="authenticated",
+            scope="protected",
+            active_entity="teacher_schedule",
+            active_attribute=active_attribute,
+            active_actor=active_actor,
+            active_targets=active_targets,
             pending_question_type=pending_question_type,
             requested_channel=requested_channel,
             time_reference=time_reference,
@@ -698,6 +1169,107 @@ def _focus_frame_from_trace(conversation_context: dict[str, Any] | None) -> Focu
             confidence=0.78,
         )
     return None
+
+
+def _looks_like_access_scope_request(normalized_message: str) -> bool:
+    if not normalized_message:
+        return False
+    if any(_contains_term(normalized_message, term) for term in _PROTECTED_ACCESS_SCOPE_TERMS):
+        return True
+    return "escopo" in normalized_message and any(
+        _contains_term(normalized_message, term)
+        for term in ("academico", "acadêmico", "financeiro", "telegram")
+    )
+
+
+def _looks_like_teacher_schedule_request(normalized_message: str, focus: FocusFrame) -> bool:
+    if not normalized_message:
+        return False
+    if any(_contains_term(normalized_message, term) for term in _TEACHER_SCHEDULE_TERMS):
+        return True
+    if focus.capability_id == "protected.teacher.schedule" and _looks_like_contextual_follow_up(
+        normalized_message,
+        focus=focus,
+    ):
+        if any(_contains_term(normalized_message, term) for term in _TEACHER_SEGMENT_FOLLOWUP_TERMS):
+            return True
+        return any(
+            _contains_term(normalized_message, term)
+            for term in ("turmas", "disciplinas", "grade", "agenda", "horario", "horário")
+        )
+    return False
+
+
+def _looks_like_admin_finance_combo_request(normalized_message: str) -> bool:
+    if not normalized_message:
+        return False
+    has_admin = any(term in normalized_message for term in _ADMIN_FINANCE_COMBO_ADMIN_TERMS)
+    has_finance = any(term in normalized_message for term in _ADMIN_FINANCE_COMBO_FINANCE_TERMS)
+    if not (has_admin and has_finance):
+        return False
+    return True
+
+
+def _looks_like_upcoming_assessments_request(normalized_message: str) -> bool:
+    return bool(normalized_message) and any(
+        _contains_term(normalized_message, term) for term in _ACADEMIC_UPCOMING_TERMS
+    )
+
+
+def _looks_like_academic_comparison_request(normalized_message: str) -> bool:
+    if not normalized_message:
+        return False
+    has_compare = any(term in normalized_message for term in _ACADEMIC_COMPARISON_TERMS)
+    has_academic_anchor = any(term in normalized_message for term in _ACADEMIC_COMPARISON_ANCHORS)
+    if has_compare and has_academic_anchor:
+        return True
+    if any(
+        _contains_term(normalized_message, term)
+        for term in (
+            "panorama academico das contas vinculadas",
+            "quem hoje exige maior atencao academica",
+            "quem hoje exige maior atenção acadêmica",
+        )
+    ):
+        return True
+    has_family_anchor = any(
+        _contains_term(normalized_message, term)
+        for term in (
+            "meus filhos",
+            "meus dois filhos",
+            "contas vinculadas",
+            "ana",
+            "lucas",
+        )
+    )
+    has_risk_anchor = any(
+        _contains_term(normalized_message, term)
+        for term in (
+            "mais vulneravel",
+            "mais vulnerável",
+            "mais exposta",
+            "mais exposto",
+            "mais fragil",
+            "mais frágil",
+            "limite de aprovacao",
+            "limite de aprovação",
+            "media minima",
+            "média mínima",
+            "mais perto da media minima",
+            "mais perto da média mínima",
+            "mais perto do limite de aprovacao",
+            "mais perto do limite de aprovação",
+            "maior atencao academica",
+            "maior atenção acadêmica",
+            "disciplina",
+            "disciplinas",
+            "componente",
+            "componentes",
+            "materias",
+            "matérias",
+        )
+    )
+    return has_family_anchor and has_risk_anchor
 
 
 def _looks_like_follow_up(normalized_message: str) -> bool:
@@ -710,12 +1282,218 @@ def _looks_like_follow_up(normalized_message: str) -> bool:
     return normalized_message.startswith(("e ", "mas ", "agora ", "entao ", "então "))
 
 
+def _looks_like_contextual_follow_up(
+    normalized_message: str,
+    *,
+    focus: FocusFrame,
+    top_candidate: CapabilityCandidate | None = None,
+) -> bool:
+    if _looks_like_follow_up(normalized_message):
+        return True
+    if not normalized_message:
+        return False
+    focus_has_context = bool(
+        focus.capability_id
+        or (
+            focus.domain
+            and focus.domain != "unknown"
+            and focus.scope != "unknown"
+        )
+    )
+    if not focus_has_context or not focus.pending_question_type:
+        return False
+    if (
+        top_candidate is not None
+        and focus.capability_id
+        and top_candidate.capability_id != focus.capability_id
+    ):
+        return False
+    continuity_terms = (
+        "mantendo o contexto anterior",
+        "sem repetir tudo",
+        "so a parte",
+        "só a parte",
+        "apenas a parte",
+        "agora so",
+        "agora só",
+        "isole apenas",
+        "agora quero apenas",
+        "agora quero só",
+        "agora quero so",
+        "quero apenas",
+        "fique apenas com",
+        "seguindo o panorama",
+        "depois do panorama",
+        "mantendo a comparacao",
+        "mantendo a comparação",
+    )
+    if any(_contains_term(normalized_message, term) for term in continuity_terms):
+        return True
+    if focus.capability_id == "protected.teacher.schedule" and any(
+        _contains_term(normalized_message, term) for term in _TEACHER_SEGMENT_FOLLOWUP_TERMS
+    ):
+        if _looks_like_follow_up(normalized_message):
+            return True
+        if len(normalized_message.split()) <= 3 and focus.pending_question_type in {"follow_up", "attribute_query"}:
+            return True
+        if any(
+            _contains_term(normalized_message, term)
+            for term in (
+                "mantendo o contexto",
+                "contexto anterior",
+                "apenas a parte",
+                "so a parte",
+                "só a parte",
+                "parte do",
+                "recorte",
+            )
+        ):
+            return True
+    if (
+        focus.capability_id == "protected.academic.attendance"
+        and (
+            focus.active_targets
+            or focus.active_actor
+            or focus.pending_question_type in {"follow_up", "attribute_query"}
+        )
+    ):
+        has_target_focus = _mentions_focus_target(normalized_message, focus)
+        has_attendance_focus = any(
+            _contains_term(normalized_message, term)
+            for term in (
+                "frequencia",
+                "frequência",
+                "falta",
+                "faltas",
+                "ausencias",
+                "ausências",
+                "atrasos",
+                "presenca",
+                "presença",
+                "alerta",
+                "risco",
+                "sensivel",
+                "sensível",
+                "concreto",
+                "principal",
+            )
+        )
+        if has_target_focus and has_attendance_focus:
+            return True
+    if (
+        focus.capability_id == "protected.academic.family_comparison"
+        and (
+            focus.active_targets
+            or focus.active_actor
+            or focus.pending_question_type in {"follow_up", "attribute_query"}
+        )
+    ):
+        has_target_focus = _mentions_focus_target(normalized_message, focus)
+        has_academic_focus = any(
+            _contains_term(normalized_message, term)
+            for term in (
+                "materias",
+                "matérias",
+                "disciplinas",
+                "componente",
+                "componentes",
+                "vulneravel",
+                "vulnerável",
+                "fragil",
+                "frágil",
+                "fragilizada",
+                "fragilizado",
+                "exposta",
+                "exposto",
+                "risco",
+                "alerta",
+                "mais exposta",
+                "mais exposto",
+                "mais vulneravel",
+                "mais vulnerável",
+                "ponto mais fraco",
+            )
+        )
+        if has_target_focus and has_academic_focus:
+            return True
+    return False
+
+
+def _mentions_focus_target(normalized_message: str, focus: FocusFrame) -> bool:
+    targets = [target for target in [*focus.active_targets, focus.active_actor] if target]
+    if not normalized_message or not targets:
+        return False
+    for target in targets:
+        normalized_target = normalize_ingress_text(target)
+        if normalized_target and _contains_term(normalized_message, normalized_target):
+            return True
+        first_name = normalized_target.split()[0] if normalized_target else ""
+        if len(first_name) >= 3 and _contains_term(normalized_message, first_name):
+            return True
+    return False
+
+
+def _looks_like_attendance_target_follow_up(normalized_message: str, focus: FocusFrame) -> bool:
+    if focus.capability_id != "protected.academic.attendance" or focus.scope != "protected":
+        return False
+    if not normalized_message:
+        return False
+    if not _mentions_focus_target(normalized_message, focus):
+        return False
+    has_attendance_focus = any(
+        _contains_term(normalized_message, term)
+        for term in (
+            "frequencia",
+            "frequência",
+            "falta",
+            "faltas",
+            "ausencias",
+            "ausências",
+            "atrasos",
+            "presenca",
+            "presença",
+            "alerta",
+            "risco",
+            "concreto",
+            "principal",
+            "mais concreto",
+            "mais sensivel",
+            "mais sensível",
+        )
+    )
+    if not has_attendance_focus:
+        return False
+    return _looks_like_contextual_follow_up(normalized_message, focus=focus) or any(
+        _contains_term(normalized_message, term)
+        for term in (
+            "mantendo o contexto",
+            "continuando a analise",
+            "continuando a análise",
+            "corta para",
+            "recorte so",
+            "recorte só",
+            "isole",
+            "resuma",
+            "resume",
+            "agora",
+        )
+    )
+
+
 def _looks_like_external_public_facility_query(normalized_message: str) -> bool:
     if not normalized_message:
         return False
     if not any(_contains_term(normalized_message, term) for term in ("biblioteca", "library")):
         return False
-    if any(_contains_term(normalized_message, term) for term in ("escola", "colegio", "colégio", "horizonte")):
+    mentions_school = any(
+        _contains_term(normalized_message, term)
+        for term in ("escola", "colegio", "colégio", "horizonte")
+    )
+    explicit_external_boundary = any(
+        _contains_term(normalized_message, term)
+        for term in _EXTERNAL_PUBLIC_FACILITY_BOUNDARY_TERMS
+    )
+    if mentions_school and not explicit_external_boundary:
         return False
     return any(_contains_term(normalized_message, term) for term in _EXTERNAL_PUBLIC_FACILITY_TERMS)
 
@@ -729,6 +1507,22 @@ def _requested_attribute_for_spec(*, spec: CapabilitySpec, normalized_message: s
     return spec.requested_attribute
 
 
+def _looks_like_restricted_document_query(normalized_message: str) -> bool:
+    if not normalized_message:
+        return False
+    if any(_contains_term(normalized_message, term) for term in _RESTRICTED_DOC_ANCHOR_TERMS):
+        return True
+    noun_hits = sum(
+        1 for term in _RESTRICTED_DOC_NOUN_TERMS if _contains_term(normalized_message, term)
+    )
+    if noun_hits == 0:
+        return False
+    signal_hits = sum(
+        1 for term in _RESTRICTED_DOC_SIGNAL_TERMS if _contains_term(normalized_message, term)
+    )
+    return signal_hits >= 1
+
+
 def derive_focus_frame(
     *,
     conversation_context: dict[str, Any] | None,
@@ -738,13 +1532,18 @@ def derive_focus_frame(
     recent_user_message = next((content for sender, content in reversed(recent_lines) if sender == "user"), None)
     recent_assistant_message = next((content for sender, content in reversed(recent_lines) if sender == "assistant"), None)
     traced_focus = _focus_frame_from_trace(conversation_context)
-    if traced_focus is not None:
-        return traced_focus.model_copy(
+    traced_focus_with_history = (
+        traced_focus.model_copy(
             update={
                 "recent_user_message": recent_user_message,
                 "recent_assistant_message": recent_assistant_message,
             }
         )
+        if traced_focus is not None
+        else None
+    )
+    if traced_focus_with_history is not None and traced_focus_with_history.capability_id:
+        return traced_focus_with_history
     for source_name, message in (
         ("recent_user", recent_user_message),
         ("recent_assistant", recent_assistant_message),
@@ -761,6 +1560,19 @@ def derive_focus_frame(
         top = candidates[0]
         if top.score < 4.0:
             continue
+        if traced_focus_with_history is not None:
+            same_scope = top.scope == traced_focus_with_history.scope
+            same_domain = (
+                traced_focus_with_history.domain in {None, "", "unknown"}
+                or top.domain == traced_focus_with_history.domain
+            )
+            if same_scope and same_domain:
+                return _merge_focus_with_candidate(
+                    traced_focus_with_history,
+                    candidate=top,
+                    recent_user_message=recent_user_message,
+                    recent_assistant_message=recent_assistant_message,
+                )
         return FocusFrame(
             capability_id=top.capability_id,
             domain=top.domain,
@@ -773,6 +1585,8 @@ def derive_focus_frame(
             recent_user_message=recent_user_message,
             recent_assistant_message=recent_assistant_message,
         )
+    if traced_focus_with_history is not None:
+        return traced_focus_with_history
     return FocusFrame(
         recent_user_message=recent_user_message,
         recent_assistant_message=recent_assistant_message,
@@ -792,6 +1606,7 @@ def build_capability_candidates(
         return []
     focus = derive_focus_frame(conversation_context=conversation_context, authenticated=authenticated)
     follow_up = _looks_like_follow_up(normalized)
+    contextual_follow_up = _looks_like_contextual_follow_up(normalized, focus=focus)
     high_confidence_public = looks_like_high_confidence_public_school_faq(message)
     candidates: list[CapabilityCandidate] = []
     for spec in capability_specs():
@@ -799,12 +1614,43 @@ def build_capability_candidates(
             continue
         score = 0.0
         reasons: list[str] = []
+        if (
+            spec.capability_id == "protected.documents.restricted_lookup"
+            and _looks_like_restricted_document_query(normalized)
+        ):
+            score += 4.2
+            reasons.append("restricted_document_anchor")
+        if spec.capability_id == "protected.account.access_scope" and _looks_like_access_scope_request(normalized):
+            score += 4.6
+            reasons.append("access_scope_anchor")
+        if spec.capability_id == "protected.teacher.schedule" and _looks_like_teacher_schedule_request(normalized, focus):
+            score += 4.4
+            reasons.append("teacher_schedule_anchor")
+        if spec.capability_id == "protected.institution.admin_finance_status" and _looks_like_admin_finance_combo_request(normalized):
+            score += 4.8
+            reasons.append("admin_finance_combo_anchor")
+        if spec.capability_id == "protected.academic.upcoming_assessments" and _looks_like_upcoming_assessments_request(normalized):
+            score += 4.0
+            reasons.append("upcoming_assessments_anchor")
+        if spec.capability_id == "protected.academic.family_comparison" and _looks_like_academic_comparison_request(normalized):
+            score += 4.2
+            reasons.append("academic_comparison_anchor")
+        if spec.capability_id == "protected.academic.attendance" and _looks_like_attendance_target_follow_up(
+            normalized,
+            focus,
+        ):
+            score += 4.6
+            reasons.append("attendance_target_follow_up_anchor")
         for alias in spec.aliases:
             if _contains_term(normalized, alias):
                 score += 3.0
                 reasons.append(f"alias:{normalize_ingress_text(alias)}")
+        follow_up_alias_enabled = contextual_follow_up and (
+            focus.capability_id == spec.capability_id
+            or (focus.domain == spec.domain and focus.scope == spec.scope)
+        )
         for alias in spec.follow_up_aliases:
-            if _contains_term(normalized, alias):
+            if follow_up_alias_enabled and _contains_term(normalized, alias):
                 score += 2.5
                 reasons.append(f"followup_alias:{normalize_ingress_text(alias)}")
         if spec.scope == "public" and high_confidence_public:
@@ -822,10 +1668,10 @@ def build_capability_candidates(
         ):
             score += 1.6
             reasons.append("protected_personal_anchor")
-        if focus.capability_id == spec.capability_id and follow_up:
+        if focus.capability_id == spec.capability_id and contextual_follow_up:
             score += 2.2
             reasons.append("follow_up_same_capability")
-        elif focus.domain == spec.domain and focus.scope == spec.scope and follow_up:
+        elif focus.domain == spec.domain and focus.scope == spec.scope and contextual_follow_up:
             score += 1.2
             reasons.append("follow_up_same_domain")
         if follow_up and focus.active_entity:
@@ -894,6 +1740,36 @@ def build_turn_frame_hint(
         conversation_context=conversation_context,
         authenticated=authenticated,
     )
+    if not authenticated:
+        auth_candidates = [
+            candidate
+            for candidate in build_capability_candidates(
+                message=message,
+                conversation_context=conversation_context,
+                authenticated=True,
+            )
+            if candidate.capability_id != "protected.documents.restricted_lookup"
+            and (spec := capability_spec(candidate.capability_id)) is not None
+            and spec.scope == "protected"
+        ]
+        if auth_candidates:
+            top = auth_candidates[0]
+            second = auth_candidates[1] if len(auth_candidates) > 1 else None
+            margin = top.score - (second.score if second is not None else 0.0)
+            confidence = min(0.96, 0.48 + top.score / 12.0 + max(0.0, margin) / 24.0)
+            return TurnFrame(
+                conversation_act="auth_guidance",
+                domain="institution",
+                access_tier="public",
+                scope="public",
+                confidence=confidence,
+                confidence_bucket="high" if confidence >= 0.82 else "medium",
+                reason=f"protected_requires_auth:{top.capability_id}",
+                source="heuristic",
+                public_conversation_act="auth_guidance",
+                requested_attribute=top.requested_attribute,
+                candidate_capability_ids=[candidate.capability_id for candidate in auth_candidates[:5]],
+            )
     if not candidates:
         if looks_like_opaque_short_input(message):
             return TurnFrame(
@@ -929,8 +1805,23 @@ def build_turn_frame_hint(
             needs_clarification=True,
             candidate_capability_ids=[candidate.capability_id for candidate in candidates],
         )
+    focus = derive_focus_frame(
+        conversation_context=conversation_context,
+        authenticated=authenticated,
+    )
+    contextual_follow_up = _looks_like_contextual_follow_up(normalized, focus=focus, top_candidate=top)
+    follow_up_of = None
+    if contextual_follow_up:
+        if focus.capability_id:
+            follow_up_of = focus.capability_id
+        elif focus.scope == top.scope and focus.domain == top.domain:
+            follow_up_of = top.capability_id
     return TurnFrame(
-        conversation_act=_validated_conversation_act(request_message=message, act="none"),
+        # Strong capability matches should stay capability-led. Let scope
+        # boundary heuristics win only in the explicit no-capability branches
+        # above, otherwise protected/public intents can be incorrectly
+        # downgraded to generic boundaries.
+        conversation_act="none",
         capability_id=top.capability_id,
         domain=top.domain,
         access_tier=top.access_tier,
@@ -943,12 +1834,7 @@ def build_turn_frame_hint(
         public_focus_hint=top.public_focus_hint,
         requested_attribute=top.requested_attribute,
         candidate_capability_ids=[candidate.capability_id for candidate in candidates],
-        follow_up_of=derive_focus_frame(
-            conversation_context=conversation_context,
-            authenticated=authenticated,
-        ).capability_id
-        if _looks_like_follow_up(normalized)
-        else None,
+        follow_up_of=follow_up_of,
     )
 
 

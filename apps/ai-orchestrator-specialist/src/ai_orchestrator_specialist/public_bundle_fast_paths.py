@@ -35,6 +35,56 @@ def _normalize_text(value: str) -> str:
     return text
 
 
+def _looks_like_protected_attendance_followup_collision(message: str) -> bool:
+    normalized = _normalize_text(message)
+    has_follow_up_shape = any(
+        term in normalized
+        for term in {
+            "mantendo o contexto",
+            "continuando",
+            "continuando a analise",
+            "continuando a análise",
+            "recorte",
+            "corta para",
+            "corta so",
+            "corta só",
+            "isole",
+            "isola",
+            "resume",
+            "resuma",
+        }
+    )
+    has_attendance_focus = any(
+        term in normalized
+        for term in {
+            "frequencia",
+            "frequência",
+            "faltas",
+            "ausencias",
+            "ausências",
+            "atrasos",
+            "presenca",
+            "presença",
+            "risco",
+            "alerta",
+        }
+    )
+    has_student_focus_marker = any(
+        term in normalized
+        for term in {
+            "dele",
+            "dela",
+            "para o ",
+            "para a ",
+            "só o ",
+            "só a ",
+            "so o ",
+            "so a ",
+        }
+    )
+    return has_follow_up_shape and has_attendance_focus and has_student_focus_marker
+
+
 def _looks_like_family_new_calendar_enrollment_query(message: str) -> bool:
     normalized = _normalize_text(message)
     return (
@@ -413,6 +463,8 @@ def _institution_preflight_answer(
 
 def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message: str) -> SupervisorAnswerPayload | None:
     normalized = _normalize_text(message)
+    if _looks_like_protected_attendance_followup_collision(message):
+        return None
     canonical_lane = match_public_canonical_lane(message)
     known_unknown_key = detect_public_known_unknown_key(message)
     canonical_supports: dict[str, tuple[str, str, list[MessageEvidenceSupport]]] = {
@@ -565,21 +617,6 @@ def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message:
                 ],
             )
 
-    if _looks_like_family_new_calendar_enrollment_query(message) and not _looks_like_first_month_risks_query(message):
-        answer_text = compose_public_family_new_calendar_assessment_enrollment()
-        if answer_text:
-            return _institution_preflight_answer(
-                answer_text=answer_text,
-                reason="specialist_supervisor_preflight:family_new_calendar_enrollment",
-                graph_leaf="family_new_calendar_enrollment",
-                summary="Sintese deterministica de familia nova antes do loop premium.",
-                supports=[
-                    MessageEvidenceSupport(kind="document", label="Calendario Letivo 2026", detail="data/corpus/public/calendario-letivo-2026.md"),
-                    MessageEvidenceSupport(kind="document", label="Agenda de Avaliacoes 2026", detail="data/corpus/public/agenda-avaliacoes-recuperacoes-e-simulados-2026.md"),
-                    MessageEvidenceSupport(kind="document", label="Manual de Matricula", detail="data/corpus/public/manual-matricula-ensino-medio.md"),
-                ],
-            )
-
     if _looks_like_permanence_family_query(message):
         answer_text = compose_public_permanence_and_family_support(profile)
         if answer_text:
@@ -713,5 +750,20 @@ def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message:
                 MessageEvidenceSupport(kind="document", label="Politica de Uso do Portal, Aplicativo e Credenciais", detail="data/corpus/public/politica-uso-do-portal-aplicativo-e-credenciais.md"),
             ],
         )
+
+    if _looks_like_family_new_calendar_enrollment_query(message) and not _looks_like_first_month_risks_query(message):
+        answer_text = compose_public_family_new_calendar_assessment_enrollment()
+        if answer_text:
+            return _institution_preflight_answer(
+                answer_text=answer_text,
+                reason="specialist_supervisor_preflight:family_new_calendar_enrollment",
+                graph_leaf="family_new_calendar_enrollment",
+                summary="Sintese deterministica de familia nova antes do loop premium.",
+                supports=[
+                    MessageEvidenceSupport(kind="document", label="Calendario Letivo 2026", detail="data/corpus/public/calendario-letivo-2026.md"),
+                    MessageEvidenceSupport(kind="document", label="Agenda de Avaliacoes 2026", detail="data/corpus/public/agenda-avaliacoes-recuperacoes-e-simulados-2026.md"),
+                    MessageEvidenceSupport(kind="document", label="Manual de Matricula", detail="data/corpus/public/manual-matricula-ensino-medio.md"),
+                ],
+            )
 
     return None

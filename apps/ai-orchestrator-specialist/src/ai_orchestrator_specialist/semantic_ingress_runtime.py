@@ -4,6 +4,7 @@ from typing import Any
 
 from eduassist_semantic_ingress import (
     IngressSemanticPlan,
+    effective_turn_frame_authenticated as _effective_turn_frame_authenticated,
     looks_like_school_scope_message,
     resolve_semantic_ingress_with_provider,
     resolve_turn_frame_with_provider,
@@ -22,6 +23,19 @@ def _preview_payload(preview_hint: dict[str, Any] | None) -> dict[str, Any]:
         "reason": str(preview.get("reason") or "").strip(),
         "selected_tools": list(preview.get("selected_tools") or []),
     }
+
+
+def resolve_turn_frame_authenticated_flag(
+    *,
+    request_message: str,
+    authenticated: bool,
+    actor: dict[str, Any] | None = None,
+) -> bool:
+    return _effective_turn_frame_authenticated(
+        authenticated=authenticated,
+        actor_present=isinstance(actor, dict) and bool(actor),
+        message=request_message,
+    )
 
 
 async def maybe_resolve_semantic_ingress_plan(

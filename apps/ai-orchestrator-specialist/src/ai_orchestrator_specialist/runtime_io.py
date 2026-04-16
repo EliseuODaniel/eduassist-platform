@@ -9,7 +9,7 @@ import unicodedata
 
 import httpx
 
-from .local_retrieval import get_retrieval_service
+from .local_retrieval import get_retrieval_service, looks_like_restricted_document_query, retrieve_relevant_restricted_hits_with_fallback
 from .models import RetrievalProfile
 from .models import (
     JudgeVerdict,
@@ -30,6 +30,39 @@ _ACADEMIC_HINTS = ('nota', 'notas', 'media', 'média', 'boletim', 'frequencia', 
 _FINANCE_HINTS = ('fatura', 'financeiro', 'boleto', 'mensalidade', 'pagamento', 'valor')
 _CALENDAR_HINTS = ('calendario', 'calendário', 'inicio das aulas', 'início das aulas', 'reuniao', 'reunião', 'data', 'datas', 'cronograma')
 _SUPPORT_HINTS = ('atestado', 'secretaria', 'protocolo', 'documentacao', 'documentação', 'cancelamento', 'transferencia', 'transferência', 'rematricula', 'rematrícula')
+
+
+def _restricted_retrieval_category(query: str) -> str | None:
+    normalized = _normalize_text(query)
+    if any(term in normalized for term in ('financeiro', 'quitacao', 'quitação', 'negociacao', 'negociação', 'pagamento', 'inadimplencia', 'inadimplência')):
+        return 'finance'
+    if any(term in normalized for term in ('professor', 'avaliac', 'pedagog', 'frequencia', 'frequência', 'segunda chamada', 'saude', 'saúde')):
+        return 'academic'
+    if any(term in normalized for term in ('telegram', 'escopo parcial', 'responsavel', 'responsável', 'autorizacao', 'autorização')):
+        return 'identity'
+    if any(term in normalized for term in ('transferencia', 'transferência', 'secretaria', 'rematricula', 'rematrícula', 'documento')):
+        return 'secretaria'
+    return None
+
+
+def _effective_retrieval_request(
+    *,
+    query: str,
+    visibility: str,
+    category: str | None,
+    top_k: int,
+    profile: str | None,
+) -> tuple[str | None, int, str | None]:
+    effective_category = category
+    effective_top_k = top_k
+    effective_profile = profile
+    if visibility == 'restricted' and looks_like_restricted_document_query(query):
+        effective_category = effective_category or _restricted_retrieval_category(query)
+        effective_top_k = max(effective_top_k, 8)
+        effective_profile = effective_profile or 'deep'
+    elif effective_profile is None and effective_top_k <= 3:
+        effective_profile = 'cheap'
+    return effective_category, effective_top_k, effective_profile
 
 
 def _conversation_external_id(ctx: Any) -> str:
@@ -220,6 +253,7 @@ async def orchestrator_preview(ctx: Any) -> dict[str, Any] | None:
         apply_semantic_ingress_preview_hint,
         maybe_resolve_semantic_ingress_plan,
         maybe_resolve_turn_frame,
+        resolve_turn_frame_authenticated_flag,
     )
 
     user = getattr(ctx.request, "user", None)
@@ -289,12 +323,17 @@ async def orchestrator_preview(ctx: Any) -> dict[str, Any] | None:
             preview_hint=preview,
             plan=semantic_ingress_plan,
         )
+    turn_frame_authenticated = resolve_turn_frame_authenticated_flag(
+        request_message=ctx.request.message,
+        authenticated=bool(getattr(user, "authenticated", False)),
+        actor=getattr(ctx, "actor", None),
+    )
     turn_frame = await maybe_resolve_turn_frame(
         settings=ctx.settings,
         request_message=ctx.request.message,
         conversation_context=getattr(ctx, "conversation_context", None),
         preview_hint=preview,
-        authenticated=bool(getattr(user, "authenticated", False)),
+        authenticated=turn_frame_authenticated,
     )
     if isinstance(turn_frame, dict):
         preview["turn_frame"] = turn_frame
@@ -348,19 +387,50 @@ async def orchestrator_retrieval_search(
     visibility: str = "public",
     category: str | None = None,
     top_k: int = 4,
+    profile: str | None = None,
 ) -> dict[str, Any] | None:
+    effective_category, effective_top_k, effective_profile = _effective_retrieval_request(
+        query=query,
+        visibility=visibility,
+        category=category,
+        top_k=top_k,
+        profile=profile,
+    )
     cache_key = "|".join(
         (
             str(query),
             str(visibility),
-            str(category or ""),
-            str(top_k),
+            str(effective_category or ""),
+            str(effective_top_k),
+            str(effective_profile or ""),
         )
     )
     cached_payload = _cache_get(_ORCHESTRATOR_RETRIEVAL_CACHE, cache_key)
     if isinstance(cached_payload, dict):
         return cached_payload
     try:
+        remote_body: dict[str, Any] | None = None
+        orchestrator_url = str(getattr(ctx.settings, "orchestrator_url", "") or "").strip().rstrip("/")
+        if orchestrator_url:
+            try:
+                response = await ctx.http_client.post(
+                    f"{orchestrator_url}/v1/retrieval/search",
+                    json={
+                        "query": query,
+                        "top_k": effective_top_k,
+                        "visibility": visibility,
+                        "category": effective_category,
+                        "profile": effective_profile,
+                    },
+                    timeout=float(getattr(ctx.settings, "orchestrator_timeout_seconds", 20.0) or 20.0),
+                )
+                response.raise_for_status()
+                payload = response.json()
+                if isinstance(payload, dict):
+                    remote_body = payload
+            except Exception as exc:
+                logger.info("specialist_remote_retrieval_unavailable: %s", exc)
+
         retrieval_service = get_retrieval_service(
             database_url=str(ctx.settings.database_url),
             qdrant_url=str(ctx.settings.qdrant_url),
@@ -375,14 +445,32 @@ async def orchestrator_retrieval_search(
             rerank_fused_weight=float(ctx.settings.retrieval_rerank_fused_weight),
             rerank_late_interaction_weight=float(ctx.settings.retrieval_rerank_late_interaction_weight),
         )
-        profile = RetrievalProfile.cheap if top_k <= 3 else None
-        body = retrieval_service.hybrid_search(
-            query=query,
-            top_k=top_k,
-            visibility=visibility,
-            category=category,
-            profile=profile,
-        ).model_dump(mode="json")
+        if isinstance(remote_body, dict):
+            body = remote_body
+        else:
+            retrieval_profile = RetrievalProfile(effective_profile) if effective_profile else None
+            search_response = retrieval_service.hybrid_search(
+                query=query,
+                top_k=effective_top_k,
+                visibility=visibility,
+                category=effective_category,
+                profile=retrieval_profile,
+            )
+            body = search_response.model_dump(mode="json")
+        if visibility == "restricted" and looks_like_restricted_document_query(query):
+            fallback_hits = retrieve_relevant_restricted_hits_with_fallback(
+                retrieval_service,
+                query=query,
+                hits=list(body.get("hits") or []),
+                top_k=min(effective_top_k, 4),
+                visibility=visibility,
+                category=effective_category,
+            )
+            if fallback_hits:
+                body["hits"] = [
+                    hit.model_dump(mode="json") if hasattr(hit, "model_dump") else dict(hit)
+                    for hit in fallback_hits
+                ]
         return _cache_set(
             _ORCHESTRATOR_RETRIEVAL_CACHE,
             cache_key,

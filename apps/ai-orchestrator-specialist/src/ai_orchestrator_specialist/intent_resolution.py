@@ -45,8 +45,13 @@ def school_domain_terms() -> set[str]:
         "financeiro",
         "fatura",
         "boleto",
+        "boletim",
         "nota",
         "notas",
+        "media",
+        "média",
+        "frequencia",
+        "frequência",
         "falta",
         "faltas",
         "lucas",
@@ -116,7 +121,59 @@ def looks_like_general_knowledge_query(
     deps: IntentResolutionDeps,
 ) -> bool:
     normalized = deps.normalize_text(message)
-    if not normalized or deps.contains_any(normalized, school_domain_terms()) or has_registered_school_signal(normalized):
+    explicit_out_of_scope_markers = (
+        "fora do tema escolar",
+        "fora do escopo da escola",
+        "fora da escola",
+        "sem relacao com escola",
+        "sem relação com escola",
+        "sem relacao com a escola",
+        "sem relação com a escola",
+        "mudando de assunto",
+        "saindo do assunto da escola",
+    )
+    open_world_topic_terms = {
+        "filme",
+        "filmes",
+        "serie",
+        "série",
+        "series",
+        "séries",
+        "jogo",
+        "jogos",
+        "receita",
+        "receitas",
+        "netflix",
+        "cinema",
+        "livro",
+        "livros",
+        "politica",
+        "política",
+    }
+    open_world_starters = (
+        "me ajuda a escolher ",
+        "me ajuda a decidir ",
+        "me indica ",
+        "me recomenda ",
+        "recomenda ",
+        "indique ",
+        "quero uma recomendacao ",
+        "quero uma recomendação ",
+        "me fala ",
+        "me diga ",
+    )
+    if not normalized:
+        return False
+    if any(marker in normalized for marker in explicit_out_of_scope_markers) and (
+        normalized.endswith("?")
+        or any(term in normalized for term in open_world_topic_terms)
+    ):
+        return True
+    if any(term in normalized for term in open_world_topic_terms) and any(
+        normalized.startswith(starter) or starter in normalized for starter in open_world_starters
+    ):
+        return True
+    if deps.contains_any(normalized, school_domain_terms()) or has_registered_school_signal(normalized):
         return False
     if len(normalized) > 180:
         return False
@@ -135,7 +192,11 @@ def looks_like_general_knowledge_query(
         "por que ",
         "porque ",
     )
-    return normalized.endswith("?") or normalized.startswith(starters)
+    return (
+        normalized.endswith("?")
+        or normalized.startswith(starters)
+        or normalized.startswith(open_world_starters)
+    )
 
 
 def build_operational_memory(

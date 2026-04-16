@@ -33,6 +33,12 @@ def _recent_messages_mention(
     return _impl(conversation_context, terms)
 
 
+def _looks_like_teacher_internal_scope_query(message: str) -> bool:
+    from .public_profile_runtime import _looks_like_teacher_internal_scope_query as _impl
+
+    return _impl(message)
+
+
 def _export_runtime_core_namespace() -> None:
     for name, value in vars(_runtime_core).items():
         if name.startswith('__'):

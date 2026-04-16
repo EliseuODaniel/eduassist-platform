@@ -46,6 +46,9 @@ _INTERNAL_DOC_GENERIC_TERMS = {
     'regras',
     'processo',
     'processos',
+    'rotina',
+    'validacao',
+    'validacoes',
     'responsaveis',
     'alunos',
     'familias',
@@ -58,6 +61,14 @@ _INTERNAL_DOC_RARE_TERMS = {
     'parcial',
     'negociacao',
     'negociação',
+    'quitacao',
+    'quitação',
+    'promessa',
+    'validacao',
+    'validação',
+    'validacoes',
+    'validações',
+    'rotina',
     'professor',
     'docente',
     'hospedagem',
@@ -76,6 +87,22 @@ def _looks_like_internal_document_query(message: str) -> bool:
     normalized = _normalize_text(message)
     if not normalized:
         return False
+    if any(
+        term in normalized
+        for term in {
+            'documentos publicos',
+            'documentos públicos',
+            'documentacao publica',
+            'documentação pública',
+            'material publico',
+            'material público',
+            'base publica',
+            'base pública',
+            'pelos documentos publicos',
+            'pelos documentos públicos',
+        }
+    ):
+        return False
     anchor = any(
         term in normalized
         for term in {
@@ -87,13 +114,32 @@ def _looks_like_internal_document_query(message: str) -> bool:
             'orientacao interna',
             'orientação interna',
             'procedimento interno',
+            'rotina interna',
+            'validacao interna',
+            'validação interna',
+            'validacoes internas',
+            'validações internas',
         }
     )
     if anchor:
         return True
     doc_nouns = sum(
         1
-        for term in {'manual', 'protocolo', 'playbook', 'documento', 'material', 'orientacao', 'orientação', 'procedimento'}
+        for term in {
+            'manual',
+            'protocolo',
+            'playbook',
+            'documento',
+            'material',
+            'orientacao',
+            'orientação',
+            'procedimento',
+            'rotina',
+            'validacao',
+            'validação',
+            'validacoes',
+            'validações',
+        }
         if term in normalized
     )
     rare_terms = sum(1 for term in _INTERNAL_DOC_RARE_TERMS if term in normalized)
@@ -125,9 +171,23 @@ def _internal_doc_hit_score(query: str, hit: dict[str, Any]) -> float:
     query_terms = set(_internal_doc_query_tokens(query))
     if not query_terms:
         return 0.0
-    title = _normalize_text(str(hit.get('title') or ''))
-    summary = _normalize_text(str(hit.get('summary') or ''))
-    content = _normalize_text(str(hit.get('content') or ''))
+    title = _normalize_text(str(hit.get('title') or hit.get('document_title') or ''))
+    summary = _normalize_text(
+        str(
+            hit.get('summary')
+            or hit.get('contextual_summary')
+            or hit.get('text_excerpt')
+            or ''
+        )
+    )
+    content = _normalize_text(
+        str(
+            hit.get('content')
+            or hit.get('text_content')
+            or hit.get('excerpt')
+            or ''
+        )
+    )
     title_terms = {token for token in re.findall(r'[a-z0-9]+', title) if len(token) >= 4 and token not in _INTERNAL_DOC_STOPWORDS}
     anchor_terms = _internal_doc_anchor_terms(query)
     rare_terms = _internal_doc_rare_terms(query)

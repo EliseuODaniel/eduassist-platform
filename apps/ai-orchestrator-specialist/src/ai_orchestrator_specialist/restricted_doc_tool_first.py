@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .answer_payloads import access_tier_for_domain as _access_tier_for_domain, default_suggested_replies as _default_suggested_replies
+from .local_retrieval import _restricted_document_fallback_queries, select_relevant_restricted_hits
 from .models import MessageEvidencePack, MessageEvidenceSupport, MessageIntentClassification, SupervisorAnswerPayload
 from .public_doc_knowledge import compose_public_health_second_call
 from .public_query_patterns import _looks_like_health_second_call_query
@@ -37,12 +38,25 @@ def _internal_doc_domain_hint(message: str) -> str:
     return "institution"
 
 
+def _preview_hint_targets_restricted_document(preview_hint: object) -> bool:
+    if not isinstance(preview_hint, dict):
+        return False
+    turn_frame = preview_hint.get("turn_frame")
+    if not isinstance(turn_frame, dict):
+        return False
+    capability_id = str(turn_frame.get("capability_id") or "").strip().lower()
+    return capability_id == "protected.documents.restricted_lookup"
+
+
 async def maybe_restricted_document_tool_first_answer(
     ctx: SupervisorRunContext,
     *,
     profile: dict[str, object],
 ) -> SupervisorAnswerPayload | None:
-    if not _looks_like_internal_document_query(ctx.request.message):
+    if not (
+        _looks_like_internal_document_query(ctx.request.message)
+        or _preview_hint_targets_restricted_document(getattr(ctx, "preview_hint", None))
+    ):
         return None
 
     authorized_for_restricted = _can_read_restricted_documents(ctx.request.user)
@@ -102,7 +116,6 @@ async def maybe_restricted_document_tool_first_answer(
         _compose_internal_doc_no_match_answer,
         _orchestrator_retrieval_search,
         _safe_excerpt,
-        _select_relevant_internal_doc_hits,
     )
 
     try:
@@ -110,8 +123,9 @@ async def maybe_restricted_document_tool_first_answer(
             ctx,
             query=ctx.request.message,
             visibility="restricted",
-            category="private_docs",
-            top_k=5,
+            category="finance" if domain_hint == "finance" else None,
+            top_k=8,
+            profile="deep",
         )
     except Exception:
         return SupervisorAnswerPayload(
@@ -139,7 +153,39 @@ async def maybe_restricted_document_tool_first_answer(
         )
     hits = retrieval_payload.get("hits") if isinstance(retrieval_payload, dict) else []
     normalized_hits = hits if isinstance(hits, list) else []
-    relevant_hits = _select_relevant_internal_doc_hits(ctx.request.message, normalized_hits)
+    candidate_hits = list(normalized_hits)
+    relevant_hits = list(select_relevant_restricted_hits(ctx.request.message, candidate_hits, max_hits=4))
+    if not relevant_hits:
+        for fallback_query in _restricted_document_fallback_queries(ctx.request.message)[:4]:
+            try:
+                fallback_payload = await _orchestrator_retrieval_search(
+                    ctx,
+                    query=fallback_query,
+                    visibility="restricted",
+                    category="finance" if domain_hint == "finance" else None,
+                    top_k=8,
+                    profile="deep",
+                )
+            except Exception:
+                continue
+            fallback_hits = fallback_payload.get("hits") if isinstance(fallback_payload, dict) else []
+            if isinstance(fallback_hits, list):
+                candidate_hits.extend(fallback_hits)
+        if candidate_hits:
+            deduped_hits: list[dict[str, object]] = []
+            seen_keys: set[tuple[str, str]] = set()
+            for hit in candidate_hits:
+                if not isinstance(hit, dict):
+                    continue
+                key = (
+                    str(hit.get("document_title") or hit.get("title") or "").strip().casefold(),
+                    str(hit.get("chunk_id") or "").strip().casefold(),
+                )
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                deduped_hits.append(hit)
+            relevant_hits = list(select_relevant_restricted_hits(ctx.request.message, deduped_hits, max_hits=4))
     if relevant_hits:
         citations = [
             citation

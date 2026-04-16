@@ -105,7 +105,7 @@ from .llamaindex_retrieval import (
     compose_restricted_document_no_match_answer,
     get_retrieval_service,
     looks_like_restricted_document_query,
-    select_relevant_restricted_hits,
+    retrieve_relevant_restricted_hits_with_fallback,
 )
 from .llamaindex_retrieval_probe import build_public_evidence_probe
 from .serving_policy import LoadSnapshot, build_public_serving_policy
@@ -813,6 +813,7 @@ async def _resolve_early_llamaindex_public_answer(
     settings: Any,
     school_profile: dict[str, Any] | None,
     conversation_context: dict[str, Any] | None,
+    actor: dict[str, Any] | None = None,
 ) -> LlamaIndexEarlyPublicAnswer | None:
     from .llamaindex_native_support_runtime import _resolve_early_llamaindex_public_answer as _impl
 
@@ -822,6 +823,7 @@ async def _resolve_early_llamaindex_public_answer(
         settings=settings,
         school_profile=school_profile,
         conversation_context=conversation_context,
+        actor=actor,
     )
 
 
@@ -2107,25 +2109,16 @@ def _should_use_llamaindex_protected_records_fast_path(
         return False
     if match_public_canonical_lane(request.message):
         return False
-    if (
-        rt._is_access_scope_query(request.message)
-        or rt._is_access_scope_repair_query(request.message, actor, conversation_context)
-        or rt._looks_like_family_attendance_aggregate_query(request.message)
-        or rt._mentions_personal_admin_status(request.message)
-        or rt._detect_admin_attribute_request(request.message, conversation_context=conversation_context) is not None
-        or rt._is_private_admin_follow_up(request.message, conversation_context)
-        or looks_like_explicit_admin_status_query(
-            request.message,
-            authenticated=bool(getattr(getattr(request, 'user', None), 'authenticated', False)),
-        )
-    ):
-        return True
-    protected_domain_hint = rt._explicit_protected_domain_hint(
-        request.message,
+    authenticated = bool(getattr(getattr(request, 'user', None), 'authenticated', False))
+    if not authenticated:
+        preview_access_tier = getattr(getattr(preview, 'classification', None), 'access_tier', None)
+        authenticated = preview_access_tier in {AccessTier.authenticated, AccessTier.sensitive}
+    return rt._should_use_protected_records_fast_path(
+        request_message=request.message,
         actor=actor,
         conversation_context=conversation_context,
+        authenticated=authenticated,
     )
-    return protected_domain_hint in {QueryDomain.academic, QueryDomain.finance}
 
 
 def _llamaindex_llm_supports_function_calls(llm: Any | None) -> bool:

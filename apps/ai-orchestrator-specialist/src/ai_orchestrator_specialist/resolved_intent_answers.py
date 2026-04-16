@@ -422,6 +422,35 @@ class ResolvedIntentDeps:
     compose_upcoming_assessments_lines: Callable[[dict[str, Any]], list[str]]
 
 
+def _looks_like_admin_finance_combo_hint(message: str, *, deps: ResolvedIntentDeps) -> bool:
+    normalized = deps.normalize_text(message)
+    admin_terms = {
+        "documentacao",
+        "documentação",
+        "documental",
+        "administrativo",
+        "administrativa",
+        "cadastro",
+        "pendencia",
+        "pendência",
+        "bloqueio",
+        "bloqueando atendimento",
+    }
+    finance_terms = {
+        "financeiro",
+        "mensalidade",
+        "mensalidades",
+        "fatura",
+        "faturas",
+        "boleto",
+        "boletos",
+        "vencimento",
+        "vencida",
+        "vencidas",
+    }
+    return any(term in normalized for term in admin_terms) and any(term in normalized for term in finance_terms)
+
+
 def _academic_grade_requirement(
     summary: dict[str, Any],
     *,
@@ -990,6 +1019,62 @@ async def _resolved_academic_attendance_summary_answer(
     if not ctx.request.user.authenticated:
         return None
     memory = ctx.operational_memory or OperationalMemory()
+    normalized_message = deps.normalize_text(ctx.request.message)
+    linked_academic_students = deps.linked_students(ctx.actor, capability="academic")
+
+    def _named_academic_students_in_message() -> list[str]:
+        matches: list[str] = []
+        for student in linked_academic_students:
+            if not isinstance(student, dict):
+                continue
+            full_name = str(student.get("full_name") or "").strip()
+            if not full_name:
+                continue
+            normalized_full_name = deps.normalize_text(full_name)
+            first_name = normalized_full_name.split(" ")[0] if normalized_full_name else ""
+            if normalized_full_name and normalized_full_name in normalized_message:
+                matches.append(full_name)
+                continue
+            if first_name and re.search(rf"\b{re.escape(first_name)}\b", normalized_message):
+                matches.append(full_name)
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for item in matches:
+            key = deps.normalize_text(item)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(item)
+        return deduped
+
+    def _attendance_totals(summary: dict[str, Any]) -> tuple[int, int, int]:
+        attendance = summary.get("attendance")
+        absent_total = 0
+        late_total = 0
+        absent_minutes_total = 0
+        if isinstance(attendance, list):
+            for row in attendance:
+                if not isinstance(row, dict):
+                    continue
+                absent_total += int(row.get("absent_count") or 0)
+                late_total += int(row.get("late_count") or 0)
+                absent_minutes_total += int(row.get("absent_minutes") or 0)
+        return absent_total, late_total, absent_minutes_total
+
+    named_academic_students = _named_academic_students_in_message()
+    attendance_comparison_query = len(named_academic_students) >= 2 and any(
+        term in normalized_message
+        for term in {
+            "entre ",
+            "quem esta mais delicado por frequencia",
+            "quem está mais delicado por frequência",
+            "mais delicado por frequencia",
+            "mais delicado por frequência",
+            "por que esse alerta pesa mais",
+            "frequencia hoje",
+            "frequência hoje",
+        }
+    )
     subject_hint = str(resolved.referenced_subject or "").strip() or (
         memory.active_subject if deps.looks_like_subject_followup(ctx.request.message) else None
     )
@@ -999,35 +1084,29 @@ async def _resolved_academic_attendance_summary_answer(
     ) or deps.resolved_academic_target_name(ctx, resolved=resolved)
     if not target_name:
         target_name = str(memory.active_student_name or "").strip() or _recent_linked_student_name(ctx, deps=deps)
-    if deps.needs_specific_academic_student_clarification(ctx, target_name=target_name, subject_hint=subject_hint):
+    if attendance_comparison_query or deps.needs_specific_academic_student_clarification(
+        ctx,
+        target_name=target_name,
+        subject_hint=subject_hint,
+    ):
         summaries: list[dict[str, Any]] = []
-        for student in deps.linked_students(ctx.actor, capability="academic"):
+        requested_names = set(named_academic_students) if attendance_comparison_query else None
+        for student in linked_academic_students:
             student_name = str(student.get("full_name") or "").strip()
             if not student_name:
+                continue
+            if requested_names is not None and student_name not in requested_names:
                 continue
             payload = await deps.fetch_academic_summary_payload(ctx, student_name_hint=student_name)
             summary = payload.get("summary") if isinstance(payload, dict) else None
             if isinstance(summary, dict):
                 summaries.append(summary)
         if summaries:
-            def _attendance_totals(summary: dict[str, Any]) -> tuple[int, int, int]:
-                attendance = summary.get("attendance")
-                absent_total = 0
-                late_total = 0
-                absent_minutes_total = 0
-                if isinstance(attendance, list):
-                    for row in attendance:
-                        if not isinstance(row, dict):
-                            continue
-                        absent_total += int(row.get("absent_count") or 0)
-                        late_total += int(row.get("late_count") or 0)
-                        absent_minutes_total += int(row.get("absent_minutes") or 0)
-                return absent_total, late_total, absent_minutes_total
-
             lines = ["Panorama de faltas e frequencia das contas vinculadas:"]
             strongest_name = None
             strongest_score = (-1, -1, -1)
             supports: list[MessageEvidenceSupport] = []
+            strongest_subject = None
             for summary in summaries:
                 answer_line = deps.compose_named_attendance_answer(summary, subject_hint=subject_hint)
                 student_name = str(summary.get("student_name") or "Aluno").strip() or "Aluno"
@@ -1044,8 +1123,44 @@ async def _resolved_academic_attendance_summary_answer(
                 if score > strongest_score:
                     strongest_score = score
                     strongest_name = student_name
+                    attendance_rows = summary.get("attendance")
+                    if isinstance(attendance_rows, list):
+                        strongest_row = next(
+                            (
+                                row
+                                for row in sorted(
+                                    [row for row in attendance_rows if isinstance(row, dict)],
+                                    key=lambda row: (
+                                        -(int(row.get("absent_count") or 0)),
+                                        -(int(row.get("late_count") or 0)),
+                                        -(int(row.get("absent_minutes") or 0)),
+                                        deps.normalize_text(str(row.get("subject_name") or "")),
+                                    ),
+                                )
+                            ),
+                            None,
+                        )
+                        strongest_subject = (
+                            str((strongest_row or {}).get("subject_name") or "").strip() or None
+                        )
             if strongest_name and strongest_score > (0, 0, 0):
                 lines.append(f"Quem exige maior atencao agora: {strongest_name}.")
+                if attendance_comparison_query:
+                    absent_total, late_total, absent_minutes_total = strongest_score
+                    why_parts = [f"{absent_total} falta(s)"]
+                    if late_total:
+                        why_parts.append(f"{late_total} atraso(s)")
+                    if absent_minutes_total:
+                        why_parts.append(f"{absent_minutes_total} minuto(s) de ausencia")
+                    why_text = ", ".join(why_parts)
+                    if strongest_subject:
+                        lines.append(
+                            f"Esse alerta pesa mais para {strongest_name} porque o maior impacto hoje aparece em {strongest_subject}, com {why_text}."
+                        )
+                    else:
+                        lines.append(
+                            f"Esse alerta pesa mais para {strongest_name} porque ele concentra {why_text} no recorte atual."
+                        )
             return SupervisorAnswerPayload(
                 message_text="\n".join(lines),
                 mode="structured_tool",
@@ -1252,6 +1367,8 @@ async def _resolved_finance_student_summary_answer(
     if not ctx.request.user.authenticated:
         return None
     normalized_message = deps.normalize_text(ctx.request.message)
+    if _looks_like_admin_finance_combo_hint(ctx.request.message, deps=deps):
+        return None
     wants_family_next_due = any(
         term in normalized_message
         for term in {

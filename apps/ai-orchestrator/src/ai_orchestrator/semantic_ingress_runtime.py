@@ -5,6 +5,7 @@ from typing import Any
 from eduassist_semantic_ingress import (
     IngressSemanticPlan,
     TurnFrame,
+    effective_turn_frame_authenticated as _effective_turn_frame_authenticated,
     is_terminal_ingress_act,
     looks_like_school_scope_message,
     resolve_semantic_ingress_with_provider,
@@ -36,8 +37,20 @@ _TURN_FRAME_PUBLIC_TOOL_MAP: dict[str, tuple[str, ...]] = {
 }
 
 _TURN_FRAME_PROTECTED_TOOL_MAP: dict[str, tuple[str, ...]] = {
+    "protected.account.access_scope": ("get_actor_identity_context",),
+    "protected.documents.restricted_lookup": ("retrieve_restricted_documents",),
+    "protected.institution.admin_finance_status": (
+        "get_administrative_status",
+        "get_financial_summary",
+    ),
     "protected.finance.summary": ("get_financial_summary",),
     "protected.finance.next_due": ("get_financial_summary",),
+    "protected.teacher.schedule": ("get_teacher_schedule",),
+    "protected.academic.upcoming_assessments": (
+        "get_student_academic_summary",
+        "get_student_upcoming_assessments",
+    ),
+    "protected.academic.family_comparison": ("get_student_academic_summary",),
     "protected.academic.grades": (
         "get_student_academic_summary",
         "get_student_grades",
@@ -66,6 +79,19 @@ def _preview_payload(preview: OrchestrationPreview) -> dict[str, Any]:
     if isinstance(turn_frame, dict):
         payload["turn_frame"] = turn_frame
     return payload
+
+
+def resolve_turn_frame_authenticated_flag(
+    *,
+    request_message: str,
+    authenticated: bool,
+    actor: dict[str, Any] | None = None,
+) -> bool:
+    return _effective_turn_frame_authenticated(
+        authenticated=authenticated,
+        actor_present=isinstance(actor, dict) and bool(actor),
+        message=request_message,
+    )
 
 
 async def maybe_resolve_semantic_ingress_plan(

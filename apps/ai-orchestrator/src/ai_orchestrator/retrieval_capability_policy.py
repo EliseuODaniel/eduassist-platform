@@ -82,6 +82,10 @@ _CAPABILITY_POLICY_DEFAULTS: dict[str, _CapabilityPolicyDefaults] = {
         profile=RetrievalProfile.default,
         top_k=4,
     ),
+    "protected.documents.restricted_lookup": _CapabilityPolicyDefaults(
+        profile=RetrievalProfile.deep,
+        top_k=5,
+    ),
     "protected.finance.next_due": _CapabilityPolicyDefaults(
         profile=RetrievalProfile.cheap,
         top_k=3,

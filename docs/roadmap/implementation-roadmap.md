@@ -364,6 +364,7 @@ Estado atual:
   - adapters integrados em `python_functions`, `langgraph`, `llamaindex` e `specialist_supervisor`;
   - gate unitário cross-stack para consistência de `capability`.
 - a fase atual do programa deixa de ser “criar a fundação” e passa a ser “expandir cobertura de capabilities e mover regressões E2E para cima do novo contrato”.
+- depois do fechamento do hardening amplo em `2026-04-16`, o próximo passo do roadmap deixa de ser qualidade semântica básica e passa a ser resiliência operacional dos caminhos públicos pesados sob concorrência, especialmente em `langgraph`, `python_functions` e `llamaindex`.
 
 - os gates minimos de release ja existem em `make release-readiness`;
 - o benchmark seletivo de `GraphRAG` ja possui trilha experimental pronta;

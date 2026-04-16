@@ -9,6 +9,7 @@ from ai_orchestrator.grounded_answer_experience import (
     _ANSWER_FOCUS_CACHE,
     _answer_experience_settings,
     _clarify_after_retry_message,
+    _deterministic_context_repair_plan,
     _looks_like_cross_student_academic_comparison_followup,
     _looks_like_contextual_cross_student_academic_comparison_followup,
     _preserve_deterministic_answer_surface,
@@ -1164,6 +1165,40 @@ def test_answer_experience_builds_public_known_unknown_answer(monkeypatch: pytes
     assert updated.mode == OrchestrationMode.structured_tool
 
 
+def test_answer_experience_builds_public_known_unknown_minimum_age_answer_with_admissions(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_context(*, settings, request):
+        return None
+
+    async def fake_profile(settings):
+        return {'school_name': 'Colegio Horizonte'}
+
+    async def fake_actor(*, settings, request):
+        return None
+
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_conversation_context', fake_context)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_public_school_profile', fake_profile)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_actor_context', fake_actor)
+
+    updated = asyncio.run(
+        apply_grounded_answer_experience(
+            request=MessageResponseRequest(
+                message='Se eu quiser confirmar idade minima para ingresso, isso aparece publicamente ou depende de admissions?',
+                telegram_chat_id=999,
+                channel=ConversationChannel.telegram,
+                user=UserContext(role='anonymous', authenticated=False),
+            ),
+            response=_public_response('Nao tenho esse dado no momento.', mode=OrchestrationMode.clarify),
+            settings=_settings(),
+            stack_name='python_functions',
+        )
+    )
+
+    lowered = updated.message_text.lower()
+    assert 'idade minima' in lowered
+    assert 'admissions' in lowered
+    assert updated.mode == OrchestrationMode.structured_tool
+
+
 def test_answer_experience_prefers_public_teacher_directory_boundary(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_context(*, settings, request):
         return None
@@ -1194,6 +1229,105 @@ def test_answer_experience_prefers_public_teacher_directory_boundary(monkeypatch
 
     assert 'nao divulga' in updated.message_text.lower()
     assert 'coordenacao pedagogica' in updated.message_text.lower()
+
+
+def test_preserve_deterministic_answer_surface_keeps_external_public_boundary() -> None:
+    response = _public_response(
+        'Nao tenho base confiavel aqui para responder sobre a biblioteca publica da cidade.'
+    ).model_copy(
+        update={
+            'reason': 'python_functions_native_external_public_facility_boundary',
+            'candidate_reason': 'turn_frame:external_public_facility_boundary',
+        }
+    )
+
+    preserve = _preserve_deterministic_answer_surface(
+        request=_request('Qual o horario de fechamento da biblioteca publica da cidade?'),
+        response=response,
+        focus=AnswerFocusState(),
+        actor=None,
+        conversation_context=None,
+    )
+
+    assert preserve == 'preserve_scope_boundary_surface'
+
+
+def test_preserve_deterministic_answer_surface_keeps_deterministic_public_guardrail() -> None:
+    response = _public_response(
+        'Nao tenho base confiavel aqui para responder esse tema fora do escopo da escola.'
+    ).model_copy(
+        update={
+            'reason': 'llamaindex_deterministic_public_guardrail_fast_path',
+            'candidate_reason': 'deterministic_scope_boundary',
+        }
+    )
+
+    preserve = _preserve_deterministic_answer_surface(
+        request=_request('Quero uma recomendacao de filme, sem relacao com escola.'),
+        response=response,
+        focus=AnswerFocusState(),
+        actor=None,
+        conversation_context=None,
+    )
+
+    assert preserve == 'preserve_scope_boundary_surface'
+
+
+def test_answer_experience_canonicalizes_scope_boundary_surface(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_context(*, settings, request):
+        return {'recent_messages': []}
+
+    async def fake_profile(settings):
+        return {'school_name': 'Colegio Horizonte'}
+
+    async def fake_actor(*, settings, request):
+        return None
+
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_conversation_context', fake_context)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_public_school_profile', fake_profile)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_actor_context', fake_actor)
+
+    updated = asyncio.run(
+        apply_grounded_answer_experience(
+            request=_request('Quero uma recomendacao de filme, sem relacao com escola.'),
+            response=_public_response(
+                'Nao tenho informações sobre recomendações de filmes, pois meu foco é exclusivamente o atendimento escolar.'
+            ).model_copy(
+                update={
+                    'reason': 'llamaindex_deterministic_public_guardrail_fast_path',
+                    'candidate_reason': 'deterministic_scope_boundary',
+                }
+            ),
+            settings=_settings(),
+            stack_name='llamaindex',
+        )
+    )
+
+    lowered = updated.message_text.lower()
+    assert 'fora do escopo da escola' in lowered
+    assert 'filme' not in lowered
+    assert updated.answer_experience_reason.endswith('explicit_open_world_scope_boundary')
+
+
+def test_preserve_deterministic_answer_surface_keeps_restricted_document_surface() -> None:
+    response = _public_response(
+        'Nao encontrei uma orientacao restrita especifica para esse protocolo interno.'
+    ).model_copy(
+        update={
+            'reason': 'python_functions_native_restricted_document_no_match',
+            'candidate_reason': 'restricted_doc_no_match',
+        }
+    )
+
+    preserve = _preserve_deterministic_answer_surface(
+        request=_request('Na rotina interna de negociacao financeira, quais validacoes antecedem qualquer promessa de quitacao?'),
+        response=response,
+        focus=AnswerFocusState(),
+        actor=None,
+        conversation_context=None,
+    )
+
+    assert preserve == 'preserve_restricted_document_surface'
 
 
 def test_answer_experience_teacher_directory_boundary_beats_service_routing_bundle(
@@ -3265,6 +3399,27 @@ def test_answer_experience_preserves_restricted_document_no_match_without_studen
     assert updated.answer_experience_applied is False
 
 
+def test_deterministic_context_repair_plan_skips_restricted_document_queries() -> None:
+    request = _request(
+        'Pensando no caso pratico, no playbook interno de negociacao financeira, quais criterios orientam uma negociacao com a familia?'
+    )
+    focus = AnswerFocusState(unknown_student_name='Negociacao Financeira')
+    assert (
+        _deterministic_context_repair_plan(
+            request=request,
+            focus=focus,
+            actor={
+                'linked_students': [
+                    {'student_id': 'lucas-id', 'full_name': 'Lucas Oliveira', 'can_view_academic': True},
+                    {'student_id': 'ana-id', 'full_name': 'Ana Oliveira', 'can_view_academic': True},
+                ]
+            },
+            conversation_context=None,
+        )
+        is None
+    )
+
+
 def test_answer_experience_preserves_public_process_compare_lane(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_context(*, settings, request):
         return {'recent_messages': []}
@@ -4265,6 +4420,73 @@ def test_answer_experience_repairs_componentes_merecem_mais_atencao_followup(
     assert updated.answer_experience_reason.endswith(':protected_academic_direct')
 
 
+def test_answer_experience_repairs_self_academic_progression_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_context(*, settings, request):
+        return {
+            'recent_messages': [
+                {'sender_type': 'user', 'content': 'Como aluno autenticado, me diga qual materia esta melhor, qual esta pior e o que falta para fechar a media em fisica.'},
+            ]
+        }
+
+    async def fake_profile(settings):
+        return {'school_name': 'Colegio Horizonte'}
+
+    async def fake_actor(*, settings, request):
+        return {
+            'linked_students': [
+                {'student_id': 'miguel-id', 'full_name': 'Miguel Pereira'},
+            ]
+        }
+
+    async def fake_api_core_get(*, settings, path, params=None):
+        if path == '/v1/students/miguel-id/academic-summary':
+            return {
+                'summary': {
+                    'student_name': 'Miguel Pereira',
+                    'grades': [
+                        {'subject_name': 'Portugues', 'score': 8.7, 'max_score': 10.0},
+                        {'subject_name': 'Fisica', 'score': 8.0, 'max_score': 10.0},
+                        {'subject_name': 'Historia', 'score': 8.2, 'max_score': 10.0},
+                    ],
+                }
+            }
+        raise AssertionError(f'unexpected_path:{path}')
+
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_conversation_context', fake_context)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_public_school_profile', fake_profile)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_actor_context', fake_actor)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._api_core_get', fake_api_core_get)
+
+    response = _response('Hoje Miguel Pereira ainda tem pendencias na documentacao.').model_copy(
+        update={
+            'reason': 'python_functions_native_structured:institution',
+            'candidate_reason': 'python_functions_native_structured:institution',
+            'classification': IntentClassification(
+                domain=QueryDomain.institution,
+                access_tier=AccessTier.authenticated,
+                confidence=1.0,
+                reason='test',
+            ),
+            'selected_tools': ['get_student_administrative_status'],
+        }
+    )
+    updated = asyncio.run(
+        apply_grounded_answer_experience(
+            request=_request('Como aluno autenticado, me diga qual materia esta melhor, qual esta pior e o que falta para fechar a media em fisica.'),
+            response=response,
+            settings=_settings(),
+            stack_name='python_functions',
+        )
+    )
+
+    lowered = updated.message_text.casefold()
+    assert 'miguel pereira' in lowered
+    assert 'portugues' in lowered
+    assert 'fisica' in lowered
+    assert 'documenta' not in lowered
+    assert updated.answer_experience_reason.endswith(':protected_academic_direct')
+
+
 def test_answer_focus_ignores_generic_qual_disciplina_stub_in_family_aggregate_prompt() -> None:
     focus = resolve_answer_focus(
         request_message='Sem me dar tabela, qual dos meus filhos esta academicamente pior hoje e em qual disciplina isso fica mais claro?',
@@ -5098,6 +5320,85 @@ def test_answer_experience_rewrites_attendance_component_risk_wording(
     lowered = updated.message_text.lower()
     assert 'frequencia de lucas oliveira' in lowered or 'alerta de frequencia de lucas oliveira' in lowered
     assert 'fisica' in lowered
+    assert updated.answer_experience_reason.endswith(':protected_attendance_direct')
+
+
+def test_answer_experience_repairs_named_attendance_followup_after_family_panorama(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_context(*, settings, request):
+        return {
+            'recent_messages': [
+                {
+                    'role': 'assistant',
+                    'content': (
+                        'Panorama de faltas e frequencia das contas vinculadas:\n'
+                        '- Lucas Oliveira: 6 falta(s), 7 atraso(s), 19 presenca(s), 120 minuto(s) de ausencia. '
+                        'Ponto mais sensivel: Tecnologia e Cultura Digital.\n'
+                        '- Ana Oliveira: 0 falta(s), 0 atraso(s), 22 presenca(s).\n'
+                        'Quem exige maior atencao agora: Lucas Oliveira.'
+                    ),
+                }
+            ]
+        }
+
+    async def fake_profile(settings):
+        return {'school_name': 'Colegio Horizonte'}
+
+    async def fake_actor(*, settings, request):
+        return {
+            'linked_students': [
+                {'student_id': 'lucas-id', 'full_name': 'Lucas Oliveira', 'can_view_academic': True},
+                {'student_id': 'ana-id', 'full_name': 'Ana Oliveira', 'can_view_academic': True},
+            ]
+        }
+
+    async def fake_api_core_get(*, settings, path, params=None):
+        if path == '/v1/students/lucas-id/academic-summary':
+            return {
+                'summary': {
+                    'student_name': 'Lucas Oliveira',
+                    'attendance': [
+                        {'subject_name': 'Tecnologia e Cultura Digital', 'present_count': 19, 'late_count': 7, 'absent_count': 6, 'absent_minutes': 120},
+                        {'subject_name': 'Historia', 'present_count': 23, 'late_count': 0, 'absent_count': 0, 'absent_minutes': 0},
+                    ],
+                }
+            }
+        raise AssertionError(f'unexpected_path:{path}')
+
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_conversation_context', fake_context)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_public_school_profile', fake_profile)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._fetch_actor_context', fake_actor)
+    monkeypatch.setattr('ai_orchestrator.grounded_answer_experience._api_core_get', fake_api_core_get)
+
+    response = _response(
+        'Pontualidade, frequencia e convivencia aparecem juntas nos documentos publicos da escola.'
+    ).model_copy(
+        update={
+            'reason': 'python_functions_native_structured:institution',
+            'candidate_reason': 'public_bundle.conduct_frequency_punctuality',
+            'classification': IntentClassification(
+                domain=QueryDomain.institution,
+                access_tier=AccessTier.public,
+                confidence=1.0,
+                reason='test',
+            ),
+            'selected_tools': ['get_public_school_profile'],
+        }
+    )
+    updated = asyncio.run(
+        apply_grounded_answer_experience(
+            request=_request('Mantendo o contexto, corta para o Lucas e resume qual e o risco mais concreto dele em frequencia.'),
+            response=response,
+            settings=_settings(),
+            stack_name='python_functions',
+        )
+    )
+
+    lowered = updated.message_text.casefold()
+    assert 'lucas oliveira' in lowered
+    assert 'principal alerta de frequencia' in lowered
+    assert 'tecnologia e cultura digital' in lowered
     assert updated.answer_experience_reason.endswith(':protected_attendance_direct')
 
 

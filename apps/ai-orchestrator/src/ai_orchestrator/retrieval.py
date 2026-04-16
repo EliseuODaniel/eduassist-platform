@@ -186,6 +186,11 @@ _RESTRICTED_DOC_QUERY_TERMS = {
     'orientação interna',
     'documento interno',
     'documentos internos',
+    'rotina interna',
+    'validacao interna',
+    'validação interna',
+    'validacoes internas',
+    'validações internas',
     'por dentro',
 }
 _RESTRICTED_DOC_STOPWORDS = {
@@ -194,12 +199,20 @@ _RESTRICTED_DOC_STOPWORDS = {
     'internas',
     'interno',
     'internos',
+    'bem',
+    'objetiva',
+    'objetivo',
+    'objetivamente',
+    'qualquer',
+    'antecedem',
+    'antecede',
     'segundo',
     'diz',
     'orienta',
     'orientam',
     'sobre',
 }
+_RESTRICTED_DOC_FALLBACK_QUERY_LIMIT = 6
 _RESTRICTED_DOC_GENERIC_TERMS = {
     'aluno',
     'alunos',
@@ -238,6 +251,14 @@ _RESTRICTED_DOC_RARE_TERMS = {
     'excursao',
     'excursão',
     'viagem',
+    'quitacao',
+    'quitação',
+    'promessa',
+    'validacao',
+    'validação',
+    'validacoes',
+    'validações',
+    'rotina',
 }
 
 
@@ -1073,11 +1094,15 @@ def _cross_document_variants(query: str) -> list[str]:
 def _restricted_document_variants(query: str) -> list[str]:
     normalized = _normalize_text(query)
     variants: list[str] = []
+    if any(term in normalized for term in ('pagamento parcial', 'quitacao', 'quitação', 'prometer quitacao', 'prometer quitação')):
+        variants.append(
+            'procedimento interno pagamento parcial quitacao negociacao financeira validacoes antes de prometer quitacao'
+        )
     if any(term in normalized for term in ('professor', 'devolutiva', 'pedagog', 'avaliac', 'comunic')):
         variants.append(
             'manual interno professor registro de avaliacoes comunicacao pedagogica devolutiva ao estudante'
         )
-    if any(term in normalized for term in ('telegram', 'escopo', 'parcial', 'responsavel', 'responsável')):
+    if any(term in normalized for term in ('telegram', 'escopo parcial', 'responsavel', 'responsável')):
         variants.append(
             'protocolo interno telegram escopo parcial de responsaveis permissoes de acesso e limites do canal'
         )
@@ -1089,6 +1114,55 @@ def _restricted_document_variants(query: str) -> list[str]:
         variants.append(
             'programa interno de intercambio internacional hospedagem viagem externa e protocolo correlato'
         )
+    return _dedupe_strings(variants)
+
+
+def _restricted_document_fallback_queries(query: str) -> list[str]:
+    normalized = _normalize_text(query)
+    raw_terms = [
+        token
+        for token in re.findall(r'[a-z0-9]{3,}', normalized)
+        if token not in _RESTRICTED_DOC_STOPWORDS
+    ]
+    informative_terms = [
+        token for token in raw_terms if token not in _RESTRICTED_DOC_GENERIC_TERMS
+    ]
+    anchor_terms = _restricted_document_anchor_terms(query)
+    rare_terms = _restricted_document_rare_terms(query)
+    phrases: list[tuple[float, int, str]] = []
+    for index, (first, second) in enumerate(zip(raw_terms, raw_terms[1:])):
+        if first == second:
+            continue
+        if first in _RESTRICTED_DOC_GENERIC_TERMS and second in _RESTRICTED_DOC_GENERIC_TERMS:
+            continue
+        score = 0.0
+        if first not in _RESTRICTED_DOC_GENERIC_TERMS:
+            score += 1.0
+        if second not in _RESTRICTED_DOC_GENERIC_TERMS:
+            score += 1.0
+        if first in anchor_terms or second in anchor_terms:
+            score += 1.0
+        if first in rare_terms or second in rare_terms:
+            score += 1.5
+        if {first, second} == {'pagamento', 'parcial'}:
+            score += 3.0
+        if {first, second} == {'escopo', 'parcial'}:
+            score += 3.0
+        if any(token.startswith('negoci') for token in {first, second}) and any(
+            token.startswith('financeir') for token in {first, second}
+        ):
+            score += 3.0
+        if any(token.startswith('promess') for token in {first, second}) and any(
+            token.startswith('quitac') for token in {first, second}
+        ):
+            score += 3.0
+        phrases.append((score, -index, f'{first} {second}'))
+    phrases.sort(reverse=True)
+    variants: list[str] = [*_restricted_document_variants(query), *(phrase for _, _, phrase in phrases[:6])]
+    if len(informative_terms) >= 2:
+        variants.append(' '.join(informative_terms[:2]))
+    if len(informative_terms) >= 3:
+        variants.append(' '.join(informative_terms[:3]))
     return _dedupe_strings(variants)
 
 
@@ -1737,6 +1811,51 @@ def select_relevant_restricted_hits(query: str, hits: list[Any], *, max_hits: in
         if len(selected) >= max_hits:
             break
     return selected
+
+
+def retrieve_relevant_restricted_hits_with_fallback(
+    service: Any,
+    *,
+    query: str,
+    hits: list[Any],
+    top_k: int = 4,
+    visibility: str = 'restricted',
+    category: str | None = None,
+) -> list[Any]:
+    selected = select_relevant_restricted_hits(query, hits, max_hits=top_k)
+    if selected:
+        return selected
+    fallback_sources: dict[str, list[dict[str, Any]]] = {}
+    for index, fallback_query in enumerate(
+        _restricted_document_fallback_queries(query)[:_RESTRICTED_DOC_FALLBACK_QUERY_LIMIT]
+    ):
+        rows = service._lexical_search(
+            query=fallback_query,
+            top_k=max(top_k * 2, 6),
+            visibility=visibility,
+            category=category,
+        )
+        if rows:
+            fallback_sources[f'restricted_fallback:{index}:lexical'] = rows
+    if not fallback_sources:
+        return []
+    fused_hits = service._fuse_hits(
+        lexical_sources=fallback_sources,
+        vector_sources={},
+        top_k=max(top_k, 8),
+        category_bias=None,
+        max_chunks_per_document=2,
+        intent='service_overview',
+        normalized_query=_normalize_text(query),
+    )
+    reranked_hits, _ = service._rerank_hits(
+        query=query,
+        hits=fused_hits,
+        rerank_limit=max(top_k * 2, 8),
+        top_k=max(top_k, 4),
+    )
+    selected_retry_hits = select_relevant_restricted_hits(query, list(reranked_hits), max_hits=top_k)
+    return selected_retry_hits or list(reranked_hits)[:top_k]
 
 
 def compose_restricted_document_grounded_answer(hits: list[Any]) -> str | None:

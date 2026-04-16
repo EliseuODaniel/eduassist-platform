@@ -20,6 +20,7 @@ from .turn_router import (
     capability_spec,
     capability_specs,
     derive_focus_frame,
+    effective_turn_frame_authenticated,
     resolve_turn_frame_with_provider,
 )
 from .turn_preview import turn_frame_preview_metadata
@@ -36,6 +37,7 @@ __all__ = [
     "capability_spec",
     "capability_specs",
     "derive_focus_frame",
+    "effective_turn_frame_authenticated",
     "is_terminal_ingress_act",
     "looks_like_high_confidence_public_school_faq",
     "looks_like_language_preference_feedback",

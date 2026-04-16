@@ -343,6 +343,43 @@ def compose_public_conduct_policy_contextual_answer(
 
 
 def _looks_like_public_conduct_policy_query(normalized: str) -> bool:
+    contextual_protected_followup_terms = (
+        "mantendo o contexto",
+        "continuando a analise",
+        "continuando a análise",
+        "recorte so",
+        "recorte só",
+        "corta para",
+        "isole",
+        "resuma",
+        "resume",
+    )
+    contextual_student_terms = (
+        "aluno",
+        "aluna",
+        "filho",
+        "filha",
+        "lucas",
+        "ana",
+        "miguel",
+    )
+    contextual_attendance_risk_terms = (
+        "frequencia",
+        "frequência",
+        "faltas",
+        "atrasos",
+        "presenca",
+        "presença",
+        "risco",
+        "principal alerta",
+        "mais concreto",
+    )
+    if (
+        any(term in normalized for term in contextual_protected_followup_terms)
+        and any(term in normalized for term in contextual_student_terms)
+        and any(term in normalized for term in contextual_attendance_risk_terms)
+    ):
+        return False
     conduct_terms = (
         "convivencia",
         "convivência",

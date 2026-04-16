@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai_orchestrator.conversation_answer_state import resolve_answer_focus
+from ai_orchestrator.conversation_answer_state import _extract_unknown_student_reference, resolve_answer_focus
 
 
 def _actor() -> dict[str, object]:
@@ -468,6 +468,30 @@ def test_resolve_answer_focus_detects_unknown_subject_without_reusing_old_subjec
     assert focus.uses_memory is True
 
 
+def test_resolve_answer_focus_ignores_interrogative_subject_placeholder_on_family_followup() -> None:
+    focus = resolve_answer_focus(
+        request_message='Pensando no caso pratico, agora quero apenas a Ana: em quais materias ela aparece mais exposta?',
+        actor=_actor(),
+        conversation_context={
+            'recent_tool_calls': [
+                {
+                    'tool_name': 'orchestration.trace',
+                    'request_payload': {
+                        'slot_memory': {
+                            'academic_student_name': 'Ana Oliveira',
+                            'active_task': 'academic:grades',
+                        }
+                    },
+                }
+            ]
+        },
+    )
+
+    assert focus.domain == 'academic'
+    assert focus.student_name == 'Ana Oliveira'
+    assert focus.unknown_subject_name is None
+
+
 def test_resolve_answer_focus_marks_meta_repair_followup() -> None:
     focus = resolve_answer_focus(
         request_message='essa resposta aqui era sobre o que então?',
@@ -692,3 +716,12 @@ def test_resolve_answer_focus_inherits_public_pricing_segment_for_direct_project
     assert focus.public_pricing_grade_year == '3o ano'
     assert focus.public_pricing_quantity == '20'
     assert focus.public_pricing_price_kind == 'enrollment_fee'
+
+
+def test_extract_unknown_student_reference_skips_admin_finance_combo_prompt() -> None:
+    prompt = (
+        'De forma bem objetiva, quero um quadro unico de documentacao e financeiro '
+        'para saber se alguma pendencia esta bloqueando atendimento.'
+    )
+
+    assert _extract_unknown_student_reference(_actor(), prompt) is None

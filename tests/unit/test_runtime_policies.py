@@ -3,7 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 from types import SimpleNamespace
 
-from ai_orchestrator.models import AccessTier, OrchestrationMode, QueryDomain
+from ai_orchestrator.models import AccessTier, OrchestrationMode, QueryDomain, UserContext, UserRole
+from ai_orchestrator.retrieval import retrieve_relevant_restricted_hits_with_fallback
+from eduassist_semantic_ingress import (
+    looks_like_school_scope_message,
+    looks_like_scope_boundary_candidate,
+)
 from ai_orchestrator.runtime import (
     _apply_workflow_follow_up_rescue,
     _apply_authenticated_public_profile_rescue,
@@ -11,6 +16,7 @@ from ai_orchestrator.runtime import (
     ProtectedAttributeRequest,
     _apply_protected_domain_rescue,
     _build_analysis_message,
+    _build_effective_actor_context,
     _build_conversation_slot_memory,
     _build_public_institution_plan,
     _build_public_profile_context,
@@ -20,10 +26,13 @@ from ai_orchestrator.runtime import (
     _compose_academic_attribute_answer,
     _compose_academic_aggregate_answer,
     _compose_academic_difficulty_answer,
+    _compose_academic_progression_answer,
     _compose_academic_risk_answer,
+    _compose_account_context_answer,
     _compose_family_attendance_aggregate_answer,
     _compose_family_admin_aggregate_answer,
     _compose_contextual_public_boundary_answer,
+    _compose_external_public_facility_boundary_answer,
     _compose_meta_repair_follow_up_answer,
     _compose_contextual_public_timeline_followup_answer,
     _compose_admin_finance_combined_answer,
@@ -44,6 +53,7 @@ from ai_orchestrator.runtime import (
     _is_access_scope_query,
     _is_direct_service_routing_bundle_query,
     _is_service_routing_query,
+    _is_public_teacher_identity_query,
     _is_public_capacity_query,
     _is_public_careers_query,
     _is_public_curriculum_query,
@@ -58,6 +68,7 @@ from ai_orchestrator.runtime import (
     _is_public_pricing_navigation_query,
     _should_reuse_public_pricing_slots,
     _looks_like_family_attendance_aggregate_query,
+    _looks_like_family_attendance_student_focus_followup,
     _looks_like_family_admin_aggregate_query,
     _looks_like_family_academic_aggregate_query,
     _looks_like_family_finance_aggregate_query,
@@ -72,20 +83,44 @@ from ai_orchestrator.runtime import (
     _must_preserve_contextual_public_followup_message,
     _should_polish_structured_answer,
     _should_prioritize_protected_sql_query,
+    _should_skip_public_contextual_answer,
     _should_use_public_open_documentary_synthesis,
     _detect_subject_filter,
     _requested_subject_label_from_message,
     _looks_like_academic_difficulty_query,
+    _looks_like_academic_progression_query,
+    _is_explicit_open_world_scope_boundary_query,
     _handle_public_operating_hours,
     _try_public_channel_fast_answer,
     _detect_visit_booking_action,
+    _detect_admin_attribute_request,
     _is_public_teacher_directory_follow_up,
+    _is_teacher_scope_guidance_query,
+    _should_fetch_teacher_schedule,
+    _detect_academic_attribute_request,
+    _wants_academic_grade_requirement,
 )
+from ai_orchestrator.public_orchestration_runtime import _resolve_deterministic_public_guardrail_answer
+from ai_orchestrator.public_orchestration_runtime import _compose_scope_boundary_answer as _compose_orchestration_scope_boundary_answer
+from ai_orchestrator.graph import (
+    _is_authenticated_admin_query,
+    _is_authenticated_student_assessment_query,
+)
+from ai_orchestrator.graph_classification_runtime import route_request as graph_route_request
+from ai_orchestrator.message_response_runtime import (
+    _realign_preview_to_protected_domain,
+    _should_apply_deterministic_scope_boundary,
+)
+from ai_orchestrator.public_doc_knowledge import _looks_like_public_conduct_policy_query
 from ai_orchestrator.python_functions_public_knowledge import match_public_canonical_lane as match_python_functions_public_canonical_lane
+from ai_orchestrator.protected_summary_runtime import _looks_like_family_academic_student_focus_followup
 from ai_orchestrator.request_intent_guardrails import (
     looks_like_explicit_admin_status_query,
     looks_like_high_confidence_public_school_faq,
 )
+import ai_orchestrator.structured_tool_runtime as structured_tool_runtime
+from ai_orchestrator.turn_frame_policy import preview_targets_restricted_document_surface
+from ai_orchestrator.protected_domain_runtime import _compose_teacher_schedule_summary_answer
 
 
 def _preview(*, reason: str, domain: QueryDomain = QueryDomain.institution) -> SimpleNamespace:
@@ -118,12 +153,338 @@ def test_family_finance_aggregate_query_accepts_meu_financeiro_wording() -> None
     assert _looks_like_family_finance_aggregate_query('Quero ver meu financeiro') is True
 
 
+def test_family_finance_aggregate_query_rejects_access_scope_wording() -> None:
+    prompt = 'Quais dados dos meus filhos eu consigo acessar por aqui, e se o meu acesso cobre academico e financeiro?'
+    assert _looks_like_family_finance_aggregate_query(prompt) is False
+
+
+def test_scope_boundary_candidate_wins_when_user_explicitly_says_question_is_not_about_school() -> None:
+    prompt = 'Quero uma recomendacao de filme, sem relacao com escola.'
+    assert looks_like_school_scope_message(prompt) is False
+    assert looks_like_scope_boundary_candidate(prompt) is True
+
+
+def test_message_response_scope_boundary_does_not_override_protected_academic_turn() -> None:
+    preview = SimpleNamespace(
+        classification=SimpleNamespace(domain=QueryDomain.institution, access_tier=AccessTier.public),
+        selected_tools=['get_student_academic_summary'],
+        graph_path=['python_functions:planner', 'turn_frame:protected.academic.family_comparison'],
+    )
+    actor = {
+        'linked_students': [
+            {'student_id': 'stu-lucas', 'full_name': 'Lucas Oliveira'},
+            {'student_id': 'stu-ana', 'full_name': 'Ana Oliveira'},
+        ]
+    }
+
+    assert _should_apply_deterministic_scope_boundary(
+        message='Entre meus filhos, quem esta mais vulneravel academicamente hoje? Me de um panorama curto.',
+        preview=preview,
+        actor=actor,
+        conversation_context={},
+        authenticated=True,
+    ) is False
+
+
+def test_message_response_scope_boundary_preserves_explicit_open_world_query() -> None:
+    preview = SimpleNamespace(
+        classification=SimpleNamespace(domain=QueryDomain.academic, access_tier=AccessTier.authenticated),
+        selected_tools=['get_student_academic_summary'],
+        graph_path=['turn_frame:protected.academic.student_summary'],
+    )
+    actor = {'linked_students': [{'student_id': 'stu-lucas', 'full_name': 'Lucas Oliveira'}]}
+
+    assert _should_apply_deterministic_scope_boundary(
+        message='Quero uma recomendacao de filme, sem relacao com escola.',
+        preview=preview,
+        actor=actor,
+        conversation_context={},
+        authenticated=True,
+    ) is True
+
+
+def test_message_response_scope_boundary_skips_restricted_document_queries() -> None:
+    preview = SimpleNamespace(
+        classification=SimpleNamespace(domain=QueryDomain.support, access_tier=AccessTier.authenticated),
+        selected_tools=['retrieve_restricted_documents'],
+        graph_path=['turn_frame:protected.documents.restricted_lookup'],
+    )
+    actor = {'linked_students': [{'student_id': 'stu-lucas', 'full_name': 'Lucas Oliveira'}]}
+
+    assert _should_apply_deterministic_scope_boundary(
+        message='No playbook interno de negociacao financeira, quais criterios orientam a conversa com a familia?',
+        preview=preview,
+        actor=actor,
+        conversation_context={},
+        authenticated=True,
+    ) is False
+
+
+def test_realign_preview_to_protected_domain_sets_authenticated_focus() -> None:
+    preview = SimpleNamespace(
+        mode=OrchestrationMode.structured_tool,
+        classification=SimpleNamespace(domain=QueryDomain.institution, access_tier=AccessTier.public, confidence=0.31),
+        selected_tools=['get_public_school_profile'],
+        graph_path=['python_functions:planner'],
+        reason='old_reason',
+        needs_authentication=False,
+    )
+
+    updated = _realign_preview_to_protected_domain(preview, protected_domain=QueryDomain.academic)
+
+    assert updated.classification.domain is QueryDomain.academic
+    assert updated.classification.access_tier is AccessTier.authenticated
+    assert updated.needs_authentication is True
+    assert 'get_student_academic_summary' in updated.selected_tools
+
+
 def test_public_document_submission_query_accepts_enrollment_documents_requirement() -> None:
     assert _is_public_document_submission_query('Quais documentos preciso para matricula?') is True
 
 
 def test_public_timeline_query_accepts_quando_iniciam_as_aulas_prompt() -> None:
     assert _is_public_timeline_query('Quando iniciam as aulas?') is True
+
+
+def test_teacher_segment_followup_keeps_teacher_scope_without_requiring_literal_grade_prompt() -> None:
+    conversation_context = {
+        'recent_messages': [
+            {'sender_type': 'user', 'content': 'Me mostra minha grade docente completa deste ano.'},
+            {'sender_type': 'assistant', 'content': 'Sua grade docente inclui Fundamental e Ensino Medio.'},
+        ]
+    }
+    message = 'Agora recorte so o que eu tenho no ensino medio.'
+    user = SimpleNamespace(authenticated=True, role=SimpleNamespace(value='teacher'))
+    actor = {'role_code': 'teacher'}
+
+    assert _is_teacher_scope_guidance_query(
+        message,
+        actor=actor,
+        user=user,
+        conversation_context=conversation_context,
+    ) is True
+    assert _should_fetch_teacher_schedule(
+        message,
+        actor=actor,
+        user=user,
+        conversation_context=conversation_context,
+    ) is True
+
+
+def test_teacher_schedule_initial_panorama_detects_teaching_load_request() -> None:
+    user = SimpleNamespace(authenticated=True, role=SimpleNamespace(value='teacher'))
+    actor = {'role_code': 'teacher'}
+
+    assert _is_teacher_scope_guidance_query(
+        'Como professor autenticado, quero um quadro claro das turmas e disciplinas que atendo neste ano.',
+        actor=actor,
+        user=user,
+        conversation_context={'recent_messages': []},
+    ) is True
+    assert _should_fetch_teacher_schedule(
+        'Como professor autenticado, quero um quadro claro das turmas e disciplinas que atendo neste ano.',
+        actor=actor,
+        user=user,
+        conversation_context={'recent_messages': []},
+    ) is True
+
+
+def test_teacher_schedule_summary_mentions_filtered_segment() -> None:
+    answer = _compose_teacher_schedule_summary_answer(
+        {
+            'teacher_name': 'Fernando Azevedo',
+            'assignments': [
+                {'class_name': '1o Ano A', 'subject_name': 'Fisica', 'grade_level': 10},
+                {'class_name': '2o Ano B', 'subject_name': 'Quimica', 'grade_level': 11},
+            ],
+        },
+        profile=None,
+        message='Filtre a minha alocacao e deixe so as turmas do ensino medio.',
+    )
+
+    lowered = answer.casefold()
+    assert 'ensino medio' in lowered
+    assert '1o ano a' in lowered
+    assert '2o ano b' in lowered
+
+
+def test_preview_targets_restricted_document_surface_accepts_turn_frame_marker() -> None:
+    preview = SimpleNamespace(
+        reason='support_clarify',
+        graph_path=['python_functions:planner', 'turn_frame:protected.documents.restricted_lookup'],
+        selected_tools=[],
+    )
+
+    assert preview_targets_restricted_document_surface(preview) is True
+
+
+def test_structured_tool_runtime_exports_restricted_hit_fallback_helper() -> None:
+    assert callable(
+        getattr(structured_tool_runtime, 'retrieve_relevant_restricted_hits_with_fallback', None)
+    )
+
+
+def test_orchestration_scope_boundary_answer_accepts_missing_profile() -> None:
+    answer = _compose_orchestration_scope_boundary_answer(None, conversation_context={'recent_messages': []})
+
+    assert 'fora do escopo da escola' in answer.casefold()
+
+
+def test_assignment_matches_teacher_segment_prefers_structured_grade_level() -> None:
+    from ai_orchestrator.protected_domain_runtime import _assignment_matches_teacher_segment
+
+    assert _assignment_matches_teacher_segment(
+        {
+            'class_name': '1o Ano A',
+            'grade_level': 10,
+            'segment': 'Ensino Medio',
+        },
+        'medio',
+    ) is True
+    assert _assignment_matches_teacher_segment(
+        {
+            'class_name': '1o Ano A',
+            'grade_level': 10,
+            'segment': 'Ensino Medio',
+        },
+        'fundamental',
+    ) is False
+
+
+def test_select_linked_student_accepts_contrastive_followup_with_exclusion() -> None:
+    actor = {
+        'linked_students': [
+            {'student_id': 'stu-lucas', 'full_name': 'Lucas Oliveira', 'can_view_academic': True},
+            {'student_id': 'stu-ana', 'full_name': 'Ana Oliveira', 'can_view_academic': True},
+        ]
+    }
+
+    student, clarification = _select_linked_student(
+        actor,
+        'Tira o Lucas desse recorte e me mostra so o ponto academico mais fraco da Ana.',
+        capability='academic',
+        conversation_context=None,
+    )
+
+    assert clarification is None
+    assert student is not None
+    assert student['full_name'] == 'Ana Oliveira'
+
+
+def test_graph_authenticated_student_assessment_query_accepts_family_comparison_verdict() -> None:
+    prompt = 'Quero so o veredito academico entre Ana e Lucas: quem esta mais perto de reprovar e qual componente puxa esse alerta?'
+
+    assert _is_authenticated_student_assessment_query(prompt, authenticated=True) is True
+
+
+def test_detect_academic_attribute_request_accepts_student_focus_followup() -> None:
+    request = _detect_academic_attribute_request(
+        'Mantendo a comparacao anterior, tira o Lucas da conversa e mostra so o ponto academico mais fraco da Ana.'
+    )
+
+    assert request is not None
+    assert request.domain == 'academic'
+    assert request.attribute == 'grades'
+
+
+def test_access_scope_query_accepts_guardian_children_scope_wording() -> None:
+    assert _is_access_scope_query(
+        'Quais dados dos meus filhos eu consigo acessar por aqui, e se o meu acesso cobre academico e financeiro?'
+    ) is True
+
+
+def test_access_scope_query_accepts_meta_scope_phrase_when_request_is_about_account_scope() -> None:
+    assert _is_access_scope_query(
+        'Sem sair do escopo do projeto, o que eu consigo consultar aqui no Telegram? Quero meu escopo exato entre academico e financeiro.'
+    ) is True
+
+
+def test_restricted_document_fallback_uses_compact_lexical_retry() -> None:
+    lexical_calls: list[str] = []
+    fallback_hit = {
+        'chunk_id': 'chunk-1',
+        'document_title': 'Procedimento interno para pagamento parcial e negociacao',
+        'section_parent': 'Procedimento interno para pagamento parcial e negociacao',
+        'section_title': 'Validacoes antes de prometer quitacao',
+        'section_path': 'Procedimento interno para pagamento parcial e negociacao',
+        'text_content': 'Procedimento interno de pagamento parcial e negociacao financeira. Antes de prometer quitacao para a familia, valide historico, limite de alcada e aprovacao financeira.',
+        'text_excerpt': 'Antes de prometer quitacao, valide historico, limite de alcada e aprovacao financeira.',
+        'contextual_summary': 'Validacoes antes de prometer quitacao',
+        'category': 'private_docs',
+        'document_set_slug': 'interno',
+        'labels': {},
+        'visibility': 'restricted',
+    }
+
+    class _FakeRetrievalService:
+        def _lexical_search(self, *, query: str, top_k: int, visibility: str, category: str | None):
+            lexical_calls.append(query)
+            if 'pagamento parcial' in query:
+                return [fallback_hit]
+            return []
+
+        def _fuse_hits(self, *, lexical_sources, vector_sources, top_k, category_bias, max_chunks_per_document, intent, normalized_query):
+            return list(next(iter(lexical_sources.values())))
+
+        def _rerank_hits(self, *, query: str, hits, rerank_limit: int, top_k: int):
+            return list(hits), False
+
+    selected = retrieve_relevant_restricted_hits_with_fallback(
+        _FakeRetrievalService(),
+        query='Quero o trecho operacional do fluxo interno sobre pagamento parcial que precisa ser validado antes de prometer quitacao para a familia.',
+        hits=[],
+        top_k=4,
+        visibility='restricted',
+        category='private_docs',
+    )
+
+    assert selected
+    assert selected[0]['document_title'] == fallback_hit['document_title']
+    assert 'pagamento parcial' in lexical_calls
+
+
+def test_restricted_document_fallback_reaches_semantic_finance_retry_beyond_fourth_query() -> None:
+    lexical_calls: list[str] = []
+    fallback_hit = {
+        'chunk_id': 'chunk-2',
+        'document_title': 'Procedimento interno para pagamento parcial e negociacao',
+        'section_parent': 'Procedimento interno para pagamento parcial e negociacao',
+        'section_title': 'Validacoes antes de prometer quitacao',
+        'section_path': 'Procedimento interno para pagamento parcial e negociacao',
+        'text_content': 'Na rotina de negociacao financeira, valide historico, alcada e aprovacao antes de prometer quitacao.',
+        'text_excerpt': 'Na negociacao financeira, valide historico, alcada e aprovacao antes de prometer quitacao.',
+        'contextual_summary': 'Negociacao financeira e promessa de quitacao',
+        'category': 'private_docs',
+        'document_set_slug': 'interno',
+        'labels': {},
+        'visibility': 'restricted',
+    }
+
+    class _FakeRetrievalService:
+        def _lexical_search(self, *, query: str, top_k: int, visibility: str, category: str | None):
+            lexical_calls.append(query)
+            if query == 'negociacao financeira':
+                return [fallback_hit]
+            return []
+
+        def _fuse_hits(self, *, lexical_sources, vector_sources, top_k, category_bias, max_chunks_per_document, intent, normalized_query):
+            return list(next(iter(lexical_sources.values())))
+
+        def _rerank_hits(self, *, query: str, hits, rerank_limit: int, top_k: int):
+            return list(hits), False
+
+    selected = retrieve_relevant_restricted_hits_with_fallback(
+        _FakeRetrievalService(),
+        query='De forma bem objetiva, na rotina interna de negociacao financeira, quais validacoes antecedem qualquer promessa de quitacao?',
+        hits=[],
+        top_k=4,
+        visibility='restricted',
+        category='private_docs',
+    )
+
+    assert selected
+    assert selected[0]['document_title'] == fallback_hit['document_title']
+    assert 'negociacao financeira' in lexical_calls
 
 
 def test_compose_family_next_due_answer_prefers_earliest_due_invoice() -> None:
@@ -162,6 +523,166 @@ def test_compose_family_next_due_answer_prefers_earliest_due_invoice() -> None:
 def test_family_attendance_aggregate_query_rejects_finance_summary_with_atrasos_prompt() -> None:
     prompt = 'De forma bem objetiva, resuma a situacao financeira atual da familia, com vencimentos, atrasos e proximos passos.'
     assert _looks_like_family_attendance_aggregate_query(prompt) is False
+
+
+def test_authenticated_admin_query_does_not_steal_academic_progression_prompt() -> None:
+    prompt = (
+        'Pensando so no Miguel, com base nas notas e na media minima, '
+        'qual componente mais preocupa e qual seria o proximo passo academico recomendado?'
+    )
+    assert _is_authenticated_student_assessment_query(prompt, authenticated=True) is True
+    assert _is_authenticated_admin_query(prompt, authenticated=True) is False
+
+
+def test_build_effective_actor_context_filters_guardian_actor_to_authenticated_student_scope() -> None:
+    actor = {
+        'role_code': 'guardian',
+        'authenticated': True,
+        'linked_student_ids': ['stu-lucas', 'stu-ana'],
+        'academic_student_ids': ['stu-lucas', 'stu-ana'],
+        'financial_student_ids': ['stu-lucas', 'stu-ana'],
+        'linked_students': [
+            {
+                'student_id': 'stu-lucas',
+                'full_name': 'Lucas Oliveira',
+                'can_view_academic': True,
+                'can_view_finance': True,
+            },
+            {
+                'student_id': 'stu-ana',
+                'full_name': 'Ana Oliveira',
+                'can_view_academic': True,
+                'can_view_finance': True,
+            },
+        ],
+    }
+    request_user = UserContext(
+        role=UserRole.student,
+        authenticated=True,
+        linked_student_ids=['stu-lucas'],
+        scopes=['academic:read'],
+    )
+
+    effective_actor = _build_effective_actor_context(actor, request_user)
+
+    assert effective_actor is not None
+    assert effective_actor['role_code'] == 'student'
+    assert effective_actor['linked_student_ids'] == ['stu-lucas']
+    assert effective_actor['academic_student_ids'] == ['stu-lucas']
+    assert effective_actor['financial_student_ids'] == []
+    assert effective_actor['student_id'] == 'stu-lucas'
+    assert effective_actor['linked_students'] == [
+        {
+            'student_id': 'stu-lucas',
+            'full_name': 'Lucas Oliveira',
+            'can_view_academic': True,
+            'can_view_finance': False,
+        }
+    ]
+
+
+def test_build_effective_actor_context_synthesizes_minimal_linked_students_from_request_user() -> None:
+    request_user = UserContext(
+        role=UserRole.guardian,
+        authenticated=True,
+        linked_student_ids=['stu-lucas', 'stu-ana'],
+        scopes=['academic:read', 'financial:read'],
+    )
+
+    effective_actor = _build_effective_actor_context(None, request_user)
+
+    assert effective_actor is not None
+    assert effective_actor['role_code'] == 'guardian'
+    assert effective_actor['linked_student_ids'] == ['stu-lucas', 'stu-ana']
+    assert effective_actor['academic_student_ids'] == ['stu-lucas', 'stu-ana']
+    assert effective_actor['financial_student_ids'] == ['stu-lucas', 'stu-ana']
+    assert [student['student_id'] for student in effective_actor['linked_students']] == [
+        'stu-lucas',
+        'stu-ana',
+    ]
+
+
+def test_build_effective_actor_context_preserves_actor_students_when_request_ids_are_aliases() -> None:
+    actor = {
+        'role_code': 'guardian',
+        'authenticated': True,
+        'linked_student_ids': ['53d70582-36f3-4052-b29c-ede23dec42ff', '612794e7-446c-4dfe-8af5-d137bdd78155'],
+        'academic_student_ids': ['53d70582-36f3-4052-b29c-ede23dec42ff', '612794e7-446c-4dfe-8af5-d137bdd78155'],
+        'financial_student_ids': ['53d70582-36f3-4052-b29c-ede23dec42ff', '612794e7-446c-4dfe-8af5-d137bdd78155'],
+        'linked_students': [
+            {
+                'student_id': '53d70582-36f3-4052-b29c-ede23dec42ff',
+                'full_name': 'Lucas Oliveira',
+                'can_view_academic': True,
+                'can_view_finance': True,
+            },
+            {
+                'student_id': '612794e7-446c-4dfe-8af5-d137bdd78155',
+                'full_name': 'Ana Oliveira',
+                'can_view_academic': True,
+                'can_view_finance': True,
+            },
+        ],
+    }
+    request_user = UserContext(
+        role=UserRole.guardian,
+        authenticated=True,
+        linked_student_ids=['stu-lucas', 'stu-ana'],
+        scopes=['academic:read', 'financial:read'],
+    )
+
+    effective_actor = _build_effective_actor_context(actor, request_user)
+
+    assert effective_actor is not None
+    assert effective_actor['linked_student_ids'] == [
+        '53d70582-36f3-4052-b29c-ede23dec42ff',
+        '612794e7-446c-4dfe-8af5-d137bdd78155',
+    ]
+    assert effective_actor['academic_student_ids'] == [
+        '53d70582-36f3-4052-b29c-ede23dec42ff',
+        '612794e7-446c-4dfe-8af5-d137bdd78155',
+    ]
+    assert [student['student_id'] for student in effective_actor['linked_students']] == [
+        '53d70582-36f3-4052-b29c-ede23dec42ff',
+        '612794e7-446c-4dfe-8af5-d137bdd78155',
+    ]
+
+
+def test_deterministic_public_guardrail_prefers_teacher_directory_boundary_before_generic_scope() -> None:
+    answer = _resolve_deterministic_public_guardrail_answer(
+        'Pensando no caso pratico, existe canal publico com nome ou contato do professor de matematica, ou isso vai pela coordenacao pedagogica?',
+        school_profile={'school_name': 'Colegio Horizonte'},
+        conversation_context=None,
+    )
+
+    assert answer is not None
+    assert answer.reason == 'deterministic_teacher_directory_boundary'
+
+
+def test_deterministic_public_guardrail_skips_restricted_document_queries() -> None:
+    answer = _resolve_deterministic_public_guardrail_answer(
+        'No playbook interno de negociacao financeira, quais criterios orientam a conversa com a familia?',
+        school_profile={'school_name': 'Colegio Horizonte'},
+        conversation_context=None,
+    )
+
+    assert answer is None
+
+
+def test_deterministic_public_guardrail_skips_scope_boundary_when_public_calendar_lane_matches() -> None:
+    answer = _resolve_deterministic_public_guardrail_answer(
+        'Quais eventos publicos para familias e responsaveis aparecem nesta base agora?',
+        school_profile={'school_name': 'Colegio Horizonte'},
+        conversation_context=None,
+    )
+
+    assert answer is None
+
+
+def test_public_teacher_identity_query_accepts_public_contact_or_coordination_wording() -> None:
+    assert _is_public_teacher_identity_query(
+        'Pensando no caso pratico, existe canal publico com nome ou contato do professor de matematica, ou isso vai pela coordenacao pedagogica?'
+    ) is True
 
 
 def test_natural_visit_booking_request_accepts_quero_visitar_prompt() -> None:
@@ -529,6 +1050,35 @@ def test_access_scope_query_does_not_trigger_protected_sql_priority() -> None:
         actor=_guardian_actor(),
         conversation_context=None,
     ) is False
+
+
+def test_access_scope_query_with_children_scope_does_not_trigger_protected_sql_priority() -> None:
+    assert _should_prioritize_protected_sql_query(
+        'Quais dados dos meus filhos eu consigo acessar por aqui, e se o meu acesso cobre academico e financeiro?',
+        actor=_guardian_actor(),
+        conversation_context=None,
+    ) is False
+
+
+def test_meta_phrase_access_scope_query_does_not_trigger_protected_sql_priority() -> None:
+    assert _should_prioritize_protected_sql_query(
+        'Sem sair do escopo do projeto, o que eu consigo consultar aqui no Telegram? Quero meu escopo exato entre academico e financeiro.',
+        actor=_guardian_actor(),
+        conversation_context=None,
+    ) is False
+
+
+def test_compose_account_context_answer_prioritizes_access_scope_over_children_overview() -> None:
+    answer = _compose_account_context_answer(
+        _guardian_actor(),
+        request_message='Quais dados dos meus filhos eu consigo acessar por aqui, e se o meu acesso cobre academico e financeiro?',
+        conversation_context=None,
+    )
+    lowered = answer.casefold()
+    assert 'autenticado' in lowered
+    assert 'academico' in lowered
+    assert 'financeiro' in lowered
+    assert 'escopo atual' in lowered
 
 
 def test_public_timeline_lifecycle_query_detects_marcos_entre_prompt() -> None:
@@ -938,6 +1488,21 @@ def test_extract_unknown_subject_reference_catches_short_followup_subject() -> N
     assert _extract_unknown_subject_reference('E de ufologia?') == 'Ufologia'
 
 
+def test_extract_unknown_subject_reference_ignores_interrogative_subject_placeholder() -> None:
+    assert (
+        _extract_unknown_subject_reference(
+            'Pensando no caso pratico, agora quero apenas a Ana: em quais materias ela aparece mais exposta?',
+            summary={
+                'grades': [
+                    {'subject_name': 'Fisica', 'item_title': 'B1', 'score': 6.4, 'max_score': 10.0},
+                    {'subject_name': 'Historia', 'item_title': 'B1', 'score': 7.3, 'max_score': 10.0},
+                ]
+            },
+        )
+        is None
+    )
+
+
 def test_compose_academic_attribute_answer_reports_unknown_subject_in_short_followup() -> None:
     answer = _compose_academic_attribute_answer(
         {
@@ -1183,6 +1748,71 @@ def test_compose_academic_difficulty_answer_returns_lowest_average() -> None:
     assert '6,5/10' in answer
 
 
+def test_academic_progression_query_detects_best_worst_and_gap_combo() -> None:
+    assert _looks_like_academic_progression_query(
+        'Sem tabela, diga minha melhor disciplina, a pior e quanto ainda falta para eu fechar a media em fisica.'
+    ) is True
+
+
+def test_academic_progression_query_detects_esta_melhor_esta_pior_wording() -> None:
+    assert _looks_like_academic_progression_query(
+        'Como aluno autenticado, me diga qual materia esta melhor, qual esta pior e o que falta para fechar a media em fisica.'
+    ) is True
+
+
+def test_detect_admin_attribute_request_does_not_steal_academic_progression_wording() -> None:
+    assert _detect_admin_attribute_request(
+        'Como aluno autenticado, me diga qual materia esta melhor, qual esta pior e o que falta para fechar a media em fisica.',
+        conversation_context=None,
+    ) is None
+
+
+def test_grade_requirement_detects_o_que_falta_para_fechar_media_wording() -> None:
+    assert _wants_academic_grade_requirement(
+        'Como aluno autenticado, me diga qual materia esta melhor, qual esta pior e o que falta para fechar a media em fisica.'
+    ) is True
+
+
+def test_compose_academic_progression_answer_combines_best_worst_and_subject_gap() -> None:
+    answer = _compose_academic_progression_answer(
+        {
+            'grades': [
+                {'subject_name': 'Biologia', 'score': 8.5, 'max_score': 10.0},
+                {'subject_name': 'Fisica', 'score': 6.0, 'max_score': 10.0},
+                {'subject_name': 'Fisica', 'score': 7.0, 'max_score': 10.0},
+                {'subject_name': 'Historia', 'score': 9.0, 'max_score': 10.0},
+            ]
+        },
+        student_name='Lucas Oliveira',
+        message='Sem tabela, diga minha melhor disciplina, a pior e quanto ainda falta para eu fechar a media em fisica.',
+        conversation_context=None,
+    )
+    lowered = answer.casefold()
+    assert 'melhor disciplina' in lowered
+    assert 'pior disciplina' in lowered
+    assert 'fisica' in lowered
+    assert 'faltam' in lowered or 'ja esta acima' in lowered
+
+
+def test_compose_academic_progression_answer_explains_zero_gap_as_goal_already_met() -> None:
+    answer = _compose_academic_progression_answer(
+        {
+            'grades': [
+                {'subject_name': 'Portugues', 'score': 8.7, 'max_score': 10.0},
+                {'subject_name': 'Fisica', 'score': 8.0, 'max_score': 10.0},
+                {'subject_name': 'Historia', 'score': 8.4, 'max_score': 10.0},
+            ]
+        },
+        student_name='Miguel Pereira',
+        message='Sem tabela, diga minha melhor disciplina, a pior e quanto ainda falta para eu fechar a media em fisica.',
+        conversation_context=None,
+    )
+    lowered = answer.casefold()
+    assert 'nao falta mais nada' in lowered
+    assert 'meta minima de 7,0 ja foi alcancada' in lowered
+    assert 'fisica' in lowered
+
+
 def test_compose_contextual_public_boundary_answer_routes_to_public_outings_bundle() -> None:
     answer = _compose_contextual_public_boundary_answer(
         message='Entao me diga apenas o que e publico nesse tema.',
@@ -1227,6 +1857,14 @@ def test_should_prioritize_protected_sql_query_accepts_family_admin_aggregate() 
     }
     assert _should_prioritize_protected_sql_query(
         'Compare a documentacao dos meus filhos e diga qual deles ainda tem pendencia.',
+        actor=actor,
+    ) is True
+
+
+def test_should_prioritize_protected_sql_query_accepts_teacher_schedule_request() -> None:
+    actor = {'role_code': 'teacher', 'display_name': 'Fernando Azevedo'}
+    assert _should_prioritize_protected_sql_query(
+        'Quero ver minha alocacao docente atual, com turmas e disciplinas, de forma objetiva.',
         actor=actor,
     ) is True
 
@@ -1455,6 +2093,18 @@ def test_public_pricing_projection_answer_reuses_public_slots_in_short_followup(
     lowered = answer.lower()
     assert '100 x' in lowered
     assert 'r$ 145.000,00' in lowered
+
+
+def test_external_public_facility_boundary_answer_mentions_escola_and_escopo() -> None:
+    answer = _compose_external_public_facility_boundary_answer(
+        {'school_name': 'Colegio Horizonte'},
+        facility_label='uma biblioteca publica externa',
+        conversation_context=None,
+    )
+
+    lowered = answer.casefold()
+    assert 'escola' in lowered
+    assert 'escopo' in lowered
 
 
 def test_compose_public_profile_answer_prefers_canonical_process_compare_before_pricing_shortcut() -> None:
@@ -2096,6 +2746,41 @@ def test_public_service_routing_answer_handles_plural_bolsas_wording() -> None:
     assert 'Direcao geral' in answer or 'Direcao' in answer
 
 
+def test_public_service_routing_answer_keeps_finance_line_even_without_catalog_row() -> None:
+    profile = {
+        'service_catalog': [
+            {
+                'service_key': 'atendimento_admissoes',
+                'title': 'Atendimento comercial / Admissoes',
+                'request_channel': 'bot, admissions ou whatsapp comercial',
+                'typical_eta': 'retorno em ate 1 dia util',
+            },
+            {
+                'service_key': 'solicitacao_direcao',
+                'title': 'Direcao',
+                'request_channel': 'bot, ouvidoria ou protocolo institucional',
+                'typical_eta': 'ate 2 dias uteis',
+            },
+        ],
+        'leadership_team': [
+            {
+                'title': 'Diretora geral',
+                'name': 'Helena Martins',
+                'contact_channel': 'direcao@colegiohorizonte.edu.br',
+            }
+        ],
+        'contact_channels': [],
+    }
+
+    answer = _compose_service_routing_answer(
+        profile,
+        'Por qual canal eu falo com o setor de bolsas, com o financeiro e com a direcao da escola?',
+    )
+
+    assert 'Financeiro' in answer
+    assert 'portal autenticado' in answer.casefold()
+
+
 def test_public_profile_answer_handles_curriculum_subject_existence_and_listing() -> None:
     profile = {
         'school_name': 'Colegio Horizonte',
@@ -2516,6 +3201,20 @@ def test_protected_domain_rescue_promotes_documental_student_admin_from_clarify(
     assert 'get_student_administrative_status' in preview.selected_tools
 
 
+def test_protected_domain_rescue_prefers_named_student_for_admin_cadastro_wording() -> None:
+    preview = _protected_preview()
+    applied = _apply_protected_domain_rescue(
+        preview=preview,
+        actor=_guardian_actor(),
+        message='Pensando no caso pratico, no cadastro da Ana, quais pendencias administrativas continuam abertas e que acao vem agora?',
+        conversation_context=None,
+    )
+    assert applied is True
+    assert preview.mode is OrchestrationMode.structured_tool
+    assert preview.classification.domain is QueryDomain.institution
+    assert 'get_student_administrative_status' in preview.selected_tools
+
+
 def test_protected_domain_rescue_does_not_steal_restricted_document_query() -> None:
     preview = _protected_preview()
     applied = _apply_protected_domain_rescue(
@@ -2542,6 +3241,15 @@ def test_restricted_teacher_manual_prompt_does_not_create_false_unmatched_studen
     assert _explicit_unmatched_student_reference(
         students,
         'No manual interno do professor, qual e a regra para registro de avaliacoes e comunicacao pedagogica?',
+        conversation_context=None,
+    ) is None
+
+
+def test_admin_finance_combined_prompt_does_not_create_false_unmatched_student_reference() -> None:
+    students = _guardian_actor()["linked_students"]
+    assert _explicit_unmatched_student_reference(
+        students,
+        'Quero uma visao combinada do administrativo com o financeiro das contas vinculadas.',
         conversation_context=None,
     ) is None
 
@@ -2715,6 +3423,120 @@ def test_family_attendance_aggregate_query_is_not_treated_as_generic_academic_ag
     ) is True
 
 
+def test_family_attendance_student_focus_followup_is_detected_before_public_frequency_lane() -> None:
+    prompt = 'Mantendo o contexto, corta para o Lucas e resume qual e o risco mais concreto dele em frequencia.'
+    conversation_context = {
+        'recent_messages': [
+            {
+                'sender_type': 'assistant',
+                'content': 'Panorama de faltas e frequencia das contas vinculadas:\n- Lucas Oliveira: 6 faltas e 7 atrasos.\n- Ana Oliveira: 2 faltas e 1 atraso.\nQuem exige maior atencao agora: Lucas Oliveira.',
+            }
+        ]
+    }
+    assert _looks_like_family_attendance_student_focus_followup(
+        _guardian_actor(),
+        prompt,
+        conversation_context=conversation_context,
+    ) is True
+
+
+def test_family_attendance_student_focus_followup_accepts_explicit_context_carry_even_without_recent_summary() -> None:
+    prompt = 'Mantendo o contexto, corta para o Lucas e resume qual e o risco mais concreto dele em frequencia.'
+    assert _looks_like_family_attendance_student_focus_followup(
+        _guardian_actor(),
+        prompt,
+        conversation_context={'recent_messages': []},
+    ) is True
+
+
+def test_family_academic_student_focus_followup_accepts_exposta_wording() -> None:
+    prompt = 'Pensando no caso pratico, agora quero apenas a Ana: em quais materias ela aparece mais exposta?'
+    conversation_context = {
+        'recent_messages': [
+            {
+                'sender_type': 'assistant',
+                'content': (
+                    'Panorama academico das contas vinculadas:\n'
+                    '- Lucas Oliveira: Fisica 5,9; Matematica 7,4\n'
+                    '- Ana Oliveira: Historia 6,8; Portugues 7,1\n'
+                    'Quem hoje exige maior atencao academica e Lucas Oliveira, principalmente em Fisica.'
+                ),
+            }
+        ]
+    }
+
+    assert _looks_like_family_academic_student_focus_followup(
+        _guardian_actor(),
+        prompt,
+        conversation_context=conversation_context,
+    ) is True
+
+
+def test_public_canonical_lane_skips_attendance_followup_with_context_carry() -> None:
+    prompt = 'Mantendo o contexto, corta para o Lucas e resume qual e o risco mais concreto dele em frequencia.'
+    assert match_python_functions_public_canonical_lane(prompt) is None
+
+
+def test_explicit_protected_domain_hint_prefers_academic_for_contextual_attendance_followup() -> None:
+    prompt = 'Mantendo o contexto, corta para o Lucas e resume qual e o risco mais concreto dele em frequencia.'
+    conversation_context = {
+        'recent_messages': [
+            {
+                'sender_type': 'assistant',
+                'content': 'Panorama de frequencia das contas vinculadas:\n- Lucas Oliveira: 6 faltas e 7 atrasos.\n- Ana Oliveira: 2 faltas e 1 atraso.',
+            }
+        ],
+        'recent_tool_calls': [
+            {
+                'tool_name': 'orchestration.trace',
+                'request_payload': {
+                    'slot_memory': {
+                        'active_task': 'academic:attendance',
+                    }
+                },
+            }
+        ],
+    }
+    assert _explicit_protected_domain_hint(
+        prompt,
+        actor=_guardian_actor(),
+        conversation_context=conversation_context,
+    ) is QueryDomain.academic
+
+
+def test_should_skip_public_contextual_answer_for_contextual_attendance_followup() -> None:
+    prompt = 'Mantendo o contexto, corta para o Lucas e resume qual e o risco mais concreto dele em frequencia.'
+    assert _should_skip_public_contextual_answer(
+        prompt,
+        actor=_guardian_actor(),
+        conversation_context={'recent_messages': []},
+    ) is True
+
+
+def test_explicit_open_world_scope_boundary_query_detects_sem_relacao_com_escola() -> None:
+    assert _is_explicit_open_world_scope_boundary_query(
+        'Quero uma recomendacao de filme, sem relacao com escola.'
+    ) is True
+
+
+def test_explicit_open_world_scope_boundary_query_detects_fora_do_tema_escolar() -> None:
+    assert _is_explicit_open_world_scope_boundary_query(
+        'Pensando no caso pratico, fora do tema escolar, qual filme voce acha que mais vale a pena ver agora?'
+    ) is True
+
+
+def test_explicit_open_world_scope_boundary_query_detects_recommendation_prompt_without_question_mark() -> None:
+    assert _is_explicit_open_world_scope_boundary_query(
+        'Me ajuda a escolher um filme para o fim de semana.'
+    ) is True
+
+
+def test_public_conduct_policy_query_ignores_contextual_student_attendance_cut() -> None:
+    assert _looks_like_public_conduct_policy_query(
+        'mantendo o contexto corta para o lucas e resume qual e o risco mais concreto dele em frequencia'
+    ) is False
+
+
 def test_family_academic_aggregate_query_accepts_academicamente_pior_prompt() -> None:
     prompt = 'Sem me dar tabela, qual dos meus filhos esta academicamente pior hoje e em qual disciplina isso fica mais claro?'
     assert _looks_like_family_academic_aggregate_query(prompt) is True
@@ -2778,6 +3600,16 @@ def test_family_attendance_aggregate_query_accepts_two_children_attention_wordin
 
 def test_family_attendance_aggregate_query_accepts_more_attention_wording() -> None:
     prompt = 'Me mostre a frequencia dos meus dois filhos e diga quem exige mais atenção agora.'
+    assert _looks_like_family_attendance_aggregate_query(prompt) is True
+    assert _should_prioritize_protected_sql_query(
+        prompt,
+        actor=_guardian_actor(),
+        conversation_context=None,
+    ) is True
+
+
+def test_family_attendance_aggregate_query_accepts_named_student_comparison_wording() -> None:
+    prompt = 'Entre Ana e Lucas, quem esta mais delicado por frequencia hoje e por que esse alerta pesa mais?'
     assert _looks_like_family_attendance_aggregate_query(prompt) is True
     assert _should_prioritize_protected_sql_query(
         prompt,
@@ -2850,6 +3682,34 @@ def test_explicit_protected_domain_hint_ignores_public_canonical_conduct_prompt(
         conversation_context=None,
     )
     assert hinted is None
+
+
+def test_explicit_protected_domain_hint_prefers_academic_for_attendance_student_focus_followup_even_with_public_lane_terms() -> None:
+    hinted = _explicit_protected_domain_hint(
+        'Mantendo o contexto, corta para o Lucas e resume qual e o risco mais concreto dele em frequencia.',
+        actor=_guardian_actor(),
+        conversation_context={'recent_messages': []},
+    )
+    assert hinted is QueryDomain.academic
+
+
+def test_graph_authenticated_student_assessment_query_accepts_attendance_focus_followup() -> None:
+    prompt = 'Mantendo o contexto, corta para o Lucas e resume qual e o risco mais concreto dele em frequencia.'
+    assert _is_authenticated_student_assessment_query(prompt, authenticated=True) is True
+
+
+def test_graph_route_request_prefers_structured_tool_for_explicit_open_world_boundary() -> None:
+    state = {
+        'request': SimpleNamespace(message='Quero uma recomendacao de filme, sem relacao com escola.', allow_handoff=True),
+        'classification': IntentClassification(
+            domain=QueryDomain.unknown,
+            access_tier=AccessTier.public,
+            confidence=0.35,
+            reason='mensagem sem dominio unico',
+        ),
+    }
+    result = graph_route_request(state, runtime={'graph_rag_enabled': True})
+    assert result['route'] == OrchestrationMode.structured_tool.value
 
 
 def test_explicit_protected_domain_hint_ignores_public_bullying_policy_prompt_even_after_admin_context() -> None:

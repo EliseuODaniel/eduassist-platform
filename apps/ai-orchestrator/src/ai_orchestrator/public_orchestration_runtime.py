@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 # ruff: noqa: F401,F403,F405
 """Public routing and orchestration helpers extracted from runtime_core.py."""
 
@@ -17,6 +19,8 @@ from eduassist_semantic_ingress import looks_like_high_confidence_public_school_
 LOCAL_EXTRACTED_NAMES = {
     '_intent_analysis_impl',
     '_looks_like_family_admin_aggregate_query',
+    '_is_access_scope_query',
+    '_is_access_scope_repair_query',
     '_is_positive_requirement_query',
     '_is_public_pricing_context_follow_up',
     '_is_public_curriculum_context_follow_up',
@@ -42,6 +46,13 @@ def _refresh_runtime_core_namespace() -> None:
 _export_runtime_core_namespace()
 
 
+@dataclass(frozen=True)
+class DeterministicPublicGuardrailAnswer:
+    answer_text: str
+    reason: str
+    selected_tools: tuple[str, ...] = ()
+
+
 def _intent_analysis_impl(name: str):
     from . import intent_analysis_runtime as _intent_analysis_runtime
 
@@ -56,6 +67,22 @@ def _public_act_rules_impl(name: str):
 
 def _looks_like_family_admin_aggregate_query(message: str) -> bool:
     return _intent_analysis_impl('_looks_like_family_admin_aggregate_query')(message)
+
+
+def _is_access_scope_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_access_scope_query')(message)
+
+
+def _is_access_scope_repair_query(
+    message: str,
+    actor: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None = None,
+) -> bool:
+    return _intent_analysis_impl('_is_access_scope_repair_query')(
+        message,
+        actor,
+        conversation_context=conversation_context,
+    )
 
 
 def _base_profile_supports_fast_public_answer(*, message: str, profile: dict[str, Any]) -> bool:
@@ -127,6 +154,181 @@ def _is_public_teacher_directory_follow_up(
         message,
         conversation_context=conversation_context,
     )
+
+
+def _is_public_teacher_identity_query(message: str) -> bool:
+    from .public_profile_runtime import _is_public_teacher_identity_query as _impl
+
+    return _impl(message)
+
+
+def _compose_scope_boundary_answer(
+    profile: dict[str, Any],
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> str:
+    from .public_profile_runtime import _compose_scope_boundary_answer as _impl
+
+    return _impl(profile or {}, conversation_context=conversation_context)
+
+
+def _compose_external_public_facility_boundary_answer(
+    profile: dict[str, Any],
+    *,
+    facility_label: str,
+    conversation_context: dict[str, Any] | None = None,
+) -> str:
+    from .public_profile_runtime import _compose_external_public_facility_boundary_answer as _impl
+
+    return _impl(
+        profile,
+        facility_label=facility_label,
+        conversation_context=conversation_context,
+    )
+
+
+def _compose_account_context_answer(
+    actor: dict[str, Any] | None,
+    *,
+    request_message: str | None = None,
+    conversation_context: dict[str, Any] | None = None,
+) -> str | None:
+    from .student_scope_runtime import _compose_account_context_answer as _impl
+
+    return _impl(
+        actor,
+        request_message=request_message,
+        conversation_context=conversation_context,
+    )
+
+
+def _resolve_deterministic_public_guardrail_answer(
+    message: str,
+    *,
+    school_profile: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None = None,
+) -> DeterministicPublicGuardrailAnswer | None:
+    from .public_doc_knowledge import compose_public_teacher_directory_boundary
+    from .public_doc_knowledge import match_public_canonical_lane
+    from .public_known_unknowns import compose_public_known_unknown_answer, detect_public_known_unknown_key
+    from .public_profile_runtime import _compose_scope_boundary_answer as _compose_scope_boundary_answer_local
+
+    if looks_like_restricted_document_query(message):
+        return None
+
+    # Canonical public-document bundles should stay on the institutional path
+    # even when the phrasing is broad enough to resemble a generic question.
+    if match_public_canonical_lane(message):
+        return None
+
+    if _is_explicit_open_world_scope_boundary_query(message):
+        return DeterministicPublicGuardrailAnswer(
+            answer_text=_compose_scope_boundary_answer_local(
+                school_profile or {},
+                conversation_context=conversation_context,
+            ),
+            reason='deterministic_scope_boundary',
+            selected_tools=('get_public_school_profile',),
+        )
+
+    if _is_public_teacher_identity_query(message) or _is_public_teacher_directory_follow_up(
+        message,
+        conversation_context=conversation_context,
+    ):
+        answer = compose_public_teacher_directory_boundary(school_profile)
+        if answer:
+            return DeterministicPublicGuardrailAnswer(
+                answer_text=answer,
+                reason='deterministic_teacher_directory_boundary',
+                selected_tools=('get_public_school_profile',),
+            )
+
+    known_unknown_key = detect_public_known_unknown_key(message)
+    if known_unknown_key:
+        answer = compose_public_known_unknown_answer(
+            key=known_unknown_key,
+            school_name=str((school_profile or {}).get('school_name') or 'Colegio Horizonte'),
+        )
+        if answer:
+            return DeterministicPublicGuardrailAnswer(
+                answer_text=answer,
+                reason='deterministic_public_known_unknown',
+                selected_tools=('get_public_school_profile',),
+            )
+
+    if looks_like_scope_boundary_candidate(message) and not looks_like_school_scope_message(message):
+        return DeterministicPublicGuardrailAnswer(
+            answer_text=_compose_scope_boundary_answer_local(
+                school_profile or {},
+                conversation_context=conversation_context,
+            ),
+            reason='deterministic_scope_boundary',
+            selected_tools=('get_public_school_profile',),
+        )
+
+    return None
+
+
+def _is_explicit_open_world_scope_boundary_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if any(
+        term in normalized or _message_matches_term(normalized, term)
+        for term in {
+            'sem relacao com escola',
+            'sem relacao com a escola',
+            'fora do tema escolar',
+            'fora do tema da escola',
+            'fora do escopo da escola',
+            'fora do contexto da escola',
+            'sem relacao com o colegio',
+            'sem relacao com o colégio',
+            'sem relacao com o colegio horizonte',
+            'sem relacao com o colégio horizonte',
+            'nada a ver com escola',
+            'nada a ver com a escola',
+            'sem relacao com ensino',
+        }
+    ):
+        return True
+    open_world_topic_terms = {
+        'filme',
+        'filmes',
+        'serie',
+        'série',
+        'series',
+        'séries',
+        'jogo',
+        'jogos',
+        'receita',
+        'receitas',
+        'livro',
+        'livros',
+        'netflix',
+        'cinema',
+        'restaurante',
+        'restaurantes',
+    }
+    open_world_request_starters = (
+        'me ajuda a escolher',
+        'me ajuda a decidir',
+        'me indica',
+        'me recomenda',
+        'recomenda',
+        'indique',
+        'quero uma recomendacao',
+        'quero uma recomendação',
+        'sugere',
+        'sugira',
+    )
+    return any(_message_matches_term(normalized, term) for term in open_world_topic_terms) and any(
+        normalized.startswith(starter) or starter in normalized for starter in open_world_request_starters
+    )
+
+
+def _is_comparative_query(message: str) -> bool:
+    from .public_profile_routes_runtime import _is_comparative_query as _impl
+
+    return _impl(message)
 
 
 def _looks_like_workflow_resume_follow_up(message: str) -> bool:
@@ -656,6 +858,153 @@ def _merge_user_context(actor: dict[str, Any] | None, request_user: UserContext)
     )
 
 
+def _request_user_allows_academic_data(request_user: UserContext) -> bool:
+    if not bool(getattr(request_user, 'authenticated', False)):
+        return False
+    scopes = {
+        str(scope or '').strip().lower()
+        for scope in getattr(request_user, 'scopes', [])
+        if str(scope or '').strip()
+    }
+    if not scopes:
+        return True
+    return 'academic:read' in scopes or 'students:read' in scopes
+
+
+def _request_user_allows_finance_data(request_user: UserContext) -> bool:
+    if not bool(getattr(request_user, 'authenticated', False)):
+        return False
+    scopes = {
+        str(scope or '').strip().lower()
+        for scope in getattr(request_user, 'scopes', [])
+        if str(scope or '').strip()
+    }
+    if not scopes:
+        return True
+    return 'financial:read' in scopes or 'finance:read' in scopes
+
+
+def _build_effective_actor_context(
+    actor: dict[str, Any] | None,
+    request_user: UserContext,
+) -> dict[str, Any] | None:
+    if actor is None and not bool(getattr(request_user, 'authenticated', False)):
+        return None
+
+    requested_student_ids = [
+        str(student_id or '').strip()
+        for student_id in getattr(request_user, 'linked_student_ids', [])
+        if str(student_id or '').strip()
+    ]
+    actor_known_student_ids: list[str] = []
+    if isinstance(actor, dict):
+        for value in actor.get('linked_student_ids', []) or []:
+            student_id = str(value or '').strip()
+            if student_id and student_id not in actor_known_student_ids:
+                actor_known_student_ids.append(student_id)
+        linked_students_raw = actor.get('linked_students')
+        if isinstance(linked_students_raw, list):
+            for student in linked_students_raw:
+                if not isinstance(student, dict):
+                    continue
+                student_id = str(student.get('student_id') or '').strip()
+                if student_id and student_id not in actor_known_student_ids:
+                    actor_known_student_ids.append(student_id)
+    requested_student_id_set = set(requested_student_ids)
+    actor_known_student_id_set = set(actor_known_student_ids)
+    if (
+        requested_student_ids
+        and actor_known_student_ids
+        and not (requested_student_id_set & actor_known_student_id_set)
+    ):
+        allowed_student_ids = list(actor_known_student_ids)
+    else:
+        allowed_student_ids = list(requested_student_ids)
+    allowed_student_id_set = set(allowed_student_ids)
+    academic_allowed = _request_user_allows_academic_data(request_user)
+    finance_allowed = _request_user_allows_finance_data(request_user)
+
+    effective_actor: dict[str, Any] = dict(actor or {})
+    if bool(getattr(request_user, 'authenticated', False)):
+        effective_actor['authenticated'] = True
+
+    request_role = getattr(getattr(request_user, 'role', None), 'value', '') or ''
+    if request_role and request_role != UserRole.anonymous.value:
+        effective_actor['role_code'] = request_role
+
+    linked_students_raw = effective_actor.get('linked_students')
+    if isinstance(linked_students_raw, list):
+        filtered_linked_students: list[dict[str, Any]] = []
+        for student in linked_students_raw:
+            if not isinstance(student, dict):
+                continue
+            student_id = str(student.get('student_id') or '').strip()
+            if allowed_student_id_set and student_id not in allowed_student_id_set:
+                continue
+            filtered_student = dict(student)
+            filtered_student['student_id'] = student_id
+            if bool(getattr(request_user, 'authenticated', False)):
+                filtered_student['can_view_academic'] = bool(
+                    filtered_student.get('can_view_academic', False) and academic_allowed
+                )
+                filtered_student['can_view_finance'] = bool(
+                    filtered_student.get('can_view_finance', False) and finance_allowed
+                )
+            filtered_linked_students.append(filtered_student)
+        effective_actor['linked_students'] = filtered_linked_students
+    elif allowed_student_ids:
+        effective_actor['linked_students'] = [
+            {
+                'student_id': student_id,
+                'full_name': f'Aluno {index + 1}',
+                'enrollment_code': '',
+                'can_view_academic': academic_allowed,
+                'can_view_finance': finance_allowed,
+            }
+            for index, student_id in enumerate(allowed_student_ids)
+        ]
+
+    def _filter_student_id_list(values: Any, *, allowed: bool) -> list[str]:
+        if not allowed:
+            return []
+        if not isinstance(values, list):
+            return list(allowed_student_ids)
+        normalized: list[str] = []
+        for value in values:
+            student_id = str(value or '').strip()
+            if not student_id:
+                continue
+            if allowed_student_id_set and student_id not in allowed_student_id_set:
+                continue
+            normalized.append(student_id)
+        if normalized:
+            return normalized
+        return list(allowed_student_ids)
+
+    linked_student_ids = _filter_student_id_list(
+        effective_actor.get('linked_student_ids'),
+        allowed=bool(getattr(request_user, 'authenticated', False)),
+    )
+    if linked_student_ids:
+        effective_actor['linked_student_ids'] = linked_student_ids
+
+    academic_student_ids = _filter_student_id_list(
+        effective_actor.get('academic_student_ids'),
+        allowed=academic_allowed,
+    )
+    finance_student_ids = _filter_student_id_list(
+        effective_actor.get('financial_student_ids'),
+        allowed=finance_allowed,
+    )
+    effective_actor['academic_student_ids'] = academic_student_ids
+    effective_actor['financial_student_ids'] = finance_student_ids
+
+    if request_role == UserRole.student.value and len(linked_student_ids) == 1:
+        effective_actor['student_id'] = linked_student_ids[0]
+
+    return effective_actor
+
+
 def _should_run_public_semantic_resolver(
     *,
     message: str,
@@ -815,6 +1164,65 @@ def _explicit_protected_domain_hint(
     conversation_context: dict[str, Any] | None = None,
 ) -> QueryDomain | None:
     _refresh_runtime_core_namespace()
+    from .protected_summary_runtime import (
+        _looks_like_academic_progression_query as _looks_like_academic_progression_query_local,
+        _looks_like_family_academic_student_focus_followup as _looks_like_family_academic_student_focus_followup_local,
+        _looks_like_family_attendance_student_focus_followup as _looks_like_family_attendance_student_focus_followup_local,
+    )
+
+    def _looks_like_contextual_attendance_followup() -> bool:
+        if isinstance(actor, dict) and _looks_like_family_attendance_student_focus_followup_local(
+            actor,
+            message,
+            conversation_context=conversation_context,
+        ):
+            return True
+        linked_students = _linked_students(actor)
+        if not linked_students:
+            return False
+        if not (
+            _matching_students_in_text(linked_students, message)
+            or _student_focus_candidate(actor, message)
+        ):
+            return False
+        if not any(
+            _message_matches_term(normalized, term)
+            for term in {
+                'mantendo o contexto',
+                'continuando a analise',
+                'continuando a análise',
+                'recorte so',
+                'recorte só',
+                'corta para',
+                'isole',
+            }
+        ):
+            return False
+        if not any(
+            _message_matches_term(normalized, term)
+            for term in {
+                'frequencia',
+                'frequência',
+                'faltas',
+                'falta',
+                'ausencias',
+                'ausências',
+                'presenca',
+                'presença',
+                'atrasos',
+                'risco',
+                'mais concreto',
+                'principal alerta',
+            }
+        ):
+            return False
+        recent_focus = _recent_trace_focus(conversation_context) or {}
+        recent_slot_memory = _recent_trace_slot_memory(conversation_context) or {}
+        recent_active_task = str(
+            recent_focus.get('active_task') or recent_slot_memory.get('active_task') or ''
+        ).strip()
+        return recent_active_task.startswith('academic:attendance') or len(linked_students) >= 2
+
     if looks_like_high_confidence_public_school_faq(message):
         return None
     normalized = _normalize_text(message)
@@ -827,6 +1235,18 @@ def _explicit_protected_domain_hint(
     if _looks_like_family_academic_aggregate_query(message):
         return QueryDomain.academic
     linked_students = _linked_students(actor)
+    mentions_linked_student = bool(
+        _matching_students_in_text(linked_students, message)
+        or _student_focus_candidate(actor, message)
+    )
+    if _looks_like_contextual_attendance_followup():
+        return QueryDomain.academic
+    if isinstance(actor, dict) and _looks_like_family_academic_student_focus_followup_local(
+        actor,
+        message,
+        conversation_context=conversation_context,
+    ):
+        return QueryDomain.academic
     recent_focus = _recent_trace_focus(conversation_context) or {}
     recent_slot_memory = _recent_trace_slot_memory(conversation_context) or {}
     recent_focus_kind = str(recent_focus.get('kind') or recent_slot_memory.get('kind') or '')
@@ -847,6 +1267,22 @@ def _explicit_protected_domain_hint(
         )
     )
     if protected_academic_subject_follow_up:
+        return QueryDomain.academic
+    if (
+        _looks_like_academic_progression_query_local(
+            message,
+            conversation_context=conversation_context,
+        )
+        or _wants_academic_grade_requirement(message)
+    ) and (
+        mentions_linked_student
+        or recent_focus_kind == 'academic'
+        or recent_active_task.startswith('academic:')
+        or (
+            isinstance(actor, dict)
+            and str(actor.get('role_code') or '').strip().lower() == 'student'
+        )
+    ):
         return QueryDomain.academic
     if _message_has_public_followup_signal(message, conversation_context=conversation_context):
         return None
@@ -923,6 +1359,8 @@ def _explicit_protected_domain_hint(
         return QueryDomain.academic
     if academic_difficulty_follow_up:
         return QueryDomain.academic
+    if any(_message_matches_term(normalized, term) for term in PERSONAL_ADMIN_STATUS_TERMS) and mentions_linked_student:
+        return QueryDomain.institution
     if (
         _detect_finance_attribute_request(message) is not None
         or _detect_finance_status_filter(message) is not None
@@ -936,10 +1374,6 @@ def _explicit_protected_domain_hint(
         return None
     if not linked_students:
         return None
-    mentions_linked_student = bool(
-        _matching_students_in_text(linked_students, message)
-        or _student_focus_candidate(actor, message)
-    )
     protected_follow_up = _is_follow_up_query(message) and bool(recent_focus)
     if mentions_linked_student and protected_follow_up:
         if recent_active_task.startswith('academic:'):
@@ -999,6 +1433,140 @@ def _explicit_protected_domain_hint(
     ):
         return QueryDomain.finance
     return None
+
+
+def _should_skip_public_contextual_answer(
+    message: str,
+    *,
+    actor: dict[str, Any] | None = None,
+    conversation_context: dict[str, Any] | None = None,
+) -> bool:
+    from .protected_summary_runtime import (
+        _looks_like_academic_progression_query as _looks_like_academic_progression_query_local,
+        _looks_like_family_academic_student_focus_followup as _looks_like_family_academic_student_focus_followup_local,
+        _looks_like_family_attendance_student_focus_followup as _looks_like_family_attendance_student_focus_followup_local,
+    )
+
+    normalized = _normalize_text(message)
+    contextual_attendance_phrases = {
+        'mantendo o contexto',
+        'continuando a analise',
+        'continuando a análise',
+        'recorte so',
+        'recorte só',
+        'corta para',
+        'isole',
+        'resuma',
+        'resume',
+    }
+    attendance_focus_terms = {
+        'frequencia',
+        'frequência',
+        'faltas',
+        'falta',
+        'presenca',
+        'presença',
+        'atrasos',
+        'risco',
+        'mais concreto',
+        'principal alerta',
+    }
+    has_contextual_attendance_carry = any(
+        phrase in normalized or _message_matches_term(normalized, phrase)
+        for phrase in contextual_attendance_phrases
+    ) and any(
+        term in normalized or _message_matches_term(normalized, term)
+        for term in attendance_focus_terms
+    )
+    recent_attendance_context = False
+    for item in (conversation_context or {}).get('recent_messages', []) or []:
+        if not isinstance(item, dict):
+            continue
+        content = _normalize_text(str(item.get('content') or item.get('message') or ''))
+        if any(
+            term in content
+            for term in {
+                'frequencia',
+                'frequência',
+                'faltas',
+                'atrasos',
+                'presenca',
+                'presença',
+                'principal alerta de frequencia',
+                'panorama de faltas',
+                'panorama de frequencia',
+            }
+        ):
+            recent_attendance_context = True
+            break
+    if not has_contextual_attendance_carry and recent_attendance_context:
+        has_contextual_attendance_carry = any(
+            term in normalized or _message_matches_term(normalized, term)
+            for term in attendance_focus_terms
+        ) and any(
+            phrase in normalized or _message_matches_term(normalized, phrase)
+            for phrase in {
+                *contextual_attendance_phrases,
+                'lucas',
+                'ana',
+                'aluno',
+                'filho',
+                'filha',
+            }
+        )
+    if has_contextual_attendance_carry:
+        return True
+    if _explicit_protected_domain_hint(
+        message,
+        actor=actor,
+        conversation_context=conversation_context,
+    ) in {QueryDomain.academic, QueryDomain.finance}:
+        return True
+    if isinstance(actor, dict) and (
+        _looks_like_family_attendance_student_focus_followup_local(
+            actor,
+            message,
+            conversation_context=conversation_context,
+        )
+        or _looks_like_family_academic_student_focus_followup_local(
+            actor,
+            message,
+            conversation_context=conversation_context,
+        )
+    ):
+        return True
+    if _looks_like_academic_progression_query_local(
+        message,
+        conversation_context=conversation_context,
+    ):
+        return True
+    if _wants_academic_grade_requirement(message):
+        return True
+    return False
+
+
+def _align_protected_preview_tools(preview: Any) -> Any:
+    classification = getattr(preview, 'classification', None)
+    if classification is None:
+        return preview
+    access_tier = getattr(classification, 'access_tier', None)
+    access_value = str(getattr(access_tier, 'value', access_tier) or '').strip().lower()
+    if access_value in {'', 'public'}:
+        return preview
+    domain = getattr(classification, 'domain', None)
+    domain_value = str(getattr(domain, 'value', domain) or '').strip().lower()
+    if domain_value not in {'academic', 'finance'}:
+        return preview
+    target_domain = QueryDomain.academic if domain_value == 'academic' else QueryDomain.finance
+    expected_tools = _protected_selected_tools_for_domain(target_domain)
+    selected_tools = [
+        str(tool).strip()
+        for tool in (getattr(preview, 'selected_tools', None) or [])
+        if str(tool).strip()
+    ]
+    if selected_tools == expected_tools:
+        return preview
+    return preview.model_copy(update={'selected_tools': expected_tools})
 
 
 def _apply_protected_domain_rescue(
@@ -1416,6 +1984,43 @@ def _is_high_confidence_public_profile_query(
     return False
 
 
+def _should_skip_contextual_public_direct_answer(
+    request: Any,
+    preview: Any,
+) -> bool:
+    user = getattr(request, 'user', None)
+    if not bool(getattr(user, 'authenticated', False)):
+        return False
+    selected_tools = {
+        str(tool).strip()
+        for tool in (getattr(preview, 'selected_tools', None) or [])
+        if str(tool).strip()
+    }
+    protected_surface_tools = {
+        'get_student_academic_summary',
+        'get_student_attendance',
+        'get_student_attendance_timeline',
+        'get_student_grades',
+        'get_student_upcoming_assessments',
+        'get_student_financial_summary',
+        'get_financial_summary',
+        'get_administrative_status',
+        'get_student_administrative_status',
+    }
+    if selected_tools & protected_surface_tools:
+        return True
+    classification = getattr(preview, 'classification', None)
+    access_tier = getattr(classification, 'access_tier', None)
+    access_value = str(getattr(access_tier, 'value', access_tier) or '').strip().lower()
+    if access_value and access_value != 'public' and selected_tools:
+        return True
+    domain = getattr(classification, 'domain', None)
+    domain_value = str(getattr(domain, 'value', domain) or '').strip().lower()
+    if domain_value in {'academic', 'finance'} and selected_tools:
+        return True
+    return False
+
+
 def _apply_authenticated_public_profile_rescue(
     *,
     preview: Any,
@@ -1425,6 +2030,14 @@ def _apply_authenticated_public_profile_rescue(
     school_profile: dict[str, Any] | None,
 ) -> bool:
     if preview.classification.access_tier is AccessTier.public:
+        return False
+    if looks_like_restricted_document_query(message):
+        return False
+    if _is_access_scope_query(message) or _is_access_scope_repair_query(
+        message,
+        actor,
+        conversation_context,
+    ):
         return False
     if preview.mode not in {
         OrchestrationMode.structured_tool,

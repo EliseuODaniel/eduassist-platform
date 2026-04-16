@@ -316,7 +316,7 @@ def _try_public_channel_fast_answer_impl(
             return before_after_answer
     if _is_auth_guidance_query(message):
         return (
-            'Para consultas protegidas, como notas, faltas e financeiro, voce precisa vincular sua conta do Telegram ao portal da escola. '
+            'Antes de autenticar e vincular sua conta do Telegram ao portal da escola, eu nao consigo abrir consultas protegidas como notas, faltas e financeiro. '
             'No portal autenticado, gere o codigo de vinculacao e depois envie aqui o comando `/start link_<codigo>`. '
             'Depois disso, eu passo a consultar seus dados autorizados por este canal.'
         )

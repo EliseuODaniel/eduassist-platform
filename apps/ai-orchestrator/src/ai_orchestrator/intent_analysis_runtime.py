@@ -137,8 +137,32 @@ def _looks_like_family_attendance_aggregate_query(message: str) -> bool:
     return _protected_summary_impl('_looks_like_family_attendance_aggregate_query')(message)
 
 
+def _looks_like_family_attendance_student_focus_followup(
+    actor: dict[str, Any] | None,
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> bool:
+    return _protected_summary_impl('_looks_like_family_attendance_student_focus_followup')(
+        actor,
+        message,
+        conversation_context=conversation_context,
+    )
+
+
 def _looks_like_family_finance_aggregate_query(message: str) -> bool:
     return _protected_summary_impl('_looks_like_family_finance_aggregate_query')(message)
+
+
+def _looks_like_academic_progression_query(
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> bool:
+    return _protected_summary_impl('_looks_like_academic_progression_query')(
+        message,
+        conversation_context=conversation_context,
+    )
 
 
 def _wants_attendance_timeline(message: str) -> bool:
@@ -180,43 +204,43 @@ def _is_capability_query(message: str) -> bool:
 
 def _is_access_scope_query(message: str) -> bool:
     normalized = _normalize_text(message)
-    if 'consigo ver' in normalized and 'exatamente' in normalized:
-        return True
+    explicit_scope_markers = (
+        any(
+            _message_matches_term(normalized, term)
+            for term in {
+                'quais alunos estao vinculados a esta conta',
+                'quais alunos estão vinculados a esta conta',
+                'quais alunos estao vinculados nessa conta',
+                'quais alunos estão vinculados nessa conta',
+                'quais alunos estao vinculados nesta conta',
+                'quais alunos estão vinculados nesta conta',
+                'quem esta vinculado a esta conta',
+                'quem está vinculado a esta conta',
+                'quem esta vinculado nesta conta',
+                'quem está vinculado nesta conta',
+                'o que eu consigo ver sobre cada um',
+                'o que consigo ver sobre cada um',
+                'o que eu posso ver sobre cada um',
+                'o que posso ver sobre cada um',
+                'o que eu consigo consultar aqui',
+                'o que consigo consultar aqui',
+            }
+        )
+        or ('consigo ver' in normalized and 'exatamente' in normalized)
+        or any(_message_matches_term(normalized, term) for term in ACCESS_SCOPE_TERMS)
+    )
     if any(
         _message_matches_term(normalized, term)
         for term in {
-            'quais alunos estao vinculados a esta conta',
-            'quais alunos estão vinculados a esta conta',
-            'quais alunos estao vinculados nessa conta',
-            'quais alunos estão vinculados nessa conta',
-            'quais alunos estao vinculados nesta conta',
-            'quais alunos estão vinculados nesta conta',
-            'quem esta vinculado a esta conta',
-            'quem está vinculado a esta conta',
-            'quem esta vinculado nesta conta',
-            'quem está vinculado nesta conta',
-            'o que eu consigo ver sobre cada um',
-            'o que consigo ver sobre cada um',
-            'o que eu posso ver sobre cada um',
-            'o que posso ver sobre cada um',
+            'escopo do projeto',
+            'sair do escopo',
+            'fora do escopo',
+            'dentro do escopo',
+            'escopo escolar',
         }
     ):
-        return True
-    if 'escopo' in normalized and any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'academico',
-            'acadêmico',
-            'financeiro',
-            'os dois',
-            'filho',
-            'filhos',
-            'conta',
-            'dados',
-        }
-    ):
-        return True
-    return any(_message_matches_term(normalized, term) for term in ACCESS_SCOPE_TERMS)
+        return explicit_scope_markers
+    return explicit_scope_markers
 
 
 def _should_prioritize_protected_sql_query(
@@ -225,6 +249,24 @@ def _should_prioritize_protected_sql_query(
     actor: dict[str, Any] | None,
     conversation_context: dict[str, Any] | None = None,
 ) -> bool:
+    actor_role = str((actor or {}).get('role_code', '') or '').strip().lower()
+    normalized = _normalize_text(message)
+    if actor_role == 'teacher' and any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'minha alocacao docente',
+            'minha alocação docente',
+            'alocacao docente atual',
+            'alocação docente atual',
+            'minhas turmas',
+            'minhas disciplinas',
+            'turmas e disciplinas',
+            'grade docente',
+            'meu horario docente',
+            'meu horário docente',
+        }
+    ):
+        return True
     if not isinstance(actor, dict) or not _linked_students(actor):
         return False
     if _is_public_pricing_navigation_query(message) or _is_public_pricing_context_follow_up(
@@ -237,13 +279,18 @@ def _should_prioritize_protected_sql_query(
         conversation_context=conversation_context,
     ):
         return False
+    if _is_access_scope_query(message) or _is_access_scope_repair_query(
+        message,
+        actor,
+        conversation_context,
+    ):
+        return False
     if _is_admin_finance_combined_query(message):
         return True
     if _looks_like_family_admin_aggregate_query(message):
         return True
     if _looks_like_family_finance_aggregate_query(message):
         return True
-    normalized = _normalize_text(message)
     if any(
         _message_matches_term(normalized, term)
         for term in {
@@ -267,12 +314,6 @@ def _should_prioritize_protected_sql_query(
         return True
     if _looks_like_family_academic_aggregate_query(message):
         return True
-    if _is_access_scope_query(message) or _is_access_scope_repair_query(
-        message,
-        actor,
-        conversation_context,
-    ):
-        return False
     if _wants_upcoming_assessments(message) or _wants_attendance_timeline(message):
         return True
     if (
@@ -288,6 +329,11 @@ def _should_prioritize_protected_sql_query(
     if (
         _effective_academic_attribute_request(message, conversation_context=conversation_context)
         is not None
+    ):
+        return True
+    if _looks_like_academic_progression_query(
+        message,
+        conversation_context=conversation_context,
     ):
         return True
     if _looks_like_academic_difficulty_query(message, conversation_context=conversation_context):
@@ -905,6 +951,20 @@ def _detect_admin_attribute_request(
     conversation_context: dict[str, Any] | None = None,
 ) -> str | None:
     normalized = _normalize_text(message)
+    academic_progression_query = _looks_like_academic_progression_query(
+        message,
+        conversation_context=conversation_context,
+    )
+    academic_attribute_request = _detect_academic_attribute_request(message)
+    if (
+        _wants_academic_grade_requirement(message)
+        or academic_progression_query
+        or (
+            academic_attribute_request is not None
+            and str(getattr(academic_attribute_request, 'domain', '') or '').strip() == 'academic'
+        )
+    ):
+        return None
     if any(
         _message_matches_term(normalized, term)
         for term in {
@@ -1297,6 +1357,19 @@ def _detect_academic_attribute_request(message: str) -> ProtectedAttributeReques
     ) or any(
         _message_matches_term(normalized, term)
         for term in {
+            'veredito academico',
+            'veredito acadêmico',
+            'quem esta mais perto de reprovar',
+            'quem está mais perto de reprovar',
+            'mais perto de reprovar',
+            'mais proximo de reprovar',
+            'mais próximo de reprovar',
+            'risco de reprovacao',
+            'risco de reprovação',
+            'ponto academico mais fraco',
+            'ponto acadêmico mais fraco',
+            'ponto academico mais sensivel',
+            'ponto acadêmico mais sensível',
             'fragilizada academicamente',
             'fragilizado academicamente',
             'mais fragilizada academicamente',
@@ -1440,6 +1513,18 @@ def _wants_academic_grade_requirement(message: str) -> bool:
     if any(_message_matches_term(normalized, term) for term in GRADE_REQUIREMENT_TERMS):
         return True
     if any(_message_matches_term(normalized, term) for term in {'quanto falta', 'falta quanto'}):
+        if any(
+            _message_matches_term(normalized, term)
+            for term in {
+                'fechar a media',
+                'fechar a média',
+                'atingir a media',
+                'atingir a média',
+                'bater a media',
+                'bater a média',
+            }
+        ):
+            return bool(_subject_reference_tokens(normalized)) or _contains_any(normalized, GRADE_TERMS)
         return any(_message_matches_term(normalized, term) for term in GRADE_APPROVAL_TERMS)
     if any(_message_matches_term(normalized, term) for term in GRADE_APPROVAL_TERMS):
         return bool(_subject_reference_tokens(normalized)) or _contains_any(normalized, GRADE_TERMS)

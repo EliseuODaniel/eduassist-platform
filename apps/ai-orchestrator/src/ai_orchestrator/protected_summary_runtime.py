@@ -4,7 +4,13 @@ from __future__ import annotations
 """Protected academic and finance summary helpers extracted from protected_domain_runtime.py."""
 
 from . import runtime_core as _runtime_core
-from .intent_analysis_runtime import _contains_any, _message_matches_term, _normalize_text
+from .intent_analysis_runtime import (
+    _contains_any,
+    _is_follow_up_query,
+    _message_matches_term,
+    _normalize_text,
+    _wants_academic_grade_requirement,
+)
 
 
 def _format_administrative_status(*args, **kwargs):
@@ -39,6 +45,30 @@ def _eligible_students(*args, **kwargs):
 
 def _focus_marked_student_from_message(*args, **kwargs):
     from .student_scope_runtime import _focus_marked_student_from_message as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def _detect_subject_filter(*args, **kwargs):
+    from .protected_domain_runtime import _detect_subject_filter as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def _available_subjects(*args, **kwargs):
+    from .protected_domain_runtime import _available_subjects as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def _filter_grade_rows(*args, **kwargs):
+    from .protected_domain_runtime import _filter_grade_rows as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def _recent_slot_value(*args, **kwargs):
+    from .conversation_focus_runtime import _recent_slot_value as _impl
 
     return _impl(*args, **kwargs)
 
@@ -342,6 +372,140 @@ def _compose_academic_difficulty_answer(summary: dict[str, Any], *, student_name
     return answer
 
 
+def _looks_like_academic_progression_query(
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> bool:
+    normalized = _normalize_text(message)
+    best_terms = {
+        'melhor disciplina',
+        'melhor materia',
+        'melhor matéria',
+        'qual esta melhor',
+        'qual está melhor',
+        'qual materia esta melhor',
+        'qual matéria está melhor',
+        'qual disciplina esta melhor',
+        'qual disciplina está melhor',
+        'materia esta melhor',
+        'matéria está melhor',
+        'disciplina esta melhor',
+        'disciplina está melhor',
+        'disciplina melhor',
+        'mais forte',
+        'melhor componente',
+        'a melhor',
+    }
+    worst_terms = {
+        'pior disciplina',
+        'pior materia',
+        'pior matéria',
+        'qual esta pior',
+        'qual está pior',
+        'qual materia esta pior',
+        'qual matéria está pior',
+        'qual disciplina esta pior',
+        'qual disciplina está pior',
+        'materia esta pior',
+        'matéria está pior',
+        'disciplina esta pior',
+        'disciplina está pior',
+        'mais fraca',
+        'mais fraco',
+        'disciplina pior',
+        'mais dificil',
+        'mais difícil',
+        'a pior',
+    }
+    best = any(_message_matches_term(normalized, term) for term in best_terms)
+    worst = any(_message_matches_term(normalized, term) for term in worst_terms)
+    gap = _wants_academic_grade_requirement(message)
+    if best and worst:
+        return True
+    if gap and (best or worst):
+        return True
+    if gap and any(
+        _message_matches_term(normalized, term)
+        for term in {'melhor', 'pior', 'mais forte', 'mais fraca', 'mais fraco'}
+    ):
+        return True
+    if (
+        _is_follow_up_query(message)
+        and str(_recent_slot_value(conversation_context, 'academic_focus_kind') or '').strip()
+        == 'grades'
+        and gap
+    ):
+        return True
+    return False
+
+
+def _compose_academic_progression_answer(
+    summary: dict[str, Any],
+    *,
+    student_name: str,
+    message: str,
+    conversation_context: dict[str, Any] | None,
+) -> str:
+    averages = _academic_subject_averages(summary)
+    if not averages:
+        return (
+            f'Ainda nao encontrei notas suficientes de {student_name} para resumir a progressao '
+            'academica por disciplina neste recorte.'
+        )
+    ordered = sorted(averages, key=lambda item: (item[1], _normalize_text(item[0])))
+    worst_subject, worst_average = ordered[0]
+    best_subject, best_average = max(
+        averages,
+        key=lambda item: (item[1], -len(_normalize_text(item[0]))),
+    )
+    parts = [
+        (
+            f'Hoje, a melhor disciplina de {student_name} e {best_subject}, '
+            f'com media parcial {_format_grade_target_value(best_average)}/10.'
+        ),
+        (
+            f'A pior disciplina aparece em {worst_subject}, '
+            f'com {_format_grade_target_value(worst_average)}/10.'
+        ),
+    ]
+
+    subject_filter = _detect_subject_filter(
+        message,
+        summary,
+        conversation_context=conversation_context,
+        focus_kind='grades',
+    )
+    subject_label = _subject_label_from_filter(summary, subject_filter)
+    if subject_filter and subject_label:
+        filtered_grades = _filter_grade_rows(summary, subject_filter=subject_filter, term_filter=None)
+        normalized_scores: list[float] = []
+        for item in filtered_grades:
+            if not isinstance(item, dict):
+                continue
+            try:
+                score = float(item.get('score', 0) or 0)
+                max_score = float(item.get('max_score', 0) or 0)
+            except (TypeError, ValueError):
+                continue
+            if max_score <= 0:
+                continue
+            normalized_scores.append((score / max_score) * 10.0)
+        if normalized_scores:
+            current_average = sum(normalized_scores) / len(normalized_scores)
+            gap = max(0.0, PASSING_GRADE_TARGET - current_average)
+            if gap <= 0:
+                parts.append(
+                    f'Em {subject_label}, a media parcial atual ja esta em {_format_grade_target_value(current_average)}/10. Nao falta mais nada para fechar a media: a meta minima de 7,0 ja foi alcancada.'
+                )
+            else:
+                parts.append(
+                    f'Em {subject_label}, a media parcial atual e {_format_grade_target_value(current_average)}/10; faltam {_format_grade_target_value(gap)} ponto(s) para atingir 7,0.'
+                )
+
+    return ' '.join(parts)
+
+
 def _compose_family_upcoming_assessments_answer(
     summaries: list[tuple[str, dict[str, Any], dict[str, Any]]],
 ) -> str:
@@ -597,6 +761,12 @@ def _wants_attendance_timeline(message: str) -> bool:
 
 def _looks_like_family_finance_aggregate_query(message: str) -> bool:
     normalized = _normalize_text(message)
+    if (
+        any(term in normalized for term in {'meus filhos', 'meus alunos', 'meus dois alunos', 'por aqui', 'meu acesso'})
+        and any(term in normalized for term in {'escopo', 'acesso', 'dados', 'consigo acessar', 'posso acessar'})
+        and any(term in normalized for term in {'academico', 'acadêmico', 'financeiro', 'os dois'})
+    ):
+        return False
     if any(_message_matches_term(normalized, term) for term in FAMILY_FINANCE_AGGREGATE_TERMS):
         return True
     if any(
@@ -675,6 +845,23 @@ def _looks_like_family_attendance_aggregate_query(message: str) -> bool:
         'principal alerta de frequência dos meus filhos',
     }
     if any(_message_matches_term(normalized, term) for term in explicit_terms):
+        return True
+    named_comparison = (
+        _message_matches_term(normalized, 'entre ')
+        and any(
+            _message_matches_term(normalized, term)
+            for term in {
+                'mais delicado por frequencia',
+                'mais delicado por frequência',
+                'quem esta mais delicado por frequencia',
+                'quem está mais delicado por frequência',
+                'frequencia hoje',
+                'frequência hoje',
+                'alerta pesa mais',
+            }
+        )
+    )
+    if named_comparison:
         return True
     has_family_anchor = any(
         _message_matches_term(normalized, term) for term in FAMILY_REFERENCE_TERMS
@@ -817,14 +1004,23 @@ def _looks_like_family_academic_student_focus_followup(
         for term in {
             'qual componente',
             'qual disciplina',
+            'em quais materias',
+            'em quais matérias',
+            'em quais disciplinas',
             'mais alerta',
             'acende mais alerta',
             'chama mais atencao',
             'chama mais atenção',
             'chamam atencao',
             'chamam atenção',
+            'mais exposta',
+            'mais exposto',
+            'aparece mais exposta',
+            'aparece mais exposto',
             'mais fragil',
             'mais frágil',
+            'mais fragilizada',
+            'mais fragilizado',
             'mais vulneravel',
             'mais vulnerável',
             'mais critico',
@@ -833,6 +1029,95 @@ def _looks_like_family_academic_student_focus_followup(
             'mais claro',
         }
     )
+
+
+def _looks_like_family_attendance_student_focus_followup(
+    actor: dict[str, Any] | None,
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> bool:
+    eligible_students = _eligible_students(actor, capability='academic')
+    if not _focus_marked_student_from_message(
+        eligible_students,
+        message,
+    ):
+        return False
+    normalized = _normalize_text(message)
+    has_explicit_context_carry = any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'mantendo o contexto',
+            'continuando a analise',
+            'continuando a análise',
+            'recorte so',
+            'recorte só',
+            'corta so',
+            'corta só',
+            'corta para',
+            'isole',
+            'isola',
+        }
+    )
+    if not _recent_multi_student_summary_context(
+        actor,
+        conversation_context=conversation_context,
+    ):
+        if len(eligible_students) < 2 or not has_explicit_context_carry:
+            return False
+    has_follow_up_shape = any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'mantendo o contexto',
+            'continuando a analise',
+            'continuando a análise',
+            'recorte so',
+            'recorte só',
+            'corta so',
+            'corta só',
+            'corta para',
+            'isole',
+            'isola',
+            'resume',
+            'resuma',
+            'agora',
+        }
+    )
+    has_attendance_focus = any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'frequencia',
+            'frequência',
+            'faltas',
+            'falta',
+            'ausencias',
+            'ausências',
+            'atrasos',
+            'presenca',
+            'presença',
+            'alerta',
+            'risco',
+            'mais concreto',
+            'principal',
+        }
+    )
+    has_priority_focus = any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'principal alerta',
+            'risco mais concreto',
+            'mais sensivel',
+            'mais sensível',
+            'chamam atencao',
+            'chamam atenção',
+            'maior atencao',
+            'maior atenção',
+            'como isso bate',
+            'por que a frequencia',
+            'por que a frequência',
+        }
+    )
+    return has_attendance_focus and (has_follow_up_shape or has_priority_focus)
 
 
 def _mentions_personal_admin_status(message: str) -> bool:

@@ -320,6 +320,23 @@ _PUBLIC_INFO_INTENT_TERMS = {
     'conversar com',
 }
 
+_EXPLICIT_NON_SCHOOL_SCOPE_MARKERS = {
+    'sem relacao com escola',
+    'sem relação com escola',
+    'sem relacao com a escola',
+    'sem relação com a escola',
+    'sem relacao com o colegio',
+    'sem relação com o colégio',
+    'sem relacao com colegio',
+    'sem relação com colégio',
+    'fora do tema escolar',
+    'fora do tema da escola',
+    'fora do escopo da escola',
+    'sem ligar para a escola',
+    'sem relação com atendimento escolar',
+    'sem relacao com atendimento escolar',
+}
+
 _PUBLIC_SCHEDULE_INTENT_TERMS = {
     'turno',
     'turnos',
@@ -616,6 +633,28 @@ def looks_like_high_confidence_public_school_faq(message: str | None) -> bool:
     normalized = normalize_ingress_text(message)
     if not normalized:
         return False
+    if (
+        any(_contains_term(normalized, term) for term in {'calendario', 'calendário', 'agenda', 'eventos'})
+        and any(_contains_term(normalized, term) for term in {'familias', 'famílias', 'responsaveis', 'responsáveis'})
+        and any(
+            _contains_term(normalized, term)
+            for term in {
+                'publicos',
+                'públicos',
+                'publico',
+                'público',
+                'aparecem nesta base',
+                'aparecem na base',
+                'aparecem agora',
+                'nesta base agora',
+                'visiveis',
+                'visíveis',
+                'principais',
+                'mais importantes',
+            }
+        )
+    ):
+        return True
     has_facility = any(_contains_term(normalized, term) for term in _SCHOOL_PUBLIC_FACILITY_TERMS)
     if has_facility and (
         any(_contains_term(normalized, term) for term in _PUBLIC_INFO_INTENT_TERMS)
@@ -670,6 +709,8 @@ def looks_like_school_scope_message(message: str | None) -> bool:
     normalized = normalize_ingress_text(message)
     if not normalized:
         return False
+    if any(_contains_term(normalized, term) for term in _EXPLICIT_NON_SCHOOL_SCOPE_MARKERS):
+        return False
     if looks_like_high_confidence_public_school_faq(message):
         return True
     if any(_contains_term(normalized, term) for term in _SCHOOL_SCOPE_TERMS):
@@ -698,12 +739,46 @@ def looks_like_scope_boundary_candidate(message: str | None) -> bool:
         return False
     if looks_like_opaque_short_input(message):
         return False
+    if any(_contains_term(normalized, term) for term in _EXPLICIT_NON_SCHOOL_SCOPE_MARKERS):
+        return True
     if looks_like_school_scope_message(message):
         return False
     if len(effective_text) < 6:
         return False
     if len(effective_text.split()) > 18:
         return False
+    open_world_topic_terms = (
+        'filme',
+        'filmes',
+        'serie',
+        'series',
+        'jogo',
+        'jogos',
+        'receita',
+        'receitas',
+        'livro',
+        'livros',
+        'netflix',
+        'cinema',
+        'restaurante',
+        'restaurantes',
+    )
+    open_world_request_starters = (
+        'me ajuda a escolher',
+        'me ajuda a decidir',
+        'me indica',
+        'me recomenda',
+        'recomenda',
+        'indique',
+        'quero uma recomendacao',
+        'quero uma recomendação',
+        'sugere',
+        'sugira',
+    )
+    if any(_contains_term(normalized, term) for term in open_world_topic_terms) and any(
+        normalized.startswith(starter) or starter in normalized for starter in open_world_request_starters
+    ):
+        return True
     if any(ch == '?' for ch in raw_text):
         return True
     return any(

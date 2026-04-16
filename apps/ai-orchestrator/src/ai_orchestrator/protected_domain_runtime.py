@@ -220,6 +220,19 @@ def _detect_academic_focus_kind(message: str) -> str | None:
     ) or any(
         _message_matches_term(normalized, term)
         for term in {
+            'veredito academico',
+            'veredito acadêmico',
+            'quem esta mais perto de reprovar',
+            'quem está mais perto de reprovar',
+            'mais perto de reprovar',
+            'mais proximo de reprovar',
+            'mais próximo de reprovar',
+            'risco de reprovacao',
+            'risco de reprovação',
+            'ponto academico mais fraco',
+            'ponto acadêmico mais fraco',
+            'ponto academico mais sensivel',
+            'ponto acadêmico mais sensível',
             'fragilizada academicamente',
             'fragilizado academicamente',
             'mais fragilizada academicamente',
@@ -316,6 +329,20 @@ def _extract_unknown_subject_reference(
         if not match:
             continue
         candidate = _normalize_text(match.group(1))
+        if candidate in {
+            'qual materia',
+            'qual matéria',
+            'qual disciplina',
+            'quais materias',
+            'quais matérias',
+            'quais disciplinas',
+            'que materia',
+            'que matéria',
+            'que disciplinas',
+        }:
+            continue
+        if candidate.split(' ', 1)[0] in {'qual', 'quais', 'que'}:
+            continue
         if not candidate or candidate in stopwords or candidate in available_subjects:
             continue
         return candidate.title()
@@ -1189,8 +1216,17 @@ def _assignment_matches_teacher_segment(
 ) -> bool:
     if not segment_filter:
         return True
+    structured_segment = _normalize_text(str(assignment.get('segment', '') or ''))
+    try:
+        grade_level = int(assignment.get('grade_level'))
+    except (TypeError, ValueError):
+        grade_level = 0
     class_name = _normalize_text(str(assignment.get('class_name', '') or ''))
     if segment_filter == 'medio':
+        if structured_segment:
+            return 'medio' in structured_segment or 'médio' in structured_segment
+        if grade_level >= 10:
+            return True
         return any(
             token in class_name
             for token in {
@@ -1207,6 +1243,10 @@ def _assignment_matches_teacher_segment(
                 '3em',
             }
         )
+    if structured_segment:
+        return 'fundamental' in structured_segment
+    if 6 <= grade_level <= 9:
+        return True
     return any(
         token in class_name
         for token in {'fundamental', '6o', '7o', '8o', '9o', '6 ano', '7 ano', '8 ano', '9 ano'}
@@ -1240,6 +1280,24 @@ def _render_teacher_schedule_answer(summary: dict[str, Any], *, message: str) ->
         )
     ]
     normalized = _normalize_text(message)
+    segment_label = (
+        'Ensino Medio'
+        if segment_filter == 'medio'
+        else 'Ensino Fundamental II'
+        if segment_filter == 'fundamental'
+        else None
+    )
+    asks_panorama = any(
+        term in normalized
+        for term in {
+            'panorama',
+            'resumo',
+            'rotina docente',
+            'deste ano',
+        }
+    ) or ('turma' in normalized and 'disciplin' in normalized)
+    if asks_panorama:
+        return _compose_teacher_schedule_summary_answer(summary, profile=None, message=message)
     if ('so do ensino medio' in normalized or 'só do ensino médio' in normalized) and assignments:
         return (
             'Sim, sua grade atual fica concentrada no Ensino Medio.'
@@ -1298,7 +1356,11 @@ def _render_teacher_schedule_answer(summary: dict[str, Any], *, message: str) ->
     ]
     return '\n'.join(
         [
-            f'Grade docente de {teacher_name}:',
+            (
+                f'Grade docente de {teacher_name} no {segment_label}:'
+                if segment_label
+                else f'Grade docente de {teacher_name}:'
+            ),
             *(lines or ['- Nenhuma alocacao docente encontrada.']),
         ]
     )
@@ -1312,12 +1374,20 @@ def _compose_teacher_schedule_summary_answer(
 ) -> str:
     teacher_name = str(summary.get('teacher_name', 'Professor')).strip() or 'Professor'
     assignments = summary.get('assignments') if isinstance(summary.get('assignments'), list) else []
+    segment_filter = _segment_filter_for_teacher_message(message)
     filtered = [
         item
         for item in assignments
         if isinstance(item, dict)
-        and _assignment_matches_teacher_segment(item, _segment_filter_for_teacher_message(message))
+        and _assignment_matches_teacher_segment(item, segment_filter)
     ]
+    segment_label = (
+        'Ensino Medio'
+        if segment_filter == 'medio'
+        else 'Ensino Fundamental II'
+        if segment_filter == 'fundamental'
+        else None
+    )
     classes: list[str] = []
     subjects: list[str] = []
     seen_classes: set[str] = set()
@@ -1342,8 +1412,9 @@ def _compose_teacher_schedule_summary_answer(
             title = str(item.get('title', '') or '').strip()
             if title and title not in event_titles:
                 event_titles.append(title)
+    scope_label = f' no {segment_label}' if segment_label else ''
     parts = [
-        f'Resumo docente de {teacher_name}: {len(classes)} turma(s) e {len(subjects)} disciplina(s) ativas nesta base.'
+        f'Resumo docente de {teacher_name}{scope_label}: {len(classes)} turma(s) e {len(subjects)} disciplina(s) ativas nesta base.'
     ]
     if subjects:
         parts.append('Disciplinas: ' + ', '.join(subjects[:4]) + '.')

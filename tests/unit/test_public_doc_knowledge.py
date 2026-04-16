@@ -87,8 +87,6 @@ def test_calendar_week_lane_matches_generic_family_prompt() -> None:
         'Dentro do calendario publico, quais eventos parecem mais importantes para familias e responsaveis?'
     )
     assert lane == 'public_bundle.calendar_week'
-
-
 def test_timeline_lifecycle_lane_wins_over_calendar_week_for_marcos_entre_prompt() -> None:
     lane = match_public_canonical_lane(
         'Quais sao os marcos entre matricula, inicio do ano letivo e reuniao de responsaveis no calendario publico de 2026?'
@@ -405,6 +403,20 @@ def test_governance_protocol_lane_matches_governance_channels_prompt() -> None:
 def test_governance_protocol_lane_matches_formal_demands_prompt() -> None:
     lane = match_public_canonical_lane(
         'Na governanca publica da escola, como demandas formais chegam a direcao e viram protocolo?'
+    )
+    assert lane == 'public_bundle.governance_protocol'
+
+
+def test_governance_protocol_lane_matches_public_documents_escalation_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Pelos documentos publicos, como uma familia deve escalar um tema da rotina para direcao e protocolo formal?'
+    )
+    assert lane == 'public_bundle.governance_protocol'
+
+
+def test_governance_protocol_lane_matches_public_base_channels_and_protocol_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Na base publica, como aparecem conectados direcao, atendimento formal e numero de protocolo?'
     )
     assert lane == 'public_bundle.governance_protocol'
 

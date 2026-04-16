@@ -28,13 +28,6 @@ async def general_knowledge_fast_path_answer(
 ) -> SupervisorAnswerPayload | None:
     if not deps.looks_like_general_knowledge_query(ctx.request.message):
         return None
-    if ctx.resolved_turn is not None and ctx.resolved_turn.domain != "unknown":
-        return None
-    if ctx.operational_memory is not None and (
-        ctx.operational_memory.pending_kind
-        or ctx.operational_memory.active_domain in {"institution", "academic", "finance", "support"}
-    ):
-        return None
     answer_text = (
         "Nao tenho base confiavel aqui para responder conhecimento geral fora do escopo da escola. "
         "Posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro."
