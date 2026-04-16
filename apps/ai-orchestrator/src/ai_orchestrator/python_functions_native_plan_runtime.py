@@ -13,6 +13,12 @@ from .semantic_ingress_runtime import (
     apply_turn_frame_preview,
     build_turn_frame_public_plan,
     maybe_resolve_turn_frame,
+    resolve_turn_frame_authenticated_flag,
+)
+from .turn_frame_policy import (
+    is_external_public_facility_turn_frame,
+    is_restricted_document_turn_frame,
+    is_scope_boundary_turn_frame,
 )
 
 
@@ -36,6 +42,7 @@ async def maybe_execute_python_functions_native_plan(
     started_at = monotonic()
     effective_path_profile = path_profile or get_path_execution_profile(engine_name)
     actor = await rt._fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
+    actor = rt._build_effective_actor_context(actor, request.user)
     effective_conversation_id = rt._effective_conversation_id(request)
     conversation_context_bundle = await rt._fetch_conversation_context(
         settings=settings,
@@ -52,6 +59,8 @@ async def maybe_execute_python_functions_native_plan(
     recent_focus = rt._recent_conversation_focus(conversation_context)
     analysis_message = rt._build_analysis_message(request.message, conversation_context_bundle)
     school_profile = await rt._fetch_public_school_profile(settings=settings)
+    from .public_orchestration_runtime import _resolve_deterministic_public_guardrail_answer
+
     preview = plan.preview.model_copy(deep=True)
     semantic_preview = preview.model_copy(deep=True)
     semantic_ingress_plan = await maybe_resolve_semantic_ingress_plan(
@@ -199,6 +208,11 @@ async def maybe_execute_python_functions_native_plan(
     )
     turn_frame = None
     turn_frame_public_plan = None
+    turn_frame_authenticated = resolve_turn_frame_authenticated_flag(
+        request_message=request.message,
+        authenticated=bool(getattr(request.user, 'authenticated', False)),
+        actor=actor,
+    )
     if semantic_ingress_plan is not None:
         llm_stages.append('semantic_ingress_classifier')
     if semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan):
@@ -208,7 +222,7 @@ async def maybe_execute_python_functions_native_plan(
             conversation_context=conversation_context,
             preview=preview,
             stack_label='python_functions',
-            authenticated=bool(request.user.authenticated),
+            authenticated=turn_frame_authenticated,
         )
         if turn_frame is not None:
             preview = apply_turn_frame_preview(
@@ -218,9 +232,28 @@ async def maybe_execute_python_functions_native_plan(
             )
             turn_frame_public_plan = build_turn_frame_public_plan(turn_frame)
             llm_stages.append('turn_frame_classifier')
+            if (
+                is_restricted_document_turn_frame(turn_frame)
+                and can_read_restricted_documents(request.user)
+            ):
+                preview = preview.model_copy(
+                    update={
+                        'mode': OrchestrationMode.hybrid_retrieval,
+                        'classification': IntentClassification(
+                            domain=QueryDomain.institution,
+                            access_tier=AccessTier.sensitive,
+                            confidence=max(0.92, float(getattr(turn_frame, 'confidence', 0.92) or 0.92)),
+                            reason='python_functions_turn_frame:restricted_document',
+                        ),
+                        'reason': 'python_functions_turn_frame:restricted_document',
+                        'selected_tools': list(dict.fromkeys([*preview.selected_tools, 'search_documents'])),
+                        'needs_authentication': True,
+                    }
+                )
     evidence_pack = None
     semantic_ingress_terminal_answer = None
     external_turn_boundary_answer = None
+    generic_turn_boundary_answer = None
     if (
         semantic_ingress_public_plan is not None
         and is_terminal_semantic_ingress_plan(semantic_ingress_plan)
@@ -238,11 +271,40 @@ async def maybe_execute_python_functions_native_plan(
             or ''
         ).strip()
     elif (
-        turn_frame is not None
-        and turn_frame.conversation_act == 'scope_boundary'
-        and str(turn_frame.reason or '').strip() == 'external_public_facility_turn_hint'
+        turn_frame_public_plan is not None
+        and turn_frame is not None
+        and getattr(turn_frame, 'scope', '') == 'public'
+        and not is_scope_boundary_turn_frame(turn_frame)
     ):
-        external_turn_boundary_answer = rt._compose_scope_boundary_answer(
+        semantic_ingress_terminal_answer = str(
+            rt._compose_public_profile_answer(
+                school_profile,
+                request.message,
+                actor=actor,
+                original_message=request.message,
+                conversation_context=conversation_context,
+                semantic_plan=turn_frame_public_plan,
+            )
+            or ''
+        ).strip()
+    elif (
+        turn_frame is not None
+        and is_external_public_facility_turn_frame(turn_frame)
+    ):
+        external_turn_boundary_answer = rt._compose_external_public_facility_boundary_answer(
+            school_profile,
+            facility_label='uma biblioteca publica externa',
+            conversation_context=conversation_context,
+        )
+    elif (
+        turn_frame is not None
+        and is_scope_boundary_turn_frame(turn_frame)
+        and not (
+            is_restricted_document_turn_frame(turn_frame)
+            and can_read_restricted_documents(request.user)
+        )
+    ):
+        generic_turn_boundary_answer = rt._compose_scope_boundary_answer(
             school_profile,
             conversation_context=conversation_context,
         )
@@ -296,6 +358,137 @@ async def maybe_execute_python_functions_native_plan(
         meta_repair_answer = rt._compose_meta_repair_follow_up_answer(conversation_context)
 
     protected_family_attendance_answer = None
+    restricted_document_query = bool(
+        looks_like_restricted_document_query(request.message)
+        and can_read_restricted_documents(request.user)
+    )
+    protected_domain_hint = (
+        rt._explicit_protected_domain_hint(
+            request.message,
+            actor=actor,
+            conversation_context=conversation_context,
+        )
+        if getattr(request.user, 'authenticated', False)
+        else None
+    )
+    protected_attendance_focus_followup = bool(
+        getattr(request.user, 'authenticated', False)
+        and (
+            rt._looks_like_family_attendance_student_focus_followup(
+                actor,
+                request.message,
+                conversation_context=conversation_context,
+            )
+            or (
+                actor
+                and (
+                    rt._matching_students_in_text(rt._linked_students(actor), request.message)
+                    or rt._student_focus_candidate(actor, request.message)
+                )
+                and any(
+                    rt._message_matches_term(rt._normalize_text(request.message), term)
+                    for term in {
+                        'mantendo o contexto',
+                        'continuando a analise',
+                        'continuando a análise',
+                        'recorte so',
+                        'recorte só',
+                        'corta para',
+                        'isole',
+                    }
+                )
+                and any(
+                    rt._message_matches_term(rt._normalize_text(request.message), term)
+                    for term in {
+                        'frequencia',
+                        'frequência',
+                        'faltas',
+                        'falta',
+                        'ausencias',
+                        'ausências',
+                        'presenca',
+                        'presença',
+                        'atrasos',
+                        'risco',
+                        'mais concreto',
+                        'principal alerta',
+                    }
+                )
+            )
+        )
+    )
+    normalized_request_message = rt._normalize_text(request.message)
+    explicit_protected_academic_request = bool(
+        getattr(request.user, 'authenticated', False)
+        and (
+            rt._looks_like_family_academic_aggregate_query(request.message)
+            or rt._looks_like_academic_progression_query(
+                request.message,
+                conversation_context=conversation_context,
+            )
+        )
+    )
+    protected_message_override = any(
+        term in normalized_request_message
+        for term in {
+            'mais vulneravel',
+            'mais vulnerável',
+            'qual materia esta melhor',
+            'qual matéria está melhor',
+            'qual materia esta pior',
+            'qual matéria está pior',
+            'o que falta para fechar a media',
+            'o que falta para fechar a média',
+            'mantendo o contexto',
+            'corta para',
+            'recorte so',
+            'recorte só',
+            'resuma',
+            'resume',
+        }
+    ) and any(
+        term in normalized_request_message
+        for term in {
+            'frequencia',
+            'frequência',
+            'risco',
+            'media minima',
+            'média mínima',
+            'fisica',
+            'física',
+        }
+    )
+    protected_contextual_skip = bool(
+        getattr(request.user, 'authenticated', False)
+        and (
+            protected_message_override
+            or rt._should_skip_public_contextual_answer(
+                request.message,
+                actor=actor,
+                conversation_context=conversation_context,
+            )
+        )
+    )
+    forced_protected_domain = protected_domain_hint
+    turn_frame_scope = str(getattr(turn_frame, 'scope', '') or '').strip().lower()
+    turn_frame_domain = str(getattr(turn_frame, 'domain', '') or '').strip().lower()
+    if forced_protected_domain not in {QueryDomain.academic, QueryDomain.finance}:
+        if turn_frame_scope and turn_frame_scope != 'public':
+            if turn_frame_domain == QueryDomain.academic.value:
+                forced_protected_domain = QueryDomain.academic
+            elif turn_frame_domain == QueryDomain.finance.value:
+                forced_protected_domain = QueryDomain.finance
+    if (
+        forced_protected_domain not in {QueryDomain.academic, QueryDomain.finance}
+        and bool(getattr(request.user, 'authenticated', False))
+        and (
+            explicit_protected_academic_request
+            or rt._looks_like_family_attendance_aggregate_query(request.message)
+            or protected_attendance_focus_followup
+            or protected_message_override
+        )
+    ):
+        forced_protected_domain = QueryDomain.academic
     if (
         teacher_scope_answer is None
         and authenticated_account_scope_answer is None
@@ -326,9 +519,61 @@ async def maybe_execute_python_functions_native_plan(
             conversation_context=conversation_context,
         )
 
+    if forced_protected_domain in {QueryDomain.academic, QueryDomain.finance}:
+        preview = preview.model_copy(
+            update={
+                'mode': OrchestrationMode.structured_tool,
+                'classification': IntentClassification(
+                    domain=forced_protected_domain,
+                    access_tier=AccessTier.authenticated,
+                    confidence=max(
+                        0.92,
+                        float(getattr(preview.classification, 'confidence', 0.0) or 0.0),
+                    ),
+                    reason=f'python_functions_native_protected_focus:{forced_protected_domain.value}',
+                ),
+                'reason': f'python_functions_native_protected_focus:{forced_protected_domain.value}',
+                'needs_authentication': True,
+            }
+        )
+    preview = rt._align_protected_preview_tools(preview)
+    preview_graph_path = tuple(getattr(preview, 'graph_path', ()) or ())
+    protected_preview_context = (
+        bool(getattr(request.user, 'authenticated', False))
+        and (
+            preview.classification.domain in {QueryDomain.academic, QueryDomain.finance}
+            or any(str(node).startswith('turn_frame:protected.') for node in preview_graph_path)
+        )
+    )
+    public_surface_context = (
+        preview.classification.access_tier is AccessTier.public
+        or not bool(getattr(request.user, 'authenticated', False))
+    ) and not protected_preview_context and protected_domain_hint is None and not protected_contextual_skip
+    deterministic_public_guardrail = None
+    if (
+        teacher_scope_answer is None
+        and authenticated_account_scope_answer is None
+        and meta_repair_answer is None
+        and public_surface_context
+        and not protected_attendance_focus_followup
+        and not restricted_document_query
+    ):
+        deterministic_public_guardrail = _resolve_deterministic_public_guardrail_answer(
+            request.message,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+        )
+
     early_public_canonical_lane = None
     early_public_canonical_answer = None
-    if teacher_scope_answer is None and authenticated_account_scope_answer is None and meta_repair_answer is None:
+    if (
+        teacher_scope_answer is None
+        and authenticated_account_scope_answer is None
+        and meta_repair_answer is None
+        and public_surface_context
+        and deterministic_public_guardrail is None
+        and not restricted_document_query
+    ):
         if rt._is_public_teacher_identity_query(request.message) or rt._is_public_teacher_directory_follow_up(
             request.message,
             conversation_context,
@@ -337,7 +582,12 @@ async def maybe_execute_python_functions_native_plan(
         else:
             early_public_canonical_lane = (
                 match_public_canonical_lane(request.message)
-                or match_public_canonical_lane(analysis_message)
+                if not protected_attendance_focus_followup and not protected_contextual_skip
+                else None
+            ) or (
+                match_public_canonical_lane(analysis_message)
+                if not protected_attendance_focus_followup and not protected_contextual_skip
+                else None
             )
         if early_public_canonical_lane:
             early_public_canonical_answer = (
@@ -355,7 +605,15 @@ async def maybe_execute_python_functions_native_plan(
     contextual_public_answer = None
     unpublished_public_answer = None
     hypothetical_public_pricing_direct = None
-    if teacher_scope_answer is None and authenticated_account_scope_answer is None and meta_repair_answer is None:
+    if (
+        teacher_scope_answer is None
+        and authenticated_account_scope_answer is None
+        and meta_repair_answer is None
+        and public_surface_context
+        and deterministic_public_guardrail is None
+        and not protected_attendance_focus_followup
+        and not restricted_document_query
+    ):
         contextual_public_answer = await _maybe_contextual_public_direct_answer(
             request=request,
             analysis_message=analysis_message,
@@ -363,6 +621,7 @@ async def maybe_execute_python_functions_native_plan(
             settings=settings,
             school_profile=school_profile,
             conversation_context=conversation_context,
+            actor=actor,
         )
         unpublished_public_answer = _maybe_public_unpublished_direct_answer(
             request=request,
@@ -409,7 +668,38 @@ async def maybe_execute_python_functions_native_plan(
 
     execution_reason = 'python_functions_native_public'
 
-    if external_turn_boundary_answer:
+    if deterministic_public_guardrail is not None:
+        message_text = deterministic_public_guardrail.answer_text
+        deterministic_fallback_text = deterministic_public_guardrail.answer_text
+        preview = preview.model_copy(
+            update={
+                'mode': OrchestrationMode.structured_tool,
+                'classification': IntentClassification(
+                    domain=QueryDomain.institution,
+                    access_tier=AccessTier.public,
+                    confidence=0.99,
+                    reason=deterministic_public_guardrail.reason,
+                ),
+                'reason': deterministic_public_guardrail.reason,
+                'selected_tools': list(
+                    dict.fromkeys([*preview.selected_tools, *list(deterministic_public_guardrail.selected_tools)])
+                ),
+                'needs_authentication': False,
+            }
+        )
+        execution_reason = deterministic_public_guardrail.reason
+        evidence_pack = build_direct_answer_evidence_pack(
+            strategy='deterministic_public_guardrail',
+            summary='Resposta pública determinística resolvida antes do roteamento generativo do python_functions.',
+            supports=[
+                MessageEvidenceSupport(
+                    kind='policy',
+                    label=deterministic_public_guardrail.reason,
+                    detail='Boundary ou fato público não publicado resolvido por preflight determinístico.',
+                )
+            ],
+        )
+    elif external_turn_boundary_answer:
         message_text = external_turn_boundary_answer
         deterministic_fallback_text = external_turn_boundary_answer
         preview = preview.model_copy(
@@ -438,9 +728,39 @@ async def maybe_execute_python_functions_native_plan(
                 )
             ],
         )
+    elif generic_turn_boundary_answer:
+        message_text = generic_turn_boundary_answer
+        deterministic_fallback_text = generic_turn_boundary_answer
+        preview = preview.model_copy(
+            update={
+                'mode': OrchestrationMode.structured_tool,
+                'classification': IntentClassification(
+                    domain=QueryDomain.unknown,
+                    access_tier=AccessTier.public,
+                    confidence=max(0.88, float(getattr(turn_frame, 'confidence', 0.88) or 0.88)),
+                    reason='python_functions_turn_frame:scope_boundary',
+                ),
+                'reason': 'python_functions_turn_frame:scope_boundary',
+                'selected_tools': list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
+                'needs_authentication': False,
+            }
+        )
+        execution_reason = preview.reason
+        evidence_pack = build_direct_answer_evidence_pack(
+            strategy='scope_boundary',
+            summary='Consulta fora do escopo escolar encerrada deterministicamente pelo turn frame compartilhado.',
+            supports=[
+                MessageEvidenceSupport(
+                    kind='policy',
+                    label='scope_boundary',
+                    detail='turn_frame marcou a pergunta como fora do escopo da escola',
+                )
+            ],
+        )
     elif semantic_ingress_terminal_answer:
         message_text = semantic_ingress_terminal_answer
-        public_plan = semantic_ingress_public_plan
+        public_plan = semantic_ingress_public_plan or turn_frame_public_plan
+        public_act = str(getattr(public_plan, 'conversation_act', '') or '').strip() or 'public_answer'
         deterministic_fallback_text = semantic_ingress_terminal_answer
         preview = preview.model_copy(
             update={
@@ -449,10 +769,10 @@ async def maybe_execute_python_functions_native_plan(
                     domain=QueryDomain.institution,
                     access_tier=AccessTier.public,
                     confidence=0.99,
-                    reason=f'python_functions_native_semantic_ingress:{semantic_ingress_plan.conversation_act}',
+                    reason=f'python_functions_native_semantic_ingress:{public_act}',
                 ),
-                'reason': f'python_functions_native_semantic_ingress:{semantic_ingress_plan.conversation_act}',
-                'selected_tools': list(dict.fromkeys([*preview.selected_tools, *list(public_plan.required_tools)])),
+                'reason': f'python_functions_native_semantic_ingress:{public_act}',
+                'selected_tools': list(dict.fromkeys([*preview.selected_tools, *list(getattr(public_plan, 'required_tools', ()))])),
                 'needs_authentication': False,
             }
         )
@@ -626,6 +946,12 @@ async def maybe_execute_python_functions_native_plan(
             else 'python_functions_native_contextual_public_answer'
         )
         message_text = contextual_public_answer
+        preserve_contextual_public_answer = bool(
+            any(
+                marker in rt._normalize_text(contextual_public_answer)
+                for marker in ('fora do escopo da escola', 'nao tenho base aqui para informar esse dado externo')
+            )
+        )
         if isinstance(school_profile, dict):
             resolved_public_plan = semantic_ingress_public_plan or turn_frame_public_plan
             if resolved_public_plan is None:
@@ -635,19 +961,20 @@ async def maybe_execute_python_functions_native_plan(
                     conversation_context=conversation_context,
                     school_profile=school_profile,
                 )
-            composed_public_answer = await rt._compose_public_profile_answer_agentic(
-                settings=settings,
-                profile=school_profile,
-                actor=actor,
-                message=request.message,
-                original_message=request.message,
-                conversation_context=conversation_context,
-                semantic_plan=resolved_public_plan,
-            )
-            if composed_public_answer:
-                message_text = composed_public_answer
-                deterministic_fallback_text = composed_public_answer
-                llm_stages.append('public_answer_composer')
+            if not preserve_contextual_public_answer:
+                composed_public_answer = await rt._compose_public_profile_answer_agentic(
+                    settings=settings,
+                    profile=school_profile,
+                    actor=actor,
+                    message=request.message,
+                    original_message=request.message,
+                    conversation_context=conversation_context,
+                    semantic_plan=resolved_public_plan,
+                )
+                if composed_public_answer:
+                    message_text = composed_public_answer
+                    deterministic_fallback_text = composed_public_answer
+                    llm_stages.append('public_answer_composer')
         deterministic_fallback_text = contextual_public_answer
         preview = preview.model_copy(
             update={
@@ -740,17 +1067,23 @@ async def maybe_execute_python_functions_native_plan(
         )
     elif preview.mode is OrchestrationMode.hybrid_retrieval:
         used_canonical_lane = False
-        restricted_document_query = (
-            looks_like_restricted_document_query(request.message)
-            and can_read_restricted_documents(request.user)
-        )
         canonical_lane = (
             match_public_canonical_lane(request.message)
-            if preview.classification.access_tier is AccessTier.public
+            if (
+                preview.classification.access_tier is AccessTier.public
+                and not protected_attendance_focus_followup
+                and not protected_contextual_skip
+                and not restricted_document_query
+            )
             else None
         ) or (
             match_public_canonical_lane(analysis_message)
-            if preview.classification.access_tier is AccessTier.public
+            if (
+                preview.classification.access_tier is AccessTier.public
+                and not protected_attendance_focus_followup
+                and not protected_contextual_skip
+                and not restricted_document_query
+            )
             else None
         )
         if canonical_lane:
@@ -815,7 +1148,14 @@ async def maybe_execute_python_functions_native_plan(
                 profile=restricted_policy.profile,
             )
             retrieval_context_pack = search.context_pack
-            retrieval_hits = select_relevant_restricted_hits(analysis_message, list(search.hits))
+            retrieval_hits = retrieve_relevant_restricted_hits_with_fallback(
+                retrieval_service,
+                query=analysis_message,
+                hits=list(search.hits),
+                top_k=restricted_policy.top_k,
+                visibility='restricted',
+                category=restricted_policy.category,
+            )
             citations = rt._collect_citations(retrieval_hits)
             retrieval_trace_metadata = build_retrieval_trace_metadata(
                 visibility='restricted',

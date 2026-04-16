@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from .public_doc_knowledge import match_public_canonical_lane
 from .public_profile_answers import _compose_human_handoff_answer, _select_contact_channel
 
 
@@ -11,6 +12,8 @@ def _normalize_text(value: str | None) -> str:
 
 
 def _looks_like_human_handoff_request(message: str) -> bool:
+    if match_public_canonical_lane(message) == "public_bundle.governance_protocol":
+        return False
     normalized = _normalize_text(message)
     if any(
         marker in normalized
@@ -32,10 +35,16 @@ def _looks_like_human_handoff_request(message: str) -> bool:
             "bloqueando atendimento",
             "bloqueia atendimento",
             "bloqueio de atendimento",
+            "impedimento de atendimento",
+            "impedimento do atendimento",
             "ha bloqueio de atendimento",
             "há bloqueio de atendimento",
+            "ha impedimento de atendimento",
+            "há impedimento de atendimento",
             "se ha bloqueio de atendimento",
             "se há bloqueio de atendimento",
+            "se ha impedimento de atendimento",
+            "se há impedimento de atendimento",
         )
     ):
         return False

@@ -62,6 +62,10 @@ DEFAULT_PROMPTS = REPO_ROOT / 'artifacts/two_stack_random_strict_llm_live_202603
 DEFAULT_REPORT = REPO_ROOT / 'docs/architecture/four-path-chatbot-comparison-report.md'
 DEFAULT_JSON_REPORT = REPO_ROOT / 'docs/architecture/four-path-chatbot-comparison-report.json'
 DEFAULT_GUARDIAN_CHAT_ID = os.getenv('EVAL_GUARDIAN_CHAT_ID', '1649845499')
+DEFAULT_TEACHER_CHAT_ID = os.getenv('EVAL_TEACHER_CHAT_ID', '1649845501')
+DEFAULT_STUDENT_CHAT_ID = os.getenv('EVAL_STUDENT_CHAT_ID', '777013')
+DEFAULT_STAFF_CHAT_ID = os.getenv('EVAL_STAFF_CHAT_ID', '888002')
+DEFAULT_FINANCE_CHAT_ID = os.getenv('EVAL_FINANCE_CHAT_ID', '888102')
 STACKS = ('langgraph', 'python_functions', 'llamaindex', 'specialist_supervisor')
 STACK_URLS = {
     'langgraph': os.getenv('AI_ORCHESTRATOR_LANGGRAPH_BENCH_URL', 'http://127.0.0.1:8006'),
@@ -113,6 +117,17 @@ def _effective_telegram_chat_id(entry: dict[str, Any], *, guardian_chat_id: str 
     explicit = entry.get('telegram_chat_id')
     if explicit is not None:
         return explicit
+    explicit_user = entry.get('user')
+    if isinstance(explicit_user, dict) and explicit_user:
+        explicit_role = str(explicit_user.get('role') or '').strip().lower()
+        if explicit_role == UserRole.teacher.value:
+            return DEFAULT_TEACHER_CHAT_ID
+        if explicit_role == UserRole.student.value:
+            return DEFAULT_STUDENT_CHAT_ID
+        if explicit_role == UserRole.staff.value:
+            return DEFAULT_STAFF_CHAT_ID
+        if explicit_role == 'finance':
+            return DEFAULT_FINANCE_CHAT_ID
     slice_name = str(entry.get('slice') or 'public')
     category = str(entry.get('category') or '').strip()
     if guardian_chat_id and (
@@ -221,6 +236,10 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     lines.append('')
     lines.append(f"Run prefix: `{payload.get('run_prefix', '')}`")
     lines.append('')
+    lines.append(f"Stack execution mode: `{payload.get('stack_execution_mode', 'sequential')}`")
+    lines.append('')
+    lines.append(f"Stack concurrency: `{payload.get('stack_concurrency', 1)}`")
+    lines.append('')
     lines.append('## Stack Summary')
     lines.append('')
     lines.append('| Stack | OK | Keyword pass | Quality | Avg latency | Final polish |')
@@ -264,6 +283,8 @@ def _render_markdown(payload: dict[str, Any]) -> str:
             )
             if item.get('error_types'):
                 lines.append(f"  errors: {', '.join(item['error_types'])}")
+            if item.get('error_detail'):
+                lines.append(f"  error_detail: {item['error_detail']}")
             lines.append(f"  answer: {item['answer_text']}")
         lines.append('')
     return '\n'.join(lines).replace('\n  - ', '\n  - ')
@@ -275,13 +296,15 @@ async def _run_all(
     llm_forced: bool = False,
     guardian_chat_id: str | None = None,
     timeout_seconds: float = 25.0,
+    stack_concurrency: int = 1,
 ) -> dict[str, Any]:
     run_kind = 'llm-forced' if llm_forced else 'normal'
     run_prefix = f"debug:four-path:{run_kind}:{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
     previous_answers: dict[str, dict[str, str]] = {stack: {} for stack in STACKS}
     results: list[dict[str, Any]] = []
 
-    for entry in entries:
+    total_entries = len(entries)
+    for entry_index, entry in enumerate(entries, start=1):
         entry_with_run_prefix = {**entry, 'run_prefix': run_prefix}
         row: dict[str, Any] = {
             'id': entry.get('id') or '',
@@ -293,14 +316,35 @@ async def _run_all(
             'note': entry.get('note') or '',
             'run_prefix': run_prefix,
         }
-        for stack in STACKS:
-            raw = await _run_turn(
-                stack=stack,
-                entry=entry_with_run_prefix,
-                llm_forced=llm_forced,
-                guardian_chat_id=guardian_chat_id,
-                timeout_seconds=timeout_seconds,
-            )
+
+        if stack_concurrency <= 1:
+            raw_results = []
+            for stack in STACKS:
+                raw_results.append(
+                    await _run_turn(
+                        stack=stack,
+                        entry=entry_with_run_prefix,
+                        llm_forced=llm_forced,
+                        guardian_chat_id=guardian_chat_id,
+                        timeout_seconds=timeout_seconds,
+                    )
+                )
+        else:
+            semaphore = asyncio.Semaphore(stack_concurrency)
+
+            async def _bounded_run(stack_name: str) -> dict[str, Any]:
+                async with semaphore:
+                    return await _run_turn(
+                        stack=stack_name,
+                        entry=entry_with_run_prefix,
+                        llm_forced=llm_forced,
+                        guardian_chat_id=guardian_chat_id,
+                        timeout_seconds=timeout_seconds,
+                    )
+
+            raw_results = await asyncio.gather(*[_bounded_run(stack) for stack in STACKS])
+
+        for stack, raw in zip(STACKS, raw_results, strict=True):
             answer_text = _extract_answer_text(raw['body'])
             thread_key = str(entry.get('thread_id') or '')
             previous_answer = previous_answers[stack].get(thread_key, '') if thread_key else ''
@@ -354,6 +398,7 @@ async def _run_all(
                 'response_cache_hit': bool(raw.get('response_cache_hit', False)),
                 'response_cache_kind': str(raw.get('response_cache_kind') or ''),
                 'answer_text': answer_text,
+                'error_detail': str((raw.get('body') or {}).get('error') or ''),
                 'keyword_pass': keyword_pass,
                 'quality_score': quality_score,
                 'error_types': error_types,
@@ -361,6 +406,11 @@ async def _run_all(
             }
             if thread_key:
                 previous_answers[stack][thread_key] = answer_text
+
+        print(
+            f"[{entry_index}/{total_entries}] completed prompt '{str(entry['prompt'])[:90]}'",
+            flush=True,
+        )
         results.append(row)
 
     summary_by_stack: dict[str, Any] = {}
@@ -398,6 +448,8 @@ async def _run_all(
         'run_prefix': run_prefix,
         'guardian_chat_id': guardian_chat_id,
         'timeout_seconds': timeout_seconds,
+        'stack_execution_mode': 'parallel' if stack_concurrency > 1 else 'sequential',
+        'stack_concurrency': stack_concurrency,
         'summary': {
             'by_stack': summary_by_stack,
             'by_slice': summary_by_slice,
@@ -415,6 +467,7 @@ def main() -> int:
     parser.add_argument('--llm-forced', action='store_true')
     parser.add_argument('--guardian-chat-id', default=DEFAULT_GUARDIAN_CHAT_ID)
     parser.add_argument('--timeout-seconds', type=float, default=25.0)
+    parser.add_argument('--stack-concurrency', type=int, default=1)
     args = parser.parse_args()
 
     entries = _load_four_path_prompts(args.prompt_file)
@@ -424,6 +477,7 @@ def main() -> int:
             llm_forced=bool(args.llm_forced),
             guardian_chat_id=str(args.guardian_chat_id or '').strip() or None,
             timeout_seconds=float(args.timeout_seconds),
+            stack_concurrency=max(1, int(args.stack_concurrency)),
         )
     )
     payload['dataset'] = str(Path(args.prompt_file).resolve())

@@ -521,6 +521,31 @@ def test_early_llamaindex_public_answer_prioritizes_canonical_lane(monkeypatch) 
     assert result.answer_text == 'Comparacao canonica de processo.'
 
 
+def test_early_llamaindex_public_answer_forwards_actor_to_support_runtime(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    async def _fake_impl(**kwargs):
+        captured.update(kwargs)
+        return None
+
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_native_support_runtime._resolve_early_llamaindex_public_answer',
+        _fake_impl,
+    )
+    actor = {'linked_students': [{'student_id': 'stu-lucas'}]}
+    __import__('asyncio').run(
+        _resolve_early_llamaindex_public_answer(
+            request=SimpleNamespace(message='Teste', user=_authenticated_user()),
+            plan=SimpleNamespace(preview=_plan().preview),
+            settings=SimpleNamespace(),
+            school_profile={'school_name': 'Colegio Horizonte'},
+            conversation_context={'recent_messages': []},
+            actor=actor,
+        )
+    )
+    assert captured['actor'] == actor
+
+
 def test_contextual_public_direct_answer_skips_admin_finance_block_followup(monkeypatch) -> None:
     monkeypatch.setattr(
         'ai_orchestrator.llamaindex_kernel_runtime.rt._llm_forced_mode_enabled',
@@ -609,7 +634,7 @@ def test_contextual_public_direct_answer_respects_external_city_library_scope_bo
         lambda **_: False,
     )
     monkeypatch.setattr(
-        'ai_orchestrator.llamaindex_kernel_runtime.rt._compose_scope_boundary_answer',
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._compose_external_public_facility_boundary_answer',
         lambda *_args, **_kwargs: 'Boundary seguro.',
     )
 
@@ -639,6 +664,150 @@ def test_contextual_public_direct_answer_respects_external_city_library_scope_bo
     )
 
     assert result == 'Boundary seguro.'
+
+
+def test_llamaindex_contextual_public_direct_answer_respects_negated_school_library_boundary(monkeypatch) -> None:
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._llm_forced_mode_enabled',
+        lambda **_: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._compose_external_public_facility_boundary_answer',
+        lambda *_args, **_kwargs: 'Boundary seguro.',
+    )
+
+    result = __import__('asyncio').run(
+        _maybe_contextual_public_direct_answer(
+            request=SimpleNamespace(
+                message='Nao e a biblioteca da escola: me diga o horario da biblioteca publica municipal.',
+                user=SimpleNamespace(authenticated=False),
+            ),
+            analysis_message='Nao e a biblioteca da escola: me diga o horario da biblioteca publica municipal.',
+            preview=SimpleNamespace(
+                classification=SimpleNamespace(
+                    access_tier=AccessTier.public,
+                    domain=QueryDomain.institution,
+                ),
+                graph_path=['turn_frame:scope_boundary'],
+            ),
+            settings=SimpleNamespace(),
+            school_profile={
+                'school_name': 'Colegio Horizonte',
+                'feature_catalog': [
+                    {'name': 'Biblioteca Aurora', 'label': 'Biblioteca Aurora', 'note': 'de segunda a sexta, das 7h30 as 18h00'}
+                ],
+            },
+            conversation_context={'recent_messages': []},
+        )
+    )
+
+    assert result == 'Boundary seguro.'
+
+
+def test_llamaindex_contextual_public_direct_answer_skips_restricted_document_queries(monkeypatch) -> None:
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._llm_forced_mode_enabled',
+        lambda **_: False,
+    )
+
+    result = __import__('asyncio').run(
+        _maybe_contextual_public_direct_answer(
+            request=SimpleNamespace(
+                message='Na rotina interna de negociacao financeira, quais validacoes antecedem qualquer promessa de quitacao?',
+                user=SimpleNamespace(authenticated=True),
+            ),
+            analysis_message='Na rotina interna de negociacao financeira, quais validacoes antecedem qualquer promessa de quitacao?',
+            preview=SimpleNamespace(
+                classification=SimpleNamespace(
+                    access_tier=AccessTier.public,
+                    domain=QueryDomain.institution,
+                ),
+            ),
+            settings=SimpleNamespace(),
+            school_profile={'school_name': 'Colegio Horizonte'},
+            conversation_context={'recent_messages': []},
+        )
+    )
+
+    assert result is None
+
+
+def test_llamaindex_contextual_public_direct_answer_does_not_apply_scope_boundary_to_protected_turn_frame(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._llm_forced_mode_enabled',
+        lambda **_: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt.looks_like_scope_boundary_candidate',
+        lambda _message: True,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt.looks_like_school_scope_message',
+        lambda _message: False,
+    )
+
+    result = __import__('asyncio').run(
+        _maybe_contextual_public_direct_answer(
+            request=SimpleNamespace(
+                message='Entre meus filhos, quem esta mais vulneravel academicamente hoje? Me de um panorama curto.',
+                user=SimpleNamespace(authenticated=True),
+            ),
+            analysis_message='Entre meus filhos, quem esta mais vulneravel academicamente hoje? Me de um panorama curto.',
+            preview=SimpleNamespace(
+                classification=SimpleNamespace(
+                    access_tier=AccessTier.authenticated,
+                    domain=QueryDomain.academic,
+                ),
+                graph_path=['turn_frame:protected.academic.family_comparison'],
+            ),
+            settings=SimpleNamespace(),
+            school_profile={'school_name': 'Colegio Horizonte'},
+            conversation_context={'recent_messages': []},
+        )
+    )
+
+    assert result is None
+
+
+def test_llamaindex_contextual_public_direct_answer_skips_authenticated_academic_domain_without_graph_path(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt._llm_forced_mode_enabled',
+        lambda **_: False,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt.looks_like_scope_boundary_candidate',
+        lambda _message: True,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.llamaindex_kernel_runtime.rt.looks_like_school_scope_message',
+        lambda _message: False,
+    )
+
+    result = __import__('asyncio').run(
+        _maybe_contextual_public_direct_answer(
+            request=SimpleNamespace(
+                message='Entre meus filhos, quem esta mais vulneravel academicamente hoje? Me de um panorama curto.',
+                user=SimpleNamespace(authenticated=True),
+            ),
+            analysis_message='Entre meus filhos, quem esta mais vulneravel academicamente hoje? Me de um panorama curto.',
+            preview=SimpleNamespace(
+                classification=SimpleNamespace(
+                    access_tier=AccessTier.authenticated,
+                    domain=QueryDomain.academic,
+                ),
+                graph_path=[],
+            ),
+            settings=SimpleNamespace(),
+            school_profile={'school_name': 'Colegio Horizonte'},
+            conversation_context={'recent_messages': []},
+        )
+    )
+
+    assert result is None
 
 
 def test_semantic_ingress_native_public_decision_preserves_public_contract() -> None:

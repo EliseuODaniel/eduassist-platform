@@ -19,6 +19,7 @@ DEFAULT_TRACE_REPORT = REPO_ROOT / "docs/architecture/retrieval-50q-trace-calibr
 DEFAULT_TRACE_JSON = REPO_ROOT / "docs/architecture/retrieval-50q-trace-calibration-report.json"
 DEFAULT_COMBINED_REPORT = REPO_ROOT / "docs/architecture/retrieval-50q-combined-evaluation-report.md"
 DEFAULT_COMBINED_JSON = REPO_ROOT / "docs/architecture/retrieval-50q-combined-evaluation-report.json"
+DEFAULT_GENERATOR_SCRIPT = "tools/evals/generate_retrieval_20q_probe_cases.py"
 
 
 def _run(cmd: list[str]) -> None:
@@ -82,7 +83,9 @@ def main() -> int:
     )
     parser.add_argument("--count", type=int, default=50)
     parser.add_argument("--seed", type=int, default=260413)
+    parser.add_argument("--generator-script", default=DEFAULT_GENERATOR_SCRIPT)
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
+    parser.add_argument("--skip-generate", action="store_true")
     parser.add_argument("--comparison-report", type=Path, default=DEFAULT_COMPARISON_REPORT)
     parser.add_argument("--comparison-json", type=Path, default=DEFAULT_COMPARISON_JSON)
     parser.add_argument("--trace-report", type=Path, default=DEFAULT_TRACE_REPORT)
@@ -90,6 +93,7 @@ def main() -> int:
     parser.add_argument("--combined-report", type=Path, default=DEFAULT_COMBINED_REPORT)
     parser.add_argument("--combined-json", type=Path, default=DEFAULT_COMBINED_JSON)
     parser.add_argument("--timeout-seconds", type=float, default=90.0)
+    parser.add_argument("--stack-concurrency", type=int, default=1)
     parser.add_argument("--guardian-chat-id", default=os.getenv("EVAL_GUARDIAN_CHAT_ID", "1649845499"))
     parser.add_argument("--database-url", default="postgresql://eduassist:eduassist@127.0.0.1:5432/eduassist")
     args = parser.parse_args()
@@ -105,20 +109,37 @@ def main() -> int:
     ):
         path.parent.mkdir(parents=True, exist_ok=True)
 
-    _run(
-        [
-            "uv",
-            "run",
-            "python",
-            "tools/evals/generate_retrieval_20q_probe_cases.py",
-            "--seed",
-            str(args.seed),
-            "--count",
-            str(args.count),
-            "--output",
-            str(args.dataset),
-        ]
-    )
+    if not args.skip_generate:
+        if Path(str(args.generator_script)).name == "generate_retrieval_20q_probe_cases.py":
+            _run(
+                [
+                    "uv",
+                    "run",
+                    "python",
+                    str(args.generator_script),
+                    "--seed",
+                    str(args.seed),
+                    "--count",
+                    str(args.count),
+                    "--output",
+                    str(args.dataset),
+                ]
+            )
+        else:
+            _run(
+                [
+                    "uv",
+                    "run",
+                    "python",
+                    str(args.generator_script),
+                    "--seed",
+                    str(args.seed),
+                    "--output",
+                    str(args.dataset),
+                ]
+            )
+    elif not args.dataset.exists():
+        raise SystemExit(f"dataset_not_found_for_skip_generate:{args.dataset}")
     compare_cmd = [
         "uv",
         "run",
@@ -134,6 +155,8 @@ def main() -> int:
         str(args.guardian_chat_id),
         "--timeout-seconds",
         str(args.timeout_seconds),
+        "--stack-concurrency",
+        str(max(1, int(args.stack_concurrency))),
     ]
     _run(compare_cmd)
 

@@ -123,6 +123,19 @@ def _compose_service_routing_fast_answer(profile: dict[str, Any] | None, message
             "setor entra primeiro",
         }
     )
+    wants_start_channel = any(
+        term in normalized
+        for term in {
+            "por qual canal eu comeco",
+            "por qual canal eu começo",
+            "qual canal eu comeco",
+            "qual canal eu começo",
+            "por qual canal comeco",
+            "por qual canal começo",
+            "por qual canal eu devo comecar",
+            "por qual canal eu devo começar",
+        }
+    )
     has_documental_pending = any(
         term in normalized
         for term in {
@@ -135,6 +148,7 @@ def _compose_service_routing_fast_answer(profile: dict[str, Any] | None, message
     )
     lines: list[str] = []
     direct_order: list[str] = []
+    routing_start_order: list[str] = []
     one_line_lines: list[str] = []
     if any(term in normalized for term in {"direcao", "direção", "diretora", "diretor"}):
         leadership = (profile or {}).get("leadership_team")
@@ -163,6 +177,7 @@ def _compose_service_routing_fast_answer(profile: dict[str, Any] | None, message
         request_channel = str(item.get("request_channel") or "canal institucional").strip()
         lines.append(f"- {label}: {request_channel}.")
         direct_order.append(label)
+        routing_start_order.append(label)
         compact_label = label
         if wants_one_line_per_sector and service_key == "atendimento_admissoes":
             compact_label = "Bolsas / admissoes"
@@ -186,7 +201,14 @@ def _compose_service_routing_fast_answer(profile: dict[str, Any] | None, message
         compact_lines = one_line_lines or lines
         compact_items = [line[2:].strip() if line.startswith("- ") else line.strip() for line in compact_lines]
         return " | ".join(item for item in compact_items if item)
-    return "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n" + "\n".join(lines)
+    answer = "Hoje estes sao os responsaveis e canais mais diretos por assunto:\n" + "\n".join(lines)
+    preferred_start = routing_start_order[0] if routing_start_order else (direct_order[0] if direct_order else None)
+    if wants_start_channel and preferred_start:
+        answer += (
+            f"\n\nPara comecar, o melhor primeiro canal hoje e {preferred_start}. "
+            "Se o tema sair da rotina normal, a Direcao entra como escalonamento institucional."
+        )
+    return answer
 
 
 def _compose_public_teacher_directory_answer(profile: dict[str, Any] | None, message: str) -> str | None:

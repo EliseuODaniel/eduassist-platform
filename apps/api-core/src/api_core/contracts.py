@@ -250,6 +250,9 @@ class StudentAdministrativeStatusResponse(BaseModel):
 class TeacherScheduleEntry(BaseModel):
     class_id: uuid.UUID
     class_name: str
+    grade_level: int
+    shift: str
+    segment: str
     subject_code: str
     subject_name: str
     academic_year: int

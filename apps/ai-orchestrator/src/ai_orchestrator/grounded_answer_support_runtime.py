@@ -14,6 +14,147 @@ def _refresh_native_namespace() -> None:
             continue
         globals()[name] = value
 
+
+def _reason_has_marker(reason: str | None, markers: tuple[str, ...]) -> bool:
+    normalized = _normalize_text(reason)
+    if not normalized:
+        return False
+    return any(marker in normalized for marker in markers)
+
+
+def _is_boundary_answer_surface(*reasons: str | None) -> bool:
+    markers = (
+        'external_public_facility_boundary',
+        'scope_boundary',
+        'deterministic_public_guardrail',
+        'deterministic_scope_boundary',
+        'out_of_scope_abstention',
+        'contextual_boundary_fast_path',
+        'contextual_boundary',
+    )
+    return any(_reason_has_marker(reason, markers) for reason in reasons)
+
+
+def _is_restricted_document_surface(*reasons: str | None) -> bool:
+    markers = (
+        'restricted_document_no_match',
+        'restricted_doc_no_match',
+        'restricted_access_denied',
+        'restricted_doc_access_deny',
+    )
+    return any(_reason_has_marker(reason, markers) for reason in reasons)
+
+
+def _wants_upcoming_assessments(message: str) -> bool:
+    from .intent_analysis_runtime import _wants_upcoming_assessments as _impl
+
+    return _impl(message)
+
+
+def _looks_like_external_public_facility_boundary(message: str) -> bool:
+    from .kernel_runtime import _message_mentions_external_library_entity as _impl
+
+    return _impl(message)
+
+
+def _compose_external_public_facility_boundary_answer(
+    profile: dict[str, Any],
+    *,
+    facility_label: str,
+    conversation_context: dict[str, Any] | None = None,
+) -> str:
+    from .public_profile_runtime import _compose_external_public_facility_boundary_answer as _impl
+
+    return _impl(
+        profile,
+        facility_label=facility_label,
+        conversation_context=conversation_context,
+    )
+
+
+def _compose_admin_finance_combined_answer_local(
+    *,
+    admin_summary: dict[str, Any] | None,
+    finance_summaries: list[dict[str, Any]],
+    requested_admin_attribute: str | None,
+) -> str | None:
+    from .protected_summary_runtime import _compose_admin_finance_combined_answer as _impl
+
+    return _impl(
+        admin_summary=admin_summary,
+        finance_summaries=finance_summaries,
+        requested_admin_attribute=requested_admin_attribute,
+    )
+
+
+def _is_admin_finance_combined_query_local(message: str) -> bool:
+    from .intent_analysis_runtime import _is_admin_finance_combined_query as _impl
+
+    return _impl(message)
+
+
+def _resolve_linked_student_candidate(
+    *,
+    actor: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None,
+    allow_recent_context: bool = False,
+    focus: AnswerFocusState | None = None,
+    focused_student: dict[str, Any] | None = None,
+    mentioned_students: list[str] | None = None,
+) -> dict[str, Any] | None:
+    if isinstance(focused_student, dict):
+        return focused_student
+    if not isinstance(actor, dict):
+        return None
+    linked_students = actor.get('linked_students')
+    if not isinstance(linked_students, list) or not linked_students:
+        return None
+
+    focus_student_id = str(getattr(focus, 'student_id', '') or '').strip() if focus is not None else ''
+    if focus_student_id:
+        for student in linked_students:
+            if isinstance(student, dict) and str(student.get('student_id') or '').strip() == focus_student_id:
+                return student
+
+    focus_student_name = str(getattr(focus, 'student_name', '') or '').strip() if focus is not None else ''
+    mentioned_names = [
+        _plain_text(name)
+        for name in (mentioned_students or [])
+        if str(name or '').strip()
+    ]
+    requested_names = [name for name in [focus_student_name] if name]
+    requested_names.extend(name for name in mentioned_names if name)
+    if requested_names:
+        for requested_name in requested_names:
+            for student in linked_students:
+                if not isinstance(student, dict):
+                    continue
+                full_name = str(student.get('full_name') or '').strip()
+                full_name_plain = _plain_text(full_name)
+                first_name_plain = full_name_plain.split(' ')[0] if full_name_plain else ''
+                if requested_name == full_name_plain or requested_name == first_name_plain:
+                    return student
+
+    if len(linked_students) == 1 and isinstance(linked_students[0], dict):
+        return linked_students[0]
+
+    if allow_recent_context:
+        recent_student_name = _recent_linked_student_name_from_messages(conversation_context, actor) or _recent_linked_student_name_for_admin_finance_combo(
+            conversation_context,
+            actor,
+        )
+        recent_student_name_plain = _plain_text(recent_student_name)
+        if recent_student_name_plain:
+            for student in linked_students:
+                if not isinstance(student, dict):
+                    continue
+                full_name = str(student.get('full_name') or '').strip()
+                full_name_plain = _plain_text(full_name)
+                first_name_plain = full_name_plain.split(' ')[0] if full_name_plain else ''
+                if recent_student_name_plain == full_name_plain or recent_student_name_plain == first_name_plain:
+                    return student
+    return None
+
 async def _deterministic_public_direct_answer(
     *,
     request: MessageResponseRequest,
@@ -23,6 +164,19 @@ async def _deterministic_public_direct_answer(
     conversation_context: dict[str, Any] | None,
 ) -> str | None:
     _refresh_native_namespace()
+    response_reason = _normalize_text(getattr(response, 'reason', None))
+    candidate_reason = _normalize_text(getattr(response, 'candidate_reason', None))
+    if _is_boundary_answer_surface(response_reason, candidate_reason) or _is_restricted_document_surface(
+        response_reason,
+        candidate_reason,
+    ):
+        return None
+    if _looks_like_external_public_facility_boundary(request.message):
+        return _compose_external_public_facility_boundary_answer(
+            school_profile or {},
+            facility_label='uma biblioteca publica externa',
+            conversation_context=conversation_context,
+        )
     canonical_lane = (
         match_shared_public_canonical_lane(request.message)
         or match_python_functions_public_canonical_lane(request.message)
@@ -35,6 +189,23 @@ async def _deterministic_public_direct_answer(
     if response.classification.access_tier is not AccessTier.public and (
         _looks_like_attendance_alert_request(request.message)
         or _looks_like_family_attendance_aggregate_request(request.message)
+    ):
+        return None
+    if _recent_family_attendance_context(conversation_context) and any(
+        term in _plain_text(request.message)
+        for term in (
+            'corta para ',
+            'fica so com ',
+            'fique so com ',
+            'fique só com ',
+            'mantendo o contexto',
+            'mantem o contexto',
+            'mantém o contexto',
+            'frequencia dele',
+            'frequência dele',
+            'risco mais concreto',
+            'risco concreto',
+        )
     ):
         return None
     teacher_directory = _question_mentions_public_teacher_directory(
@@ -270,6 +441,7 @@ async def _deterministic_protected_academic_direct_answer(
     *,
     request: MessageResponseRequest,
     response: MessageResponse,
+    focus: AnswerFocusState,
     actor: dict[str, Any] | None,
     settings: Any,
     conversation_context: dict[str, Any] | None,
@@ -285,7 +457,19 @@ async def _deterministic_protected_academic_direct_answer(
         return None
     normalized = _plain_text(request.message)
     mentioned_students = _mentioned_linked_student_names_from_question(actor, request.message)
+    focused_student = _focus_marked_student_from_question(actor, request.message)
     family_academic_priority_follow_up = _looks_like_family_academic_priority_followup(request.message)
+    from .protected_summary_runtime import (
+        _compose_academic_progression_answer as _compose_academic_progression_answer_local,
+        _looks_like_academic_progression_query as _looks_like_academic_progression_query_local,
+        _looks_like_family_academic_student_focus_followup,
+    )
+
+    family_student_focus_follow_up = _looks_like_family_academic_student_focus_followup(
+        actor,
+        request.message,
+        conversation_context=conversation_context,
+    )
     cross_student_comparison_follow_up = _looks_like_cross_student_academic_comparison_followup(request.message) or _looks_like_contextual_cross_student_academic_comparison_followup(
         request.message,
         conversation_context=conversation_context,
@@ -328,13 +512,49 @@ async def _deterministic_protected_academic_direct_answer(
             'piores médias',
         )
     )
+    explicit_single_student_focus = isinstance(focused_student, dict) and any(
+        term in normalized
+        for term in (
+            'qual componente',
+            'qual disciplina',
+            'mais alerta',
+            'acende mais alerta',
+            'chama mais atencao',
+            'chama mais atenção',
+            'mais fragil',
+            'mais frágil',
+            'mais vulneravel',
+            'mais vulnerável',
+            'mais critico',
+            'mais crítico',
+            'ponto mais fraco',
+            'ponto academico mais fraco',
+            'ponto acadêmico mais fraco',
+            'mais claro',
+        )
+    )
+    academic_progression_query = _looks_like_academic_progression_query_local(
+        request.message,
+        conversation_context=conversation_context,
+    )
+    focused_student = _resolve_linked_student_candidate(
+        actor=actor,
+        conversation_context=conversation_context,
+        allow_recent_context=False,
+        focus=focus,
+        focused_student=focused_student,
+        mentioned_students=mentioned_students,
+    )
     if not (
         _looks_like_family_academic_reason_followup(request.message)
         or _looks_like_family_academic_next_in_line_followup(request.message)
         or family_academic_priority_follow_up
+        or family_student_focus_follow_up
+        or explicit_single_student_focus
         or cross_student_comparison_follow_up
         or academic_risk_follow_up
         or academic_difficulty_follow_up
+        or academic_progression_query
     ):
         return None
     if not (recent_family_academic or recent_family_attendance) and not (
@@ -342,13 +562,132 @@ async def _deterministic_protected_academic_direct_answer(
         or cross_student_comparison_follow_up
         or academic_risk_follow_up
         or academic_difficulty_follow_up
+        or academic_progression_query
     ):
         return None
     linked_students = actor.get('linked_students')
     if not isinstance(linked_students, list):
         return None
+    if _wants_upcoming_assessments(request.message) and len(mentioned_students) >= 2:
+        selected_names = {_plain_text(name) for name in mentioned_students if str(name).strip()}
+        summaries: list[tuple[str, dict[str, Any], dict[str, Any]]] = []
+        for student in linked_students:
+            if not isinstance(student, dict):
+                continue
+            student_id = str(student.get('student_id') or '').strip()
+            full_name = str(student.get('full_name') or '').strip()
+            if not student_id or not full_name:
+                continue
+            normalized_full_name = _plain_text(full_name)
+            first_name = normalized_full_name.split(' ')[0] if normalized_full_name else ''
+            if normalized_full_name not in selected_names and first_name not in selected_names:
+                continue
+            academic_payload = await _api_core_get(
+                settings=settings,
+                path=f'/v1/students/{student_id}/academic-summary',
+                params={'telegram_chat_id': request.telegram_chat_id},
+            )
+            academic_summary = academic_payload.get('summary') if isinstance(academic_payload, dict) else None
+            upcoming_payload = await _api_core_get(
+                settings=settings,
+                path=f'/v1/students/{student_id}/upcoming-assessments',
+                params={'telegram_chat_id': request.telegram_chat_id},
+            )
+            upcoming_summary = upcoming_payload.get('summary') if isinstance(upcoming_payload, dict) else None
+            if isinstance(academic_summary, dict) and isinstance(upcoming_summary, dict):
+                summaries.append((full_name, academic_summary, upcoming_summary))
+        if summaries:
+            return _compose_family_upcoming_assessments_focus(summaries)
+    if family_student_focus_follow_up or explicit_single_student_focus:
+        if isinstance(focused_student, dict):
+            student_id = str(focused_student.get('student_id') or '').strip()
+            student_name = str(focused_student.get('full_name') or 'Aluno').strip() or 'Aluno'
+            if student_id:
+                payload = await _api_core_get(
+                    settings=settings,
+                    path=f'/v1/students/{student_id}/academic-summary',
+                    params={'telegram_chat_id': request.telegram_chat_id},
+                )
+                summary = payload.get('summary') if isinstance(payload, dict) else None
+                if isinstance(summary, dict):
+                    focused_answer = _compose_academic_difficulty_direct_answer(
+                        summary,
+                        student_name=student_name,
+                    ) or _compose_academic_risk_direct_answer(
+                        summary,
+                        student_name=student_name,
+                    )
+                    if focused_answer:
+                        return focused_answer
+    if academic_progression_query and isinstance(focused_student, dict):
+        student_id = str(focused_student.get('student_id') or '').strip()
+        student_name = str(focused_student.get('full_name') or 'Aluno').strip() or 'Aluno'
+        if student_id:
+            payload = await _api_core_get(
+                settings=settings,
+                path=f'/v1/students/{student_id}/academic-summary',
+                params={'telegram_chat_id': request.telegram_chat_id},
+            )
+            summary = payload.get('summary') if isinstance(payload, dict) else None
+            if isinstance(summary, dict):
+                progression_answer = _compose_academic_progression_answer_local(
+                    summary,
+                    student_name=student_name,
+                    message=request.message,
+                    conversation_context=conversation_context,
+                )
+                if progression_answer:
+                    return progression_answer
+    selected_names = {_plain_text(name) for name in mentioned_students if str(name).strip()}
+    candidate_students = list(linked_students)
+    if selected_names and (
+        academic_risk_follow_up
+        or academic_difficulty_follow_up
+        or explicit_single_student_focus
+        or family_student_focus_follow_up
+    ):
+        filtered_students = [
+            student
+            for student in candidate_students
+            if isinstance(student, dict)
+            and (
+                _plain_text(str(student.get('full_name') or '')) in selected_names
+                or _plain_text(str(student.get('full_name') or '')).split(' ')[0] in selected_names
+            )
+        ]
+        if filtered_students:
+            candidate_students = filtered_students
+    summaries: list[dict[str, Any]] = []
+    for student in candidate_students:
+        if not isinstance(student, dict):
+            continue
+        student_id = str(student.get('student_id') or '').strip()
+        if not student_id:
+            continue
+        payload = await _api_core_get(
+            settings=settings,
+            path=f'/v1/students/{student_id}/academic-summary',
+            params={'telegram_chat_id': request.telegram_chat_id},
+        )
+        summary = payload.get('summary') if isinstance(payload, dict) else None
+        if isinstance(summary, dict):
+            summaries.append(summary)
+    if cross_student_comparison_follow_up and not explicit_single_student_focus:
+        preferred_order = mentioned_students
+        if len(preferred_order) < 2:
+            recent_name = _recent_linked_student_name_from_messages(conversation_context, actor)
+            explicit_other = next(
+                (name for name in mentioned_students if _plain_text(name) != _plain_text(recent_name)),
+                None,
+            ) if recent_name else None
+            preferred_order = [item for item in (recent_name, explicit_other) if item]
+        comparison_answer = _compose_cross_student_academic_comparison_direct(
+            summaries,
+            preferred_order=preferred_order,
+        )
+        if comparison_answer:
+            return comparison_answer
     if academic_risk_follow_up or academic_difficulty_follow_up:
-        focused_student = _focus_marked_student_from_question(actor, request.message)
         prioritized_students = list(linked_students)
         if isinstance(focused_student, dict):
             prioritized_students = [focused_student, *[student for student in linked_students if student is not focused_student]]
@@ -376,36 +715,6 @@ async def _deterministic_protected_academic_direct_answer(
             if academic_difficulty_follow_up:
                 return _compose_academic_difficulty_direct_answer(summary, student_name=full_name)
             break
-    summaries: list[dict[str, Any]] = []
-    for student in linked_students:
-        if not isinstance(student, dict):
-            continue
-        student_id = str(student.get('student_id') or '').strip()
-        if not student_id:
-            continue
-        payload = await _api_core_get(
-            settings=settings,
-            path=f'/v1/students/{student_id}/academic-summary',
-            params={'telegram_chat_id': request.telegram_chat_id},
-        )
-        summary = payload.get('summary') if isinstance(payload, dict) else None
-        if isinstance(summary, dict):
-            summaries.append(summary)
-    if cross_student_comparison_follow_up:
-        preferred_order = mentioned_students
-        if len(preferred_order) < 2:
-            recent_name = _recent_linked_student_name_from_messages(conversation_context, actor)
-            explicit_other = next(
-                (name for name in mentioned_students if _plain_text(name) != _plain_text(recent_name)),
-                None,
-            ) if recent_name else None
-            preferred_order = [item for item in (recent_name, explicit_other) if item]
-        comparison_answer = _compose_cross_student_academic_comparison_direct(
-            summaries,
-            preferred_order=preferred_order,
-        )
-        if comparison_answer:
-            return comparison_answer
     if family_academic_priority_follow_up:
         return _compose_family_academic_focus(summaries)
     if _looks_like_family_academic_reason_followup(request.message):
@@ -433,7 +742,17 @@ async def _deterministic_protected_attendance_direct_answer(
     if response.classification.access_tier is AccessTier.public and not recent_family_attendance:
         return None
 
-    if _looks_like_family_attendance_aggregate_request(request.message):
+    focused_student = _focus_marked_student_from_question(actor, request.message)
+    mentioned_students = _mentioned_linked_student_names_from_question(actor, request.message)
+    focused_student = _resolve_linked_student_candidate(
+        actor=actor,
+        conversation_context=conversation_context,
+        allow_recent_context=recent_family_attendance,
+        focus=focus,
+        focused_student=focused_student,
+        mentioned_students=mentioned_students,
+    )
+    if _looks_like_family_attendance_aggregate_request(request.message) and not isinstance(focused_student, dict):
         linked_students = actor.get('linked_students')
         if not isinstance(linked_students, list):
             return None
@@ -464,6 +783,9 @@ async def _deterministic_protected_attendance_direct_answer(
         return None
     student_id = focus.student_id
     student_name = str(focus.student_name or '').strip() or None
+    if isinstance(focused_student, dict):
+        student_id = str(focused_student.get('student_id') or '').strip() or student_id
+        student_name = str(focused_student.get('full_name') or '').strip() or student_name
     if (not student_id or not student_name) and recent_family_attendance:
         recent_student_name = _recent_linked_student_name_for_admin_finance_combo(conversation_context, actor)
         if recent_student_name and isinstance(actor, dict):
@@ -529,8 +851,8 @@ async def _deterministic_protected_finance_direct_answer(
         return (
             f'O que ja aparece: eu nao posso confirmar nem expor o financeiro de {unmatched_student} porque esse aluno nao aparece entre os vinculados desta conta. '
             f'No recorte atual, eu consigo consultar apenas: {linked_preview}. '
-            'Proximo passo: se Joao deveria aparecer neste recorte, regularize primeiro o vinculo com a secretaria. '
-            'Se a cobranca for de Lucas ou Ana, me diga qual deles e eu consulto o que ja aparece. '
+            f'Proximo passo: se {unmatched_student} deveria aparecer neste recorte, regularize primeiro o vinculo com a secretaria. '
+            'Se a cobranca for de um dos alunos vinculados, me diga qual deles e eu consulto o que ja aparece. '
             'Se a ideia for negociar o restante de uma cobranca vinculada, abra o atendimento com o financeiro pelo canal oficial.'
         )
     recent_blob = ' '.join(
@@ -683,7 +1005,11 @@ async def _build_supplemental_focus(
         }
     if (
         request.telegram_chat_id is not None
-        and (focus.asks_family_aggregate or _looks_like_family_attendance_aggregate_request(request.message))
+        and (
+            focus.asks_family_aggregate
+            or _looks_like_family_attendance_aggregate_request(request.message)
+            or focus.topic == 'admin_finance_combo'
+        )
         and not focus.student_id
         and isinstance(actor, dict)
     ):
@@ -718,6 +1044,53 @@ async def _build_supplemental_focus(
                         'focused_draft': focused_draft,
                         'evidence_lines': [f'Foco agregado | {focused_draft}'],
                     }
+            if focus.topic == 'admin_finance_combo' or _is_admin_finance_combined_query_local(
+                _plain_text(request.message)
+            ):
+                admin_summaries: list[dict[str, Any]] = []
+                finance_summaries: list[dict[str, Any]] = []
+                for student in linked_students:
+                    if not isinstance(student, dict):
+                        continue
+                    student_id = str(student.get('student_id') or '').strip()
+                    if not student_id:
+                        continue
+                    admin_payload = await _api_core_get(
+                        settings=settings,
+                        path=f'/v1/students/{student_id}/administrative-status',
+                        params={'telegram_chat_id': request.telegram_chat_id},
+                    )
+                    admin_summary = admin_payload.get('summary') if isinstance(admin_payload, dict) else None
+                    if isinstance(admin_summary, dict):
+                        admin_summaries.append(admin_summary)
+                    finance_payload = await _api_core_get(
+                        settings=settings,
+                        path=f'/v1/students/{student_id}/financial-summary',
+                        params={'telegram_chat_id': request.telegram_chat_id},
+                    )
+                    finance_summary = finance_payload.get('summary') if isinstance(finance_payload, dict) else None
+                    if isinstance(finance_summary, dict):
+                        finance_summaries.append(finance_summary)
+                if admin_summaries or finance_summaries:
+                    primary_admin_summary = next(
+                        (
+                            summary
+                            for summary in admin_summaries
+                            if str(summary.get('overall_status') or '').strip().lower()
+                            in {'pending', 'review', 'missing', 'incomplete'}
+                        ),
+                        admin_summaries[0] if admin_summaries else None,
+                    )
+                    focused_draft = _compose_admin_finance_combined_answer_local(
+                        admin_summary=primary_admin_summary,
+                        finance_summaries=finance_summaries,
+                        requested_admin_attribute=None,
+                    )
+                    if focused_draft:
+                        return {
+                            'focused_draft': focused_draft,
+                            'evidence_lines': [f'Foco agregado | {focused_draft}'],
+                        }
             if focus.domain == 'institution':
                 summaries = []
                 for student in linked_students:
@@ -953,6 +1326,10 @@ def _preserve_deterministic_answer_surface(
     candidate_reason = _normalize_text(getattr(response, 'candidate_reason', None))
     response_reason = _normalize_text(getattr(response, 'reason', None))
     reasons = [candidate_reason, response_reason]
+    if _is_boundary_answer_surface(*reasons):
+        return 'preserve_scope_boundary_surface'
+    if _is_restricted_document_surface(*reasons):
+        return 'preserve_restricted_document_surface'
     if any(
         (
             'public_bundle.process_compare' in reason
@@ -1023,13 +1400,22 @@ def _preserve_deterministic_answer_surface(
     ):
         return 'preserve_pricing_projection'
     if (
-        response.mode != OrchestrationMode.clarify
-        and (
+        (
             _looks_like_access_scope_request(request.message)
+            or any('access_scope' in _normalize_text(reason) for reason in reasons if reason)
+            or 'escopo atual' in _plain_text(response.message_text)
+            or 'voce ja esta autenticado' in _plain_text(response.message_text)
         )
         and not _looks_like_student_resolution_failure(response.message_text)
     ):
         return 'preserve_access_scope'
+    if any(
+        term in _normalize_text(reason)
+        for reason in reasons
+        if reason
+        for term in ('restricted_doc', 'restricted_document')
+    ):
+        return 'preserve_restricted_document_surface'
     finance_tools = {'get_financial_summary', 'get_student_financial_summary'}
     response_is_finance_surface = (
         response.classification.domain is QueryDomain.finance

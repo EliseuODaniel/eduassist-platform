@@ -130,25 +130,100 @@ def _assignment_matches_segment(assignment: dict[str, Any], segment_filter: str 
     if not segment_filter:
         return True
     class_name = _normalize_text(str(assignment.get("class_name", "") or ""))
+    structured_segment = _normalize_text(
+        str(
+            assignment.get("segment")
+            or assignment.get("grade_segment")
+            or assignment.get("education_stage")
+            or ""
+        )
+    )
+    try:
+        grade_level = int(assignment.get("grade_level") or 0)
+    except Exception:
+        grade_level = 0
     if segment_filter == "medio":
+        if "medio" in structured_segment or "médio" in structured_segment:
+            return True
+        if grade_level >= 10:
+            return True
         return any(
             token in class_name
             for token in {"medio", "médio", "1a serie", "2a serie", "3a serie", "1a série", "2a série", "3a série", "1em", "2em", "3em"}
         )
+    if "fundamental" in structured_segment:
+        return True
+    if 6 <= grade_level <= 9:
+        return True
     return any(
         token in class_name for token in {"fundamental", "6o", "7o", "8o", "9o", "6 ano", "7 ano", "8 ano", "9 ano"}
     )
 
 
+def _teacher_subject_filter(assignments: list[dict[str, Any]], *, message: str) -> str | None:
+    normalized = _normalize_text(message)
+    for item in assignments:
+        subject_name = str(item.get("subject_name", "") or "").strip()
+        if not subject_name:
+            continue
+        subject_normalized = _normalize_text(subject_name)
+        if subject_normalized and subject_normalized in normalized:
+            return subject_name
+    return None
+
+
 def _render_teacher_schedule_answer(summary: dict[str, Any], *, message: str) -> str:
     teacher_name = str(summary.get("teacher_name", "Professor")).strip() or "Professor"
     assignments = summary.get("assignments") if isinstance(summary.get("assignments"), list) else []
+    segment_filter = _segment_filter_for_teacher_message(message)
+    subject_filter = _teacher_subject_filter(assignments, message=message)
     filtered = [
         item
         for item in assignments
-        if isinstance(item, dict) and _assignment_matches_segment(item, _segment_filter_for_teacher_message(message))
+        if isinstance(item, dict)
+        and _assignment_matches_segment(item, segment_filter)
+        and (not subject_filter or str(item.get("subject_name", "") or "").strip() == subject_filter)
     ]
     normalized = _normalize_text(message)
+    segment_label = (
+        "Ensino Medio"
+        if segment_filter == "medio"
+        else "Ensino Fundamental II"
+        if segment_filter == "fundamental"
+        else None
+    )
+    asks_panorama = any(
+        term in normalized
+        for term in {
+            "panorama",
+            "resumo",
+            "rotina docente",
+            "deste ano",
+        }
+    ) or ("turma" in normalized and "disciplin" in normalized)
+    if asks_panorama:
+        classes: list[str] = []
+        subjects: list[str] = []
+        seen_classes: set[str] = set()
+        seen_subjects: set[str] = set()
+        for item in filtered:
+            class_name = str(item.get("class_name", "") or "").strip()
+            subject_name = str(item.get("subject_name", "") or "").strip()
+            if class_name and class_name not in seen_classes:
+                seen_classes.add(class_name)
+                classes.append(class_name)
+            if subject_name and subject_name not in seen_subjects:
+                seen_subjects.add(subject_name)
+                subjects.append(subject_name)
+        scope_label = f" no {segment_label}" if segment_label else ""
+        parts = [
+            f"Resumo docente de {teacher_name}{scope_label}: {len(classes)} turma(s) e {len(subjects)} disciplina(s) ativas nesta base."
+        ]
+        if subjects:
+            parts.append("Disciplinas: " + ", ".join(subjects[:4]) + ".")
+        if classes:
+            parts.append("Turmas: " + ", ".join(classes[:4]) + ".")
+        return " ".join(parts)
     if ("so do ensino medio" in normalized or "só do ensino médio" in normalized) and assignments:
         return "Sim, sua grade atual fica concentrada no Ensino Medio." if len(filtered) == len(assignments) else "Nao. Sua grade atual nao e so do Ensino Medio."
     if ("so do fundamental" in normalized or "só do fundamental" in normalized) and assignments:
@@ -171,6 +246,15 @@ def _render_teacher_schedule_answer(summary: dict[str, Any], *, message: str) ->
                 seen.add(class_name)
                 lines.append(f"- {class_name}")
         return "\n".join([f"Turmas de {teacher_name}:", *(lines or ["- Nenhuma turma encontrada."])])
+    if subject_filter and ("turma" in normalized or "classe" in normalized):
+        seen: set[str] = set()
+        lines: list[str] = []
+        for item in filtered:
+            class_name = str(item.get("class_name", "Turma")).strip()
+            if class_name and class_name not in seen:
+                seen.add(class_name)
+                lines.append(f"- {class_name}")
+        return "\n".join([f"Turmas de {teacher_name} em {subject_filter}:", *(lines or ["- Nenhuma turma encontrada."])])
     lines = [
         "- {class_name} - {subject_name} ({academic_year})".format(
             class_name=item.get("class_name", "Turma"),
@@ -179,7 +263,16 @@ def _render_teacher_schedule_answer(summary: dict[str, Any], *, message: str) ->
         )
         for item in filtered[:8]
     ]
-    return "\n".join([f"Grade docente de {teacher_name}:", *(lines or ["- Nenhuma alocacao docente encontrada."])])
+    return "\n".join(
+        [
+            (
+                f"Grade docente de {teacher_name} no {segment_label}:"
+                if segment_label
+                else f"Grade docente de {teacher_name}:"
+            ),
+            *(lines or ["- Nenhuma alocacao docente encontrada."]),
+        ]
+    )
 
 
 def _looks_like_teacher_summary_request(message: str) -> bool:
@@ -187,6 +280,10 @@ def _looks_like_teacher_summary_request(message: str) -> bool:
     return any(
         term in normalized
         for term in {
+            "panorama",
+            "resumo",
+            "deste ano",
+            "turmas e disciplinas",
             "rotina docente",
             "resuma minha rotina docente",
             "resumo enxuto",
@@ -201,11 +298,19 @@ def _looks_like_teacher_summary_request(message: str) -> bool:
 def _compose_teacher_summary_answer(summary: dict[str, Any], *, profile: dict[str, Any] | None, message: str) -> str:
     teacher_name = str(summary.get("teacher_name", "Professor")).strip() or "Professor"
     assignments = summary.get("assignments") if isinstance(summary.get("assignments"), list) else []
+    segment_filter = _segment_filter_for_teacher_message(message)
     filtered = [
         item
         for item in assignments
-        if isinstance(item, dict) and _assignment_matches_segment(item, _segment_filter_for_teacher_message(message))
+        if isinstance(item, dict) and _assignment_matches_segment(item, segment_filter)
     ]
+    segment_label = (
+        "Ensino Medio"
+        if segment_filter == "medio"
+        else "Ensino Fundamental II"
+        if segment_filter == "fundamental"
+        else None
+    )
     classes: list[str] = []
     subjects: list[str] = []
     seen_classes: set[str] = set()
@@ -228,8 +333,9 @@ def _compose_teacher_summary_answer(summary: dict[str, Any], *, profile: dict[st
             title = str(item.get("title", "") or "").strip()
             if title and title not in event_titles:
                 event_titles.append(title)
+    scope_label = f" no {segment_label}" if segment_label else ""
     parts = [
-        f"Resumo docente de {teacher_name}: {len(classes)} turma(s) e {len(subjects)} disciplina(s) ativas nesta base."
+        f"Resumo docente de {teacher_name}{scope_label}: {len(classes)} turma(s) e {len(subjects)} disciplina(s) ativas nesta base."
     ]
     if subjects:
         parts.append("Disciplinas: " + ", ".join(subjects[:4]) + ".")

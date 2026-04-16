@@ -468,6 +468,30 @@ def test_resolve_answer_focus_detects_unknown_subject_without_reusing_old_subjec
     assert focus.uses_memory is True
 
 
+def test_resolve_answer_focus_ignores_interrogative_subject_placeholder_on_family_followup() -> None:
+    focus = resolve_answer_focus(
+        request_message='Pensando no caso pratico, agora quero apenas a Ana: em quais materias ela aparece mais exposta?',
+        actor=_actor(),
+        conversation_context={
+            'recent_tool_calls': [
+                {
+                    'tool_name': 'orchestration.trace',
+                    'request_payload': {
+                        'slot_memory': {
+                            'academic_student_name': 'Ana Oliveira',
+                            'active_task': 'academic:grades',
+                        }
+                    },
+                }
+            ]
+        },
+    )
+
+    assert focus.domain == 'academic'
+    assert focus.student_name == 'Ana Oliveira'
+    assert focus.unknown_subject_name is None
+
+
 def test_resolve_answer_focus_marks_meta_repair_followup() -> None:
     focus = resolve_answer_focus(
         request_message='essa resposta aqui era sobre o que então?',

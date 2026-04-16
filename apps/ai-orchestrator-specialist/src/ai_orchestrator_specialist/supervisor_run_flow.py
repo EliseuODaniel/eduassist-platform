@@ -122,21 +122,71 @@ def _specialist_public_composer_plan(
     return fallback_map.get(reason)
 
 
+def _preview_hint_targets_restricted_document(preview_hint: Any) -> bool:
+    if not isinstance(preview_hint, dict):
+        return False
+    turn_frame = preview_hint.get("turn_frame")
+    if not isinstance(turn_frame, dict):
+        return False
+    capability_id = str(turn_frame.get("capability_id") or "").strip().lower()
+    return capability_id == "protected.documents.restricted_lookup"
+
+
 def _specialist_public_composer_evidence(answer: SupervisorAnswerPayload) -> list[str]:
     evidence_pack = answer.evidence_pack
-    if evidence_pack is None:
-        return []
     lines: list[str] = []
-    for support in evidence_pack.supports:
-        label = str(getattr(support, 'label', '') or '').strip()
-        detail = str(getattr(support, 'detail', '') or getattr(support, 'excerpt', '') or '').strip()
-        if detail and label:
-            lines.append(f'{label}: {detail}')
-        elif detail:
-            lines.append(detail)
-        elif label:
-            lines.append(label)
-    return [line for line in lines if line]
+    if evidence_pack is not None:
+        for support in evidence_pack.supports:
+            label = str(getattr(support, 'label', '') or '').strip()
+            detail = str(getattr(support, 'detail', '') or getattr(support, 'excerpt', '') or '').strip()
+            if detail and label:
+                lines.append(f'{label}: {detail}')
+            elif detail:
+                lines.append(detail)
+            elif label:
+                lines.append(label)
+
+    answer_text = str(getattr(answer, 'message_text', '') or '').strip()
+    reason = str(getattr(answer, 'reason', '') or '').strip().lower()
+    should_augment_from_answer_text = (
+        not lines
+        or 'public_multi_intent' in reason
+        or 'service_routing' in reason
+        or 'timeline_bundle' in reason
+        or any(
+            generic in line.casefold()
+            for line in lines
+            for generic in {
+                'pedido multiassunto',
+                'setores, canais e precificacao publica respondidos em conjunto',
+                'linha do tempo publica',
+            }
+        )
+    )
+    if should_augment_from_answer_text and answer_text:
+        for raw_line in answer_text.splitlines():
+            line = str(raw_line or '').strip()
+            if not line or line == '[debug]' or line.startswith('stack:') or line.startswith('bundle:') or line.startswith('corr:'):
+                break
+            if line.startswith(('conversation:', 'ingress:', 'path:', 'llm:', 'final_polish:', 'retrieval:', 'reason:', 'profile:', 'provider:', 'agents:', 'resources:')):
+                break
+            if line.startswith('- '):
+                lines.append(line[2:].strip())
+            elif ':' in line and not line.lower().startswith('posso separar esse pedido'):
+                lines.append(line)
+
+    deduped_lines: list[str] = []
+    seen: set[str] = set()
+    for line in lines:
+        cleaned = str(line or '').strip()
+        if not cleaned:
+            continue
+        key = cleaned.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped_lines.append(cleaned)
+    return deduped_lines
 
 
 async def _maybe_apply_public_answer_composer(
@@ -164,6 +214,8 @@ async def _maybe_apply_public_answer_composer(
             'language_preference',
         )
     ):
+        return answer, metadata
+    if 'pricing_projection' in reason or 'timeline_bundle' in reason:
         return answer, metadata
     if not isinstance(context.school_profile, dict):
         return answer, metadata
@@ -441,7 +493,10 @@ async def run_specialist_supervisor(
                 ),
             )
 
-        if deps.looks_like_internal_document_query(context.request.message):
+        if (
+            deps.looks_like_internal_document_query(context.request.message)
+            or _preview_hint_targets_restricted_document(context.preview_hint)
+        ):
             internal_tool_answer = await deps.tool_first_structured_answer(context)
             if internal_tool_answer is not None:
                 return await _persist_and_dump(

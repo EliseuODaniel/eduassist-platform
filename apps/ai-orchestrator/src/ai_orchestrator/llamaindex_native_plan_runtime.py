@@ -12,6 +12,11 @@ from .semantic_ingress_runtime import (
     apply_turn_frame_preview,
     build_turn_frame_public_plan,
     maybe_resolve_turn_frame,
+    resolve_turn_frame_authenticated_flag,
+)
+from .turn_frame_policy import (
+    is_external_public_facility_turn_frame,
+    is_scope_boundary_turn_frame,
 )
 
 def _refresh_native_namespace() -> None:
@@ -45,6 +50,7 @@ async def maybe_execute_llamaindex_native_plan(
         return None
 
     actor = await rt._fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
+    actor = rt._build_effective_actor_context(actor, request.user)
     effective_conversation_id = rt._effective_conversation_id(request)
     conversation_context_bundle = await rt._fetch_conversation_context(
         settings=settings,
@@ -53,6 +59,123 @@ async def maybe_execute_llamaindex_native_plan(
     )
     conversation_context = rt._conversation_context_payload(conversation_context_bundle)
     school_profile = await rt._fetch_public_school_profile(settings=settings)
+    from .public_orchestration_runtime import _resolve_deterministic_public_guardrail_answer
+
+    protected_domain_hint = (
+        rt._explicit_protected_domain_hint(
+            request.message,
+            actor=actor,
+            conversation_context=conversation_context,
+        )
+        if bool(getattr(request.user, 'authenticated', False))
+        else None
+    )
+    normalized_request_message = rt._normalize_text(request.message)
+    protected_message_override = any(
+        term in normalized_request_message
+        for term in {
+            'mais vulneravel',
+            'mais vulnerável',
+            'qual materia esta melhor',
+            'qual matéria está melhor',
+            'qual materia esta pior',
+            'qual matéria está pior',
+            'o que falta para fechar a media',
+            'o que falta para fechar a média',
+            'mantendo o contexto',
+            'corta para',
+            'recorte so',
+            'recorte só',
+            'resuma',
+            'resume',
+        }
+    ) and any(
+        term in normalized_request_message
+        for term in {
+            'frequencia',
+            'frequência',
+            'risco',
+            'media minima',
+            'média mínima',
+            'fisica',
+            'física',
+        }
+    )
+    protected_contextual_skip = bool(
+        getattr(request.user, 'authenticated', False)
+        and (
+            protected_message_override
+            or rt._should_skip_public_contextual_answer(
+                request.message,
+                actor=actor,
+                conversation_context=conversation_context,
+            )
+        )
+    )
+    turn_frame = None
+    protected_attendance_focus_followup = False
+    forced_protected_domain = protected_domain_hint
+    turn_frame_scope = str(getattr(turn_frame, 'scope', '') or '').strip().lower()
+    turn_frame_domain = str(getattr(turn_frame, 'domain', '') or '').strip().lower()
+    if forced_protected_domain not in {QueryDomain.academic, QueryDomain.finance}:
+        if turn_frame_scope and turn_frame_scope != 'public':
+            if turn_frame_domain == QueryDomain.academic.value:
+                forced_protected_domain = QueryDomain.academic
+            elif turn_frame_domain == QueryDomain.finance.value:
+                forced_protected_domain = QueryDomain.finance
+    if (
+        forced_protected_domain not in {QueryDomain.academic, QueryDomain.finance}
+        and bool(getattr(request.user, 'authenticated', False))
+        and (
+            protected_message_override
+            or protected_attendance_focus_followup
+        )
+    ):
+        forced_protected_domain = QueryDomain.academic
+    if forced_protected_domain in {QueryDomain.academic, QueryDomain.finance}:
+        plan = plan.model_copy(
+            update={
+                'preview': rt._align_protected_preview_tools(
+                    plan.preview.model_copy(
+                        update={
+                            'mode': OrchestrationMode.structured_tool,
+                            'classification': IntentClassification(
+                                domain=forced_protected_domain,
+                                access_tier=AccessTier.authenticated,
+                                confidence=max(
+                                    0.92,
+                                    float(getattr(plan.preview.classification, 'confidence', 0.0) or 0.0),
+                                ),
+                                reason=f'llamaindex_native_protected_focus:{forced_protected_domain.value}',
+                            ),
+                            'reason': f'llamaindex_native_protected_focus:{forced_protected_domain.value}',
+                            'needs_authentication': True,
+                        }
+                    )
+                )
+            }
+        )
+    preview_graph_path = tuple(getattr(plan.preview, 'graph_path', ()) or ())
+    protected_preview_context = (
+        bool(getattr(request.user, 'authenticated', False))
+        and (
+            plan.preview.classification.domain in {QueryDomain.academic, QueryDomain.finance}
+            or any(str(node).startswith('turn_frame:protected.') for node in preview_graph_path)
+        )
+    )
+    public_surface_context = (
+        plan.preview.classification.access_tier is AccessTier.public
+        or not bool(getattr(request.user, 'authenticated', False))
+    ) and not protected_preview_context and protected_domain_hint is None and not protected_contextual_skip
+    deterministic_public_guardrail = (
+        _resolve_deterministic_public_guardrail_answer(
+            request.message,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+        )
+        if public_surface_context
+        else None
+    )
     native_preflight_result = await maybe_execute_llamaindex_native_preflight(
         request=request,
         settings=settings,
@@ -71,6 +194,11 @@ async def maybe_execute_llamaindex_native_plan(
     contextual_public_profile = school_profile
     early_turn_frame = None
     early_turn_frame_public_plan = None
+    turn_frame_authenticated = resolve_turn_frame_authenticated_flag(
+        request_message=request.message,
+        authenticated=bool(getattr(request.user, 'authenticated', False)),
+        actor=actor,
+    )
     try:
         early_turn_frame = await maybe_resolve_turn_frame(
             settings=settings,
@@ -78,19 +206,43 @@ async def maybe_execute_llamaindex_native_plan(
             conversation_context=conversation_context,
             preview=plan.preview.model_copy(deep=True),
             stack_label='llamaindex',
-            authenticated=bool(getattr(request.user, 'authenticated', False)),
+            authenticated=turn_frame_authenticated,
         )
         early_turn_frame_public_plan = build_turn_frame_public_plan(early_turn_frame)
     except Exception:
         early_turn_frame = None
         early_turn_frame_public_plan = None
+    early_public_answer = None
+    if deterministic_public_guardrail is not None:
+        early_public_answer = LlamaIndexEarlyPublicAnswer(
+            answer_text=deterministic_public_guardrail.answer_text,
+            reason=deterministic_public_guardrail.reason,
+        )
+    elif early_turn_frame is not None and is_external_public_facility_turn_frame(early_turn_frame):
+        early_public_answer = LlamaIndexEarlyPublicAnswer(
+            answer_text=rt._compose_external_public_facility_boundary_answer(
+                contextual_public_profile if isinstance(contextual_public_profile, dict) else {},
+                facility_label='uma biblioteca publica externa',
+                conversation_context=conversation_context,
+            ),
+            reason='external_public_facility_boundary',
+        )
+    elif early_turn_frame is not None and is_scope_boundary_turn_frame(early_turn_frame):
+        early_public_answer = LlamaIndexEarlyPublicAnswer(
+            answer_text=rt._compose_scope_boundary_answer(
+                contextual_public_profile if isinstance(contextual_public_profile, dict) else {},
+                conversation_context=conversation_context,
+            ),
+            reason='scope_boundary',
+        )
     early_public_answer = await _resolve_early_llamaindex_public_answer(
         request=request,
         plan=plan,
         settings=settings,
         school_profile=contextual_public_profile if isinstance(contextual_public_profile, dict) else None,
         conversation_context=conversation_context,
-    )
+        actor=actor,
+    ) if early_public_answer is None else early_public_answer
     if early_public_answer:
         preview = plan.preview.model_copy(deep=True)
         preview.mode = OrchestrationMode.structured_tool
@@ -116,9 +268,29 @@ async def maybe_execute_llamaindex_native_plan(
         )
         message_text = early_public_answer.answer_text
         composer_used = False
+        preserve_direct_public_answer = (
+            early_public_answer.reason == 'pricing_projection'
+            or early_public_answer.reason in {
+                'deterministic_teacher_directory_boundary',
+                'deterministic_public_known_unknown',
+            }
+            or (
+                early_public_answer.reason == 'contextual_direct'
+                and rt._is_direct_service_routing_bundle_query(request.message)
+            )
+            or early_public_answer.canonical_lane in {
+                'public_bundle.facilities_study_support',
+                'public_bundle.integral_study_support',
+            }
+        )
         if (
             isinstance(contextual_public_profile, dict)
-            and early_public_answer.reason != 'contextual_boundary'
+            and not preserve_direct_public_answer
+            and early_public_answer.reason not in {
+                'contextual_boundary',
+                'scope_boundary',
+                'external_public_facility_boundary',
+            }
         ):
             resolved_public_plan = early_turn_frame_public_plan or rt._build_public_institution_plan(
                 request.message,
@@ -145,9 +317,14 @@ async def maybe_execute_llamaindex_native_plan(
                 if early_public_answer.canonical_lane
                 else 'llamaindex canonical public lane fast path'
             ),
+            'external_public_facility_boundary': 'llamaindex external public facility boundary fast path',
+            'scope_boundary': 'llamaindex scope boundary fast path',
             'contextual_boundary': 'llamaindex contextual public boundary fast path',
             'pricing_projection': 'llamaindex contextual public pricing fast path',
             'contextual_direct': 'llamaindex contextual public direct fast path',
+            'deterministic_scope_boundary': 'llamaindex scope boundary fast path',
+            'deterministic_teacher_directory_boundary': 'llamaindex teacher directory boundary fast path',
+            'deterministic_public_known_unknown': 'llamaindex known unknown fast path',
         }.get(early_public_answer.reason, 'llamaindex contextual public direct fast path')
         early_graph_marker = {
             'canonical_lane': (
@@ -155,9 +332,14 @@ async def maybe_execute_llamaindex_native_plan(
                 if early_public_answer.canonical_lane
                 else 'llamaindex:canonical_public_lane_fast_path'
             ),
+            'external_public_facility_boundary': 'llamaindex:external_public_facility_boundary_fast_path',
+            'scope_boundary': 'llamaindex:scope_boundary_fast_path',
             'contextual_boundary': 'llamaindex:contextual_public_boundary_fast_path',
             'pricing_projection': 'llamaindex:contextual_public_pricing_fast_path',
             'contextual_direct': 'llamaindex:contextual_public_direct_fast_path',
+            'deterministic_scope_boundary': 'llamaindex:scope_boundary_fast_path',
+            'deterministic_teacher_directory_boundary': 'llamaindex:teacher_directory_boundary_fast_path',
+            'deterministic_public_known_unknown': 'llamaindex:known_unknown_fast_path',
         }.get(early_public_answer.reason, 'llamaindex:contextual_public_direct_fast_path')
         early_response_reason = {
             'canonical_lane': (
@@ -165,9 +347,14 @@ async def maybe_execute_llamaindex_native_plan(
                 if early_public_answer.canonical_lane
                 else 'llamaindex_canonical_public_lane_fast_path'
             ),
+            'external_public_facility_boundary': 'llamaindex_external_public_facility_boundary_fast_path',
+            'scope_boundary': 'llamaindex_scope_boundary_fast_path',
             'contextual_boundary': 'llamaindex_contextual_public_boundary_fast_path',
             'pricing_projection': 'llamaindex_contextual_public_pricing_fast_path',
             'contextual_direct': 'llamaindex_contextual_public_direct_fast_path',
+            'deterministic_scope_boundary': 'llamaindex_scope_boundary_fast_path',
+            'deterministic_teacher_directory_boundary': 'llamaindex_teacher_directory_boundary_fast_path',
+            'deterministic_public_known_unknown': 'llamaindex_known_unknown_fast_path',
         }.get(early_public_answer.reason, 'llamaindex_contextual_public_direct_fast_path')
         early_candidate_reason = {
             'canonical_lane': (
@@ -175,9 +362,14 @@ async def maybe_execute_llamaindex_native_plan(
                 if early_public_answer.canonical_lane
                 else 'canonical_public_lane_fast_path'
             ),
+            'external_public_facility_boundary': 'external_public_facility_boundary_fast_path',
+            'scope_boundary': 'scope_boundary_fast_path',
             'contextual_boundary': 'contextual_public_boundary_fast_path',
             'pricing_projection': 'contextual_public_pricing_fast_path',
             'contextual_direct': 'contextual_public_direct_fast_path',
+            'deterministic_scope_boundary': 'scope_boundary_fast_path',
+            'deterministic_teacher_directory_boundary': 'teacher_directory_boundary_fast_path',
+            'deterministic_public_known_unknown': 'known_unknown_fast_path',
         }.get(early_public_answer.reason, 'contextual_public_direct_fast_path')
         await rt._persist_conversation_turn(
             settings=settings,
@@ -318,7 +510,7 @@ async def maybe_execute_llamaindex_native_plan(
             conversation_context=conversation_context,
             preview=semantic_ingress_preview,
             stack_label='llamaindex',
-            authenticated=bool(request.user.authenticated),
+            authenticated=turn_frame_authenticated,
         )
         if turn_frame is not None:
             semantic_ingress_preview = apply_turn_frame_preview(
@@ -344,17 +536,32 @@ async def maybe_execute_llamaindex_native_plan(
             conversation_context=conversation_context,
             public_plan=semantic_ingress_public_plan,
         )
+    elif (
+        turn_frame_public_plan is not None
+        and turn_frame is not None
+        and getattr(turn_frame, 'scope', '') == 'public'
+        and not is_scope_boundary_turn_frame(turn_frame)
+    ):
+        semantic_ingress_terminal_answer = _compose_semantic_ingress_terminal_answer(
+            school_profile=school_profile,
+            request_message=request.message,
+            actor=actor,
+            conversation_context=conversation_context,
+            public_plan=turn_frame_public_plan,
+        )
     if semantic_ingress_terminal_answer:
+        resolved_public_plan = semantic_ingress_public_plan or turn_frame_public_plan
+        resolved_public_act = str(getattr(resolved_public_plan, 'conversation_act', '') or '').strip() or 'public_answer'
         preview = semantic_ingress_preview.model_copy(deep=True)
         preview.mode = OrchestrationMode.structured_tool
-        preview.reason = f'llamaindex_semantic_ingress:{semantic_ingress_plan.conversation_act}'
+        preview.reason = f'llamaindex_semantic_ingress:{resolved_public_act}'
         preview.classification = _public_classification_for_act(
-            semantic_ingress_public_plan.conversation_act,
+            resolved_public_act,
             'ato terminal do semantic ingress resolvido antes de qualquer roteamento nativo do llamaindex',
         )
         preview.needs_authentication = False
         preview.selected_tools = list(
-            dict.fromkeys([*preview.selected_tools, *list(semantic_ingress_public_plan.required_tools)])
+            dict.fromkeys([*preview.selected_tools, *list(getattr(resolved_public_plan, 'required_tools', ()))])
         )
         evidence_pack = build_structured_tool_evidence_pack(
             selected_tools=preview.selected_tools,
@@ -387,7 +594,7 @@ async def maybe_execute_llamaindex_native_plan(
             preview=preview,
             school_profile=school_profile,
             conversation_context=conversation_context,
-            public_plan=semantic_ingress_public_plan,
+            public_plan=resolved_public_plan,
             request_message=request.message,
             message_text=message_text,
             citations_count=0,
@@ -414,13 +621,13 @@ async def maybe_execute_llamaindex_native_plan(
             graph_path=[
                 *preview.graph_path,
                 'llamaindex:public',
-                f'llamaindex:semantic_ingress:{semantic_ingress_plan.conversation_act}',
+                f'llamaindex:semantic_ingress:{resolved_public_act}',
                 f'kernel:{plan.stack_name}',
             ],
             risk_flags=preview.risk_flags,
             reason=preview.reason,
             candidate_chosen='deterministic',
-            candidate_reason=f'semantic_ingress:{semantic_ingress_plan.conversation_act}',
+            candidate_reason=f'semantic_ingress:{resolved_public_act}',
             retrieval_probe_topic=None,
             response_cache_hit=False,
             response_cache_kind=None,
@@ -441,7 +648,7 @@ async def maybe_execute_llamaindex_native_plan(
             notes=[
                 f'route:{preview.mode.value}',
                 f'slice:{plan.slice_name}',
-                f'semantic_ingress:{semantic_ingress_plan.conversation_act}',
+                f'semantic_ingress:{resolved_public_act}',
                 f'evidence:{evidence_pack.strategy}',
                 *plan.plan_notes,
             ],
@@ -451,9 +658,60 @@ async def maybe_execute_llamaindex_native_plan(
             reflection=reflection,
             response=response.model_dump(mode='json'),
         )
+    protected_attendance_focus_followup = bool(
+        actor
+        and request.user.authenticated
+        and (
+            rt._looks_like_family_attendance_student_focus_followup(
+                actor,
+                request.message,
+                conversation_context=conversation_context,
+            )
+            or (
+                (
+                    rt._matching_students_in_text(rt._linked_students(actor), request.message)
+                    or rt._student_focus_candidate(actor, request.message)
+                )
+                and any(
+                    rt._message_matches_term(rt._normalize_text(request.message), term)
+                    for term in {
+                        'mantendo o contexto',
+                        'continuando a analise',
+                        'continuando a análise',
+                        'recorte so',
+                        'recorte só',
+                        'corta para',
+                        'isole',
+                    }
+                )
+                and any(
+                    rt._message_matches_term(rt._normalize_text(request.message), term)
+                    for term in {
+                        'frequencia',
+                        'frequência',
+                        'faltas',
+                        'falta',
+                        'ausencias',
+                        'ausências',
+                        'presenca',
+                        'presença',
+                        'atrasos',
+                        'risco',
+                        'mais concreto',
+                        'principal alerta',
+                    }
+                )
+            )
+        )
+    )
     early_public_canonical_lane = None if semantic_ingress_plan is not None else (
         match_public_canonical_lane(request.message)
-        or match_public_canonical_lane(analysis_message)
+        if not protected_attendance_focus_followup
+        else None
+    ) or (
+        match_public_canonical_lane(analysis_message)
+        if not protected_attendance_focus_followup
+        else None
     )
     early_public_canonical_answer = (
         _canonical_lane_answer_for_message(
@@ -576,7 +834,7 @@ async def maybe_execute_llamaindex_native_plan(
     early_public_canonical_lane = (
         match_public_canonical_lane(request.message)
         or match_public_canonical_lane(analysis_message)
-    ) if not skip_fast_paths else None
+    ) if not skip_fast_paths and not protected_attendance_focus_followup else None
     contextual_fast_public_answer = None
     fast_public_channel_answer = None
     if not skip_fast_paths:
@@ -587,6 +845,7 @@ async def maybe_execute_llamaindex_native_plan(
             settings=settings,
             school_profile=school_profile,
             conversation_context=conversation_context,
+            actor=actor,
         )
         fast_public_channel_answer = contextual_fast_public_answer
     if not fast_public_channel_answer and not skip_fast_paths:
@@ -1349,6 +1608,7 @@ async def maybe_execute_llamaindex_native_plan(
             settings=settings,
             school_profile=school_profile,
             conversation_context=conversation_context,
+            actor=actor,
         )
         if fallback_text:
             answer_text = fallback_text

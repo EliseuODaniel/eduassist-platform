@@ -23,6 +23,129 @@ def _export_runtime_core_namespace() -> None:
 _export_runtime_core_namespace()
 
 
+def _looks_like_multi_student_academic_comparison_request(
+    actor: dict[str, Any] | None,
+    message: str,
+) -> bool:
+    normalized_message = _normalize_text(message)
+    matched_students = _matching_students_in_text(
+        _eligible_students(actor, capability='academic'),
+        message,
+    )
+    if len(matched_students) < 2:
+        return False
+    return any(
+        _message_matches_term(normalized_message, term)
+        for term in {
+            'compare',
+            'comparar',
+            'comparacao',
+            'comparação',
+            'veredito academico',
+            'veredito acadêmico',
+            'quem esta mais perto de reprovar',
+            'quem está mais perto de reprovar',
+            'entre ',
+        }
+    )
+
+
+def _looks_like_multi_student_attendance_comparison_request(
+    actor: dict[str, Any] | None,
+    message: str,
+) -> bool:
+    normalized_message = _normalize_text(message)
+    matched_students = _matching_students_in_text(
+        _eligible_students(actor, capability='academic'),
+        message,
+    )
+    if len(matched_students) < 2:
+        return False
+    has_attendance_focus = any(
+        _message_matches_term(normalized_message, term)
+        for term in {
+            'frequencia',
+            'frequência',
+            'faltas',
+            'falta',
+            'ausencias',
+            'ausências',
+            'atrasos',
+            'presenca',
+            'presença',
+        }
+    )
+    if not has_attendance_focus:
+        return False
+    return any(
+        _message_matches_term(normalized_message, term)
+        for term in {
+            'entre ',
+            'quem esta mais delicado por frequencia',
+            'quem está mais delicado por frequência',
+            'mais delicado por frequencia',
+            'mais delicado por frequência',
+            'frequencia hoje',
+            'frequência hoje',
+            'alerta pesa mais',
+        }
+    )
+
+
+def _should_use_protected_records_fast_path(
+    *,
+    request_message: str,
+    actor: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None,
+    authenticated: bool,
+) -> bool:
+    if not authenticated or actor is None:
+        return False
+    if _is_access_scope_query(request_message) or _is_access_scope_repair_query(
+        request_message,
+        actor,
+        conversation_context,
+    ):
+        return True
+    if (
+        _is_admin_finance_combined_query(request_message)
+        or _looks_like_family_finance_aggregate_query(request_message)
+        or _looks_like_family_attendance_aggregate_query(request_message)
+        or _looks_like_family_attendance_student_focus_followup(
+            actor,
+            request_message,
+            conversation_context=conversation_context,
+        )
+        or _looks_like_multi_student_attendance_comparison_request(actor, request_message)
+        or _looks_like_family_academic_aggregate_query(request_message)
+        or _wants_upcoming_assessments(request_message)
+        or _looks_like_multi_student_academic_comparison_request(actor, request_message)
+        or _looks_like_family_academic_student_focus_followup(
+            actor,
+            request_message,
+            conversation_context=conversation_context,
+        )
+        or _mentions_personal_admin_status(request_message)
+        or _detect_admin_attribute_request(
+            request_message,
+            conversation_context=conversation_context,
+        )
+        is not None
+        or _is_private_admin_follow_up(request_message, conversation_context)
+        or looks_like_explicit_admin_status_query(
+            request_message,
+            authenticated=authenticated,
+        )
+    ):
+        return True
+    protected_domain_hint = _explicit_protected_domain_hint(
+        request_message,
+        actor=actor,
+        conversation_context=conversation_context,
+    )
+    return protected_domain_hint in {QueryDomain.academic, QueryDomain.finance}
+
+
 def _build_protected_record_specialists(
     *, preview: Any, role_code: str
 ) -> tuple[InternalSpecialistPlan, ...]:
@@ -129,6 +252,10 @@ async def _execute_teacher_protected_specialist(
     if any(
         term in normalized_message
         for term in {
+            'panorama',
+            'resumo',
+            'deste ano',
+            'turmas e disciplinas',
             'rotina docente',
             'resuma minha rotina docente',
             'resumo enxuto',
@@ -189,11 +316,26 @@ async def _execute_protected_records_specialist(
                 semantic_plan=public_plan,
             )
     normalized_message = _normalize_text(message)
-    wants_admin_status = _mentions_personal_admin_status(message)
+    request_user_role = getattr(getattr(request, 'user', None), 'role', '')
+    user_role = str(getattr(request_user_role, 'value', request_user_role) or '').strip().lower()
+    user_scopes = {
+        str(scope).strip().lower()
+        for scope in list(getattr(getattr(request, 'user', None), 'scopes', []) or [])
+        if str(scope).strip()
+    }
+    allow_admin_status = bool(
+        'administrative:read' in user_scopes
+        or user_role in {'guardian', 'staff', 'finance'}
+    )
+    wants_admin_status = allow_admin_status and _mentions_personal_admin_status(message)
     wants_profile_update = _wants_profile_update_guidance(message)
-    requested_admin_attribute = _detect_admin_attribute_request(
-        message,
-        conversation_context=conversation_context,
+    requested_admin_attribute = (
+        _detect_admin_attribute_request(
+            message,
+            conversation_context=conversation_context,
+        )
+        if allow_admin_status
+        else None
     )
     force_family_admin_aggregate = _looks_like_family_admin_aggregate_query(message)
     force_family_finance_aggregate = _looks_like_family_finance_aggregate_query(message)
@@ -213,12 +355,73 @@ async def _execute_protected_records_specialist(
         force_family_finance_aggregate = True
     force_family_attendance_aggregate = _looks_like_family_attendance_aggregate_query(message)
     force_family_academic_aggregate = _looks_like_family_academic_aggregate_query(message)
+    explicit_academic_student_matches = _matching_students_in_text(
+        _eligible_students(actor, capability='academic'),
+        message,
+    )
+    explicit_academic_student_names = [
+        str(student.get('full_name') or '').strip()
+        for student in explicit_academic_student_matches
+        if isinstance(student, dict) and str(student.get('full_name') or '').strip()
+    ]
+    explicit_multi_student_academic_request = len(explicit_academic_student_matches) >= 2
+    attendance_comparison_query = _looks_like_multi_student_attendance_comparison_request(
+        actor,
+        message,
+    )
+    academic_comparison_query = explicit_multi_student_academic_request and any(
+        _message_matches_term(normalized_message, term)
+        for term in {
+            'compare',
+            'comparar',
+            'comparacao',
+            'comparação',
+            'veredito academico',
+            'veredito acadêmico',
+            'quem esta mais perto de reprovar',
+            'quem está mais perto de reprovar',
+            'entre ',
+        }
+    )
+    if attendance_comparison_query:
+        force_family_attendance_aggregate = True
+        force_family_academic_aggregate = False
+    if explicit_multi_student_academic_request and (
+        (academic_comparison_query and not attendance_comparison_query)
+        or _wants_upcoming_assessments(message)
+        or _contains_any(message, GRADE_TERMS)
+        or _contains_any(message, ATTENDANCE_TERMS)
+    ):
+        force_family_academic_aggregate = True
     explicit_academic_student = (
-        len(_matching_students_in_text(_eligible_students(actor, capability='academic'), message))
-        == 1
+        len(explicit_academic_student_matches) == 1
     )
     if explicit_academic_student:
         force_family_academic_aggregate = False
+    explicit_admin_student_matches = _matching_students_in_text(
+        _linked_students(actor),
+        message,
+    )
+    has_admin_document_anchor = any(
+        _message_matches_term(normalized_message, term)
+        for term in {
+            'documentacao',
+            'documentação',
+            'documental',
+            'documentos',
+            'cadastro',
+            'administrativo',
+            'administrativa',
+            'pendencia',
+            'pendência',
+            'regularizar',
+            'proximo passo',
+            'próximo passo',
+            'status administrativo',
+            'situacao administrativa',
+            'situação administrativa',
+        }
+    )
     admin_finance_follow_up = _recent_admin_finance_combo_context(conversation_context) and any(
         _message_matches_term(normalized_message, term)
         for term in {
@@ -257,8 +460,35 @@ async def _execute_protected_records_specialist(
             'se houver bloqueio fala direto',
         }
     )
+    strong_academic_student_request = bool(
+        _looks_like_academic_progression_query(
+            message,
+            conversation_context=conversation_context,
+        )
+        or _effective_academic_attribute_request(
+            message,
+            conversation_context=conversation_context,
+        )
+        is not None
+        or _looks_like_family_academic_student_focus_followup(
+            actor,
+            message,
+            conversation_context=conversation_context,
+        )
+        or _looks_like_family_attendance_student_focus_followup(
+            actor,
+            message,
+            conversation_context=conversation_context,
+        )
+    )
     explicit_student_admin_request = (
         requested_admin_attribute is not None
+        and (
+            has_admin_document_anchor
+            or recent_active_task.startswith('admin:')
+            or _recent_admin_finance_combo_context(conversation_context)
+        )
+        and not strong_academic_student_request
         and not any(
             _message_matches_term(normalized_message, term)
             for term in {'financeiro', 'boleto', 'boletos', 'fatura', 'faturas', 'mensalidade'}
@@ -269,10 +499,13 @@ async def _execute_protected_records_specialist(
         )
         is None
         and not admin_finance_follow_up
-        and _should_use_student_administrative_status(
-            actor,
-            message,
-            conversation_context=conversation_context,
+        and (
+            len(explicit_admin_student_matches) == 1
+            or _should_use_student_administrative_status(
+                actor,
+                message,
+                conversation_context=conversation_context,
+            )
         )
     )
     if (
@@ -373,10 +606,22 @@ async def _execute_protected_records_specialist(
                 'pagamento',
             }
         )
+        and len(explicit_admin_student_matches) != 1
     )
 
     if force_family_attendance_aggregate:
         academic_students = _eligible_students(actor, capability='academic')
+        if explicit_multi_student_academic_request:
+            academic_students = [
+                student
+                for student in academic_students
+                if any(
+                    _normalize_text(str(student.get('full_name') or '').strip()) == _normalize_text(name)
+                    or _normalize_text(str(student.get('full_name') or '').strip()).split(' ')[0]
+                    == _normalize_text(name).split(' ')[0]
+                    for name in explicit_academic_student_names
+                )
+            ]
         summaries: list[dict[str, Any]] = []
         for candidate in academic_students:
             candidate_id = candidate.get('student_id')
@@ -407,6 +652,41 @@ async def _execute_protected_records_specialist(
 
     if force_family_academic_aggregate:
         academic_students = _eligible_students(actor, capability='academic')
+        if explicit_multi_student_academic_request:
+            academic_students = [
+                student
+                for student in academic_students
+                if any(
+                    _normalize_text(str(student.get('full_name') or '').strip()) == _normalize_text(name)
+                    or _normalize_text(str(student.get('full_name') or '').strip()).split(' ')[0]
+                    == _normalize_text(name).split(' ')[0]
+                    for name in explicit_academic_student_names
+                )
+            ]
+        if academic_comparison_query and len(academic_students) >= 2:
+            from .grounded_answer_experience import _compose_cross_student_academic_comparison_direct
+
+            comparison_summaries: list[dict[str, Any]] = []
+            for candidate in academic_students:
+                candidate_id = candidate.get('student_id')
+                if not isinstance(candidate_id, str):
+                    continue
+                payload, status_code = await _api_core_get(
+                    settings=settings,
+                    path=f'/v1/students/{candidate_id}/academic-summary',
+                    params={'telegram_chat_id': request.telegram_chat_id},
+                )
+                if status_code == 200 and isinstance(payload, dict):
+                    summary = payload.get('summary')
+                    if isinstance(summary, dict):
+                        comparison_summaries.append(summary)
+            if comparison_summaries:
+                comparison_answer = _compose_cross_student_academic_comparison_direct(
+                    comparison_summaries,
+                    preferred_order=explicit_academic_student_names,
+                )
+                if comparison_answer:
+                    return comparison_answer
         if _wants_upcoming_assessments(message) and academic_students:
             upcoming_summaries: list[tuple[str, dict[str, Any], dict[str, Any]]] = []
             for candidate in academic_students:
@@ -516,13 +796,21 @@ async def _execute_protected_records_specialist(
             requested_attribute=requested_admin_attribute,
         )
 
-    if _is_admin_finance_combined_query(message) or admin_finance_follow_up:
-        scoped_finance_student, scoped_finance_error = _select_linked_student(
-            actor,
-            message,
-            capability='finance',
-            conversation_context=conversation_context,
-        )
+    combined_admin_finance_query = _is_admin_finance_combined_query(message)
+    explicit_finance_student_matches = _matching_students_in_text(
+        _eligible_students(actor, capability='finance'),
+        message,
+    )
+    if combined_admin_finance_query or admin_finance_follow_up:
+        scoped_finance_student = None
+        scoped_finance_error = None
+        if admin_finance_follow_up or explicit_finance_student_matches:
+            scoped_finance_student, scoped_finance_error = _select_linked_student(
+                actor,
+                message,
+                capability='finance',
+                conversation_context=conversation_context,
+            )
         if scoped_finance_student is None and admin_finance_follow_up:
             scoped_finance_student = _student_from_slot_memory(
                 actor,
@@ -535,9 +823,7 @@ async def _execute_protected_records_specialist(
             )
             if scoped_finance_student is not None:
                 scoped_finance_error = None
-        if scoped_finance_error and bool(
-            _matching_students_in_text(_eligible_students(actor, capability='finance'), message)
-        ):
+        if scoped_finance_error and bool(explicit_finance_student_matches):
             return scoped_finance_error
         if isinstance(scoped_finance_student, dict):
             student_id = scoped_finance_student.get('student_id')
@@ -623,7 +909,7 @@ async def _execute_protected_records_specialist(
     if preview.classification.domain is QueryDomain.institution and (
         'get_administrative_status' in preview.selected_tools
         or 'get_student_administrative_status' in preview.selected_tools
-    ):
+    ) and not strong_academic_student_request:
         if (
             'get_student_administrative_status' in preview.selected_tools
             and _should_use_student_administrative_status(
@@ -815,6 +1101,41 @@ async def _execute_protected_records_specialist(
     if not isinstance(student_id, str):
         return 'Nao consegui identificar o aluno desta consulta. Tente novamente pelo portal.'
 
+    if preview.classification.domain is not QueryDomain.academic and (
+        _looks_like_academic_progression_query(
+            message,
+            conversation_context=conversation_context,
+        )
+        or _effective_academic_attribute_request(
+            message,
+            conversation_context=conversation_context,
+        )
+        is not None
+        or _looks_like_family_academic_student_focus_followup(
+            actor,
+            message,
+            conversation_context=conversation_context,
+        )
+        or _looks_like_family_attendance_student_focus_followup(
+            actor,
+            message,
+            conversation_context=conversation_context,
+        )
+    ):
+        preview.classification = IntentClassification(
+            domain=QueryDomain.academic,
+            access_tier=AccessTier.authenticated,
+            confidence=max(float(getattr(preview.classification, 'confidence', 0.0) or 0.0), 0.96),
+            reason='consulta protegida foi recentrada no trilho academico antes da composicao final',
+        )
+        preview.selected_tools = [
+            'get_student_academic_summary',
+            'get_student_attendance',
+            'get_student_grades',
+            'get_student_upcoming_assessments',
+            'get_student_attendance_timeline',
+        ]
+
     if preview.classification.domain is QueryDomain.academic:
         recent_missing_subject = _recent_missing_academic_subject_context(conversation_context)
         if (
@@ -902,6 +1223,17 @@ async def _execute_protected_records_specialist(
         summary = payload.get('summary', {})
         if not isinstance(summary, dict):
             return 'Nao consegui interpretar o retorno academico desta consulta.'
+
+        if _looks_like_academic_progression_query(
+            message,
+            conversation_context=conversation_context,
+        ):
+            return _compose_academic_progression_answer(
+                summary,
+                student_name=student_name,
+                message=message,
+                conversation_context=conversation_context,
+            )
 
         if academic_attribute_request is not None and (
             _wants_upcoming_assessments(message) or _wants_attendance_timeline(message)

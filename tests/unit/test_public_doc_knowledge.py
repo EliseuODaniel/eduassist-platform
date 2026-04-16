@@ -409,6 +409,20 @@ def test_governance_protocol_lane_matches_formal_demands_prompt() -> None:
     assert lane == 'public_bundle.governance_protocol'
 
 
+def test_governance_protocol_lane_matches_public_documents_escalation_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Pelos documentos publicos, como uma familia deve escalar um tema da rotina para direcao e protocolo formal?'
+    )
+    assert lane == 'public_bundle.governance_protocol'
+
+
+def test_governance_protocol_lane_matches_public_base_channels_and_protocol_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Na base publica, como aparecem conectados direcao, atendimento formal e numero de protocolo?'
+    )
+    assert lane == 'public_bundle.governance_protocol'
+
+
 def test_specialist_governance_protocol_lane_matches_formal_demands_prompt() -> None:
     lane = match_specialist_public_canonical_lane(
         'Na governanca publica da escola, como demandas formais chegam a direcao e viram protocolo?'

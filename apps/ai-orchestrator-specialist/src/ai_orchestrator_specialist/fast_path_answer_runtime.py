@@ -25,9 +25,35 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
         deps=deps,
     )
     contextual_normalized = deps.normalize_text(contextual_message)
+    explicit_external_boundary = any(
+        term in normalized
+        for term in {
+            "fora do colegio",
+            "fora do colégio",
+            "fora da escola",
+            "nao e a biblioteca da escola",
+            "não é a biblioteca da escola",
+            "nao e biblioteca da escola",
+            "não é biblioteca da escola",
+            "nao e da escola",
+            "não é da escola",
+            "fora do colegio horizonte",
+            "fora do colégio horizonte",
+            "na cidade",
+            "externa",
+            "fora daqui",
+            "nao da escola",
+            "não da escola",
+            "nao do colegio",
+            "não do colégio",
+        }
+    )
     external_public_library_query = (
         "biblioteca" in normalized
-        and not any(term in normalized for term in {"escola", "colegio", "colégio", "horizonte"})
+        and (
+            explicit_external_boundary
+            or not any(term in normalized for term in {"escola", "colegio", "colégio", "horizonte"})
+        )
         and any(
             term in normalized
             for term in {
@@ -42,6 +68,41 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
         )
     )
     contextual_canonical_lane = match_public_canonical_lane(contextual_message) if contextual_message.strip() != str(ctx.request.message).strip() else None
+    explicit_out_of_scope_markers = {
+        "fora do tema escolar",
+        "fora do escopo da escola",
+        "fora da escola",
+        "sem relacao com escola",
+        "sem relação com escola",
+        "sem relacao com a escola",
+        "sem relação com a escola",
+        "mudando de assunto",
+        "saindo do assunto da escola",
+    }
+    open_world_topic_terms = {
+        "filme",
+        "filmes",
+        "serie",
+        "série",
+        "series",
+        "séries",
+        "jogo",
+        "jogos",
+        "receita",
+        "receitas",
+        "netflix",
+        "cinema",
+        "livro",
+        "livros",
+        "politica",
+        "política",
+    }
+    explicit_general_knowledge_boundary = any(
+        term in normalized for term in explicit_out_of_scope_markers
+    ) and (
+        str(ctx.request.message or "").strip().endswith("?")
+        or any(term in normalized for term in open_world_topic_terms)
+    )
     pricing_segment_hint = _public_pricing_segment_hint([normalized, *recent_user_messages])
     pricing_query_active = _looks_like_public_pricing_query(normalized) or _public_pricing_context_follow_up(
         normalized,
@@ -144,7 +205,22 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
                 graph_leaf="timeline_followup_repair",
             )
 
-    ingress_act = semantic_ingress_act(getattr(ctx, "preview_hint", None))
+    preview_hint = getattr(ctx, "preview_hint", None)
+    ingress_act = semantic_ingress_act(preview_hint)
+    turn_frame_payload = preview_hint.get("turn_frame") if isinstance(preview_hint, dict) else None
+    turn_frame_capability_id = str((turn_frame_payload or {}).get("capability_id") or "").strip()
+    turn_frame_scope = str((turn_frame_payload or {}).get("scope") or "").strip()
+    turn_frame_public_act = str(
+        (turn_frame_payload or {}).get("public_conversation_act")
+        or (turn_frame_payload or {}).get("conversation_act")
+        or ""
+    ).strip()
+    if (
+        ingress_act is None
+        and turn_frame_public_act in {"auth_guidance", "scope_boundary", "input_clarification"}
+        and (not turn_frame_capability_id or turn_frame_scope == "public")
+    ):
+        ingress_act = turn_frame_public_act
 
     if ingress_act == "greeting" or deps.is_simple_greeting(ctx.request.message):
         return _build_fast_path_payload(
@@ -158,7 +234,29 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
             graph_leaf="greeting",
         )
 
-    if ingress_act == "input_clarification":
+    if external_public_library_query:
+        school_name = deps.school_name(profile)
+        return _build_fast_path_payload(
+            message_text=(
+                f"No EduAssist do {school_name}, eu consigo responder apenas sobre servicos e canais da escola. "
+                "Como sua pergunta fala de uma biblioteca publica externa, esse assunto fica fora do escopo da escola e eu nao tenho base aqui para informar esse horario. "
+                "Se quiser, eu posso te dizer o horario da biblioteca do colegio."
+            ),
+            domain="institution",
+            access_tier="public",
+            confidence=0.99,
+            reason="specialist_supervisor_fast_path:scope_boundary",
+            summary="Consulta explicita sobre biblioteca publica externa encerrada com boundary seguro antes da malha de specialists.",
+            supports=[MessageEvidenceSupport(kind="assistant_identity", label="EduAssist", detail=school_name)],
+            graph_leaf="scope_boundary",
+        )
+
+    if (
+        ingress_act == "input_clarification"
+        and not explicit_general_knowledge_boundary
+        and not _looks_like_service_routing_query(contextual_message)
+        and not _looks_like_bolsas_and_processes_query(contextual_message)
+    ):
         return _build_fast_path_payload(
             message_text=(
                 "Nao consegui interpretar essa mensagem com seguranca. "
@@ -174,6 +272,9 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
             graph_leaf="input_clarification",
         )
 
+    if ingress_act == "input_clarification" and explicit_general_knowledge_boundary:
+        ingress_act = "scope_boundary"
+
     if ingress_act == "scope_boundary":
         school_name = deps.school_name(profile)
         return _build_fast_path_payload(
@@ -186,22 +287,6 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
             confidence=0.99,
             reason="specialist_supervisor_fast_path:scope_boundary",
             summary="Pergunta fora do escopo escolar encerrada com boundary seguro antes da malha de specialists.",
-            supports=[MessageEvidenceSupport(kind="assistant_identity", label="EduAssist", detail=school_name)],
-            graph_leaf="scope_boundary",
-        )
-
-    if external_public_library_query:
-        school_name = deps.school_name(profile)
-        return _build_fast_path_payload(
-            message_text=(
-                f"Nao tenho base confiavel aqui no EduAssist do {school_name} para responder esse tema fora do escopo da escola. "
-                "Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro."
-            ),
-            domain="institution",
-            access_tier="public",
-            confidence=0.99,
-            reason="specialist_supervisor_fast_path:scope_boundary",
-            summary="Consulta explicita sobre biblioteca publica externa encerrada com boundary seguro antes da malha de specialists.",
             supports=[MessageEvidenceSupport(kind="assistant_identity", label="EduAssist", detail=school_name)],
             graph_leaf="scope_boundary",
         )
@@ -235,7 +320,9 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
             graph_leaf="capabilities",
         )
 
-    if ingress_act == "auth_guidance" or deps.is_auth_guidance_query(ctx.request.message):
+    service_routing_query_active = _looks_like_service_routing_query(contextual_message)
+
+    if (ingress_act == "auth_guidance" or deps.is_auth_guidance_query(ctx.request.message)) and not service_routing_query_active:
         return _build_fast_path_payload(
             message_text=deps.compose_auth_guidance_answer(profile),
             domain="institution",
@@ -330,7 +417,7 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
                 graph_leaf="public_multi_intent",
             )
 
-    if _looks_like_service_routing_query(contextual_message) and profile and not protected_finance_followup_active:
+    if service_routing_query_active and profile and not protected_finance_followup_active:
         routing_answer = _compose_service_routing_fast_answer(profile, contextual_message)
         if routing_answer:
             return _build_fast_path_payload(
@@ -1176,6 +1263,52 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
         any(term in normalized for term in {"matricula", "mensalidade", "pagar", "pagaria"})
         or pricing_query_active
     ):
+        tuition_rows = profile.get("tuition_reference") if isinstance(profile, dict) else None
+        if (
+            not pricing_segment_hint
+            and isinstance(tuition_rows, list)
+            and sum(1 for row in tuition_rows if isinstance(row, dict)) >= 2
+        ):
+            lines = [
+                "Hoje a escola publica mais de uma referencia combinada de matricula e mensalidade. Para essa simulacao, os totais por segmento ficam assim:"
+            ]
+            positive_reference_rows = []
+            for row in tuition_rows:
+                if not isinstance(row, dict):
+                    continue
+                enrollment_fee = Decimal(str(row.get("enrollment_fee", "0") or "0")).quantize(Decimal("0.01"))
+                monthly_amount = Decimal(str(row.get("monthly_amount", "0") or "0")).quantize(Decimal("0.01"))
+                if enrollment_fee <= 0 or monthly_amount <= 0:
+                    continue
+                positive_reference_rows.append((row, enrollment_fee, monthly_amount))
+            for row, enrollment_fee, monthly_amount in positive_reference_rows[:3]:
+                segment = str(row.get("segment") or "Segmento").strip() or "Segmento"
+                shift_label = str(row.get("shift_label") or "Manha").strip() or "Manha"
+                total_enrollment = (enrollment_fee * quantity).quantize(Decimal("0.01"))
+                total_monthly = (monthly_amount * quantity).quantize(Decimal("0.01"))
+                lines.append(
+                    (
+                        f"- {segment} ({shift_label}): matricula {quantity} x R$ {enrollment_fee:,.2f} = R$ {total_enrollment:,.2f}; "
+                        f"mensalidade por mes {quantity} x R$ {monthly_amount:,.2f} = R$ {total_monthly:,.2f}."
+                    ).replace(",", "X").replace(".", ",").replace("X", ".")
+                )
+            lines.append(
+                "Essa conta usa apenas os valores publicos de referencia e nao inclui material, uniforme ou condicao comercial nao detalhada na base."
+            )
+            return _build_fast_path_payload(
+                message_text="\n".join(lines),
+                domain="finance",
+                access_tier="public",
+                confidence=0.99,
+                reason="specialist_supervisor_fast_path:pricing_projection",
+                summary="Projecao publica multi-segmento baseada na tabela de referencia institucional.",
+                supports=[
+                    MessageEvidenceSupport(kind="pricing_reference", label="Tabela publica de valores", detail="projecao por segmento"),
+                    MessageEvidenceSupport(kind="pricing_reference", label="Quantidade simulada", detail=str(quantity)),
+                ],
+                graph_leaf="pricing_projection",
+                suggested_domain="finance",
+            )
         projection = deps.pricing_projection(profile, quantity=quantity, segment_hint=pricing_segment_hint)
         total_enrollment = Decimal(str(projection.get("total_enrollment_fee", "0") or "0")).quantize(Decimal("0.01"))
         total_monthly = Decimal(str(projection.get("total_monthly_amount", "0") or "0")).quantize(Decimal("0.01"))

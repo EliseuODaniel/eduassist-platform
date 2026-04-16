@@ -317,6 +317,17 @@ def _is_protected_access_scope_request(request: Any) -> bool:
             _contains_phrase(normalized, term)
             for term in ('escopo', 'acesso', 'dados', 'consigo acessar', 'posso acessar')
         )
+    if any(_contains_phrase(normalized, term) for term in ('meus filhos', 'por aqui', 'meu acesso')):
+        has_scope_anchor = any(
+            _contains_phrase(normalized, term)
+            for term in ('escopo', 'acesso', 'dados', 'consigo acessar', 'posso acessar')
+        )
+        has_scope_dimension = any(
+            _contains_phrase(normalized, term)
+            for term in ('academico', 'acadêmico', 'financeiro', 'os dois')
+        )
+        if has_scope_anchor and has_scope_dimension:
+            return True
     return False
 
 

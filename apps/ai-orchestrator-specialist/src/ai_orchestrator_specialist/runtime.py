@@ -119,6 +119,7 @@ from .protected_answer_helpers import (
     build_academic_student_selection_clarify as _build_academic_student_selection_clarify_module,
     build_third_party_student_data_denial as _build_third_party_student_data_denial_module,
     compose_academic_aggregate_answer as _compose_academic_aggregate_answer_module,
+    compose_academic_progression_answer as _compose_academic_progression_answer_module,
     compose_family_next_due_answer as _compose_family_next_due_answer_module,
     compose_finance_aggregate_answer as _compose_finance_aggregate_answer_module,
     compose_finance_installments_answer as _compose_finance_installments_answer_module,
@@ -129,6 +130,7 @@ from .protected_answer_helpers import (
     compose_named_grade_answer as _compose_named_grade_answer_module,
     compose_named_subject_grade_answer as _compose_named_subject_grade_answer_module,
     looks_like_academic_risk_followup as _looks_like_academic_risk_followup_module,
+    looks_like_academic_progression_followup as _looks_like_academic_progression_followup_module,
     looks_like_family_academic_aggregate_query as _looks_like_family_academic_aggregate_query_module,
     looks_like_family_attendance_aggregate_query as _looks_like_family_attendance_aggregate_query_module,
     looks_like_family_finance_aggregate_query as _looks_like_family_finance_aggregate_query_module,
@@ -1203,6 +1205,22 @@ def _compose_academic_risk_answer(summary: dict[str, Any]) -> str | None:
     return _compose_academic_risk_answer_module(summary, deps=_protected_answer_deps())
 
 
+def _looks_like_academic_progression_followup(message: str) -> bool:
+    return _looks_like_academic_progression_followup_module(message, deps=_protected_answer_deps())
+
+
+def _compose_academic_progression_answer(
+    summary: dict[str, Any],
+    *,
+    message: str,
+) -> str | None:
+    return _compose_academic_progression_answer_module(
+        summary,
+        message=message,
+        deps=_protected_answer_deps(),
+    )
+
+
 def _compose_named_subject_grade_answer(summary: dict[str, Any], *, subject_hint: str | None) -> str | None:
     return _compose_named_subject_grade_answer_module(
         summary,
@@ -1506,6 +1524,7 @@ def _tool_first_structured_deps():
             compose_finance_aggregate_answer=_compose_finance_aggregate_answer,
             compose_family_next_due_answer=_compose_family_next_due_answer,
             looks_like_academic_risk_followup=_looks_like_academic_risk_followup,
+            looks_like_academic_progression_followup=_looks_like_academic_progression_followup,
             looks_like_family_academic_aggregate_query=_looks_like_family_academic_aggregate_query,
             looks_like_family_attendance_aggregate_query=_looks_like_family_attendance_aggregate_query,
             looks_like_upcoming_assessments_query=lambda message: any(
@@ -1553,6 +1572,7 @@ def _tool_first_structured_deps():
             fetch_upcoming_assessments_payload=_fetch_upcoming_assessments_payload,
             fetch_attendance_timeline_payload=_fetch_attendance_timeline_payload,
             compose_academic_risk_answer=_compose_academic_risk_answer,
+            compose_academic_progression_answer=_compose_academic_progression_answer,
             compose_named_subject_grade_answer=_compose_named_subject_grade_answer,
             compose_named_grade_answer=_compose_named_grade_answer,
             compose_named_attendance_answer=_compose_named_attendance_answer,

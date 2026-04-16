@@ -41,6 +41,37 @@ def match_public_canonical_lane(message: str) -> str | None:
     normalized = _normalize_space(message).lower()
     if not normalized:
         return None
+    # Follow-ups that explicitly carry prior protected attendance context should
+    # not be flattened into the public conduct/frequency bundle.
+    if (
+        any(
+            term in normalized
+            for term in (
+                "mantendo o contexto",
+                "continuando a analise",
+                "continuando a análise",
+                "corta para",
+                "recorte so",
+                "recorte só",
+                "isole",
+            )
+        )
+        and any(
+            term in normalized
+            for term in (
+                "frequencia",
+                "frequência",
+                "faltas",
+                "falta",
+                "presenca",
+                "presença",
+                "atrasos",
+                "risco mais concreto",
+                "principal alerta",
+            )
+        )
+    ):
+        return None
     # Leadership-specific public contact queries should stay on the structured
     # profile directory path instead of being swallowed by bundle heuristics.
     if _is_leadership_specific_query(message):
@@ -157,6 +188,13 @@ def match_public_canonical_lane(message: str) -> str | None:
     ):
         return "public_bundle.transport_uniform_bundle"
     if (
+        any(term in normalized for term in ("base publica", "base pública", "na base publica", "na base pública"))
+        and any(term in normalized for term in ("direcao", "direção"))
+        and any(term in normalized for term in ("atendimento formal", "formal"))
+        and any(term in normalized for term in ("numero de protocolo", "número de protocolo", "protocolo"))
+    ):
+        return "public_bundle.governance_protocol"
+    if (
         any(term in normalized for term in ("direcao", "direção"))
         and any(term in normalized for term in ("coordenacao", "coordenação", "cotidiano", "assunto foge", "assunto sair do cotidiano"))
         and any(term in normalized for term in ("protocolo", "formal"))
@@ -172,6 +210,14 @@ def match_public_canonical_lane(message: str) -> str | None:
         and any(term in normalized for term in ("demanda formal", "demandas formais", "demanda", "demandas"))
         and any(term in normalized for term in ("direcao", "direção"))
         and any(term in normalized for term in ("protocolo", "viram protocolo", "vira protocolo"))
+    ):
+        return "public_bundle.governance_protocol"
+    if (
+        any(term in normalized for term in ("documentos publicos", "documentos públicos", "base publica", "base pública"))
+        and any(term in normalized for term in ("escalar", "escalonamento", "encaminhar"))
+        and any(term in normalized for term in ("rotina", "tema da rotina", "tema do cotidiano", "cotidiano"))
+        and any(term in normalized for term in ("direcao", "direção"))
+        and any(term in normalized for term in ("protocolo", "protocolo formal", "formal"))
     ):
         return "public_bundle.governance_protocol"
     if (

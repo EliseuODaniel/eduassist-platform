@@ -39,8 +39,9 @@ from .retrieval import (
     compose_restricted_document_grounded_answer_for_query,
     compose_restricted_document_no_match_answer,
     looks_like_restricted_document_query,
-    select_relevant_restricted_hits,
+    retrieve_relevant_restricted_hits_with_fallback,
 )
+from .turn_frame_policy import preview_targets_restricted_document_surface
 
 
 def _mode_priority(mode: OrchestrationMode) -> int:
@@ -134,7 +135,36 @@ def _message_mentions_external_library_entity(message: str) -> bool:
     normalized = rt._normalize_text(message)
     if not _message_mentions_library_entity(message):
         return False
-    if any(rt._message_matches_term(normalized, term) for term in {'escola', 'colegio', 'colégio', 'horizonte'}):
+    mentions_school = any(
+        rt._message_matches_term(normalized, term)
+        for term in {'escola', 'colegio', 'colégio', 'horizonte'}
+    )
+    explicit_external_boundary = any(
+        rt._message_matches_term(normalized, term)
+        for term in {
+            'fora do colegio',
+            'fora do colégio',
+            'fora da escola',
+            'nao e a biblioteca da escola',
+            'não é a biblioteca da escola',
+            'nao e biblioteca da escola',
+            'não é biblioteca da escola',
+            'nao e da escola',
+            'não é da escola',
+            'nao da escola',
+            'não da escola',
+            'nao do colegio',
+            'não do colégio',
+            'nao do colegio horizonte',
+            'não do colégio horizonte',
+            'fora do colegio horizonte',
+            'fora do colégio horizonte',
+            'na cidade',
+            'externa',
+            'fora daqui',
+        }
+    )
+    if mentions_school and not explicit_external_boundary:
         return False
     return any(
         rt._message_matches_term(normalized, term)
@@ -183,6 +213,68 @@ def _message_switches_public_entity_away_from_library(message: str) -> bool:
         'pública da cidade',
     }
     return any(rt._message_matches_term(normalized, term) for term in non_library_terms)
+
+
+def _protected_attendance_student_focus_followup(
+    *,
+    actor: dict[str, Any] | None,
+    request: MessageResponseRequest,
+    conversation_context: dict[str, Any] | None,
+) -> bool:
+    if not bool(getattr(request.user, 'authenticated', False)):
+        return False
+    if rt._looks_like_family_attendance_student_focus_followup(
+        actor,
+        request.message,
+        conversation_context=conversation_context,
+    ):
+        return True
+    linked_students = rt._linked_students(actor)
+    if not linked_students:
+        return False
+    normalized = rt._normalize_text(request.message)
+    has_contextual_carry = any(
+        rt._message_matches_term(normalized, term)
+        for term in {
+            'mantendo o contexto',
+            'continuando a analise',
+            'continuando a análise',
+            'recorte so',
+            'recorte só',
+            'corta para',
+            'isole',
+        }
+    )
+    has_attendance_focus = any(
+        rt._message_matches_term(normalized, term)
+        for term in {
+            'frequencia',
+            'frequência',
+            'faltas',
+            'falta',
+            'ausencias',
+            'ausências',
+            'presenca',
+            'presença',
+            'atrasos',
+            'risco',
+            'mais concreto',
+            'principal alerta',
+        }
+    )
+    if not (has_contextual_carry and has_attendance_focus):
+        return False
+    if not (
+        rt._matching_students_in_text(linked_students, request.message)
+        or rt._student_focus_candidate(actor, request.message)
+    ):
+        return False
+    recent_focus = rt._recent_trace_focus(conversation_context) or {}
+    recent_slot_memory = rt._recent_trace_slot_memory(conversation_context) or {}
+    recent_active_task = str(
+        recent_focus.get('active_task') or recent_slot_memory.get('active_task') or ''
+    ).strip()
+    return recent_active_task.startswith('academic:attendance') or len(linked_students) >= 2
 
 
 def _maybe_explicit_domain_override_plan(
@@ -248,16 +340,59 @@ async def _maybe_contextual_public_direct_answer(
     settings: Any,
     school_profile: dict[str, Any],
     conversation_context: dict[str, Any] | None,
+    actor: dict[str, Any] | None = None,
 ) -> str | None:
     if rt._llm_forced_mode_enabled(settings=settings, request=request):
         return None
+    if looks_like_restricted_document_query(request.message):
+        return None
+    preview_graph_path = tuple(getattr(preview, 'graph_path', ()) or ())
+    preview_domain = getattr(getattr(preview, 'classification', None), 'domain', None)
+    protected_domain_hint = (
+        rt._explicit_protected_domain_hint(
+            request.message,
+            actor=actor,
+            conversation_context=conversation_context,
+        )
+        if request.user.authenticated
+        else None
+    )
+    if request.user.authenticated and (
+        preview_domain in {QueryDomain.academic, QueryDomain.finance}
+        or any(str(node).startswith('turn_frame:protected.') for node in preview_graph_path)
+        or protected_domain_hint in {QueryDomain.academic, QueryDomain.finance}
+    ):
+        return None
+    if rt._should_skip_contextual_public_direct_answer(request, preview):
+        return None
+    if (
+        request.user.authenticated
+        and rt._should_skip_public_contextual_answer(
+            request.message,
+            actor=actor,
+            conversation_context=conversation_context,
+        )
+    ):
+        return None
+    is_public_context = preview.classification.access_tier is AccessTier.public or not request.user.authenticated
     if _message_mentions_external_library_entity(request.message):
+        return rt._compose_external_public_facility_boundary_answer(
+            school_profile or {},
+            facility_label='uma biblioteca publica externa',
+            conversation_context=conversation_context,
+        )
+    if (
+        rt._is_explicit_open_world_scope_boundary_query(request.message)
+        or (
+            is_public_context
+            and rt.looks_like_scope_boundary_candidate(request.message)
+            and not rt.looks_like_school_scope_message(request.message)
+        )
+    ):
         return rt._compose_scope_boundary_answer(
             school_profile or {},
             conversation_context=conversation_context,
         )
-    preview_graph_path = tuple(getattr(preview, 'graph_path', ()) or ())
-    is_public_context = preview.classification.access_tier is AccessTier.public or not request.user.authenticated
     if not is_public_context:
         return None
     if not (
@@ -265,6 +400,13 @@ async def _maybe_contextual_public_direct_answer(
         or looks_like_school_domain_request(analysis_message)
     ):
         return None
+    public_boundary_answer = rt._compose_contextual_public_boundary_answer(
+        message=request.message,
+        conversation_context=conversation_context,
+        profile=school_profile,
+    )
+    if public_boundary_answer:
+        return public_boundary_answer
 
     if rt._is_direct_service_routing_bundle_query(request.message):
         return rt._compose_service_routing_answer(
@@ -272,6 +414,24 @@ async def _maybe_contextual_public_direct_answer(
             request.message,
             conversation_context=conversation_context,
         )
+
+    if rt._recent_family_attendance_context(conversation_context) and any(
+        term in rt._normalize_text(request.message)
+        for term in (
+            'corta para ',
+            'fica so com ',
+            'fique so com ',
+            'fique só com ',
+            'mantendo o contexto',
+            'mantem o contexto',
+            'mantém o contexto',
+            'frequencia dele',
+            'frequência dele',
+            'risco mais concreto',
+            'risco concreto',
+        )
+    ):
+        return None
 
     canonical_lane = match_public_canonical_lane(request.message) or match_public_canonical_lane(analysis_message)
     if canonical_lane:
@@ -631,6 +791,7 @@ async def execute_kernel_plan(
         settings=settings,
         school_profile=school_profile,
         conversation_context=context_payload,
+        actor=actor,
     )
     unpublished_public_answer = _maybe_public_unpublished_direct_answer(
         request=request,
@@ -769,17 +930,34 @@ async def execute_kernel_plan(
             message_text = llm_text or deterministic_fallback_text
     elif preview.mode is OrchestrationMode.hybrid_retrieval:
         used_canonical_lane = False
+        effective_user = rt._merge_user_context(actor, request.user)
         restricted_document_query = (
-            looks_like_restricted_document_query(request.message)
-            and can_read_restricted_documents(request.user)
+            (
+                looks_like_restricted_document_query(request.message)
+                or preview_targets_restricted_document_surface(preview)
+            )
+            and can_read_restricted_documents(effective_user)
+        )
+        protected_attendance_focus_followup = _protected_attendance_student_focus_followup(
+            actor=actor,
+            request=request,
+            conversation_context=conversation_context,
         )
         canonical_lane = (
             match_public_canonical_lane(request.message)
-            if preview.classification.access_tier is AccessTier.public
+            if (
+                preview.classification.access_tier is AccessTier.public
+                and not protected_attendance_focus_followup
+                and not restricted_document_query
+            )
             else None
         ) or (
             match_public_canonical_lane(analysis_message)
-            if preview.classification.access_tier is AccessTier.public
+            if (
+                preview.classification.access_tier is AccessTier.public
+                and not protected_attendance_focus_followup
+                and not restricted_document_query
+            )
             else None
         )
         if canonical_lane:
@@ -823,7 +1001,14 @@ async def execute_kernel_plan(
                 profile=restricted_policy.profile,
             )
             retrieval_context_pack = search.context_pack
-            retrieval_hits = select_relevant_restricted_hits(analysis_message, list(search.hits))
+            retrieval_hits = retrieve_relevant_restricted_hits_with_fallback(
+                retrieval_service,
+                query=analysis_message,
+                hits=list(search.hits),
+                top_k=4,
+                visibility='restricted',
+                category=restricted_policy.category,
+            )
             citations = rt._collect_citations(retrieval_hits)
             retrieval_trace_metadata = build_retrieval_trace_metadata(
                 visibility='restricted',

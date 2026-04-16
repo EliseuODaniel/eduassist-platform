@@ -475,6 +475,17 @@ def get_student_administrative_status(
     )
 
 
+def _teacher_segment_from_class_name_and_level(class_name: str, grade_level: int) -> str:
+    normalized_class = str(class_name or '').strip().lower()
+    if any(marker in normalized_class for marker in ('1o ano', '2o ano', '3o ano')):
+        return 'Ensino Medio'
+    if any(marker in normalized_class for marker in ('6o ano', '7o ano', '8o ano', '9o ano')):
+        return 'Ensino Fundamental II'
+    if grade_level >= 10:
+        return 'Ensino Medio'
+    return 'Ensino Fundamental II'
+
+
 def get_teacher_schedule(session: Session, teacher_user_id: uuid.UUID) -> TeacherScheduleSummary | None:
     teacher_base = session.execute(
         select(Teacher.id, Teacher.employee_code, Teacher.department, User.full_name)
@@ -486,7 +497,15 @@ def get_teacher_schedule(session: Session, teacher_user_id: uuid.UUID) -> Teache
 
     teacher_id, employee_code, department, teacher_name = teacher_base
     assignments = session.execute(
-        select(Class.id, Class.display_name, Subject.code, Subject.name, TeacherAssignment.academic_year)
+        select(
+            Class.id,
+            Class.display_name,
+            Class.grade_level,
+            Class.shift,
+            Subject.code,
+            Subject.name,
+            TeacherAssignment.academic_year,
+        )
         .join(TeacherAssignment, TeacherAssignment.class_id == Class.id)
         .join(Subject, Subject.id == TeacherAssignment.subject_id)
         .where(TeacherAssignment.teacher_id == teacher_id)
@@ -502,11 +521,17 @@ def get_teacher_schedule(session: Session, teacher_user_id: uuid.UUID) -> Teache
             TeacherScheduleEntry(
                 class_id=class_id,
                 class_name=class_name,
+                grade_level=grade_level,
+                shift=shift,
+                segment=_teacher_segment_from_class_name_and_level(
+                    str(class_name or ''),
+                    int(grade_level),
+                ),
                 subject_code=subject_code,
                 subject_name=subject_name,
                 academic_year=academic_year,
             )
-            for class_id, class_name, subject_code, subject_name, academic_year in assignments
+            for class_id, class_name, grade_level, shift, subject_code, subject_name, academic_year in assignments
         ],
     )
 

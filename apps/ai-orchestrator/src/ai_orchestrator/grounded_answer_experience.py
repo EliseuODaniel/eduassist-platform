@@ -54,7 +54,7 @@ from .python_functions_public_knowledge import (
     match_public_canonical_lane as match_python_functions_public_canonical_lane,
 )
 from .public_known_unknowns import compose_public_known_unknown_answer, detect_public_known_unknown_key
-from .retrieval import get_retrieval_service
+from .retrieval import get_retrieval_service, looks_like_restricted_document_query
 
 logger = logging.getLogger(__name__)
 _ANSWER_FOCUS_CACHE_TTL_SECONDS = 900.0
@@ -892,6 +892,10 @@ _FINANCE_STUDENT_REFERENCE_STOPWORDS = {
     'faturas',
     'boleto',
     'boletos',
+    'atendimento',
+    'atendimento humano',
+    'impedimento',
+    'bloqueio',
 }
 
 
@@ -1108,6 +1112,23 @@ def _looks_like_family_attendance_aggregate_request(question: str) -> bool:
     )
     if any(term in normalized for term in explicit_terms):
         return True
+    named_comparison = (
+        'entre ' in normalized
+        and any(
+            term in normalized
+            for term in (
+                'quem esta mais delicado por frequencia',
+                'quem está mais delicado por frequência',
+                'mais delicado por frequencia',
+                'mais delicado por frequência',
+                'frequencia hoje',
+                'frequência hoje',
+                'alerta pesa mais',
+            )
+        )
+    )
+    if named_comparison:
+        return True
     has_family_anchor = any(
         term in normalized
         for term in (
@@ -1276,7 +1297,21 @@ def _looks_like_access_scope_request(question: str) -> bool:
         'esta conta',
         'essa conta',
     )
-    return any(phrase in normalized for phrase in phrases)
+    if any(phrase in normalized for phrase in phrases):
+        return True
+    has_scope_anchor = any(
+        phrase in normalized
+        for phrase in ('escopo', 'acesso', 'dados', 'consigo acessar', 'posso acessar', 'meu acesso')
+    )
+    has_account_reference = any(
+        phrase in normalized
+        for phrase in ('meus filhos', 'meus alunos', 'meus dois alunos', 'por aqui', 'conta')
+    )
+    has_scope_dimension = any(
+        phrase in normalized
+        for phrase in ('academico', 'acadêmico', 'financeiro', 'os dois')
+    )
+    return has_scope_anchor and has_account_reference and has_scope_dimension
 
 
 def _question_mentions_timeframe_scope(question: str) -> bool:
@@ -2431,56 +2466,9 @@ def _focus_marked_student_from_question(
     linked_students = actor.get('linked_students') if isinstance(actor, dict) else None
     if not isinstance(linked_students, list):
         return None
-    normalized = _plain_text(question)
-    positive_markers = (
-        'so ',
-        'só ',
-        'apenas ',
-        'somente ',
-        'so a ',
-        'só a ',
-        'so o ',
-        'só o ',
-        'olhe so para ',
-        'olhe só para ',
-        'agora foque so na ',
-        'agora foque só na ',
-        'foque so na ',
-        'foque só na ',
-        'fique apenas com ',
-        'fique só com ',
-        'recorte so ',
-        'recorte só ',
-        'isole a ',
-        'isole o ',
-        'corta so para ',
-        'corta só para ',
-        'corta so para a ',
-        'corta só para a ',
-        'corta so para o ',
-        'corta só para o ',
-        'filtre apenas ',
-        'agora quero apenas ',
-        'agora quero so ',
-        'agora quero só ',
-    )
-    for student in linked_students:
-        if not isinstance(student, dict):
-            continue
-        full_name = str(student.get('full_name') or '').strip()
-        full_name_plain = _plain_text(full_name)
-        first_name_plain = full_name_plain.split(' ')[0] if full_name_plain else ''
-        candidate_forms = tuple(value for value in {full_name_plain, first_name_plain} if value)
-        if not candidate_forms:
-            continue
-        for candidate in candidate_forms:
-            for marker in positive_markers:
-                marker_pattern = re.escape(_plain_text(marker).strip()).replace(r'\ ', r'\s+')
-                if re.search(rf'{marker_pattern}\s+{re.escape(candidate)}\b', normalized):
-                    return student
-            if re.search(rf'\b(?:so|só|apenas|somente)\s+(?:a|o)\s+{re.escape(candidate)}\b', normalized):
-                return student
-    return None
+    from .student_scope_runtime import _focus_marked_student_from_message
+
+    return _focus_marked_student_from_message(linked_students, question)
 
 
 def _mentioned_linked_student_names_from_question(
@@ -2520,12 +2508,36 @@ def _mentioned_linked_student_names_from_question(
 
 def _looks_like_cross_student_academic_comparison_followup(question: str) -> bool:
     normalized = _plain_text(question)
-    if not any(term in normalized for term in ('compar', 'compare', 'comparar', 'contra', 'em relacao', 'em relação')):
+    has_compare_anchor = any(
+        term in normalized
+        for term in (
+            'compar',
+            'compare',
+            'comparar',
+            'contra',
+            'em relacao',
+            'em relação',
+            'entre ',
+            'veredito academico',
+            'veredito acadêmico',
+        )
+    )
+    if not has_compare_anchor:
         return False
     if any(term in normalized for term in ('documentacao', 'documentação', 'documental', 'cadastro', 'pendencia', 'pendência', 'administrativ')):
         return False
     has_family_compare = any(
-        term in normalized for term in (' com ', ' com a ', ' com o ', 'isso com', 'meus filhos', 'minha filha', 'meu filho')
+        term in normalized
+        for term in (
+            ' com ',
+            ' com a ',
+            ' com o ',
+            'isso com',
+            'meus filhos',
+            'minha filha',
+            'meu filho',
+            'entre ',
+        )
     )
     has_academic_anchor = any(
         term in normalized
@@ -2588,12 +2600,27 @@ def _looks_like_contextual_cross_student_academic_comparison_followup(
     mentioned_students: list[str] | None = None,
 ) -> bool:
     normalized = _plain_text(question)
-    if not any(term in normalized for term in ('compar', 'compare', 'comparar', 'contra', 'em relacao', 'em relação')):
+    has_compare_anchor = any(
+        term in normalized
+        for term in (
+            'compar',
+            'compare',
+            'comparar',
+            'contra',
+            'em relacao',
+            'em relação',
+            'entre ',
+            'veredito academico',
+            'veredito acadêmico',
+        )
+    )
+    if not has_compare_anchor:
         return False
     if any(term in normalized for term in ('documentacao', 'documentação', 'documental', 'cadastro', 'pendencia', 'pendência', 'administrativ')):
         return False
     has_compare_target = bool(mentioned_students) or any(
-        term in normalized for term in (' com ', ' com a ', ' com o ', 'isso com', 'meus filhos', 'minha filha', 'meu filho')
+        term in normalized
+        for term in (' com ', ' com a ', ' com o ', 'isso com', 'meus filhos', 'minha filha', 'meu filho', 'entre ')
     )
     return has_compare_target and _recent_guardian_academic_context(conversation_context)
 
@@ -2629,6 +2656,7 @@ async def _deterministic_protected_academic_direct_answer(
     *,
     request: MessageResponseRequest,
     response: MessageResponse,
+    focus: AnswerFocusState,
     actor: dict[str, Any] | None,
     settings: Any,
     conversation_context: dict[str, Any] | None,
@@ -2638,6 +2666,7 @@ async def _deterministic_protected_academic_direct_answer(
     return await _impl(
         request=request,
         response=response,
+        focus=focus,
         actor=actor,
         settings=settings,
         conversation_context=conversation_context,
@@ -2650,6 +2679,7 @@ def _looks_like_attendance_alert_request(question: str) -> bool:
     return any(
         term in normalized
         for term in (
+            'alerta principal',
             'principal alerta',
             'maior atencao',
             'maior atenção',
@@ -2672,6 +2702,8 @@ def _looks_like_attendance_alert_request(question: str) -> bool:
             'frequência dele preocupa',
             'preocupa mais',
             'preocupa menos',
+            'risco mais concreto',
+            'risco concreto',
             'mais sensivel',
             'mais sensível',
             'faltas recentes',
@@ -3359,6 +3391,8 @@ def _deterministic_context_repair_plan(
     actor: dict[str, Any] | None,
     conversation_context: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
+    if looks_like_restricted_document_query(request.message):
+        return None
     if not (focus.unknown_student_name or focus.unknown_subject_name or focus.is_repair_followup or focus.needs_disambiguation):
         return None
     message = _clarify_after_retry_message(
@@ -4224,7 +4258,41 @@ async def apply_grounded_answer_experience(
     stack_name: str,
     forced_reason: str | None = None,
 ) -> MessageResponse:
+    from .public_orchestration_runtime import (
+        _compose_scope_boundary_answer as _compose_scope_boundary_answer_local,
+    )
     from .grounded_answer_pipeline_runtime import apply_grounded_answer_experience as _impl
+
+    normalized_message = _normalize_text(request.message)
+    if any(
+        term in normalized_message
+        for term in {
+            'sem relacao com escola',
+            'sem relacao com a escola',
+            'fora do escopo da escola',
+            'fora do contexto da escola',
+            'sem relacao com o colegio',
+            'sem relacao com o colégio',
+            'sem relacao com o colegio horizonte',
+            'sem relacao com o colégio horizonte',
+            'nada a ver com escola',
+            'nada a ver com a escola',
+            'sem relacao com ensino',
+        }
+    ):
+        base_reason = forced_reason or str(
+            getattr(response, 'answer_experience_reason', None)
+            or getattr(response, 'reason', None)
+            or 'contextual_answer_repair'
+        )
+        return response.model_copy(
+            update={
+                'message_text': _compose_scope_boundary_answer_local({}, conversation_context=None),
+                'answer_experience_eligible': True,
+                'answer_experience_applied': True,
+                'answer_experience_reason': f'{base_reason}:explicit_open_world_scope_boundary',
+            }
+        )
 
     return await _impl(
         request=request,

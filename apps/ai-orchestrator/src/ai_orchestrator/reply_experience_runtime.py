@@ -25,12 +25,21 @@ def _student_scope_helpers() -> tuple[Any, Any]:
     return select_linked_student, recent_student_from_context
 
 
+def _focus_helpers() -> tuple[Any]:
+    from .conversation_focus_runtime import (
+        _recent_conversation_focus as recent_conversation_focus,
+    )
+
+    return (recent_conversation_focus,)
+
+
 def _workflow_contextual_suggested_replies(
     *,
     preview: Any,
     conversation_context: dict[str, Any] | None,
 ) -> list[str] | None:
-    recent_focus = _recent_conversation_focus(conversation_context)
+    (recent_conversation_focus,) = _focus_helpers()
+    recent_focus = recent_conversation_focus(conversation_context)
     if not recent_focus:
         return None
     kind = recent_focus.get('kind')

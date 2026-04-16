@@ -28,6 +28,99 @@ async def _public_retrieval(state: LangGraphMessageState) -> LangGraphMessageSta
     school_profile = state['school_profile']
     analysis_message = state['analysis_message']
     effective_conversation_id = state['effective_conversation_id']
+    explicit_open_world_boundary = rt._is_explicit_open_world_scope_boundary_query(
+        request.message
+    )
+
+    if explicit_open_world_boundary or (
+        rt.looks_like_scope_boundary_candidate(request.message)
+        and not rt.looks_like_school_scope_message(request.message)
+    ):
+        message_text = rt._compose_scope_boundary_answer(
+            school_profile or {},
+            conversation_context=conversation_context,
+        )
+        suggested_replies = rt._build_suggested_replies(
+            request=request,
+            preview=preview,
+            actor=actor,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+        )
+        evidence_pack = rt._build_runtime_evidence_pack(
+            request_message=request.message,
+            message_text=message_text,
+            preview=preview,
+            selected_tools=list(preview.selected_tools),
+            citations=[],
+            school_profile=school_profile,
+            actor=actor,
+            conversation_context=conversation_context,
+            public_plan=None,
+            retrieval_backend=RetrievalBackend.none,
+        )
+        await rt._persist_operational_trace(
+            settings=settings,
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            engine_name=state['engine_name'],
+            engine_mode=state['engine_mode'],
+            actor=actor,
+            preview=preview,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+            public_plan=None,
+            request_message=request.message,
+            message_text=message_text,
+            citations_count=0,
+            suggested_reply_count=len(suggested_replies),
+            visual_asset_count=0,
+            answer_verifier_valid=True,
+            answer_verifier_reason='langgraph_public_retrieval_scope_boundary',
+            answer_verifier_fallback_used=False,
+            deterministic_fallback_available=True,
+            answer_verifier_judge_used=False,
+            langgraph_trace_metadata=state.get('langgraph_trace_metadata'),
+        )
+        await rt._persist_conversation_turn(
+            settings=settings,
+            conversation_external_id=effective_conversation_id,
+            channel=request.channel.value,
+            actor=actor,
+            user_message=request.message,
+            assistant_message=message_text,
+        )
+        response = MessageResponse(
+            message_text=message_text,
+            mode=OrchestrationMode.structured_tool,
+            classification=preview.classification,
+            retrieval_backend=RetrievalBackend.none,
+            selected_tools=list(dict.fromkeys([*preview.selected_tools, 'get_public_school_profile'])),
+            citations=[],
+            suggested_replies=suggested_replies,
+            evidence_pack=evidence_pack,
+            needs_authentication=False,
+            graph_path=[*list(preview.graph_path), 'langgraph_response_workflow', 'public_retrieval_scope_boundary'],
+            risk_flags=rt._build_runtime_risk_flags(
+                request_message=request.message,
+                message_text=message_text,
+                preview=preview,
+            ),
+            reason='langgraph_public_retrieval_scope_boundary',
+            used_llm=False,
+            llm_stages=[],
+        )
+        return {'response': response}
+
+    if (
+        request.user.authenticated
+        and rt._should_skip_public_contextual_answer(
+            request.message,
+            actor=actor,
+            conversation_context=conversation_context,
+        )
+    ):
+        return await _delegate_runtime(state)
 
     if rt._is_meta_repair_context_query(request.message):
         meta_repair_answer = rt._compose_meta_repair_follow_up_answer(conversation_context)

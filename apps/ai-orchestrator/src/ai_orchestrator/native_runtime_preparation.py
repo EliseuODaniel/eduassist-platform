@@ -13,6 +13,7 @@ from .semantic_ingress_runtime import (
     is_terminal_semantic_ingress_plan,
     maybe_resolve_semantic_ingress_plan,
     maybe_resolve_turn_frame,
+    resolve_turn_frame_authenticated_flag,
 )
 
 
@@ -77,6 +78,7 @@ async def prepare_runtime_execution(
 ) -> RuntimeExecutionPreparation:
     effective_path_profile = path_profile or get_path_execution_profile(engine_name)
     actor = await rt._fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
+    actor = rt._build_effective_actor_context(actor, request.user)
     effective_conversation_id = rt._effective_conversation_id(request)
     conversation_context_bundle = await rt._fetch_conversation_context(
         settings=settings,
@@ -185,13 +187,18 @@ async def prepare_runtime_execution(
             semantic_ingress_public_plan = build_semantic_ingress_public_plan(semantic_ingress_plan)
             llm_stages.append('semantic_ingress_classifier')
     if semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan):
+        turn_frame_authenticated = resolve_turn_frame_authenticated_flag(
+            request_message=request.message,
+            authenticated=bool(getattr(request.user, "authenticated", False)),
+            actor=actor,
+        )
         turn_frame = await maybe_resolve_turn_frame(
             settings=settings,
             request_message=request.message,
             conversation_context=context_payload,
             preview=preview,
             stack_label=semantic_stack_label or engine_name,
-            authenticated=bool(getattr(request.user, "authenticated", False)),
+            authenticated=turn_frame_authenticated,
         )
         if turn_frame is not None:
             preview = apply_turn_frame_preview(
@@ -223,6 +230,7 @@ async def prepare_runtime_execution(
                 message=request.message,
                 conversation_context=context_payload,
             )
+    preview = rt._align_protected_preview_tools(preview)
 
     return RuntimeExecutionPreparation(
         effective_path_profile=effective_path_profile,

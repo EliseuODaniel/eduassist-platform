@@ -173,11 +173,18 @@ async def _maybe_execute_llamaindex_restricted_doc_fast_path(
     retrieval_result = retrieval_service.hybrid_search(
         query=request.message,
         top_k=retrieval_policy.top_k,
-        visibility='private',
+        visibility='restricted',
         category=retrieval_policy.category,
         profile=retrieval_policy.profile,
     )
-    relevant_hits = select_relevant_restricted_hits(request.message, list(retrieval_result.hits))
+    relevant_hits = retrieve_relevant_restricted_hits_with_fallback(
+        retrieval_service,
+        query=request.message,
+        hits=list(retrieval_result.hits),
+        top_k=retrieval_policy.top_k,
+        visibility='restricted',
+        category=retrieval_policy.category,
+    )
     citations = [
         citation
         for citation in (_restricted_doc_hit_to_citation(hit) for hit in relevant_hits[:3])
@@ -283,9 +290,70 @@ async def _resolve_early_llamaindex_public_answer(
     settings: Any,
     school_profile: dict[str, Any] | None,
     conversation_context: dict[str, Any] | None,
+    actor: dict[str, Any] | None = None,
 ) -> LlamaIndexEarlyPublicAnswer | None:
     _refresh_native_namespace()
     if not isinstance(school_profile, dict):
+        return None
+
+    normalized_message = rt._normalize_text(request.message)
+    explicit_open_world_boundary = rt._is_explicit_open_world_scope_boundary_query(
+        request.message
+    )
+    if explicit_open_world_boundary or (
+        rt.looks_like_scope_boundary_candidate(request.message)
+        and not rt.looks_like_school_scope_message(request.message)
+    ):
+        return LlamaIndexEarlyPublicAnswer(
+            answer_text=rt._compose_scope_boundary_answer(
+                school_profile or {},
+                conversation_context=conversation_context,
+            ),
+            reason='scope_boundary',
+        )
+
+    normalized_request_message = rt._normalize_text(request.message)
+    protected_message_override = any(
+        term in normalized_request_message
+        for term in {
+            'mais vulneravel',
+            'mais vulnerável',
+            'qual materia esta melhor',
+            'qual matéria está melhor',
+            'qual materia esta pior',
+            'qual matéria está pior',
+            'o que falta para fechar a media',
+            'o que falta para fechar a média',
+            'mantendo o contexto',
+            'corta para',
+            'recorte so',
+            'recorte só',
+            'resuma',
+            'resume',
+        }
+    ) and any(
+        term in normalized_request_message
+        for term in {
+            'frequencia',
+            'frequência',
+            'risco',
+            'media minima',
+            'média mínima',
+            'fisica',
+            'física',
+        }
+    )
+    if (
+        request.user.authenticated
+        and (
+            protected_message_override
+            or rt._should_skip_public_contextual_answer(
+                request.message,
+                actor=actor,
+                conversation_context=conversation_context,
+            )
+        )
+    ):
         return None
 
     canonical_lane = match_public_canonical_lane(request.message)
@@ -313,7 +381,6 @@ async def _resolve_early_llamaindex_public_answer(
             reason='contextual_boundary',
         )
 
-    normalized_message = rt._normalize_text(request.message)
     if 'biblioteca' in normalized_message and any(
         rt._message_matches_term(normalized_message, term)
         for term in {
@@ -372,6 +439,7 @@ async def _resolve_early_llamaindex_public_answer(
         settings=settings,
         school_profile=school_profile,
         conversation_context=conversation_context,
+        actor=actor,
     )
     if contextual_direct_answer:
         return LlamaIndexEarlyPublicAnswer(

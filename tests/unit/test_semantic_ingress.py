@@ -18,6 +18,7 @@ from eduassist_semantic_ingress import (
     build_capability_candidates,
     build_turn_frame_hint,
     derive_focus_frame,
+    effective_turn_frame_authenticated,
     resolve_turn_frame_with_provider,
 )
 from eduassist_semantic_ingress.runtime import (
@@ -228,6 +229,19 @@ def test_build_turn_frame_hint_marks_external_city_library_query_as_scope_bounda
     assert frame.reason == "external_public_facility_turn_hint"
 
 
+def test_build_turn_frame_hint_keeps_external_city_library_boundary_even_with_school_name_contrast() -> None:
+    frame = build_turn_frame_hint(
+        message="Fora do Colegio Horizonte, qual e o horario da biblioteca publica da cidade?",
+        conversation_context=None,
+        preview=None,
+        authenticated=False,
+    )
+
+    assert frame is not None
+    assert frame.conversation_act == "scope_boundary"
+    assert frame.reason == "external_public_facility_turn_hint"
+
+
 def test_build_capability_candidates_prefers_public_curriculum_for_bncc_query() -> None:
     candidates = build_capability_candidates(
         message="O que é BNCC?",
@@ -318,6 +332,253 @@ def test_build_turn_frame_hint_detects_protected_administrative_status() -> None
     assert frame.scope == "protected"
 
 
+def test_build_turn_frame_hint_detects_protected_access_scope() -> None:
+    frame = build_turn_frame_hint(
+        message="O que eu consigo consultar aqui no Telegram? Quero meu escopo exato entre academico e financeiro.",
+        conversation_context=None,
+        preview={"mode": "structured_tool", "domain": "institution", "access_tier": "authenticated"},
+        authenticated=True,
+    )
+
+    assert frame is not None
+    assert frame.capability_id == "protected.account.access_scope"
+    assert frame.scope == "protected"
+
+
+def test_derive_focus_frame_prefers_recent_teacher_schedule_trace() -> None:
+    focus = derive_focus_frame(
+        conversation_context={
+            "recent_messages": [
+                {"sender_type": "user", "content": "Sou professor e quero um panorama das minhas turmas e disciplinas deste ano."},
+                {"sender_type": "assistant", "content": "Resumo docente de Fernando Azevedo."},
+            ],
+            "recent_tool_calls": [
+                {
+                    "tool_name": "orchestration.trace",
+                    "request_payload": {
+                        "selected_tools": ["get_teacher_schedule"],
+                        "slot_memory": {
+                            "active_task": "academic:teacher_schedule",
+                            "pending_question_type": "follow_up",
+                        },
+                    },
+                }
+            ],
+        },
+        authenticated=True,
+    )
+
+    assert focus.capability_id == "protected.teacher.schedule"
+    assert focus.scope == "protected"
+
+
+def test_build_turn_frame_hint_carries_teacher_focus_for_segment_followup() -> None:
+    frame = build_turn_frame_hint(
+        message="Mantendo o contexto anterior, quero apenas a parte do ensino medio.",
+        conversation_context={
+            "recent_messages": [
+                {"sender_type": "user", "content": "Sou professor e quero um panorama das minhas turmas e disciplinas deste ano."},
+                {"sender_type": "assistant", "content": "Resumo docente de Fernando Azevedo."},
+            ],
+            "recent_tool_calls": [
+                {
+                    "tool_name": "orchestration.trace",
+                    "request_payload": {
+                        "selected_tools": ["get_teacher_schedule"],
+                        "slot_memory": {
+                            "active_task": "academic:teacher_schedule",
+                            "pending_question_type": "follow_up",
+                        },
+                    },
+                }
+            ],
+        },
+        preview={"mode": "structured_tool", "domain": "academic", "access_tier": "authenticated"},
+        authenticated=True,
+    )
+
+    assert frame is not None
+    assert frame.capability_id == "protected.teacher.schedule"
+    assert frame.follow_up_of == "protected.teacher.schedule"
+
+
+def test_build_capability_candidates_does_not_let_teacher_followup_alias_override_restricted_doc_prompt() -> None:
+    candidates = build_capability_candidates(
+        message="No manual interno de hospedagem internacional do ensino medio, qual e o protocolo valido hoje?",
+        conversation_context={
+            "recent_messages": [
+                {"sender_type": "user", "content": "Sou professor e quero um panorama das minhas turmas e disciplinas deste ano."},
+                {"sender_type": "assistant", "content": "Resumo docente de Fernando Azevedo."},
+            ],
+            "recent_tool_calls": [
+                {
+                    "tool_name": "orchestration.trace",
+                    "request_payload": {
+                        "selected_tools": ["get_teacher_schedule"],
+                        "slot_memory": {
+                            "active_task": "academic:teacher_schedule",
+                            "pending_question_type": "follow_up",
+                        },
+                    },
+                }
+            ],
+        },
+        authenticated=True,
+    )
+
+    assert candidates
+    assert candidates[0].capability_id == "protected.documents.restricted_lookup"
+
+
+def test_build_turn_frame_hint_preserves_attendance_focus_for_named_student_followup() -> None:
+    frame = build_turn_frame_hint(
+        message="Mantendo o contexto, corta para o Lucas e resume qual e o risco mais concreto dele em frequencia.",
+        conversation_context={
+            "recent_messages": [
+                {
+                    "sender_type": "assistant",
+                    "content": (
+                        "Panorama de faltas e frequencia das contas vinculadas:\n"
+                        "- Lucas Oliveira: 6 faltas e 7 atrasos.\n"
+                        "- Ana Oliveira: 2 faltas e 1 atraso.\n"
+                        "Quem exige maior atencao agora: Lucas Oliveira."
+                    ),
+                }
+            ],
+            "recent_tool_calls": [
+                {
+                    "tool_name": "orchestration.trace",
+                    "request_payload": {
+                        "selected_tools": ["get_student_attendance", "get_student_attendance_timeline"],
+                        "slot_memory": {
+                            "active_task": "academic:attendance",
+                            "academic_student_name": "Lucas Oliveira",
+                            "pending_question_type": "attribute_query",
+                        },
+                    },
+                }
+            ],
+        },
+        preview={"mode": "structured_tool", "domain": "academic", "access_tier": "authenticated"},
+        authenticated=True,
+    )
+
+    assert frame is not None
+    assert frame.capability_id == "protected.academic.attendance"
+    assert frame.follow_up_of == "protected.academic.attendance"
+
+
+def test_build_turn_frame_hint_backfills_family_comparison_from_recent_messages_when_trace_is_generic() -> None:
+    frame = build_turn_frame_hint(
+        message="Pensando no caso pratico, agora quero apenas a Ana: em quais materias ela aparece mais exposta?",
+        conversation_context={
+            "recent_messages": [
+                {
+                    "sender_type": "user",
+                    "content": "Sem me dar tabela, qual dos meus filhos esta academicamente pior hoje e em qual disciplina isso fica mais claro?",
+                },
+                {
+                    "sender_type": "assistant",
+                    "content": (
+                        "Panorama academico das contas vinculadas:\n"
+                        "- Lucas Oliveira: Fisica 5,9; Matematica 7,4\n"
+                        "- Ana Oliveira: Historia 6,8; Portugues 7,1\n"
+                        "Quem hoje exige maior atencao academica e Lucas Oliveira, principalmente em Fisica."
+                    ),
+                },
+            ],
+            "recent_tool_calls": [
+                {
+                    "tool_name": "orchestration.trace",
+                    "request_payload": {
+                        "slot_memory": {
+                            "active_task": "academic:family_panorama",
+                            "pending_question_type": "follow_up",
+                        },
+                    },
+                }
+            ],
+        },
+        preview={"mode": "structured_tool", "domain": "academic", "access_tier": "authenticated"},
+        authenticated=True,
+    )
+
+    assert frame is not None
+    assert frame.capability_id == "protected.academic.family_comparison"
+    assert frame.scope == "protected"
+    assert frame.follow_up_of == "protected.academic.family_comparison"
+
+
+def test_derive_focus_frame_recovers_family_comparison_from_recent_assistant_summary() -> None:
+    focus = derive_focus_frame(
+        conversation_context={
+            "recent_messages": [
+                {
+                    "sender_type": "assistant",
+                    "content": (
+                        "Panorama academico das contas vinculadas:\n"
+                        "- Lucas Oliveira: Biologia 7,9; Educacao Fisica 6,5; Filosofia 7,1; Fisica 5,9\n"
+                        "- Ana Oliveira: Biologia 8,0; Educacao Fisica 7,0; Filosofia 7,5; Fisica 6,4\n"
+                        "Quem hoje exige maior atencao academica e Lucas Oliveira, principalmente em Fisica."
+                    ),
+                }
+            ]
+        },
+        authenticated=True,
+    )
+
+    assert focus.capability_id == "protected.academic.family_comparison"
+    assert focus.domain == "academic"
+    assert focus.scope == "protected"
+
+
+def test_build_turn_frame_hint_keeps_protected_admin_query_as_capability_not_scope_boundary() -> None:
+    frame = build_turn_frame_hint(
+        message="Pensando no caso pratico, no cadastro da Ana, quais pendencias administrativas continuam abertas e que acao vem agora?",
+        conversation_context=None,
+        preview={"mode": "structured_tool", "domain": "institution", "access_tier": "authenticated"},
+        authenticated=True,
+    )
+
+    assert frame is not None
+    assert frame.capability_id == "protected.administrative.status"
+    assert frame.scope == "protected"
+    assert frame.conversation_act == "none"
+
+
+def test_build_turn_frame_hint_redirects_unauthenticated_grade_query_to_auth_guidance() -> None:
+    frame = build_turn_frame_hint(
+        message="Nao estou autenticado e mesmo assim quero consultar meu boletim aqui pelo bot.",
+        conversation_context=None,
+        preview={"mode": "clarify", "domain": "academic", "access_tier": "public"},
+        authenticated=False,
+    )
+
+    assert frame is not None
+    assert frame.scope == "public"
+    assert frame.public_conversation_act == "auth_guidance"
+    assert frame.reason.startswith("protected_requires_auth:")
+
+
+def test_effective_turn_frame_authenticated_uses_actor_context_without_explicit_auth_downgrade() -> None:
+    assert (
+        effective_turn_frame_authenticated(
+            authenticated=False,
+            actor_present=True,
+            message="Pensando no caso pratico, no cadastro da Ana, quais pendencias administrativas continuam abertas?",
+        )
+        is True
+    )
+    assert (
+        effective_turn_frame_authenticated(
+            authenticated=False,
+            actor_present=True,
+            message="Nao estou autenticado e mesmo assim quero consultar meu boletim aqui pelo bot.",
+        )
+        is False
+    )
+
+
 def test_apply_turn_frame_preview_maps_protected_admin_tools() -> None:
     preview = _preview().model_copy(
         update={
@@ -350,6 +611,50 @@ def test_apply_turn_frame_preview_maps_protected_admin_tools() -> None:
     assert updated.classification.access_tier is AccessTier.authenticated
     assert "get_student_administrative_status" in updated.selected_tools
     assert "get_administrative_status" in updated.selected_tools
+
+
+def test_apply_turn_frame_preview_maps_access_scope_tools() -> None:
+    updated = apply_turn_frame_preview(
+        preview=_preview(),
+        turn_frame=SimpleNamespace(
+            capability_id="protected.account.access_scope",
+            conversation_act="none",
+            scope="protected",
+            access_tier="authenticated",
+            domain="institution",
+            confidence=0.93,
+            needs_clarification=False,
+            public_conversation_act=None,
+            follow_up_of=None,
+        ),
+        stack_name="python_functions",
+    )
+
+    assert updated.classification.domain is QueryDomain.institution
+    assert updated.classification.access_tier is AccessTier.authenticated
+    assert updated.selected_tools == ["get_actor_identity_context"]
+
+
+def test_apply_turn_frame_preview_maps_teacher_schedule_tools() -> None:
+    updated = apply_turn_frame_preview(
+        preview=_preview(),
+        turn_frame=SimpleNamespace(
+            capability_id="protected.teacher.schedule",
+            conversation_act="none",
+            scope="protected",
+            access_tier="authenticated",
+            domain="academic",
+            confidence=0.93,
+            needs_clarification=False,
+            public_conversation_act=None,
+            follow_up_of="protected.teacher.schedule",
+        ),
+        stack_name="python_functions",
+    )
+
+    assert updated.classification.domain is QueryDomain.academic
+    assert updated.classification.access_tier is AccessTier.authenticated
+    assert updated.selected_tools == ["get_teacher_schedule"]
 
 
 def test_resolve_turn_frame_with_provider_keeps_deterministic_high_confidence_path_without_llm(monkeypatch) -> None:

@@ -29,6 +29,42 @@ async def _public_compound(state: LangGraphMessageState) -> LangGraphMessageStat
     if not isinstance(school_profile, dict):
         return await _delegate_runtime(state)
 
+    if (
+        request.user.authenticated
+        and rt._should_skip_public_contextual_answer(
+            request.message,
+            actor=actor,
+            conversation_context=conversation_context,
+        )
+    ):
+        return await _delegate_runtime(state)
+    normalized_message = rt._normalize_text(request.message)
+    if request.user.authenticated and any(
+        term in normalized_message
+        for term in {
+            'mantendo o contexto',
+            'corta para',
+            'recorte so',
+            'recorte só',
+            'resuma',
+            'resume',
+        }
+    ) and any(
+        term in normalized_message
+        for term in {
+            'frequencia',
+            'frequência',
+            'faltas',
+            'presenca',
+            'presença',
+            'atrasos',
+            'risco',
+            'mais concreto',
+            'principal alerta',
+        }
+    ):
+        return await _delegate_runtime(state)
+
     public_boundary_answer = rt._compose_contextual_public_boundary_answer(
         message=request.message,
         conversation_context=conversation_context,

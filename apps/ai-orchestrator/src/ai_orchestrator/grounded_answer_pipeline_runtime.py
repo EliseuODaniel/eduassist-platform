@@ -14,6 +14,12 @@ def _refresh_native_namespace() -> None:
             continue
         globals()[name] = value
 
+
+def _is_admin_finance_combined_query(message: str) -> bool:
+    from .intent_analysis_runtime import _is_admin_finance_combined_query as _impl
+
+    return _impl(message)
+
 async def apply_grounded_answer_experience(
     *,
     request: MessageResponseRequest,
@@ -64,10 +70,29 @@ async def apply_grounded_answer_experience(
         _fetch_public_school_profile(settings),
         _fetch_actor_context(settings=settings, request=request),
     )
+    from .public_orchestration_runtime import (
+        _build_effective_actor_context as _build_effective_actor_context_local,
+        _compose_scope_boundary_answer as _compose_scope_boundary_answer_local,
+        _is_explicit_open_world_scope_boundary_query as _is_explicit_open_world_scope_boundary_query_local,
+    )
+
+    actor = _build_effective_actor_context_local(actor, request.user)
     conversation_context = _merge_conversation_context_with_cached_focus(
         conversation_context,
         cached_slot_memory=_cached_focus_slot_memory(conversation_external_id),
     )
+    if _is_explicit_open_world_scope_boundary_query_local(request.message):
+        return response.model_copy(
+            update={
+                'message_text': _compose_scope_boundary_answer_local(
+                    school_profile or {},
+                    conversation_context=conversation_context,
+                ),
+                'answer_experience_eligible': True,
+                'answer_experience_applied': True,
+                'answer_experience_reason': f'{base_reason}:explicit_open_world_scope_boundary',
+            }
+        )
     focus = resolve_answer_focus(
         request_message=request.message,
         actor=actor,
@@ -103,10 +128,25 @@ async def apply_grounded_answer_experience(
         conversation_context=conversation_context,
     )
     if preserve_reason:
+        preserved_message_text = response.message_text
+        answer_experience_applied = False
+        if preserve_reason == 'preserve_scope_boundary_surface':
+            from .public_profile_runtime import _compose_scope_boundary_answer as _compose_scope_boundary_answer_local
+
+            canonical_scope_boundary = _compose_scope_boundary_answer_local(
+                school_profile or {},
+                conversation_context=conversation_context,
+            )
+            answer_experience_applied = _answer_experience_changed(
+                response.message_text,
+                canonical_scope_boundary,
+            )
+            preserved_message_text = canonical_scope_boundary
         return response.model_copy(
             update={
+                'message_text': preserved_message_text,
                 'answer_experience_eligible': True,
-                'answer_experience_applied': False,
+                'answer_experience_applied': answer_experience_applied,
                 'answer_experience_reason': f'{base_reason}:{preserve_reason}',
                 'answer_experience_provider': provider_settings.llm_provider,
                 'answer_experience_model': provider_settings.google_model if provider_settings.llm_provider in {'google', 'gemini'} else provider_settings.openai_model,
@@ -192,6 +232,7 @@ async def apply_grounded_answer_experience(
                 await _deterministic_protected_academic_direct_answer(
                     request=request,
                     response=response,
+                    focus=focus,
                     actor=actor,
                     settings=settings,
                     conversation_context=conversation_context,
@@ -205,6 +246,7 @@ async def apply_grounded_answer_experience(
                 await _deterministic_protected_academic_direct_answer(
                     request=request,
                     response=response,
+                    focus=focus,
                     actor=actor,
                     settings=settings,
                     conversation_context=conversation_context,
@@ -244,8 +286,13 @@ async def apply_grounded_answer_experience(
         focus=focus,
         supplemental_focused_draft=supplemental_focused_draft,
     )
-    prefer_supplemental_before_finance_direct = prefer_supplemental_focus and _looks_like_student_resolution_failure(
-        response.message_text
+    prefer_supplemental_before_finance_direct = (
+        focus.topic == 'admin_finance_combo'
+        or _is_admin_finance_combined_query(request.message)
+        or (
+            prefer_supplemental_focus
+            and _looks_like_student_resolution_failure(response.message_text)
+        )
     )
 
     deterministic_protected_finance = None

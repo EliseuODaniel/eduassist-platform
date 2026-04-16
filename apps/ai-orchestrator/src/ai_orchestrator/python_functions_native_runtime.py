@@ -54,21 +54,48 @@ from .python_functions_retrieval import (
     compose_restricted_document_no_match_answer,
     get_retrieval_service,
     looks_like_restricted_document_query,
-    select_relevant_restricted_hits,
+    retrieve_relevant_restricted_hits_with_fallback,
 )
 from .python_functions_retrieval_probe import build_public_evidence_probe
 from .serving_policy import LoadSnapshot, build_public_serving_policy
 from .serving_telemetry import get_stack_telemetry_snapshot, record_stack_outcome
 
 
+def _preview_targets_restricted_document_surface(preview: Any) -> bool:
+    reason = str(getattr(preview, 'reason', '') or '').strip().lower()
+    if any(marker in reason for marker in ('restricted_document', 'restricted_doc', 'protected.documents.restricted_lookup')):
+        return True
+    graph_path = [str(node).strip().lower() for node in (getattr(preview, 'graph_path', None) or []) if str(node).strip()]
+    if any('turn_frame:protected.documents.restricted_lookup' in node for node in graph_path):
+        return True
+    selected_tools = {
+        str(tool).strip().lower()
+        for tool in (getattr(preview, 'selected_tools', None) or [])
+        if str(tool).strip()
+    }
+    return 'retrieve_restricted_documents' in selected_tools or (
+        'search_documents' in selected_tools and 'restricted' in reason
+    )
+
+
 def _should_use_python_functions_native_path(plan: KernelPlan) -> bool:
     preview = plan.preview
+    if _preview_targets_restricted_document_surface(preview):
+        return True
     if preview.mode is OrchestrationMode.structured_tool:
         return True
     if (
         preview.mode is OrchestrationMode.hybrid_retrieval
-        and preview.classification.access_tier is AccessTier.authenticated
-        and 'documento interno' in str(preview.reason).lower()
+        and preview.classification.access_tier in {AccessTier.authenticated, AccessTier.sensitive}
+        and any(
+            marker in str(preview.reason).lower()
+            for marker in (
+                'documento interno',
+                'restricted_document',
+                'protected.documents.restricted_lookup',
+                'restricted_lookup',
+            )
+        )
     ):
         return True
     if preview.classification.access_tier is AccessTier.public:

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from eduassist_semantic_ingress import IngressSemanticPlan
 
-from ai_orchestrator.langgraph_message_workflow import _bootstrap_context, _semantic_ingress
+from ai_orchestrator.langgraph_message_workflow import _bootstrap_context, _delegate_runtime, _semantic_ingress
 from ai_orchestrator.models import (
     AccessTier,
     IntentClassification,
@@ -14,6 +14,8 @@ from ai_orchestrator.models import (
     OrchestrationPreview,
     QueryDomain,
     RetrievalBackend,
+    UserContext,
+    UserRole,
 )
 
 
@@ -254,6 +256,88 @@ def test_langgraph_semantic_ingress_supports_turn_frame_only_public_plan(monkeyp
     assert response.llm_stages == ["turn_frame_classifier"]
 
 
+def test_langgraph_semantic_ingress_preserves_auth_guidance_without_polish(monkeypatch) -> None:
+    async def fake_compose_public_profile_answer_agentic(**_kwargs):
+        return (
+            'Para consultas protegidas, como notas, faltas e financeiro, voce precisa vincular sua conta do Telegram '
+            'ao portal da escola. No portal autenticado, gere o codigo de vinculacao e depois envie aqui o comando '
+            '`/start link_<codigo>`.'
+        )
+
+    async def fake_polish(**_kwargs):
+        return 'Texto reescrito sem a ancora de autenticacao.'
+
+    async def fake_persist_trace(**_kwargs):
+        return None
+
+    async def fake_persist_turn(**_kwargs):
+        return None
+
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._compose_public_profile_answer_agentic",
+        fake_compose_public_profile_answer_agentic,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.polish_langgraph_with_provider",
+        fake_polish,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_suggested_replies",
+        lambda **_kwargs: [],
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_runtime_evidence_pack",
+        lambda **_kwargs: MessageEvidencePack(strategy="semantic_ingress", summary="ok"),
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._persist_operational_trace",
+        fake_persist_trace,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._persist_conversation_turn",
+        fake_persist_turn,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_runtime_risk_flags",
+        lambda **_kwargs: [],
+    )
+
+    preview = SimpleNamespace(
+        mode=OrchestrationMode.structured_tool,
+        classification=IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.97,
+            reason="langgraph_turn_frame:auth_guidance",
+        ),
+        selected_tools=["get_public_school_profile"],
+        graph_path=["langgraph", "turn_frame:auth_guidance"],
+    )
+    state = {
+        "request": SimpleNamespace(message="Nao estou autenticado e quero meu boletim.", channel=SimpleNamespace(value="web")),
+        "settings": SimpleNamespace(),
+        "preview": preview,
+        "actor": None,
+        "conversation_context": {"recent_messages": []},
+        "school_profile": {"school_name": "Colegio Horizonte"},
+        "effective_conversation_id": "conv-auth-guidance",
+        "engine_name": "langgraph",
+        "engine_mode": "dedicated",
+        "semantic_ingress_plan": None,
+        "turn_frame_public_plan": SimpleNamespace(conversation_act="auth_guidance"),
+        "turn_frame": SimpleNamespace(conversation_act="public_answer"),
+        "langgraph_trace_metadata": {},
+    }
+
+    result = asyncio.run(_semantic_ingress(state))
+    response = result["response"]
+
+    lowered = response.message_text.lower()
+    assert "autenticado" in lowered
+    assert "/start link_<codigo>" in response.message_text
+    assert response.llm_stages == ["turn_frame_classifier"]
+
+
 def test_langgraph_semantic_ingress_supports_turn_frame_scope_boundary(monkeypatch) -> None:
     async def fake_persist_trace(**_kwargs):
         return None
@@ -286,8 +370,15 @@ def test_langgraph_semantic_ingress_supports_turn_frame_scope_boundary(monkeypat
         lambda **_kwargs: [],
     )
     monkeypatch.setattr(
-        "ai_orchestrator.langgraph_message_workflow.rt._compose_scope_boundary_answer",
+        "ai_orchestrator.langgraph_message_workflow.rt._compose_external_public_facility_boundary_answer",
         lambda *_args, **_kwargs: "Boundary seguro.",
+    )
+    async def fake_polish(**_kwargs):
+        return None
+
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.polish_langgraph_with_provider",
+        fake_polish,
     )
 
     preview = SimpleNamespace(
@@ -321,7 +412,7 @@ def test_langgraph_semantic_ingress_supports_turn_frame_scope_boundary(monkeypat
     response = result["response"]
 
     assert response.message_text == "Boundary seguro."
-    assert response.reason == "langgraph_turn_frame:scope_boundary"
+    assert response.reason == "langgraph_turn_frame:external_public_facility_boundary"
     assert response.llm_stages == ["turn_frame_classifier"]
 
 
@@ -335,8 +426,15 @@ def test_langgraph_semantic_ingress_blocks_external_city_library_query_even_with
         return None
 
     monkeypatch.setattr(
-        "ai_orchestrator.langgraph_message_workflow.rt._compose_scope_boundary_answer",
+        "ai_orchestrator.langgraph_message_workflow.rt._compose_external_public_facility_boundary_answer",
         lambda *_args, **_kwargs: "Boundary seguro.",
+    )
+    async def fake_polish(**_kwargs):
+        return None
+
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.polish_langgraph_with_provider",
+        fake_polish,
     )
     monkeypatch.setattr(
         "ai_orchestrator.langgraph_message_workflow.rt._build_suggested_replies",
@@ -396,8 +494,86 @@ def test_langgraph_semantic_ingress_blocks_external_city_library_query_even_with
     response = result["response"]
 
     assert response.message_text == "Boundary seguro."
-    assert response.reason == "langgraph_turn_frame:scope_boundary"
+    assert response.reason == "langgraph_turn_frame:external_public_facility_boundary"
     assert response.llm_stages == ["turn_frame_classifier"]
+
+
+def test_langgraph_semantic_ingress_blocks_negated_school_library_query_even_with_public_plan(
+    monkeypatch,
+) -> None:
+    async def fake_persist_trace(**_kwargs):
+        return None
+
+    async def fake_persist_turn(**_kwargs):
+        return None
+
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._compose_external_public_facility_boundary_answer",
+        lambda *_args, **_kwargs: "Boundary seguro.",
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.polish_langgraph_with_provider",
+        lambda **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_suggested_replies",
+        lambda **_kwargs: [],
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_runtime_evidence_pack",
+        lambda **_kwargs: MessageEvidencePack(strategy="semantic_ingress", summary="ok"),
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._persist_operational_trace",
+        fake_persist_trace,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._persist_conversation_turn",
+        fake_persist_turn,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_runtime_risk_flags",
+        lambda **_kwargs: [],
+    )
+
+    preview = SimpleNamespace(
+        mode=OrchestrationMode.structured_tool,
+        classification=IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.92,
+            reason="langgraph_turn_frame:public_answer",
+        ),
+        reason="langgraph_turn_frame:public_answer",
+        retrieval_backend=RetrievalBackend.none,
+        selected_tools=["get_public_school_profile"],
+        graph_path=["langgraph", "turn_frame:public.facilities.library.hours"],
+        diagnostics={},
+    )
+    state = {
+        "request": SimpleNamespace(
+            message="Nao e a biblioteca da escola: me diga o horario da biblioteca publica municipal.",
+            channel=SimpleNamespace(value="web"),
+        ),
+        "settings": SimpleNamespace(),
+        "preview": preview,
+        "actor": None,
+        "conversation_context": {"recent_messages": []},
+        "school_profile": {"school_name": "Colegio Horizonte"},
+        "effective_conversation_id": "conv-turn-frame-negated-external-library",
+        "engine_name": "langgraph",
+        "engine_mode": "dedicated",
+        "semantic_ingress_plan": None,
+        "turn_frame_public_plan": SimpleNamespace(capability="public.facilities.library.hours"),
+        "turn_frame": SimpleNamespace(conversation_act="public_answer"),
+        "langgraph_trace_metadata": {},
+    }
+
+    result = asyncio.run(_semantic_ingress(state))
+    response = result["response"]
+
+    assert response.message_text == "Boundary seguro."
+    assert response.reason == "langgraph_turn_frame:external_public_facility_boundary"
 
 
 def test_langgraph_bootstrap_prioritizes_terminal_semantic_ingress_before_protected_rescue(monkeypatch) -> None:
@@ -474,3 +650,275 @@ def test_langgraph_bootstrap_prioritizes_terminal_semantic_ingress_before_protec
 
     assert result["route"] == "semantic_ingress"
     assert result["semantic_ingress_plan"].conversation_act == "greeting"
+
+
+def test_langgraph_bootstrap_short_circuits_deterministic_public_guardrail(monkeypatch) -> None:
+    async def _fetch_actor_context(**_kwargs):
+        return None
+
+    async def _fetch_conversation_context(**_kwargs):
+        return {"recent_messages": []}
+
+    async def _fetch_public_school_profile(**_kwargs):
+        return {"school_name": "Colegio Horizonte"}
+
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._fetch_actor_context", _fetch_actor_context)
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._merge_user_context", lambda actor, user: user)
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._effective_conversation_id", lambda request: "conv-guardrail")
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._fetch_conversation_context", _fetch_conversation_context)
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._conversation_context_payload", lambda bundle: bundle)
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._build_analysis_message", lambda message, bundle: message)
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._fetch_public_school_profile", _fetch_public_school_profile)
+    monkeypatch.setattr(
+        "ai_orchestrator.public_orchestration_runtime._resolve_deterministic_public_guardrail_answer",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            answer_text="Nao tenho base confiavel aqui no EduAssist do Colegio Horizonte para responder esse tema fora do escopo da escola.",
+            reason="deterministic_scope_boundary",
+            selected_tools=("get_public_school_profile",),
+        ),
+    )
+    def _build_suggested_replies(*, request, preview, actor, school_profile, conversation_context):
+        assert request.message == "Me recomenda um filme sem relacao com escola."
+        assert actor is None
+        assert school_profile == {"school_name": "Colegio Horizonte"}
+        assert conversation_context == {"recent_messages": []}
+        return []
+
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_suggested_replies",
+        _build_suggested_replies,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_runtime_evidence_pack",
+        lambda **_kwargs: MessageEvidencePack(strategy="deterministic_public_guardrail", summary="ok"),
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_runtime_risk_flags",
+        lambda **_kwargs: [],
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.get_langgraph_artifacts",
+        lambda _settings: (_ for _ in ()).throw(AssertionError("langgraph graph should not be invoked")),
+    )
+
+    state = {
+        "request": SimpleNamespace(
+            message="Me recomenda um filme sem relacao com escola.",
+            telegram_chat_id=1649845499,
+            channel=SimpleNamespace(value="telegram"),
+            user=SimpleNamespace(authenticated=False),
+            model_copy=lambda update=None: SimpleNamespace(
+                message=(update or {}).get("message", "Me recomenda um filme sem relacao com escola."),
+                telegram_chat_id=1649845499,
+                channel=SimpleNamespace(value="telegram"),
+                user=SimpleNamespace(authenticated=False),
+            ),
+        ),
+        "settings": SimpleNamespace(),
+    }
+
+    result = asyncio.run(_bootstrap_context(state))
+    response = result["response"]
+
+    assert result["route"] == "delegate_runtime"
+    assert response.reason == "deterministic_scope_boundary"
+    assert response.used_llm is False
+    assert response.message_text.startswith("Nao tenho base confiavel")
+
+
+def test_langgraph_bootstrap_short_circuits_explicit_open_world_boundary_even_without_helper(monkeypatch) -> None:
+    async def _fetch_actor_context(**_kwargs):
+        return None
+
+    async def _fetch_conversation_context(**_kwargs):
+        return {"recent_messages": []}
+
+    async def _fetch_public_school_profile(**_kwargs):
+        return {"school_name": "Colegio Horizonte"}
+
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._fetch_actor_context", _fetch_actor_context)
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._merge_user_context", lambda actor, user: user)
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._effective_conversation_id", lambda request: "conv-open-world")
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._fetch_conversation_context", _fetch_conversation_context)
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._conversation_context_payload", lambda bundle: bundle)
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._build_analysis_message", lambda message, bundle: message)
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._fetch_public_school_profile", _fetch_public_school_profile)
+    monkeypatch.setattr(
+        "ai_orchestrator.public_orchestration_runtime._resolve_deterministic_public_guardrail_answer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_suggested_replies",
+        lambda **_kwargs: [],
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_runtime_evidence_pack",
+        lambda **_kwargs: MessageEvidencePack(strategy="deterministic_public_guardrail", summary="ok"),
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_runtime_risk_flags",
+        lambda **_kwargs: [],
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.get_langgraph_artifacts",
+        lambda _settings: (_ for _ in ()).throw(AssertionError("langgraph graph should not be invoked")),
+    )
+
+    state = {
+        "request": SimpleNamespace(
+            message="Quero uma recomendacao de filme, sem relacao com escola.",
+            telegram_chat_id=1649845499,
+            channel=SimpleNamespace(value="telegram"),
+            user=SimpleNamespace(authenticated=False),
+            model_copy=lambda update=None: SimpleNamespace(
+                message=(update or {}).get("message", "Quero uma recomendacao de filme, sem relacao com escola."),
+                telegram_chat_id=1649845499,
+                channel=SimpleNamespace(value="telegram"),
+                user=SimpleNamespace(authenticated=False),
+            ),
+        ),
+        "settings": SimpleNamespace(),
+    }
+
+    result = asyncio.run(_bootstrap_context(state))
+    response = result["response"]
+
+    assert result["route"] == "delegate_runtime"
+    assert response.reason == "deterministic_scope_boundary"
+    assert response.used_llm is False
+    assert "fora do escopo da escola" in response.message_text
+
+
+def test_langgraph_bootstrap_skips_generic_public_guardrail_for_authenticated_protected_hint(monkeypatch) -> None:
+    async def _fetch_actor_context(**_kwargs):
+        return {
+            "role_code": "guardian",
+            "linked_students": [{"student_id": "stu-lucas", "full_name": "Lucas Oliveira"}],
+            "linked_student_ids": ["stu-lucas"],
+        }
+
+    async def _fetch_conversation_context(**_kwargs):
+        return {"recent_messages": []}
+
+    async def _fetch_public_school_profile(**_kwargs):
+        return {"school_name": "Colegio Horizonte"}
+
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._fetch_actor_context", _fetch_actor_context)
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._build_effective_actor_context",
+        lambda actor, user: actor,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._merge_user_context",
+        lambda actor, user: UserContext(
+            authenticated=True,
+            scopes=["academic:read"],
+            role=UserRole.guardian,
+            linked_student_ids=["stu-lucas"],
+        ),
+    )
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._effective_conversation_id", lambda request: "conv-protected")
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._fetch_conversation_context", _fetch_conversation_context)
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._conversation_context_payload", lambda bundle: bundle)
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._build_analysis_message", lambda message, bundle: message)
+    monkeypatch.setattr("ai_orchestrator.langgraph_message_workflow.rt._fetch_public_school_profile", _fetch_public_school_profile)
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._protected_domain_hint_for_message",
+        lambda **_kwargs: QueryDomain.academic,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.public_orchestration_runtime._resolve_deterministic_public_guardrail_answer",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            answer_text="Boundary publico indevido",
+            reason="deterministic_scope_boundary",
+            selected_tools=("get_public_school_profile",),
+        ),
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.get_langgraph_artifacts",
+        lambda _settings: SimpleNamespace(graph="graph", checkpointer_enabled=False, checkpointer_backend=None),
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.resolve_langgraph_thread_id",
+        lambda **_kwargs: "thread-protected",
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.invoke_orchestration_graph",
+        lambda **_kwargs: {"preview": "state"},
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt.to_preview",
+        lambda _state: OrchestrationPreview(
+            mode=OrchestrationMode.structured_tool,
+            classification=IntentClassification(
+                domain=QueryDomain.academic,
+                access_tier=AccessTier.authenticated,
+                confidence=0.91,
+                reason="protected_hint",
+            ),
+            selected_tools=["get_student_academic_summary"],
+            graph_path=["classify_request", "protected_slice"],
+            reason="protected_hint",
+            needs_authentication=True,
+            output_contract="",
+        ),
+    )
+    async def _maybe_resolve_semantic_ingress_plan(**_kwargs):
+        return None
+
+    async def _maybe_resolve_turn_frame(**_kwargs):
+        return None
+
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.maybe_resolve_semantic_ingress_plan",
+        _maybe_resolve_semantic_ingress_plan,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.maybe_resolve_turn_frame",
+        _maybe_resolve_turn_frame,
+    )
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt._should_use_protected_records_fast_path",
+        lambda **_kwargs: False,
+    )
+
+    state = {
+        "request": SimpleNamespace(
+            message="Entre meus filhos, quem esta mais vulneravel academicamente hoje? Me de um panorama curto.",
+            conversation_id=None,
+            telegram_chat_id=1649845499,
+            channel=SimpleNamespace(value="telegram"),
+            user=SimpleNamespace(authenticated=True, linked_student_ids=["stu-lucas"], scopes=["academic:read"]),
+            allow_graph_rag=True,
+            allow_handoff=True,
+            model_copy=lambda update=None: SimpleNamespace(
+                message=(update or {}).get("message", "Entre meus filhos, quem esta mais vulneravel academicamente hoje? Me de um panorama curto."),
+                conversation_id=None,
+                telegram_chat_id=1649845499,
+                channel=SimpleNamespace(value="telegram"),
+                user=SimpleNamespace(authenticated=True, linked_student_ids=["stu-lucas"], scopes=["academic:read"]),
+                allow_graph_rag=True,
+                allow_handoff=True,
+            ),
+        ),
+        "settings": SimpleNamespace(),
+        "engine_name": "langgraph",
+        "engine_mode": "dedicated",
+    }
+
+    result = asyncio.run(_bootstrap_context(state))
+
+    assert result.get("response") is None
+    assert result["route"] == "delegate_runtime"
+
+
+def test_langgraph_delegate_runtime_preserves_prebuilt_response(monkeypatch) -> None:
+    sentinel = object()
+    monkeypatch.setattr(
+        "ai_orchestrator.langgraph_message_workflow.rt.generate_message_response",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("delegate runtime should not recompute a prebuilt response")),
+    )
+
+    result = asyncio.run(_delegate_runtime({"response": sentinel}))
+
+    assert result["response"] is sentinel

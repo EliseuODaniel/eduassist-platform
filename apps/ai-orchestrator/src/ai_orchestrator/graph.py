@@ -1070,6 +1070,8 @@ def _can_read_restricted_documents(request: OrchestrationRequest) -> bool:
 
 
 def _wants_human_support(message: str) -> bool:
+    if _looks_like_public_governance_explanatory_query(message):
+        return False
     lowered = _normalize_text(message)
     return any(term in lowered for term in SUPPORT_TERMS) or any(
         phrase in lowered for phrase in SUPPORT_PHRASES
@@ -1149,11 +1151,24 @@ def _is_workflow_status_request(message: str) -> bool:
 
 
 def _is_structured_support_workflow_request(message: str) -> bool:
+    if _looks_like_public_governance_explanatory_query(message):
+        return False
     return (
         _is_visit_booking_request(message)
         or _is_visit_booking_update_request(message)
         or _is_institutional_request_update(message)
         or _is_institutional_request(message)
+        or _is_workflow_status_request(message)
+    )
+
+
+def _looks_like_public_governance_explanatory_query(message: str) -> bool:
+    canonical_lane = match_public_canonical_lane(message)
+    if canonical_lane != 'public_bundle.governance_protocol':
+        return False
+    return not (
+        _is_institutional_request(message)
+        or _is_institutional_request_update(message)
         or _is_workflow_status_request(message)
     )
 
@@ -1857,6 +1872,8 @@ def _is_authenticated_admin_query(message: str, *, authenticated: bool) -> bool:
         return False
     if looks_like_high_confidence_public_school_faq(message):
         return False
+    if _is_authenticated_student_assessment_query(message, authenticated=authenticated):
+        return False
     lowered = _normalize_text(message)
     if _is_public_contact_phrase_query(lowered) or _is_public_contact_channel_query(lowered):
         return False
@@ -1909,7 +1926,21 @@ def _is_authenticated_access_scope_query(message: str, *, authenticated: bool) -
     if not authenticated:
         return False
     lowered = _normalize_text(message)
-    return any(_message_matches_term(lowered, term) for term in ACCESS_SCOPE_TERMS)
+    if any(_message_matches_term(lowered, term) for term in ACCESS_SCOPE_TERMS):
+        return True
+    has_scope_anchor = any(
+        _message_matches_term(lowered, term)
+        for term in {'escopo', 'acesso', 'dados', 'consigo acessar', 'posso acessar', 'meu acesso'}
+    )
+    has_account_reference = any(
+        _message_matches_term(lowered, term)
+        for term in {'meus filhos', 'meus alunos', 'meus dois alunos', 'conta', 'por aqui'}
+    )
+    has_scope_dimension = any(
+        _message_matches_term(lowered, term)
+        for term in {'academico', 'acadêmico', 'financeiro', 'os dois'}
+    )
+    return has_scope_anchor and has_account_reference and has_scope_dimension
 
 
 def _is_authenticated_linked_students_query(message: str, *, authenticated: bool) -> bool:
@@ -1922,11 +1953,51 @@ def _is_authenticated_linked_students_query(message: str, *, authenticated: bool
 def _is_authenticated_student_assessment_query(message: str, *, authenticated: bool) -> bool:
     if not authenticated:
         return False
+    from .intent_analysis_runtime import (
+        _detect_academic_attribute_request as _shared_detect_academic_attribute_request,
+        _detect_academic_focus_kind as _shared_detect_academic_focus_kind,
+        _looks_like_family_academic_aggregate_query as _shared_family_academic_aggregate_query,
+        _looks_like_academic_progression_query as _shared_looks_like_academic_progression_query,
+    )
+
     lowered = _normalize_text(message)
+    if any(
+        _message_matches_term(lowered, term)
+        for term in {
+            'mantendo o contexto',
+            'continuando a analise',
+            'continuando a análise',
+            'corta para',
+            'recorte so',
+            'recorte só',
+        }
+    ) and any(
+        _message_matches_term(lowered, term)
+        for term in {
+            'frequencia',
+            'frequência',
+            'faltas',
+            'atrasos',
+            'presenca',
+            'presença',
+            'alerta',
+            'risco',
+            'mais concreto',
+            'principal',
+        }
+    ):
+        return True
     if _is_cross_document_public_query(lowered) or _is_known_public_doc_bundle_query(lowered):
         return False
     if _message_matches_term(lowered, 'calendario'):
         return False
+    if (
+        _shared_family_academic_aggregate_query(message)
+        or _shared_looks_like_academic_progression_query(message)
+        or _shared_detect_academic_focus_kind(message) is not None
+        or _shared_detect_academic_attribute_request(message) is not None
+    ):
+        return True
     if any(
         _message_matches_term(lowered, term)
         for term in {

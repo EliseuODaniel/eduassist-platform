@@ -11,6 +11,10 @@ is split into focused modules.
 """
 
 from . import runtime_core as _runtime_core
+from .protected_records_runtime import _should_use_protected_records_fast_path
+from .retrieval import retrieve_relevant_restricted_hits_with_fallback
+from .retrieval_capability_policy import resolve_retrieval_execution_policy
+from .turn_frame_policy import preview_targets_restricted_document_surface
 
 
 def _export_runtime_core_namespace() -> None:
@@ -37,10 +41,61 @@ async def _compose_structured_tool_answer(
     prefer_fast_public_path: bool = False,
 ) -> str:
     message = request.message
+    normalized_message = _normalize_text(message)
     if request.telegram_chat_id is not None and actor is None:
         actor = await _fetch_actor_context(
             settings=settings, telegram_chat_id=request.telegram_chat_id
         )
+    actor = _build_effective_actor_context(actor, request.user)
+    effective_user = _merge_user_context(actor, request.user)
+    if (
+        looks_like_restricted_document_query(message)
+        or preview_targets_restricted_document_surface(preview)
+    ) and can_read_restricted_documents(effective_user):
+        restricted_policy = resolve_retrieval_execution_policy(
+            query=analysis_message,
+            visibility='restricted',
+            baseline_top_k=5,
+            preview=preview,
+            public_plan=resolved_public_plan,
+        )
+        retrieval_service = get_retrieval_service(
+            database_url=settings.database_url,
+            qdrant_url=settings.qdrant_url,
+            collection_name=settings.qdrant_documents_collection,
+            embedding_model=settings.document_embedding_model,
+            enable_query_variants=settings.retrieval_enable_query_variants,
+            enable_late_interaction_rerank=settings.retrieval_enable_late_interaction_rerank,
+            late_interaction_model=settings.retrieval_late_interaction_model,
+            candidate_pool_size=settings.retrieval_candidate_pool_size,
+            cheap_candidate_pool_size=settings.retrieval_cheap_candidate_pool_size,
+            deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
+            rerank_fused_weight=settings.retrieval_rerank_fused_weight,
+            rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
+        )
+        search = retrieval_service.hybrid_search(
+            query=analysis_message,
+            top_k=restricted_policy.top_k,
+            visibility='restricted',
+            category=restricted_policy.category,
+            profile=restricted_policy.profile,
+        )
+        relevant_hits = retrieve_relevant_restricted_hits_with_fallback(
+            retrieval_service,
+            query=analysis_message,
+            hits=list(search.hits),
+            top_k=4,
+            visibility='restricted',
+            category=restricted_policy.category,
+        )
+        if relevant_hits:
+            preview.reason = 'structured_tool_restricted_document_search'
+            return compose_restricted_document_grounded_answer_for_query(
+                request.message,
+                relevant_hits,
+            ) or ''
+        preview.reason = 'structured_tool_restricted_document_no_match'
+        return compose_restricted_document_no_match_answer(request.message)
     if _is_teacher_scope_guidance_query(
         message,
         actor=actor,
@@ -74,7 +129,7 @@ async def _compose_structured_tool_answer(
             actor=actor,
             conversation_context=conversation_context,
         )
-    ):
+        ):
         return _compose_account_context_answer(
             actor,
             request_message=message,
@@ -83,10 +138,154 @@ async def _compose_structured_tool_answer(
     if (
         actor is not None
         and request.telegram_chat_id is not None
+        and request.user.authenticated
+    ):
+        from .protected_summary_runtime import (
+            _looks_like_academic_progression_query as _looks_like_academic_progression_query_local,
+            _looks_like_family_academic_student_focus_followup as _looks_like_family_academic_student_focus_followup_local,
+            _looks_like_family_attendance_student_focus_followup as _looks_like_family_attendance_student_focus_followup_local,
+        )
+
+        explicit_contextual_attendance_cut = any(
+            _message_matches_term(normalized_message, term)
+            for term in {
+                'mantendo o contexto',
+                'continuando a analise',
+                'continuando a análise',
+                'corta para',
+                'recorte so',
+                'recorte só',
+                'resuma',
+                'resume',
+            }
+        ) and any(
+            _message_matches_term(normalized_message, term)
+            for term in {
+                'frequencia',
+                'frequência',
+                'faltas',
+                'presenca',
+                'presença',
+                'atrasos',
+                'risco',
+                'mais concreto',
+                'principal alerta',
+            }
+        )
+        strong_academic_focus = (
+            preview.classification.domain is QueryDomain.academic
+            or _looks_like_academic_progression_query_local(
+                message,
+                conversation_context=conversation_context,
+            )
+            or _looks_like_family_academic_student_focus_followup_local(
+                actor,
+                message,
+                conversation_context=conversation_context,
+            )
+            or _looks_like_family_attendance_student_focus_followup_local(
+                actor,
+                message,
+                conversation_context=conversation_context,
+            )
+            or explicit_contextual_attendance_cut
+        )
+        if strong_academic_focus and not _mentions_personal_admin_status(message):
+            preview.mode = OrchestrationMode.structured_tool
+            preview.classification = IntentClassification(
+                domain=QueryDomain.academic,
+                access_tier=AccessTier.authenticated,
+                confidence=0.98,
+                reason='consulta academica protegida priorizada antes de qualquer surface administrativa ou publica',
+            )
+            preview.selected_tools = [
+                'get_student_academic_summary',
+                'get_student_attendance',
+                'get_student_grades',
+                'get_student_upcoming_assessments',
+                'get_student_attendance_timeline',
+            ]
+            preview.needs_authentication = True
+            return await _execute_protected_records_specialist(
+                settings=settings,
+                request=request,
+                preview=preview,
+                actor=actor,
+                conversation_context=conversation_context,
+            )
+    strong_academic_focus = bool(
+        request.user.authenticated
         and (
-            _looks_like_family_finance_aggregate_query(message)
-            or _looks_like_family_attendance_aggregate_query(message)
-            or _looks_like_family_academic_aggregate_query(message)
+            any(
+                _message_matches_term(normalized_message, term)
+                for term in {
+                    'qual materia esta melhor',
+                    'qual matéria está melhor',
+                    'qual materia esta pior',
+                    'qual matéria está pior',
+                    'mais vulneravel',
+                    'mais vulnerável',
+                    'mantendo o contexto',
+                    'corta para',
+                    'recorte so',
+                    'recorte só',
+                    'resuma',
+                    'resume',
+                }
+            )
+            or _looks_like_academic_progression_query(message, conversation_context=conversation_context)
+        )
+    )
+    protected_contextual_skip = bool(
+        request.user.authenticated
+        and (
+            strong_academic_focus
+            or _should_skip_public_contextual_answer(
+                request.message,
+                actor=actor,
+                conversation_context=conversation_context,
+            )
+        )
+    )
+    if (
+        actor is not None
+        and request.telegram_chat_id is not None
+        and request.user.authenticated
+        and protected_contextual_skip
+        and preview.classification.domain in {QueryDomain.institution, QueryDomain.academic}
+        and not _mentions_personal_admin_status(message)
+    ):
+        preview.mode = OrchestrationMode.structured_tool
+        preview.classification = IntentClassification(
+            domain=QueryDomain.academic,
+            access_tier=AccessTier.authenticated,
+            confidence=max(float(getattr(preview.classification, 'confidence', 0.0) or 0.0), 0.97),
+            reason='follow-up protegido com memoria contextual nao deve cair em lane publica ou administrativa',
+        )
+        preview.selected_tools = [
+            'get_student_academic_summary',
+            'get_student_attendance',
+            'get_student_grades',
+            'get_student_upcoming_assessments',
+            'get_student_attendance_timeline',
+        ]
+        preview.needs_authentication = True
+        return await _execute_protected_records_specialist(
+            settings=settings,
+            request=request,
+            preview=preview,
+            actor=actor,
+            conversation_context=conversation_context,
+        )
+    if (
+        actor is not None
+        and request.telegram_chat_id is not None
+        and request.user.authenticated
+        and _should_use_protected_records_fast_path(
+            request_message=message,
+            actor=actor,
+            conversation_context=conversation_context,
+            authenticated=bool(request.user.authenticated),
         )
     ):
         preview.mode = OrchestrationMode.structured_tool
@@ -167,7 +366,7 @@ async def _compose_structured_tool_answer(
             request.message,
             authenticated=bool(request.user.authenticated),
         )
-        if direct_canonical_lane and not explicit_admin_query:
+        if direct_canonical_lane and not explicit_admin_query and not protected_contextual_skip:
             direct_canonical_answer = (
                 compose_public_conduct_policy_contextual_answer(
                     request.message,
@@ -202,6 +401,7 @@ async def _compose_structured_tool_answer(
         use_admin_path = (
             request.telegram_chat_id is not None
             and preview.classification.access_tier is not AccessTier.public
+            and not strong_academic_focus
             and (
                 explicit_admin_query
                 or _mentions_personal_admin_status(request.message)

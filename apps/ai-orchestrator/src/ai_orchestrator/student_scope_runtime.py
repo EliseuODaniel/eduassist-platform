@@ -18,6 +18,7 @@ from .intent_analysis_runtime import (
     _detect_admin_attribute_request,
     _detect_finance_attribute_request,
     _effective_finance_status_filter,
+    _is_admin_finance_combined_query,
     _is_access_scope_query,
     _is_follow_up_query,
     _looks_like_family_academic_aggregate_query,
@@ -405,6 +406,12 @@ def _compose_account_context_answer(
     request_message: str,
     conversation_context: dict[str, Any] | None = None,
 ) -> str:
+    if _is_access_scope_query(request_message) or _is_access_scope_repair_query(
+        request_message,
+        actor,
+        conversation_context,
+    ):
+        return _compose_authenticated_access_scope_answer(actor)
     if _is_children_overview_query(request_message, actor):
         overview = _compose_linked_students_overview_answer(actor)
         if overview:
@@ -424,12 +431,6 @@ def _compose_account_context_answer(
         followup_scope = _compose_authenticated_access_scope_followup_answer(actor)
         if followup_scope:
             return followup_scope
-    if _is_access_scope_query(request_message) or _is_access_scope_repair_query(
-        request_message,
-        actor,
-        conversation_context,
-    ):
-        return _compose_authenticated_access_scope_answer(actor)
     return _compose_actor_identity_answer(actor)
 
 
@@ -630,11 +631,59 @@ def _is_teacher_scope_guidance_query(
         }
     ):
         return True
+    if (
+        'turmas' in normalized
+        and 'disciplin' in normalized
+        and any(
+            _message_matches_term(normalized, term)
+            for term in {
+                'atendo',
+                'leciono',
+                'neste ano',
+                'deste ano',
+                'alocacao',
+                'alocação',
+                'quadro claro',
+            }
+        )
+    ):
+        return True
+    has_segment_focus = any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'ensino medio',
+            'ensino médio',
+            'medio',
+            'médio',
+            'fundamental',
+        }
+    )
+    has_followup_shaping = any(
+        _message_matches_term(normalized, term)
+        for term in {
+            'agora recorte',
+            'recorte so',
+            'recorte só',
+            'corta so',
+            'corta só',
+            'apenas a parte',
+            'so a parte',
+            'só a parte',
+            'o que eu tenho',
+            'o que tenho',
+        }
+    )
+    if teacher_session and has_segment_focus and has_followup_shaping:
+        return True
     if not _recent_teacher_scope_context(conversation_context):
         return False
     return any(
         _message_matches_term(normalized, term)
         for term in {
+            'mantendo o contexto anterior',
+            'sem repetir tudo',
+            'apenas a parte',
+            'isole apenas',
             'e so do ensino medio',
             'e só do ensino médio',
             'so do ensino medio',
@@ -1150,6 +1199,12 @@ def _looks_like_non_student_followup_candidate(candidate: str) -> bool:
         'taxa',
         'desconto',
         'descontos',
+        'visao combinada',
+        'visão combinada',
+        'panorama combinado',
+        'resumo combinado',
+        'quadro unico',
+        'quadro único',
     }
     if normalized in {_normalize_text(term) for term in disallowed}:
         return True
@@ -1192,6 +1247,15 @@ def _explicit_unmatched_student_reference(
         or _looks_like_family_academic_aggregate_query(message)
     ):
         return None
+    candidates = _extract_explicit_student_reference_candidates(message)
+    if _is_admin_finance_combined_query(message):
+        viable_candidates = [
+            candidate
+            for candidate in candidates
+            if candidate and not _looks_like_non_student_followup_candidate(candidate)
+        ]
+        if not viable_candidates:
+            return None
     normalized = _normalize_text(message)
     if any(
         _message_matches_term(normalized, term)
@@ -1206,7 +1270,6 @@ def _explicit_unmatched_student_reference(
         for term in SUPPORT_FINANCE_TERMS | {'negociar', 'mensalidade parcialmente paga'}
     ):
         return None
-    candidates = _extract_explicit_student_reference_candidates(message)
     if not candidates and isinstance(conversation_context, dict):
         recent_focus = _recent_trace_focus(conversation_context) or {}
         recent_active_task = str(recent_focus.get('active_task', '') or '').strip()
@@ -1388,8 +1451,14 @@ def _focus_marked_student_from_message(
         'fique só com ',
         'recorte so ',
         'recorte só ',
+        'recorte para ',
+        'recorte para a ',
+        'recorte para o ',
         'isole a ',
         'isole o ',
+        'corta para ',
+        'corta para a ',
+        'corta para o ',
         'corta so para ',
         'corta só para ',
         'corta so para a ',
@@ -1401,6 +1470,20 @@ def _focus_marked_student_from_message(
         'agora quero so ',
         'agora quero só ',
     )
+    negative_markers = (
+        'tira ',
+        'tirando ',
+        'sem ',
+        'menos ',
+        'exceto ',
+        'fora ',
+        'ignora ',
+        'ignore ',
+        'descarta ',
+        'remove ',
+    )
+    latest_positive_match: tuple[int, dict[str, Any]] | None = None
+    negative_candidates: set[str] = set()
     for student in students:
         full_name = str(student.get('full_name') or '').strip()
         if not full_name:
@@ -1418,6 +1501,39 @@ def _focus_marked_student_from_message(
                 rf'\b(?:so|só|apenas|somente)\s+(?:a|o)\s+{re.escape(candidate)}\b', normalized
             ):
                 return student
+            positive_context_match = re.search(
+                rf'\b(?:mostrar|mostra|mostre|foque|foca|considere|quero|quero ver|analise|analisa)'
+                rf'[\w\s,]{0,48}\b(?:na|no|da|do|a|o)?\s*{re.escape(candidate)}\b',
+                normalized,
+            )
+            if positive_context_match is not None:
+                if latest_positive_match is None or positive_context_match.start() > latest_positive_match[0]:
+                    latest_positive_match = (positive_context_match.start(), student)
+            for marker in negative_markers:
+                if re.search(
+                    rf'\b{re.escape(marker.strip())}\s+(?:a|o)?\s*{re.escape(candidate)}\b',
+                    normalized,
+                ):
+                    negative_candidates.add(str(student.get('student_id') or ''))
+    if latest_positive_match is not None:
+        return latest_positive_match[1]
+    if negative_candidates:
+        latest_remaining_match: tuple[int, dict[str, Any]] | None = None
+        for student in students:
+            student_id = str(student.get('student_id') or '')
+            if student_id in negative_candidates:
+                continue
+            full_name = str(student.get('full_name') or '').strip()
+            normalized_full_name = _normalize_text(full_name)
+            first_name = normalized_full_name.split(' ')[0] if normalized_full_name else ''
+            for candidate in tuple(value for value in {normalized_full_name, first_name} if value):
+                position = normalized.rfind(candidate)
+                if position < 0:
+                    continue
+                if latest_remaining_match is None or position > latest_remaining_match[0]:
+                    latest_remaining_match = (position, student)
+        if latest_remaining_match is not None:
+            return latest_remaining_match[1]
     return None
 
 
@@ -1427,7 +1543,7 @@ def _recent_multi_student_summary_context(
     conversation_context: dict[str, Any] | None,
 ) -> bool:
     students = _linked_students(actor)
-    if len(students) <= 1 or not isinstance(conversation_context, dict):
+    if not isinstance(conversation_context, dict):
         return False
     recent_assistant = next(
         (
@@ -1445,12 +1561,25 @@ def _recent_multi_student_summary_context(
         or 'mais de um aluno vinculado' in normalized
     ):
         return True
-    mentioned = 0
-    for student in students:
-        full_name = _normalize_text(str(student.get('full_name', '') or ''))
-        if full_name and full_name in normalized:
-            mentioned += 1
-    return mentioned >= 2
+    if len(students) > 1:
+        mentioned = 0
+        for student in students:
+            full_name = _normalize_text(str(student.get('full_name', '') or ''))
+            if full_name and full_name in normalized:
+                mentioned += 1
+        if mentioned >= 2:
+            return True
+    bullet_lines = [
+        line.strip()
+        for line in recent_assistant.splitlines()
+        if str(line or '').strip().startswith('- ')
+    ]
+    if (
+        'panorama de frequencia das contas vinculadas' in normalized
+        and len(bullet_lines) >= 2
+    ):
+        return True
+    return False
 
 
 def _select_linked_student(

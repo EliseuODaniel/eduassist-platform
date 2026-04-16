@@ -320,6 +320,22 @@ _PUBLIC_INFO_INTENT_TERMS = {
     'conversar com',
 }
 
+_EXPLICIT_NON_SCHOOL_SCOPE_MARKERS = {
+    'sem relacao com escola',
+    'sem relação com escola',
+    'sem relacao com a escola',
+    'sem relação com a escola',
+    'sem relacao com o colegio',
+    'sem relação com o colégio',
+    'sem relacao com colegio',
+    'sem relação com colégio',
+    'fora do tema escolar',
+    'fora do escopo da escola',
+    'sem ligar para a escola',
+    'sem relação com atendimento escolar',
+    'sem relacao com atendimento escolar',
+}
+
 _PUBLIC_SCHEDULE_INTENT_TERMS = {
     'turno',
     'turnos',
@@ -669,6 +685,8 @@ def looks_like_high_confidence_public_school_faq(message: str | None) -> bool:
 def looks_like_school_scope_message(message: str | None) -> bool:
     normalized = normalize_ingress_text(message)
     if not normalized:
+        return False
+    if any(_contains_term(normalized, term) for term in _EXPLICIT_NON_SCHOOL_SCOPE_MARKERS):
         return False
     if looks_like_high_confidence_public_school_faq(message):
         return True

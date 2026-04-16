@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+from types import SimpleNamespace
 from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -16,7 +18,15 @@ from .langgraph_runtime import (
     invoke_orchestration_graph,
     resolve_langgraph_thread_id,
 )
-from .models import MessageResponse, OrchestrationMode, QueryDomain, RetrievalBackend, RetrievalProfile
+from .models import (
+    AccessTier,
+    IntentClassification,
+    MessageResponse,
+    OrchestrationMode,
+    QueryDomain,
+    RetrievalBackend,
+    RetrievalProfile,
+)
 from .public_known_unknowns import compose_public_known_unknown_answer, detect_public_known_unknown_key
 from .retrieval import (
     can_read_restricted_documents,
@@ -24,7 +34,7 @@ from .retrieval import (
     compose_restricted_document_no_match_answer,
     get_retrieval_service,
     looks_like_restricted_document_query,
-    select_relevant_restricted_hits,
+    retrieve_relevant_restricted_hits_with_fallback,
 )
 from .semantic_ingress_runtime import (
     apply_semantic_ingress_preview,
@@ -34,10 +44,17 @@ from .semantic_ingress_runtime import (
     is_terminal_semantic_ingress_plan,
     maybe_resolve_semantic_ingress_plan,
     maybe_resolve_turn_frame,
+    resolve_turn_frame_authenticated_flag,
 )
 from .retrieval_capability_policy import (
     build_retrieval_trace_metadata,
     resolve_retrieval_execution_policy,
+)
+from .turn_frame_policy import (
+    is_direct_protected_specialist_turn_frame,
+    is_external_public_facility_turn_frame,
+    is_restricted_document_turn_frame,
+    is_scope_boundary_turn_frame,
 )
 
 
@@ -71,6 +88,68 @@ def _deterministic_retrieval_fallback(*, citations: list[Any], context_pack: str
         if lines:
             return rt._normalize_response_wording('\n'.join(lines))
     return 'Nao encontrei evidencias publicas suficientes para responder com seguranca.'
+
+
+def _build_deterministic_public_guardrail_response(
+    *,
+    request: Any,
+    preview_reason: str,
+    answer_text: str,
+    selected_tools: tuple[str, ...] | list[str],
+    school_profile: dict[str, Any] | None,
+    actor: dict[str, Any] | None,
+    conversation_context: dict[str, Any] | None,
+) -> MessageResponse:
+    normalized_tools = list(dict.fromkeys(['get_public_school_profile', *list(selected_tools)]))
+    preview = SimpleNamespace(
+        mode=OrchestrationMode.structured_tool,
+        classification=IntentClassification(
+            domain=QueryDomain.institution,
+            access_tier=AccessTier.public,
+            confidence=0.99,
+            reason=preview_reason,
+        ),
+        selected_tools=normalized_tools,
+    )
+    suggested_replies = rt._build_suggested_replies(
+        request=request,
+        preview=preview,
+        actor=actor,
+        school_profile=school_profile,
+        conversation_context=conversation_context,
+    )
+    evidence_pack = rt._build_runtime_evidence_pack(
+        request_message=request.message,
+        message_text=answer_text,
+        preview=preview,
+        selected_tools=normalized_tools,
+        citations=[],
+        school_profile=school_profile,
+        actor=actor,
+        conversation_context=conversation_context,
+        public_plan=None,
+        retrieval_backend=RetrievalBackend.none,
+    )
+    return MessageResponse(
+        message_text=answer_text,
+        mode=preview.mode,
+        classification=preview.classification,
+        retrieval_backend=RetrievalBackend.none,
+        selected_tools=normalized_tools,
+        citations=[],
+        suggested_replies=suggested_replies,
+        evidence_pack=evidence_pack,
+        needs_authentication=False,
+        graph_path=['langgraph', 'deterministic_public_guardrail', preview_reason],
+        risk_flags=rt._build_runtime_risk_flags(
+            request_message=request.message,
+            message_text=answer_text,
+            preview=preview,
+        ),
+        reason=preview_reason,
+        used_llm=False,
+        llm_stages=[],
+    )
 
 
 def _route_native_path(preview: Any, request_message: str, analysis_message: str | None = None) -> str:
@@ -116,7 +195,10 @@ async def _public_compound(state: LangGraphMessageState) -> LangGraphMessageStat
 async def _bootstrap_context(state: LangGraphMessageState) -> LangGraphMessageState:
     request = state['request']
     settings = state['settings']
+    from .public_orchestration_runtime import _resolve_deterministic_public_guardrail_answer
+
     actor = await rt._fetch_actor_context(settings=settings, telegram_chat_id=request.telegram_chat_id)
+    actor = rt._build_effective_actor_context(actor, request.user)
     effective_user = rt._merge_user_context(actor, request.user)
     effective_conversation_id = rt._effective_conversation_id(request)
     conversation_context_bundle = await rt._fetch_conversation_context(
@@ -127,6 +209,69 @@ async def _bootstrap_context(state: LangGraphMessageState) -> LangGraphMessageSt
     conversation_context = rt._conversation_context_payload(conversation_context_bundle)
     analysis_message = rt._build_analysis_message(request.message, conversation_context_bundle)
     school_profile = await rt._fetch_public_school_profile(settings=settings)
+    explicit_open_world_boundary = rt._is_explicit_open_world_scope_boundary_query(
+        request.message
+    )
+    protected_domain_hint = (
+        rt._protected_domain_hint_for_message(
+            message=request.message,
+            actor=actor,
+            conversation_context=conversation_context,
+        )
+        if bool(getattr(effective_user, 'authenticated', False))
+        else None
+    )
+    skip_generic_public_guardrail = bool(
+        getattr(effective_user, 'authenticated', False)
+        and (
+            protected_domain_hint is not None
+            or looks_like_restricted_document_query(request.message)
+        )
+    )
+    deterministic_public_guardrail = None
+    if explicit_open_world_boundary:
+        deterministic_public_guardrail = SimpleNamespace(
+            answer_text=rt._compose_scope_boundary_answer(
+                school_profile or {},
+                conversation_context=conversation_context,
+            ),
+            reason='deterministic_scope_boundary',
+            selected_tools=('get_public_school_profile',),
+        )
+    else:
+        deterministic_public_guardrail = _resolve_deterministic_public_guardrail_answer(
+            request.message,
+            school_profile=school_profile,
+            conversation_context=conversation_context,
+        )
+        if (
+            skip_generic_public_guardrail
+            and deterministic_public_guardrail is not None
+            and getattr(deterministic_public_guardrail, 'reason', '') == 'deterministic_scope_boundary'
+        ):
+            deterministic_public_guardrail = None
+    if deterministic_public_guardrail is not None:
+        response = _build_deterministic_public_guardrail_response(
+            request=request,
+            preview_reason=deterministic_public_guardrail.reason,
+            answer_text=deterministic_public_guardrail.answer_text,
+            selected_tools=deterministic_public_guardrail.selected_tools,
+            school_profile=school_profile,
+            actor=actor,
+            conversation_context=conversation_context,
+        )
+        return {
+            'actor': actor,
+            'effective_user': effective_user,
+            'effective_conversation_id': effective_conversation_id,
+            'conversation_context_bundle': conversation_context_bundle,
+            'conversation_context': conversation_context,
+            'analysis_message': analysis_message,
+            'school_profile': school_profile,
+            'route': 'delegate_runtime',
+            'response': response,
+        }
+
     langgraph_artifacts = get_langgraph_artifacts(settings)
     langgraph_thread_id = resolve_langgraph_thread_id(
         conversation_external_id=effective_conversation_id,
@@ -152,6 +297,24 @@ async def _bootstrap_context(state: LangGraphMessageState) -> LangGraphMessageSt
         preview=semantic_preview,
         stack_label='langgraph',
     )
+    turn_frame_authenticated = resolve_turn_frame_authenticated_flag(
+        request_message=request.message,
+        authenticated=bool(getattr(request.user, 'authenticated', False)),
+        actor=actor,
+    )
+    if (
+        semantic_ingress_plan is not None
+        and getattr(semantic_ingress_plan, 'conversation_act', '') == 'input_clarification'
+        and actor is not None
+        and request.telegram_chat_id is not None
+        and turn_frame_authenticated
+        and not rt._is_high_confidence_public_profile_query(
+            request.message,
+            conversation_context=conversation_context,
+            school_profile=school_profile,
+        )
+    ):
+        semantic_ingress_plan = None
     if (
         (semantic_ingress_plan is None or not is_terminal_semantic_ingress_plan(semantic_ingress_plan))
         and actor is not None
@@ -169,6 +332,18 @@ async def _bootstrap_context(state: LangGraphMessageState) -> LangGraphMessageSt
             conversation_context=conversation_context,
         )
     route = _route_native_path(preview, request.message, analysis_message)
+    if (
+        route != 'semantic_ingress'
+        and actor is not None
+        and request.telegram_chat_id is not None
+        and rt._should_use_protected_records_fast_path(
+            request_message=request.message,
+            actor=actor,
+            conversation_context=conversation_context,
+            authenticated=turn_frame_authenticated,
+        )
+    ):
+        route = 'semantic_ingress'
     if semantic_ingress_plan is not None:
         ingress_base_preview = semantic_preview if is_terminal_semantic_ingress_plan(semantic_ingress_plan) else preview
         preview = apply_semantic_ingress_preview(
@@ -186,7 +361,7 @@ async def _bootstrap_context(state: LangGraphMessageState) -> LangGraphMessageSt
             conversation_context=conversation_context,
             preview=preview,
             stack_label='langgraph',
-            authenticated=bool(request.user.authenticated),
+            authenticated=turn_frame_authenticated,
         )
         if turn_frame is not None:
             preview = apply_turn_frame_preview(
@@ -195,8 +370,25 @@ async def _bootstrap_context(state: LangGraphMessageState) -> LangGraphMessageSt
                 stack_name='langgraph',
             )
             turn_frame_public_plan = build_turn_frame_public_plan(turn_frame)
-            if route != 'semantic_ingress' and turn_frame.scope == 'public':
+            if route != 'semantic_ingress' and (
+                turn_frame.scope == 'public' or is_scope_boundary_turn_frame(turn_frame)
+            ):
                 route = 'semantic_ingress'
+            elif route != 'semantic_ingress' and actor is not None and request.telegram_chat_id is not None and (
+                is_direct_protected_specialist_turn_frame(turn_frame)
+                or rt._should_use_protected_records_fast_path(
+                    request_message=request.message,
+                    actor=actor,
+                    conversation_context=conversation_context,
+                    authenticated=turn_frame_authenticated,
+                )
+            ):
+                route = 'semantic_ingress'
+            if (
+                is_restricted_document_turn_frame(turn_frame)
+                and can_read_restricted_documents(effective_user)
+            ):
+                route = 'restricted_retrieval'
     langgraph_trace_metadata = rt._capture_langgraph_trace_metadata(
         graph=langgraph_artifacts.graph,
         thread_id=langgraph_thread_id,
@@ -225,6 +417,8 @@ def _after_bootstrap(state: LangGraphMessageState) -> str:
 
 
 async def _delegate_runtime(state: LangGraphMessageState) -> LangGraphMessageState:
+    if state.get('response') is not None:
+        return {'response': state['response']}
     response = await rt.generate_message_response(
         request=state['request'],
         settings=state['settings'],
@@ -245,17 +439,32 @@ async def _semantic_ingress(state: LangGraphMessageState) -> LangGraphMessageSta
     semantic_ingress_plan = state.get('semantic_ingress_plan')
     turn_frame_public_plan = state.get('turn_frame_public_plan')
     normalized_message = rt._normalize_text(request.message)
-    explicit_external_library_boundary = 'biblioteca' in normalized_message and any(
-        rt._message_matches_term(normalized_message, term)
-        for term in {
-            'biblioteca publica',
-            'biblioteca pública',
-            'publica da cidade',
-            'pública da cidade',
-            'da cidade',
-            'municipal',
-            'prefeitura',
-        }
+    explicit_external_library_boundary = bool(
+        getattr(state.get('turn_frame'), 'conversation_act', '') == 'scope_boundary'
+        and is_external_public_facility_turn_frame(state.get('turn_frame'))
+    ) or (
+        'biblioteca' in normalized_message
+        and any(
+            rt._message_matches_term(normalized_message, term)
+            for term in {
+                'biblioteca publica',
+                'biblioteca pública',
+                'publica da cidade',
+                'pública da cidade',
+                'da cidade',
+                'municipal',
+                'prefeitura',
+                'nao e a biblioteca da escola',
+                'não é a biblioteca da escola',
+                'nao e biblioteca da escola',
+                'não é biblioteca da escola',
+                'nao e da escola',
+                'não é da escola',
+                'fora do colegio',
+                'fora do colégio',
+                'fora da escola',
+            }
+        )
     )
     if (
         not explicit_external_library_boundary
@@ -278,11 +487,12 @@ async def _semantic_ingress(state: LangGraphMessageState) -> LangGraphMessageSta
     public_plan_sink: dict[str, Any] = {}
     turn_frame = state.get('turn_frame')
     if explicit_external_library_boundary:
-        message_text = rt._compose_scope_boundary_answer(
+        message_text = rt._compose_external_public_facility_boundary_answer(
             school_profile or {},
+            facility_label='uma biblioteca publica externa',
             conversation_context=conversation_context,
         )
-        semantic_reason = 'langgraph_turn_frame:scope_boundary'
+        semantic_reason = 'langgraph_turn_frame:external_public_facility_boundary'
         public_plan = None
     elif semantic_ingress_plan is None and getattr(turn_frame, 'conversation_act', '') == 'scope_boundary':
         message_text = rt._compose_scope_boundary_answer(
@@ -314,10 +524,20 @@ async def _semantic_ingress(state: LangGraphMessageState) -> LangGraphMessageSta
             prefer_fast_public_path=False,
         )
     llm_stages = ['semantic_ingress_classifier'] if semantic_ingress_plan is not None else ['turn_frame_classifier']
+    preserve_direct_projection = rt._is_explicit_public_pricing_projection_query(
+        request.message,
+        conversation_context=conversation_context,
+    )
+    preserve_direct_guidance = (
+        str(getattr(public_plan, 'conversation_act', '') or '').strip() == 'auth_guidance'
+        or '/start link_<codigo>' in message_text
+        or '/start link_<código>' in message_text
+        or 'portal autenticado' in rt._normalize_text(message_text)
+    )
     if (
         semantic_ingress_plan is None or semantic_ingress_plan.conversation_act != 'language_preference'
-    ) and semantic_reason != 'langgraph_turn_frame:scope_boundary':
-        polished_text = await polish_langgraph_with_provider(
+    ) and semantic_reason != 'langgraph_turn_frame:scope_boundary' and not preserve_direct_projection and not preserve_direct_guidance:
+        polished_text = polish_langgraph_with_provider(
             settings=settings,
             request_message=request.message,
             preview=preview,
@@ -325,6 +545,8 @@ async def _semantic_ingress(state: LangGraphMessageState) -> LangGraphMessageSta
             conversation_context=conversation_context,
             school_profile=school_profile,
         )
+        if inspect.isawaitable(polished_text):
+            polished_text = await polished_text
         if polished_text:
             message_text = polished_text
             llm_stages.append('structured_polish')
@@ -450,7 +672,14 @@ async def _restricted_retrieval(state: LangGraphMessageState) -> LangGraphMessag
         category=retrieval_policy.category,
         profile=retrieval_policy.profile,
     )
-    relevant_hits = select_relevant_restricted_hits(request.message, list(search.hits))
+    relevant_hits = retrieve_relevant_restricted_hits_with_fallback(
+        retrieval_service,
+        query=request.message,
+        hits=list(search.hits),
+        top_k=retrieval_policy.top_k,
+        visibility='restricted',
+        category=retrieval_policy.category,
+    )
     citations = rt._collect_citations(relevant_hits[:3], limit=3)
     retrieval_trace_metadata = build_retrieval_trace_metadata(
         visibility='restricted',

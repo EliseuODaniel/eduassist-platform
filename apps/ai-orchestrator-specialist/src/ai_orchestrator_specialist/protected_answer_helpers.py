@@ -140,6 +140,23 @@ def compose_named_grade_answer(summary: dict[str, Any], *, deps: ProtectedAnswer
 
 def looks_like_academic_risk_followup(message: str, *, deps: ProtectedAnswerDeps) -> bool:
     normalized = deps.normalize_text(message)
+    if any(
+        term in normalized
+        for term in {
+            "por faltas",
+            "por frequencia",
+            "por frequência",
+            "frequencia",
+            "frequência",
+            "faltas",
+            "atrasos",
+            "presenca",
+            "presença",
+            "ausencias",
+            "ausências",
+        }
+    ):
+        return False
     return any(
         term in normalized
         for term in {
@@ -176,6 +193,8 @@ def looks_like_academic_risk_followup(message: str, *, deps: ProtectedAnswerDeps
             "risco academico",
             "risco acadêmico",
             "maior risco",
+            "corre mais risco",
+            "correm mais risco",
             "pontos de maior risco",
             "pontos mais sensiveis",
             "pontos mais sensíveis",
@@ -221,6 +240,101 @@ def compose_academic_risk_answer(summary: dict[str, Any], *, deps: ProtectedAnsw
     )
     lines.append("Esses componentes merecem acompanhamento primeiro no proximo ciclo de estudo.")
     return "\n".join(lines)
+
+
+def looks_like_academic_progression_followup(message: str, *, deps: ProtectedAnswerDeps) -> bool:
+    normalized = deps.normalize_text(message)
+    best_terms = {
+        "melhor disciplina",
+        "melhor materia",
+        "melhor matéria",
+        "melhor componente",
+        "mais forte",
+        "a melhor",
+    }
+    worst_terms = {
+        "pior disciplina",
+        "pior materia",
+        "pior matéria",
+        "pior componente",
+        "mais fraca",
+        "mais fraco",
+        "a pior",
+    }
+    gap_terms = {
+        "quanto falta",
+        "falta quanto",
+        "fechar a media",
+        "fechar a média",
+        "atingir 7",
+        "atingir sete",
+        "passar de ano",
+        "fechar media",
+        "fechar média",
+    }
+    best = any(term in normalized for term in best_terms)
+    worst = any(term in normalized for term in worst_terms)
+    gap = any(term in normalized for term in gap_terms)
+    return (best and worst) or (gap and (best or worst))
+
+
+def compose_academic_progression_answer(
+    summary: dict[str, Any],
+    *,
+    message: str,
+    deps: ProtectedAnswerDeps,
+) -> str | None:
+    student_name = str(summary.get("student_name") or "Aluno").strip() or "Aluno"
+    snapshots = sorted(
+        subject_grade_snapshot(summary, deps=deps, preferred_subjects=()),
+        key=lambda item: (item[1], deps.normalize_text(item[0])),
+    )
+    if not snapshots:
+        return None
+    worst_subject, worst_average = snapshots[0]
+    best_subject, best_average = max(
+        snapshots,
+        key=lambda item: (item[1], item[0]),
+    )
+    parts = [
+        f"Hoje, a melhor disciplina de {student_name} e {best_subject}, com media parcial {str(best_average).replace('.', ',')}.",
+        f"A pior disciplina aparece em {worst_subject}, com media parcial {str(worst_average).replace('.', ',')}.",
+    ]
+    subject_hint = deps.subject_hint_from_text(message)
+    subject_code, subject_name = deps.subject_code_from_hint(summary, subject_hint)
+    if subject_code or subject_name:
+        grades = summary.get("grades")
+        scores: list[Decimal] = []
+        resolved_subject_name = subject_name or subject_hint or "a disciplina"
+        if isinstance(grades, list):
+            for row in grades:
+                if not isinstance(row, dict):
+                    continue
+                row_subject_code = str(row.get("subject_code") or "").strip()
+                row_subject_name = str(row.get("subject_name") or "").strip()
+                if subject_code and row_subject_code != subject_code:
+                    continue
+                if not subject_code and subject_name and deps.normalize_text(row_subject_name) != deps.normalize_text(subject_name):
+                    continue
+                try:
+                    scores.append(Decimal(str(row.get("score"))))
+                except Exception:
+                    continue
+                if row_subject_name:
+                    resolved_subject_name = row_subject_name
+        if scores:
+            average = (sum(scores) / Decimal(len(scores))).quantize(Decimal("0.1"))
+            target = Decimal(str(deps.passing_grade_target)).quantize(Decimal("0.1"))
+            gap = max(Decimal("0.0"), target - average).quantize(Decimal("0.1"))
+            if gap <= Decimal("0.0"):
+                parts.append(
+                    f"Em {resolved_subject_name}, a media parcial atual ja esta em {str(average).replace('.', ',')}. Nao falta mais nada para fechar a media: a meta minima de {str(target).replace('.', ',')} ja foi alcancada."
+                )
+            else:
+                parts.append(
+                    f"Em {resolved_subject_name}, a media parcial atual e {str(average).replace('.', ',')}; faltam {str(gap).replace('.', ',')} ponto(s) para atingir {str(target).replace('.', ',')}."
+                )
+    return " ".join(parts)
 
 
 def compose_named_subject_grade_answer(

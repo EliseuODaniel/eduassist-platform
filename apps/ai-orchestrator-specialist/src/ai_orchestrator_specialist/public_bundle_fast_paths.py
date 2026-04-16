@@ -35,6 +35,56 @@ def _normalize_text(value: str) -> str:
     return text
 
 
+def _looks_like_protected_attendance_followup_collision(message: str) -> bool:
+    normalized = _normalize_text(message)
+    has_follow_up_shape = any(
+        term in normalized
+        for term in {
+            "mantendo o contexto",
+            "continuando",
+            "continuando a analise",
+            "continuando a análise",
+            "recorte",
+            "corta para",
+            "corta so",
+            "corta só",
+            "isole",
+            "isola",
+            "resume",
+            "resuma",
+        }
+    )
+    has_attendance_focus = any(
+        term in normalized
+        for term in {
+            "frequencia",
+            "frequência",
+            "faltas",
+            "ausencias",
+            "ausências",
+            "atrasos",
+            "presenca",
+            "presença",
+            "risco",
+            "alerta",
+        }
+    )
+    has_student_focus_marker = any(
+        term in normalized
+        for term in {
+            "dele",
+            "dela",
+            "para o ",
+            "para a ",
+            "só o ",
+            "só a ",
+            "so o ",
+            "so a ",
+        }
+    )
+    return has_follow_up_shape and has_attendance_focus and has_student_focus_marker
+
+
 def _looks_like_family_new_calendar_enrollment_query(message: str) -> bool:
     normalized = _normalize_text(message)
     return (
@@ -413,6 +463,8 @@ def _institution_preflight_answer(
 
 def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message: str) -> SupervisorAnswerPayload | None:
     normalized = _normalize_text(message)
+    if _looks_like_protected_attendance_followup_collision(message):
+        return None
     canonical_lane = match_public_canonical_lane(message)
     known_unknown_key = detect_public_known_unknown_key(message)
     canonical_supports: dict[str, tuple[str, str, list[MessageEvidenceSupport]]] = {

@@ -338,10 +338,14 @@ _FOCUS_MARKERS = (
 _GENERIC_SUBJECT_REFERENCE_STUBS = {
     'qual disciplina',
     'que disciplina',
+    'quais disciplinas',
+    'que disciplinas',
     'qual componente',
     'que componente',
     'qual materia',
     'qual matéria',
+    'quais materias',
+    'quais matérias',
     'que materia',
     'que matéria',
     'qual componente dela',
@@ -703,7 +707,10 @@ def _extract_unknown_student_reference(actor: dict[str, Any] | None, message: st
         or ('escopo' in normalized_message and any(term in normalized_message for term in {'filho', 'filhos', 'academico', 'acadêmico', 'financeiro'}))
     ):
         return None
-    if not any(term in normalized_message for term in ('nota', 'prova', 'avaliac', 'frequ', 'fatura', 'boleto', 'financeiro')):
+    if not re.search(
+        r'\b(?:nota|notas|prova|provas|avaliac\w*|frequ\w*|fatura|faturas|boleto|boletos|financeir\w*)\b',
+        normalized_message,
+    ):
         return None
     if re.search(r'\b(?:notas?|provas?|avaliacoes?|avaliações|aulas?)\s+de\b', normalized_message):
         return None
@@ -724,6 +731,11 @@ def _extract_unknown_student_reference(actor: dict[str, Any] | None, message: st
             'comunicação pedagógica',
             'registro de avaliacoes',
             'registro de avaliações',
+            'reprovar',
+            'comparacao anterior',
+            'comparação anterior',
+            'veredito academico',
+            'veredito acadêmico',
         }
     )
     for pattern in (
