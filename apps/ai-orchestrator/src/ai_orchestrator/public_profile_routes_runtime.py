@@ -1,19 +1,22 @@
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405
-
 """Public profile routing helpers extracted from public_profile_runtime.py."""
 
 LOCAL_EXTRACTED_NAMES = {'_compose_public_feature_answer', '_try_public_channel_fast_answer', '_build_public_profile_context', '_handle_public_contacts', '_handle_public_timeline', '_compose_public_pricing_projection_answer'}
 
 from . import public_profile_runtime as _native
+from .extracted_module_contracts import refresh_extracted_module_contract
 from .intent_analysis_runtime import _compose_required_documents_answer, _detect_public_pricing_price_kind, _is_auth_guidance_query, _is_follow_up_query, _is_positive_requirement_query, _message_matches_term, _normalize_text, _should_reuse_public_pricing_slots
+from .public_profile_routes_contract import PUBLIC_PROFILE_ROUTES_CONTRACT
 
 def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+    refresh_extracted_module_contract(
+        native_module=_native,
+        namespace=globals(),
+        contract_names=PUBLIC_PROFILE_ROUTES_CONTRACT,
+        local_extracted_names=LOCAL_EXTRACTED_NAMES,
+        contract_label='public_profile_routes_runtime',
+    )
 
 
 def _public_act_rules_impl(name: str):

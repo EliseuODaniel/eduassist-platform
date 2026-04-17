@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405,F821,E402
-
 """Reranking and cached retrieval helpers extracted from local_retrieval.py."""
 
 from functools import lru_cache
@@ -24,13 +22,18 @@ LOCAL_EXTRACTED_NAMES = {
 }
 
 from . import local_retrieval as _native
+from .extracted_module_contracts import refresh_extracted_module_contract
+from .local_retrieval_rerank_contract import LOCAL_RETRIEVAL_RERANK_CONTRACT
 
 
 def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+    refresh_extracted_module_contract(
+        native_module=_native,
+        namespace=globals(),
+        contract_names=LOCAL_RETRIEVAL_RERANK_CONTRACT,
+        local_extracted_names=LOCAL_EXTRACTED_NAMES,
+        contract_label='local_retrieval_rerank_runtime',
+    )
 
 
 def _rerank_text_for_hit(hit: RetrievalHit) -> str:

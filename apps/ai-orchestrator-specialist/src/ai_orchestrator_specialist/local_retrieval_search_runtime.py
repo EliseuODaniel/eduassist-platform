@@ -1,18 +1,21 @@
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405,F821,E402
-
 """Hybrid retrieval search helpers extracted from local_retrieval.py."""
 
 LOCAL_EXTRACTED_NAMES = {'hybrid_search_impl', 'lexical_search_impl', 'fuse_hits_impl'}
 
 from . import local_retrieval as _native
+from .extracted_module_contracts import refresh_extracted_module_contract
+from .local_retrieval_search_contract import LOCAL_RETRIEVAL_SEARCH_CONTRACT
 
 def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+    refresh_extracted_module_contract(
+        native_module=_native,
+        namespace=globals(),
+        contract_names=LOCAL_RETRIEVAL_SEARCH_CONTRACT,
+        local_extracted_names=LOCAL_EXTRACTED_NAMES,
+        contract_label='local_retrieval_search_runtime',
+    )
 
 def hybrid_search_impl(
     service,
