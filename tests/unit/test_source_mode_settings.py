@@ -169,6 +169,22 @@ def test_orchestrator_llm_profile_switches_to_local_gemma() -> None:
     assert settings.answer_experience_openai_api_mode == "chat_completions"
 
 
+def test_orchestrator_llm_profile_switches_to_local_qwen() -> None:
+    settings = OrchestratorSettings(
+        internal_api_token="real-token",
+        llm_model_profile="qwen3_4b_instruct_local",
+        app_env="test",
+    )
+
+    assert settings.llm_provider == "openai"
+    assert settings.openai_api_mode == "chat_completions"
+    assert settings.openai_api_key == "local-llm"
+    assert settings.openai_base_url == "http://local-llm-qwen3-4b:8080/v1"
+    assert settings.openai_model == "Qwen_Qwen3-4B-Instruct-2507-Q5_K_M.gguf"
+    assert settings.answer_experience_provider == "openai"
+    assert settings.answer_experience_openai_api_mode == "chat_completions"
+
+
 def test_specialist_llm_profile_switches_to_local_gemma() -> None:
     settings = SpecialistSettings(
         internal_api_token="real-token",
@@ -181,6 +197,22 @@ def test_specialist_llm_profile_switches_to_local_gemma() -> None:
     assert settings.openai_api_key == "local-llm"
     assert settings.openai_base_url == "http://local-llm-gemma4e4b:8080/v1"
     assert settings.openai_model == "ggml-org_gemma-4-E4B-it-GGUF_gemma-4-e4b-it-Q4_K_M.gguf"
+    assert settings.openai_fast_model == settings.openai_model
+    assert settings.openai_reasoning_model == settings.openai_model
+
+
+def test_specialist_llm_profile_switches_to_local_qwen() -> None:
+    settings = SpecialistSettings(
+        internal_api_token="real-token",
+        llm_model_profile="qwen3_4b_instruct_local",
+        app_env="test",
+    )
+
+    assert settings.llm_provider == "openai"
+    assert settings.openai_api_mode == "chat_completions"
+    assert settings.openai_api_key == "local-llm"
+    assert settings.openai_base_url == "http://local-llm-qwen3-4b:8080/v1"
+    assert settings.openai_model == "Qwen_Qwen3-4B-Instruct-2507-Q5_K_M.gguf"
     assert settings.openai_fast_model == settings.openai_model
     assert settings.openai_reasoning_model == settings.openai_model
 

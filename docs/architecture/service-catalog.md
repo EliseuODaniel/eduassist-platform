@@ -78,7 +78,24 @@ Registrar as fronteiras reais do sistema no estado `dedicated-first` atual.
 
 - caminho quality-first especializado;
 - coordenação supervisor/specialists;
+- refino final validado de superfície para respostas elegíveis, inclusive as vindas de caminhos determinísticos;
+- fallback preservado quando a LLM não conseguir refinar sem violar grounding, policy ou intenção original;
 - serving dedicado isolado do control plane.
+
+## `local-llm-gemma4e4b`
+
+### Responsabilidades
+
+- servir `Gemma 4 E4B` localmente em endpoint `OpenAI-compatible`;
+- sustentar o baseline local do repositório para benchmark e operação local.
+
+## `local-llm-qwen3-4b`
+
+### Responsabilidades
+
+- servir `Qwen3-4B-Instruct-2507` localmente em endpoint `OpenAI-compatible`;
+- permitir benchmark A/B controlado sem alterar o baseline do repositório;
+- permanecer como profile experimental por feature flag enquanto o baseline operacional segue em `Gemma 4 E4B`.
 
 ## `worker`
 

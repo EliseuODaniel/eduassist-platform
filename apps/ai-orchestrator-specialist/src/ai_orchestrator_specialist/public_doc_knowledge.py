@@ -679,6 +679,24 @@ def compose_public_governance_protocol(profile: dict[str, Any] | None) -> str | 
     ).strip()
 
 
+def compose_public_governance_inclusion_protocol(profile: dict[str, Any] | None) -> str | None:
+    governance = compose_public_governance_protocol(profile)
+    inclusion = compose_public_inclusion_accessibility()
+    school_name = _school_name(profile)
+    if not governance and not inclusion:
+        return None
+    return " ".join(
+        part
+        for part in (
+            f"No material publico do {school_name}, pedidos de inclusao aparecem como um fluxo institucional que cruza acolhimento pedagogico, acessibilidade, registro formal e escalonamento.",
+            inclusion,
+            governance,
+            "Em linguagem simples, o melhor ponto de partida e levar a demanda ao canal oficial da secretaria ou coordenacao com o contexto do estudante; se o tema exigir formalizacao institucional, o registro segue para protocolo e pode ser escalado ate a direcao.",
+        )
+        if part
+    ).strip()
+
+
 def compose_public_secretaria_portal_credentials() -> str | None:
     documents = _section("secretaria-documentacao-e-prazos.md", "Canais para documentos")
     timelines = _section("secretaria-documentacao-e-prazos.md", "Prazos tipicos")
@@ -985,6 +1003,53 @@ def match_public_canonical_lane(message: str) -> str | None:
     normalized = _normalize_space(message).lower()
     if not normalized:
         return None
+    explanation_terms = {
+        "explique",
+        "explica",
+        "explicar",
+        "linguagem simples",
+        "como funciona",
+        "como a escola",
+        "como a direcao",
+        "como a direção",
+        "por onde eu comeco",
+        "por onde eu começo",
+        "por onde comeco",
+        "por onde começo",
+        "como eu comeco",
+        "como eu começo",
+        "como comeco",
+        "como começo",
+    }
+    governance_terms = {
+        "direcao",
+        "direção",
+        "coordenacao",
+        "coordenação",
+        "protocolo",
+        "formal",
+        "formaliza",
+        "formalizacao",
+        "formalização",
+        "registro",
+        "escalonamento",
+    }
+    inclusion_terms = {
+        "inclus",
+        "acessib",
+        "necessidades especificas",
+        "necessidades específicas",
+        "acolh",
+        "apoio",
+        "adaptac",
+        "adaptaç",
+    }
+    if (
+        any(term in normalized for term in explanation_terms)
+        and any(term in normalized for term in governance_terms)
+        and any(term in normalized for term in inclusion_terms)
+    ):
+        return "public_bundle.governance_inclusion_protocol"
     if (
         any(term in normalized for term in ("compare", "comparar", "comparacao", "comparação"))
         and any(term in normalized for term in ("publica", "pública", "interna"))
@@ -1480,6 +1545,8 @@ def compose_public_canonical_lane_answer(
         return compose_public_transport_uniform_bundle()
     if lane == "public_bundle.governance_protocol":
         return compose_public_governance_protocol(profile)
+    if lane == "public_bundle.governance_inclusion_protocol":
+        return compose_public_governance_inclusion_protocol(profile)
     if lane == "public_bundle.calendar_week":
         return compose_public_calendar_week(profile)
     if lane == "public_bundle.year_three_phases":

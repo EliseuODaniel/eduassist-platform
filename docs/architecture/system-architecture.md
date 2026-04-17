@@ -84,7 +84,25 @@ As seguintes decisões permanecem fora da liberdade da LLM:
 - `scope_boundary`;
 - `input_clarification` quando a confiança cair abaixo do mínimo;
 - bloqueios de vazamento;
-- renderização final de dados sensíveis.
+- seleção e contrato mínimo dos dados sensíveis antes de qualquer verbalização final.
+
+### Refino final validado de superfície
+
+No estado atual do `specialist_supervisor`, a arquitetura não trata mais caminhos determinísticos e caminhos LLM-driven como duas superfícies finais completamente diferentes. A regra passou a ser:
+
+- toda resposta elegível pode passar por um `answer surface refiner`;
+- o refino tenta primeiro uma saída estruturada e validável;
+- se o modelo local falhar no schema, a arquitetura usa um fallback controlado em texto livre;
+- a nova superfície só é aceita quando um validador local confirma preservação de fatos, nomes, disciplinas, datas, valores, escopo e ato conversacional;
+- se a validação falhar, a arquitetura preserva literalmente a resposta original.
+
+Nas stacks non-specialist, a mesma lógica foi promovida para o pós-processamento compartilhado. Isso garante que `langgraph`, `python_functions` e `llamaindex` também passem por uma etapa final de verbalização orientada por LLM, sem perder o comportamento atual quando o validador conclui que a melhor resposta continua sendo a superfície determinística original.
+
+Guardrails:
+
+- bloqueios de privacidade, negação por terceiro e `input guardrail blocked` não entram nesse refino livre;
+- o refino pode melhorar tom, fluidez e aderência à pergunta, mas não pode inventar novos fatos nem ampliar o escopo permitido;
+- a superfície final deixa de ser mero template rígido, sem abrir mão de grounding e auditabilidade.
 
 ### O que cada stack faz melhor
 
@@ -170,6 +188,32 @@ Baseline atual implementado:
 - política compartilhada de retrieval por capability, calibrando `retrieval_profile`, `top-k` e categoria documental antes do dispatch por stack;
 - traces operacionais agora também registram a política escolhida e o resultado efetivo do retrieval por capability, preparando tuning com `answerable@k`, cobertura e latência por família;
 - budgets iniciais explícitos e configuráveis nas settings dos runtimes.
+
+## Perfis locais de LLM
+
+O baseline local do projeto continua centrado em `Gemma 4 E4B`, mas o runtime agora aceita um segundo profile local explícito para benchmark controlado:
+
+- `gemma4e4b_local`
+  - serviço: `local-llm-gemma4e4b`
+  - engine: `llama.cpp`
+  - artefato padrão: `Q4_K_M`
+- `qwen3_4b_instruct_local`
+  - serviço: `local-llm-qwen3-4b`
+  - engine: `llama.cpp`
+  - artefato padrão: `Qwen3-4B-Instruct-2507 Q5_K_M`
+
+Regra arquitetural:
+
+- o profile alternativo deve ser ativado apenas por feature flag (`LLM_MODEL_PROFILE`);
+- o baseline operacional não muda automaticamente;
+- comparações entre modelos devem ocorrer na mesma stack e sob o mesmo dataset, preferencialmente no `specialist_supervisor`.
+
+Leitura consolidada da rodada A/B local (`2026-04-17`):
+
+- a primeira passada crua favoreceu `Qwen` em latência e estabilidade, mas expôs resíduos arquiteturais no `specialist_supervisor`;
+- depois da wave de correções compartilhadas e do `answer surface refiner`, o `Gemma` endurecido (`gemma4e4b_local_postfix`) fechou em `15/15`, `keyword_pass 15/15` e `quality 100.0`;
+- o `Qwen` permaneceu melhor em latência, mas terminou em `quality 84.3` e `keyword_pass 8/15` sob o mesmo dataset;
+- decisão arquitetural atual: manter `Gemma` como baseline operacional e `Qwen` como feature flag experimental para A/B local controlado.
 
 Estado operacional do hardening em 2026-04-16:
 

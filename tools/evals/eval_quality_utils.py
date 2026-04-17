@@ -183,17 +183,20 @@ def _expand_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _extract_answer_text(body: dict[str, Any] | str) -> str:
+    def _clean(value: str) -> str:
+        return str(value or '').split('[debug]', 1)[0].strip()
+
     if isinstance(body, str):
-        return body
+        return _clean(body)
     if not isinstance(body, dict):
         return ''
     if isinstance(body.get('message_text'), str):
-        return str(body['message_text'])
+        return _clean(str(body['message_text']))
     metadata = body.get('metadata')
     if isinstance(metadata, dict):
         answer = metadata.get('answer')
         if isinstance(answer, dict) and isinstance(answer.get('answer_text'), str):
-            return str(answer['answer_text'])
+            return _clean(str(answer['answer_text']))
     return ''
 
 

@@ -334,6 +334,40 @@ _ACADEMIC_COMPARISON_ANCHORS = {
     "disciplina",
 }
 
+_ACADEMIC_GRADE_FOLLOWUP_TERMS = {
+    "nota",
+    "notas",
+    "boletim",
+    "media",
+    "média",
+    "media parcial",
+    "média parcial",
+    "disciplina",
+    "disciplinas",
+    "materia",
+    "matéria",
+    "materias",
+    "matérias",
+    "componente",
+    "componentes",
+    "matematica",
+    "matemática",
+    "portugues",
+    "português",
+    "lingua portuguesa",
+    "língua portuguesa",
+    "historia",
+    "história",
+    "geografia",
+    "fisica",
+    "física",
+    "quimica",
+    "química",
+    "biologia",
+    "educacao fisica",
+    "educação física",
+}
+
 _EXTERNAL_PUBLIC_FACILITY_TERMS = {
     "da cidade",
     "municipal",
@@ -874,7 +908,10 @@ _CAPABILITY_SPECS: tuple[CapabilitySpec, ...] = (
             "boletim do",
             "minhas notas",
             "meu boletim",
+            "resumo academico",
+            "resumo acadêmico",
         ),
+        follow_up_aliases=("agora foque so", "agora foque só", "so em", "só em", "em matematica", "em matemática"),
         priority=30,
     ),
     CapabilitySpec(
@@ -1416,6 +1453,20 @@ def _looks_like_contextual_follow_up(
         )
         if has_target_focus and has_academic_focus:
             return True
+    if (
+        focus.capability_id == "protected.academic.grades"
+        and (
+            focus.active_targets
+            or focus.active_actor
+            or focus.pending_question_type in {"follow_up", "attribute_query"}
+        )
+    ):
+        has_target_focus = _mentions_focus_target(normalized_message, focus)
+        has_grade_focus = any(
+            _contains_term(normalized_message, term) for term in _ACADEMIC_GRADE_FOLLOWUP_TERMS
+        )
+        if has_grade_focus and (has_target_focus or _looks_like_follow_up(normalized_message)):
+            return True
     return False
 
 
@@ -1671,6 +1722,12 @@ def build_capability_candidates(
         if focus.capability_id == spec.capability_id and contextual_follow_up:
             score += 2.2
             reasons.append("follow_up_same_capability")
+            if focus.active_targets or focus.active_actor:
+                score += 0.8
+                reasons.append("follow_up_with_active_target")
+            if focus.active_attribute and requested_attribute == focus.active_attribute:
+                score += 0.6
+                reasons.append("follow_up_with_active_attribute")
         elif focus.domain == spec.domain and focus.scope == spec.scope and contextual_follow_up:
             score += 1.2
             reasons.append("follow_up_same_domain")

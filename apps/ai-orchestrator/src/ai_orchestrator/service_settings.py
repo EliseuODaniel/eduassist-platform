@@ -176,6 +176,9 @@ class Settings(BaseSettings):
     feature_flag_answer_experience_public_enabled: bool = True
     feature_flag_answer_experience_protected_enabled: bool = True
     feature_flag_answer_experience_min_chars: int = 24
+    feature_flag_answer_surface_refiner_enabled: bool = True
+    feature_flag_answer_surface_refiner_stacks: str = 'langgraph,llamaindex,python_functions'
+    feature_flag_answer_surface_refiner_channels: str = 'telegram,web'
     feature_flag_context_repair_enabled: bool = True
     feature_flag_context_repair_stacks: str = 'langgraph,llamaindex,python_functions,specialist_supervisor'
     feature_flag_context_repair_retry_top_k: int = 6
@@ -254,6 +257,27 @@ class Settings(BaseSettings):
                 self.openai_base_url = 'http://local-llm-gemma4e4b:8080/v1'
             if not str(self.openai_model or '').strip() or self.openai_model == 'gpt-5.4':
                 self.openai_model = 'ggml-org/gemma-4-E4B-it-GGUF:Q4_K_M'
+            if not str(self.answer_experience_provider or '').strip():
+                self.answer_experience_provider = 'openai'
+            if not str(self.answer_experience_openai_api_key or '').strip():
+                self.answer_experience_openai_api_key = self.openai_api_key
+            if not str(self.answer_experience_openai_base_url or '').strip():
+                self.answer_experience_openai_base_url = self.openai_base_url
+            if not str(self.answer_experience_openai_model or '').strip():
+                self.answer_experience_openai_model = self.openai_model
+            if not str(self.answer_experience_openai_api_mode or '').strip():
+                self.answer_experience_openai_api_mode = self.openai_api_mode
+            return self
+
+        if profile in {'qwen3_4b_instruct_local', 'qwen_3_4b_instruct_local', 'qwen-3-4b-instruct-local'}:
+            self.llm_provider = 'openai'
+            self.openai_api_mode = 'chat_completions'
+            if not str(self.openai_api_key or '').strip():
+                self.openai_api_key = 'local-llm'
+            if not str(self.openai_base_url or '').strip() or self.openai_base_url == 'https://api.openai.com/v1':
+                self.openai_base_url = 'http://local-llm-qwen3-4b:8080/v1'
+            if not str(self.openai_model or '').strip() or self.openai_model == 'gpt-5.4':
+                self.openai_model = 'Qwen_Qwen3-4B-Instruct-2507-Q5_K_M.gguf'
             if not str(self.answer_experience_provider or '').strip():
                 self.answer_experience_provider = 'openai'
             if not str(self.answer_experience_openai_api_key or '').strip():

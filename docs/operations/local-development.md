@@ -252,6 +252,8 @@ Política operacional atual:
 - `ai-orchestrator` deve ser tratado como `control plane/router`, não como entrypoint principal de serving;
 - o fluxo recomendado de usuário é `telegram-gateway -> runtime dedicado -> api-core`;
 - o modo de compatibilidade do control plane continua restrito a manutenção e smoke legado.
+- no `specialist_supervisor`, o `answer surface refiner` fica ligado por padrão e verbaliza também respostas determinísticas elegíveis sem perder grounding.
+- nas stacks `langgraph`, `python_functions` e `llamaindex`, o pós-processamento compartilhado também tenta um `answer surface refiner` leve antes da resposta sair, preservando automaticamente o texto original quando o refinamento não é seguro.
 
 Rollout local/controlado:
 
@@ -396,6 +398,7 @@ Profiles suportados:
 
 - `gemini_flash_lite`
 - `gemma4e4b_local`
+- `qwen3_4b_instruct_local`
 
 Uso recomendado:
 
@@ -405,17 +408,35 @@ Uso recomendado:
    - `make compose-up-dedicated-core-gemini-flash-lite`
 3. bootstrap explícito do stack local com `Gemma 4 E4B`
    - `make compose-up-dedicated-core-gemma4e4b-local`
+4. experimento local com `Qwen3-4B-Instruct-2507`
+   - `make compose-up-dedicated-core-qwen3-4b-local`
 
-O profile `gemma4e4b_local` usa:
+Os profiles locais usam:
 
 - `llama.cpp` server com GPU;
-- quantização `Q4_K_M`;
 - endpoint local `OpenAI-compatible`;
-- `OPENAI_API_MODE=chat_completions`.
+- `OPENAI_API_MODE=chat_completions`;
+- non-thinking mode para o `Qwen3-4B-Instruct-2507`, seguindo o card oficial.
+
+Detalhes:
+
+- `gemma4e4b_local`
+  - modelo: `ggml-org/gemma-4-E4B-it-GGUF:Q4_K_M`
+  - quantização: `Q4_K_M`
+  - endpoint: `http://local-llm-gemma4e4b:8080/v1`
+- `qwen3_4b_instruct_local`
+  - checkpoint base: `Qwen/Qwen3-4B-Instruct-2507`
+  - artefato local: `bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF`
+  - arquivo padrão: `Qwen_Qwen3-4B-Instruct-2507-Q5_K_M.gguf`
+  - endpoint: `http://local-llm-qwen3-4b:8080/v1`
 
 Variáveis mais importantes:
 
 - `LLM_MODEL_PROFILE`
+- `FEATURE_FLAG_ANSWER_SURFACE_REFINER_ENABLED`
+- `FEATURE_FLAG_ANSWER_SURFACE_REFINER_STACKS`
+- `FEATURE_FLAG_ANSWER_SURFACE_REFINER_CHANNELS`
+- `FEATURE_FLAG_SPECIALIST_ANSWER_REFINER_ENABLED`
 - `OPENAI_API_MODE`
 - `LOCAL_LLM_API_KEY`
 - `LOCAL_LLM_GEMMA4E4B_HF_REPO`
@@ -423,11 +444,30 @@ Variáveis mais importantes:
 - `LOCAL_LLM_GEMMA4E4B_THREADS`
 - `LOCAL_LLM_GEMMA4E4B_GPU_LAYERS`
 - `LOCAL_LLM_GEMMA4E4B_PORT`
+- `LOCAL_LLM_QWEN3_4B_HF_REPO`
+- `LOCAL_LLM_QWEN3_4B_HF_FILE`
+- `LOCAL_LLM_QWEN3_4B_CTX_SIZE`
+- `LOCAL_LLM_QWEN3_4B_THREADS`
+- `LOCAL_LLM_QWEN3_4B_GPU_LAYERS`
+- `LOCAL_LLM_QWEN3_4B_PORT`
 
 Critério operacional:
 
 - `gemma4e4b_local` é o baseline local recomendado;
+- `qwen3_4b_instruct_local` é o profile experimental recomendado para A/B local controlado na stack `specialist_supervisor`;
 - `gemini_flash_lite` agora é override explícito por feature flag para comparação e fallback hospedado.
+- `FEATURE_FLAG_ANSWER_SURFACE_REFINER_ENABLED=true` deve permanecer ativo no baseline das stacks non-specialist; desligá-lo só faz sentido para depuração, comparação controlada ou incidentes de runtime.
+- `FEATURE_FLAG_SPECIALIST_ANSWER_REFINER_ENABLED=true` deve permanecer ativo no baseline do `specialist_supervisor`; desligá-lo só faz sentido para depuração ou comparação controlada.
+
+Resultado consolidado da rodada A/B de `2026-04-17`:
+
+- `gemma4e4b_local_postfix`: `15/15`, `keyword_pass 15/15`, `quality 100.0`
+- `qwen3_4b_instruct_local`: `15/15`, `keyword_pass 8/15`, `quality 84.3`
+
+Conclusão operacional:
+
+- `Gemma 4 E4B` segue como baseline do ambiente local;
+- `Qwen3-4B-Instruct-2507` continua útil como piloto de baixa latência e diagnóstico, mas não substitui o baseline sem regressão semântica nesta stack.
 - `make release-readiness-strict`
 - `GET /v1/foundation/summary` no `api-core`
 - `GET /v1/identity/context?user_external_code=USR-TEACH-001`

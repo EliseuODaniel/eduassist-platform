@@ -101,3 +101,44 @@ def test_compose_with_openai_works_in_local_chat_completions_mode(monkeypatch) -
 
     assert text == 'Resposta grounded local'
     assert calls
+
+
+def test_openai_text_call_uses_chat_completions_for_local_qwen_mode(monkeypatch) -> None:
+    calls: list[dict[str, object]] = []
+
+    class _FakeChatCompletions:
+        async def create(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(
+                choices=[
+                    SimpleNamespace(message=SimpleNamespace(content='Resposta local do Qwen'))
+                ]
+            )
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            self.chat = SimpleNamespace(completions=_FakeChatCompletions())
+
+    monkeypatch.setattr(llm_provider, 'AsyncOpenAI', _FakeClient)
+
+    text = asyncio.run(
+        llm_provider._openai_text_call(
+            settings=_settings(
+                openai_base_url='http://local-llm-qwen3-4b:8080/v1',
+                openai_model='Qwen_Qwen3-4B-Instruct-2507-Q5_K_M.gguf',
+            ),
+            instructions='Responda em portugues.',
+            prompt='Diga oi',
+            temperature=0.2,
+            max_output_tokens=64,
+            top_p=0.9,
+            timeout=5.0,
+        )
+    )
+
+    assert text == 'Resposta local do Qwen'
+    assert calls
+    call = calls[0]
+    assert call['model'] == 'Qwen_Qwen3-4B-Instruct-2507-Q5_K_M.gguf'
+    assert call['messages'][0]['role'] == 'system'
+    assert call['messages'][1]['role'] == 'user'

@@ -119,6 +119,7 @@ Inferência a partir da documentação oficial do Telegram: a criptografia ponta
 - contracts rígidos para tools;
 - contexto mínimo para o modelo;
 - provider de LLM externo isolado por camada de integração, sem acesso direto a banco nem a segredos internos;
+- refino final de resposta apenas em superfície elegível, com validação local obrigatória e fallback para a resposta original quando a LLM tentar ampliar escopo, mudar fatos ou suavizar um bloqueio sensível;
 - negação explícita por policy;
 - avaliação adversarial contínua;
 - revisão de curadoria documental;

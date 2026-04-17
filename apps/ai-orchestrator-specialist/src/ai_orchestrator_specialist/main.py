@@ -179,6 +179,7 @@ class Settings(BaseSettings):
     retrieval_deep_candidate_pool_size: int = 22
     retrieval_rerank_fused_weight: float = 0.35
     retrieval_rerank_late_interaction_weight: float = 0.65
+    feature_flag_specialist_answer_refiner_enabled: bool = True
     semantic_router_history_budget_tokens: int = 180
     semantic_router_candidate_budget_tokens: int = 220
     grounded_public_history_budget_tokens: int = 180
@@ -207,6 +208,20 @@ class Settings(BaseSettings):
                 self.openai_base_url = "http://local-llm-gemma4e4b:8080/v1"
             if not str(self.openai_model or "").strip() or self.openai_model == "gpt-5.4":
                 self.openai_model = "ggml-org_gemma-4-E4B-it-GGUF_gemma-4-e4b-it-Q4_K_M.gguf"
+            if not str(self.openai_fast_model or "").strip() or self.openai_fast_model == "gpt-5-mini":
+                self.openai_fast_model = self.openai_model
+            if not str(self.openai_reasoning_model or "").strip() or self.openai_reasoning_model == "gpt-5.4":
+                self.openai_reasoning_model = self.openai_model
+            return self
+        if profile in {"qwen3_4b_instruct_local", "qwen_3_4b_instruct_local", "qwen-3-4b-instruct-local"}:
+            self.llm_provider = "openai"
+            self.openai_api_mode = "chat_completions"
+            if not str(self.openai_api_key or "").strip():
+                self.openai_api_key = "local-llm"
+            if not str(self.openai_base_url or "").strip() or self.openai_base_url == "https://api.openai.com/v1":
+                self.openai_base_url = "http://local-llm-qwen3-4b:8080/v1"
+            if not str(self.openai_model or "").strip() or self.openai_model == "gpt-5.4":
+                self.openai_model = "Qwen_Qwen3-4B-Instruct-2507-Q5_K_M.gguf"
             if not str(self.openai_fast_model or "").strip() or self.openai_fast_model == "gpt-5-mini":
                 self.openai_fast_model = self.openai_model
             if not str(self.openai_reasoning_model or "").strip() or self.openai_reasoning_model == "gpt-5.4":
