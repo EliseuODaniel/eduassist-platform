@@ -20,15 +20,11 @@ from .turn_frame_policy import (
     is_restricted_document_turn_frame,
     is_scope_boundary_turn_frame,
 )
-
-
 def _refresh_native_namespace() -> None:
     for name, value in vars(_native).items():
         if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
             continue
         globals()[name] = value
-
-
 async def maybe_execute_python_functions_native_plan(
     *,
     request: Any,

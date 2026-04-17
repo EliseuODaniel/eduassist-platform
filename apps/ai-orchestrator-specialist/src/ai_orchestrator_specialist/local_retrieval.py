@@ -1,11 +1,7 @@
-# ruff: noqa: F401
-
+# ruff: noqa: F401,F821,E402
 from __future__ import annotations
-
 from dataclasses import dataclass
-from functools import lru_cache
 import re
-import shutil
 from time import monotonic
 from typing import Any
 import unicodedata
@@ -13,7 +9,6 @@ import unicodedata
 from eduassist_observability import record_counter, record_histogram, set_span_attributes, start_span
 from fastembed import LateInteractionTextEmbedding, TextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
-import numpy as np
 import psycopg
 from psycopg.rows import dict_row
 from qdrant_client import QdrantClient, models
@@ -366,8 +361,6 @@ class RetrievalService:
                 profile=profile,
                 parent_ref_keys=parent_ref_keys,
             )
-
-
     def collection_status(self) -> dict[str, Any]:
         with start_span(
             'eduassist.retrieval.collection_status',
@@ -1820,119 +1813,12 @@ def _document_diversified_hits(
     return diversified
 
 
-def _rerank_text_for_hit(hit: RetrievalHit) -> str:
-    summary = str(hit.contextual_summary or '').strip()
-    excerpt = str(hit.text_excerpt or '').strip()
-    return f'{hit.document_title}. {summary} {excerpt}'.strip()
+def _export_module_namespace(module: object) -> None:
+    for name, value in vars(module).items():
+        if name.startswith('__'):
+            continue
+        globals()[name] = value
 
+from . import local_retrieval_rerank_runtime as _local_retrieval_rerank_runtime  # noqa: E402
 
-def _late_interaction_maxsim(query_embedding: np.ndarray, document_embedding: np.ndarray) -> float:
-    if query_embedding.size == 0 or document_embedding.size == 0:
-        return 0.0
-    if query_embedding.ndim != 2 or document_embedding.ndim != 2:
-        return 0.0
-    similarity = np.matmul(query_embedding, document_embedding.T)
-    if similarity.size == 0:
-        return 0.0
-    return float(np.max(similarity, axis=1).sum())
-
-
-def _late_interaction_scores(
-    reranker: LateInteractionTextEmbedding,
-    *,
-    query: str,
-    documents: list[str],
-) -> list[float]:
-    query_embedding = np.asarray(next(reranker.embed([query])))
-    document_embeddings = [np.asarray(item) for item in reranker.embed(documents)]
-    return [
-        _late_interaction_maxsim(query_embedding, document_embedding)
-        for document_embedding in document_embeddings
-    ]
-
-
-def _normalize_visibility_filter(value: str) -> str:
-    normalized = _normalize_text(value)
-    if normalized in {'private', 'restricted', 'internal'}:
-        return 'restricted'
-    return 'public'
-
-
-def _normalize_category_filter(category: str | None) -> str | None:
-    normalized = _normalize_text(category or '')
-    if not normalized:
-        return None
-    if normalized in {'private_docs', 'public_docs', 'graph_rag'}:
-        return None
-    return normalized
-
-
-@lru_cache
-def get_retrieval_service(
-    *,
-    database_url: str,
-    qdrant_url: str,
-    collection_name: str,
-    embedding_model: str,
-    enable_query_variants: bool,
-    enable_late_interaction_rerank: bool,
-    late_interaction_model: str,
-    candidate_pool_size: int,
-    cheap_candidate_pool_size: int,
-    deep_candidate_pool_size: int,
-    rerank_fused_weight: float,
-    rerank_late_interaction_weight: float,
-    enable_cross_encoder_rerank: bool = True,
-    cross_encoder_model: str = 'jinaai/jina-reranker-v2-base-multilingual',
-    rerank_cross_encoder_weight: float = 0.85,
-) -> RetrievalService:
-    return RetrievalService(
-        database_url=database_url,
-        qdrant_url=qdrant_url,
-        collection_name=collection_name,
-        embedding_model=embedding_model,
-        enable_query_variants=enable_query_variants,
-        enable_late_interaction_rerank=enable_late_interaction_rerank,
-        late_interaction_model=late_interaction_model,
-        candidate_pool_size=candidate_pool_size,
-        cheap_candidate_pool_size=cheap_candidate_pool_size,
-        deep_candidate_pool_size=deep_candidate_pool_size,
-        rerank_fused_weight=rerank_fused_weight,
-        rerank_late_interaction_weight=rerank_late_interaction_weight,
-        enable_cross_encoder_rerank=enable_cross_encoder_rerank,
-        cross_encoder_model=cross_encoder_model,
-        rerank_cross_encoder_weight=rerank_cross_encoder_weight,
-    )
-
-
-def _build_embedder(model_name: str) -> TextEmbedding:
-    try:
-        return TextEmbedding(model_name=model_name)
-    except Exception as exc:
-        message = str(exc)
-        if 'NO_SUCHFILE' not in message and "File doesn't exist" not in message:
-            raise
-        shutil.rmtree('/tmp/fastembed_cache', ignore_errors=True)
-        return TextEmbedding(model_name=model_name)
-
-
-def _build_cross_encoder_reranker(model_name: str) -> TextCrossEncoder:
-    try:
-        return TextCrossEncoder(model_name=model_name)
-    except Exception as exc:
-        message = str(exc)
-        if 'NO_SUCHFILE' not in message and "File doesn't exist" not in message:
-            raise
-        shutil.rmtree('/tmp/fastembed_cache', ignore_errors=True)
-        return TextCrossEncoder(model_name=model_name)
-
-
-def _build_late_interaction_embedder(model_name: str) -> LateInteractionTextEmbedding:
-    try:
-        return LateInteractionTextEmbedding(model_name=model_name)
-    except Exception as exc:
-        message = str(exc)
-        if 'NO_SUCHFILE' not in message and "File doesn't exist" not in message:
-            raise
-        shutil.rmtree('/tmp/fastembed_cache', ignore_errors=True)
-        return LateInteractionTextEmbedding(model_name=model_name)
+_export_module_namespace(_local_retrieval_rerank_runtime)

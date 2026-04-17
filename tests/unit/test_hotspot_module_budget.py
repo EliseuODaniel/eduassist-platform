@@ -30,6 +30,7 @@ MODULE_BUDGETS = {
 EXTRACTED_MODULES = [
     Path('apps/api-core/src/api_core/services/public_profile_seed.py'),
     Path('apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/fast_path_answer_runtime.py'),
+    Path('apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/local_retrieval_rerank_runtime.py'),
     Path('apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/local_retrieval_search_runtime.py'),
     Path('apps/ai-orchestrator/src/ai_orchestrator/graph_classification_runtime.py'),
     Path('apps/ai-orchestrator/src/ai_orchestrator/graph_execution_runtime.py'),
