@@ -16,6 +16,9 @@ from ai_orchestrator import (
     public_profile_slot_memory_runtime,
     python_functions_native_runtime,
 )
+import ai_orchestrator.public_feature_runtime as public_feature_runtime
+import ai_orchestrator.public_service_routing_runtime as public_service_routing_runtime
+import ai_orchestrator.workflow_runtime as workflow_runtime
 from ai_orchestrator.extracted_module_contracts import refresh_extracted_module_contract
 from ai_orchestrator.grounded_answer_support_contract import GROUNDED_ANSWER_SUPPORT_CONTRACT
 from ai_orchestrator.graph_classification_contract import GRAPH_CLASSIFICATION_CONTRACT
@@ -200,6 +203,18 @@ def test_public_profile_slot_memory_runtime_uses_explicit_imports() -> None:
 def test_langgraph_public_compound_runtime_uses_explicit_imports() -> None:
     assert langgraph_public_compound_runtime.LangGraphMessageState is langgraph_message_workflow.LangGraphMessageState
     assert langgraph_public_compound_runtime._delegate_runtime is langgraph_message_workflow._delegate_runtime
+
+
+def test_workflow_runtime_uses_explicit_public_feature_and_service_imports() -> None:
+    assert workflow_runtime._feature_suggestion_replies is public_feature_runtime._feature_suggestion_replies
+    assert (
+        workflow_runtime._routing_follow_up_context_message
+        is public_service_routing_runtime._routing_follow_up_context_message
+    )
+    assert (
+        workflow_runtime._service_matches_from_message
+        is public_service_routing_runtime._service_matches_from_message
+    )
 
 
 def test_public_profile_legacy_runtime_contract_refresh_binds_declared_symbols() -> None:

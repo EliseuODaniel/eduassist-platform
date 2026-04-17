@@ -16,7 +16,12 @@ from .conversation_focus_runtime import (
     _recent_trace_focus,
     _recent_workflow_focus,
 )
+from .public_feature_runtime import _feature_suggestion_replies
 from .public_orchestration_runtime import _extract_requested_date, _extract_requested_window
+from .public_service_routing_runtime import (
+    _routing_follow_up_context_message,
+    _service_matches_from_message,
+)
 
 
 def _export_runtime_core_namespace() -> None:
@@ -33,32 +38,6 @@ def _public_act_rules_impl(name: str):
     from . import public_act_rules_runtime as _public_act_rules_runtime
 
     return getattr(_public_act_rules_runtime, name)
-
-
-def _public_profile_runtime_impl(name: str):
-    from . import public_profile_runtime as _public_profile_runtime
-
-    return getattr(_public_profile_runtime, name)
-
-
-def _feature_suggestion_replies(feature_keys: list[str]) -> list[str]:
-    return _public_profile_runtime_impl('_feature_suggestion_replies')(feature_keys)
-
-
-def _routing_follow_up_context_message(
-    message: str,
-    conversation_context: dict[str, Any] | None,
-) -> str:
-    return _public_profile_runtime_impl('_routing_follow_up_context_message')(
-        message, conversation_context
-    )
-
-
-def _service_matches_from_message(
-    profile: dict[str, Any],
-    message: str,
-) -> list[dict[str, Any]]:
-    return _public_profile_runtime_impl('_service_matches_from_message')(profile, message)
 
 
 def _is_assistant_identity_query(message: str) -> bool:

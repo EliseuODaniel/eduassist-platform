@@ -34,7 +34,26 @@ from .intent_analysis_runtime import (
 )
 from .analysis_context_runtime import _extract_recent_assistant_message, _extract_recent_user_message
 from .intent_analysis_runtime import _extract_salient_terms
+from .public_feature_runtime import (
+    _asks_why_feature_is_missing,
+    _extract_feature_gap_focus,
+    _feature_inventory_map,
+    _feature_suggestion_replies,
+    _is_public_feature_query,
+    _recent_public_feature_key,
+    _requested_public_features,
+)
 from .public_orchestration_runtime import _build_public_institution_plan, _should_use_public_open_documentary_synthesis
+from .public_service_routing_runtime import (
+    _is_generic_service_contact_follow_up,
+    _preferred_contact_labels_from_context,
+    _public_contact_reference_message,
+    _recent_public_contact_subject,
+    _recent_service_match,
+    _routing_follow_up_context_message,
+    _service_catalog_index,
+    _service_matches_from_message,
+)
 from .student_scope_runtime import _compose_public_access_scope_answer
 
 
@@ -201,189 +220,6 @@ def _extract_grade_reference(message: str) -> str | None:
     return match.group(1)
 
 
-def _feature_inventory_map(profile: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    inventory = profile.get('feature_inventory')
-    if not isinstance(inventory, list):
-        return {}
-    result: dict[str, dict[str, Any]] = {}
-    for item in inventory:
-        if not isinstance(item, dict):
-            continue
-        key = str(item.get('feature_key', '')).strip().lower()
-        if not key:
-            continue
-        result[key] = item
-    return result
-
-
-def _recent_public_feature_key(conversation_context: dict[str, Any] | None) -> str | None:
-    for _sender_type, content in reversed(_recent_message_lines(conversation_context)):
-        features = _requested_public_features(content)
-        if len(features) == 1:
-            return features[0]
-        normalized = _normalize_text(content)
-        for feature_key in (
-            'biblioteca',
-            'cantina',
-            'laboratorio',
-            'maker',
-            'quadra',
-            'piscina',
-            'futebol',
-            'volei',
-            'teatro',
-            'danca',
-        ):
-            if _message_matches_term(normalized, feature_key):
-                return feature_key
-    return None
-
-
-def _recent_public_contact_subject(
-    profile: dict[str, Any],
-    conversation_context: dict[str, Any] | None,
-) -> str | None:
-    recent_service = _recent_service_match(profile, conversation_context)
-    if recent_service is not None:
-        title = str(recent_service.get('title', '')).strip()
-        if title:
-            return title
-    for _sender_type, content in reversed(_recent_message_lines(conversation_context)):
-        normalized = _normalize_text(content)
-        if any(
-            _message_matches_term(normalized, term)
-            for term in {
-                'orientacao educacional',
-                'orientação educacional',
-                'bullying',
-                'socioemocional',
-            }
-        ):
-            return 'Orientacao educacional'
-        if any(
-            _message_matches_term(normalized, term) for term in {'financeiro', 'boleto', 'boletos'}
-        ):
-            return 'Financeiro'
-        if any(
-            _message_matches_term(normalized, term)
-            for term in {'diretora', 'diretor', 'direcao', 'direção', 'diretoria'}
-        ):
-            return 'Direcao'
-        if any(_message_matches_term(normalized, term) for term in {'coordenacao', 'coordenação'}):
-            return 'Coordenacao'
-        if any(
-            _message_matches_term(normalized, term)
-            for term in {'admissoes', 'admissões', 'matricula', 'matrícula', 'visita', 'tour'}
-        ):
-            return 'Admissoes'
-        if any(_message_matches_term(normalized, term) for term in {'secretaria'}):
-            return 'Secretaria'
-    return None
-
-
-def _public_contact_reference_message(
-    *,
-    profile: dict[str, Any],
-    source_message: str,
-    analysis_message: str,
-    conversation_context: dict[str, Any] | None,
-) -> str:
-    if not _is_follow_up_query(source_message):
-        return source_message
-    subject = _recent_public_contact_subject(profile, conversation_context)
-    if subject:
-        return f'{source_message} sobre {subject}'
-    return analysis_message
-
-
-def _preferred_contact_labels_from_context(
-    profile: dict[str, Any],
-    source_message: str,
-    conversation_context: dict[str, Any] | None,
-) -> list[str]:
-    normalized = _normalize_text(source_message)
-    preferred: list[str] = []
-
-    def add(label: str) -> None:
-        cleaned = label.strip()
-        if cleaned and cleaned not in preferred:
-            preferred.append(cleaned)
-
-    explicit_terms = (
-        ('Direcao', {'direcao', 'direção', 'diretoria', 'diretora', 'diretor'}),
-        ('Coordenacao', {'coordenacao', 'coordenação', 'coordenador', 'coordenadora'}),
-        ('Secretaria', {'secretaria'}),
-        (
-            'Financeiro',
-            {'financeiro', 'boleto', 'boletos', 'mensalidade', 'fatura', 'faturas', 'contrato'},
-        ),
-        ('Admissoes', {'admissoes', 'admissões', 'matricula', 'matrícula', 'visita', 'tour'}),
-        (
-            'Orientacao educacional',
-            {'orientacao educacional', 'orientação educacional', 'bullying', 'socioemocional'},
-        ),
-    )
-    for label, terms in explicit_terms:
-        if any(_message_matches_term(normalized, term) for term in terms):
-            add(label)
-
-    recent_service = _recent_service_match(profile, conversation_context)
-    if isinstance(recent_service, dict):
-        service_key = str(recent_service.get('service_key', '')).strip().lower()
-        service_preferences = {
-            'orientacao_educacional': 'Orientacao educacional',
-            'financeiro_escolar': 'Financeiro',
-            'visita_institucional': 'Admissoes',
-            'solicitacao_direcao': 'Direcao',
-            'secretaria_escolar': 'Secretaria',
-        }
-        preferred_label = service_preferences.get(service_key)
-        if preferred_label:
-            add(preferred_label)
-
-    for _sender_type, content in reversed(_recent_message_lines(conversation_context)):
-        content_normalized = _normalize_text(content)
-        if any(
-            _message_matches_term(content_normalized, term)
-            for term in {
-                'orientacao educacional',
-                'orientação educacional',
-                'bullying',
-                'socioemocional',
-            }
-        ):
-            add('Orientacao educacional')
-            break
-        if any(
-            _message_matches_term(content_normalized, term)
-            for term in {'financeiro', 'boleto', 'boletos'}
-        ):
-            add('Financeiro')
-            break
-        if any(
-            _message_matches_term(content_normalized, term)
-            for term in {'diretora', 'diretor', 'direcao', 'direção', 'diretoria'}
-        ):
-            add('Direcao')
-            break
-        if any(
-            _message_matches_term(content_normalized, term)
-            for term in {'coordenacao', 'coordenação'}
-        ):
-            add('Coordenacao')
-            break
-        if any(
-            _message_matches_term(content_normalized, term)
-            for term in {'admissoes', 'admissões', 'matricula', 'matrícula', 'visita', 'tour'}
-        ):
-            add('Admissoes')
-            break
-        if any(_message_matches_term(content_normalized, term) for term in {'secretaria'}):
-            add('Secretaria')
-            break
-    return preferred
-
-
 def _build_conversation_slot_memory(
     *,
     actor: dict[str, Any] | None,
@@ -404,125 +240,6 @@ def _build_conversation_slot_memory(
         preview=preview,
     )
 
-
-
-def _requested_public_features(message: str) -> list[str]:
-    normalized = _normalize_text(message)
-    feature_order = [
-        ('biblioteca', 'biblioteca'),
-        ('cantina', 'cantina'),
-        ('laboratorio', 'laboratorio'),
-        ('laboratorio de ciencias', 'laboratorio'),
-        ('maker', 'maker'),
-        ('espaco maker', 'maker'),
-        ('academia', 'academia'),
-        ('piscina', 'piscina'),
-        ('quadra de tenis', 'quadra de tenis'),
-        ('quadra', 'quadra'),
-        ('futebol', 'futebol'),
-        ('futsal', 'futebol'),
-        ('volei', 'volei'),
-        ('vôlei', 'volei'),
-        ('danca', 'danca'),
-        ('dança', 'danca'),
-        ('teatro', 'teatro'),
-        ('robotica', 'maker'),
-        ('robótica', 'maker'),
-        ('orientacao educacional', 'orientacao educacional'),
-        ('orientação educacional', 'orientacao educacional'),
-    ]
-    found: list[str] = []
-    for term, canonical in feature_order:
-        if _message_matches_term(normalized, term) and canonical not in found:
-            found.append(canonical)
-    return found
-
-
-def _is_public_feature_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    if _requested_public_features(message):
-        return True
-    return any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'estrutura',
-            'infraestrutura',
-            'espaco',
-            'espaço',
-            'espacos',
-            'espaços',
-            'campus',
-            'aula de',
-            'oficina de',
-            'curso de',
-            'atividade de',
-            'clube de',
-            'atividade',
-            'atividades',
-            'contraturno',
-            *PUBLIC_ENRICHMENT_TERMS,
-        }
-    )
-
-
-def _asks_why_feature_is_missing(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'por que nao tem',
-            'por que não tem',
-            'por que nao possui',
-            'por que não possui',
-            'por que nao oferece',
-            'por que não oferece',
-            'por que nao existe',
-            'por que não existe',
-        }
-    )
-
-
-def _extract_feature_gap_focus(message: str) -> str | None:
-    normalized = _normalize_text(message)
-    cleaned = re.sub(
-        r'^(?:e\s+)?(?:essa escola|o colegio|o col[eé]gio|a escola)?\s*(?:tem|possui|oferece|tem aula de|aula de|oficina de|curso de|atividade de|por que nao tem|por que nao possui|por que nao oferece|por que nao existe)\s+',
-        '',
-        normalized,
-    ).strip(' ?.')
-    if cleaned.startswith('e '):
-        cleaned = cleaned[2:].strip()
-    if cleaned:
-        return cleaned
-    salient = sorted(_extract_salient_terms(message))
-    if salient:
-        return ' '.join(salient[:4])
-    return None
-
-
-def _feature_suggestion_replies(feature_keys: list[str]) -> list[str]:
-    if 'biblioteca' in feature_keys:
-        return [
-            'Qual o horario da biblioteca?',
-            'Qual o endereco da escola?',
-            'Quero agendar uma visita',
-            'Quais atividades a escola oferece?',
-        ]
-    if any(
-        key in feature_keys
-        for key in {'maker', 'danca', 'futebol', 'volei', 'teatro', 'laboratorio'}
-    ):
-        return [
-            'Quais atividades no contraturno a escola oferece?',
-            'Tem horarios dessas atividades?',
-            'Quero agendar uma visita',
-            'Qual o horario do 9o ano?',
-        ]
-    return [
-        'Quais atividades a escola oferece?',
-        'Quero agendar uma visita',
-        'Qual o horario do 9o ano?',
-        'Como vinculo minha conta?',
-    ]
 
 
 def _compose_public_feature_answer(
@@ -1571,16 +1288,6 @@ def _compose_concierge_topic_examples(profile: dict[str, Any], limit: int = 5) -
     return ', '.join(examples[:-1]) + f' e {examples[-1]}'
 
 
-def _service_catalog_index(profile: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    entries = _public_service_catalog(profile)
-    result: dict[str, dict[str, Any]] = {}
-    for item in entries:
-        key = str(item.get('service_key', '')).strip()
-        if key:
-            result[key] = item
-    return result
-
-
 def _requested_public_attribute(message: str) -> str | None:
     attributes = _requested_public_attributes(message)
     return attributes[0] if attributes else None
@@ -1701,144 +1408,6 @@ def _extract_teacher_subject(message: str) -> str | None:
         if subject:
             return subject
     return None
-
-
-def _recent_service_match(
-    profile: dict[str, Any],
-    conversation_context: dict[str, Any] | None,
-) -> dict[str, Any] | None:
-    for sender_type, content in reversed(_recent_message_lines(conversation_context)):
-        if sender_type not in {'user', 'assistant'}:
-            continue
-        matches = _service_matches_from_message(profile, content)
-        if len(matches) == 1:
-            return matches[0]
-    return None
-
-
-def _is_generic_service_contact_follow_up(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'com qual contato eu devo falar',
-            'qual contato eu devo usar',
-            'qual contato devo usar',
-            'qual contato',
-            'por qual canal',
-            'como falo com',
-            'como falar com',
-            'quem devo procurar',
-            'como entro em contato',
-        }
-    )
-
-
-def _service_matches_from_message(profile: dict[str, Any], message: str) -> list[dict[str, Any]]:
-    normalized = _normalize_text(message)
-    catalog = _service_catalog_index(profile)
-    service_keys: list[str] = []
-    if any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'matricula',
-            'bolsa',
-            'desconto',
-            'admissao',
-            'admissoes',
-            'atendimento comercial',
-            'comercial',
-            'visita',
-            'tour',
-        }
-    ):
-        service_keys.extend(['atendimento_admissoes', 'visita_institucional'])
-    if any(
-        _message_matches_term(normalized, term) for term in {'secretaria', 'secretaria escolar'}
-    ):
-        service_keys.append('secretaria_escolar')
-    if any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'documento',
-            'documentos',
-            'historico',
-            'declaração',
-            'declaracao',
-            'transferencia',
-            'uniforme',
-        }
-    ):
-        service_keys.append('secretaria_escolar')
-    if any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'rotina',
-            'aprendizagem',
-            'adaptacao',
-            'adaptação',
-            'professor',
-            'faltas',
-            'nota',
-            'notas',
-            'disciplina',
-        }
-    ):
-        service_keys.append('reuniao_coordenacao')
-    if any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'emocional',
-            'convivencia',
-            'convivência',
-            'bullying',
-            'orientacao',
-            'orientação',
-            'socioemocional',
-        }
-    ):
-        service_keys.append('orientacao_educacional')
-    if any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'mensalidade',
-            'boleto',
-            'boletos',
-            'financeiro',
-            'fatura',
-            'faturas',
-            'pagamento',
-            'contrato',
-        }
-    ):
-        service_keys.append('financeiro_escolar')
-    if any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'direcao',
-            'direção',
-            'diretora',
-            'ouvidoria',
-            'elogio',
-            'reclamacao',
-            'reclamação',
-            'sugestao',
-            'sugestão',
-        }
-    ):
-        service_keys.append('solicitacao_direcao')
-    if any(
-        _message_matches_term(normalized, term)
-        for term in {'portal', 'senha', 'acesso', 'telegram', 'bot', 'sistema'}
-    ):
-        service_keys.append('suporte_digital')
-    if any(_message_matches_term(normalized, term) for term in TEACHER_RECRUITMENT_TERMS):
-        service_keys.append('carreiras_docentes')
-    unique_keys: list[str] = []
-    for key in service_keys:
-        if key in catalog and key not in unique_keys:
-            unique_keys.append(key)
-    return [catalog[key] for key in unique_keys]
 
 
 def _humanize_service_eta(eta: str) -> str:
@@ -3085,52 +2654,6 @@ def _compose_capability_answer(
         'Se sua conta estiver vinculada, eu tambem posso consultar notas, faltas e o financeiro escolar. '
         'Se fizer sentido, eu ainda abro visita, protocolo ou te direciono para o setor certo.'
     )
-
-
-def _routing_follow_up_context_message(
-    message: str,
-    conversation_context: dict[str, Any] | None,
-) -> str:
-    if not isinstance(conversation_context, dict):
-        return message
-    recent_messages = conversation_context.get('recent_messages', [])
-    if not isinstance(recent_messages, list):
-        return message
-    last_user_message = _extract_recent_user_message(recent_messages)
-    last_assistant_message = _extract_recent_assistant_message(recent_messages)
-    if not last_user_message:
-        return message
-    if _normalize_text(last_user_message) == _normalize_text(message):
-        return message
-    if (
-        _is_greeting_only(last_user_message)
-        or _is_service_routing_query(last_user_message)
-        or _is_capability_query(last_user_message)
-        or _is_assistant_identity_query(last_user_message)
-    ):
-        return message
-    normalized_last_user = _normalize_text(last_user_message)
-    if not any(
-        _message_matches_term(normalized_last_user, term)
-        for term in SERVICE_FOLLOW_UP_CONTEXT_TERMS
-    ):
-        return message
-    normalized_last_assistant = _normalize_text(last_assistant_message or '')
-    if normalized_last_assistant and not any(
-        marker in normalized_last_assistant
-        for marker in (
-            'autenticacao',
-            'vinculo',
-            'protocolo',
-            'ticket operacional',
-            'fila',
-            'prazo',
-            'setor',
-            'canal recomendado',
-        )
-    ):
-        return message
-    return f'{message} sobre {last_user_message}'
 
 
 def _compose_service_routing_menu(profile: dict[str, Any]) -> str:
