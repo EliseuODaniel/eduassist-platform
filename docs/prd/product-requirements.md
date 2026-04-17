@@ -90,6 +90,7 @@ Quer monitorar qualidade, incidentes, handoffs e bases documentais.
 - O sistema deve responder com base em documentos institucionais indexados.
 - O sistema deve citar fontes relevantes quando a resposta vier de base documental.
 - O sistema deve diferenciar conteúdo público e privado.
+- O sistema deve poder personalizar a formulação final da resposta ao usuário sem alterar fatos, policy ou escopo decidido pelas camadas determinísticas.
 
 ### 7.5 Dados estruturados
 
@@ -114,6 +115,7 @@ Quer monitorar qualidade, incidentes, handoffs e bases documentais.
 - Arquitetura modular
 - Portabilidade futura para Kubernetes
 - Consistência cross-stack na interpretação do turno sob o mesmo contexto de autenticação e policy
+- Preservação factual da resposta final mesmo quando houver verbalização por LLM sobre uma base determinística
 
 ## 9. Restrições
 

@@ -5,26 +5,24 @@ import json
 import logging
 import secrets
 from contextlib import asynccontextmanager
+from pathlib import Path
 from time import monotonic
 from typing import Any
 from urllib.error import URLError
-from urllib.request import Request, urlopen
+from urllib.request import Request as UrlRequest, urlopen
 
 import httpx
 from eduassist_observability import (
+    bridge_spiffe_identity_to_internal_token,
     build_runtime_diagnostics,
-    canonicalize_evidence_strategy,
-    canonicalize_risk_flags,
     configure_observability,
 )
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from .channel_reply_formatting import format_reply_for_channel
 from .debug_trace_footer import (
     attach_telegram_debug_trace_for_bundle,
-    build_debug_trace_for_bundle,
-    format_telegram_debug_footer,
 )
 from .engine_selector import (
     SUPPORTED_PRIMARY_STACKS,
@@ -276,7 +274,7 @@ def _probe_remote_status_payload(
         return dict(payload) if isinstance(payload, dict) else None
 
     payload: dict[str, Any] | None = None
-    request = Request(
+    request = UrlRequest(
         f'{normalized_url.rstrip("/")}/v1/status',
         headers={'X-Internal-Api-Token': token},
     )
@@ -661,6 +659,23 @@ app = FastAPI(
     lifespan=_lifespan,
 )
 
+
+@app.middleware('http')
+async def _bridge_internal_workload_identity(request: Request, call_next):
+    settings = get_settings()
+    decision = bridge_spiffe_identity_to_internal_token(
+        request.scope,
+        expected_token=settings.internal_api_token,
+        mode=settings.internal_workload_identity_mode,
+        allowed_spiffe_ids=settings.internal_spiffe_allowed_ids,
+    )
+    if decision.authenticated and decision.mechanism == 'spiffe_id':
+        request.state.internal_workload_identity = {
+            'mechanism': decision.mechanism,
+            'spiffe_id': decision.spiffe_id,
+        }
+    return await call_next(request)
+
 configure_observability(
     service_name='ai-orchestrator',
     service_version=app.version,
@@ -687,6 +702,9 @@ def _warm_retrieval_service(settings: Settings) -> None:
             deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
             rerank_fused_weight=settings.retrieval_rerank_fused_weight,
             rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
+            enable_cross_encoder_rerank=settings.retrieval_enable_cross_encoder_rerank,
+            cross_encoder_model=settings.retrieval_cross_encoder_model,
+            rerank_cross_encoder_weight=settings.retrieval_rerank_cross_encoder_weight,
         )
         service.warm_components()
         logger.info('retrieval_service_warmed')
@@ -753,6 +771,8 @@ async def meta(
         'retrievalQueryVariantsEnabled': settings.retrieval_enable_query_variants,
         'retrievalLateInteractionRerankEnabled': settings.retrieval_enable_late_interaction_rerank,
         'retrievalLateInteractionModel': settings.retrieval_late_interaction_model,
+        'retrievalCrossEncoderRerankEnabled': settings.retrieval_enable_cross_encoder_rerank,
+        'retrievalCrossEncoderModel': settings.retrieval_cross_encoder_model,
         'langgraphCheckpointerEnabled': langgraph_runtime['checkpointerConfigured'],
         'langgraphCheckpointerReady': langgraph_runtime['checkpointerInitialized'],
         'langgraphCheckpointerBackend': langgraph_runtime['checkpointerBackend'],
@@ -816,6 +836,7 @@ async def status() -> dict[str, object]:
             'qdrant-hybrid-retrieval',
             'query-planned-retrieval',
             'late-interaction-reranking',
+            'cross-encoder-reranking',
         ],
         'supportedEngines': sorted(SUPPORTED_PRIMARY_STACKS),
         'telegramDebugTraceFooterEnabled': settings.feature_flag_telegram_debug_trace_footer_enabled,
@@ -825,6 +846,8 @@ async def status() -> dict[str, object]:
         'retrievalQueryVariantsEnabled': settings.retrieval_enable_query_variants,
         'retrievalLateInteractionRerankEnabled': settings.retrieval_enable_late_interaction_rerank,
         'retrievalLateInteractionModel': settings.retrieval_late_interaction_model,
+        'retrievalCrossEncoderRerankEnabled': settings.retrieval_enable_cross_encoder_rerank,
+        'retrievalCrossEncoderModel': settings.retrieval_cross_encoder_model,
         'langgraphCheckpointerEnabled': langgraph_runtime['checkpointerConfigured'],
         'langgraphCheckpointerReady': langgraph_runtime['checkpointerInitialized'],
         'langgraphCheckpointerBackend': langgraph_runtime['checkpointerBackend'],
@@ -1043,6 +1066,9 @@ async def retrieval_status() -> dict[str, object]:
         deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
         rerank_fused_weight=settings.retrieval_rerank_fused_weight,
         rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
+            enable_cross_encoder_rerank=settings.retrieval_enable_cross_encoder_rerank,
+            cross_encoder_model=settings.retrieval_cross_encoder_model,
+            rerank_cross_encoder_weight=settings.retrieval_rerank_cross_encoder_weight,
     )
     return {
         'service': 'ai-orchestrator',
@@ -1050,6 +1076,8 @@ async def retrieval_status() -> dict[str, object]:
         'queryVariantsEnabled': settings.retrieval_enable_query_variants,
         'lateInteractionRerankEnabled': settings.retrieval_enable_late_interaction_rerank,
         'lateInteractionModel': settings.retrieval_late_interaction_model,
+        'crossEncoderRerankEnabled': settings.retrieval_enable_cross_encoder_rerank,
+        'crossEncoderModel': settings.retrieval_cross_encoder_model,
         'qdrant': service.collection_status(),
     }
 
@@ -1070,6 +1098,9 @@ async def retrieval_search(request: RetrievalSearchRequest) -> RetrievalSearchRe
         deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
         rerank_fused_weight=settings.retrieval_rerank_fused_weight,
         rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
+            enable_cross_encoder_rerank=settings.retrieval_enable_cross_encoder_rerank,
+            cross_encoder_model=settings.retrieval_cross_encoder_model,
+            rerank_cross_encoder_weight=settings.retrieval_rerank_cross_encoder_weight,
     )
     return service.hybrid_search(
         query=request.query,

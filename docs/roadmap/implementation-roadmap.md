@@ -191,13 +191,58 @@ Estado atual:
 - a base compartilhada já possui `RetrievalExecutionPolicy` por capability;
 - `python_functions`, `langgraph`, `llamaindex` e os kernels públicos já consomem essa política antes do retrieval híbrido;
 - o baseline já passou a registrar nos traces a policy escolhida e o resultado efetivo da busca, por engine e por capability;
+- o retrieval híbrido agora combina o score original com `late interaction` e `cross-encoder` multilíngue, elevando o baseline de precisão antes da composição grounded;
 - o próximo passo desta fase deixa de ser "introduzir capability-aware retrieval" e passa a ser calibração fina por família, com métricas reais de `answerable@k` e latência.
+
+### Estado dos débitos arquiteturais antigos
+
+- `runtime_core.py` como god module: resolvido por decomposição estrutural, com constantes e expressões extraídas para `runtime_core_constants.py` e orçamento de módulo reforçado em teste;
+- `cross-encoder reranker`: resolvido no baseline atual do retrieval híbrido;
+- `tail-based sampling OTEL`: já estava resolvido na infraestrutura Compose;
+- `SPIFFE/SPIRE`: resolvido no nível da aplicação por bridge `SPIFFE-ready`; rollout completo de `SPIRE` continua como maturidade operacional opcional.
+
+## 1.3 Programa complementar atual - Benchmark A/B local de modelos
+
+O projeto agora mantém um segundo profile local de LLM para comparação controlada com o baseline:
+
+- baseline: `gemma4e4b_local`
+- experimento: `qwen3_4b_instruct_local`
+
+Princípios:
+
+- mesma stack para comparação;
+- mesmo dataset;
+- mesma política de auth, retrieval, grounding e rendering;
+- sem troca silenciosa do default do repositório.
+
+Sequência recomendada:
+
+1. subir `specialist_supervisor` com `gemma4e4b_local`;
+2. rodar dataset A/B e salvar artefatos;
+3. subir `specialist_supervisor` com `qwen3_4b_instruct_local`;
+4. rodar exatamente o mesmo dataset;
+5. comparar qualidade, personalização, grounding, latência e análise humana;
+6. só então decidir se o experimento merece piloto maior.
+
+Status da primeira rodada (`2026-04-17`):
+
+- implementação concluída com o profile `qwen3_4b_instruct_local` em `llama.cpp`;
+- A/B executado no `specialist_supervisor` com o mesmo dataset e o mesmo harness;
+- a primeira passada favoreceu `Qwen` em estabilidade e latência, mas revelou resíduos arquiteturais acima da troca de modelo;
+- depois da wave de correções e do `answer surface refiner`, `gemma4e4b_local_postfix` fechou em `15/15`, `keyword_pass 15/15` e `quality 100.0`;
+- decisão: manter `Gemma` como baseline, preservar `Qwen` como feature flag experimental e tratar o A/B como ferramenta contínua de diagnóstico.
 
 ### Fase O - Composição grounded mais forte
 
 - evoluir a composição final para um `AnswerFrame` com `direct_answer`, `supported_claims`, `omitted_context` e `uncertainty`;
 - deixar a LLM adaptar a resposta só em cima de evidência auditável;
 - preservar respostas determinísticas em domínios sensíveis.
+
+Status atual:
+
+- a primeira etapa desta fase foi implementada no `specialist_supervisor` via `answer surface refiner` validado e depois promovida ao pós-processamento compartilhado das stacks non-specialist;
+- respostas elegíveis, inclusive determinísticas, já passam por verbalização final com fallback preservado tanto no `specialist` quanto em `langgraph`, `python_functions` e `llamaindex`;
+- o próximo avanço dessa fase deixa de ser "ligar a LLM no final" e passa a ser enriquecer o contrato explícito do refino com campos mais próximos de um `AnswerFrame`.
 
 ### Fase P - Contexto maior, com perfilamento
 

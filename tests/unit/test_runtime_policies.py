@@ -3,7 +3,16 @@ from __future__ import annotations
 from datetime import datetime
 from types import SimpleNamespace
 
-from ai_orchestrator.models import AccessTier, OrchestrationMode, QueryDomain, UserContext, UserRole
+from ai_orchestrator.models import (
+    AccessTier,
+    IntentClassification,
+    MessageResponse,
+    OrchestrationMode,
+    QueryDomain,
+    RetrievalBackend,
+    UserContext,
+    UserRole,
+)
 from ai_orchestrator.retrieval import retrieve_relevant_restricted_hits_with_fallback
 from eduassist_semantic_ingress import (
     looks_like_school_scope_message,
@@ -3776,9 +3785,6 @@ def test_public_open_documentary_plan_promotes_candidate_synthesis() -> None:
         'Se uma familia precisa entender por onde um tema caminha dentro da escola, que trilha institucional os documentos publicos sugerem entre secretaria, coordenacao, direcao e canais oficiais?',
         plan,
     ) is True
-
-
-from ai_orchestrator.models import IntentClassification, MessageResponse, RetrievalBackend
 
 
 def test_message_response_supports_explicit_llm_debug_fields() -> None:

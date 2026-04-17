@@ -17,7 +17,11 @@ import httpx
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from eduassist_observability import build_runtime_diagnostics, configure_observability
+from eduassist_observability import (
+    bridge_spiffe_identity_to_internal_token,
+    build_runtime_diagnostics,
+    configure_observability,
+)
 
 
 _ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / '.env'
@@ -57,6 +61,8 @@ class Settings(BaseSettings):
     graph_rag_async_timeout_seconds: float = 480.0
     graph_rag_async_max_seconds: int = 420
     internal_api_token: str = 'dev-internal-token'
+    internal_workload_identity_mode: str = 'token'
+    internal_spiffe_allowed_ids: str = ''
     allow_insecure_internal_api_token: bool = False
     telegram_api_base_url: str = 'https://api.telegram.org'
 
@@ -115,6 +121,23 @@ app = FastAPI(
     summary='Telegram ingress bootstrap for EduAssist Platform.',
     lifespan=_lifespan,
 )
+
+
+@app.middleware('http')
+async def _bridge_internal_workload_identity(request: Request, call_next):
+    settings = get_settings()
+    decision = bridge_spiffe_identity_to_internal_token(
+        request.scope,
+        expected_token=settings.internal_api_token,
+        mode=settings.internal_workload_identity_mode,
+        allowed_spiffe_ids=settings.internal_spiffe_allowed_ids,
+    )
+    if decision.authenticated and decision.mechanism == 'spiffe_id':
+        request.state.internal_workload_identity = {
+            'mechanism': decision.mechanism,
+            'spiffe_id': decision.spiffe_id,
+        }
+    return await call_next(request)
 
 configure_observability(
     service_name='telegram-gateway',

@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     keycloak_realm: str = 'eduassist'
     keycloak_allowed_clients: str = 'eduassist-web,eduassist-cli'
     internal_api_token: str = 'dev-internal-token'
+    internal_workload_identity_mode: str = 'token'
+    internal_spiffe_allowed_ids: str = ''
     allow_insecure_internal_api_token: bool = False
     allow_test_identity_overrides: bool = False
     telegram_link_ttl_minutes: int = 15

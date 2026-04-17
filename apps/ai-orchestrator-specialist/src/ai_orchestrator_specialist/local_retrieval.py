@@ -1,16 +1,14 @@
+# ruff: noqa: F401,F821,E402
 from __future__ import annotations
-
 from dataclasses import dataclass
-from functools import lru_cache
 import re
-import shutil
 from time import monotonic
 from typing import Any
 import unicodedata
 
 from eduassist_observability import record_counter, record_histogram, set_span_attributes, start_span
 from fastembed import LateInteractionTextEmbedding, TextEmbedding
-import numpy as np
+from fastembed.rerank.cross_encoder import TextCrossEncoder
 import psycopg
 from psycopg.rows import dict_row
 from qdrant_client import QdrantClient, models
@@ -268,11 +266,14 @@ class RetrievalService:
         enable_query_variants: bool,
         enable_late_interaction_rerank: bool,
         late_interaction_model: str,
+        enable_cross_encoder_rerank: bool = True,
+        cross_encoder_model: str = 'jinaai/jina-reranker-v2-base-multilingual',
         candidate_pool_size: int,
         cheap_candidate_pool_size: int,
         deep_candidate_pool_size: int,
         rerank_fused_weight: float,
         rerank_late_interaction_weight: float,
+        rerank_cross_encoder_weight: float = 0.85,
     ) -> None:
         self.database_url = database_url
         self.collection_name = collection_name
@@ -280,14 +281,19 @@ class RetrievalService:
         self.enable_query_variants = enable_query_variants
         self.enable_late_interaction_rerank = enable_late_interaction_rerank
         self.late_interaction_model = late_interaction_model
+        self.enable_cross_encoder_rerank = enable_cross_encoder_rerank
+        self.cross_encoder_model = cross_encoder_model
         self.candidate_pool_size = max(6, candidate_pool_size)
         self.cheap_candidate_pool_size = max(4, cheap_candidate_pool_size)
         self.deep_candidate_pool_size = max(self.candidate_pool_size, deep_candidate_pool_size)
         self.rerank_fused_weight = max(0.0, rerank_fused_weight)
         self.rerank_late_interaction_weight = max(0.0, rerank_late_interaction_weight)
+        self.rerank_cross_encoder_weight = max(0.0, rerank_cross_encoder_weight)
         self.qdrant = QdrantClient(url=qdrant_url)
         self._embedder: TextEmbedding | None = None
         self._late_interaction_embedder: LateInteractionTextEmbedding | None = None
+        self._cross_encoder_reranker: TextCrossEncoder | None = None
+        self._last_reranker_model: str | None = None
 
     @property
     def embedder(self) -> TextEmbedding:
@@ -303,6 +309,14 @@ class RetrievalService:
             self._late_interaction_embedder = _build_late_interaction_embedder(self.late_interaction_model)
         return self._late_interaction_embedder
 
+    @property
+    def cross_encoder_reranker(self) -> TextCrossEncoder | None:
+        if not self.enable_cross_encoder_rerank or not self.cross_encoder_model:
+            return None
+        if self._cross_encoder_reranker is None:
+            self._cross_encoder_reranker = _build_cross_encoder_reranker(self.cross_encoder_model)
+        return self._cross_encoder_reranker
+
     def warm_components(self) -> None:
         with start_span(
             'eduassist.retrieval.warm_components',
@@ -317,6 +331,14 @@ class RetrievalService:
             if reranker is not None:
                 next(reranker.embed(['warmup query']))
                 next(reranker.embed(['warmup document context']))
+            cross_encoder = self.cross_encoder_reranker
+            if cross_encoder is not None:
+                list(
+                    cross_encoder.rerank(
+                        query='warmup retrieval query',
+                        documents=['warmup retrieval document context'],
+                    )
+                )
 
     def hybrid_search(
             self,
@@ -339,8 +361,6 @@ class RetrievalService:
                 profile=profile,
                 parent_ref_keys=parent_ref_keys,
             )
-
-
     def collection_status(self) -> dict[str, Any]:
         with start_span(
             'eduassist.retrieval.collection_status',
@@ -378,11 +398,14 @@ class RetrievalService:
                 'query_variants_enabled': self.enable_query_variants,
                 'late_interaction_rerank_enabled': self.enable_late_interaction_rerank,
                 'late_interaction_model': self.late_interaction_model,
+                'cross_encoder_rerank_enabled': self.enable_cross_encoder_rerank,
+                'cross_encoder_model': self.cross_encoder_model,
                 'candidate_pool_size': self.candidate_pool_size,
                 'cheap_candidate_pool_size': self.cheap_candidate_pool_size,
                 'deep_candidate_pool_size': self.deep_candidate_pool_size,
                 'rerank_fused_weight': self.rerank_fused_weight,
                 'rerank_late_interaction_weight': self.rerank_late_interaction_weight,
+                'rerank_cross_encoder_weight': self.rerank_cross_encoder_weight,
             }
 
     def _lexical_search(
@@ -514,6 +537,7 @@ class RetrievalService:
             )
 
 
+
     def _rerank_hits(
         self,
         *,
@@ -522,47 +546,79 @@ class RetrievalService:
         rerank_limit: int,
         top_k: int,
     ) -> tuple[list[RetrievalHit], bool]:
-        if not self.enable_late_interaction_rerank or not self.late_interaction_model or not hits:
-            return hits[:top_k], False
-        try:
-            reranker = self.late_interaction_embedder
-            if reranker is None:
-                return hits[:top_k], False
-            query_embedding = np.asarray(next(reranker.embed([query])))
-            rerank_candidates = hits[: min(rerank_limit, len(hits))]
-            document_inputs = [
-                _rerank_text_for_hit(hit)
-                for hit in rerank_candidates
-            ]
-            document_embeddings = [np.asarray(item) for item in reranker.embed(document_inputs)]
-            rerank_scores = [
-                _late_interaction_maxsim(query_embedding, document_embedding)
-                for document_embedding in document_embeddings
-            ]
-        except Exception:
+        self._last_reranker_model = None
+        if not hits:
             return hits[:top_k], False
 
-        fused_weight, rerank_weight = _normalized_blend_weights(
-            self.rerank_fused_weight,
-            self.rerank_late_interaction_weight,
-        )
+        rerank_candidates = hits[: min(rerank_limit, len(hits))]
+        document_inputs = [_rerank_text_for_hit(hit) for hit in rerank_candidates]
+        auxiliary_scores: dict[str, list[float]] = {}
+        applied_models: list[str] = []
+
+        if self.enable_late_interaction_rerank and self.late_interaction_model:
+            try:
+                reranker = self.late_interaction_embedder
+                if reranker is not None:
+                    auxiliary_scores['late_interaction'] = _late_interaction_scores(
+                        reranker,
+                        query=query,
+                        documents=document_inputs,
+                    )
+                    applied_models.append(self.late_interaction_model)
+            except Exception:
+                pass
+
+        if self.enable_cross_encoder_rerank and self.cross_encoder_model:
+            try:
+                reranker = self.cross_encoder_reranker
+                if reranker is not None:
+                    auxiliary_scores['cross_encoder'] = [
+                        float(score)
+                        for score in reranker.rerank(
+                            query=query,
+                            documents=document_inputs,
+                        )
+                    ]
+                    applied_models.append(self.cross_encoder_model)
+            except Exception:
+                pass
+
+        if not auxiliary_scores:
+            return hits[:top_k], False
+
         normalized_fused = _normalize_scores([hit.fused_score for hit in rerank_candidates])
-        normalized_rerank = _normalize_scores(rerank_scores)
+        normalized_late = _normalize_scores(auxiliary_scores.get('late_interaction', []))
+        normalized_cross = _normalize_scores(auxiliary_scores.get('cross_encoder', []))
+        weights = _normalized_component_weights(
+            fused_weight=self.rerank_fused_weight,
+            late_interaction_weight=self.rerank_late_interaction_weight,
+            cross_encoder_weight=self.rerank_cross_encoder_weight,
+            include_late_interaction=bool(normalized_late),
+            include_cross_encoder=bool(normalized_cross),
+        )
+
         rescored: list[tuple[float, RetrievalHit]] = []
-        for hit, rerank_score, fused_score, rerank_component in zip(
-            rerank_candidates,
-            rerank_scores,
-            normalized_fused,
-            normalized_rerank,
-            strict=True,
-        ):
-            combined_score = (fused_weight * fused_score) + (rerank_weight * rerank_component)
+        for index, hit in enumerate(rerank_candidates):
+            combined_score = weights['fused'] * normalized_fused[index]
+            if normalized_late:
+                combined_score += weights.get('late_interaction', 0.0) * normalized_late[index]
+            if normalized_cross:
+                combined_score += weights.get('cross_encoder', 0.0) * normalized_cross[index]
+            best_auxiliary = None
+            if normalized_cross:
+                best_auxiliary = auxiliary_scores['cross_encoder'][index]
+            elif normalized_late:
+                best_auxiliary = auxiliary_scores['late_interaction'][index]
             rescored.append(
                 (
                     combined_score,
                     hit.model_copy(
                         update={
-                            'rerank_score': round(float(rerank_score), 6),
+                            'rerank_score': (
+                                round(float(best_auxiliary), 6)
+                                if best_auxiliary is not None
+                                else hit.rerank_score
+                            ),
                             'document_score': round(max(float(hit.document_score or 0.0), combined_score), 6),
                         }
                     ),
@@ -572,6 +628,7 @@ class RetrievalService:
         reranked_hits = [hit for _, hit in rescored]
         if len(hits) > len(rerank_candidates):
             reranked_hits.extend(hits[len(rerank_candidates):])
+        self._last_reranker_model = _applied_reranker_label(applied_models)
         return reranked_hits[:top_k], True
 
     def _build_document_groups(
@@ -748,7 +805,7 @@ def _restricted_document_fallback_queries(query: str) -> list[str]:
     anchor_terms = _restricted_document_anchor_terms(query)
     rare_terms = _restricted_document_rare_terms(query)
     phrases: list[tuple[float, int, str]] = []
-    for index, (first, second) in enumerate(zip(raw_terms, raw_terms[1:])):
+    for index, (first, second) in enumerate(zip(raw_terms, raw_terms[1:], strict=False)):
         if first == second:
             continue
         if first in _RESTRICTED_DOC_GENERIC_TERMS and second in _RESTRICTED_DOC_GENERIC_TERMS:
@@ -1288,11 +1345,40 @@ def _normalize_scores(values: list[float]) -> list[float]:
     return [(value - minimum) / (maximum - minimum) for value in values]
 
 
-def _normalized_blend_weights(fused_weight: float, rerank_weight: float) -> tuple[float, float]:
-    total = fused_weight + rerank_weight
+def _normalized_component_weights(
+    *,
+    fused_weight: float,
+    late_interaction_weight: float,
+    cross_encoder_weight: float,
+    include_late_interaction: bool,
+    include_cross_encoder: bool,
+) -> dict[str, float]:
+    weights = {'fused': max(0.0, fused_weight)}
+    if include_late_interaction:
+        weights['late_interaction'] = max(0.0, late_interaction_weight)
+    if include_cross_encoder:
+        weights['cross_encoder'] = max(0.0, cross_encoder_weight)
+    total = sum(weights.values())
     if total <= 1e-9:
-        return 0.4, 0.6
-    return fused_weight / total, rerank_weight / total
+        if include_late_interaction and include_cross_encoder:
+            return {'fused': 0.2, 'late_interaction': 0.35, 'cross_encoder': 0.45}
+        if include_cross_encoder:
+            return {'fused': 0.3, 'cross_encoder': 0.7}
+        if include_late_interaction:
+            return {'fused': 0.4, 'late_interaction': 0.6}
+        return {'fused': 1.0}
+    return {name: value / total for name, value in weights.items()}
+
+
+def _applied_reranker_label(models: list[str]) -> str | None:
+    labels: list[str] = []
+    for model in models:
+        normalized = str(model or '').strip()
+        if normalized and normalized not in labels:
+            labels.append(normalized)
+    if not labels:
+        return None
+    return ' + '.join(labels)
 
 
 def _section_metadata_from_summary(summary: str | None, *, fallback_title: str) -> tuple[str | None, str | None, str | None]:
@@ -1727,88 +1813,12 @@ def _document_diversified_hits(
     return diversified
 
 
-def _rerank_text_for_hit(hit: RetrievalHit) -> str:
-    summary = str(hit.contextual_summary or '').strip()
-    excerpt = str(hit.text_excerpt or '').strip()
-    return f'{hit.document_title}. {summary} {excerpt}'.strip()
+def _export_module_namespace(module: object) -> None:
+    for name, value in vars(module).items():
+        if name.startswith('__'):
+            continue
+        globals()[name] = value
 
+from . import local_retrieval_rerank_runtime as _local_retrieval_rerank_runtime  # noqa: E402
 
-def _late_interaction_maxsim(query_embedding: np.ndarray, document_embedding: np.ndarray) -> float:
-    if query_embedding.size == 0 or document_embedding.size == 0:
-        return 0.0
-    if query_embedding.ndim != 2 or document_embedding.ndim != 2:
-        return 0.0
-    similarity = np.matmul(query_embedding, document_embedding.T)
-    if similarity.size == 0:
-        return 0.0
-    return float(np.max(similarity, axis=1).sum())
-
-
-def _normalize_visibility_filter(value: str) -> str:
-    normalized = _normalize_text(value)
-    if normalized in {'private', 'restricted', 'internal'}:
-        return 'restricted'
-    return 'public'
-
-
-def _normalize_category_filter(category: str | None) -> str | None:
-    normalized = _normalize_text(category or '')
-    if not normalized:
-        return None
-    if normalized in {'private_docs', 'public_docs', 'graph_rag'}:
-        return None
-    return normalized
-
-
-@lru_cache
-def get_retrieval_service(
-    *,
-    database_url: str,
-    qdrant_url: str,
-    collection_name: str,
-    embedding_model: str,
-    enable_query_variants: bool,
-    enable_late_interaction_rerank: bool,
-    late_interaction_model: str,
-    candidate_pool_size: int,
-    cheap_candidate_pool_size: int,
-    deep_candidate_pool_size: int,
-    rerank_fused_weight: float,
-    rerank_late_interaction_weight: float,
-) -> RetrievalService:
-    return RetrievalService(
-        database_url=database_url,
-        qdrant_url=qdrant_url,
-        collection_name=collection_name,
-        embedding_model=embedding_model,
-        enable_query_variants=enable_query_variants,
-        enable_late_interaction_rerank=enable_late_interaction_rerank,
-        late_interaction_model=late_interaction_model,
-        candidate_pool_size=candidate_pool_size,
-        cheap_candidate_pool_size=cheap_candidate_pool_size,
-        deep_candidate_pool_size=deep_candidate_pool_size,
-        rerank_fused_weight=rerank_fused_weight,
-        rerank_late_interaction_weight=rerank_late_interaction_weight,
-    )
-
-
-def _build_embedder(model_name: str) -> TextEmbedding:
-    try:
-        return TextEmbedding(model_name=model_name)
-    except Exception as exc:
-        message = str(exc)
-        if 'NO_SUCHFILE' not in message and "File doesn't exist" not in message:
-            raise
-        shutil.rmtree('/tmp/fastembed_cache', ignore_errors=True)
-        return TextEmbedding(model_name=model_name)
-
-
-def _build_late_interaction_embedder(model_name: str) -> LateInteractionTextEmbedding:
-    try:
-        return LateInteractionTextEmbedding(model_name=model_name)
-    except Exception as exc:
-        message = str(exc)
-        if 'NO_SUCHFILE' not in message and "File doesn't exist" not in message:
-            raise
-        shutil.rmtree('/tmp/fastembed_cache', ignore_errors=True)
-        return LateInteractionTextEmbedding(model_name=model_name)
+_export_module_namespace(_local_retrieval_rerank_runtime)

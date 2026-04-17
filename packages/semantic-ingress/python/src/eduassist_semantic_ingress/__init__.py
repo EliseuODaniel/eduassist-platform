@@ -25,6 +25,10 @@ from .turn_router import (
 )
 from .turn_preview import turn_frame_preview_metadata
 from .grounded_public_answer import compose_grounded_public_answer_with_provider
+from .answer_surface_refiner import (
+    AnswerSurfaceRefinementResult,
+    refine_answer_surface_with_provider,
+)
 
 __all__ = [
     "IngressSemanticPlan",
@@ -49,5 +53,7 @@ __all__ = [
     "resolve_turn_frame_with_provider",
     "should_run_semantic_ingress_classifier",
     "compose_grounded_public_answer_with_provider",
+    "AnswerSurfaceRefinementResult",
+    "refine_answer_surface_with_provider",
     "turn_frame_preview_metadata",
 ]

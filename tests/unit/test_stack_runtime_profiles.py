@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 
 import pytest
 
@@ -96,3 +97,142 @@ def test_stack_local_postprocess_delegates_to_grounded_answer_experience(monkeyp
     )
     assert updated.message_text == 'resposta melhor'
     assert updated.answer_experience_eligible is True
+
+
+def test_stack_postprocess_applies_answer_surface_refiner_after_grounded_answer_experience(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = _response()
+
+    async def fake_apply_grounded_answer_experience(*, request, response, settings, stack_name):
+        return response.model_copy(
+            update={
+                'message_text': 'A biblioteca funciona de segunda a sexta, das 7h30 às 18h00.',
+                'answer_experience_eligible': True,
+                'answer_experience_reason': 'python_functions_native_contextual_public_answer',
+            }
+        )
+
+    async def fake_refine_answer_surface_with_provider(**kwargs):
+        assert kwargs['stack_label'] == 'python_functions'
+        assert kwargs['request_message'] == 'teste'
+        return SimpleNamespace(
+            answer_text='A biblioteca fecha às 18h00.',
+            used_llm=True,
+            changed=True,
+            preserved_fallback=False,
+            reason='answer_surface_refiner',
+        )
+
+    monkeypatch.setattr(
+        'ai_orchestrator.stack_postprocessing.apply_grounded_answer_experience',
+        fake_apply_grounded_answer_experience,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.stack_answer_surface_refiner.refine_answer_surface_with_provider',
+        fake_refine_answer_surface_with_provider,
+    )
+
+    updated = asyncio.run(
+        postprocess_stack_response(
+            stack_name='python_functions',
+            request=_request(),
+            response=response,
+            settings=_settings(),
+        )
+    )
+
+    assert updated.message_text == 'A biblioteca fecha às 18h00.'
+    assert updated.used_llm is True
+    assert 'answer_surface_refiner' in updated.llm_stages
+    assert updated.answer_experience_reason.endswith('answer_surface_refiner')
+
+
+def test_stack_postprocess_preserves_original_text_when_surface_refiner_is_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = _response()
+    settings = _settings().model_copy(
+        update={'feature_flag_answer_surface_refiner_enabled': False}
+    )
+
+    async def fake_apply_grounded_answer_experience(*, request, response, settings, stack_name):
+        return response.model_copy(
+            update={
+                'message_text': 'Seu protocolo é ATD-20260417-ABCD1234.',
+                'answer_experience_eligible': True,
+                'answer_experience_reason': 'public_service_ticket',
+            }
+        )
+
+    async def fake_refine_answer_surface_with_provider(**kwargs):
+        raise AssertionError('surface refiner should not run when disabled')
+
+    monkeypatch.setattr(
+        'ai_orchestrator.stack_postprocessing.apply_grounded_answer_experience',
+        fake_apply_grounded_answer_experience,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.stack_answer_surface_refiner.refine_answer_surface_with_provider',
+        fake_refine_answer_surface_with_provider,
+    )
+
+    updated = asyncio.run(
+        postprocess_stack_response(
+            stack_name='python_functions',
+            request=_request(),
+            response=response,
+            settings=settings,
+        )
+    )
+
+    assert updated.message_text == 'Seu protocolo é ATD-20260417-ABCD1234.'
+    assert updated.llm_stages == []
+
+
+def test_stack_postprocess_records_surface_refiner_stage_when_candidate_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = _response()
+    protocol_text = 'Seu protocolo é ATD-20260417-ABCD1234.'
+
+    async def fake_apply_grounded_answer_experience(*, request, response, settings, stack_name):
+        return response.model_copy(
+            update={
+                'message_text': protocol_text,
+                'answer_experience_eligible': True,
+                'answer_experience_reason': 'public_service_ticket',
+            }
+        )
+
+    async def fake_refine_answer_surface_with_provider(**kwargs):
+        return SimpleNamespace(
+            answer_text=protocol_text,
+            used_llm=True,
+            changed=False,
+            preserved_fallback=True,
+            reason='validation_rejected',
+        )
+
+    monkeypatch.setattr(
+        'ai_orchestrator.stack_postprocessing.apply_grounded_answer_experience',
+        fake_apply_grounded_answer_experience,
+    )
+    monkeypatch.setattr(
+        'ai_orchestrator.stack_answer_surface_refiner.refine_answer_surface_with_provider',
+        fake_refine_answer_surface_with_provider,
+    )
+
+    updated = asyncio.run(
+        postprocess_stack_response(
+            stack_name='python_functions',
+            request=_request(),
+            response=response,
+            settings=_settings(),
+        )
+    )
+
+    assert updated.message_text == protocol_text
+    assert updated.used_llm is True
+    assert 'answer_surface_refiner' in updated.llm_stages
+    assert updated.answer_experience_reason.endswith('validation_rejected')

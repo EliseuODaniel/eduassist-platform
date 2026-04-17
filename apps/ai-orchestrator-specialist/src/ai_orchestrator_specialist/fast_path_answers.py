@@ -65,6 +65,7 @@ from .public_query_patterns import (
     _looks_like_bolsas_and_processes_query,
     _looks_like_cross_document_public_query,
     _looks_like_health_second_call_query,
+    _looks_like_public_doc_bundle_request,
     _looks_like_public_leadership_contact_query,
     _looks_like_policy_compare_query,
     _looks_like_public_teacher_identity_query,
@@ -225,7 +226,7 @@ def _compose_capabilities_fast_answer(profile: dict[str, Any] | None, *, school_
     public_summary = '; '.join(public_topics[:3]) if public_topics else 'matricula, secretaria, financeiro e visitas'
     protected_summary = '; '.join(protected_topics[:2]) if protected_topics else 'notas, faltas e pagamentos'
     return (
-        f'Por aqui eu consigo te ajudar com {public_summary} no {school_name}. '
+        f'Eu sou o EduAssist da escola {school_name}. Por aqui eu consigo te ajudar com {public_summary}. '
         f'Se sua conta estiver vinculada, eu tambem consigo consultar {protected_summary}.'
     )
 
@@ -413,6 +414,16 @@ def _augment_public_followup_message(
 ) -> str:
     normalized = deps.normalize_text(message)
     recent_blob = " ".join(recent_user_messages)
+    if (
+        any(term in normalized for term in {"que horas fecha", "fecha", "ate que horas", "até que horas", "que horas abre", "abre", "horario", "horário"})
+        and "biblioteca" in recent_blob
+        and "biblioteca" not in normalized
+    ):
+        if any(term in normalized for term in {"que horas fecha", "fecha", "ate que horas", "até que horas"}):
+            return "que horas fecha a biblioteca?"
+        if any(term in normalized for term in {"que horas abre", "abre"}):
+            return "que horas abre a biblioteca?"
+        return "qual o horario da biblioteca?"
     if (
         any(term in normalized for term in {"uma linha por setor", "sem explicar o resto da escola", "reduz para uma linha"})
         and any(term in recent_blob for term in {"bolsa", "bolsas", "financeiro", "direcao", "direção"})

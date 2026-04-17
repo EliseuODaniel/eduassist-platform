@@ -73,7 +73,13 @@ def _normalize_local_database_url(value: str) -> str:
     override = str(os.getenv('DATABASE_URL_LOCAL', '') or '').strip()
     normalized = str(value or '').strip()
     if override:
-        return override
+        return _replace_url_host(
+            override,
+            replacements={
+                'postgres': '127.0.0.1',
+                'localhost': '127.0.0.1',
+            },
+        )
     if not normalized:
         return _LOCAL_SOURCE_DB_URL
     return _replace_url_host(
@@ -89,7 +95,13 @@ def _normalize_local_qdrant_url(value: str) -> str:
     override = str(os.getenv('QDRANT_URL_LOCAL', '') or '').strip()
     normalized = str(value or '').strip()
     if override:
-        return override
+        return _replace_url_host(
+            override,
+            replacements={
+                'qdrant': '127.0.0.1',
+                'localhost': '127.0.0.1',
+            },
+        )
     if not normalized:
         return _LOCAL_SOURCE_SERVICE_URLS['qdrant']
     return _replace_url_host(
@@ -116,6 +128,8 @@ class Settings(BaseSettings):
     llm_provider: str = 'openai'
     api_core_url: str = 'http://api-core:8000'
     internal_api_token: str = 'dev-internal-token'
+    internal_workload_identity_mode: str = 'token'
+    internal_spiffe_allowed_ids: str = ''
     allow_insecure_internal_api_token: bool = False
     openai_api_key: str | None = None
     openai_base_url: str = 'https://api.openai.com/v1'
@@ -144,11 +158,14 @@ class Settings(BaseSettings):
     retrieval_enable_query_variants: bool = True
     retrieval_enable_late_interaction_rerank: bool = True
     retrieval_late_interaction_model: str = 'answerdotai/answerai-colbert-small-v1'
+    retrieval_enable_cross_encoder_rerank: bool = True
+    retrieval_cross_encoder_model: str = 'jinaai/jina-reranker-v2-base-multilingual'
     retrieval_candidate_pool_size: int = 14
     retrieval_cheap_candidate_pool_size: int = 8
     retrieval_deep_candidate_pool_size: int = 22
     retrieval_rerank_fused_weight: float = 0.35
     retrieval_rerank_late_interaction_weight: float = 0.65
+    retrieval_rerank_cross_encoder_weight: float = 0.85
     strict_framework_isolation_enabled: bool = False
     graph_rag_enabled: bool = False
     graph_rag_workspace: str = '/workspace/artifacts/graphrag/eduassist-public-benchmark'
@@ -176,6 +193,9 @@ class Settings(BaseSettings):
     feature_flag_answer_experience_public_enabled: bool = True
     feature_flag_answer_experience_protected_enabled: bool = True
     feature_flag_answer_experience_min_chars: int = 24
+    feature_flag_answer_surface_refiner_enabled: bool = True
+    feature_flag_answer_surface_refiner_stacks: str = 'langgraph,llamaindex,python_functions'
+    feature_flag_answer_surface_refiner_channels: str = 'telegram,web'
     feature_flag_context_repair_enabled: bool = True
     feature_flag_context_repair_stacks: str = 'langgraph,llamaindex,python_functions,specialist_supervisor'
     feature_flag_context_repair_retry_top_k: int = 6
@@ -254,6 +274,27 @@ class Settings(BaseSettings):
                 self.openai_base_url = 'http://local-llm-gemma4e4b:8080/v1'
             if not str(self.openai_model or '').strip() or self.openai_model == 'gpt-5.4':
                 self.openai_model = 'ggml-org/gemma-4-E4B-it-GGUF:Q4_K_M'
+            if not str(self.answer_experience_provider or '').strip():
+                self.answer_experience_provider = 'openai'
+            if not str(self.answer_experience_openai_api_key or '').strip():
+                self.answer_experience_openai_api_key = self.openai_api_key
+            if not str(self.answer_experience_openai_base_url or '').strip():
+                self.answer_experience_openai_base_url = self.openai_base_url
+            if not str(self.answer_experience_openai_model or '').strip():
+                self.answer_experience_openai_model = self.openai_model
+            if not str(self.answer_experience_openai_api_mode or '').strip():
+                self.answer_experience_openai_api_mode = self.openai_api_mode
+            return self
+
+        if profile in {'qwen3_4b_instruct_local', 'qwen_3_4b_instruct_local', 'qwen-3-4b-instruct-local'}:
+            self.llm_provider = 'openai'
+            self.openai_api_mode = 'chat_completions'
+            if not str(self.openai_api_key or '').strip():
+                self.openai_api_key = 'local-llm'
+            if not str(self.openai_base_url or '').strip() or self.openai_base_url == 'https://api.openai.com/v1':
+                self.openai_base_url = 'http://local-llm-qwen3-4b:8080/v1'
+            if not str(self.openai_model or '').strip() or self.openai_model == 'gpt-5.4':
+                self.openai_model = 'Qwen_Qwen3-4B-Instruct-2507-Q5_K_M.gguf'
             if not str(self.answer_experience_provider or '').strip():
                 self.answer_experience_provider = 'openai'
             if not str(self.answer_experience_openai_api_key or '').strip():

@@ -539,6 +539,14 @@ def _preflight_public_doc_bundle_answer(profile: dict[str, Any] | None, message:
                 MessageEvidenceSupport(kind="document", label="Governanca e Lideranca Institucional", detail="data/corpus/public/governanca-e-lideranca.md"),
             ],
         ),
+        "public_bundle.governance_inclusion_protocol": (
+            "specialist_supervisor_preflight:governance_inclusion_protocol",
+            "governance_inclusion_protocol",
+            [
+                MessageEvidenceSupport(kind="document", label="Governanca e Lideranca Institucional", detail="data/corpus/public/governanca-e-lideranca.md"),
+                MessageEvidenceSupport(kind="document", label="Inclusao, Acessibilidade e Seguranca", detail="data/corpus/public/inclusao-acessibilidade-e-seguranca.md"),
+            ],
+        ),
         "public_bundle.calendar_week": (
             "specialist_supervisor_preflight:calendar_week",
             "calendar_week",

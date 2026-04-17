@@ -130,7 +130,16 @@ Componentes:
 
 - `Qdrant` como engine principal de dense + sparse retrieval
 - PostgreSQL Full Text Search para plano lexical e filtros relacionais
-- reranking
+- reranking em duas etapas
+
+Estado atual do baseline:
+
+- `late interaction` com `answerdotai/answerai-colbert-small-v1`
+- `cross-encoder` multilíngue com `jinaai/jina-reranker-v2-base-multilingual`
+
+Observação arquitetural:
+
+- o débito original citava `bge-reranker-v2`, mas no baseline atual a escolha foi `jinaai/jina-reranker-v2-base-multilingual` por melhor adequação ao corpus escolar em português e suporte direto no stack atual `FastEmbed/Qdrant`.
 
 ### Banco vetorial recomendado
 
@@ -231,6 +240,7 @@ Estado atual no repositório:
 - os adapters locais e a camada de answer experience já começaram a convergir para o mesmo baseline de packing;
 - a memória episódica de curto prazo já aproveita `recent_tool_calls` e `slot_memory` para reforçar follow-up e carryover;
 - retrieval por capability já entrou no baseline com política compartilhada de `retrieval_profile`, `top-k` e categoria antes do dispatch por stack;
+- o retrieval híbrido já aplica rerank semântico em duas camadas, combinando `late interaction` e `cross-encoder` antes da resposta grounded;
 - a próxima fronteira de ROI continua sendo memória episódica e tuning de retrieval, não compressão avançada de `KV cache`.
 
 ### Avaliação de `TurboQuant`
@@ -244,6 +254,60 @@ Estado atual no repositório:
 - forte como pesquisa para `long reasoning`;
 - pior ajuste pragmático para o projeto hoje, por depender de stack e calibração mais especializados;
 - deve ser tratada como trilha experimental separada, não como próximo passo natural do baseline.
+
+## 7.1 Observabilidade e identidade interna
+
+Dois débitos antigos mudaram de status:
+
+- `tail-based sampling OTEL`: resolvido no baseline local do collector;
+- `SPIFFE/SPIRE`: a aplicação ficou `SPIFFE-ready` por bridge de identidade interna, mas o rollout completo da malha `SPIRE` continua sendo decisão de ambiente enterprise.
+
+## 7.2 Avaliação local de `Qwen3-4B-Instruct-2507`
+
+Para a máquina local-alvo do projeto, com `32 GB` de RAM e `8 GB` de VRAM, o melhor candidato adicional para benchmark local deixou de ser um segundo modelo hospedado e passou a ser um profile local alternativo em `llama.cpp`.
+
+Decisão arquitetural:
+
+- manter `Gemma 4 E4B` como baseline local do repositório;
+- adicionar `Qwen3-4B-Instruct-2507` como profile experimental com feature flag explícita;
+- comparar os dois na mesma stack, sob o mesmo harness e o mesmo dataset, antes de qualquer mudança de default.
+
+Justificativa:
+
+- o card oficial do `Qwen3-4B-Instruct-2507` traz bom desempenho em `IFEval`, `WritingBench`, `BFCL-v3`, `TAU` e benchmarks gerais de instrução;
+- o ecossistema do `Qwen3` possui caminho claro para `GGUF` e `llama.cpp`;
+- o artefato `Q5_K_M` fica dentro do envelope realista da GPU local;
+- o modelo suporta apenas `non-thinking mode`, o que combina bem com o desenho grounded e determinístico do EduAssist.
+
+Configuração experimental atual:
+
+- profile: `qwen3_4b_instruct_local`
+- runtime: `llama.cpp` com endpoint `OpenAI-compatible`
+- artefato local: `bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF`
+- arquivo padrão: `Qwen_Qwen3-4B-Instruct-2507-Q5_K_M.gguf`
+- `ctx-size` inicial: `12288`
+
+Boas práticas adotadas para o experimento:
+
+- manter `Gemma` como baseline, sem troca silenciosa do default;
+- usar a mesma stack `specialist_supervisor` para o A/B;
+- não ativar modo de reasoning/thinking explícito;
+- comparar qualidade, grounding, personalização, latência e robustez da resposta final, não só benchmark bruto de modelo.
+
+Resultado do A/B local em `2026-04-17`:
+
+- a primeira passada crua favoreceu `Qwen` em latência e disponibilidade, mas também expôs que os principais resíduos estavam acima da troca de modelo;
+- a correção arquitetural seguinte introduziu um `answer surface refiner` validado primeiro no `specialist_supervisor` e depois no pós-processamento compartilhado das stacks non-specialist, preservando a resposta original sempre que a LLM não conseguisse verbalizar com segurança;
+- no estado final da rodada, `gemma4e4b_local_postfix` fechou em `15/15`, `keyword_pass 15/15` e `quality 100.0`;
+- `qwen3_4b_instruct_local` permaneceu melhor em latência, porém terminou em `quality 84.3` e `keyword_pass 8/15`;
+- conclusão: `Gemma` continua como baseline operacional do repositório, e `Qwen` permanece como profile experimental com feature flag para benchmark e diagnóstico.
+
+Padrão arquitetural adotado para o refino final:
+
+- tentativa inicial de verbalização estruturada;
+- fallback controlado em texto livre para modelos locais menos estáveis em schema;
+- validação local obrigatória de fatos, escopo, nomes, datas, valores e intenção;
+- preservação literal da resposta original quando o refino não passa na validação.
 
 ## 8. Evals
 

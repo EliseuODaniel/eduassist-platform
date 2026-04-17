@@ -246,6 +246,22 @@ def test_build_capability_candidates_preserves_library_closing_attribute() -> No
     assert candidates[0].requested_attribute == "close_time"
 
 
+def test_build_capability_candidates_keeps_grade_followup_with_recent_student_context() -> None:
+    candidates = build_capability_candidates(
+        message="agora foque só em matemática",
+        conversation_context={
+            "recent_messages": [
+                {"sender_type": "user", "content": "quero um resumo acadêmico do Lucas Oliveira"},
+                {"sender_type": "assistant", "content": "Resumo acadêmico de Lucas Oliveira: Matemática 6,2; História 7,4."},
+            ]
+        },
+        authenticated=True,
+    )
+
+    assert candidates
+    assert candidates[0].capability_id == "protected.academic.grades"
+
+
 def test_build_turn_frame_hint_marks_external_city_library_query_as_scope_boundary() -> None:
     frame = build_turn_frame_hint(
         message="Qual horário de fechamento da biblioteca pública da cidade?",

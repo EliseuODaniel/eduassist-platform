@@ -190,6 +190,82 @@ def _recent_linked_student_name(ctx: Any, *, deps: "ResolvedIntentDeps") -> str 
     return None
 
 
+def _recent_grade_context_active(ctx: Any, *, deps: "ResolvedIntentDeps") -> bool:
+    normalized = _recent_messages_blob(getattr(ctx, "conversation_context", None), deps=deps)
+    return any(
+        term in normalized
+        for term in {
+            "resumo academico",
+            "resumo acadêmico",
+            "panorama academico",
+            "panorama acadêmico",
+            "boletim",
+            "notas de",
+            "media parcial",
+            "média parcial",
+            "disciplinas que mais preocupam",
+        }
+    )
+
+
+def _looks_like_named_academic_summary_request(message: str, *, deps: "ResolvedIntentDeps") -> bool:
+    normalized = deps.normalize_text(message)
+    return any(
+        term in normalized
+        for term in {
+            "resumo academico",
+            "resumo acadêmico",
+            "panorama academico",
+            "panorama acadêmico",
+            "como ele esta academicamente",
+            "como ele está academicamente",
+            "como ela esta academicamente",
+            "como ela está academicamente",
+        }
+    )
+
+
+def _align_named_academic_summary_surface(
+    answer_text: str,
+    *,
+    request_message: str,
+    student_name: str,
+    deps: "ResolvedIntentDeps",
+) -> str:
+    cleaned = str(answer_text or "").strip()
+    if not cleaned:
+        return cleaned
+    normalized = deps.normalize_text(request_message)
+    if not any(term in normalized for term in {"resumo academico", "resumo acadêmico", "panorama academico", "panorama acadêmico"}):
+        return cleaned
+    prefix = f"Resumo academico de {student_name}:"
+    lowered = deps.normalize_text(cleaned)
+    if "resumo academico" in lowered or "resumo acadêmico" in lowered:
+        return cleaned
+    if cleaned.startswith(f"Notas de {student_name}:"):
+        return prefix + "\n" + cleaned.split(":", 1)[1].lstrip()
+    return prefix + "\n" + cleaned
+
+
+def _resolved_finance_target_name(
+    ctx: Any,
+    *,
+    resolved: ResolvedTurnIntent | None,
+    deps: "ResolvedIntentDeps",
+) -> str | None:
+    memory = ctx.operational_memory or OperationalMemory()
+    explicit_hint = deps.student_hint_from_message(ctx.actor, ctx.request.message)
+    if explicit_hint:
+        return explicit_hint
+    resolved_name = str((getattr(resolved, "referenced_student_name", None) if resolved is not None else None) or "").strip()
+    if resolved_name:
+        return resolved_name
+    memory_name = str(getattr(memory, "active_student_name", "") or "").strip()
+    if memory_name:
+        return memory_name
+    return _recent_linked_student_name(ctx, deps=deps)
+
+
 def _family_academic_ranking(summaries: list[dict[str, Any]], *, deps: "ResolvedIntentDeps") -> list[dict[str, Any]]:
     ranking: list[dict[str, Any]] = []
     for summary in summaries:
@@ -819,6 +895,58 @@ async def maybe_academic_grade_fast_path_answer(
             graph_path=["specialist_supervisor", "fast_path", "academic_risk"],
             reason="specialist_supervisor_fast_path:academic_risk",
         )
+    subject_followup_hint = deps.subject_hint_from_text(ctx.request.message)
+    if student_hint and (
+        _looks_like_named_academic_summary_request(ctx.request.message, deps=deps)
+        or (subject_followup_hint and _recent_grade_context_active(ctx, deps=deps))
+        or (deps.looks_like_subject_followup(ctx.request.message) and _recent_grade_context_active(ctx, deps=deps))
+    ):
+        payload = await deps.fetch_academic_summary_payload(ctx, student_name_hint=student_hint)
+        if isinstance(payload, dict) and not payload.get("error"):
+            summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else None
+            if isinstance(summary, dict):
+                subject_hint = _detected_subject_hint(
+                    summary,
+                    ctx.request.message,
+                    conversation_context=ctx.conversation_context,
+                    operational_memory=ctx.operational_memory,
+                    deps=deps,
+                )
+                answer_text = deps.compose_named_subject_grade_answer(summary, subject_hint=subject_hint)
+                if not answer_text:
+                    answer_text = deps.compose_named_grade_answer(summary)
+                answer_text = _align_named_academic_summary_surface(
+                    answer_text,
+                    request_message=ctx.request.message,
+                    student_name=str(summary.get("student_name") or student_hint or "Aluno").strip() or "Aluno",
+                    deps=deps,
+                )
+                return SupervisorAnswerPayload(
+                    message_text=answer_text,
+                    mode="structured_tool",
+                    classification=MessageIntentClassification(
+                        domain="academic",
+                        access_tier=_access_tier_for_domain("academic", True),
+                        confidence=0.99,
+                        reason="specialist_supervisor_fast_path:academic_summary_followup",
+                    ),
+                    evidence_pack=MessageEvidencePack(
+                        strategy="structured_tools",
+                        summary="Follow-up curto de resumo academico resolvido com memoria recente do aluno e disciplina.",
+                        source_count=1,
+                        support_count=1,
+                        supports=[
+                            MessageEvidenceSupport(
+                                kind="academic_summary",
+                                label=str(summary.get("student_name") or "Aluno"),
+                                detail=deps.safe_excerpt(answer_text, limit=180),
+                            )
+                        ],
+                    ),
+                    suggested_replies=_default_suggested_replies("academic"),
+                    graph_path=["specialist_supervisor", "fast_path", "academic_summary_followup"],
+                    reason="specialist_supervisor_fast_path:academic_summary_followup",
+                )
     if "quanto falta" not in normalized:
         return None
     if not any(term in normalized for term in {"aprova", "passar", "tirar de nota"}):
@@ -950,6 +1078,12 @@ async def _resolved_academic_student_grades_answer(
                     )
                 if not answer_text:
                     answer_text = deps.compose_named_grade_answer(summary)
+            answer_text = _align_named_academic_summary_surface(
+                answer_text,
+                request_message=ctx.request.message,
+                student_name=str(summary.get("student_name") or target_name or "Aluno").strip() or "Aluno",
+                deps=deps,
+            )
             support_label = str(summary.get("student_name") or "Aluno")
             return SupervisorAnswerPayload(
                 message_text=answer_text,
@@ -1065,6 +1199,9 @@ async def _resolved_academic_attendance_summary_answer(
     attendance_comparison_query = len(named_academic_students) >= 2 and any(
         term in normalized_message
         for term in {
+            "compare",
+            "compar",
+            "comparar",
             "entre ",
             "quem esta mais delicado por frequencia",
             "quem está mais delicado por frequência",
@@ -1073,6 +1210,8 @@ async def _resolved_academic_attendance_summary_answer(
             "por que esse alerta pesa mais",
             "frequencia hoje",
             "frequência hoje",
+            "de forma objetiva",
+            "objetiva",
         }
     )
     subject_hint = str(resolved.referenced_subject or "").strip() or (
@@ -1381,7 +1520,7 @@ async def _resolved_finance_student_summary_answer(
     )
     wants_family_finance_aggregate = deps.looks_like_family_finance_aggregate_query(ctx.request.message)
     finance_students = deps.linked_students(ctx.actor, capability="finance")
-    target_name = str(resolved.referenced_student_name or "").strip()
+    target_name = _resolved_finance_target_name(ctx, resolved=resolved, deps=deps) or ""
     normalized_target = deps.normalize_text(target_name)
     if target_name and finance_students:
         linked_names = {

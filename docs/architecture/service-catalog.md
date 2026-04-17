@@ -78,7 +78,24 @@ Registrar as fronteiras reais do sistema no estado `dedicated-first` atual.
 
 - caminho quality-first especializado;
 - coordenação supervisor/specialists;
+- refino final validado de superfície para respostas elegíveis, inclusive as vindas de caminhos determinísticos;
+- fallback preservado quando a LLM não conseguir refinar sem violar grounding, policy ou intenção original;
 - serving dedicado isolado do control plane.
+
+## `local-llm-gemma4e4b`
+
+### Responsabilidades
+
+- servir `Gemma 4 E4B` localmente em endpoint `OpenAI-compatible`;
+- sustentar o baseline local do repositório para benchmark e operação local.
+
+## `local-llm-qwen3-4b`
+
+### Responsabilidades
+
+- servir `Qwen3-4B-Instruct-2507` localmente em endpoint `OpenAI-compatible`;
+- permitir benchmark A/B controlado sem alterar o baseline do repositório;
+- permanecer como profile experimental por feature flag enquanto o baseline operacional segue em `Gemma 4 E4B`.
 
 ## `worker`
 
@@ -109,7 +126,7 @@ Registrar as fronteiras reais do sistema no estado `dedicated-first` atual.
 ### `qdrant`
 
 - retrieval vetorial e híbrido;
-- late interaction quando habilitado;
+- late interaction e `cross-encoder rerank` quando habilitados;
 - coleções documentais e auxiliares.
 
 ### `redis`
@@ -127,6 +144,14 @@ Registrar as fronteiras reais do sistema no estado `dedicated-first` atual.
 - recebe OTLP;
 - aplica `tail sampling`;
 - exporta traces e métricas.
+
+## Identidade interna
+
+### Bridge `SPIFFE-ready`
+
+- serviços Python internos aceitam `X-Internal-Api-Token` como baseline local;
+- os mesmos serviços podem aceitar `SPIFFE ID` encaminhado por proxy confiável e autorizado;
+- o bridge preserva o enforcement atual sem criar um segundo caminho implícito de autorização.
 
 ### `tempo`
 

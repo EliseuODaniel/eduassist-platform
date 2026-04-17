@@ -50,6 +50,21 @@ Estabelecer os controles de segurança, identidade, autorização, auditoria e p
 - vínculo ocorre via portal web autenticado;
 - conta Telegram é associada ao usuário escolar por processo controlado.
 
+### Identidade interna entre workloads
+
+Estado atual:
+
+- o baseline local continua usando `X-Internal-Api-Token` para chamadas entre serviços;
+- `api-core`, `ai-orchestrator`, runtimes dedicados, `specialist_supervisor` e `telegram-gateway` agora aceitam também um `SPIFFE ID` encaminhado por proxy confiável;
+- o `SPIFFE ID` só é aceito quando aparece em allowlist explícita;
+- quando aceito, ele é convertido internamente para o mesmo enforcement de token já exigido pelos endpoints.
+
+Implicação:
+
+- a aplicação ficou preparada para ambientes com `SPIFFE/SPIRE` sem romper o fluxo local;
+- o Compose local permanece em modo `token` por padrão;
+- a implantação completa de `SPIRE` continua sendo um passo de maturidade operacional, não um requisito para dev local.
+
 ## 5. Autorização
 
 Camadas:
@@ -102,6 +117,7 @@ Inferência a partir da documentação oficial do Telegram: a criptografia ponta
 - `pgAudit`
 - trilhas de aplicação em `audit_events`
 - observabilidade com `OTel`, `Loki` e `Tempo`
+- `tail sampling` no collector para reduzir ruído sem perder traces de erro e latência alta
 
 ## 8. Ameaças principais
 
@@ -119,6 +135,7 @@ Inferência a partir da documentação oficial do Telegram: a criptografia ponta
 - contracts rígidos para tools;
 - contexto mínimo para o modelo;
 - provider de LLM externo isolado por camada de integração, sem acesso direto a banco nem a segredos internos;
+- refino final de resposta apenas em superfície elegível, com validação local obrigatória e fallback para a resposta original quando a LLM tentar ampliar escopo, mudar fatos ou suavizar um bloqueio sensível;
 - negação explícita por policy;
 - avaliação adversarial contínua;
 - revisão de curadoria documental;

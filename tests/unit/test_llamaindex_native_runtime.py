@@ -284,10 +284,6 @@ def test_documentary_prompt_skips_llamaindex_fast_paths() -> None:
 
 
 def test_open_documentary_bundle_query_skips_fast_paths_without_explicit_citation_phrase() -> None:
-    heuristic_decision = LlamaIndexNativePublicDecision(
-        conversation_act='highlight',
-        answer_mode='documentary',
-    )
     message = (
         'Compare calendario, agenda de avaliacoes e manual de matricula '
         'e explique como esses documentos se influenciam ao longo do ano.'

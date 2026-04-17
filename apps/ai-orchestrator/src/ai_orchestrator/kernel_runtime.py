@@ -24,7 +24,7 @@ from .models import (
     QueryDomain,
     RetrievalBackend,
 )
-from .path_profiles import PathExecutionProfile, get_path_execution_profile
+from .path_profiles import PathExecutionProfile
 from .native_runtime_preparation import prepare_runtime_execution
 from .retrieval_capability_policy import (
     build_retrieval_trace_metadata,
@@ -898,6 +898,9 @@ async def execute_kernel_plan(
                 deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
                 rerank_fused_weight=settings.retrieval_rerank_fused_weight,
                 rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
+            enable_cross_encoder_rerank=settings.retrieval_enable_cross_encoder_rerank,
+            cross_encoder_model=settings.retrieval_cross_encoder_model,
+            rerank_cross_encoder_weight=settings.retrieval_rerank_cross_encoder_weight,
             )
             search = retrieval_service.hybrid_search(
                 query=analysis_message,
@@ -992,6 +995,9 @@ async def execute_kernel_plan(
                 deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
                 rerank_fused_weight=settings.retrieval_rerank_fused_weight,
                 rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
+            enable_cross_encoder_rerank=settings.retrieval_enable_cross_encoder_rerank,
+            cross_encoder_model=settings.retrieval_cross_encoder_model,
+            rerank_cross_encoder_weight=settings.retrieval_rerank_cross_encoder_weight,
             )
             search = retrieval_service.hybrid_search(
                 query=analysis_message,
@@ -1049,6 +1055,9 @@ async def execute_kernel_plan(
                 deep_candidate_pool_size=settings.retrieval_deep_candidate_pool_size,
                 rerank_fused_weight=settings.retrieval_rerank_fused_weight,
                 rerank_late_interaction_weight=settings.retrieval_rerank_late_interaction_weight,
+            enable_cross_encoder_rerank=settings.retrieval_enable_cross_encoder_rerank,
+            cross_encoder_model=settings.retrieval_cross_encoder_model,
+            rerank_cross_encoder_weight=settings.retrieval_rerank_cross_encoder_weight,
             )
             search = retrieval_service.hybrid_search(
                 query=analysis_message,

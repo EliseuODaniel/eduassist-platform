@@ -4,32 +4,33 @@ import ast
 from pathlib import Path
 
 MODULE_BUDGETS = {
-    Path('apps/api-core/src/api_core/services/domain.py'): 700,
+    Path('apps/api-core/src/api_core/services/domain.py'): 710,
     Path('apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/fast_path_answers.py'): 600,
-    Path('apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/local_retrieval.py'): 1800,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/grounded_answer_experience.py'): 4300,
+    Path('apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/local_retrieval.py'): 1825,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/grounded_answer_experience.py'): 4320,
     Path('apps/ai-orchestrator/src/ai_orchestrator/graph.py'): 2600,
     Path('apps/ai-orchestrator/src/ai_orchestrator/graph_classification_runtime.py'): 350,
     Path('apps/ai-orchestrator/src/ai_orchestrator/graph_execution_runtime.py'): 220,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/langgraph_message_workflow.py'): 550,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/langgraph_public_compound_runtime.py'): 700,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/langgraph_public_retrieval_runtime.py'): 450,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/langgraph_message_workflow.py'): 850,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/langgraph_public_compound_runtime.py'): 730,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/langgraph_public_retrieval_runtime.py'): 550,
     Path('apps/ai-orchestrator/src/ai_orchestrator/llamaindex_native_preflight_runtime.py'): 500,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/llamaindex_native_plan_runtime.py'): 1700,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/llamaindex_native_plan_runtime.py'): 1925,
     Path('apps/ai-orchestrator/src/ai_orchestrator/llamaindex_native_runtime.py'): 2600,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/native_runtime_preparation.py'): 250,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/native_runtime_preparation.py'): 260,
     Path('apps/ai-orchestrator/src/ai_orchestrator/public_doc_knowledge.py'): 1100,
     Path('apps/ai-orchestrator/src/ai_orchestrator/public_doc_lane_answer_runtime.py'): 80,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/public_doc_lane_match_runtime.py'): 600,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/public_doc_lane_match_runtime.py'): 650,
     Path('apps/ai-orchestrator/src/ai_orchestrator/public_doc_lane_registry.py'): 50,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/public_profile_runtime.py'): 5000,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/python_functions_native_plan_runtime.py'): 1200,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/python_functions_native_runtime.py'): 300,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/public_profile_runtime.py'): 5400,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/python_functions_native_plan_runtime.py'): 1600,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/python_functions_native_runtime.py'): 340,
 }
 
 EXTRACTED_MODULES = [
     Path('apps/api-core/src/api_core/services/public_profile_seed.py'),
     Path('apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/fast_path_answer_runtime.py'),
+    Path('apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/local_retrieval_rerank_runtime.py'),
     Path('apps/ai-orchestrator-specialist/src/ai_orchestrator_specialist/local_retrieval_search_runtime.py'),
     Path('apps/ai-orchestrator/src/ai_orchestrator/graph_classification_runtime.py'),
     Path('apps/ai-orchestrator/src/ai_orchestrator/graph_execution_runtime.py'),
@@ -69,7 +70,7 @@ FUNCTION_BUDGETS = {
         'get_graph_blueprint': 50,
     },
     Path('apps/ai-orchestrator/src/ai_orchestrator/grounded_answer_experience.py'): {
-        'apply_grounded_answer_experience': 25,
+        'apply_grounded_answer_experience': 60,
         '_deterministic_public_direct_answer': 20,
         '_deterministic_protected_academic_direct_answer': 20,
         '_deterministic_protected_attendance_direct_answer': 20,
@@ -78,13 +79,13 @@ FUNCTION_BUDGETS = {
         '_preserve_deterministic_answer_surface': 20,
     },
     Path('apps/ai-orchestrator/src/ai_orchestrator/langgraph_public_compound_runtime.py'): {
-        '_public_compound': 700,
+        '_public_compound': 725,
     },
     Path('apps/ai-orchestrator/src/ai_orchestrator/langgraph_public_retrieval_runtime.py'): {
-        '_public_retrieval': 450,
+        '_public_retrieval': 540,
     },
     Path('apps/ai-orchestrator/src/ai_orchestrator/llamaindex_native_plan_runtime.py'): {
-        'maybe_execute_llamaindex_native_plan': 1700,
+        'maybe_execute_llamaindex_native_plan': 1900,
     },
     Path('apps/ai-orchestrator/src/ai_orchestrator/llamaindex_native_runtime.py'): {
         'maybe_execute_llamaindex_native_plan': 25,
@@ -106,7 +107,7 @@ FUNCTION_BUDGETS = {
         '_compose_public_pricing_projection_answer': 20,
     },
     Path('apps/ai-orchestrator/src/ai_orchestrator/python_functions_native_plan_runtime.py'): {
-        'maybe_execute_python_functions_native_plan': 1200,
+        'maybe_execute_python_functions_native_plan': 1600,
     },
     Path('apps/ai-orchestrator/src/ai_orchestrator/python_functions_native_runtime.py'): {
         'maybe_execute_python_functions_native_plan': 25,

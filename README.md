@@ -23,7 +23,7 @@ Isso mantém coerência de produto sem apagar a diferenciação arquitetural ent
 
 1. LLM de entrada: classifica o ato da mensagem;
 2. stack: resolve com ferramentas, retrieval, memória e planejamento próprios;
-3. LLM de saída: lapida sem reabrir um fallback indevido.
+3. LLM de saída: lapida a superfície final com contrato validado, sem reabrir um fallback indevido nem alterar a decisão de policy.
 
 ## Fonte única de verdade
 
@@ -68,6 +68,10 @@ O fluxo principal é simples de entender:
 9. a camada final organiza a resposta em linguagem natural, sem perder o vínculo com a evidência;
 10. o Telegram recebe a resposta final.
 
+No `specialist_supervisor`, toda resposta elegível, inclusive as vindas de caminhos determinísticos, agora passa por um `answer surface refiner` validado. O refiner tenta primeiro uma verbalização estruturada; se o modelo local não obedecer bem ao schema, o sistema usa um fallback controlado em texto livre e só aceita a nova superfície quando ela preserva fatos, nomes, valores, datas, escopo e intenção da resposta original. Respostas de bloqueio sensível, negação de terceiro e guardrails de privacidade continuam protegidas contra reescrita insegura.
+
+Nas stacks `langgraph`, `python_functions` e `llamaindex`, o mesmo padrão já está ativo no pós-processamento compartilhado: a resposta final passa por uma etapa leve de `answer surface refiner`, mas o texto original é preservado automaticamente quando a LLM não consegue melhorar a superfície sem violar grounding ou recorte da pergunta.
+
 ```mermaid
 flowchart LR
     U["Usuário no Telegram"] --> TG["telegram-gateway"]
@@ -109,6 +113,8 @@ flowchart LR
 - `OPA`: políticas contextuais de acesso.
 - `OpenTelemetry`, `Tempo`, `Loki`, `Prometheus` e `Grafana`: observabilidade distribuída.
 
+No baseline atual, a observabilidade já roda com `tail sampling` no `otel-collector`, reduzindo ruído de tracing sem desativar visibilidade de erro e latência.
+
 ## Os quatro caminhos ativos
 
 ### `langgraph`
@@ -136,11 +142,30 @@ O desenho atual combina:
 - busca textual com `PostgreSQL Full Text Search`;
 - busca semântica com `Qdrant`;
 - fusão híbrida dos resultados;
+- rerank semântico em duas etapas;
 - filtragem por visibilidade e agrupamento por documento;
 - resumo documental e recuperação recursiva em caminhos específicos;
 - `GraphRAG` seletivo, usado apenas quando faz sentido.
 
+O baseline forte do RAG hoje combina:
+
+- `late interaction` com `answerdotai/answerai-colbert-small-v1`;
+- `cross-encoder` multilíngue com `jinaai/jina-reranker-v2-base-multilingual`;
+- fusão ponderada com o score híbrido original antes da composição grounded.
+
 Perguntas sobre notas, frequência, financeiro e protocolos estruturados não dependem prioritariamente dessa camada. Nesses casos, o sistema prefere serviços determinísticos no `api-core`.
+
+## Identidade interna entre serviços
+
+O baseline local continua aceitando `X-Internal-Api-Token` para chamadas `service-to-service`, mas os serviços principais também ficaram `SPIFFE-ready`.
+
+Na prática:
+
+- `api-core`, `ai-orchestrator`, runtimes dedicados, `specialist_supervisor` e `telegram-gateway` aceitam um `SPIFFE ID` encaminhado por proxy confiável;
+- esse identificador só é aceito quando aparece em allowlist explícita;
+- quando aceito, ele é convertido localmente para o mesmo enforcement interno já usado pelos endpoints;
+- o Compose local continua em modo `token` por padrão;
+- um rollout completo de `SPIFFE/SPIRE` continua sendo decisão de ambiente, não pré-requisito para desenvolvimento local.
 
 ## Semantic ingress e fallback seguro
 
@@ -220,14 +245,22 @@ make compose-up-telegram-specialist
 
 ### Alternando o modelo por feature flag
 
-O baseline recomendado de custo-benefício agora é `Gemini 2.5 Flash-Lite`, e existe um profile experimental para `Gemma 4 E4B` local.
+O baseline local recomendado continua sendo `Gemma 4 E4B`, e agora existe um segundo profile experimental para `Qwen3-4B-Instruct-2507` local.
 
 ```bash
-make compose-up-dedicated-core-gemini-flash-lite
 make compose-up-dedicated-core-gemma4e4b-local
+make compose-up-dedicated-core-qwen3-4b-local
+make compose-up-dedicated-core-gemini-flash-lite
 ```
 
-O profile local usa um endpoint `OpenAI-compatible` servido por `llama.cpp` com a quantização `Q4_K_M` do `Gemma 4 E4B`. A análise de ROI e os critérios de uso experimental estão em [docs/experiments/gemma-4-e4b-evaluation-plan.md](docs/experiments/gemma-4-e4b-evaluation-plan.md).
+Os profiles locais usam um endpoint `OpenAI-compatible` servido por `llama.cpp`:
+
+- `gemma4e4b_local`: `Gemma 4 E4B` em `Q4_K_M`
+- `qwen3_4b_instruct_local`: `Qwen3-4B-Instruct-2507` em `Q5_K_M`
+
+O `Qwen` entra como feature flag explícita para benchmark A/B; o default operacional do repositório não muda.
+
+Na rodada final do A/B local em `2026-04-17`, o `Gemma` endurecido com o `answer surface refiner` e os ajustes arquiteturais do `specialist` fechou em `15/15`, `keyword_pass 15/15` e `quality 100.0`, enquanto o `Qwen` permaneceu melhor em latência, porém abaixo em qualidade semântica agregada. A decisão atual do repositório segue sendo: `Gemma` como baseline, `Qwen` como profile experimental.
 
 Esses comandos:
 

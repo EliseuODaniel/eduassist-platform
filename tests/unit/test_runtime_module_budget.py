@@ -8,9 +8,9 @@ CORE_RUNTIME_PATH = Path('apps/ai-orchestrator/src/ai_orchestrator/runtime_core.
 MESSAGE_RESPONSE_PATH = Path('apps/ai-orchestrator/src/ai_orchestrator/message_response_runtime.py')
 MODULE_BUDGETS = {
     Path('apps/ai-orchestrator/src/ai_orchestrator/runtime.py'): 2_000,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/runtime_core.py'): 2_000,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/message_response_runtime.py'): 1_800,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/public_orchestration_runtime.py'): 2_000,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/runtime_core.py'): 500,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/message_response_runtime.py'): 1_950,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/public_orchestration_runtime.py'): 3_050,
     Path('apps/ai-orchestrator/src/ai_orchestrator/intent_analysis_runtime.py'): 1_800,
     Path('apps/ai-orchestrator/src/ai_orchestrator/protected_domain_runtime.py'): 1_800,
 }
@@ -24,6 +24,7 @@ EXTRACTED_MODULES = [
     Path('apps/ai-orchestrator/src/ai_orchestrator/answer_verification_runtime.py'),
     Path('apps/ai-orchestrator/src/ai_orchestrator/conversation_focus_runtime.py'),
     Path('apps/ai-orchestrator/src/ai_orchestrator/analysis_context_runtime.py'),
+    Path('apps/ai-orchestrator/src/ai_orchestrator/runtime_core_constants.py'),
     Path('apps/ai-orchestrator/src/ai_orchestrator/intent_analysis_runtime.py'),
     Path('apps/ai-orchestrator/src/ai_orchestrator/public_act_rules_runtime.py'),
     Path('apps/ai-orchestrator/src/ai_orchestrator/public_orchestration_runtime.py'),

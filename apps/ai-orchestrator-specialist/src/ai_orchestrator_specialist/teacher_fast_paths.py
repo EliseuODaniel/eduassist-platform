@@ -185,6 +185,8 @@ def _render_teacher_schedule_answer(summary: dict[str, Any], *, message: str) ->
         and (not subject_filter or str(item.get("subject_name", "") or "").strip() == subject_filter)
     ]
     normalized = _normalize_text(message)
+    asks_schedule = any(term in normalized for term in {"horario", "horário", "grade", "agenda", "hoje"})
+    asks_classes_only = ("turma" in normalized or "classe" in normalized) and "disciplin" not in normalized
     segment_label = (
         "Ensino Medio"
         if segment_filter == "medio"
@@ -237,7 +239,36 @@ def _render_teacher_schedule_answer(summary: dict[str, Any], *, message: str) ->
                 seen.add(subject_name)
                 lines.append(f"- {subject_name}")
         return "\n".join([f"Disciplinas de {teacher_name}:", *(lines or ["- Nenhuma disciplina encontrada."])])
-    if ("turma" in normalized or "classe" in normalized) and "disciplin" not in normalized:
+    if asks_schedule and asks_classes_only:
+        schedule_lines = [
+            "- {class_name} - {subject_name} ({academic_year})".format(
+                class_name=item.get("class_name", "Turma"),
+                subject_name=item.get("subject_name", "Disciplina"),
+                academic_year=item.get("academic_year", "---"),
+            )
+            for item in filtered[:6]
+        ]
+        class_seen: set[str] = set()
+        class_lines: list[str] = []
+        for item in filtered:
+            class_name = str(item.get("class_name", "Turma")).strip()
+            if class_name and class_name not in class_seen:
+                class_seen.add(class_name)
+                class_lines.append(f"- {class_name}")
+        heading = (
+            f"Horario de hoje e turmas de {teacher_name} no {segment_label}:"
+            if segment_label
+            else f"Horario de hoje e turmas de {teacher_name}:"
+        )
+        return "\n".join(
+            [
+                heading,
+                *(schedule_lines or ["- Nenhuma alocacao docente encontrada."]),
+                f"Turmas de {teacher_name}:",
+                *(class_lines or ["- Nenhuma turma encontrada."]),
+            ]
+        )
+    if asks_classes_only:
         seen: set[str] = set()
         lines: list[str] = []
         for item in filtered:
@@ -263,13 +294,18 @@ def _render_teacher_schedule_answer(summary: dict[str, Any], *, message: str) ->
         )
         for item in filtered[:8]
     ]
+    heading = (
+        f"Horario de hoje de {teacher_name} no {segment_label}:"
+        if asks_schedule and segment_label
+        else f"Horario de hoje de {teacher_name}:"
+        if asks_schedule
+        else f"Grade docente de {teacher_name} no {segment_label}:"
+        if segment_label
+        else f"Grade docente de {teacher_name}:"
+    )
     return "\n".join(
         [
-            (
-                f"Grade docente de {teacher_name} no {segment_label}:"
-                if segment_label
-                else f"Grade docente de {teacher_name}:"
-            ),
+            heading,
             *(lines or ["- Nenhuma alocacao docente encontrada."]),
         ]
     )

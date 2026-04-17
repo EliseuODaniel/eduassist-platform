@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Compatibility facade for the shared runtime surface.
 
 The heavy implementation now lives in ``runtime_core.py`` plus domain-specific
 bridge modules. Keep this file intentionally small so new work is pushed into
 cohesive modules instead of rebuilding a god module.
 """
+
+from __future__ import annotations
 
 from . import runtime_core as _runtime_core
 

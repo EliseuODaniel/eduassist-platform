@@ -25,6 +25,7 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
         deps=deps,
     )
     contextual_normalized = deps.normalize_text(contextual_message)
+    effective_public_normalized = contextual_normalized if contextual_message.strip() != str(ctx.request.message).strip() else normalized
     explicit_external_boundary = any(
         term in normalized
         for term in {
@@ -237,6 +238,25 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
         and (not turn_frame_capability_id or turn_frame_scope == "public")
     ):
         ingress_act = turn_frame_public_act
+    if (
+        ingress_act in {"scope_boundary", "input_clarification"}
+        and "biblioteca" in effective_public_normalized
+        and any(
+            term in effective_public_normalized
+            for term in {
+                "horario",
+                "horário",
+                "funciona",
+                "abre",
+                "fecha",
+                "que horas fecha",
+                "que horas abre",
+                "ate que horas",
+                "até que horas",
+            }
+        )
+    ):
+        ingress_act = None
 
     if ingress_act == "greeting" or deps.is_simple_greeting(ctx.request.message):
         return _build_fast_path_payload(
@@ -272,6 +292,8 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
         and not explicit_general_knowledge_boundary
         and not _looks_like_service_routing_query(contextual_message)
         and not _looks_like_bolsas_and_processes_query(contextual_message)
+        and not _looks_like_public_doc_bundle_request(contextual_message)
+        and not match_public_canonical_lane(contextual_message)
     ):
         return _build_fast_path_payload(
             message_text=(
@@ -1055,8 +1077,8 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
                 mode="clarify",
             )
 
-    if "biblioteca" in normalized and any(
-        term in normalized
+    if "biblioteca" in effective_public_normalized and any(
+        term in effective_public_normalized
         for term in {
             "tem biblioteca",
             "ha biblioteca",
@@ -1079,8 +1101,8 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
             graph_leaf="library_exists",
         )
 
-    if "biblioteca" in normalized and any(
-        term in normalized
+    if "biblioteca" in effective_public_normalized and any(
+        term in effective_public_normalized
         for term in {
             "horario",
             "horário",

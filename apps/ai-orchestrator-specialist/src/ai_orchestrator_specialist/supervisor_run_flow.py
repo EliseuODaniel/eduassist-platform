@@ -5,7 +5,10 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
 import httpx
-from eduassist_semantic_ingress import compose_grounded_public_answer_with_provider
+from eduassist_semantic_ingress import (
+    compose_grounded_public_answer_with_provider,
+    refine_answer_surface_with_provider,
+)
 
 from .models import (
     MessageIntentClassification,
@@ -189,6 +192,38 @@ def _specialist_public_composer_evidence(answer: SupervisorAnswerPayload) -> lis
     return deduped_lines
 
 
+def _specialist_refiner_targets(context: Any) -> tuple[list[str], str | None]:
+    resolved_turn = getattr(context, "resolved_turn", None)
+    memory = getattr(context, "operational_memory", None)
+    preview_hint = getattr(context, "preview_hint", None)
+    turn_frame = preview_hint.get("turn_frame") if isinstance(preview_hint, dict) else None
+    target_candidates = [
+        str(getattr(resolved_turn, "referenced_student_name", "") or "").strip(),
+        str(getattr(resolved_turn, "alternate_student_name", "") or "").strip(),
+        str(getattr(memory, "active_student_name", "") or "").strip(),
+        str(getattr(memory, "alternate_student_name", "") or "").strip(),
+        str((turn_frame or {}).get("active_actor") or "").strip(),
+    ]
+    for item in (turn_frame or {}).get("active_targets") or []:
+        cleaned = str(item or "").strip()
+        if cleaned:
+            target_candidates.append(cleaned)
+    targets: list[str] = []
+    seen: set[str] = set()
+    for item in target_candidates:
+        if not item:
+            continue
+        key = item.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        targets.append(item)
+    active_subject = str(getattr(resolved_turn, "referenced_subject", "") or "").strip()
+    if not active_subject:
+        active_subject = str(getattr(memory, "active_subject", "") or "").strip() or None
+    return targets, active_subject or None
+
+
 async def _maybe_apply_public_answer_composer(
     *,
     context: Any,
@@ -264,6 +299,73 @@ async def _maybe_apply_public_answer_composer(
     return answer.model_copy(update={'message_text': composed_text}), merged_metadata
 
 
+async def _maybe_apply_answer_surface_refiner(
+    *,
+    context: Any,
+    settings: Any,
+    answer: SupervisorAnswerPayload,
+    metadata: dict[str, Any] | None,
+) -> tuple[SupervisorAnswerPayload, dict[str, Any] | None]:
+    if settings is None:
+        return answer, metadata
+    if not bool(getattr(settings, "feature_flag_specialist_answer_refiner_enabled", True)):
+        return answer, metadata
+    reason = str(getattr(answer, "reason", "") or "").strip().lower()
+    if any(
+        token in reason
+        for token in (
+            "input_guardrail_blocked",
+            "third_party_denied",
+            "privacy_guardrail",
+        )
+    ):
+        return answer, metadata
+    evidence_lines = _specialist_public_composer_evidence(answer)
+    if not evidence_lines:
+        evidence_lines = [str(getattr(answer, "message_text", "") or "").strip()]
+    target_names, active_subject = _specialist_refiner_targets(context)
+    refinement = await refine_answer_surface_with_provider(
+        settings=settings,
+        stack_label="specialist_supervisor",
+        request_message=context.request.message,
+        original_text=answer.message_text,
+        answer_mode=answer.mode,
+        answer_reason=answer.reason,
+        domain=str(getattr(answer.classification, "domain", "") or "").strip(),
+        access_tier=str(getattr(answer.classification, "access_tier", "") or "").strip(),
+        evidence_lines=evidence_lines,
+        conversation_context=context.conversation_context,
+        target_names=target_names,
+        active_subject=active_subject,
+    )
+    if not refinement.used_llm:
+        return answer, metadata
+    merged_metadata = dict(metadata or {})
+    llm_stages = [
+        str(item).strip()
+        for item in (
+            merged_metadata.get("llm_stages")
+            if "llm_stages" in merged_metadata
+            else getattr(answer, "llm_stages", [])
+        )
+        if str(item).strip()
+    ]
+    llm_stages = list(dict.fromkeys([*llm_stages, "answer_surface_refiner"]))
+    merged_metadata.update(
+        {
+            "used_llm": True,
+            "llm_stages": llm_stages,
+            "final_polish_eligible": True,
+            "final_polish_applied": refinement.changed,
+            "final_polish_mode": "answer_surface_refiner",
+            "final_polish_reason": refinement.reason,
+            "final_polish_changed_text": refinement.changed,
+            "final_polish_preserved_fallback": refinement.preserved_fallback,
+        }
+    )
+    return answer.model_copy(update={"message_text": refinement.answer_text}), merged_metadata
+
+
 async def _persist_and_dump(
     deps: SupervisorRunFlowDeps,
     context: Any,
@@ -278,6 +380,12 @@ async def _persist_and_dump(
     answer, metadata = await _maybe_apply_public_answer_composer(
         context=context,
         settings=getattr(context, 'settings', None),
+        answer=answer,
+        metadata=metadata,
+    )
+    answer, metadata = await _maybe_apply_answer_surface_refiner(
+        context=context,
+        settings=getattr(context, "settings", None),
         answer=answer,
         metadata=metadata,
     )

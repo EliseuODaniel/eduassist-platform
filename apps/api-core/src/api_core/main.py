@@ -5,9 +5,12 @@ import secrets
 import uuid
 from datetime import date
 
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from pydantic import BaseModel
-from eduassist_observability import configure_observability
+from eduassist_observability import (
+    bridge_spiffe_identity_to_internal_token,
+    configure_observability,
+)
 
 from api_core.config import get_settings
 from api_core.contracts import (
@@ -110,11 +113,33 @@ class HealthResponse(BaseModel):
     ready: bool
 
 
+PUBLIC_CALENDAR_DATE_FROM_QUERY = Query(default=None)
+PUBLIC_CALENDAR_DATE_TO_QUERY = Query(default=None)
+PUBLIC_CALENDAR_LIMIT_QUERY = Query(default=6, ge=1, le=20)
+
+
 app = FastAPI(
     title='EduAssist API Core',
     version='0.3.0',
     summary='Core domain API for identity, policy, audit and school data services.',
 )
+
+
+@app.middleware('http')
+async def _bridge_internal_workload_identity(request: Request, call_next):
+    settings = get_settings()
+    decision = bridge_spiffe_identity_to_internal_token(
+        request.scope,
+        expected_token=settings.internal_api_token,
+        mode=settings.internal_workload_identity_mode,
+        allowed_spiffe_ids=settings.internal_spiffe_allowed_ids,
+    )
+    if decision.authenticated and decision.mechanism == 'spiffe_id':
+        request.state.internal_workload_identity = {
+            'mechanism': decision.mechanism,
+            'spiffe_id': decision.spiffe_id,
+        }
+    return await call_next(request)
 
 configure_observability(
     service_name='api-core',
@@ -1641,9 +1666,9 @@ async def student_attendance_timeline(
 
 @app.get('/v1/calendar/public', response_model=CalendarEventsResponse)
 async def public_calendar_events(
-    date_from: date | None = Query(default=None),
-    date_to: date | None = Query(default=None),
-    limit: int = Query(default=6, ge=1, le=20),
+    date_from: date | None = PUBLIC_CALENDAR_DATE_FROM_QUERY,
+    date_to: date | None = PUBLIC_CALENDAR_DATE_TO_QUERY,
+    limit: int = PUBLIC_CALENDAR_LIMIT_QUERY,
 ) -> CalendarEventsResponse:
     with session_scope() as session:
         events = list_public_calendar_events(

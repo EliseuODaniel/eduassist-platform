@@ -1,0 +1,253 @@
+[
+  {
+    "thread_id": "ab_public_identity",
+    "slice": "public",
+    "category": "identity",
+    "telegram_chat_id": 777239,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false
+    },
+    "turns": [
+      {
+        "id": "AB01",
+        "prompt": "quem é você e como pode me ajudar?",
+        "expected_keywords": ["EduAssist", "escola"],
+        "forbidden_keywords": ["OpenAI", "Gemma", "Qwen", "modelo", "LLM"],
+        "note": "Identity and role clarity."
+      }
+    ]
+  },
+  {
+    "thread_id": "ab_public_library_followup",
+    "slice": "public",
+    "category": "library_hours",
+    "telegram_chat_id": 777239,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false
+    },
+    "turns": [
+      {
+        "id": "AB02",
+        "prompt": "qual o horário da biblioteca?",
+        "expected_keywords": ["7h30", "18h00"],
+        "note": "Public factual answer."
+      },
+      {
+        "id": "AB03",
+        "prompt": "e que horas fecha?",
+        "expected_keywords": ["18h00"],
+        "forbidden_keywords": ["7h30"],
+        "note": "Follow-up should specialize the answer instead of repeating the full schedule."
+      }
+    ]
+  },
+  {
+    "thread_id": "ab_public_documents",
+    "slice": "public",
+    "category": "enrollment",
+    "telegram_chat_id": 777239,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false
+    },
+    "turns": [
+      {
+        "id": "AB04",
+        "prompt": "quais documentos preciso para matrícula?",
+        "expected_keywords": ["document", "matric"],
+        "note": "Canonical public enrollment guidance."
+      }
+    ]
+  },
+  {
+    "thread_id": "ab_public_policy",
+    "slice": "public",
+    "category": "academic_policy",
+    "telegram_chat_id": 777239,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false
+    },
+    "turns": [
+      {
+        "id": "AB05",
+        "prompt": "a escola segue a BNCC?",
+        "expected_keywords": ["BNCC"],
+        "note": "Public academic policy."
+      }
+    ]
+  },
+  {
+    "thread_id": "ab_public_governance",
+    "slice": "public",
+    "category": "governance_protocol",
+    "telegram_chat_id": 777239,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false
+    },
+    "turns": [
+      {
+        "id": "AB06",
+        "prompt": "sem sair do escopo da escola, explique em linguagem simples como a direção formaliza pedidos de inclusão e por onde eu começo",
+        "expected_keywords": ["dire", "inclus", "protoc"],
+        "note": "Multi-intent public governance answer with actionability."
+      }
+    ]
+  },
+  {
+    "thread_id": "ab_oos_boundary",
+    "slice": "public",
+    "category": "out_of_scope",
+    "telegram_chat_id": 777239,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false
+    },
+    "turns": [
+      {
+        "id": "AB07",
+        "prompt": "me ajuda a escolher um filme para ver hoje?",
+        "expected_keywords": ["escola"],
+        "forbidden_keywords": ["Biblioteca Aurora"],
+        "note": "Outside-scope conversational boundary."
+      }
+    ]
+  },
+  {
+    "thread_id": "ab_external_boundary",
+    "slice": "public",
+    "category": "external_entity_boundary",
+    "telegram_chat_id": 777239,
+    "user": {
+      "role": "anonymous",
+      "authenticated": false
+    },
+    "turns": [
+      {
+        "id": "AB08",
+        "prompt": "qual horário de fechamento da biblioteca pública da cidade?",
+        "expected_keywords": ["escola"],
+        "forbidden_keywords": ["Biblioteca Aurora", "18h00"],
+        "note": "Must not hijack an external entity back into the school library."
+      }
+    ]
+  },
+  {
+    "thread_id": "ab_guardian_academic_followup",
+    "slice": "protected",
+    "category": "academic_followup",
+    "telegram_chat_id": 1649845499,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": ["stu-lucas", "stu-ana"],
+      "scopes": ["students:read", "academic:read", "financial:read", "administrative:read"]
+    },
+    "turns": [
+      {
+        "id": "AB09",
+        "prompt": "quero um resumo acadêmico do Lucas Oliveira",
+        "expected_keywords": ["Lucas", "acad"],
+        "forbidden_keywords": ["public"],
+        "note": "Protected academic summary."
+      },
+      {
+        "id": "AB10",
+        "prompt": "agora foque só em matemática",
+        "expected_keywords": ["Lucas", "matem"],
+        "forbidden_keywords": ["fora do escopo", "nao tenho base confiavel", "Ana"],
+        "note": "Protected follow-up with narrower focus."
+      }
+    ]
+  },
+  {
+    "thread_id": "ab_guardian_finance",
+    "slice": "protected",
+    "category": "finance_due",
+    "telegram_chat_id": 1649845499,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": ["stu-lucas", "stu-ana"],
+      "scopes": ["students:read", "academic:read", "financial:read", "administrative:read"]
+    },
+    "turns": [
+      {
+        "id": "AB11",
+        "prompt": "qual é o próximo vencimento da Ana Oliveira?",
+        "expected_keywords": ["Ana", "venc"],
+        "forbidden_keywords": ["Lucas"],
+        "note": "Protected finance with named student precedence."
+      }
+    ]
+  },
+  {
+    "thread_id": "ab_guardian_attendance_compare",
+    "slice": "protected",
+    "category": "attendance_compare",
+    "telegram_chat_id": 1649845499,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": ["stu-lucas", "stu-ana"],
+      "scopes": ["students:read", "academic:read", "financial:read", "administrative:read"]
+    },
+    "turns": [
+      {
+        "id": "AB12",
+        "prompt": "compare a frequência do Lucas e da Ana de forma objetiva",
+        "expected_keywords": ["Lucas", "Ana", "frequ"],
+        "note": "Protected comparative answer."
+      },
+      {
+        "id": "AB13",
+        "prompt": "agora quero apenas a Ana: em quais matérias ela aparece mais exposta?",
+        "expected_keywords": ["Ana", "Fisica"],
+        "forbidden_keywords": ["Lucas"],
+        "note": "Elliptical follow-up after family comparison."
+      }
+    ]
+  },
+  {
+    "thread_id": "ab_support_handoff",
+    "slice": "support",
+    "category": "support_handoff",
+    "telegram_chat_id": 1649845499,
+    "user": {
+      "role": "guardian",
+      "authenticated": true,
+      "linked_student_ids": ["stu-lucas", "stu-ana"],
+      "scopes": ["students:read", "academic:read", "financial:read", "administrative:read"]
+    },
+    "turns": [
+      {
+        "id": "AB14",
+        "prompt": "quero falar com a secretaria sobre bolsa",
+        "expected_keywords": ["secret", "protocolo"],
+        "note": "Support routing with human handoff intent."
+      }
+    ]
+  },
+  {
+    "thread_id": "ab_teacher_schedule",
+    "slice": "protected",
+    "category": "teacher_schedule",
+    "telegram_chat_id": 1649845501,
+    "user": {
+      "role": "teacher",
+      "authenticated": true,
+      "scopes": ["teachers:read", "academic:read"]
+    },
+    "turns": [
+      {
+        "id": "AB15",
+        "prompt": "sou professor, qual é meu horário de hoje e minhas turmas?",
+        "expected_keywords": ["turma", "hor"],
+        "note": "Teacher persona coverage."
+      }
+    ]
+  }
+]

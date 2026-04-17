@@ -18,6 +18,13 @@ from .runtime import (
     set_span_attributes,
     start_span,
 )
+from .workload_identity import (
+    WorkloadIdentityDecision,
+    bridge_spiffe_identity_to_internal_token,
+    evaluate_internal_workload_identity,
+    normalize_workload_identity_mode,
+    parse_allowed_spiffe_ids,
+)
 
 __all__ = [
     'GenAIUsage',
@@ -37,4 +44,9 @@ __all__ = [
     'set_span_attributes',
     'start_gen_ai_client_operation',
     'start_span',
+    'WorkloadIdentityDecision',
+    'bridge_spiffe_identity_to_internal_token',
+    'evaluate_internal_workload_identity',
+    'normalize_workload_identity_mode',
+    'parse_allowed_spiffe_ids',
 ]

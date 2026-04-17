@@ -4,8 +4,12 @@ import logging
 import secrets
 from typing import Any
 
-from eduassist_observability import build_runtime_diagnostics, configure_observability
-from fastapi import FastAPI, Header, HTTPException
+from eduassist_observability import (
+    bridge_spiffe_identity_to_internal_token,
+    build_runtime_diagnostics,
+    configure_observability,
+)
+from fastapi import FastAPI, Header, HTTPException, Request
 
 from .channel_reply_formatting import format_reply_for_channel
 from .debug_trace_footer import attach_telegram_debug_trace_for_stack
@@ -111,6 +115,22 @@ def create_dedicated_stack_app(*, stack_name: str, service_name: str) -> FastAPI
         version='0.1.0',
         summary=f'Dedicated {stack_name} orchestration service.',
     )
+
+    @app.middleware('http')
+    async def _bridge_internal_workload_identity(request: Request, call_next):
+        settings = build_stack_local_settings(base_settings=get_settings(), stack_name=stack_name)
+        decision = bridge_spiffe_identity_to_internal_token(
+            request.scope,
+            expected_token=settings.internal_api_token,
+            mode=settings.internal_workload_identity_mode,
+            allowed_spiffe_ids=settings.internal_spiffe_allowed_ids,
+        )
+        if decision.authenticated and decision.mechanism == 'spiffe_id':
+            request.state.internal_workload_identity = {
+                'mechanism': decision.mechanism,
+                'spiffe_id': decision.spiffe_id,
+            }
+        return await call_next(request)
 
     configure_observability(
         service_name=service_name,

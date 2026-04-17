@@ -1,0 +1,1963 @@
+{
+  "generated_at": "2026-04-17T06:11:28.969791+00:00",
+  "arm_a": {
+    "generated_at": "2026-04-17T06:10:26.131477+00:00",
+    "model_label": "gemma4e4b_local_postfix",
+    "base_url": "http://127.0.0.1:8005",
+    "dataset": "tests/evals/datasets/specialist_model_ab_cases.20260417.json",
+    "timeout_seconds": 120.0,
+    "runtime_status": {
+      "service": "ai-orchestrator-specialist",
+      "ready": true,
+      "serviceRole": "dedicated-stack-runtime",
+      "primaryServingRecommended": true,
+      "mode": "quality-first",
+      "llmModelProfile": "gemma4e4b_local",
+      "llmProvider": "openai",
+      "effectiveModel": "ggml-org_gemma-4-E4B-it-GGUF_gemma-4-e4b-it-Q4_K_M.gguf",
+      "openaiApiMode": "chat_completions",
+      "openaiModel": "ggml-org_gemma-4-E4B-it-GGUF_gemma-4-e4b-it-Q4_K_M.gguf",
+      "googleModel": "gemini-2.5-flash",
+      "llmConfigured": true,
+      "apiCoreUrl": "http://api-core:8000",
+      "orchestratorUrl": "http://ai-orchestrator:8000",
+      "controlPlaneOrchestratorUrl": "http://ai-orchestrator:8000",
+      "controlPlanePurpose": [
+        "shared-graphrag-consumer",
+        "router-internal-endpoints"
+      ],
+      "runtimeDiagnostics": {
+        "service": "ai-orchestrator-specialist",
+        "runtimeMode": "container",
+        "operationalReadiness": true,
+        "sourceContainerDriftRisk": "low",
+        "envFiles": [
+          {
+            "path": "/workspace/.env",
+            "exists": true
+          },
+          {
+            "path": "/workspace/.env",
+            "exists": true
+          },
+          {
+            "path": ".env",
+            "exists": false
+          }
+        ],
+        "checks": [
+          {
+            "name": "api_core",
+            "kind": "service",
+            "configured": true,
+            "required": true,
+            "status": "ok",
+            "endpoint": "http://api-core:8000",
+            "detail": null
+          },
+          {
+            "name": "ai_orchestrator",
+            "kind": "service",
+            "configured": true,
+            "required": true,
+            "status": "ok",
+            "endpoint": "http://ai-orchestrator:8000",
+            "detail": null
+          },
+          {
+            "name": "internal_api_token",
+            "kind": "secret",
+            "configured": true,
+            "required": true,
+            "status": "ok"
+          },
+          {
+            "name": "openai_api_key",
+            "kind": "secret",
+            "configured": true,
+            "required": false,
+            "status": "ok"
+          },
+          {
+            "name": "google_api_key",
+            "kind": "secret",
+            "configured": true,
+            "required": false,
+            "status": "ok"
+          }
+        ],
+        "warnings": [],
+        "blockers": [],
+        "memoryBackend": "sqlite",
+        "memoryUrl": "sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db"
+      },
+      "capabilities": [
+        "openai-agents-sdk",
+        "litellm-provider-fallback",
+        "manager-pattern",
+        "specialists-as-tools",
+        "sqlalchemy-session-memory",
+        "planner-manager-judge",
+        "specialist-local-hybrid-retrieval",
+        "shared-graphrag-consumer",
+        "workflow-and-record-specialists",
+        "message-response-contract"
+      ]
+    },
+    "summary": {
+      "overall": {
+        "count": 15,
+        "ok": 15,
+        "keyword_pass": 15,
+        "quality_avg": 100.0,
+        "avg_latency_ms": 10862.3,
+        "median_latency_ms": 9128.3,
+        "p95_latency_ms": 19554.8,
+        "final_polish_applied": 3
+      },
+      "by_slice": {
+        "public": {
+          "count": 8,
+          "ok": 8,
+          "keyword_pass": 8,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 10661.7,
+          "median_latency_ms": 7553.7,
+          "p95_latency_ms": 21987.5,
+          "final_polish_applied": 2
+        },
+        "protected": {
+          "count": 6,
+          "ok": 6,
+          "keyword_pass": 6,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 10071.9,
+          "median_latency_ms": 9151.5,
+          "p95_latency_ms": 14368.8,
+          "final_polish_applied": 0
+        },
+        "support": {
+          "count": 1,
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 17209.7,
+          "median_latency_ms": 17209.7,
+          "p95_latency_ms": 17209.7,
+          "final_polish_applied": 1
+        }
+      }
+    },
+    "results": [
+      {
+        "id": "AB01",
+        "thread_id": "ab_public_identity",
+        "turn_index": 1,
+        "slice": "public",
+        "category": "identity",
+        "note": "Identity and role clarity.",
+        "prompt": "quem é você e como pode me ajudar?",
+        "status": 200,
+        "latency_ms": 25026.6,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:assistant_identity",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "assistant_identity"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "semantic_ingress_classifier",
+          "answer_surface_refiner"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "answer_surface_refiner",
+        "final_polish_reason": "validation_rejected",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Voce esta falando com o EduAssist, o assistente institucional do Colegio Horizonte. Eu consigo te orientar por aqui, consultar informacoes da escola e abrir solicitacoes com protocolo. Se precisar, eu tambem te encaminho para secretaria, matricula e atendimento comercial, coordenacao, orientacao educacional, financeiro ou direcao.",
+        "expected_keywords": [
+          "EduAssist",
+          "escola"
+        ],
+        "forbidden_keywords": [
+          "OpenAI",
+          "Gemma",
+          "Qwen",
+          "modelo",
+          "LLM"
+        ],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB02",
+        "thread_id": "ab_public_library_followup",
+        "turn_index": 1,
+        "slice": "public",
+        "category": "library_hours",
+        "note": "Public factual answer.",
+        "prompt": "qual o horário da biblioteca?",
+        "status": 200,
+        "latency_ms": 6677.7,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:library_hours",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "library_hours"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "public_answer_composer",
+          "answer_surface_refiner"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "answer_surface_refiner",
+        "final_polish_reason": "validation_rejected",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "A biblioteca funciona de segunda a sexta, das 7h30 às 18h00.",
+        "expected_keywords": [
+          "7h30",
+          "18h00"
+        ],
+        "forbidden_keywords": [],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB03",
+        "thread_id": "ab_public_library_followup",
+        "turn_index": 2,
+        "slice": "public",
+        "category": "library_hours",
+        "note": "Follow-up should specialize the answer instead of repeating the full schedule.",
+        "prompt": "e que horas fecha?",
+        "status": 200,
+        "latency_ms": 16343.4,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:library_hours",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "library_hours"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "semantic_ingress_classifier",
+          "public_answer_composer",
+          "answer_surface_refiner"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "answer_surface_refiner",
+        "final_polish_reason": "answer_surface_refiner",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "A biblioteca fecha às 18h00.",
+        "expected_keywords": [
+          "18h00"
+        ],
+        "forbidden_keywords": [
+          "7h30"
+        ],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB04",
+        "thread_id": "ab_public_documents",
+        "turn_index": 1,
+        "slice": "public",
+        "category": "enrollment",
+        "note": "Canonical public enrollment guidance.",
+        "prompt": "quais documentos preciso para matrícula?",
+        "status": 200,
+        "latency_ms": 7861.7,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:admissions_documents",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "admissions_documents"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "public_answer_composer",
+          "answer_surface_refiner"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "answer_surface_refiner",
+        "final_polish_reason": "answer_surface_refiner",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Para realizar a matrícula, você precisará apresentar os seguintes documentos: o formulário cadastral preenchido, o documento de identificação do aluno, o CPF do aluno (caso tenha), o histórico escolar, um comprovante de residência atualizado e o documento de identificação do responsável legal.",
+        "expected_keywords": [
+          "document",
+          "matric"
+        ],
+        "forbidden_keywords": [],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB05",
+        "thread_id": "ab_public_policy",
+        "turn_index": 1,
+        "slice": "public",
+        "category": "academic_policy",
+        "note": "Public academic policy.",
+        "prompt": "a escola segue a BNCC?",
+        "status": 200,
+        "latency_ms": 7245.7,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:bncc",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "curriculum"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "public_answer_composer",
+          "answer_surface_refiner"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "answer_surface_refiner",
+        "final_polish_reason": "answer_surface_refiner",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Sim, a escola segue a BNCC, e o currículo do Ensino Médio é articulado com projeto de vida, produção textual, cultura digital e aprofundamento acadêmico progressivo.",
+        "expected_keywords": [
+          "BNCC"
+        ],
+        "forbidden_keywords": [],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB06",
+        "thread_id": "ab_public_governance",
+        "turn_index": 1,
+        "slice": "public",
+        "category": "governance_protocol",
+        "note": "Multi-intent public governance answer with actionability.",
+        "prompt": "sem sair do escopo da escola, explique em linguagem simples como a direção formaliza pedidos de inclusão e por onde eu começo",
+        "status": 200,
+        "latency_ms": 9373.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_preflight:governance_inclusion_protocol",
+        "graph_path": [
+          "specialist_supervisor",
+          "preflight",
+          "governance_inclusion_protocol"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "No material publico do Colegio Horizonte, pedidos de inclusao aparecem como um fluxo institucional que cruza acolhimento pedagogico, acessibilidade, registro formal e escalonamento. A base publica trata inclusao, acessibilidade e protecao do estudante como um mesmo compromisso institucional. # Inclusao e acessibilidade O Colegio Horizonte adota rotinas de atendimento inclusivo com apoio pedagogico, adequacoes de material quando necessario e canal para comunicacao de necessidades especificas. Nos recursos de apoio, a escola cita atendimento educacional especializado quando previsto - mediacao de rotina para estudantes com necessidades especificas - orientacao com equipe pedagogica - priorizacao de acessibilidade em eventos e comunicacoes. O colegio possui normas contra bullying, assedio e uso indevido de imagem. Ha protocolo para ocorrencias leves, contato imediato com responsaveis e acionamento de apoio externo quando necessario. Na base publica do Colegio Horizonte, a trilha institucional fica mais clara quando secretaria, coordenacao, direcao e canais oficiais aparecem como etapas complementares de encaminhamento e protocolo. Na pratica, o protocolo formal costuma seguir esta ordem: secretaria para registrar e orientar, coordenacao para acompanhar o tema pedagogico ou de convivio, e direcao como instancia de escalonamento institucional quando o assunto sai da rotina normal. O envio inicial de documentos pode ocorrer pelo portal institucional, pelo e-mail da secretaria ou presencialmente, conforme o tipo de documento e o grau de sensibilidade da informacao. A diretora geral do Colegio Horizonte e Helena Martins. A lideranca atende familias por agenda institucional. Direcao geral: direcao@colegiohorizonte.edu.br Coordenacao Fundamental II: fundamental2@colegiohorizonte.edu.br Coordenacao Ensino Medio: ensinomedio@colegiohorizonte.edu.br. A diretora participa de encontros institucionais com familias ao longo do ano, especialmente nas reunioes de acolhimento, eventos gerais e marcos bimestrais de acompanhamento da comunidade escolar. Se a familia precisar formalizar um impasse, o proximo passo e abrir o protocolo pelo canal oficial e guardar o registro para o escalonamento ate a direcao. Em linguagem simples, o melhor ponto de partida e levar a demanda ao canal oficial da secretaria ou coordenacao com o contexto do estudante; se o tema exigir formalizacao institucional, o registro segue para protocolo e pode ser escalado ate a direcao.",
+        "expected_keywords": [
+          "dire",
+          "inclus",
+          "protoc"
+        ],
+        "forbidden_keywords": [],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB07",
+        "thread_id": "ab_oos_boundary",
+        "turn_index": 1,
+        "slice": "public",
+        "category": "out_of_scope",
+        "note": "Outside-scope conversational boundary.",
+        "prompt": "me ajuda a escolher um filme para ver hoje?",
+        "status": 200,
+        "latency_ms": 6303.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:scope_boundary",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "scope_boundary"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_surface_refiner"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "answer_surface_refiner",
+        "final_polish_reason": "validation_rejected",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Nao tenho base confiavel aqui no EduAssist do Colegio Horizonte para responder esse tema fora do escopo da escola. Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro.",
+        "expected_keywords": [
+          "escola"
+        ],
+        "forbidden_keywords": [
+          "Biblioteca Aurora"
+        ],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB08",
+        "thread_id": "ab_external_boundary",
+        "turn_index": 1,
+        "slice": "public",
+        "category": "external_entity_boundary",
+        "note": "Must not hijack an external entity back into the school library.",
+        "prompt": "qual horário de fechamento da biblioteca pública da cidade?",
+        "status": 200,
+        "latency_ms": 6461.9,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:scope_boundary",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "scope_boundary"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_surface_refiner"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "answer_surface_refiner",
+        "final_polish_reason": "validation_rejected",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "No EduAssist do Colegio Horizonte, eu consigo responder apenas sobre servicos e canais da escola. Como sua pergunta fala de uma biblioteca publica externa, esse assunto fica fora do escopo da escola e eu nao tenho base aqui para informar esse horario. Se quiser, eu posso te dizer o horario da biblioteca do colegio.",
+        "expected_keywords": [
+          "escola"
+        ],
+        "forbidden_keywords": [
+          "Biblioteca Aurora",
+          "18h00"
+        ],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB09",
+        "thread_id": "ab_guardian_academic_followup",
+        "turn_index": 1,
+        "slice": "protected",
+        "category": "academic_followup",
+        "note": "Protected academic summary.",
+        "prompt": "quero um resumo acadêmico do Lucas Oliveira",
+        "status": 200,
+        "latency_ms": 15458.4,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:academic_summary_followup",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "academic_summary_followup"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_surface_refiner"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "answer_surface_refiner",
+        "final_polish_reason": "validation_rejected",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Resumo academico de Lucas Oliveira:\n- Historia: media parcial 6,8\n- Fisica: media parcial 5,9\n- Matematica: media parcial 7,7\n- Portugues: media parcial 8,3",
+        "expected_keywords": [
+          "Lucas",
+          "acad"
+        ],
+        "forbidden_keywords": [
+          "public"
+        ],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB10",
+        "thread_id": "ab_guardian_academic_followup",
+        "turn_index": 2,
+        "slice": "protected",
+        "category": "academic_followup",
+        "note": "Protected follow-up with narrower focus.",
+        "prompt": "agora foque só em matemática",
+        "status": 200,
+        "latency_ms": 11100.1,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:academic_summary_followup",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "academic_summary_followup"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_surface_refiner"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "answer_surface_refiner",
+        "final_polish_reason": "validation_rejected",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "A media parcial de Lucas Oliveira em Matematica e 7,7.",
+        "expected_keywords": [
+          "Lucas",
+          "matem"
+        ],
+        "forbidden_keywords": [
+          "fora do escopo",
+          "nao tenho base confiavel",
+          "Ana"
+        ],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB11",
+        "thread_id": "ab_guardian_finance",
+        "turn_index": 1,
+        "slice": "protected",
+        "category": "finance_due",
+        "note": "Protected finance with named student precedence.",
+        "prompt": "qual é o próximo vencimento da Ana Oliveira?",
+        "status": 200,
+        "latency_ms": 9128.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:finance_student_summary",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "finance_student_summary"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Hoje nao ha bloqueio financeiro por atraso vencido no recorte da familia.\nResumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 2\n- Total de faturas vencidas: 0\n- Mensalidade: neste recorte, o financeiro mostra 2 cobranca(s) em aberto e 0 vencida(s) nas faturas escolares.\n- Taxa: nao apareceu taxa separada neste recorte financeiro das contas vinculadas.\n- Atraso: nao ha fatura vencida agora, so acompanhamento dos proximos vencimentos.\n- Desconto: nao apareceu desconto separado nas faturas deste recorte; se existir negociacao comercial, ela precisa ser confirmada com o financeiro.\n- Ana Oliveira: 2 em aberto, 0 vencidas\n  2026-01: vencimento 2026-01-10, status paid, valor 1450.00\n  2026-02: vencimento 2026-02-10, status paid, valor 1450.00\nProximo passo: acompanhar os vencimentos mais proximos e manter os comprovantes em dia.",
+        "expected_keywords": [
+          "Ana",
+          "venc"
+        ],
+        "forbidden_keywords": [
+          "Lucas"
+        ],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB12",
+        "thread_id": "ab_guardian_attendance_compare",
+        "turn_index": 1,
+        "slice": "protected",
+        "category": "attendance_compare",
+        "note": "Protected comparative answer.",
+        "prompt": "compare a frequência do Lucas e da Ana de forma objetiva",
+        "status": 200,
+        "latency_ms": 9174.8,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:attendance_summary_aggregate",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "attendance_summary_aggregate"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Panorama de faltas e frequencia das contas vinculadas:\n- Na frequencia de Lucas Oliveira em Tecnologia e Cultura Digital, eu encontrei 6 faltas, 7 atraso(s) e 19 presenca(s) neste recorte.\n- Na frequencia de Ana Oliveira em Tecnologia e Cultura Digital, eu encontrei 6 faltas, 9 atraso(s) e 17 presenca(s) neste recorte.\nQuem exige maior atencao agora: Ana Oliveira.\nEsse alerta pesa mais para Ana Oliveira porque o maior impacto hoje aparece em Ingles, com 6 falta(s), 9 atraso(s), 410 minuto(s) de ausencia.",
+        "expected_keywords": [
+          "Lucas",
+          "Ana",
+          "frequ"
+        ],
+        "forbidden_keywords": [],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB13",
+        "thread_id": "ab_guardian_attendance_compare",
+        "turn_index": 2,
+        "slice": "protected",
+        "category": "attendance_compare",
+        "note": "Elliptical follow-up after family comparison.",
+        "prompt": "agora quero apenas a Ana: em quais matérias ela aparece mais exposta?",
+        "status": 200,
+        "latency_ms": 6985.2,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:academic_risk",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "academic_risk"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_surface_refiner"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "answer_surface_refiner",
+        "final_polish_reason": "validation_rejected",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "As disciplinas que mais preocupam academicamente em Ana Oliveira hoje sao:\n- Fisica: media parcial 6,4\n- Educacao Fisica: media parcial 7,0\n- Filosofia: media parcial 7,5\nA menor nota parcial neste recorte aparece em Fisica, com media 6,4.\nEsses componentes merecem acompanhamento primeiro no proximo ciclo de estudo.",
+        "expected_keywords": [
+          "Ana",
+          "Fisica"
+        ],
+        "forbidden_keywords": [
+          "Lucas"
+        ],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB14",
+        "thread_id": "ab_support_handoff",
+        "turn_index": 1,
+        "slice": "support",
+        "category": "support_handoff",
+        "note": "Support routing with human handoff intent.",
+        "prompt": "quero falar com a secretaria sobre bolsa",
+        "status": 200,
+        "latency_ms": 17209.7,
+        "mode": "handoff",
+        "reason": "specialist_supervisor_tool_first:human_handoff",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "human_handoff"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_surface_refiner"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "answer_surface_refiner",
+        "final_polish_reason": "answer_surface_refiner",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Encaminhei sua solicitação para a fila da secretaria. Seu protocolo é ATD-20260417-D541BB71 e o status atual é \"queued\". Se preferir, você também pode acompanhar por lá pelo WhatsApp oficial: (11) 97500-2040.",
+        "expected_keywords": [
+          "secret",
+          "protocolo"
+        ],
+        "forbidden_keywords": [],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB15",
+        "thread_id": "ab_teacher_schedule",
+        "turn_index": 1,
+        "slice": "protected",
+        "category": "teacher_schedule",
+        "note": "Teacher persona coverage.",
+        "prompt": "sou professor, qual é meu horário de hoje e minhas turmas?",
+        "status": 200,
+        "latency_ms": 8584.6,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:teacher_schedule",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "teacher_schedule"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "answer_surface_refiner"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "answer_surface_refiner",
+        "final_polish_reason": "validation_rejected",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Horario de hoje e turmas de Fernando Azevedo:\n- 1o Ano A - Fisica (2026)\n- 1o Ano A - Quimica (2026)\n- 1o Ano B - Filosofia (2026)\n- 1o Ano B - Historia (2026)\n- 2o Ano A - Filosofia (2026)\n- 2o Ano A - Fisica (2026)\nTurmas de Fernando Azevedo:\n- 1o Ano A\n- 1o Ano B\n- 2o Ano A\n- 2o Ano B\n- 3o Ano A\n- 3o Ano B\n- 6o Ano B\n- 7o Ano B\n- 8o Ano B\n- 9o Ano B",
+        "expected_keywords": [
+          "turma",
+          "hor"
+        ],
+        "forbidden_keywords": [],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        },
+        "quality_score": 100
+      }
+    ]
+  },
+  "arm_b": {
+    "generated_at": "2026-04-17T04:38:21.007570+00:00",
+    "model_label": "qwen3_4b_instruct_local",
+    "base_url": "http://127.0.0.1:8005",
+    "dataset": "/home/edann/projects/eduassist-platform/tests/evals/datasets/specialist_model_ab_cases.20260417.json",
+    "timeout_seconds": 90.0,
+    "runtime_status": {
+      "service": "ai-orchestrator-specialist",
+      "ready": true,
+      "serviceRole": "dedicated-stack-runtime",
+      "primaryServingRecommended": true,
+      "mode": "quality-first",
+      "llmModelProfile": "qwen3_4b_instruct_local",
+      "llmProvider": "openai",
+      "effectiveModel": "Qwen_Qwen3-4B-Instruct-2507-Q5_K_M.gguf",
+      "openaiApiMode": "chat_completions",
+      "openaiModel": "Qwen_Qwen3-4B-Instruct-2507-Q5_K_M.gguf",
+      "googleModel": "gemini-2.5-flash-lite",
+      "llmConfigured": true,
+      "apiCoreUrl": "http://api-core:8000",
+      "orchestratorUrl": "http://ai-orchestrator:8000",
+      "controlPlaneOrchestratorUrl": "http://ai-orchestrator:8000",
+      "controlPlanePurpose": [
+        "shared-graphrag-consumer",
+        "router-internal-endpoints"
+      ],
+      "runtimeDiagnostics": {
+        "service": "ai-orchestrator-specialist",
+        "runtimeMode": "container",
+        "operationalReadiness": true,
+        "sourceContainerDriftRisk": "low",
+        "envFiles": [
+          {
+            "path": "/workspace/.env",
+            "exists": true
+          },
+          {
+            "path": "/workspace/.env",
+            "exists": true
+          },
+          {
+            "path": ".env",
+            "exists": false
+          }
+        ],
+        "checks": [
+          {
+            "name": "api_core",
+            "kind": "service",
+            "configured": true,
+            "required": true,
+            "status": "ok",
+            "endpoint": "http://api-core:8000",
+            "detail": null
+          },
+          {
+            "name": "ai_orchestrator",
+            "kind": "service",
+            "configured": true,
+            "required": true,
+            "status": "ok",
+            "endpoint": "http://ai-orchestrator:8000",
+            "detail": null
+          },
+          {
+            "name": "internal_api_token",
+            "kind": "secret",
+            "configured": true,
+            "required": true,
+            "status": "ok"
+          },
+          {
+            "name": "openai_api_key",
+            "kind": "secret",
+            "configured": true,
+            "required": false,
+            "status": "ok"
+          },
+          {
+            "name": "google_api_key",
+            "kind": "secret",
+            "configured": true,
+            "required": false,
+            "status": "ok"
+          }
+        ],
+        "warnings": [],
+        "blockers": [],
+        "memoryBackend": "sqlite",
+        "memoryUrl": "sqlite+aiosqlite:////workspace/.runtime/specialist_supervisor_memory.db"
+      },
+      "capabilities": [
+        "openai-agents-sdk",
+        "litellm-provider-fallback",
+        "manager-pattern",
+        "specialists-as-tools",
+        "sqlalchemy-session-memory",
+        "planner-manager-judge",
+        "specialist-local-hybrid-retrieval",
+        "shared-graphrag-consumer",
+        "workflow-and-record-specialists",
+        "message-response-contract"
+      ]
+    },
+    "summary": {
+      "overall": {
+        "count": 15,
+        "ok": 15,
+        "keyword_pass": 8,
+        "quality_avg": 84.3,
+        "avg_latency_ms": 3684.1,
+        "median_latency_ms": 2285.5,
+        "p95_latency_ms": 16227.2,
+        "final_polish_applied": 4
+      },
+      "by_slice": {
+        "public": {
+          "count": 8,
+          "ok": 8,
+          "keyword_pass": 6,
+          "quality_avg": 91.2,
+          "avg_latency_ms": 4048.0,
+          "median_latency_ms": 2420.3,
+          "p95_latency_ms": 12737.3,
+          "final_polish_applied": 4
+        },
+        "protected": {
+          "count": 6,
+          "ok": 6,
+          "keyword_pass": 1,
+          "quality_avg": 72.5,
+          "avg_latency_ms": 3369.6,
+          "median_latency_ms": 434.6,
+          "p95_latency_ms": 12606.2,
+          "final_polish_applied": 0
+        },
+        "support": {
+          "count": 1,
+          "ok": 1,
+          "keyword_pass": 1,
+          "quality_avg": 100.0,
+          "avg_latency_ms": 2659.8,
+          "median_latency_ms": 2659.8,
+          "p95_latency_ms": 2659.8,
+          "final_polish_applied": 0
+        }
+      }
+    },
+    "results": [
+      {
+        "id": "AB01",
+        "thread_id": "ab_public_identity",
+        "turn_index": 1,
+        "slice": "public",
+        "category": "identity",
+        "note": "Identity and role clarity.",
+        "prompt": "quem é você e como pode me ajudar?",
+        "status": 200,
+        "latency_ms": 3995.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:assistant_identity",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "assistant_identity"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "semantic_ingress_classifier"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Voce esta falando com o EduAssist, o assistente institucional do Colegio Horizonte. Eu consigo te orientar por aqui, consultar informacoes da escola e abrir solicitacoes com protocolo. Se precisar, eu tambem te encaminho para secretaria, matricula e atendimento comercial, coordenacao, orientacao educacional, financeiro ou direcao.",
+        "expected_keywords": [
+          "EduAssist",
+          "escola"
+        ],
+        "forbidden_keywords": [
+          "OpenAI",
+          "Gemma",
+          "Qwen",
+          "modelo",
+          "LLM"
+        ],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB02",
+        "thread_id": "ab_public_library_followup",
+        "turn_index": 1,
+        "slice": "public",
+        "category": "library_hours",
+        "note": "Public factual answer.",
+        "prompt": "qual o horário da biblioteca?",
+        "status": 200,
+        "latency_ms": 4612.8,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:library_hours",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "library_hours"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "public_answer_composer"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "grounded_public_composition",
+        "final_polish_reason": "public_answer_composer",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "A biblioteca funciona das 7h30 as 18h00.",
+        "expected_keywords": [
+          "7h30",
+          "18h00"
+        ],
+        "forbidden_keywords": [],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB03",
+        "thread_id": "ab_public_library_followup",
+        "turn_index": 2,
+        "slice": "public",
+        "category": "library_hours",
+        "note": "Follow-up should specialize the answer instead of repeating the full schedule.",
+        "prompt": "e que horas fecha?",
+        "status": 200,
+        "latency_ms": 2555.2,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:scope_boundary",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "scope_boundary"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "semantic_ingress_classifier"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Nao tenho base confiavel aqui no EduAssist do Colegio Horizonte para responder esse tema fora do escopo da escola. Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro.",
+        "expected_keywords": [
+          "18h00"
+        ],
+        "forbidden_keywords": [
+          "7h30"
+        ],
+        "keyword_pass": false,
+        "error_types": [
+          "followup_context_drop",
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": true,
+          "personalization": null
+        },
+        "quality_score": 60
+      },
+      {
+        "id": "AB04",
+        "thread_id": "ab_public_documents",
+        "turn_index": 1,
+        "slice": "public",
+        "category": "enrollment",
+        "note": "Canonical public enrollment guidance.",
+        "prompt": "quais documentos preciso para matrícula?",
+        "status": 200,
+        "latency_ms": 2285.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_tool_first:admissions_documents",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "admissions_documents"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "public_answer_composer"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "grounded_public_composition",
+        "final_polish_reason": "public_answer_composer",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Para matrícula, é necessário apresentar: formulário cadastral preenchido, documento de identificação do aluno, CPF do aluno (quando houver), histórico escolar, comprovante de residência atualizado e documento de identificação do responsável legal.",
+        "expected_keywords": [
+          "document",
+          "matric"
+        ],
+        "forbidden_keywords": [],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB05",
+        "thread_id": "ab_public_policy",
+        "turn_index": 1,
+        "slice": "public",
+        "category": "academic_policy",
+        "note": "Public academic policy.",
+        "prompt": "a escola segue a BNCC?",
+        "status": 200,
+        "latency_ms": 1255.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:bncc",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "curriculum"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "public_answer_composer"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "grounded_public_composition",
+        "final_polish_reason": "public_answer_composer",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Sim, a escola segue a BNCC.",
+        "expected_keywords": [
+          "BNCC"
+        ],
+        "forbidden_keywords": [],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB06",
+        "thread_id": "ab_public_governance",
+        "turn_index": 1,
+        "slice": "public",
+        "category": "governance_protocol",
+        "note": "Multi-intent public governance answer with actionability.",
+        "prompt": "sem sair do escopo da escola, explique em linguagem simples como a direção formaliza pedidos de inclusão e por onde eu começo",
+        "status": 200,
+        "latency_ms": 17112.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_direct:institution_specialist",
+        "graph_path": [
+          "specialist_supervisor",
+          "retrieval_planner",
+          "specialist_direct",
+          "institution_specialist"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "specialist_execution",
+          "public_answer_composer"
+        ],
+        "final_polish_applied": true,
+        "final_polish_mode": "grounded_public_composition",
+        "final_polish_reason": "public_answer_composer",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Para formalizar um pedido de inclusão, comece entrando em contato com a coordenação pedagógica. Ela é o ponto de entrada para o processo e fará a avaliação necessária, podendo convocar uma reunião com a família para definir o apoio adequado.",
+        "expected_keywords": [
+          "dire",
+          "inclus",
+          "protoc"
+        ],
+        "forbidden_keywords": [],
+        "keyword_pass": false,
+        "error_types": [
+          "missing_expected_keyword",
+          "weak_actionability"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 70
+      },
+      {
+        "id": "AB07",
+        "thread_id": "ab_oos_boundary",
+        "turn_index": 1,
+        "slice": "public",
+        "category": "out_of_scope",
+        "note": "Outside-scope conversational boundary.",
+        "prompt": "me ajuda a escolher um filme para ver hoje?",
+        "status": 200,
+        "latency_ms": 301.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:scope_boundary",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "scope_boundary"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Nao tenho base confiavel aqui no EduAssist do Colegio Horizonte para responder esse tema fora do escopo da escola. Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro.",
+        "expected_keywords": [
+          "escola"
+        ],
+        "forbidden_keywords": [
+          "Biblioteca Aurora"
+        ],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB08",
+        "thread_id": "ab_external_boundary",
+        "turn_index": 1,
+        "slice": "public",
+        "category": "external_entity_boundary",
+        "note": "Must not hijack an external entity back into the school library.",
+        "prompt": "qual horário de fechamento da biblioteca pública da cidade?",
+        "status": 200,
+        "latency_ms": 267.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:scope_boundary",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "scope_boundary"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "No EduAssist do Colegio Horizonte, eu consigo responder apenas sobre servicos e canais da escola. Como sua pergunta fala de uma biblioteca publica externa, esse assunto fica fora do escopo da escola e eu nao tenho base aqui para informar esse horario. Se quiser, eu posso te dizer o horario da biblioteca do colegio.",
+        "expected_keywords": [
+          "escola"
+        ],
+        "forbidden_keywords": [
+          "Biblioteca Aurora",
+          "18h00"
+        ],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB09",
+        "thread_id": "ab_guardian_academic_followup",
+        "turn_index": 1,
+        "slice": "protected",
+        "category": "academic_followup",
+        "note": "Protected academic summary.",
+        "prompt": "quero um resumo acadêmico do Lucas Oliveira",
+        "status": 200,
+        "latency_ms": 15848.0,
+        "mode": "hybrid_retrieval",
+        "reason": "specialist_supervisor_manager_judge:institution:hybrid_retrieval",
+        "graph_path": [
+          "specialist_supervisor",
+          "input_guardrail",
+          "planner",
+          "document_specialist",
+          "judge"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "planner",
+          "specialist_execution",
+          "manager_judge"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Não há registros acadêmicos públicos disponíveis sobre Lucas Oliveira. A pesquisa realizada em fontes institucionais e documentos acadêmicos não encontrou informações sobre um resumo acadêmico ou publicações relacionadas a esse nome.",
+        "expected_keywords": [
+          "Lucas",
+          "acad"
+        ],
+        "forbidden_keywords": [
+          "public"
+        ],
+        "keyword_pass": false,
+        "error_types": [
+          "forbidden_entity_or_value"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        },
+        "quality_score": 60
+      },
+      {
+        "id": "AB10",
+        "thread_id": "ab_guardian_academic_followup",
+        "turn_index": 2,
+        "slice": "protected",
+        "category": "academic_followup",
+        "note": "Protected follow-up with narrower focus.",
+        "prompt": "agora foque só em matemática",
+        "status": 200,
+        "latency_ms": 2880.8,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:scope_boundary",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "scope_boundary"
+        ],
+        "used_llm": true,
+        "llm_stages": [
+          "semantic_ingress_classifier"
+        ],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Nao tenho base confiavel aqui no EduAssist do Colegio Horizonte para responder esse tema fora do escopo da escola. Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro.",
+        "expected_keywords": [
+          "Lucas",
+          "matem"
+        ],
+        "forbidden_keywords": [
+          "fora do escopo",
+          "nao tenho base confiavel",
+          "Ana"
+        ],
+        "keyword_pass": false,
+        "error_types": [
+          "forbidden_entity_or_value",
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 35
+      },
+      {
+        "id": "AB11",
+        "thread_id": "ab_guardian_finance",
+        "turn_index": 1,
+        "slice": "protected",
+        "category": "finance_due",
+        "note": "Protected finance with named student precedence.",
+        "prompt": "qual é o próximo vencimento da Ana Oliveira?",
+        "status": 200,
+        "latency_ms": 289.1,
+        "mode": "clarify",
+        "reason": "specialist_supervisor_resolved_intent:finance_student_clarify",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "finance_student_clarify"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Consigo verificar o financeiro por aluno, mas aqui ainda faltou dizer qual recorte voce quer. Se a ideia for um panorama da familia, eu separo mensalidade, taxa, atraso e desconto no conjunto. Se voce quiser um aluno especifico, me diga qual deles.",
+        "expected_keywords": [
+          "Ana",
+          "venc"
+        ],
+        "forbidden_keywords": [
+          "Lucas"
+        ],
+        "keyword_pass": false,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        },
+        "quality_score": 80
+      },
+      {
+        "id": "AB12",
+        "thread_id": "ab_guardian_attendance_compare",
+        "turn_index": 1,
+        "slice": "protected",
+        "category": "attendance_compare",
+        "note": "Protected comparative answer.",
+        "prompt": "compare a frequência do Lucas e da Ana de forma objetiva",
+        "status": 200,
+        "latency_ms": 506.3,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_resolved_intent:attendance_summary",
+        "graph_path": [
+          "specialist_supervisor",
+          "resolved_intent",
+          "attendance_summary"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Na frequencia de Lucas Oliveira em Tecnologia e Cultura Digital, eu encontrei 6 faltas, 7 atraso(s) e 19 presenca(s) neste recorte.",
+        "expected_keywords": [
+          "Lucas",
+          "Ana",
+          "frequ"
+        ],
+        "forbidden_keywords": [],
+        "keyword_pass": false,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        },
+        "quality_score": 80
+      },
+      {
+        "id": "AB13",
+        "thread_id": "ab_guardian_attendance_compare",
+        "turn_index": 2,
+        "slice": "protected",
+        "category": "attendance_compare",
+        "note": "Elliptical follow-up after family comparison.",
+        "prompt": "agora quero apenas a Ana: em quais matérias ela aparece mais exposta?",
+        "status": 200,
+        "latency_ms": 363.0,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:academic_risk",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "academic_risk"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "As disciplinas que mais preocupam academicamente em Ana Oliveira hoje sao:\n- Fisica: media parcial 6,4\n- Educacao Fisica: media parcial 7,0\n- Filosofia: media parcial 7,5\nA menor nota parcial neste recorte aparece em Fisica, com media 6,4.\nEsses componentes merecem acompanhamento primeiro no proximo ciclo de estudo.",
+        "expected_keywords": [
+          "Ana",
+          "Fisica"
+        ],
+        "forbidden_keywords": [
+          "Lucas"
+        ],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": true
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB14",
+        "thread_id": "ab_support_handoff",
+        "turn_index": 1,
+        "slice": "support",
+        "category": "support_handoff",
+        "note": "Support routing with human handoff intent.",
+        "prompt": "quero falar com a secretaria sobre bolsa",
+        "status": 200,
+        "latency_ms": 2659.8,
+        "mode": "handoff",
+        "reason": "specialist_supervisor_tool_first:human_handoff",
+        "graph_path": [
+          "specialist_supervisor",
+          "tool_first",
+          "human_handoff"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Encaminhei sua solicitacao para a fila de secretaria. Protocolo: ATD-20260417-B76C6960. Status atual: queued. Se preferir, voce tambem pode seguir pelo WhatsApp oficial (11) 97500-2040.",
+        "expected_keywords": [
+          "secret",
+          "protocolo"
+        ],
+        "forbidden_keywords": [],
+        "keyword_pass": true,
+        "error_types": [],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": null
+        },
+        "quality_score": 100
+      },
+      {
+        "id": "AB15",
+        "thread_id": "ab_teacher_schedule",
+        "turn_index": 1,
+        "slice": "protected",
+        "category": "teacher_schedule",
+        "note": "Teacher persona coverage.",
+        "prompt": "sou professor, qual é meu horário de hoje e minhas turmas?",
+        "status": 200,
+        "latency_ms": 330.5,
+        "mode": "structured_tool",
+        "reason": "specialist_supervisor_fast_path:teacher_schedule",
+        "graph_path": [
+          "specialist_supervisor",
+          "fast_path",
+          "teacher_schedule"
+        ],
+        "used_llm": false,
+        "llm_stages": [],
+        "final_polish_applied": false,
+        "final_polish_mode": "skip",
+        "final_polish_reason": "quality_first_path",
+        "answer_experience_applied": false,
+        "answer_experience_reason": null,
+        "answer_experience_provider": null,
+        "answer_experience_model": null,
+        "message_text": "Turmas de Fernando Azevedo:\n- 1o Ano A\n- 1o Ano B\n- 2o Ano A\n- 2o Ano B\n- 3o Ano A\n- 3o Ano B\n- 6o Ano B\n- 7o Ano B\n- 8o Ano B\n- 9o Ano B",
+        "expected_keywords": [
+          "turma",
+          "hor"
+        ],
+        "forbidden_keywords": [],
+        "keyword_pass": false,
+        "error_types": [
+          "missing_expected_keyword"
+        ],
+        "quality_signals": {
+          "repair_ack": null,
+          "followup_adaptation": null,
+          "personalization": false
+        },
+        "quality_score": 80
+      }
+    ]
+  },
+  "comparison": {
+    "count": 15,
+    "win_count": {
+      "quality": {
+        "a": 7,
+        "b": 0,
+        "tie": 8
+      },
+      "latency": {
+        "a": 2,
+        "b": 13,
+        "tie": 0
+      }
+    },
+    "cases": [
+      {
+        "id": "AB01",
+        "slice": "public",
+        "category": "identity",
+        "prompt": "quem é você e como pode me ajudar?",
+        "quality_winner": "tie",
+        "latency_winner": "b",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 25026.6,
+          "message_text": "Voce esta falando com o EduAssist, o assistente institucional do Colegio Horizonte. Eu consigo te orientar por aqui, consultar informacoes da escola e abrir solicitacoes com protocolo. Se precisar, eu tambem te encaminho para secretaria, matricula e atendimento comercial, coordenacao, orientacao educacional, financeiro ou direcao."
+        },
+        "arm_b": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 3995.0,
+          "message_text": "Voce esta falando com o EduAssist, o assistente institucional do Colegio Horizonte. Eu consigo te orientar por aqui, consultar informacoes da escola e abrir solicitacoes com protocolo. Se precisar, eu tambem te encaminho para secretaria, matricula e atendimento comercial, coordenacao, orientacao educacional, financeiro ou direcao."
+        }
+      },
+      {
+        "id": "AB02",
+        "slice": "public",
+        "category": "library_hours",
+        "prompt": "qual o horário da biblioteca?",
+        "quality_winner": "tie",
+        "latency_winner": "b",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 6677.7,
+          "message_text": "A biblioteca funciona de segunda a sexta, das 7h30 às 18h00."
+        },
+        "arm_b": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 4612.8,
+          "message_text": "A biblioteca funciona das 7h30 as 18h00."
+        }
+      },
+      {
+        "id": "AB03",
+        "slice": "public",
+        "category": "library_hours",
+        "prompt": "e que horas fecha?",
+        "quality_winner": "a",
+        "latency_winner": "b",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 16343.4,
+          "message_text": "A biblioteca fecha às 18h00."
+        },
+        "arm_b": {
+          "quality_score": 60,
+          "keyword_pass": false,
+          "latency_ms": 2555.2,
+          "message_text": "Nao tenho base confiavel aqui no EduAssist do Colegio Horizonte para responder esse tema fora do escopo da escola. Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro."
+        }
+      },
+      {
+        "id": "AB04",
+        "slice": "public",
+        "category": "enrollment",
+        "prompt": "quais documentos preciso para matrícula?",
+        "quality_winner": "tie",
+        "latency_winner": "b",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 7861.7,
+          "message_text": "Para realizar a matrícula, você precisará apresentar os seguintes documentos: o formulário cadastral preenchido, o documento de identificação do aluno, o CPF do aluno (caso tenha), o histórico escolar, um comprovante de residência atualizado e o documento de identificação do responsável legal."
+        },
+        "arm_b": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 2285.5,
+          "message_text": "Para matrícula, é necessário apresentar: formulário cadastral preenchido, documento de identificação do aluno, CPF do aluno (quando houver), histórico escolar, comprovante de residência atualizado e documento de identificação do responsável legal."
+        }
+      },
+      {
+        "id": "AB05",
+        "slice": "public",
+        "category": "academic_policy",
+        "prompt": "a escola segue a BNCC?",
+        "quality_winner": "tie",
+        "latency_winner": "b",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 7245.7,
+          "message_text": "Sim, a escola segue a BNCC, e o currículo do Ensino Médio é articulado com projeto de vida, produção textual, cultura digital e aprofundamento acadêmico progressivo."
+        },
+        "arm_b": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 1255.0,
+          "message_text": "Sim, a escola segue a BNCC."
+        }
+      },
+      {
+        "id": "AB06",
+        "slice": "public",
+        "category": "governance_protocol",
+        "prompt": "sem sair do escopo da escola, explique em linguagem simples como a direção formaliza pedidos de inclusão e por onde eu começo",
+        "quality_winner": "a",
+        "latency_winner": "a",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 9373.9,
+          "message_text": "No material publico do Colegio Horizonte, pedidos de inclusao aparecem como um fluxo institucional que cruza acolhimento pedagogico, acessibilidade, registro formal e escalonamento. A base publica trata inclusao, acessibilidade e protecao do estudante como um mesmo compromisso institucional. # Inclusao e acessibilidade O Colegio Horizonte adota rotinas de atendimento inclusivo com apoio pedagogico, adequacoes de material quando necessario e canal para comunicacao de necessidades especificas. Nos recursos de apoio, a escola cita atendimento educacional especializado quando previsto - mediacao de rotina para estudantes com necessidades especificas - orientacao com equipe pedagogica - priorizacao de acessibilidade em eventos e comunicacoes. O colegio possui normas contra bullying, assedio e uso indevido de imagem. Ha protocolo para ocorrencias leves, contato imediato com responsaveis e acionamento de apoio externo quando necessario. Na base publica do Colegio Horizonte, a trilha institucional fica mais clara quando secretaria, coordenacao, direcao e canais oficiais aparecem como etapas complementares de encaminhamento e protocolo. Na pratica, o protocolo formal costuma seguir esta ordem: secretaria para registrar e orientar, coordenacao para acompanhar o tema pedagogico ou de convivio, e direcao como instancia de escalonamento institucional quando o assunto sai da rotina normal. O envio inicial de documentos pode ocorrer pelo portal institucional, pelo e-mail da secretaria ou presencialmente, conforme o tipo de documento e o grau de sensibilidade da informacao. A diretora geral do Colegio Horizonte e Helena Martins. A lideranca atende familias por agenda institucional. Direcao geral: direcao@colegiohorizonte.edu.br Coordenacao Fundamental II: fundamental2@colegiohorizonte.edu.br Coordenacao Ensino Medio: ensinomedio@colegiohorizonte.edu.br. A diretora participa de encontros institucionais com familias ao longo do ano, especialmente nas reunioes de acolhimento, eventos gerais e marcos bimestrais de acompanhamento da comunidade escolar. Se a familia precisar formalizar um impasse, o proximo passo e abrir o protocolo pelo canal oficial e guardar o registro para o escalonamento ate a direcao. Em linguagem simples, o melhor ponto de partida e levar a demanda ao canal oficial da secretaria ou coordenacao com o contexto do estudante; se o tema exigir formalizacao institucional, o registro segue para protocolo e pode ser escalado ate a direcao."
+        },
+        "arm_b": {
+          "quality_score": 70,
+          "keyword_pass": false,
+          "latency_ms": 17112.0,
+          "message_text": "Para formalizar um pedido de inclusão, comece entrando em contato com a coordenação pedagógica. Ela é o ponto de entrada para o processo e fará a avaliação necessária, podendo convocar uma reunião com a família para definir o apoio adequado."
+        }
+      },
+      {
+        "id": "AB07",
+        "slice": "public",
+        "category": "out_of_scope",
+        "prompt": "me ajuda a escolher um filme para ver hoje?",
+        "quality_winner": "tie",
+        "latency_winner": "b",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 6303.0,
+          "message_text": "Nao tenho base confiavel aqui no EduAssist do Colegio Horizonte para responder esse tema fora do escopo da escola. Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro."
+        },
+        "arm_b": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 301.3,
+          "message_text": "Nao tenho base confiavel aqui no EduAssist do Colegio Horizonte para responder esse tema fora do escopo da escola. Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro."
+        }
+      },
+      {
+        "id": "AB08",
+        "slice": "public",
+        "category": "external_entity_boundary",
+        "prompt": "qual horário de fechamento da biblioteca pública da cidade?",
+        "quality_winner": "tie",
+        "latency_winner": "b",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 6461.9,
+          "message_text": "No EduAssist do Colegio Horizonte, eu consigo responder apenas sobre servicos e canais da escola. Como sua pergunta fala de uma biblioteca publica externa, esse assunto fica fora do escopo da escola e eu nao tenho base aqui para informar esse horario. Se quiser, eu posso te dizer o horario da biblioteca do colegio."
+        },
+        "arm_b": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 267.0,
+          "message_text": "No EduAssist do Colegio Horizonte, eu consigo responder apenas sobre servicos e canais da escola. Como sua pergunta fala de uma biblioteca publica externa, esse assunto fica fora do escopo da escola e eu nao tenho base aqui para informar esse horario. Se quiser, eu posso te dizer o horario da biblioteca do colegio."
+        }
+      },
+      {
+        "id": "AB09",
+        "slice": "protected",
+        "category": "academic_followup",
+        "prompt": "quero um resumo acadêmico do Lucas Oliveira",
+        "quality_winner": "a",
+        "latency_winner": "a",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 15458.4,
+          "message_text": "Resumo academico de Lucas Oliveira:\n- Historia: media parcial 6,8\n- Fisica: media parcial 5,9\n- Matematica: media parcial 7,7\n- Portugues: media parcial 8,3"
+        },
+        "arm_b": {
+          "quality_score": 60,
+          "keyword_pass": false,
+          "latency_ms": 15848.0,
+          "message_text": "Não há registros acadêmicos públicos disponíveis sobre Lucas Oliveira. A pesquisa realizada em fontes institucionais e documentos acadêmicos não encontrou informações sobre um resumo acadêmico ou publicações relacionadas a esse nome."
+        }
+      },
+      {
+        "id": "AB10",
+        "slice": "protected",
+        "category": "academic_followup",
+        "prompt": "agora foque só em matemática",
+        "quality_winner": "a",
+        "latency_winner": "b",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 11100.1,
+          "message_text": "A media parcial de Lucas Oliveira em Matematica e 7,7."
+        },
+        "arm_b": {
+          "quality_score": 35,
+          "keyword_pass": false,
+          "latency_ms": 2880.8,
+          "message_text": "Nao tenho base confiavel aqui no EduAssist do Colegio Horizonte para responder esse tema fora do escopo da escola. Se quiser, eu posso ajudar com matricula, calendario, regras publicas, visitas, notas, frequencia ou financeiro."
+        }
+      },
+      {
+        "id": "AB11",
+        "slice": "protected",
+        "category": "finance_due",
+        "prompt": "qual é o próximo vencimento da Ana Oliveira?",
+        "quality_winner": "a",
+        "latency_winner": "b",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 9128.3,
+          "message_text": "Hoje nao ha bloqueio financeiro por atraso vencido no recorte da familia.\nResumo financeiro das contas vinculadas:\n- Total de faturas em aberto: 2\n- Total de faturas vencidas: 0\n- Mensalidade: neste recorte, o financeiro mostra 2 cobranca(s) em aberto e 0 vencida(s) nas faturas escolares.\n- Taxa: nao apareceu taxa separada neste recorte financeiro das contas vinculadas.\n- Atraso: nao ha fatura vencida agora, so acompanhamento dos proximos vencimentos.\n- Desconto: nao apareceu desconto separado nas faturas deste recorte; se existir negociacao comercial, ela precisa ser confirmada com o financeiro.\n- Ana Oliveira: 2 em aberto, 0 vencidas\n  2026-01: vencimento 2026-01-10, status paid, valor 1450.00\n  2026-02: vencimento 2026-02-10, status paid, valor 1450.00\nProximo passo: acompanhar os vencimentos mais proximos e manter os comprovantes em dia."
+        },
+        "arm_b": {
+          "quality_score": 80,
+          "keyword_pass": false,
+          "latency_ms": 289.1,
+          "message_text": "Consigo verificar o financeiro por aluno, mas aqui ainda faltou dizer qual recorte voce quer. Se a ideia for um panorama da familia, eu separo mensalidade, taxa, atraso e desconto no conjunto. Se voce quiser um aluno especifico, me diga qual deles."
+        }
+      },
+      {
+        "id": "AB12",
+        "slice": "protected",
+        "category": "attendance_compare",
+        "prompt": "compare a frequência do Lucas e da Ana de forma objetiva",
+        "quality_winner": "a",
+        "latency_winner": "b",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 9174.8,
+          "message_text": "Panorama de faltas e frequencia das contas vinculadas:\n- Na frequencia de Lucas Oliveira em Tecnologia e Cultura Digital, eu encontrei 6 faltas, 7 atraso(s) e 19 presenca(s) neste recorte.\n- Na frequencia de Ana Oliveira em Tecnologia e Cultura Digital, eu encontrei 6 faltas, 9 atraso(s) e 17 presenca(s) neste recorte.\nQuem exige maior atencao agora: Ana Oliveira.\nEsse alerta pesa mais para Ana Oliveira porque o maior impacto hoje aparece em Ingles, com 6 falta(s), 9 atraso(s), 410 minuto(s) de ausencia."
+        },
+        "arm_b": {
+          "quality_score": 80,
+          "keyword_pass": false,
+          "latency_ms": 506.3,
+          "message_text": "Na frequencia de Lucas Oliveira em Tecnologia e Cultura Digital, eu encontrei 6 faltas, 7 atraso(s) e 19 presenca(s) neste recorte."
+        }
+      },
+      {
+        "id": "AB13",
+        "slice": "protected",
+        "category": "attendance_compare",
+        "prompt": "agora quero apenas a Ana: em quais matérias ela aparece mais exposta?",
+        "quality_winner": "tie",
+        "latency_winner": "b",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 6985.2,
+          "message_text": "As disciplinas que mais preocupam academicamente em Ana Oliveira hoje sao:\n- Fisica: media parcial 6,4\n- Educacao Fisica: media parcial 7,0\n- Filosofia: media parcial 7,5\nA menor nota parcial neste recorte aparece em Fisica, com media 6,4.\nEsses componentes merecem acompanhamento primeiro no proximo ciclo de estudo."
+        },
+        "arm_b": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 363.0,
+          "message_text": "As disciplinas que mais preocupam academicamente em Ana Oliveira hoje sao:\n- Fisica: media parcial 6,4\n- Educacao Fisica: media parcial 7,0\n- Filosofia: media parcial 7,5\nA menor nota parcial neste recorte aparece em Fisica, com media 6,4.\nEsses componentes merecem acompanhamento primeiro no proximo ciclo de estudo."
+        }
+      },
+      {
+        "id": "AB14",
+        "slice": "support",
+        "category": "support_handoff",
+        "prompt": "quero falar com a secretaria sobre bolsa",
+        "quality_winner": "tie",
+        "latency_winner": "b",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 17209.7,
+          "message_text": "Encaminhei sua solicitação para a fila da secretaria. Seu protocolo é ATD-20260417-D541BB71 e o status atual é \"queued\". Se preferir, você também pode acompanhar por lá pelo WhatsApp oficial: (11) 97500-2040."
+        },
+        "arm_b": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 2659.8,
+          "message_text": "Encaminhei sua solicitacao para a fila de secretaria. Protocolo: ATD-20260417-B76C6960. Status atual: queued. Se preferir, voce tambem pode seguir pelo WhatsApp oficial (11) 97500-2040."
+        }
+      },
+      {
+        "id": "AB15",
+        "slice": "protected",
+        "category": "teacher_schedule",
+        "prompt": "sou professor, qual é meu horário de hoje e minhas turmas?",
+        "quality_winner": "a",
+        "latency_winner": "b",
+        "arm_a": {
+          "quality_score": 100,
+          "keyword_pass": true,
+          "latency_ms": 8584.6,
+          "message_text": "Horario de hoje e turmas de Fernando Azevedo:\n- 1o Ano A - Fisica (2026)\n- 1o Ano A - Quimica (2026)\n- 1o Ano B - Filosofia (2026)\n- 1o Ano B - Historia (2026)\n- 2o Ano A - Filosofia (2026)\n- 2o Ano A - Fisica (2026)\nTurmas de Fernando Azevedo:\n- 1o Ano A\n- 1o Ano B\n- 2o Ano A\n- 2o Ano B\n- 3o Ano A\n- 3o Ano B\n- 6o Ano B\n- 7o Ano B\n- 8o Ano B\n- 9o Ano B"
+        },
+        "arm_b": {
+          "quality_score": 80,
+          "keyword_pass": false,
+          "latency_ms": 330.5,
+          "message_text": "Turmas de Fernando Azevedo:\n- 1o Ano A\n- 1o Ano B\n- 2o Ano A\n- 2o Ano B\n- 3o Ano A\n- 3o Ano B\n- 6o Ano B\n- 7o Ano B\n- 8o Ano B\n- 9o Ano B"
+        }
+      }
+    ]
+  }
+}

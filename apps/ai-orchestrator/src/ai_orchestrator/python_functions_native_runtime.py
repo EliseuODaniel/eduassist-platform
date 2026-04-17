@@ -4,25 +4,23 @@ from time import monotonic
 from typing import Any
 
 from . import runtime as rt
+from .path_profiles import (
+    PathExecutionProfile,
+    get_path_execution_profile as _python_functions_get_path_execution_profile,
+)
 from .python_functions_kernel import KernelPlan, KernelReflection, KernelRunResult
-from .candidate_builder import build_response_candidate
-from .candidate_chooser import choose_best_candidate
+from .candidate_builder import build_response_candidate as _python_functions_build_response_candidate
+from .candidate_chooser import choose_best_candidate as _python_functions_choose_best_candidate
 from .evidence_pack import (
-    build_direct_answer_evidence_pack,
-    build_retrieval_evidence_pack,
-    build_structured_tool_evidence_pack,
+    build_direct_answer_evidence_pack as _python_functions_build_direct_answer_evidence_pack,
+    build_retrieval_evidence_pack as _python_functions_build_retrieval_evidence_pack,
+    build_structured_tool_evidence_pack as _python_functions_build_structured_tool_evidence_pack,
 )
-from .final_polish_policy import build_final_polish_decision
+from .final_polish_policy import build_final_polish_decision as _python_functions_build_final_polish_decision
 from .python_functions_kernel_runtime import (
-    _maybe_contextual_public_direct_answer,
-    _maybe_hypothetical_public_pricing_answer,
-    _maybe_public_unpublished_direct_answer,
-)
-from .python_functions_local_llm import (
-    compose_python_functions_with_provider,
-    polish_python_functions_with_provider,
-    revise_python_functions_with_provider,
-    verify_python_functions_answer_against_contract,
+    _maybe_contextual_public_direct_answer as _python_functions_maybe_contextual_public_direct_answer,
+    _maybe_hypothetical_public_pricing_answer as _python_functions_maybe_hypothetical_public_pricing_answer,
+    _maybe_public_unpublished_direct_answer as _python_functions_maybe_public_unpublished_direct_answer,
 )
 from .models import (
     AccessTier,
@@ -35,30 +33,83 @@ from .models import (
     RetrievalBackend,
     RetrievalProfile,
 )
-from .path_profiles import PathExecutionProfile, get_path_execution_profile
+from .python_functions_local_llm import (
+    compose_python_functions_with_provider as _compose_python_functions_with_provider,
+    polish_python_functions_with_provider as _polish_python_functions_with_provider,
+    revise_python_functions_with_provider as _revise_python_functions_with_provider,
+    verify_python_functions_answer_against_contract as _verify_python_functions_answer_against_contract,
+)
 from .python_functions_public_knowledge import (
-    compose_public_canonical_lane_answer,
-    compose_public_conduct_policy_contextual_answer,
-    match_public_canonical_lane,
+    compose_public_canonical_lane_answer as _compose_public_canonical_lane_answer,
+    compose_public_conduct_policy_contextual_answer as _compose_public_conduct_policy_contextual_answer,
+    match_public_canonical_lane as _match_public_canonical_lane,
 )
-from .semantic_ingress_runtime import (
-    apply_semantic_ingress_preview,
-    build_semantic_ingress_public_plan,
-    is_terminal_semantic_ingress_plan,
-    maybe_resolve_semantic_ingress_plan,
-)
-from .response_cache import store_cached_public_response
 from .python_functions_retrieval import (
-    can_read_restricted_documents,
-    compose_restricted_document_grounded_answer_for_query,
-    compose_restricted_document_no_match_answer,
-    get_retrieval_service,
-    looks_like_restricted_document_query,
-    retrieve_relevant_restricted_hits_with_fallback,
+    can_read_restricted_documents as _python_functions_can_read_restricted_documents,
+    compose_restricted_document_grounded_answer_for_query as _compose_restricted_document_grounded_answer_for_query,
+    compose_restricted_document_no_match_answer as _compose_restricted_document_no_match_answer,
+    get_retrieval_service as _python_functions_get_retrieval_service,
+    looks_like_restricted_document_query as _python_functions_looks_like_restricted_document_query,
+    retrieve_relevant_restricted_hits_with_fallback as _python_functions_retrieve_relevant_restricted_hits_with_fallback,
 )
-from .python_functions_retrieval_probe import build_public_evidence_probe
-from .serving_policy import LoadSnapshot, build_public_serving_policy
-from .serving_telemetry import get_stack_telemetry_snapshot, record_stack_outcome
+from .python_functions_retrieval_probe import (
+    build_public_evidence_probe as _python_functions_build_public_evidence_probe,
+)
+from .response_cache import store_cached_public_response as _python_functions_store_cached_public_response
+from .semantic_ingress_runtime import (
+    apply_semantic_ingress_preview as _python_functions_apply_semantic_ingress_preview,
+    build_semantic_ingress_public_plan as _python_functions_build_semantic_ingress_public_plan,
+    is_terminal_semantic_ingress_plan as _python_functions_is_terminal_semantic_ingress_plan,
+    maybe_resolve_semantic_ingress_plan as _python_functions_maybe_resolve_semantic_ingress_plan,
+)
+from .serving_policy import (
+    LoadSnapshot as _python_functions_load_snapshot,
+    build_public_serving_policy as _python_functions_build_public_serving_policy,
+)
+from .serving_telemetry import record_stack_outcome as _python_functions_record_stack_outcome
+from .serving_telemetry import (
+    get_stack_telemetry_snapshot as _python_functions_get_stack_telemetry_snapshot,
+)
+
+build_response_candidate = _python_functions_build_response_candidate
+choose_best_candidate = _python_functions_choose_best_candidate
+build_direct_answer_evidence_pack = _python_functions_build_direct_answer_evidence_pack
+build_retrieval_evidence_pack = _python_functions_build_retrieval_evidence_pack
+build_structured_tool_evidence_pack = _python_functions_build_structured_tool_evidence_pack
+build_final_polish_decision = _python_functions_build_final_polish_decision
+compose_python_functions_with_provider = _compose_python_functions_with_provider
+polish_python_functions_with_provider = _polish_python_functions_with_provider
+revise_python_functions_with_provider = _revise_python_functions_with_provider
+verify_python_functions_answer_against_contract = _verify_python_functions_answer_against_contract
+compose_public_canonical_lane_answer = _compose_public_canonical_lane_answer
+compose_public_conduct_policy_contextual_answer = _compose_public_conduct_policy_contextual_answer
+match_public_canonical_lane = _match_public_canonical_lane
+can_read_restricted_documents = _python_functions_can_read_restricted_documents
+compose_restricted_document_grounded_answer_for_query = _compose_restricted_document_grounded_answer_for_query
+compose_restricted_document_no_match_answer = _compose_restricted_document_no_match_answer
+get_retrieval_service = _python_functions_get_retrieval_service
+looks_like_restricted_document_query = _python_functions_looks_like_restricted_document_query
+retrieve_relevant_restricted_hits_with_fallback = _python_functions_retrieve_relevant_restricted_hits_with_fallback
+build_public_evidence_probe = _python_functions_build_public_evidence_probe
+store_cached_public_response = _python_functions_store_cached_public_response
+apply_semantic_ingress_preview = _python_functions_apply_semantic_ingress_preview
+build_semantic_ingress_public_plan = _python_functions_build_semantic_ingress_public_plan
+is_terminal_semantic_ingress_plan = _python_functions_is_terminal_semantic_ingress_plan
+get_path_execution_profile = _python_functions_get_path_execution_profile
+_maybe_contextual_public_direct_answer = _python_functions_maybe_contextual_public_direct_answer
+_maybe_hypothetical_public_pricing_answer = _python_functions_maybe_hypothetical_public_pricing_answer
+_maybe_public_unpublished_direct_answer = _python_functions_maybe_public_unpublished_direct_answer
+maybe_resolve_semantic_ingress_plan = _python_functions_maybe_resolve_semantic_ingress_plan
+LoadSnapshot = _python_functions_load_snapshot
+build_public_serving_policy = _python_functions_build_public_serving_policy
+get_stack_telemetry_snapshot = _python_functions_get_stack_telemetry_snapshot
+record_stack_outcome = _python_functions_record_stack_outcome
+_PYTHON_FUNCTIONS_NATIVE_MODEL_EXPORTS = (
+    IntentClassification,
+    MessageEvidenceSupport,
+    MessageResponseCitation,
+    RetrievalProfile,
+)
 
 
 def _preview_targets_restricted_document_surface(preview: Any) -> bool:

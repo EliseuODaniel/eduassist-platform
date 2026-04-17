@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from types import SimpleNamespace
 
+from eduassist_semantic_ingress import AnswerSurfaceRefinementResult
 from ai_orchestrator_specialist.models import (
     MessageEvidencePack,
     MessageEvidenceSupport,
@@ -58,7 +59,10 @@ from ai_orchestrator_specialist.protected_answer_helpers import looks_like_famil
 from ai_orchestrator_specialist.protected_answer_helpers import looks_like_family_finance_aggregate_query
 from ai_orchestrator_specialist.protected_answer_helpers import resolved_academic_target_name
 from ai_orchestrator_specialist.student_context_helpers import StudentContextDeps, student_hint_from_message, unknown_explicit_student_reference
-from ai_orchestrator_specialist.public_doc_knowledge import match_public_canonical_lane
+from ai_orchestrator_specialist.public_doc_knowledge import (
+    compose_public_canonical_lane_answer,
+    match_public_canonical_lane,
+)
 from ai_orchestrator_specialist.public_bundle_fast_paths import _preflight_public_doc_bundle_answer
 from ai_orchestrator_specialist.public_known_unknowns import compose_public_known_unknown_answer
 from ai_orchestrator_specialist.public_profile_answers import _compose_timeline_bundle_answer
@@ -84,7 +88,6 @@ from ai_orchestrator_specialist.support_workflow_helpers import (
     _looks_like_human_handoff_request,
 )
 from ai_orchestrator_specialist.public_bundle_fast_paths import (
-    _preflight_public_doc_bundle_answer,
     _looks_like_family_new_calendar_enrollment_query,
     _looks_like_first_month_risks_query,
     _looks_like_visibility_boundary_query,
@@ -1298,6 +1301,85 @@ def test_resolved_intent_attendance_summary_aggregates_named_student_comparison_
     assert 'Esse alerta pesa mais para Lucas Oliveira' in answer.message_text
 
 
+def test_resolved_intent_attendance_summary_aggregates_compare_objective_prompt() -> None:
+    async def _fetch_academic_summary_payload(_ctx, *, student_name_hint=None, **_kwargs):
+        if student_name_hint == 'Lucas Oliveira':
+            return {
+                'summary': {
+                    'student_name': 'Lucas Oliveira',
+                    'attendance': [
+                        {'subject_name': 'Matematica', 'present_count': 19, 'late_count': 4, 'absent_count': 6, 'absent_minutes': 120},
+                    ],
+                }
+            }
+        if student_name_hint == 'Ana Oliveira':
+            return {
+                'summary': {
+                    'student_name': 'Ana Oliveira',
+                    'attendance': [
+                        {'subject_name': 'Historia', 'present_count': 23, 'late_count': 1, 'absent_count': 1, 'absent_minutes': 20},
+                    ],
+                }
+            }
+        return None
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='compare a frequencia do Lucas e da Ana de forma objetiva',
+        ),
+        actor={'students': [{'full_name': 'Lucas Oliveira'}, {'full_name': 'Ana Oliveira'}]},
+        resolved_turn=ResolvedTurnIntent(
+            key='academic.attendance_summary',
+            domain='academic',
+            subintent='attendance_summary',
+            capability='academic.attendance_summary',
+            access_tier='authenticated',
+            confidence=0.98,
+        ),
+        operational_memory=OperationalMemory(),
+        conversation_context={},
+    )
+    deps = ResolvedIntentDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        looks_like_subject_followup=lambda _message: False,
+        looks_like_academic_risk_followup=lambda _message: False,
+        looks_like_family_finance_aggregate_query=lambda _message: False,
+        looks_like_family_attendance_aggregate_query=lambda _message: False,
+        fetch_academic_summary_payload=_fetch_academic_summary_payload,
+        fetch_financial_summary_payload=lambda *_args, **_kwargs: None,
+        fetch_upcoming_assessments_payload=lambda *_args, **_kwargs: None,
+        resolved_academic_target_name=lambda *_args, **_kwargs: None,
+        needs_specific_academic_student_clarification=lambda *_args, **_kwargs: False,
+        build_academic_student_selection_clarify=lambda *_args, **_kwargs: None,
+        compose_academic_risk_answer=lambda _summary: '',
+        compose_named_subject_grade_answer=lambda *_args, **_kwargs: None,
+        compose_named_grade_answer=lambda _summary: '',
+        compose_named_attendance_answer=(
+            lambda summary, **_kwargs: f"{summary['student_name']}: {summary['attendance'][0]['absent_count']} faltas e {summary['attendance'][0]['late_count']} atrasos."
+        ),
+        compose_academic_snapshot_lines=lambda _summary: [],
+        compose_academic_aggregate_answer=lambda _summaries: '',
+        compose_finance_aggregate_answer=lambda _summaries: '',
+        compose_finance_installments_answer=lambda _summary: '',
+        linked_students=lambda actor, **_kwargs: list(actor.get('students') or []),
+        safe_excerpt=lambda text, **_kwargs: text,
+        subject_hint_from_text=lambda _message: None,
+        recent_subject_from_context=lambda *_args, **_kwargs: None,
+        subject_code_from_hint=lambda *_args, **_kwargs: (None, None),
+        student_hint_from_message=lambda *_args, **_kwargs: None,
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        compose_upcoming_assessments_lines=lambda _summary: [],
+    )
+
+    answer = asyncio.run(maybe_resolved_intent_answer(ctx, deps=deps))
+
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_resolved_intent:attendance_summary_aggregate'
+    assert 'Lucas Oliveira' in answer.message_text
+    assert 'Ana Oliveira' in answer.message_text
+
+
 def test_resolved_intent_recovers_family_academic_next_in_line_from_recent_context() -> None:
     async def _fetch_academic_summary_payload(_ctx, *, student_name_hint=None, **_kwargs):
         if student_name_hint == 'Lucas Oliveira':
@@ -1369,6 +1451,76 @@ def test_resolved_intent_recovers_family_academic_next_in_line_from_recent_conte
     answer = asyncio.run(maybe_resolved_intent_answer(ctx, deps=deps))
     assert answer is not None
     assert answer.reason == 'specialist_supervisor_recent_context:family_academic_next_in_line_followup'
+    assert 'Ana Oliveira' in answer.message_text
+
+
+def test_resolved_intent_finance_student_summary_prefers_explicit_named_student_hint() -> None:
+    async def _fetch_financial_summary_payload(_ctx, *, student_name_hint=None, **_kwargs):
+        assert student_name_hint == 'Ana Oliveira'
+        return {
+            'summary': {
+                'student_name': 'Ana Oliveira',
+                'open_invoice_count': 1,
+                'overdue_invoice_count': 0,
+                'invoices': [
+                    {'reference_month': '2026-04', 'due_date': '2026-04-20', 'status': 'open', 'amount_due': 980.0},
+                ],
+            }
+        }
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='qual e o proximo vencimento da Ana Oliveira?',
+        ),
+        actor={'students': [{'full_name': 'Lucas Oliveira'}, {'full_name': 'Ana Oliveira'}]},
+        resolved_turn=ResolvedTurnIntent(
+            key='finance.student_summary',
+            domain='finance',
+            subintent='student_summary',
+            capability='finance.student_summary',
+            access_tier='authenticated',
+            confidence=0.98,
+            referenced_student_name='Lucas Oliveira',
+        ),
+        operational_memory=OperationalMemory(active_student_name='Lucas Oliveira'),
+        conversation_context={},
+    )
+    deps = ResolvedIntentDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        looks_like_subject_followup=lambda _message: False,
+        looks_like_academic_risk_followup=lambda _message: False,
+        looks_like_family_finance_aggregate_query=lambda _message: False,
+        looks_like_family_attendance_aggregate_query=lambda _message: False,
+        fetch_academic_summary_payload=lambda *_args, **_kwargs: None,
+        fetch_financial_summary_payload=_fetch_financial_summary_payload,
+        fetch_upcoming_assessments_payload=lambda *_args, **_kwargs: None,
+        resolved_academic_target_name=lambda *_args, **_kwargs: None,
+        needs_specific_academic_student_clarification=lambda *_args, **_kwargs: False,
+        build_academic_student_selection_clarify=lambda *_args, **_kwargs: None,
+        compose_academic_risk_answer=lambda _summary: '',
+        compose_named_subject_grade_answer=lambda *_args, **_kwargs: None,
+        compose_named_grade_answer=lambda _summary: '',
+        compose_named_attendance_answer=lambda *_args, **_kwargs: None,
+        compose_academic_snapshot_lines=lambda _summary: [],
+        compose_academic_aggregate_answer=lambda _summaries: '',
+        compose_finance_aggregate_answer=lambda summaries: f"Resumo financeiro de {summaries[0]['student_name']}.",
+        compose_finance_installments_answer=lambda _summary: '',
+        linked_students=lambda actor, **_kwargs: list(actor.get('students') or []),
+        safe_excerpt=lambda text, **_kwargs: text,
+        subject_hint_from_text=lambda _message: None,
+        recent_subject_from_context=lambda *_args, **_kwargs: None,
+        subject_code_from_hint=lambda *_args, **_kwargs: (None, None),
+        student_hint_from_message=lambda *_args, **_kwargs: 'Ana Oliveira',
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        compose_upcoming_assessments_lines=lambda _summary: [],
+        compose_family_next_due_answer=lambda summaries: f"O proximo vencimento e de {summaries[0]['student_name']}.",
+    )
+
+    answer = asyncio.run(maybe_resolved_intent_answer(ctx, deps=deps))
+
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_resolved_intent:finance_student_summary'
     assert 'Ana Oliveira' in answer.message_text
 
 
@@ -1756,6 +1908,74 @@ def test_persist_and_dump_refines_public_answer_with_grounded_composer(monkeypat
     assert payload['answer']['message_text'] == 'A biblioteca abre as 7h30.'
 
 
+def test_persist_and_dump_applies_answer_surface_refiner_with_validated_fallback(monkeypatch) -> None:
+    persisted: dict[str, object] = {}
+
+    async def _persist_final_answer(_context, **kwargs):
+        persisted.update(kwargs)
+
+    async def _fake_refine(**_kwargs):
+        return AnswerSurfaceRefinementResult(
+            answer_text='A biblioteca fecha às 18h00.',
+            used_llm=True,
+            changed=True,
+            preserved_fallback=False,
+            reason='answer_surface_refiner',
+        )
+
+    monkeypatch.setattr(
+        'ai_orchestrator_specialist.supervisor_run_flow.refine_answer_surface_with_provider',
+        _fake_refine,
+    )
+
+    deps = SimpleNamespace(persist_final_answer=_persist_final_answer)
+    context = SimpleNamespace(
+        settings=SimpleNamespace(feature_flag_specialist_answer_refiner_enabled=True),
+        school_profile={'school_name': 'Colegio Horizonte'},
+        conversation_context={'recent_messages': []},
+        preview_hint={},
+        request=SimpleNamespace(message='e que horas fecha?'),
+        operational_memory=OperationalMemory(active_student_name='Lucas Oliveira'),
+        resolved_turn=None,
+    )
+    answer = SupervisorAnswerPayload(
+        message_text='A biblioteca funciona de segunda a sexta, das 7h30 as 18h00.',
+        mode='structured_tool',
+        classification=MessageIntentClassification(
+            domain='institution',
+            access_tier='public',
+            confidence=1.0,
+            reason='specialist_supervisor_fast_path:library_hours',
+        ),
+        evidence_pack=MessageEvidencePack(
+            strategy='direct_answer',
+            summary='ok',
+            supports=[MessageEvidenceSupport(kind='profile_fact', label='Biblioteca Aurora', detail='de segunda a sexta, das 7h30 as 18h00.', excerpt=None)],
+        ),
+        graph_path=['specialist_supervisor', 'fast_path', 'library_hours'],
+        reason='specialist_supervisor_fast_path:library_hours',
+        used_llm=False,
+        llm_stages=[],
+    )
+
+    payload = asyncio.run(
+        _persist_and_dump(
+            deps,
+            context,
+            answer=answer,
+            route='fast_path',
+            metadata={'provider': 'openai', 'model': 'ggml'},
+        )
+    )
+
+    assert persisted['answer'].message_text == 'A biblioteca fecha às 18h00.'
+    assert persisted['answer'].used_llm is True
+    assert 'answer_surface_refiner' in persisted['answer'].llm_stages
+    assert persisted['answer'].final_polish_mode == 'answer_surface_refiner'
+    assert persisted['answer'].final_polish_applied is True
+    assert payload['answer']['message_text'] == 'A biblioteca fecha às 18h00.'
+
+
 def test_persist_and_dump_preserves_timeline_bundle_answer_without_public_composer(monkeypatch) -> None:
     persisted: dict[str, object] = {}
 
@@ -1877,6 +2097,18 @@ def test_specialist_public_composer_evidence_augments_multi_intent_answer_lines(
     assert any('Financeiro: email financeiro@colegiohorizonte.edu.br' in line for line in evidence_lines)
     assert all('[debug]' not in line for line in evidence_lines)
     assert all(not line.startswith('stack:') for line in evidence_lines)
+
+
+def test_augment_public_followup_message_recovers_library_context() -> None:
+    deps = SimpleNamespace(normalize_text=lambda value: str(value or '').casefold())
+
+    augmented = _augment_public_followup_message(
+        'e que horas fecha?',
+        ['qual horario da biblioteca?'],
+        deps=deps,
+    )
+
+    assert augmented == 'que horas fecha a biblioteca?'
 
 
 def test_specialist_public_composer_evidence_augments_timeline_bundle_lines() -> None:
@@ -2729,6 +2961,159 @@ def test_specialist_fast_path_handles_academic_risk_recut_for_named_student() ->
     assert answer is not None
     assert answer.reason == 'specialist_supervisor_fast_path:academic_risk'
     assert 'Ana Oliveira' in answer.message_text
+
+
+def test_specialist_fast_path_handles_recent_academic_summary_followup_subject_recut() -> None:
+    async def _fetch_academic_summary_payload(_ctx, *, student_name_hint=None, **_kwargs):
+        assert student_name_hint == 'Lucas Oliveira'
+        return {
+            'summary': {
+                'student_name': 'Lucas Oliveira',
+                'grades': [
+                    {'subject_name': 'Matematica', 'subject_code': 'MAT', 'score': 6.2},
+                    {'subject_name': 'Historia', 'subject_code': 'HIS', 'score': 7.4},
+                ],
+            }
+        }
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='agora foque so em matematica',
+        ),
+        actor={'linked_students': [{'full_name': 'Lucas Oliveira'}]},
+        resolved_turn=ResolvedTurnIntent(
+            key='academic.student_grades',
+            domain='academic',
+            subintent='student_grades',
+            capability='academic.student_grades',
+            access_tier='authenticated',
+            confidence=0.97,
+        ),
+        operational_memory=OperationalMemory(active_student_name='Lucas Oliveira'),
+        conversation_context={
+            'recent_messages': [
+                {'sender_type': 'user', 'content': 'quero um resumo academico do Lucas Oliveira'},
+                {'sender_type': 'assistant', 'content': 'Resumo academico de Lucas Oliveira: Matematica 6,2; Historia 7,4.'},
+            ]
+        },
+    )
+    deps = ResolvedIntentDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        looks_like_subject_followup=lambda _message: True,
+        looks_like_academic_risk_followup=lambda _message: False,
+        looks_like_family_finance_aggregate_query=lambda _message: False,
+        looks_like_family_attendance_aggregate_query=lambda _message: False,
+        fetch_academic_summary_payload=_fetch_academic_summary_payload,
+        fetch_financial_summary_payload=lambda *_args, **_kwargs: None,
+        fetch_upcoming_assessments_payload=lambda *_args, **_kwargs: None,
+        resolved_academic_target_name=lambda *_args, **_kwargs: 'Lucas Oliveira',
+        needs_specific_academic_student_clarification=lambda *_args, **_kwargs: False,
+        build_academic_student_selection_clarify=lambda *_args, **_kwargs: None,
+        compose_academic_risk_answer=lambda _summary: '',
+        compose_named_subject_grade_answer=lambda summary, subject_hint=None: f"A media parcial de {summary['student_name']} em Matematica e 6,2." if subject_hint else None,
+        compose_named_grade_answer=lambda _summary: '',
+        compose_named_attendance_answer=lambda *_args, **_kwargs: None,
+        compose_academic_snapshot_lines=lambda _summary: [],
+        compose_academic_aggregate_answer=lambda _summaries: '',
+        compose_finance_aggregate_answer=lambda _summaries: '',
+        compose_finance_installments_answer=lambda _summary: '',
+        linked_students=lambda actor, **_kwargs: list(actor.get('linked_students') or []),
+        safe_excerpt=lambda text, **_kwargs: text,
+        subject_hint_from_text=lambda _message: 'Matematica',
+        recent_subject_from_context=lambda *_args, **_kwargs: 'Matematica',
+        subject_code_from_hint=lambda *_args, **_kwargs: ('MAT', 'Matematica'),
+        student_hint_from_message=lambda *_args, **_kwargs: None,
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        compose_upcoming_assessments_lines=lambda _summary: [],
+    )
+
+    answer = asyncio.run(maybe_academic_grade_fast_path_answer(ctx, deps=deps))
+
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_fast_path:academic_summary_followup'
+    assert 'Lucas Oliveira' in answer.message_text
+    assert 'Matematica' in answer.message_text
+
+
+def test_specialist_fast_path_names_academic_summary_when_prompt_requests_resumo() -> None:
+    async def _fetch_academic_summary_payload(_ctx, *, student_name_hint=None, **_kwargs):
+        assert student_name_hint == 'Lucas Oliveira'
+        return {
+            'summary': {
+                'student_name': 'Lucas Oliveira',
+                'grades': [
+                    {'subject_name': 'Matematica', 'subject_code': 'MAT', 'score': 6.2},
+                    {'subject_name': 'Historia', 'subject_code': 'HIS', 'score': 7.4},
+                ],
+            }
+        }
+
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=True),
+            message='quero um resumo academico do Lucas Oliveira',
+        ),
+        actor={'linked_students': [{'full_name': 'Lucas Oliveira'}]},
+        resolved_turn=ResolvedTurnIntent(
+            key='academic.student_grades',
+            domain='academic',
+            subintent='student_grades',
+            capability='academic.student_grades',
+            access_tier='authenticated',
+            confidence=0.97,
+        ),
+        operational_memory=OperationalMemory(active_student_name='Lucas Oliveira'),
+        conversation_context={'recent_messages': []},
+    )
+    deps = ResolvedIntentDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        looks_like_subject_followup=lambda _message: False,
+        looks_like_academic_risk_followup=lambda _message: False,
+        looks_like_family_finance_aggregate_query=lambda _message: False,
+        looks_like_family_attendance_aggregate_query=lambda _message: False,
+        fetch_academic_summary_payload=_fetch_academic_summary_payload,
+        fetch_financial_summary_payload=lambda *_args, **_kwargs: None,
+        fetch_upcoming_assessments_payload=lambda *_args, **_kwargs: None,
+        resolved_academic_target_name=lambda *_args, **_kwargs: 'Lucas Oliveira',
+        needs_specific_academic_student_clarification=lambda *_args, **_kwargs: False,
+        build_academic_student_selection_clarify=lambda *_args, **_kwargs: None,
+        compose_academic_risk_answer=lambda _summary: '',
+        compose_named_subject_grade_answer=lambda *_args, **_kwargs: None,
+        compose_named_grade_answer=lambda _summary: 'Notas de Lucas Oliveira:\n- Matematica: media parcial 6,2',
+        compose_named_attendance_answer=lambda *_args, **_kwargs: None,
+        compose_academic_snapshot_lines=lambda _summary: [],
+        compose_academic_aggregate_answer=lambda _summaries: '',
+        compose_finance_aggregate_answer=lambda _summaries: '',
+        compose_finance_installments_answer=lambda _summary: '',
+        linked_students=lambda actor, **_kwargs: list(actor.get('linked_students') or []),
+        safe_excerpt=lambda text, **_kwargs: text,
+        subject_hint_from_text=lambda _message: None,
+        recent_subject_from_context=lambda *_args, **_kwargs: None,
+        subject_code_from_hint=lambda *_args, **_kwargs: (None, None),
+        student_hint_from_message=lambda *_args, **_kwargs: 'Lucas Oliveira',
+        is_student_name_only_followup=lambda *_args, **_kwargs: None,
+        compose_upcoming_assessments_lines=lambda _summary: [],
+    )
+
+    answer = asyncio.run(maybe_academic_grade_fast_path_answer(ctx, deps=deps))
+
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_fast_path:academic_summary_followup'
+    assert 'Resumo academico de Lucas Oliveira' in answer.message_text
+
+
+def test_specialist_public_doc_lane_matches_governance_inclusion_bridge_prompt() -> None:
+    lane = match_public_canonical_lane(
+        'Sem sair do escopo da escola, explique em linguagem simples como a direcao formaliza pedidos de inclusao e por onde eu comeco.'
+    )
+    assert lane == 'public_bundle.governance_inclusion_protocol'
+    answer = compose_public_canonical_lane_answer(lane, profile={'school_name': 'Colegio Horizonte'})
+    assert answer is not None
+    lowered = answer.casefold()
+    assert 'direcao' in lowered
+    assert 'inclus' in lowered
+    assert 'protocolo' in lowered
 
 
 def test_operational_memory_meta_repair_explains_previous_subject() -> None:
@@ -4700,6 +5085,27 @@ def test_teacher_schedule_render_uses_grade_level_to_keep_ensino_medio_assignmen
     assert '1o ano a' in lowered
     assert '2o ano b' in lowered
     assert 'nenhuma alocacao docente encontrada' not in lowered
+
+
+def test_teacher_schedule_render_combines_schedule_and_classes_when_both_are_requested() -> None:
+    summary = {
+        'teacher_name': 'Fernando Azevedo',
+        'assignments': [
+            {'class_name': '1o Ano A', 'subject_name': 'Fisica', 'academic_year': '2026', 'grade_level': 10},
+            {'class_name': '2o Ano B', 'subject_name': 'Quimica', 'academic_year': '2026', 'grade_level': 11},
+        ],
+    }
+
+    answer = _render_teacher_schedule_answer(
+        summary,
+        message='sou professor, qual e meu horario de hoje e minhas turmas?',
+    )
+
+    lowered = answer.casefold()
+    assert 'horario de hoje e turmas de fernando azevedo' in lowered
+    assert '1o ano a - fisica' in lowered
+    assert 'turmas de fernando azevedo' in lowered
+    assert '2o ano b' in lowered
 
 
 def test_teacher_summary_mentions_filtered_segment() -> None:

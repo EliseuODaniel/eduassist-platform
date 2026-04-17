@@ -26,6 +26,7 @@ LOCAL_EXTRACTED_NAMES = {
     '_is_public_curriculum_context_follow_up',
     '_is_public_teacher_directory_follow_up',
     '_should_prioritize_protected_sql_query',
+    '_requested_public_features',
 }
 
 
@@ -65,6 +66,18 @@ def _public_act_rules_impl(name: str):
     return getattr(_public_act_rules_runtime, name)
 
 
+def _public_profile_impl(name: str):
+    from . import public_profile_runtime as _public_profile_runtime
+
+    return getattr(_public_profile_runtime, name)
+
+
+def _protected_domain_impl(name: str):
+    from . import protected_domain_runtime as _protected_domain_runtime
+
+    return getattr(_protected_domain_runtime, name)
+
+
 def _looks_like_family_admin_aggregate_query(message: str) -> bool:
     return _intent_analysis_impl('_looks_like_family_admin_aggregate_query')(message)
 
@@ -97,6 +110,26 @@ def _message_matches_term(message: str, term: str) -> bool:
 
 def _normalize_text(text: str) -> str:
     return _intent_analysis_impl('_normalize_text')(text)
+
+
+def _requested_public_features(message: str) -> tuple[str, ...]:
+    return _public_act_rules_impl('_requested_public_features')(message)
+
+
+def _requested_contact_channel(message: str) -> str | None:
+    return _public_profile_impl('_requested_contact_channel')(message)
+
+
+def _requested_public_attribute(message: str) -> str | None:
+    return _public_profile_impl('_requested_public_attribute')(message)
+
+
+def _requested_public_attributes(message: str) -> tuple[str, ...]:
+    return _public_profile_impl('_requested_public_attributes')(message)
+
+
+def _requested_subject_label_from_message(message: str) -> str | None:
+    return _protected_domain_impl('_requested_subject_label_from_message')(message)
 
 
 def _is_positive_requirement_query(message: str) -> bool:
