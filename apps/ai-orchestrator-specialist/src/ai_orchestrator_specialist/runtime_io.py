@@ -444,6 +444,9 @@ async def orchestrator_retrieval_search(
             deep_candidate_pool_size=int(ctx.settings.retrieval_deep_candidate_pool_size),
             rerank_fused_weight=float(ctx.settings.retrieval_rerank_fused_weight),
             rerank_late_interaction_weight=float(ctx.settings.retrieval_rerank_late_interaction_weight),
+            enable_cross_encoder_rerank=bool(ctx.settings.retrieval_enable_cross_encoder_rerank),
+            cross_encoder_model=str(ctx.settings.retrieval_cross_encoder_model),
+            rerank_cross_encoder_weight=float(ctx.settings.retrieval_rerank_cross_encoder_weight),
         )
         if isinstance(remote_body, dict):
             body = remote_body

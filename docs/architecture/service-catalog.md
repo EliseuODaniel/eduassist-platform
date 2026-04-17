@@ -126,7 +126,7 @@ Registrar as fronteiras reais do sistema no estado `dedicated-first` atual.
 ### `qdrant`
 
 - retrieval vetorial e híbrido;
-- late interaction quando habilitado;
+- late interaction e `cross-encoder rerank` quando habilitados;
 - coleções documentais e auxiliares.
 
 ### `redis`
@@ -144,6 +144,14 @@ Registrar as fronteiras reais do sistema no estado `dedicated-first` atual.
 - recebe OTLP;
 - aplica `tail sampling`;
 - exporta traces e métricas.
+
+## Identidade interna
+
+### Bridge `SPIFFE-ready`
+
+- serviços Python internos aceitam `X-Internal-Api-Token` como baseline local;
+- os mesmos serviços podem aceitar `SPIFFE ID` encaminhado por proxy confiável e autorizado;
+- o bridge preserva o enforcement atual sem criar um segundo caminho implícito de autorização.
 
 ### `tempo`
 

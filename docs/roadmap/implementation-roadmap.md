@@ -191,7 +191,15 @@ Estado atual:
 - a base compartilhada já possui `RetrievalExecutionPolicy` por capability;
 - `python_functions`, `langgraph`, `llamaindex` e os kernels públicos já consomem essa política antes do retrieval híbrido;
 - o baseline já passou a registrar nos traces a policy escolhida e o resultado efetivo da busca, por engine e por capability;
+- o retrieval híbrido agora combina o score original com `late interaction` e `cross-encoder` multilíngue, elevando o baseline de precisão antes da composição grounded;
 - o próximo passo desta fase deixa de ser "introduzir capability-aware retrieval" e passa a ser calibração fina por família, com métricas reais de `answerable@k` e latência.
+
+### Estado dos débitos arquiteturais antigos
+
+- `runtime_core.py` como god module: resolvido por decomposição estrutural, com constantes e expressões extraídas para `runtime_core_constants.py` e orçamento de módulo reforçado em teste;
+- `cross-encoder reranker`: resolvido no baseline atual do retrieval híbrido;
+- `tail-based sampling OTEL`: já estava resolvido na infraestrutura Compose;
+- `SPIFFE/SPIRE`: resolvido no nível da aplicação por bridge `SPIFFE-ready`; rollout completo de `SPIRE` continua como maturidade operacional opcional.
 
 ## 1.3 Programa complementar atual - Benchmark A/B local de modelos
 

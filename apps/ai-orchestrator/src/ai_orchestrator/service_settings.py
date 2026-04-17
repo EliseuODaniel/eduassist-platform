@@ -128,6 +128,8 @@ class Settings(BaseSettings):
     llm_provider: str = 'openai'
     api_core_url: str = 'http://api-core:8000'
     internal_api_token: str = 'dev-internal-token'
+    internal_workload_identity_mode: str = 'token'
+    internal_spiffe_allowed_ids: str = ''
     allow_insecure_internal_api_token: bool = False
     openai_api_key: str | None = None
     openai_base_url: str = 'https://api.openai.com/v1'
@@ -156,11 +158,14 @@ class Settings(BaseSettings):
     retrieval_enable_query_variants: bool = True
     retrieval_enable_late_interaction_rerank: bool = True
     retrieval_late_interaction_model: str = 'answerdotai/answerai-colbert-small-v1'
+    retrieval_enable_cross_encoder_rerank: bool = True
+    retrieval_cross_encoder_model: str = 'jinaai/jina-reranker-v2-base-multilingual'
     retrieval_candidate_pool_size: int = 14
     retrieval_cheap_candidate_pool_size: int = 8
     retrieval_deep_candidate_pool_size: int = 22
     retrieval_rerank_fused_weight: float = 0.35
     retrieval_rerank_late_interaction_weight: float = 0.65
+    retrieval_rerank_cross_encoder_weight: float = 0.85
     strict_framework_isolation_enabled: bool = False
     graph_rag_enabled: bool = False
     graph_rag_workspace: str = '/workspace/artifacts/graphrag/eduassist-public-benchmark'

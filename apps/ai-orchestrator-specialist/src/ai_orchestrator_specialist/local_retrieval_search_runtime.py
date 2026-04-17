@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405
+# ruff: noqa: F401,F403,F405,F821,E402
 
 """Hybrid retrieval search helpers extracted from local_retrieval.py."""
 
@@ -244,7 +244,7 @@ def hybrid_search_impl(
                 graph_rag_candidate=query_plan.graph_rag_candidate,
                 reranker_applied=reranker_applied,
                 corrective_retry_applied=corrective_retry_applied,
-                reranker_model=service.late_interaction_model if reranker_applied else None,
+                reranker_model=service._last_reranker_model if reranker_applied else None,
                 category_bias=query_plan.category_bias,
                 canonical_lane=query_plan.canonical_lane,
                 candidate_pool_size=query_plan.candidate_pool_size,

@@ -75,5 +75,5 @@ O sistema deve negar e registrar:
 - `OPA`: decisão contextual
 - `PostgreSQL RLS`: barreira final no banco
 - services internos: contratos mínimos
+- workloads internos: `X-Internal-Api-Token` como baseline local e bridge opcional para `SPIFFE ID` permitido
 - auditoria: acesso sensível e decisão de policy
-

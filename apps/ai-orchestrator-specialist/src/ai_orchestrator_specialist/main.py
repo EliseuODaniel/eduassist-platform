@@ -8,12 +8,17 @@ from pathlib import Path
 import secrets
 from urllib.parse import urlparse, urlunparse
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from eduassist_observability import build_runtime_diagnostics, configure_observability, detect_runtime_mode
+from eduassist_observability import (
+    bridge_spiffe_identity_to_internal_token,
+    build_runtime_diagnostics,
+    configure_observability,
+    detect_runtime_mode,
+)
 
 from .models import SpecialistSupervisorRequest, SpecialistSupervisorResponse
 from .telegram_debug_footer import attach_telegram_debug_footer
@@ -152,6 +157,8 @@ class Settings(BaseSettings):
     orchestrator_url: str = "http://ai-orchestrator:8000"
     control_plane_orchestrator_url: str | None = None
     internal_api_token: str = "dev-internal-token"
+    internal_workload_identity_mode: str = "token"
+    internal_spiffe_allowed_ids: str = ""
     allow_insecure_internal_api_token: bool = False
     openai_api_key: str | None = None
     openai_base_url: str = "https://api.openai.com/v1"
@@ -186,11 +193,14 @@ class Settings(BaseSettings):
     retrieval_enable_query_variants: bool = True
     retrieval_enable_late_interaction_rerank: bool = True
     retrieval_late_interaction_model: str = "answerdotai/answerai-colbert-small-v1"
+    retrieval_enable_cross_encoder_rerank: bool = True
+    retrieval_cross_encoder_model: str = "jinaai/jina-reranker-v2-base-multilingual"
     retrieval_candidate_pool_size: int = 14
     retrieval_cheap_candidate_pool_size: int = 8
     retrieval_deep_candidate_pool_size: int = 22
     retrieval_rerank_fused_weight: float = 0.35
     retrieval_rerank_late_interaction_weight: float = 0.65
+    retrieval_rerank_cross_encoder_weight: float = 0.85
     feature_flag_specialist_answer_refiner_enabled: bool = True
     semantic_router_history_budget_tokens: int = 180
     semantic_router_candidate_budget_tokens: int = 220
@@ -554,6 +564,23 @@ app = FastAPI(
     summary="Quality-first specialist supervisor service for side-by-side chatbot comparisons.",
     lifespan=_app_lifespan,
 )
+
+
+@app.middleware("http")
+async def _bridge_internal_workload_identity(request: Request, call_next):
+    settings = get_settings()
+    decision = bridge_spiffe_identity_to_internal_token(
+        request.scope,
+        expected_token=settings.internal_api_token,
+        mode=settings.internal_workload_identity_mode,
+        allowed_spiffe_ids=settings.internal_spiffe_allowed_ids,
+    )
+    if decision.authenticated and decision.mechanism == "spiffe_id":
+        request.state.internal_workload_identity = {
+            "mechanism": decision.mechanism,
+            "spiffe_id": decision.spiffe_id,
+        }
+    return await call_next(request)
 
 configure_observability(
     service_name="ai-orchestrator-specialist",

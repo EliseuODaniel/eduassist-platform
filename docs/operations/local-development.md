@@ -141,7 +141,12 @@ Status atual:
 - os adapters locais de stack e a camada de answer experience tambem passaram a reutilizar esse baseline, em vez de montar prompts com limites fixos próprios;
 - o retrieval publico também passou a aplicar uma política compartilhada por capability antes da busca híbrida, ajustando `retrieval_profile`, `top-k` e categoria documental por tipo de pergunta;
 - os traces operacionais agora também incluem a policy escolhida e o resultado resumido do retrieval para as execuções que passam por busca híbrida;
+- o retrieval híbrido agora também pode aplicar rerank semântico em duas camadas:
+  - `late interaction` com `answerdotai/answerai-colbert-small-v1`
+  - `cross-encoder` com `jinaai/jina-reranker-v2-base-multilingual`;
 - a observabilidade local agora cobre traces, logs e metricas centralizadas.
+- o `otel-collector` local já usa `tail sampling`, então a redução de ruído de tracing deixou de ser débito técnico pendente no baseline Compose;
+- os serviços internos também aceitam modo de identidade `token_or_spiffe` ou `spiffe_required`, embora o default local continue sendo `token`.
 
 Observacao:
 

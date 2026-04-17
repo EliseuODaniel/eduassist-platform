@@ -130,7 +130,16 @@ Componentes:
 
 - `Qdrant` como engine principal de dense + sparse retrieval
 - PostgreSQL Full Text Search para plano lexical e filtros relacionais
-- reranking
+- reranking em duas etapas
+
+Estado atual do baseline:
+
+- `late interaction` com `answerdotai/answerai-colbert-small-v1`
+- `cross-encoder` multilíngue com `jinaai/jina-reranker-v2-base-multilingual`
+
+Observação arquitetural:
+
+- o débito original citava `bge-reranker-v2`, mas no baseline atual a escolha foi `jinaai/jina-reranker-v2-base-multilingual` por melhor adequação ao corpus escolar em português e suporte direto no stack atual `FastEmbed/Qdrant`.
 
 ### Banco vetorial recomendado
 
@@ -231,6 +240,7 @@ Estado atual no repositório:
 - os adapters locais e a camada de answer experience já começaram a convergir para o mesmo baseline de packing;
 - a memória episódica de curto prazo já aproveita `recent_tool_calls` e `slot_memory` para reforçar follow-up e carryover;
 - retrieval por capability já entrou no baseline com política compartilhada de `retrieval_profile`, `top-k` e categoria antes do dispatch por stack;
+- o retrieval híbrido já aplica rerank semântico em duas camadas, combinando `late interaction` e `cross-encoder` antes da resposta grounded;
 - a próxima fronteira de ROI continua sendo memória episódica e tuning de retrieval, não compressão avançada de `KV cache`.
 
 ### Avaliação de `TurboQuant`
@@ -244,6 +254,13 @@ Estado atual no repositório:
 - forte como pesquisa para `long reasoning`;
 - pior ajuste pragmático para o projeto hoje, por depender de stack e calibração mais especializados;
 - deve ser tratada como trilha experimental separada, não como próximo passo natural do baseline.
+
+## 7.1 Observabilidade e identidade interna
+
+Dois débitos antigos mudaram de status:
+
+- `tail-based sampling OTEL`: resolvido no baseline local do collector;
+- `SPIFFE/SPIRE`: a aplicação ficou `SPIFFE-ready` por bridge de identidade interna, mas o rollout completo da malha `SPIRE` continua sendo decisão de ambiente enterprise.
 
 ## 7.2 Avaliação local de `Qwen3-4B-Instruct-2507`
 

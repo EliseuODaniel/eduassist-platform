@@ -157,10 +157,32 @@ A arquitetura de retrieval atual combina:
 - vetorial e lexical;
 - filtragem por visibilidade e vigência;
 - query variants;
-- late interaction rerank quando habilitado;
+- rerank semântico em duas camadas quando habilitado;
 - fatos canônicos públicos estruturados para perguntas simples em que retrieval documental seria custo desnecessário.
 
+No baseline atual, essa camada combina:
+
+- `late interaction` com `answerdotai/answerai-colbert-small-v1`;
+- `cross-encoder` multilíngue com `jinaai/jina-reranker-v2-base-multilingual`;
+- fusão ponderada com o score híbrido original antes da composição grounded.
+
 `GraphRAG` continua seletivo, nunca padrão cego.
+
+## Identidade de workload interna
+
+O plano interno entre serviços deixou de depender exclusivamente de token estático na camada de aplicação.
+
+Estado atual:
+
+- o baseline local ainda usa `X-Internal-Api-Token` como mecanismo default;
+- `api-core`, `ai-orchestrator`, runtimes dedicados, `specialist_supervisor` e `telegram-gateway` agora também aceitam um `SPIFFE ID` encaminhado por proxy confiável;
+- quando o `SPIFFE ID` pertence a uma allowlist explícita, o runtime faz a ponte para o enforcement atual de token interno sem abrir um caminho implícito novo de autorização;
+- isso torna a arquitetura `SPIFFE-ready` sem fingir que um rollout completo de `SPIRE` já está ativo no Compose local.
+
+Leitura honesta:
+
+- o débito “adotar SPIFFE/SPIRE” deixa de ser lacuna no nível do código de aplicação;
+- o que permanece opcional e dependente de ambiente é a implantação da malha/attestation completa de `SPIRE`.
 
 ## Estratégia de contexto local com Gemma
 

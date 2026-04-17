@@ -162,6 +162,9 @@ async def _maybe_execute_llamaindex_restricted_doc_fast_path(
         deep_candidate_pool_size=int(settings.retrieval_deep_candidate_pool_size),
         rerank_fused_weight=float(settings.retrieval_rerank_fused_weight),
         rerank_late_interaction_weight=float(settings.retrieval_rerank_late_interaction_weight),
+        enable_cross_encoder_rerank=bool(settings.retrieval_enable_cross_encoder_rerank),
+        cross_encoder_model=str(settings.retrieval_cross_encoder_model),
+        rerank_cross_encoder_weight=float(settings.retrieval_rerank_cross_encoder_weight),
     )
     retrieval_policy = resolve_retrieval_execution_policy(
         query=request.message,

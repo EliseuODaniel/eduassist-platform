@@ -832,6 +832,9 @@ class PublicRetrievalQueryEngine(CustomQueryEngine):
             deep_candidate_pool_size=self.settings.retrieval_deep_candidate_pool_size,
             rerank_fused_weight=self.settings.retrieval_rerank_fused_weight,
             rerank_late_interaction_weight=self.settings.retrieval_rerank_late_interaction_weight,
+            enable_cross_encoder_rerank=self.settings.retrieval_enable_cross_encoder_rerank,
+            cross_encoder_model=self.settings.retrieval_cross_encoder_model,
+            rerank_cross_encoder_weight=self.settings.retrieval_rerank_cross_encoder_weight,
         )
         search = _run_public_hybrid_search(
             retrieval_service=retrieval_service,
@@ -910,6 +913,9 @@ class PublicHybridCitationRetriever(BaseRetriever):
             deep_candidate_pool_size=self._settings.retrieval_deep_candidate_pool_size,
             rerank_fused_weight=self._settings.retrieval_rerank_fused_weight,
             rerank_late_interaction_weight=self._settings.retrieval_rerank_late_interaction_weight,
+            enable_cross_encoder_rerank=self._settings.retrieval_enable_cross_encoder_rerank,
+            cross_encoder_model=self._settings.retrieval_cross_encoder_model,
+            rerank_cross_encoder_weight=self._settings.retrieval_rerank_cross_encoder_weight,
         )
         search = _run_public_hybrid_search(
             retrieval_service=retrieval_service,

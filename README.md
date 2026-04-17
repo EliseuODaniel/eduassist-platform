@@ -113,6 +113,8 @@ flowchart LR
 - `OPA`: políticas contextuais de acesso.
 - `OpenTelemetry`, `Tempo`, `Loki`, `Prometheus` e `Grafana`: observabilidade distribuída.
 
+No baseline atual, a observabilidade já roda com `tail sampling` no `otel-collector`, reduzindo ruído de tracing sem desativar visibilidade de erro e latência.
+
 ## Os quatro caminhos ativos
 
 ### `langgraph`
@@ -140,11 +142,30 @@ O desenho atual combina:
 - busca textual com `PostgreSQL Full Text Search`;
 - busca semântica com `Qdrant`;
 - fusão híbrida dos resultados;
+- rerank semântico em duas etapas;
 - filtragem por visibilidade e agrupamento por documento;
 - resumo documental e recuperação recursiva em caminhos específicos;
 - `GraphRAG` seletivo, usado apenas quando faz sentido.
 
+O baseline forte do RAG hoje combina:
+
+- `late interaction` com `answerdotai/answerai-colbert-small-v1`;
+- `cross-encoder` multilíngue com `jinaai/jina-reranker-v2-base-multilingual`;
+- fusão ponderada com o score híbrido original antes da composição grounded.
+
 Perguntas sobre notas, frequência, financeiro e protocolos estruturados não dependem prioritariamente dessa camada. Nesses casos, o sistema prefere serviços determinísticos no `api-core`.
+
+## Identidade interna entre serviços
+
+O baseline local continua aceitando `X-Internal-Api-Token` para chamadas `service-to-service`, mas os serviços principais também ficaram `SPIFFE-ready`.
+
+Na prática:
+
+- `api-core`, `ai-orchestrator`, runtimes dedicados, `specialist_supervisor` e `telegram-gateway` aceitam um `SPIFFE ID` encaminhado por proxy confiável;
+- esse identificador só é aceito quando aparece em allowlist explícita;
+- quando aceito, ele é convertido localmente para o mesmo enforcement interno já usado pelos endpoints;
+- o Compose local continua em modo `token` por padrão;
+- um rollout completo de `SPIFFE/SPIRE` continua sendo decisão de ambiente, não pré-requisito para desenvolvimento local.
 
 ## Semantic ingress e fallback seguro
 
