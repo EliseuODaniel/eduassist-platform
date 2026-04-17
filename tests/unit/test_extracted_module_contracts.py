@@ -18,7 +18,29 @@ from ai_orchestrator import (
 )
 import ai_orchestrator.public_feature_runtime as public_feature_runtime
 import ai_orchestrator.public_contact_runtime as public_contact_runtime
+import ai_orchestrator.public_calendar_runtime as public_calendar_runtime
+import ai_orchestrator.public_agentic_answer_runtime as public_agentic_answer_runtime
+import ai_orchestrator.public_answer_compose_runtime as public_answer_compose_runtime
+import ai_orchestrator.public_commercial_runtime as public_commercial_runtime
+import ai_orchestrator.public_concierge_runtime as public_concierge_runtime
+import ai_orchestrator.public_curriculum_runtime as public_curriculum_runtime
+import ai_orchestrator.public_document_policy_runtime as public_document_policy_runtime
+import ai_orchestrator.public_handlers_runtime as public_handlers_runtime
+import ai_orchestrator.public_followup_preservation_runtime as public_followup_preservation_runtime
+import ai_orchestrator.public_multi_intent_runtime as public_multi_intent_runtime
+import ai_orchestrator.public_operations_runtime as public_operations_runtime
+import ai_orchestrator.public_organization_runtime as public_organization_runtime
+import ai_orchestrator.public_presence_runtime as public_presence_runtime
+import ai_orchestrator.public_profile_intent_runtime as public_profile_intent_runtime
+import ai_orchestrator.public_profile_glue_runtime as public_profile_glue_runtime
+import ai_orchestrator.public_profile_routes_context_runtime as public_profile_routes_context_runtime
+import ai_orchestrator.public_profile_routes_feature_runtime as public_profile_routes_feature_runtime
+import ai_orchestrator.public_profile_routes_pricing_runtime as public_profile_routes_pricing_runtime
+import ai_orchestrator.public_profile_routes_contact_runtime as public_profile_routes_contact_runtime
+import ai_orchestrator.public_profile_routes_timeline_runtime as public_profile_routes_timeline_runtime
+import ai_orchestrator.public_profile_support_runtime as public_profile_support_runtime
 import ai_orchestrator.public_service_routing_runtime as public_service_routing_runtime
+import ai_orchestrator.public_timeline_runtime as public_timeline_runtime
 import ai_orchestrator.workflow_runtime as workflow_runtime
 from ai_orchestrator.extracted_module_contracts import refresh_extracted_module_contract
 from ai_orchestrator.grounded_answer_support_contract import GROUNDED_ANSWER_SUPPORT_CONTRACT
@@ -231,6 +253,231 @@ def test_public_profile_runtime_uses_explicit_contact_and_teacher_imports() -> N
     )
 
 
+def test_public_profile_runtime_uses_explicit_timeline_and_date_imports() -> None:
+    assert public_profile_runtime._is_public_timeline_query is public_timeline_runtime._is_public_timeline_query
+    assert (
+        public_profile_runtime._compose_contextual_public_timeline_followup_answer
+        is public_timeline_runtime._compose_contextual_public_timeline_followup_answer
+    )
+    assert public_profile_runtime._format_public_date_text is public_timeline_runtime._format_public_date_text
+
+
+def test_public_profile_runtime_uses_explicit_calendar_imports() -> None:
+    assert (
+        public_profile_runtime._handle_public_calendar_events
+        is public_calendar_runtime._handle_public_calendar_events
+    )
+
+
+def test_public_profile_runtime_uses_explicit_document_policy_imports() -> None:
+    assert public_profile_runtime._is_public_policy_query is public_document_policy_runtime._is_public_policy_query
+    assert (
+        public_profile_runtime._is_public_document_submission_query
+        is public_document_policy_runtime._is_public_document_submission_query
+    )
+    assert (
+        public_profile_runtime._compose_public_document_submission_answer
+        is public_document_policy_runtime._compose_public_document_submission_answer
+    )
+    assert public_profile_runtime._handle_public_policy is public_document_policy_runtime._handle_public_policy
+
+
+def test_public_profile_runtime_uses_explicit_curriculum_imports() -> None:
+    assert (
+        public_profile_runtime._extract_public_curriculum_subject_focus
+        is public_curriculum_runtime._extract_public_curriculum_subject_focus
+    )
+    assert public_profile_runtime._is_public_curriculum_query is public_curriculum_runtime._is_public_curriculum_query
+    assert public_profile_runtime._match_public_curriculum_component is public_curriculum_runtime._match_public_curriculum_component
+    assert public_profile_runtime._handle_public_curriculum is public_curriculum_runtime._handle_public_curriculum
+
+
+def test_public_profile_runtime_uses_explicit_commercial_imports() -> None:
+    assert public_profile_runtime._is_public_scholarship_query is public_commercial_runtime._is_public_scholarship_query
+    assert public_profile_runtime._is_public_enrichment_query is public_commercial_runtime._is_public_enrichment_query
+    assert public_profile_runtime._compose_public_scholarship_answer is public_commercial_runtime._compose_public_scholarship_answer
+    assert public_profile_runtime._compose_public_enrichment_answer is public_commercial_runtime._compose_public_enrichment_answer
+
+
+def test_public_profile_runtime_uses_explicit_operations_imports() -> None:
+    assert public_profile_runtime._parse_public_money is public_operations_runtime._parse_public_money
+    assert public_profile_runtime._format_brl is public_operations_runtime._format_brl
+    assert (
+        public_profile_runtime._compose_public_pricing_projection_answer
+        is public_operations_runtime._compose_public_pricing_projection_answer
+    )
+    assert public_profile_runtime._handle_public_pricing is public_operations_runtime._handle_public_pricing
+    assert public_profile_runtime._handle_public_schedule is public_operations_runtime._handle_public_schedule
+    assert public_profile_runtime._handle_public_capacity is public_operations_runtime._handle_public_capacity
+    assert public_profile_runtime._handle_public_segments is public_operations_runtime._handle_public_segments
+
+
+def test_public_profile_runtime_uses_explicit_multi_intent_imports() -> None:
+    assert public_profile_runtime._compose_public_act_answer is public_multi_intent_runtime._compose_public_act_answer
+    assert (
+        public_profile_runtime._candidate_public_multi_intent_acts
+        is public_multi_intent_runtime._candidate_public_multi_intent_acts
+    )
+    assert (
+        public_profile_runtime._compose_public_multi_intent_answer
+        is public_multi_intent_runtime._compose_public_multi_intent_answer
+    )
+
+
+def test_public_profile_runtime_uses_explicit_concierge_imports() -> None:
+    assert (
+        public_profile_runtime._compose_public_pedagogical_answer
+        is public_concierge_runtime._compose_public_pedagogical_answer
+    )
+    assert public_profile_runtime._compose_concierge_greeting is public_concierge_runtime._compose_concierge_greeting
+    assert public_profile_runtime._compose_capability_answer is public_concierge_runtime._compose_capability_answer
+    assert (
+        public_profile_runtime._compose_service_routing_answer
+        is public_concierge_runtime._compose_service_routing_answer
+    )
+    assert public_profile_runtime._handle_public_acknowledgement is public_concierge_runtime._handle_public_acknowledgement
+    assert public_profile_runtime._handle_public_greeting is public_concierge_runtime._handle_public_greeting
+    assert (
+        public_profile_runtime._handle_public_service_routing
+        is public_concierge_runtime._handle_public_service_routing
+    )
+    assert public_profile_runtime._handle_public_capabilities is public_concierge_runtime._handle_public_capabilities
+    assert (
+        public_profile_runtime._target_public_feature_for_operating_hours
+        is public_concierge_runtime._target_public_feature_for_operating_hours
+    )
+    assert public_profile_runtime._handle_public_operating_hours is public_concierge_runtime._handle_public_operating_hours
+    assert public_profile_runtime._handle_public_features is public_concierge_runtime._handle_public_features
+
+
+def test_public_profile_runtime_uses_explicit_answer_compose_imports() -> None:
+    assert (
+        public_profile_runtime._compose_public_profile_answer
+        is public_answer_compose_runtime._compose_public_profile_answer
+    )
+
+
+def test_public_profile_runtime_uses_explicit_handlers_imports() -> None:
+    assert public_profile_runtime._handle_public_location is public_handlers_runtime._handle_public_location
+    assert public_profile_runtime._handle_public_confessional is public_handlers_runtime._handle_public_confessional
+    assert public_profile_runtime._handle_public_visit is public_handlers_runtime._handle_public_visit
+    assert public_profile_runtime._handle_public_school_name is public_handlers_runtime._handle_public_school_name
+    assert (
+        public_profile_runtime._public_profile_handler_registry
+        is public_handlers_runtime._public_profile_handler_registry
+    )
+    assert (
+        public_profile_runtime.NON_AGENTIC_PUBLIC_COMPOSITION_ACTS
+        is public_handlers_runtime.NON_AGENTIC_PUBLIC_COMPOSITION_ACTS
+    )
+
+
+def test_public_profile_runtime_uses_explicit_profile_support_imports() -> None:
+    assert public_profile_runtime._select_public_segment is public_profile_support_runtime._select_public_segment
+    assert public_profile_runtime._segment_semantic_key is public_profile_support_runtime._segment_semantic_key
+    assert public_profile_runtime._public_segment_matches is public_profile_support_runtime._public_segment_matches
+    assert public_profile_runtime._extract_grade_reference is public_profile_support_runtime._extract_grade_reference
+    assert (
+        public_profile_runtime._requested_unpublished_public_segment
+        is public_profile_support_runtime._requested_unpublished_public_segment
+    )
+    assert (
+        public_profile_runtime._compose_public_segment_scope_gap
+        is public_profile_support_runtime._compose_public_segment_scope_gap
+    )
+    assert public_profile_runtime._public_service_catalog is public_profile_support_runtime._public_service_catalog
+    assert public_profile_runtime._public_feature_inventory is public_profile_support_runtime._public_feature_inventory
+    assert public_profile_runtime._capability_summary_lines is public_profile_support_runtime._capability_summary_lines
+    assert public_profile_runtime._concierge_topic_examples is public_profile_support_runtime._concierge_topic_examples
+    assert (
+        public_profile_runtime._compose_concierge_topic_examples
+        is public_profile_support_runtime._compose_concierge_topic_examples
+    )
+    assert public_profile_runtime._requested_public_attribute is public_profile_support_runtime._requested_public_attribute
+    assert public_profile_runtime._requested_public_attributes is public_profile_support_runtime._requested_public_attributes
+    assert public_profile_runtime._humanize_service_eta is public_profile_support_runtime._humanize_service_eta
+    assert (
+        public_profile_runtime._compose_assistant_identity_answer
+        is public_profile_support_runtime._compose_assistant_identity_answer
+    )
+
+
+def test_public_profile_runtime_uses_explicit_profile_intent_imports() -> None:
+    assert public_profile_runtime._is_public_navigation_query is public_profile_intent_runtime._is_public_navigation_query
+    assert public_profile_runtime._is_public_capacity_query is public_profile_intent_runtime._is_public_capacity_query
+    assert (
+        public_profile_runtime._compose_scope_boundary_answer
+        is public_profile_intent_runtime._compose_scope_boundary_answer
+    )
+    assert (
+        public_profile_runtime._compose_input_clarification_answer
+        is public_profile_intent_runtime._compose_input_clarification_answer
+    )
+    assert (
+        public_profile_runtime._compose_language_preference_answer
+        is public_profile_intent_runtime._compose_language_preference_answer
+    )
+    assert public_profile_runtime._resolve_public_profile_act is public_profile_intent_runtime._resolve_public_profile_act
+
+
+def test_public_profile_runtime_uses_explicit_profile_glue_imports() -> None:
+    assert (
+        public_profile_runtime._compose_public_feature_schedule_follow_up
+        is public_profile_glue_runtime._compose_public_feature_schedule_follow_up
+    )
+    assert public_profile_runtime._matches_public_contact_rule is public_profile_glue_runtime._matches_public_contact_rule
+    assert public_profile_runtime._localize_pt_br_surface_labels is public_profile_glue_runtime._localize_pt_br_surface_labels
+    assert public_profile_runtime._recent_messages_mention is public_profile_glue_runtime._recent_messages_mention
+    assert public_profile_runtime._recent_user_message_mentions is public_profile_glue_runtime._recent_user_message_mentions
+
+
+def test_public_profile_runtime_uses_explicit_agentic_answer_imports() -> None:
+    assert (
+        public_profile_runtime._compose_public_profile_answer_agentic
+        is public_agentic_answer_runtime._compose_public_profile_answer_agentic
+    )
+    assert (
+        public_profile_runtime._maybe_langgraph_open_documentary_candidate
+        is public_agentic_answer_runtime._maybe_langgraph_open_documentary_candidate
+    )
+
+
+def test_public_profile_runtime_uses_explicit_followup_preservation_imports() -> None:
+    assert (
+        public_profile_runtime._should_prefer_raw_public_followup_message
+        is public_followup_preservation_runtime._should_prefer_raw_public_followup_message
+    )
+    assert (
+        public_profile_runtime._must_preserve_contextual_public_followup_message
+        is public_followup_preservation_runtime._must_preserve_contextual_public_followup_message
+    )
+    assert (
+        public_profile_runtime._contextualize_public_followup_message
+        is public_followup_preservation_runtime._contextualize_public_followup_message
+    )
+    assert (
+        public_profile_runtime._should_preserve_deterministic_public_answer
+        is public_followup_preservation_runtime._should_preserve_deterministic_public_answer
+    )
+
+
+def test_public_profile_runtime_uses_explicit_organization_imports() -> None:
+    assert public_profile_runtime._compose_public_leadership_answer is public_organization_runtime._compose_public_leadership_answer
+    assert public_profile_runtime._handle_public_highlight is public_organization_runtime._handle_public_highlight
+    assert public_profile_runtime._handle_public_kpi is public_organization_runtime._handle_public_kpi
+    assert (
+        public_profile_runtime._compose_public_teacher_directory_answer
+        is public_organization_runtime._compose_public_teacher_directory_answer
+    )
+
+
+def test_public_profile_runtime_uses_explicit_presence_imports() -> None:
+    assert public_profile_runtime._compose_public_comparative_answer is public_presence_runtime._compose_public_comparative_answer
+    assert public_profile_runtime._handle_public_web_presence is public_presence_runtime._handle_public_web_presence
+    assert public_profile_runtime._handle_public_social_presence is public_presence_runtime._handle_public_social_presence
+    assert public_profile_runtime._handle_public_careers is public_presence_runtime._handle_public_careers
+
+
 def test_public_profile_legacy_runtime_contract_refresh_binds_declared_symbols() -> None:
     namespace: dict[str, object] = {}
     refresh_extracted_module_contract(
@@ -290,3 +537,32 @@ def test_public_profile_routes_runtime_contract_refresh_binds_declared_symbols()
     assert '_compose_public_feature_answer' not in namespace
     assert namespace['_handle_public_schedule'] is public_profile_runtime._handle_public_schedule
     assert public_profile_routes_runtime._select_public_segment is public_profile_runtime._select_public_segment
+
+
+def test_public_profile_routes_runtime_uses_explicit_contact_and_timeline_imports() -> None:
+    assert (
+        public_profile_routes_runtime._handle_public_contacts
+        is public_profile_routes_contact_runtime._handle_public_contacts_impl
+    )
+    assert (
+        public_profile_routes_runtime._handle_public_timeline
+        is public_profile_routes_timeline_runtime._handle_public_timeline_impl
+    )
+
+
+def test_public_profile_routes_runtime_uses_explicit_feature_and_pricing_imports() -> None:
+    assert (
+        public_profile_routes_runtime._compose_public_feature_answer
+        is public_profile_routes_feature_runtime._compose_public_feature_answer_impl
+    )
+    assert (
+        public_profile_routes_runtime._compose_public_pricing_projection_answer
+        is public_profile_routes_pricing_runtime._compose_public_pricing_projection_answer_impl
+    )
+
+
+def test_public_profile_routes_runtime_uses_explicit_context_imports() -> None:
+    assert (
+        public_profile_routes_runtime._build_public_profile_context
+        is public_profile_routes_context_runtime._build_public_profile_context_impl
+    )

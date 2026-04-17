@@ -15,11 +15,7 @@ from .semantic_ingress_runtime import (
     maybe_resolve_turn_frame,
     resolve_turn_frame_authenticated_flag,
 )
-from .turn_frame_policy import (
-    is_external_public_facility_turn_frame,
-    is_restricted_document_turn_frame,
-    is_scope_boundary_turn_frame,
-)
+from .turn_frame_policy import is_external_public_facility_turn_frame, is_restricted_document_turn_frame, is_scope_boundary_turn_frame
 def _refresh_native_namespace() -> None:
     refresh_extracted_module_contract(
         native_module=_native,
