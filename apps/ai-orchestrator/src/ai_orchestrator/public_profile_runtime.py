@@ -18,22 +18,7 @@ from .conversation_focus_runtime import _recent_focus_follow_up_line
 from .conversation_focus_runtime import _recent_message_lines
 from .conversation_focus_runtime import _recent_trace_focus
 from .conversation_focus_runtime import _is_greeting_only
-from .intent_analysis_runtime import (
-    _compose_required_documents_answer,
-    _contains_any,
-    _is_explicit_public_pricing_projection_query,
-    _is_assistant_identity_query,
-    _is_capability_query,
-    _is_direct_service_routing_bundle_query,
-    _is_follow_up_query,
-    _is_positive_requirement_query,
-    _is_public_pricing_navigation_query,
-    _is_service_routing_query,
-    _message_matches_term,
-    _requested_operating_hours_attribute,
-)
 from .analysis_context_runtime import _extract_recent_assistant_message, _extract_recent_user_message
-from .intent_analysis_runtime import _extract_salient_terms
 from . import public_contact_runtime as _public_contact_runtime
 from .public_contact_runtime import (
     _contact_entries,
@@ -241,7 +226,6 @@ from .public_presence_runtime import (
     _handle_public_social_presence,
     _handle_public_web_presence,
 )
-from .public_orchestration_runtime import _build_public_institution_plan, _should_use_public_open_documentary_synthesis
 from . import public_service_routing_runtime as _public_service_routing_runtime
 from .public_service_routing_runtime import (
     _is_generic_service_contact_follow_up,
@@ -276,6 +260,71 @@ from .public_timeline_runtime import (
     _parse_iso_date_value,
 )
 from .student_scope_runtime import _compose_public_access_scope_answer
+from .workflow_runtime import _render_structured_answer_lines
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _compose_required_documents_answer(profile: dict[str, Any]) -> str:
+    return _intent_analysis_impl('_compose_required_documents_answer')(profile)
+
+
+def _contains_any(message: str, terms: set[str] | tuple[str, ...]) -> bool:
+    return _intent_analysis_impl('_contains_any')(message, terms)
+
+
+def _extract_salient_terms(message: str) -> tuple[str, ...]:
+    return _intent_analysis_impl('_extract_salient_terms')(message)
+
+
+def _is_explicit_public_pricing_projection_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_explicit_public_pricing_projection_query')(message)
+
+
+def _is_assistant_identity_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_assistant_identity_query')(message)
+
+
+def _is_capability_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_capability_query')(message)
+
+
+def _is_direct_service_routing_bundle_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_direct_service_routing_bundle_query')(message)
+
+
+def _is_follow_up_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_follow_up_query')(message)
+
+
+def _is_positive_requirement_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_positive_requirement_query')(message)
+
+
+def _is_public_pricing_navigation_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_public_pricing_navigation_query')(message)
+
+
+def _is_service_routing_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_service_routing_query')(message)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
+
+
+def _requested_operating_hours_attribute(
+    message: str,
+    conversation_context: dict[str, Any] | None = None,
+) -> str | None:
+    return _intent_analysis_impl('_requested_operating_hours_attribute')(
+        message,
+        conversation_context=conversation_context,
+    )
 
 
 def _export_runtime_core_namespace() -> None:

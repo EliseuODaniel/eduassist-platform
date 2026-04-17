@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+from . import grounded_answer_experience as _experience_runtime
 from .conversation_answer_state import build_focus_summary, resolve_answer_focus
 from .grounded_answer_experience import (
     _actor_summary,
@@ -29,9 +30,6 @@ from .grounded_answer_experience import (
     _eligible_reason,
     _extract_recent_user_messages,
     _fallback_retry_query,
-    _fetch_actor_context,
-    _fetch_conversation_context,
-    _fetch_public_school_profile,
     _filtered_recent_messages,
     _is_restricted_document_no_match_response,
     _localize_surface_labels_for_request,
@@ -50,10 +48,6 @@ from .grounded_answer_experience import (
     _store_focus_cache,
     _terminal_semantic_ingress_act,
     _validated_answer_experience_text,
-)
-from .llm_provider import (
-    compose_grounded_answer_experience_with_provider,
-    plan_context_repair_with_provider,
 )
 from .models import (
     AccessTier,
@@ -114,9 +108,9 @@ async def apply_grounded_answer_experience(
 
     conversation_external_id = _conversation_external_id(request)
     conversation_context, school_profile, actor = await asyncio.gather(
-        _fetch_conversation_context(settings=settings, request=request),
-        _fetch_public_school_profile(settings),
-        _fetch_actor_context(settings=settings, request=request),
+        _experience_runtime._fetch_conversation_context(settings=settings, request=request),
+        _experience_runtime._fetch_public_school_profile(settings),
+        _experience_runtime._fetch_actor_context(settings=settings, request=request),
     )
     from .public_orchestration_runtime import (
         _build_effective_actor_context as _build_effective_actor_context_local,
@@ -150,7 +144,7 @@ async def apply_grounded_answer_experience(
         conversation_external_id=conversation_external_id,
         focus=focus,
     )
-    supplemental = await _build_supplemental_focus(
+    supplemental = await _experience_runtime._build_supplemental_focus(
         settings=settings,
         request=request,
         focus=focus,
@@ -425,7 +419,7 @@ async def apply_grounded_answer_experience(
             conversation_context=conversation_context,
         )
         repair_plan = _normalize_context_repair_plan(
-            await plan_context_repair_with_provider(
+            await _experience_runtime.plan_context_repair_with_provider(
                 settings=provider_settings,
                 request_message=request.message,
                 draft_text=effective_draft_text,
@@ -482,7 +476,7 @@ async def apply_grounded_answer_experience(
             and (action != 'unavailable' or confidence < 0.9)
         )
         if should_retry_before_unavailable:
-            retry_response = await _attempt_second_retrieval(
+            retry_response = await _experience_runtime._attempt_second_retrieval(
                 settings=settings,
                 request=request,
                 response=response,
@@ -562,7 +556,7 @@ async def apply_grounded_answer_experience(
             )
     if not reason:
         return response
-    candidate_text = await compose_grounded_answer_experience_with_provider(
+    candidate_text = await _experience_runtime.compose_grounded_answer_experience_with_provider(
         settings=provider_settings,
         request_message=request.message,
         draft_text=effective_draft_text,

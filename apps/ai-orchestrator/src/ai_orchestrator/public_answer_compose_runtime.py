@@ -3,13 +3,32 @@ from __future__ import annotations
 from typing import Any
 
 from .conversation_focus_runtime import _normalize_text
-from .intent_analysis_runtime import (
-    _compose_required_documents_answer,
-    _is_follow_up_query,
-    _is_positive_requirement_query,
-    _is_public_pricing_navigation_query,
-    _message_matches_term,
-)
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _compose_required_documents_answer(*args, **kwargs):
+    return _intent_analysis_impl('_compose_required_documents_answer')(*args, **kwargs)
+
+
+def _is_follow_up_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_follow_up_query')(message)
+
+
+def _is_positive_requirement_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_positive_requirement_query')(message)
+
+
+def _is_public_pricing_navigation_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_public_pricing_navigation_query')(message)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
 
 
 def _build_public_profile_context(

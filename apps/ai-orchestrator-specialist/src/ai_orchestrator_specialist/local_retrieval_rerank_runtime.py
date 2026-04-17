@@ -155,3 +155,6 @@ def _build_late_interaction_embedder(model_name: str) -> LateInteractionTextEmbe
             raise
         shutil.rmtree('/tmp/fastembed_cache', ignore_errors=True)
         return LateInteractionTextEmbedding(model_name=model_name)
+
+
+_refresh_native_namespace()

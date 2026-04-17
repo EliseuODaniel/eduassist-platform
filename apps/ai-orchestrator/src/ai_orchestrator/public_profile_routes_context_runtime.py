@@ -3,23 +3,40 @@ from __future__ import annotations
 from typing import Any
 
 from .conversation_focus_runtime import _assistant_already_introduced
-from .intent_analysis_runtime import (
-    _is_follow_up_query,
-    _message_matches_term,
-    _normalize_text,
-    _should_reuse_public_pricing_slots,
-)
 from .public_contact_runtime import (
     _contact_is_general_school_query,
     _requested_contact_channel,
 )
 from .public_profile_slot_memory_runtime import _build_conversation_slot_memory_impl
-from .public_profile_support_runtime import _select_public_segment
+from .public_profile_support_runtime import _requested_public_attributes, _select_public_segment
 from .public_service_routing_runtime import (
     _preferred_contact_labels_from_context,
     _public_contact_reference_message,
 )
+from .models import PublicProfileContext
 from .runtime_core_constants import PUBLIC_SCHEDULE_TERMS
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _is_follow_up_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_follow_up_query')(message)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
+
+
+def _normalize_text(message: str | None) -> str:
+    return _intent_analysis_impl('_normalize_text')(message)
+
+
+def _should_reuse_public_pricing_slots(message: str) -> bool:
+    return _intent_analysis_impl('_should_reuse_public_pricing_slots')(message)
 
 
 def _build_public_profile_context_impl(
@@ -30,7 +47,6 @@ def _build_public_profile_context_impl(
     original_message: str | None = None,
     conversation_context: dict[str, Any] | None = None,
     semantic_plan: Any | None = None,
-    public_profile_context_cls: type[Any],
 ) -> Any:
     effective_conversation_context = conversation_context
     if semantic_plan is not None and semantic_plan.conversation_act == 'greeting':
@@ -81,7 +97,7 @@ def _build_public_profile_context_impl(
     )
     if _contact_is_general_school_query(contact_reference_message):
         preferred_contact_labels = ()
-    return public_profile_context_cls(
+    return PublicProfileContext(
         profile=profile,
         actor=actor,
         message=message,
@@ -126,6 +142,7 @@ def _build_public_profile_context_impl(
             if semantic_plan and semantic_plan.requested_attribute
             else None
         ),
+        requested_attributes=tuple(_requested_public_attributes(source_message)),
         slot_memory=slot_memory,
         conversation_context=effective_conversation_context,
         semantic_plan=semantic_plan,

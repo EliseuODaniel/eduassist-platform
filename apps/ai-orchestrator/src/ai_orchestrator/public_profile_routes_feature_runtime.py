@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from .intent_analysis_runtime import _is_follow_up_query, _message_matches_term, _normalize_text
 from .public_feature_runtime import (
     _asks_why_feature_is_missing,
     _extract_feature_gap_focus,
@@ -13,6 +12,24 @@ from .public_feature_runtime import (
 )
 from .public_profile_support_runtime import _requested_public_attributes
 from .public_timeline_runtime import _recent_trace_focus
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _is_follow_up_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_follow_up_query')(message)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
+
+
+def _normalize_text(message: str | None) -> str:
+    return _intent_analysis_impl('_normalize_text')(message)
 
 
 def _compose_public_feature_answer_impl(

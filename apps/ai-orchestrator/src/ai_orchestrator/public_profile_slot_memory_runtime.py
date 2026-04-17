@@ -3,35 +3,103 @@ from __future__ import annotations
 """Conversation slot memory extracted from public_profile_runtime.py."""
 
 from .conversation_focus_runtime import _recent_conversation_focus
-from .intent_analysis_runtime import (
-    _derive_active_entity,
-    _derive_active_task,
-    _derive_pending_question_type,
-    _detect_academic_focus_kind,
-    _detect_admin_attribute_request,
-    _detect_public_pricing_price_kind,
-    _detect_time_reference,
-    _effective_academic_attribute_request,
-    _effective_finance_attribute_request,
-    _effective_finance_status_filter,
-    _extract_grade_reference,
-    _extract_public_pricing_grade_year,
-    _message_matches_term,
-    _normalize_text,
-    _primary_public_entity_hint,
-    _recent_slot_value,
-    _requested_operating_hours_attribute,
-    _should_reuse_public_context,
-    _should_reuse_public_pricing_slots,
-    _should_track_contact_subject,
-    _should_track_feature_key,
-    _wants_finance_second_copy,
-)
-from .public_profile_runtime import (
-    _recent_public_contact_subject,
-    _recent_public_feature_key,
-    _select_public_segment,
-)
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _derive_active_entity(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_derive_active_entity')(*args, **kwargs)
+
+
+def _derive_active_task(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_derive_active_task')(*args, **kwargs)
+
+
+def _derive_pending_question_type(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_derive_pending_question_type')(*args, **kwargs)
+
+
+def _detect_academic_focus_kind(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_detect_academic_focus_kind')(*args, **kwargs)
+
+
+def _detect_admin_attribute_request(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_detect_admin_attribute_request')(*args, **kwargs)
+
+
+def _detect_public_pricing_price_kind(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_detect_public_pricing_price_kind')(*args, **kwargs)
+
+
+def _detect_time_reference(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_detect_time_reference')(*args, **kwargs)
+
+
+def _effective_academic_attribute_request(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_effective_academic_attribute_request')(*args, **kwargs)
+
+
+def _effective_finance_attribute_request(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_effective_finance_attribute_request')(*args, **kwargs)
+
+
+def _effective_finance_status_filter(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_effective_finance_status_filter')(*args, **kwargs)
+
+
+def _extract_grade_reference(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_extract_grade_reference')(*args, **kwargs)
+
+
+def _extract_public_pricing_grade_year(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_extract_public_pricing_grade_year')(*args, **kwargs)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
+
+
+def _normalize_text(message: str | None) -> str:
+    return _intent_analysis_impl('_normalize_text')(message)
+
+
+def _primary_public_entity_hint(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_primary_public_entity_hint')(*args, **kwargs)
+
+
+def _recent_slot_value(conversation_context: dict[str, object] | None, slot_name: str) -> str | None:
+    return _intent_analysis_impl('_recent_slot_value')(conversation_context, slot_name)
+
+
+def _requested_operating_hours_attribute(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_requested_operating_hours_attribute')(*args, **kwargs)
+
+
+def _should_reuse_public_context(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_should_reuse_public_context')(*args, **kwargs)
+
+
+def _should_reuse_public_pricing_slots(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_should_reuse_public_pricing_slots')(*args, **kwargs)
+
+
+def _should_track_contact_subject(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_should_track_contact_subject')(*args, **kwargs)
+
+
+def _should_track_feature_key(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_should_track_feature_key')(*args, **kwargs)
+
+
+def _wants_finance_second_copy(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_wants_finance_second_copy')(*args, **kwargs)
+from .public_feature_runtime import _recent_public_feature_key
+from .public_profile_support_runtime import _select_public_segment
+from .public_service_routing_runtime import _recent_public_contact_subject
 from .student_scope_runtime import (
     _derive_pending_disambiguation,
     _is_children_overview_query,

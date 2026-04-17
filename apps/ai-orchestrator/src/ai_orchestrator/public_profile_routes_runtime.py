@@ -6,7 +6,6 @@ LOCAL_EXTRACTED_NAMES = {'_compose_public_feature_answer', '_try_public_channel_
 
 from . import public_profile_runtime as _native
 from .extracted_module_contracts import refresh_extracted_module_contract
-from .intent_analysis_runtime import _compose_required_documents_answer, _detect_public_pricing_price_kind, _is_auth_guidance_query, _is_follow_up_query, _is_positive_requirement_query, _is_public_pricing_navigation_query, _message_matches_term, _normalize_text, _should_reuse_public_pricing_slots
 from .public_act_rules_runtime import (
     _is_comparative_query,
     _is_cross_document_public_query,
@@ -26,6 +25,48 @@ from .public_profile_intent_runtime import (
     _is_public_permanence_family_query,
     _is_public_process_compare_query,
 )
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _compose_required_documents_answer(*args, **kwargs):
+    return _intent_analysis_impl('_compose_required_documents_answer')(*args, **kwargs)
+
+
+def _detect_public_pricing_price_kind(message: str) -> str | None:
+    return _intent_analysis_impl('_detect_public_pricing_price_kind')(message)
+
+
+def _is_auth_guidance_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_auth_guidance_query')(message)
+
+
+def _is_follow_up_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_follow_up_query')(message)
+
+
+def _is_positive_requirement_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_positive_requirement_query')(message)
+
+
+def _is_public_pricing_navigation_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_public_pricing_navigation_query')(message)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
+
+
+def _normalize_text(message: str | None) -> str:
+    return _intent_analysis_impl('_normalize_text')(message)
+
+
+def _should_reuse_public_pricing_slots(message: str) -> bool:
+    return _intent_analysis_impl('_should_reuse_public_pricing_slots')(message)
 from .public_curriculum_runtime import _is_public_curriculum_query
 from .public_document_policy_runtime import (
     _is_public_document_submission_query,
@@ -41,6 +82,7 @@ from .public_profile_routes_context_runtime import (
 from .public_profile_routes_feature_runtime import _compose_public_feature_answer_impl
 from .public_profile_routes_pricing_runtime import _compose_public_pricing_projection_answer_impl
 from .public_profile_routes_timeline_runtime import _handle_public_timeline_impl
+from .public_profile_support_runtime import _select_public_segment
 from .public_timeline_runtime import (
     _is_public_timeline_before_after_query,
     _is_public_timeline_lifecycle_query,
@@ -342,28 +384,11 @@ def _try_public_channel_fast_answer_impl(
     return None
 
 
-def _build_public_profile_context_impl(
-    profile: dict[str, Any],
-    message: str,
-    *,
-    actor: dict[str, Any] | None = None,
-    original_message: str | None = None,
-    conversation_context: dict[str, Any] | None = None,
-    semantic_plan: PublicInstitutionPlan | None = None,
-) -> PublicProfileContext:
-    return _build_public_profile_context_extracted_impl(
-        profile,
-        message,
-        actor=actor,
-        original_message=original_message,
-        conversation_context=conversation_context,
-        semantic_plan=semantic_plan,
-        public_profile_context_cls=PublicProfileContext,
-    )
 # Compatibility aliases while public_profile_runtime keeps facade imports.
 _compose_public_feature_answer = _compose_public_feature_answer_impl
 _try_public_channel_fast_answer = _try_public_channel_fast_answer_impl
-_build_public_profile_context = _build_public_profile_context_impl
+_build_public_profile_context_impl = _build_public_profile_context_extracted_impl
+_build_public_profile_context = _build_public_profile_context_extracted_impl
 _handle_public_contacts = _handle_public_contacts_impl
 _handle_public_timeline = _handle_public_timeline_impl
 _compose_public_pricing_projection_answer = _compose_public_pricing_projection_answer_impl

@@ -3,14 +3,30 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from .intent_analysis_runtime import (
-    _detect_public_pricing_price_kind,
-    _message_matches_term,
-    _normalize_text,
-    _should_reuse_public_pricing_slots,
-)
 from .public_operations_runtime import _format_brl, _parse_public_money
 from .public_profile_support_runtime import _public_segment_matches
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _detect_public_pricing_price_kind(message: str) -> str | None:
+    return _intent_analysis_impl('_detect_public_pricing_price_kind')(message)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
+
+
+def _normalize_text(message: str | None) -> str:
+    return _intent_analysis_impl('_normalize_text')(message)
+
+
+def _should_reuse_public_pricing_slots(message: str) -> bool:
+    return _intent_analysis_impl('_should_reuse_public_pricing_slots')(message)
 
 
 def _compose_public_pricing_projection_answer_impl(context: Any) -> str | None:

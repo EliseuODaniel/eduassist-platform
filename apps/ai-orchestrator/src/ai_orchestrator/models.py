@@ -428,6 +428,7 @@ class PublicProfileContext:
     preferred_contact_labels: tuple[str, ...]
     requested_channel: str | None
     requested_attribute_override: str | None
+    requested_attributes: tuple[str, ...]
     slot_memory: ConversationSlotMemory
     conversation_context: dict[str, Any] | None
     semantic_plan: PublicInstitutionPlan | None

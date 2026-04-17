@@ -11,23 +11,6 @@ from .conversation_focus_runtime import (
     _recent_teacher_scope_context,
     _recent_trace_focus,
 )
-from .intent_analysis_runtime import (
-    _contains_any,
-    _detect_academic_attribute_request,
-    _detect_academic_focus_kind,
-    _detect_admin_attribute_request,
-    _detect_finance_attribute_request,
-    _effective_finance_status_filter,
-    _is_admin_finance_combined_query,
-    _is_access_scope_query,
-    _is_follow_up_query,
-    _looks_like_family_academic_aggregate_query,
-    _looks_like_family_attendance_aggregate_query,
-    _looks_like_family_finance_aggregate_query,
-    _message_matches_term,
-    _normalize_text,
-)
-from .public_orchestration_runtime import _recent_student_disambiguation_domain
 
 
 def _export_runtime_core_namespace() -> None:
@@ -38,6 +21,81 @@ def _export_runtime_core_namespace() -> None:
 
 
 _export_runtime_core_namespace()
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _contains_any(message: str, terms: set[str] | tuple[str, ...]) -> bool:
+    return _intent_analysis_impl('_contains_any')(message, terms)
+
+
+def _detect_academic_attribute_request(message: str):
+    return _intent_analysis_impl('_detect_academic_attribute_request')(message)
+
+
+def _detect_academic_focus_kind(message: str):
+    return _intent_analysis_impl('_detect_academic_focus_kind')(message)
+
+
+def _detect_admin_attribute_request(message: str):
+    return _intent_analysis_impl('_detect_admin_attribute_request')(message)
+
+
+def _detect_finance_attribute_request(message: str):
+    return _intent_analysis_impl('_detect_finance_attribute_request')(message)
+
+
+def _effective_finance_status_filter(
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+):
+    return _intent_analysis_impl('_effective_finance_status_filter')(
+        message,
+        conversation_context=conversation_context,
+    )
+
+
+def _is_admin_finance_combined_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_admin_finance_combined_query')(message)
+
+
+def _is_access_scope_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_access_scope_query')(message)
+
+
+def _is_follow_up_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_follow_up_query')(message)
+
+
+def _looks_like_family_academic_aggregate_query(message: str) -> bool:
+    return _intent_analysis_impl('_looks_like_family_academic_aggregate_query')(message)
+
+
+def _looks_like_family_attendance_aggregate_query(message: str) -> bool:
+    return _intent_analysis_impl('_looks_like_family_attendance_aggregate_query')(message)
+
+
+def _looks_like_family_finance_aggregate_query(message: str) -> bool:
+    return _intent_analysis_impl('_looks_like_family_finance_aggregate_query')(message)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
+
+
+def _normalize_text(message: str | None) -> str:
+    return _intent_analysis_impl('_normalize_text')(message)
+
+
+def _recent_student_disambiguation_domain(conversation_context: dict[str, Any] | None):
+    from .public_orchestration_runtime import _recent_student_disambiguation_domain as _impl
+
+    return _impl(conversation_context)
 
 
 def _looks_like_teacher_internal_scope_query(message: str) -> bool:

@@ -17,11 +17,40 @@ from .conversation_focus_runtime import (
     _recent_workflow_focus,
 )
 from .public_feature_runtime import _feature_suggestion_replies
-from .public_orchestration_runtime import _extract_requested_date, _extract_requested_window
 from .public_service_routing_runtime import (
     _routing_follow_up_context_message,
     _service_matches_from_message,
 )
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _contains_any(message: str, terms: set[str] | tuple[str, ...]) -> bool:
+    return _intent_analysis_impl('_contains_any')(message, terms)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
+
+
+def _normalize_text(message: str | None) -> str:
+    return _intent_analysis_impl('_normalize_text')(message)
+
+
+def _extract_requested_date(message: str):
+    from .public_orchestration_runtime import _extract_requested_date as _impl
+
+    return _impl(message)
+
+
+def _extract_requested_window(message: str):
+    from .public_orchestration_runtime import _extract_requested_window as _impl
+
+    return _impl(message)
 
 
 def _export_runtime_core_namespace() -> None:

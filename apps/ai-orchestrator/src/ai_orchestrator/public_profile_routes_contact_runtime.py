@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from .intent_analysis_runtime import _message_matches_term
 from .public_act_rules_runtime import (
     _is_leadership_specific_query,
     _matches_public_location_rule,
@@ -17,6 +16,16 @@ from .public_contact_runtime import (
 )
 from .public_organization_runtime import _compose_public_leadership_answer
 from .public_profile_support_runtime import _school_object_reference
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
 
 
 def _handle_public_contacts_impl(context: Any) -> str:

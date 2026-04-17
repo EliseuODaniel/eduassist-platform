@@ -5,7 +5,16 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from .conversation_focus_runtime import _normalize_text
-from .intent_analysis_runtime import _message_matches_term
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
 
 
 def _requested_unpublished_public_segment(context: Any) -> str | None:

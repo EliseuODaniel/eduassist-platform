@@ -3,12 +3,25 @@ from __future__ import annotations
 import re
 from typing import Any, Callable
 
-from .intent_analysis_runtime import (
-    _is_direct_service_routing_bundle_query,
-    _is_public_pricing_navigation_query,
-    _is_service_routing_query,
-)
 from .public_contact_runtime import _requested_contact_channel
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _is_direct_service_routing_bundle_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_direct_service_routing_bundle_query')(message)
+
+
+def _is_public_pricing_navigation_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_public_pricing_navigation_query')(message)
+
+
+def _is_service_routing_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_service_routing_query')(message)
 
 _PUBLIC_MULTI_INTENT_LABELS: dict[str, str] = {
     'contacts': 'Canais gerais da escola',

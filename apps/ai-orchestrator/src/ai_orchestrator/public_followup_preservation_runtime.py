@@ -3,7 +3,20 @@ from __future__ import annotations
 from typing import Any
 
 from .conversation_focus_runtime import _normalize_text
-from .intent_analysis_runtime import _is_explicit_public_pricing_projection_query, _message_matches_term
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _is_explicit_public_pricing_projection_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_explicit_public_pricing_projection_query')(message)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
 
 _ACTION_READY_CANONICAL_PUBLIC_LANES = {
     'public_bundle.academic_policy_overview',

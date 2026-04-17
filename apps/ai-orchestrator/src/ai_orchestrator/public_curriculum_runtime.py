@@ -4,7 +4,16 @@ import re
 from typing import Any
 
 from .conversation_focus_runtime import _normalize_text
-from .intent_analysis_runtime import _message_matches_term
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
 
 
 def _compose_public_pedagogical_answer(profile: dict[str, Any], message: str) -> str | None:

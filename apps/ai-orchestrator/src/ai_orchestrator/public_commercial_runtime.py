@@ -3,7 +3,12 @@ from __future__ import annotations
 from typing import Any
 
 from .conversation_focus_runtime import _normalize_text
-from .intent_analysis_runtime import _message_matches_term
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    from .intent_analysis_runtime import _message_matches_term as _impl
+
+    return _impl(message, term)
 
 
 def _requested_unpublished_public_segment(context: Any) -> str | None:

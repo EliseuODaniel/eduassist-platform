@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from .analysis_context_runtime import _extract_recent_assistant_message
 from .conversation_focus_runtime import _assistant_already_introduced, _normalize_text, _recent_focus_follow_up_line
-from .intent_analysis_runtime import _is_assistant_identity_query, _message_matches_term
 from .public_contact_runtime import _contact_entries
 from .public_organization_runtime import _public_highlights, _select_leadership_member
 from .public_service_routing_runtime import (
@@ -14,6 +14,20 @@ from .public_service_routing_runtime import (
     _service_catalog_index,
     _service_matches_from_message,
 )
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _is_assistant_identity_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_assistant_identity_query')(message)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
 
 
 def _compose_concierge_topic_examples(profile: dict[str, Any], limit: int = 5) -> str:

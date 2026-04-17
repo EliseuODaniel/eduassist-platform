@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 from .conversation_focus_runtime import _recent_conversation_focus
-from .intent_analysis_runtime import _is_follow_up_query, _message_matches_term
 from .public_profile_glue_runtime import _recent_messages_mention
 from .public_timeline_runtime import (
     _compose_public_timeline_lifecycle_answer,
@@ -15,6 +14,20 @@ from .public_timeline_runtime import (
     _is_public_year_three_phase_query,
     _mentions_school_year_start_topic,
 )
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _is_follow_up_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_follow_up_query')(message)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
 
 
 def _handle_public_timeline_impl(context: Any) -> str:

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 from .conversation_focus_runtime import _assistant_already_introduced, _normalize_text
-from .intent_analysis_runtime import _contains_any, _message_matches_term
 from .public_concierge_runtime import _is_acknowledgement_query
 from .public_act_rules_runtime import (
     _has_public_multi_intent_signal,
@@ -25,6 +24,20 @@ from .runtime_core_constants import (
     TEACHER_RECRUITMENT_TERMS,
     TEACHER_SCOPE_GUIDANCE_TERMS,
 )
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _contains_any(message: str, terms: set[str] | tuple[str, ...]) -> bool:
+    return _intent_analysis_impl('_contains_any')(message, terms)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
 
 
 def _is_public_school_name_query(message: str) -> bool:

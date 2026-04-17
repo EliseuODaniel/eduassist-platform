@@ -66,6 +66,9 @@ from .path_profiles import (
     PathExecutionProfile,
     get_path_execution_profile as _llamaindex_get_path_execution_profile,
 )
+from .semantic_ingress_runtime import (
+    maybe_resolve_semantic_ingress_plan as _llamaindex_maybe_resolve_semantic_ingress_plan,
+)
 from .llamaindex_public_knowledge import (
     compose_public_canonical_lane_answer,
     compose_public_conduct_policy_contextual_answer,
@@ -87,6 +90,7 @@ build_retrieval_evidence_pack = _llamaindex_build_retrieval_evidence_pack
 build_structured_tool_evidence_pack = _llamaindex_build_structured_tool_evidence_pack
 _maybe_contextual_public_direct_answer = _llamaindex_maybe_contextual_public_direct_answer
 get_path_execution_profile = _llamaindex_get_path_execution_profile
+maybe_resolve_semantic_ingress_plan = _llamaindex_maybe_resolve_semantic_ingress_plan
 monotonic = _llamaindex_monotonic
 record_stack_outcome = _llamaindex_record_stack_outcome
 _LLAMAINDEX_NATIVE_MODEL_EXPORTS = (

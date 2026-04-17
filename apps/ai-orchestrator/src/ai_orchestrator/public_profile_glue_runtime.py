@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 
 from .conversation_focus_runtime import _normalize_text, _recent_message_lines
-from .intent_analysis_runtime import _is_follow_up_query, _message_matches_term
 from .public_feature_runtime import (
     _feature_inventory_map,
     _is_public_feature_query,
@@ -13,6 +12,20 @@ from .public_feature_runtime import (
 from .runtime_core import _llm_forced_mode_enabled
 from .runtime_core_constants import PUBLIC_SCHEDULE_TERMS
 from .public_act_rules_runtime import _matches_public_contact_rule
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _is_follow_up_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_follow_up_query')(message)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
 
 
 def _compose_public_feature_schedule_follow_up(
