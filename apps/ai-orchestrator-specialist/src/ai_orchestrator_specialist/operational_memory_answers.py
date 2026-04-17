@@ -168,7 +168,6 @@ def _compose_cross_student_academic_comparison(
     other_subject, other_score = other_weakest
     most_critical_name = base_name if base_score <= other_score else other_name
     most_critical_subject = base_subject if base_score <= other_score else other_subject
-    most_critical_score = base_score if base_score <= other_score else other_score
     return (
         f"Comparando {base_name} com {other_name}: "
         f"{base_name} tem o ponto academico mais sensivel em {base_subject}, com media parcial {str(base_score).replace('.', ',')}, "

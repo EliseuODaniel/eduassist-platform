@@ -55,7 +55,7 @@ def _public_act_rules_impl(name: str):
 
 
 def _llm_forced_mode_enabled(*args, **kwargs):
-    return getattr(_runtime_core, '_llm_forced_mode_enabled')(*args, **kwargs)
+    return _runtime_core._llm_forced_mode_enabled(*args, **kwargs)
 
 
 def _has_public_multi_intent_signal(message: str) -> bool:

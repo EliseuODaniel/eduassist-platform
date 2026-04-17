@@ -824,7 +824,7 @@ class DocumentPipeline:
         if isinstance(alias_items, list):
             for item in alias_items:
                 if getattr(item, 'alias_name', None) == alias_name:
-                    return str(getattr(item, 'collection_name'))
+                    return str(item.collection_name)
 
         if self._collection_exists(alias_name):
             return alias_name

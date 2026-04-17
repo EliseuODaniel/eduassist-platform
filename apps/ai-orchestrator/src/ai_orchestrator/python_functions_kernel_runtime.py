@@ -23,7 +23,7 @@ from .models import (
     QueryDomain,
     RetrievalBackend,
 )
-from .path_profiles import PathExecutionProfile, get_path_execution_profile
+from .path_profiles import PathExecutionProfile
 from .native_runtime_preparation import build_runtime_execution_accumulators, prepare_runtime_execution
 from .retrieval_capability_policy import (
     build_retrieval_trace_metadata,
@@ -45,12 +45,6 @@ from .python_functions_retrieval import (
     compose_restricted_document_no_match_answer,
     looks_like_restricted_document_query,
     retrieve_relevant_restricted_hits_with_fallback,
-)
-from .semantic_ingress_runtime import (
-    apply_semantic_ingress_preview,
-    build_semantic_ingress_public_plan,
-    is_terminal_semantic_ingress_plan,
-    maybe_resolve_semantic_ingress_plan,
 )
 from .turn_frame_policy import preview_targets_restricted_document_surface
 
@@ -778,13 +772,11 @@ async def execute_kernel_plan(
     prefer_fast_public_path = effective_path_profile.prefer_fast_public_path
     actor = preparation.actor
     effective_conversation_id = preparation.effective_conversation_id
-    conversation_context = preparation.conversation_context_bundle
     context_payload = preparation.context_payload
     analysis_message = preparation.analysis_message
     school_profile = preparation.school_profile
     effective_plan = preparation.effective_plan
     preview = preparation.preview
-    semantic_ingress_plan = preparation.semantic_ingress_plan
     semantic_ingress_public_plan = preparation.semantic_ingress_public_plan
 
     accumulators = build_runtime_execution_accumulators(llm_stages=preparation.llm_stages)

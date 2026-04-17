@@ -351,7 +351,7 @@ def _compose_timeline_bundle_answer(
         wants_classes = True
     if not (wants_enrollment and wants_classes):
         return None
-    admissions_item = _timeline_entry(entries, topic_fragment="admissions_opening")
+    _timeline_entry(entries, topic_fragment="admissions_opening")
     school_year_item = _timeline_entry(entries, topic_fragment="school_year_start")
     family_item = _timeline_entry(entries, topic_fragment="family_meeting")
     if (

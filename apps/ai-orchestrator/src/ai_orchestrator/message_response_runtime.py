@@ -1494,7 +1494,6 @@ async def generate_message_response(
 
         retrieval_hits = flow_state.retrieval_hits
         citations = flow_state.citations
-        visual_assets = flow_state.visual_assets
         calendar_events = flow_state.calendar_events
         query_hints = flow_state.query_hints
         retrieval_supported = flow_state.retrieval_supported
@@ -1505,7 +1504,6 @@ async def generate_message_response(
         rescued_public_plan = flow_state.rescued_public_plan
         canonical_lane = flow_state.canonical_lane
         restricted_document_query = flow_state.restricted_document_query
-        llm_forced_mode = flow_state.llm_forced_mode
         public_canonical_lane_request = flow_state.public_canonical_lane_request
 
         llm_text: str | None = None

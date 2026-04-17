@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import lru_cache
 import re
-import shutil
 from time import monotonic
 from typing import Any
 import unicodedata

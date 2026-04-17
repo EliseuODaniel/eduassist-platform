@@ -4,24 +4,18 @@ from dataclasses import dataclass
 from functools import lru_cache
 import re
 import shutil
-from time import monotonic
 from typing import Any
 import unicodedata
 
-from eduassist_observability import record_counter, record_histogram, set_span_attributes, start_span
+from eduassist_observability import set_span_attributes, start_span
 from fastembed import LateInteractionTextEmbedding, TextEmbedding
 import numpy as np
-import psycopg
-from psycopg.rows import dict_row
 from qdrant_client import QdrantClient, models
 
 from .models import (
-    RetrievalBackend,
-    RetrievalCitation,
     RetrievalDocumentGroup,
     RetrievalHit,
     RetrievalProfile,
-    RetrievalQueryPlan,
     RetrievalSearchResponse,
     UserContext,
 )

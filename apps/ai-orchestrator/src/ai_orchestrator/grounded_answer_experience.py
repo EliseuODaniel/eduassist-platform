@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
 import unicodedata
@@ -17,14 +16,12 @@ from .conversation_answer_state import (
     AnswerFocusState,
     build_focus_summary,
     explicit_subject_from_message,
-    resolve_answer_focus,
 )
 from .conversation_answer_state import (
     normalize_text as _focus_normalize_text,
 )
 from .llm_provider import (
     compose_grounded_answer_experience_with_provider,
-    plan_context_repair_with_provider,
 )
 from .models import (
     AccessTier,
@@ -32,28 +29,10 @@ from .models import (
     MessageResponse,
     MessageResponseRequest,
     OrchestrationMode,
-    QueryDomain,
     RetrievalBackend,
     RetrievalProfile,
 )
-from .public_doc_knowledge import (
-    compose_public_canonical_lane_answer,
-    compose_public_bolsas_and_processes,
-    compose_public_calendar_visibility,
-    compose_public_first_month_risks,
-    compose_public_health_emergency_bundle,
-    compose_public_outings_authorizations,
-    compose_public_permanence_and_family_support,
-    compose_public_teacher_directory_boundary,
-    compose_public_timeline_lifecycle_bundle,
-    match_public_canonical_lane as match_shared_public_canonical_lane,
-)
 from .request_intent_guardrails import looks_like_school_domain_request
-from .python_functions_public_knowledge import (
-    compose_public_conduct_policy_contextual_answer,
-    match_public_canonical_lane as match_python_functions_public_canonical_lane,
-)
-from .public_known_unknowns import compose_public_known_unknown_answer, detect_public_known_unknown_key
 from .retrieval import get_retrieval_service, looks_like_restricted_document_query
 
 logger = logging.getLogger(__name__)
