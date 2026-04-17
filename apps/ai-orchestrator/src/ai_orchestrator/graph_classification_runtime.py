@@ -5,13 +5,18 @@ from __future__ import annotations
 LOCAL_EXTRACTED_NAMES = {'classify_request', 'route_request'}
 
 from . import graph as _native
+from .extracted_module_contracts import refresh_extracted_module_contract
+from .graph_classification_contract import GRAPH_CLASSIFICATION_CONTRACT
 
 
 def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+    refresh_extracted_module_contract(
+        native_module=_native,
+        namespace=globals(),
+        contract_names=GRAPH_CLASSIFICATION_CONTRACT,
+        local_extracted_names=LOCAL_EXTRACTED_NAMES,
+        contract_label='graph_classification_runtime',
+    )
 
 
 def classify_request(state: OrchestrationState) -> OrchestrationState:

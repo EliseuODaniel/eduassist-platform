@@ -23,6 +23,28 @@ def _export_runtime_core_namespace() -> None:
 _export_runtime_core_namespace()
 
 
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _detect_admin_attribute_request(*args, **kwargs):
+    return _intent_analysis_impl('_detect_admin_attribute_request')(*args, **kwargs)
+
+
+def _effective_academic_attribute_request(*args, **kwargs):
+    return _intent_analysis_impl('_effective_academic_attribute_request')(*args, **kwargs)
+
+
+def _effective_finance_attribute_request(*args, **kwargs):
+    return _intent_analysis_impl('_effective_finance_attribute_request')(*args, **kwargs)
+
+
+def _effective_finance_status_filter(*args, **kwargs):
+    return _intent_analysis_impl('_effective_finance_status_filter')(*args, **kwargs)
+
+
 def _looks_like_multi_student_academic_comparison_request(
     actor: dict[str, Any] | None,
     message: str,

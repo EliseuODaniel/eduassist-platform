@@ -48,6 +48,11 @@ EXTRACTED_MODULES = [
     Path('apps/ai-orchestrator/src/ai_orchestrator/public_profile_slot_memory_runtime.py'),
     Path('apps/ai-orchestrator/src/ai_orchestrator/public_profile_legacy_runtime.py'),
     Path('apps/ai-orchestrator/src/ai_orchestrator/public_profile_routes_runtime.py'),
+    Path('apps/ai-orchestrator/src/ai_orchestrator/public_profile_routes_contact_runtime.py'),
+    Path('apps/ai-orchestrator/src/ai_orchestrator/public_profile_routes_context_runtime.py'),
+    Path('apps/ai-orchestrator/src/ai_orchestrator/public_profile_routes_feature_runtime.py'),
+    Path('apps/ai-orchestrator/src/ai_orchestrator/public_profile_routes_pricing_runtime.py'),
+    Path('apps/ai-orchestrator/src/ai_orchestrator/public_profile_routes_timeline_runtime.py'),
     Path('apps/ai-orchestrator/src/ai_orchestrator/python_functions_native_plan_runtime.py'),
 ]
 
@@ -102,9 +107,15 @@ FUNCTION_BUDGETS = {
         '_compose_public_feature_answer': 20,
         '_try_public_channel_fast_answer': 20,
         '_build_public_profile_context': 25,
-        '_handle_public_contacts': 20,
-        '_handle_public_timeline': 20,
-        '_compose_public_pricing_projection_answer': 20,
+    },
+    Path('apps/ai-orchestrator/src/ai_orchestrator/public_profile_routes_contact_runtime.py'): {
+        '_handle_public_contacts_impl': 260,
+    },
+    Path('apps/ai-orchestrator/src/ai_orchestrator/public_profile_routes_timeline_runtime.py'): {
+        '_handle_public_timeline_impl': 140,
+    },
+    Path('apps/ai-orchestrator/src/ai_orchestrator/public_profile_routes_pricing_runtime.py'): {
+        '_compose_public_pricing_projection_answer_impl': 240,
     },
     Path('apps/ai-orchestrator/src/ai_orchestrator/python_functions_native_plan_runtime.py'): {
         'maybe_execute_python_functions_native_plan': 1600,

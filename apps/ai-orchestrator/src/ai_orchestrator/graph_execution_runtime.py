@@ -5,13 +5,18 @@ from __future__ import annotations
 LOCAL_EXTRACTED_NAMES = {'structured_tool_call', 'get_graph_blueprint'}
 
 from . import graph as _native
+from .extracted_module_contracts import refresh_extracted_module_contract
+from .graph_execution_contract import GRAPH_EXECUTION_CONTRACT
 
 
 def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+    refresh_extracted_module_contract(
+        native_module=_native,
+        namespace=globals(),
+        contract_names=GRAPH_EXECUTION_CONTRACT,
+        local_extracted_names=LOCAL_EXTRACTED_NAMES,
+        contract_label='graph_execution_runtime',
+    )
 
 
 def structured_tool_call(state: OrchestrationState) -> OrchestrationState:

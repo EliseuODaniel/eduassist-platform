@@ -1,18 +1,21 @@
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405
-
 """Deterministic and supplemental helpers extracted from grounded_answer_experience.py."""
 
 LOCAL_EXTRACTED_NAMES = {'_deterministic_public_direct_answer', '_deterministic_protected_academic_direct_answer', '_deterministic_protected_attendance_direct_answer', '_deterministic_protected_finance_direct_answer', '_build_supplemental_focus', '_preserve_deterministic_answer_surface'}
 
 from . import grounded_answer_experience as _native
+from .extracted_module_contracts import refresh_extracted_module_contract
+from .grounded_answer_support_contract import GROUNDED_ANSWER_SUPPORT_CONTRACT
 
 def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+    refresh_extracted_module_contract(
+        native_module=_native,
+        namespace=globals(),
+        contract_names=GROUNDED_ANSWER_SUPPORT_CONTRACT,
+        local_extracted_names=LOCAL_EXTRACTED_NAMES,
+        contract_label='grounded_answer_support_runtime',
+    )
 
 
 def _reason_has_marker(reason: str | None, markers: tuple[str, ...]) -> bool:

@@ -1,18 +1,61 @@
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405
-
 """Grounded answer experience pipeline extracted from grounded_answer_experience.py."""
 
-LOCAL_EXTRACTED_NAMES = {'apply_grounded_answer_experience'}
+import asyncio
+from typing import Any
 
-from . import grounded_answer_experience as _native
-
-def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+from . import grounded_answer_experience as _experience_runtime
+from .conversation_answer_state import build_focus_summary, resolve_answer_focus
+from .grounded_answer_experience import (
+    _actor_summary,
+    _answer_experience_changed,
+    _answer_experience_pipeline_enabled,
+    _answer_experience_settings,
+    _attempt_second_retrieval,
+    _build_evidence_lines,
+    _build_supplemental_focus,
+    _cached_focus_slot_memory,
+    _clarify_after_retry_message,
+    _context_repair_enabled,
+    _conversation_external_id,
+    _dedupe_preserve_order,
+    _deterministic_context_repair_plan,
+    _deterministic_protected_academic_direct_answer,
+    _deterministic_protected_attendance_direct_answer,
+    _deterministic_protected_finance_direct_answer,
+    _deterministic_public_calendar_followup,
+    _deterministic_public_capacity_followup,
+    _deterministic_public_direct_answer,
+    _eligible_reason,
+    _extract_recent_user_messages,
+    _fallback_retry_query,
+    _filtered_recent_messages,
+    _is_restricted_document_no_match_response,
+    _localize_surface_labels_for_request,
+    _looks_like_internal_document_query,
+    _looks_like_student_resolution_failure,
+    _merge_conversation_context_with_cached_focus,
+    _normalize_context_repair_plan,
+    _normalize_text,
+    _preserve_deterministic_answer_surface,
+    _question_mentions_unasked_attendance_scope,
+    _recent_family_attendance_context,
+    _response_has_terminal_semantic_ingress,
+    _retry_visibility_for_response,
+    _should_attempt_context_repair,
+    _should_prefer_supplemental_focus,
+    _store_focus_cache,
+    _terminal_semantic_ingress_act,
+    _validated_answer_experience_text,
+)
+from .models import (
+    AccessTier,
+    MessageResponse,
+    MessageResponseRequest,
+    OrchestrationMode,
+    RetrievalBackend,
+)
 
 
 def _is_admin_finance_combined_query(message: str) -> bool:
@@ -28,7 +71,6 @@ async def apply_grounded_answer_experience(
     stack_name: str,
     forced_reason: str | None = None,
 ) -> MessageResponse:
-    _refresh_native_namespace()
     reason = forced_reason or _eligible_reason(
         request=request,
         response=response,
@@ -66,9 +108,9 @@ async def apply_grounded_answer_experience(
 
     conversation_external_id = _conversation_external_id(request)
     conversation_context, school_profile, actor = await asyncio.gather(
-        _fetch_conversation_context(settings=settings, request=request),
-        _fetch_public_school_profile(settings),
-        _fetch_actor_context(settings=settings, request=request),
+        _experience_runtime._fetch_conversation_context(settings=settings, request=request),
+        _experience_runtime._fetch_public_school_profile(settings),
+        _experience_runtime._fetch_actor_context(settings=settings, request=request),
     )
     from .public_orchestration_runtime import (
         _build_effective_actor_context as _build_effective_actor_context_local,
@@ -102,7 +144,7 @@ async def apply_grounded_answer_experience(
         conversation_external_id=conversation_external_id,
         focus=focus,
     )
-    supplemental = await _build_supplemental_focus(
+    supplemental = await _experience_runtime._build_supplemental_focus(
         settings=settings,
         request=request,
         focus=focus,
@@ -377,7 +419,7 @@ async def apply_grounded_answer_experience(
             conversation_context=conversation_context,
         )
         repair_plan = _normalize_context_repair_plan(
-            await plan_context_repair_with_provider(
+            await _experience_runtime.plan_context_repair_with_provider(
                 settings=provider_settings,
                 request_message=request.message,
                 draft_text=effective_draft_text,
@@ -434,7 +476,7 @@ async def apply_grounded_answer_experience(
             and (action != 'unavailable' or confidence < 0.9)
         )
         if should_retry_before_unavailable:
-            retry_response = await _attempt_second_retrieval(
+            retry_response = await _experience_runtime._attempt_second_retrieval(
                 settings=settings,
                 request=request,
                 response=response,
@@ -514,7 +556,7 @@ async def apply_grounded_answer_experience(
             )
     if not reason:
         return response
-    candidate_text = await compose_grounded_answer_experience_with_provider(
+    candidate_text = await _experience_runtime.compose_grounded_answer_experience_with_provider(
         settings=provider_settings,
         request_message=request.message,
         draft_text=effective_draft_text,

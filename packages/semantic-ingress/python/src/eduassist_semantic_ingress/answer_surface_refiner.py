@@ -99,6 +99,23 @@ _LIMITATION_TERMS = (
     "preciso que você",
 )
 
+_LIMITATION_EXPANSION_TERMS = (
+    "site oficial",
+    "canal oficial",
+    "estado de",
+    "prefeitura",
+    "calendario oficial",
+    "calendário oficial",
+    "verificar diretamente",
+    "recomendo verificar",
+    "matricula",
+    "matrícula",
+    "notas",
+    "frequencia",
+    "frequência",
+    "visitas",
+)
+
 _TIME_RE = re.compile(r"\b\d{1,2}h\d{2}\b", flags=re.IGNORECASE)
 _DATE_RE = re.compile(
     r"\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\s+de\s+[a-zç]+\s+de\s+\d{4}\b",
@@ -231,6 +248,9 @@ def _refiner_prompt_sections(
         "Prefira portugues do Brasil, tom humano, claro e direto. "
         "Nao acrescente perguntas de continuidade, convites genericos ou call-to-action desnecessario se a resposta original ja resolver a pergunta. "
         "Evite cara de template, mas nao troque dados concretos por texto vago. "
+        "Se a resposta original for uma indisponibilidade, ausencia de fonte oficial, no_match ou limite de base, "
+        "refine apenas o tom e a clareza: nao acrescente novas fontes externas, novos canais, novos servicos da escola "
+        "nem explicacoes factuais que nao estejam explicitamente no texto original ou nas evidencias. "
         "Devolva somente JSON valido com as chaves: answer_text, preserve_original, enough_evidence, style_mode. "
         "answer_text deve conter apenas a mensagem final ao usuario. "
         "preserve_original deve ser true quando a resposta original ja for a melhor opcao segura. "
@@ -455,6 +475,12 @@ def _validate_refined_answer_text(
     if _question_requests_schedule_label(request_message, original_text, answer_reason):
         if "hor" not in candidate_plain and "agenda" not in candidate_plain and "grade" not in candidate_plain:
             if not _looks_like_limitation_text(candidate):
+                return None
+    if _looks_like_limitation_text(original) or any(token in answer_reason for token in ("unavailable", "no_match")):
+        if len(candidate) > len(original) + 80:
+            return None
+        for term in _LIMITATION_EXPANSION_TERMS:
+            if term in candidate_plain and term not in original_plain and term not in question_plain:
                 return None
     if _question_requests_finance(request_message, original_text):
         if any(subject in candidate_plain for subject in _SUBJECT_NAMES):

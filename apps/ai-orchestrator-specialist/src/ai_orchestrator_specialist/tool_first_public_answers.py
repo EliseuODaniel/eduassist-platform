@@ -54,6 +54,7 @@ from .public_query_patterns import (
     _looks_like_eval_calendar_query,
     _looks_like_first_bimester_timeline_query,
     _looks_like_health_second_call_query,
+    _looks_like_holiday_calendar_query,
     _looks_like_passing_policy_query,
     _looks_like_project_of_life_query,
     _looks_like_public_academic_policy_overview_query,
@@ -123,6 +124,55 @@ def _build_public_tool_payload(
     )
 
 
+def _compose_holiday_calendar_answer(events: list[dict[str, Any]]) -> str | None:
+    relevant: list[dict[str, Any]] = []
+    for item in events:
+        if not isinstance(item, dict):
+            continue
+        haystack = " ".join(
+            str(item.get(key) or "").strip().lower()
+            for key in ("title", "description", "category", "audience")
+        )
+        if any(term in haystack for term in ("feriado", "holiday", "recesso")):
+            relevant.append(item)
+    if not relevant:
+        return None
+    relevant.sort(
+        key=lambda item: (
+            str(item.get("starts_at") or ""),
+            str(item.get("title") or ""),
+        )
+    )
+    lines = ["No calendario publico deste ano, os feriados listados hoje sao:"]
+    for item in relevant[:8]:
+        title = str(item.get("title") or "Feriado").strip() or "Feriado"
+        starts_at = str(item.get("starts_at") or "").strip()
+        day = starts_at[:10] if starts_at else ""
+        if len(day) == 10 and day[4] == "-" and day[7] == "-":
+            day = f"{day[8:10]}/{day[5:7]}/{day[:4]}"
+        lines.append(f"- {title}: {day or 'data ainda nao informada'}.")
+    return "\n".join(lines)
+
+
+def _compose_holiday_calendar_unavailable_answer(
+    *,
+    profile: dict[str, Any],
+    events: list[dict[str, Any]],
+) -> str:
+    school_name = str(profile.get("school_name") or "Colégio Horizonte").strip() or "Colégio Horizonte"
+    has_public_events = any(isinstance(item, dict) for item in events)
+    if has_public_events:
+        return (
+            f"Hoje eu ainda nao tenho uma lista oficial de feriados publicada no calendario publico de {school_name}. "
+            "O que aparece aqui sao eventos publicos como inicio das aulas, reunioes e visitas. "
+            "Se quiser, eu posso te passar esses marcos ja publicados."
+        )
+    return (
+        f"Hoje eu nao tenho uma lista oficial de feriados publicada no calendario publico de {school_name}. "
+        "Se a escola divulgar esses feriados depois, eu consigo responder por aqui com base nessa fonte estruturada."
+    )
+
+
 async def maybe_tool_first_public_answer(
     ctx: Any,
     *,
@@ -134,6 +184,7 @@ async def maybe_tool_first_public_answer(
         _looks_like_timeline_lifecycle_query(ctx.request.message)
         or
         _looks_like_calendar_week_query(ctx.request.message)
+        or _looks_like_holiday_calendar_query(ctx.request.message)
         or _looks_like_first_bimester_timeline_query(ctx.request.message)
         or _looks_like_eval_calendar_query(ctx.request.message)
         or _looks_like_travel_planning_query(ctx.request.message)
@@ -158,6 +209,18 @@ async def maybe_tool_first_public_answer(
             answer_text = _compose_timeline_bundle_answer(profile, ctx.request.message)
             reason = "specialist_supervisor_tool_first:timeline_lifecycle"
             support_label = "Linha do tempo publica"
+        elif _looks_like_holiday_calendar_query(ctx.request.message):
+            answer_text = _compose_holiday_calendar_answer(events if isinstance(events, list) else [])
+            if answer_text:
+                reason = "specialist_supervisor_tool_first:calendar_holidays"
+                support_label = "Feriados do calendario publico"
+            else:
+                answer_text = _compose_holiday_calendar_unavailable_answer(
+                    profile=profile,
+                    events=events if isinstance(events, list) else [],
+                )
+                reason = "specialist_supervisor_tool_first:calendar_holidays_unavailable"
+                support_label = "Calendario publico sem feriados estruturados"
         elif _looks_like_calendar_week_query(ctx.request.message):
             answer_text = _compose_calendar_week_answer(events if isinstance(events, list) else [])
             reason = "specialist_supervisor_tool_first:calendar_week"

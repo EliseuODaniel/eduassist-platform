@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 import inspect
+from functools import lru_cache
 from typing import Any, Callable
-
-LOCAL_EXTRACTED_NAMES = {"compose_public_canonical_lane_answer"}
 
 from . import public_doc_knowledge as _native
 from .public_doc_lane_registry import PUBLIC_CANONICAL_LANE_COMPOSERS
 
-
-def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith("__") or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+@lru_cache(maxsize=1)
+def _public_lane_composer_lookup() -> dict[str, Callable[..., str | None]]:
+    lookup: dict[str, Callable[..., str | None]] = {}
+    for lane, composer_name in PUBLIC_CANONICAL_LANE_COMPOSERS.items():
+        composer = getattr(_native, composer_name, None)
+        if callable(composer):
+            lookup[lane] = composer
+    return lookup
 
 
 def _invoke_lane_composer(
@@ -32,9 +33,7 @@ def compose_public_canonical_lane_answer(
     *,
     profile: dict[str, Any] | None = None,
 ) -> str | None:
-    _refresh_native_namespace()
-    composer_name = PUBLIC_CANONICAL_LANE_COMPOSERS.get(lane)
-    composer = globals().get(str(composer_name or "")) if composer_name else None
-    if not callable(composer):
+    composer = _public_lane_composer_lookup().get(lane)
+    if composer is None:
         return None
     return _invoke_lane_composer(composer, profile=profile)

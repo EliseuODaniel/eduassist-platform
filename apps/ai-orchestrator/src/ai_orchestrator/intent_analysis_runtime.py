@@ -6,13 +6,22 @@ import unicodedata
 """Intent analysis and preview-building helpers extracted from runtime_core.py."""
 
 from . import runtime_core as _runtime_core
-from .public_orchestration_runtime import _extract_requested_date, _extract_requested_window
 
 
-def _normalize_text(message: str | None) -> str:
+def _direct_normalize_text(message: str | None) -> str:
     normalized = unicodedata.normalize('NFKD', str(message or ''))
     without_accents = ''.join(char for char in normalized if not unicodedata.combining(char))
     return without_accents.replace('º', 'o').replace('ª', 'a').lower()
+
+
+def _normalize_text(message: str | None) -> str:
+    return _direct_normalize_text(message)
+
+
+def _extract_requested_date(message: str):
+    from .public_orchestration_runtime import _extract_requested_date as _impl
+
+    return _impl(message)
 
 
 def _recent_slot_value(conversation_context: dict[str, Any] | None, key: str) -> str | None:
@@ -178,13 +187,15 @@ def _wants_upcoming_assessments(message: str) -> bool:
 
 
 def _export_runtime_core_namespace() -> None:
+    existing_names = set(globals())
     for name, value in vars(_runtime_core).items():
-        if name.startswith('__'):
+        if name.startswith('__') or name in existing_names:
             continue
         globals()[name] = value
 
 
 _export_runtime_core_namespace()
+_normalize_text = _direct_normalize_text
 
 
 def _is_assistant_identity_query(message: str) -> bool:

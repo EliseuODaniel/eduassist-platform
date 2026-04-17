@@ -16,20 +16,6 @@ from .conversation_focus_runtime import (
     _rewrite_restricted_public_protocol_follow_up,
     _rewrite_service_routing_context_follow_up,
 )
-from .intent_analysis_runtime import (
-    _contains_any,
-    _detect_admin_attribute_request,
-    _extract_public_entity_hints,
-    _follow_up_context_phrase,
-    _is_follow_up_query,
-    _is_public_curriculum_context_follow_up,
-    _is_public_pricing_context_follow_up,
-    _message_matches_term,
-    _normalize_text,
-    _wants_upcoming_assessments,
-)
-from .protected_domain_runtime import _requested_subject_label_from_message
-from .public_orchestration_runtime import _extract_requested_date, _extract_requested_window
 from .student_scope_runtime import _is_discourse_repair_reset_query
 
 
@@ -50,6 +36,70 @@ def _export_runtime_core_namespace() -> None:
 
 
 _export_runtime_core_namespace()
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _contains_any(message: str, terms: set[str] | tuple[str, ...]) -> bool:
+    return _intent_analysis_impl('_contains_any')(message, terms)
+
+
+def _detect_admin_attribute_request(*args, **kwargs):
+    return _intent_analysis_impl('_detect_admin_attribute_request')(*args, **kwargs)
+
+
+def _extract_public_entity_hints(*args, **kwargs):
+    return _intent_analysis_impl('_extract_public_entity_hints')(*args, **kwargs)
+
+
+def _follow_up_context_phrase(*args, **kwargs) -> str | None:
+    return _intent_analysis_impl('_follow_up_context_phrase')(*args, **kwargs)
+
+
+def _is_follow_up_query(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_is_follow_up_query')(*args, **kwargs)
+
+
+def _is_public_curriculum_context_follow_up(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_is_public_curriculum_context_follow_up')(*args, **kwargs)
+
+
+def _is_public_pricing_context_follow_up(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_is_public_pricing_context_follow_up')(*args, **kwargs)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
+
+
+def _normalize_text(message: str | None) -> str:
+    return _intent_analysis_impl('_normalize_text')(message)
+
+
+def _wants_upcoming_assessments(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_wants_upcoming_assessments')(*args, **kwargs)
+
+
+def _extract_requested_date(message: str):
+    from .public_orchestration_runtime import _extract_requested_date as _impl
+
+    return _impl(message)
+
+
+def _extract_requested_window(message: str):
+    from .public_orchestration_runtime import _extract_requested_window as _impl
+
+    return _impl(message)
+
+
+def _requested_subject_label_from_message(message: str) -> str | None:
+    from .protected_domain_runtime import _requested_subject_label_from_message as _impl
+
+    return _impl(message)
 
 
 def _extract_recent_user_message(recent_messages: list[dict[str, Any]]) -> str | None:

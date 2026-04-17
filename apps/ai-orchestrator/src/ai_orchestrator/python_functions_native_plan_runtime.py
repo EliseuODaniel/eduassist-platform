@@ -1,10 +1,10 @@
 from __future__ import annotations
-
 # ruff: noqa: F401,F403,F405
-
 LOCAL_EXTRACTED_NAMES = {'maybe_execute_python_functions_native_plan'}
 
 from . import python_functions_native_runtime as _native
+from .extracted_module_contracts import refresh_extracted_module_contract
+from .python_functions_native_plan_contract import PYTHON_FUNCTIONS_NATIVE_PLAN_CONTRACT
 from .retrieval_capability_policy import (
     build_retrieval_trace_metadata,
     resolve_retrieval_execution_policy,
@@ -15,16 +15,15 @@ from .semantic_ingress_runtime import (
     maybe_resolve_turn_frame,
     resolve_turn_frame_authenticated_flag,
 )
-from .turn_frame_policy import (
-    is_external_public_facility_turn_frame,
-    is_restricted_document_turn_frame,
-    is_scope_boundary_turn_frame,
-)
+from .turn_frame_policy import is_external_public_facility_turn_frame, is_restricted_document_turn_frame, is_scope_boundary_turn_frame
 def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+    refresh_extracted_module_contract(
+        native_module=_native,
+        namespace=globals(),
+        contract_names=PYTHON_FUNCTIONS_NATIVE_PLAN_CONTRACT,
+        local_extracted_names=LOCAL_EXTRACTED_NAMES,
+        contract_label='python_functions_native_plan_runtime',
+    )
 async def maybe_execute_python_functions_native_plan(
     *,
     request: Any,

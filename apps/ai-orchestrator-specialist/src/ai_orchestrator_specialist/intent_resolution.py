@@ -74,6 +74,11 @@ def school_domain_terms() -> set[str]:
         "ensino medio",
         "ensino médio",
         "agenda",
+        "calendario",
+        "calendário",
+        "feriado",
+        "feriados",
+        "recesso",
         "materia",
         "matéria",
         "materias",
@@ -173,6 +178,10 @@ def looks_like_general_knowledge_query(
         normalized.startswith(starter) or starter in normalized for starter in open_world_starters
     ):
         return True
+    if any(term in normalized for term in {"feriado", "feriados", "calendario", "calendário", "recesso"}) and any(
+        term in normalized for term in {"ano", "ano letivo", "escola", "colegio", "colégio", "publico", "público"}
+    ):
+        return False
     if deps.contains_any(normalized, school_domain_terms()) or has_registered_school_signal(normalized):
         return False
     if len(normalized) > 180:

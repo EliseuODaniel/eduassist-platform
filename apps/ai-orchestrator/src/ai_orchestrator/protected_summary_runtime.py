@@ -4,13 +4,32 @@ from __future__ import annotations
 """Protected academic and finance summary helpers extracted from protected_domain_runtime.py."""
 
 from . import runtime_core as _runtime_core
-from .intent_analysis_runtime import (
-    _contains_any,
-    _is_follow_up_query,
-    _message_matches_term,
-    _normalize_text,
-    _wants_academic_grade_requirement,
-)
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _contains_any(message: str, terms: set[str] | tuple[str, ...]) -> bool:
+    return _intent_analysis_impl('_contains_any')(message, terms)
+
+
+def _is_follow_up_query(message: str) -> bool:
+    return _intent_analysis_impl('_is_follow_up_query')(message)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
+
+
+def _normalize_text(message: str | None) -> str:
+    return _intent_analysis_impl('_normalize_text')(message)
+
+
+def _wants_academic_grade_requirement(message: str) -> bool:
+    return _intent_analysis_impl('_wants_academic_grade_requirement')(message)
 
 
 def _format_administrative_status(*args, **kwargs):

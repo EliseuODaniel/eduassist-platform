@@ -26,6 +26,7 @@ from ai_orchestrator.llamaindex_native_runtime import (
     _should_use_llamaindex_llm_public_resolver,
     _should_use_llamaindex_protected_records_fast_path,
     _should_use_llamaindex_selector_router,
+    maybe_resolve_semantic_ingress_plan,
 )
 from ai_orchestrator.llamaindex_kernel_runtime import _maybe_contextual_public_direct_answer
 from ai_orchestrator.llamaindex_kernel import _build_preview as build_llamaindex_kernel_preview
@@ -197,6 +198,10 @@ def test_build_llamaindex_llm_uses_local_openai_compatible_metadata_for_gemma_pr
     assert metadata.is_chat_model is True
     assert metadata.is_function_calling_model is False
     assert metadata.model_name == 'ggml-org/gemma-4-E4B-it-GGUF:Q4_K_M'
+
+
+def test_llamaindex_native_runtime_keeps_semantic_ingress_exports_available() -> None:
+    assert callable(maybe_resolve_semantic_ingress_plan)
 
 
 def test_filter_search_to_document_keys_keeps_only_selected_group_and_hits() -> None:

@@ -5,20 +5,6 @@ from __future__ import annotations
 
 from . import runtime_core as _runtime_core
 from .conversation_focus_runtime import _recent_message_lines, _recent_slot_value
-from .intent_analysis_runtime import (
-    _contains_any,
-    _is_follow_up_query,
-    _is_public_curriculum_context_follow_up,
-    _is_public_pricing_context_follow_up,
-    _message_matches_term,
-    _normalize_text,
-    _render_source_lines,
-    _requested_public_features,
-    _is_public_curriculum_query,
-    _is_public_document_submission_query,
-    _is_service_routing_query,
-    _wants_academic_grade_requirement,
-)
 from .reply_experience_runtime import _wants_visual_response
 from .public_known_unknowns import detect_public_known_unknown_key
 from .protected_summary_runtime import (
@@ -40,6 +26,60 @@ def _export_runtime_core_namespace() -> None:
 
 
 _export_runtime_core_namespace()
+
+
+def _intent_analysis_impl(name: str):
+    from . import intent_analysis_runtime as _intent_analysis_runtime
+
+    return getattr(_intent_analysis_runtime, name)
+
+
+def _contains_any(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_contains_any')(*args, **kwargs)
+
+
+def _is_follow_up_query(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_is_follow_up_query')(*args, **kwargs)
+
+
+def _is_public_curriculum_context_follow_up(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_is_public_curriculum_context_follow_up')(*args, **kwargs)
+
+
+def _is_public_pricing_context_follow_up(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_is_public_pricing_context_follow_up')(*args, **kwargs)
+
+
+def _message_matches_term(message: str, term: str) -> bool:
+    return _intent_analysis_impl('_message_matches_term')(message, term)
+
+
+def _normalize_text(message: str | None) -> str:
+    return _intent_analysis_impl('_normalize_text')(message)
+
+
+def _render_source_lines(*args, **kwargs) -> str:
+    return _intent_analysis_impl('_render_source_lines')(*args, **kwargs)
+
+
+def _requested_public_features(*args, **kwargs) -> tuple[str, ...]:
+    return _intent_analysis_impl('_requested_public_features')(*args, **kwargs)
+
+
+def _is_public_curriculum_query(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_is_public_curriculum_query')(*args, **kwargs)
+
+
+def _is_public_document_submission_query(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_is_public_document_submission_query')(*args, **kwargs)
+
+
+def _is_service_routing_query(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_is_service_routing_query')(*args, **kwargs)
+
+
+def _wants_academic_grade_requirement(*args, **kwargs) -> bool:
+    return _intent_analysis_impl('_wants_academic_grade_requirement')(*args, **kwargs)
 
 
 def _public_act_rules_impl(name: str):

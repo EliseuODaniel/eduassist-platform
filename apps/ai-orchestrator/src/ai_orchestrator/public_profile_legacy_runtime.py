@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405
-
 """Legacy public profile answer composer extracted from public_profile_runtime.py."""
 
 LOCAL_EXTRACTED_NAMES = {'_compose_public_profile_answer_legacy'}
 
 from . import public_profile_runtime as _native
+from .extracted_module_contracts import refresh_extracted_module_contract
+from .public_profile_legacy_contract import PUBLIC_PROFILE_LEGACY_CONTRACT
 
 
 def _intent_analysis_impl(name: str):
@@ -23,10 +23,13 @@ def _is_language_preference_query(message: str) -> bool:
     return _intent_analysis_impl('_is_language_preference_query')(message)
 
 def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+    refresh_extracted_module_contract(
+        native_module=_native,
+        namespace=globals(),
+        contract_names=PUBLIC_PROFILE_LEGACY_CONTRACT,
+        local_extracted_names=LOCAL_EXTRACTED_NAMES,
+        contract_label='public_profile_legacy_runtime',
+    )
 
 def _compose_public_profile_answer_legacy(
     profile: dict[str, Any],

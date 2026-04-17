@@ -31,6 +31,7 @@ from ai_orchestrator_specialist.public_query_patterns import (
     _looks_like_conduct_frequency_punctuality_query,
     _looks_like_enrollment_documents_query,
     _looks_like_health_second_call_query,
+    _looks_like_holiday_calendar_query,
     _looks_like_public_academic_policy_overview_query,
     _looks_like_public_doc_bundle_request,
     _looks_like_public_teacher_identity_query,
@@ -73,6 +74,10 @@ from ai_orchestrator_specialist.tool_first_protected_answers import (
     _compose_attendance_primary_alert,
     maybe_tool_first_protected_answer,
 )
+from ai_orchestrator_specialist.tool_first_public_answers import (
+    ToolFirstPublicDeps,
+    maybe_tool_first_public_answer,
+)
 from ai_orchestrator_specialist.tool_first_answers import (
     ToolFirstStructuredDeps,
     maybe_tool_first_structured_answer,
@@ -93,6 +98,7 @@ from ai_orchestrator_specialist.public_bundle_fast_paths import (
     _looks_like_visibility_boundary_query,
 )
 from ai_orchestrator_specialist.supervisor_run_flow import (
+    _maybe_apply_public_answer_composer,
     _persist_and_dump,
     _provider_metadata,
     _specialist_public_composer_evidence,
@@ -1036,6 +1042,105 @@ def test_calendar_week_query_accepts_principais_wording() -> None:
     assert _looks_like_calendar_week_query(
         'Quero os principais eventos publicos para familias e responsaveis nesta base escolar.'
     )
+
+
+def test_holiday_calendar_query_detects_yearly_holiday_prompt() -> None:
+    assert _looks_like_holiday_calendar_query('Quais os feriados desse ano?')
+
+
+def test_tool_first_public_holiday_query_returns_grounded_unavailable_answer_when_calendar_has_no_holidays() -> None:
+    async def _fetch_public_payload(*_args, **_kwargs):
+        return {'entries': []}
+
+    async def _http_get(*_args, **_kwargs):
+        return {
+            'events': [
+                {
+                    'title': 'Inicio do ano letivo Fundamental II e Ensino Medio',
+                    'description': 'Recepcao das turmas com orientacoes iniciais.',
+                    'category': 'academic',
+                    'audience': 'public',
+                    'starts_at': '2026-02-02T10:30:00Z',
+                }
+            ]
+        }
+
+    deps = ToolFirstPublicDeps(
+        fetch_public_payload=_fetch_public_payload,
+        http_get=_http_get,
+        orchestrator_graph_rag_query=lambda *_args, **_kwargs: None,
+        orchestrator_retrieval_search=lambda *_args, **_kwargs: None,
+        citation_from_retrieval_hit=lambda _hit: None,
+        select_public_graph_rag_fallback_hits=lambda hits: hits,
+        compose_public_graph_rag_fallback_answer=lambda message, _hits: message,
+        supports_from_public_graph_rag_fallback_hits=lambda _hits: [],
+        safe_excerpt=lambda text, limit=180: str(text or '')[:limit],
+        timeline_entry=lambda *_args, **_kwargs: None,
+        format_brl=lambda value: str(value),
+    )
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            message='Quais os feriados desse ano?',
+            user=SimpleNamespace(authenticated=False),
+        ),
+        school_profile={'school_name': 'Colegio Horizonte'},
+        settings=SimpleNamespace(api_core_url='http://api-core:8000', internal_api_token='token'),
+        http_client=None,
+    )
+
+    answer = asyncio.run(
+        maybe_tool_first_public_answer(
+            ctx,
+            normalized='quais os feriados desse ano?',
+            profile=ctx.school_profile,
+            deps=deps,
+        )
+    )
+
+    assert answer is not None
+    assert answer.reason == 'specialist_supervisor_tool_first:calendar_holidays_unavailable'
+    lowered = answer.message_text.lower()
+    assert 'nao tenho uma lista oficial de feriados' in lowered
+    assert 'eventos publicos' in lowered or 'eventos públicos' in lowered
+
+
+def test_public_answer_composer_skips_public_unavailable_answers() -> None:
+    answer = SupervisorAnswerPayload(
+        message_text='Hoje eu nao tenho uma lista oficial de feriados publicada no calendario publico.',
+        mode='structured_tool',
+        classification=MessageIntentClassification(
+            domain='calendar',
+            access_tier='public',
+            confidence=0.99,
+            reason='specialist_supervisor_tool_first:calendar_holidays_unavailable',
+        ),
+        evidence_pack=MessageEvidencePack(
+            strategy='structured_tools',
+            summary='Resposta deterministica com insuficiencia grounded.',
+            source_count=1,
+            support_count=1,
+            supports=[MessageEvidenceSupport(kind='calendar', label='Calendario publico', detail='v1/calendar/public')],
+        ),
+        reason='specialist_supervisor_tool_first:calendar_holidays_unavailable',
+    )
+    context = SimpleNamespace(
+        school_profile={'school_name': 'Colegio Horizonte'},
+        request=SimpleNamespace(message='Quais os feriados desse ano?'),
+        conversation_context=None,
+    )
+    settings = SimpleNamespace()
+
+    refined_answer, metadata = asyncio.run(
+        _maybe_apply_public_answer_composer(
+            context=context,
+            settings=settings,
+            answer=answer,
+            metadata=None,
+        )
+    )
+
+    assert refined_answer.message_text == answer.message_text
+    assert metadata is None
 
 
 def test_timeline_lifecycle_query_detects_marcos_entre_prompt() -> None:
@@ -4201,6 +4306,48 @@ def test_fast_path_handles_semantic_ingress_greeting_even_without_lexical_match(
     assert answer is not None
     assert answer.reason == 'specialist_supervisor_fast_path:greeting'
     assert 'eduassist' in answer.message_text.lower()
+
+
+def test_fast_path_does_not_let_legacy_capabilities_override_public_holiday_turn_frame() -> None:
+    ctx = SimpleNamespace(
+        request=SimpleNamespace(
+            user=SimpleNamespace(authenticated=False),
+            message='Quais os feriados desse ano?',
+        ),
+        actor=None,
+        school_profile={'school_name': 'Colegio Horizonte'},
+        conversation_context={'recent_messages': []},
+        preview_hint={
+            'semantic_ingress': {'conversation_act': 'capabilities'},
+            'turn_frame': {
+                'capability_id': 'public.calendar.events',
+                'scope': 'public',
+                'public_conversation_act': 'calendar_events',
+            },
+        },
+    )
+
+    deps = FastPathDeps(
+        normalize_text=lambda value: str(value or '').casefold(),
+        normalized_recent_user_messages=lambda _context: [],
+        is_simple_greeting=lambda _message: False,
+        is_auth_guidance_query=lambda _message: False,
+        compose_auth_guidance_answer=lambda _profile: '',
+        linked_students=lambda *_args, **_kwargs: [],
+        compose_authenticated_scope_answer=lambda _actor: '',
+        is_assistant_identity_query=lambda _message: False,
+        compose_assistant_identity_answer=lambda _profile: '',
+        school_name=lambda _profile: 'Colegio Horizonte',
+        safe_excerpt=lambda text, **_kwargs: text,
+        format_brl=lambda value: str(value),
+        hypothetical_children_quantity=lambda _message: None,
+        pricing_projection=lambda *_args, **_kwargs: {},
+        compose_public_bolsas_and_processes=lambda _profile: None,
+    )
+
+    answer = build_fast_path_answer(ctx, deps)
+
+    assert answer is None
 
 
 def test_fast_path_handles_semantic_ingress_assistant_identity_even_without_lexical_match() -> None:

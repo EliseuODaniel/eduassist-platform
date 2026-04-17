@@ -143,6 +143,7 @@ def test_looks_like_school_scope_message_detects_public_school_information_queri
     assert looks_like_school_scope_message("Qual o horario da biblioteca?") is True
     assert looks_like_school_scope_message("qual contato do diretor?") is True
     assert looks_like_school_scope_message("Qual o proximo vencimento?") is True
+    assert looks_like_school_scope_message("Quais os feriados desse ano?") is True
     assert looks_like_school_scope_message("o que é bncc?") is True
     assert looks_like_school_scope_message("qual o conteúdo ensinado em biologia?") is True
     assert looks_like_school_scope_message("é um colégio confessional?") is True
@@ -187,6 +188,7 @@ def test_looks_like_scope_boundary_candidate_detects_out_of_scope_question() -> 
     assert looks_like_scope_boundary_candidate("Posso fumar maconha nessa escola?") is False
     assert looks_like_scope_boundary_candidate("Qual o horario da biblioteca?") is False
     assert looks_like_scope_boundary_candidate("qual contato do diretor?") is False
+    assert looks_like_scope_boundary_candidate("Quais os feriados desse ano?") is False
     assert looks_like_scope_boundary_candidate("que horas começa a aula de manhã?") is False
     assert looks_like_scope_boundary_candidate("qual horário da última aula?") is False
     assert looks_like_scope_boundary_candidate("tem aula de madrugada?") is False
@@ -210,6 +212,20 @@ def test_build_turn_frame_hint_does_not_mark_calendar_week_bundle_as_scope_bound
     )
 
     assert frame is None or frame.conversation_act != "scope_boundary"
+
+
+def test_build_turn_frame_hint_maps_public_holiday_query_to_calendar_events() -> None:
+    frame = build_turn_frame_hint(
+        message="Quais os feriados desse ano?",
+        conversation_context=None,
+        preview=None,
+        authenticated=False,
+    )
+
+    assert frame is not None
+    assert frame.capability_id == "public.calendar.events"
+    assert frame.domain == "calendar"
+    assert frame.public_conversation_act == "calendar_events"
 
 
 def test_build_capability_candidates_prefers_public_schedule_for_morning_class_query() -> None:

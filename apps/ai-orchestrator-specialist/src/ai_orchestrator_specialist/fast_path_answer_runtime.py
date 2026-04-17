@@ -7,12 +7,26 @@ from __future__ import annotations
 LOCAL_EXTRACTED_NAMES = {'build_fast_path_answer'}
 
 from . import fast_path_answers as _native
+from .extracted_module_contracts import refresh_extracted_module_contract
+from .fast_path_answer_contract import FAST_PATH_ANSWER_CONTRACT
+from .public_query_patterns import (
+    _looks_like_calendar_week_query,
+    _looks_like_eval_calendar_query,
+    _looks_like_first_bimester_timeline_query,
+    _looks_like_holiday_calendar_query,
+    _looks_like_timeline_lifecycle_query,
+    _looks_like_travel_planning_query,
+    _looks_like_year_three_phases_query,
+)
 
 def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+    refresh_extracted_module_contract(
+        native_module=_native,
+        namespace=globals(),
+        contract_names=FAST_PATH_ANSWER_CONTRACT,
+        local_extracted_names=LOCAL_EXTRACTED_NAMES,
+        contract_label='fast_path_answer_runtime',
+    )
 
 def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayload | None:
     _refresh_native_namespace()
@@ -255,6 +269,19 @@ def build_fast_path_answer(ctx: Any, deps: FastPathDeps) -> SupervisorAnswerPayl
                 "até que horas",
             }
         )
+    ):
+        ingress_act = None
+    if ingress_act == "capabilities" and (
+        turn_frame_capability_id
+        or _looks_like_holiday_calendar_query(contextual_message)
+        or _looks_like_timeline_lifecycle_query(contextual_message)
+        or _looks_like_calendar_week_query(contextual_message)
+        or _looks_like_first_bimester_timeline_query(contextual_message)
+        or _looks_like_eval_calendar_query(contextual_message)
+        or _looks_like_travel_planning_query(contextual_message)
+        or _looks_like_year_three_phases_query(contextual_message)
+        or _looks_like_public_doc_bundle_request(contextual_message)
+        or match_public_canonical_lane(contextual_message) is not None
     ):
         ingress_act = None
 
