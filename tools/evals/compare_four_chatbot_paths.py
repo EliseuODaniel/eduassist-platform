@@ -332,11 +332,16 @@ async def _run_all(
         else:
             semaphore = asyncio.Semaphore(stack_concurrency)
 
-            async def _bounded_run(stack_name: str) -> dict[str, Any]:
-                async with semaphore:
+            async def _bounded_run(
+                stack_name: str,
+                *,
+                _semaphore: asyncio.Semaphore = semaphore,
+                _entry_with_run_prefix: dict[str, Any] = entry_with_run_prefix,
+            ) -> dict[str, Any]:
+                async with _semaphore:
                     return await _run_turn(
                         stack=stack_name,
-                        entry=entry_with_run_prefix,
+                        entry=_entry_with_run_prefix,
                         llm_forced=llm_forced,
                         guardian_chat_id=guardian_chat_id,
                         timeout_seconds=timeout_seconds,

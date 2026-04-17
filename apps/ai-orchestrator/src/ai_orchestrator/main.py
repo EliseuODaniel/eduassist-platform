@@ -5,6 +5,7 @@ import json
 import logging
 import secrets
 from contextlib import asynccontextmanager
+from pathlib import Path
 from time import monotonic
 from typing import Any
 from urllib.error import URLError
@@ -13,8 +14,6 @@ from urllib.request import Request, urlopen
 import httpx
 from eduassist_observability import (
     build_runtime_diagnostics,
-    canonicalize_evidence_strategy,
-    canonicalize_risk_flags,
     configure_observability,
 )
 from fastapi import FastAPI, Header, HTTPException
@@ -23,8 +22,6 @@ from pydantic import BaseModel, Field
 from .channel_reply_formatting import format_reply_for_channel
 from .debug_trace_footer import (
     attach_telegram_debug_trace_for_bundle,
-    build_debug_trace_for_bundle,
-    format_telegram_debug_footer,
 )
 from .engine_selector import (
     SUPPORTED_PRIMARY_STACKS,

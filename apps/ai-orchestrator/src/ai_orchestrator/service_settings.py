@@ -73,7 +73,13 @@ def _normalize_local_database_url(value: str) -> str:
     override = str(os.getenv('DATABASE_URL_LOCAL', '') or '').strip()
     normalized = str(value or '').strip()
     if override:
-        return override
+        return _replace_url_host(
+            override,
+            replacements={
+                'postgres': '127.0.0.1',
+                'localhost': '127.0.0.1',
+            },
+        )
     if not normalized:
         return _LOCAL_SOURCE_DB_URL
     return _replace_url_host(
@@ -89,7 +95,13 @@ def _normalize_local_qdrant_url(value: str) -> str:
     override = str(os.getenv('QDRANT_URL_LOCAL', '') or '').strip()
     normalized = str(value or '').strip()
     if override:
-        return override
+        return _replace_url_host(
+            override,
+            replacements={
+                'qdrant': '127.0.0.1',
+                'localhost': '127.0.0.1',
+            },
+        )
     if not normalized:
         return _LOCAL_SOURCE_SERVICE_URLS['qdrant']
     return _replace_url_host(

@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import lru_cache
 import re
-import shutil
 from time import monotonic
 from typing import Any
 import unicodedata
@@ -1130,7 +1129,7 @@ def _restricted_document_fallback_queries(query: str) -> list[str]:
     anchor_terms = _restricted_document_anchor_terms(query)
     rare_terms = _restricted_document_rare_terms(query)
     phrases: list[tuple[float, int, str]] = []
-    for index, (first, second) in enumerate(zip(raw_terms, raw_terms[1:])):
+    for index, (first, second) in enumerate(zip(raw_terms, raw_terms[1:], strict=False)):
         if first == second:
             continue
         if first in _RESTRICTED_DOC_GENERIC_TERMS and second in _RESTRICTED_DOC_GENERIC_TERMS:

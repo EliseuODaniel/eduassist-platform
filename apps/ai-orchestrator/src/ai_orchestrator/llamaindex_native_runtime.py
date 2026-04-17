@@ -4,22 +4,19 @@ import asyncio
 import json
 from dataclasses import dataclass
 from functools import lru_cache
-from time import monotonic
+from time import monotonic as _llamaindex_monotonic
 from typing import Any
 
 from fastembed import TextEmbedding
 from llama_index.core import VectorStoreIndex
-from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
+from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.base.base_retriever import BaseRetriever
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.base.llms.types import ChatMessage, LLMMetadata, MessageRole
 from llama_index.core.base.response.schema import Response
-from llama_index.core.indices.vector_store.retrievers import VectorIndexAutoRetriever
-from llama_index.core.memory import Memory
 from llama_index.core.postprocessor import LongContextReorder, SentenceEmbeddingOptimizer
 from llama_index.core.prompts import PromptTemplate
 from llama_index.core.query_engine import (
-    CitationQueryEngine,
     CustomQueryEngine,
     RouterQueryEngine,
     SubQuestionQueryEngine,
@@ -30,13 +27,6 @@ from llama_index.core.retrievers import RecursiveRetriever
 from llama_index.core.schema import IndexNode, NodeWithScore, QueryBundle, TextNode
 from llama_index.core.selectors import EmbeddingSingleSelector, PydanticSingleSelector
 from llama_index.core.tools import FunctionTool, QueryEngineTool
-from llama_index.core.vector_stores.types import (
-    FilterOperator,
-    MetadataFilter,
-    MetadataFilters,
-    MetadataInfo,
-    VectorStoreInfo,
-)
 from pydantic import BaseModel, Field, PrivateAttr
 
 from .retrieval_capability_policy import resolve_retrieval_execution_policy
@@ -45,34 +35,25 @@ from eduassist_semantic_ingress import looks_like_high_confidence_public_school_
 
 from . import runtime as rt
 from .llamaindex_kernel import KernelPlan, KernelReflection, KernelRunResult
-from .candidate_builder import build_response_candidate
-from .candidate_chooser import choose_best_candidate
-from .entity_resolution import resolve_entity_hints
 from .evidence_pack import (
-    build_direct_answer_evidence_pack,
-    build_retrieval_evidence_pack,
-    build_structured_tool_evidence_pack,
+    build_direct_answer_evidence_pack as _llamaindex_build_direct_answer_evidence_pack,
+    build_retrieval_evidence_pack as _llamaindex_build_retrieval_evidence_pack,
+    build_structured_tool_evidence_pack as _llamaindex_build_structured_tool_evidence_pack,
 )
-from .final_polish_policy import build_final_polish_decision
+from .entity_resolution import resolve_entity_hints
 from .llamaindex_kernel_runtime import (
-    _maybe_contextual_public_direct_answer,
+    _maybe_contextual_public_direct_answer as _llamaindex_maybe_contextual_public_direct_answer,
     _maybe_hypothetical_public_pricing_answer,
 )
 from .llamaindex_public_intent_registry import (
     LLAMAINDEX_PUBLIC_INTENT_RULES,
     LlamaIndexPublicIntentRule,
 )
-from .llamaindex_local_llm import (
-    polish_llamaindex_with_provider,
-    revise_llamaindex_with_provider,
-    verify_llamaindex_answer_against_contract,
-)
 from .model_cache import configure_model_cache_env
 from .llm_provider import _google_model_candidates
 from .models import (
     AccessTier,
     IntentClassification,
-    MessageEvidenceSupport,
     MessageEvidencePack,
     MessageResponse,
     MessageResponseCitation,
@@ -81,8 +62,10 @@ from .models import (
     QueryDomain,
     RetrievalBackend,
 )
-from .request_intent_guardrails import looks_like_explicit_admin_status_query
-from .path_profiles import PathExecutionProfile, get_path_execution_profile
+from .path_profiles import (
+    PathExecutionProfile,
+    get_path_execution_profile as _llamaindex_get_path_execution_profile,
+)
 from .llamaindex_public_knowledge import (
     compose_public_canonical_lane_answer,
     compose_public_conduct_policy_contextual_answer,
@@ -92,24 +75,26 @@ from .llamaindex_public_known_unknowns import (
     compose_public_known_unknown_answer,
     detect_public_known_unknown_key,
 )
-from .response_cache import get_cached_public_response, store_cached_public_response
-from .semantic_ingress_runtime import (
-    apply_semantic_ingress_preview,
-    build_semantic_ingress_public_plan,
-    is_terminal_semantic_ingress_plan,
-    maybe_resolve_semantic_ingress_plan,
-)
 from .llamaindex_retrieval import (
     can_read_restricted_documents,
-    compose_restricted_document_grounded_answer_for_query,
-    compose_restricted_document_no_match_answer,
     get_retrieval_service,
     looks_like_restricted_document_query,
-    retrieve_relevant_restricted_hits_with_fallback,
 )
-from .llamaindex_retrieval_probe import build_public_evidence_probe
-from .serving_policy import LoadSnapshot, build_public_serving_policy
-from .serving_telemetry import get_stack_telemetry_snapshot, record_stack_outcome
+from .serving_telemetry import record_stack_outcome as _llamaindex_record_stack_outcome
+
+build_direct_answer_evidence_pack = _llamaindex_build_direct_answer_evidence_pack
+build_retrieval_evidence_pack = _llamaindex_build_retrieval_evidence_pack
+build_structured_tool_evidence_pack = _llamaindex_build_structured_tool_evidence_pack
+_maybe_contextual_public_direct_answer = _llamaindex_maybe_contextual_public_direct_answer
+get_path_execution_profile = _llamaindex_get_path_execution_profile
+monotonic = _llamaindex_monotonic
+record_stack_outcome = _llamaindex_record_stack_outcome
+_LLAMAINDEX_NATIVE_MODEL_EXPORTS = (
+    KernelReflection,
+    MessageResponse,
+    MessageEvidencePack,
+    MessageResponseCitation,
+)
 
 configure_model_cache_env()
 

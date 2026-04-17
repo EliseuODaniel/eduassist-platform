@@ -24,7 +24,7 @@ from .models import (
     QueryDomain,
     RetrievalBackend,
 )
-from .path_profiles import PathExecutionProfile, get_path_execution_profile
+from .path_profiles import PathExecutionProfile
 from .native_runtime_preparation import prepare_runtime_execution
 from .retrieval_capability_policy import (
     build_retrieval_trace_metadata,

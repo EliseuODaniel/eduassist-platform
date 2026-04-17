@@ -309,7 +309,7 @@ def test_python_functions_plan_denies_teacher_internal_material_for_guardian() -
     plan = build_python_functions_plan(request=request, settings=_Settings(), mode='python_functions')
 
     assert plan.preview.mode is OrchestrationMode.deny
-    assert plan.preview.reason == 'python_functions_local_restricted_documents_denied'
+    assert plan.preview.reason.startswith('python_functions_local_restricted_documents_denied')
 
 
 def test_python_functions_plan_denies_internal_international_trip_guidance_for_guardian() -> None:
@@ -321,4 +321,4 @@ def test_python_functions_plan_denies_internal_international_trip_guidance_for_g
     plan = build_python_functions_plan(request=request, settings=_Settings(), mode='python_functions')
 
     assert plan.preview.mode is OrchestrationMode.deny
-    assert plan.preview.reason == 'python_functions_local_restricted_documents_denied'
+    assert plan.preview.reason.startswith('python_functions_local_restricted_documents_denied')

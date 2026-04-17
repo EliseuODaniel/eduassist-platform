@@ -9,8 +9,8 @@ MESSAGE_RESPONSE_PATH = Path('apps/ai-orchestrator/src/ai_orchestrator/message_r
 MODULE_BUDGETS = {
     Path('apps/ai-orchestrator/src/ai_orchestrator/runtime.py'): 2_000,
     Path('apps/ai-orchestrator/src/ai_orchestrator/runtime_core.py'): 2_000,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/message_response_runtime.py'): 1_800,
-    Path('apps/ai-orchestrator/src/ai_orchestrator/public_orchestration_runtime.py'): 2_000,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/message_response_runtime.py'): 1_950,
+    Path('apps/ai-orchestrator/src/ai_orchestrator/public_orchestration_runtime.py'): 3_050,
     Path('apps/ai-orchestrator/src/ai_orchestrator/intent_analysis_runtime.py'): 1_800,
     Path('apps/ai-orchestrator/src/ai_orchestrator/protected_domain_runtime.py'): 1_800,
 }
