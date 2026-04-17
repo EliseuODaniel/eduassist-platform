@@ -34,6 +34,21 @@ from .intent_analysis_runtime import (
 )
 from .analysis_context_runtime import _extract_recent_assistant_message, _extract_recent_user_message
 from .intent_analysis_runtime import _extract_salient_terms
+from . import public_contact_runtime as _public_contact_runtime
+from .public_contact_runtime import (
+    _contact_entries,
+    _contact_is_general_school_query,
+    _contact_value,
+    _count_public_contact_subjects,
+    _extract_teacher_subject,
+    _format_contact_origin,
+    _is_public_teacher_directory_follow_up,
+    _is_public_teacher_identity_query,
+    _requested_contact_channel,
+    _select_primary_contact_entry,
+    _wants_contact_list,
+)
+from . import public_feature_runtime as _public_feature_runtime
 from .public_feature_runtime import (
     _asks_why_feature_is_missing,
     _extract_feature_gap_focus,
@@ -44,6 +59,7 @@ from .public_feature_runtime import (
     _requested_public_features,
 )
 from .public_orchestration_runtime import _build_public_institution_plan, _should_use_public_open_documentary_synthesis
+from . import public_service_routing_runtime as _public_service_routing_runtime
 from .public_service_routing_runtime import (
     _is_generic_service_contact_follow_up,
     _preferred_contact_labels_from_context,
@@ -65,6 +81,57 @@ def _export_runtime_core_namespace() -> None:
 
 
 _export_runtime_core_namespace()
+
+
+def _bind_explicit_public_runtime_helpers() -> None:
+    for module, names in (
+        (
+            _public_contact_runtime,
+            (
+                '_contact_entries',
+                '_contact_is_general_school_query',
+                '_contact_value',
+                '_count_public_contact_subjects',
+                '_extract_teacher_subject',
+                '_format_contact_origin',
+                '_is_public_teacher_directory_follow_up',
+                '_is_public_teacher_identity_query',
+                '_requested_contact_channel',
+                '_select_primary_contact_entry',
+                '_wants_contact_list',
+            ),
+        ),
+        (
+            _public_feature_runtime,
+            (
+                '_asks_why_feature_is_missing',
+                '_extract_feature_gap_focus',
+                '_feature_inventory_map',
+                '_feature_suggestion_replies',
+                '_is_public_feature_query',
+                '_recent_public_feature_key',
+                '_requested_public_features',
+            ),
+        ),
+        (
+            _public_service_routing_runtime,
+            (
+                '_is_generic_service_contact_follow_up',
+                '_preferred_contact_labels_from_context',
+                '_public_contact_reference_message',
+                '_recent_public_contact_subject',
+                '_recent_service_match',
+                '_routing_follow_up_context_message',
+                '_service_catalog_index',
+                '_service_matches_from_message',
+            ),
+        ),
+    ):
+        for name in names:
+            globals()[name] = getattr(module, name)
+
+
+_bind_explicit_public_runtime_helpers()
 
 
 def _public_act_rules_impl(name: str):
@@ -324,24 +391,6 @@ def _compose_public_feature_schedule_follow_up(
     return f'O horario de {label} hoje funciona assim: {notes}'
 
 
-def _contact_value(profile: dict[str, Any], channel: str) -> list[str]:
-    contacts = profile.get('contact_channels')
-    if not isinstance(contacts, list):
-        return []
-    values: list[str] = []
-    for item in contacts:
-        if not isinstance(item, dict):
-            continue
-        if str(item.get('channel', '')).lower() != channel:
-            continue
-        label = str(item.get('label', '')).strip()
-        value = str(item.get('value', '')).strip()
-        if not value:
-            continue
-        values.append(f'{label}: {value}' if label else value)
-    return values
-
-
 def _school_subject_reference(reference: str) -> str:
     cleaned = reference.strip()
     if cleaned.startswith(('a ', 'o ')):
@@ -395,55 +444,6 @@ def _compose_public_segment_scope_gap(
         f'Hoje eu nao tenho um detalhamento publico de {topic} para {requested_segment.lower()} em {context.school_reference}. '
         f'Pelo que a escola publica aqui, o recorte institucional coberto hoje e {published_text}.'
     )
-
-
-def _contact_entries(profile: dict[str, Any], channel: str) -> list[dict[str, str]]:
-    contacts = profile.get('contact_channels')
-    if not isinstance(contacts, list):
-        return []
-    entries: list[dict[str, str]] = []
-    for item in contacts:
-        if not isinstance(item, dict):
-            continue
-        if str(item.get('channel', '')).lower() != channel:
-            continue
-        label = str(item.get('label', '')).strip()
-        value = str(item.get('value', '')).strip()
-        if not value:
-            continue
-        entries.append({'label': label, 'value': value})
-    return entries
-
-
-def _requested_contact_channel(message: str) -> str | None:
-    normalized = _normalize_text(message)
-    if any(_message_matches_term(normalized, term) for term in {'whatsapp', 'whats', 'zap'}):
-        return 'whatsapp'
-    if any(_message_matches_term(normalized, term) for term in {'email', 'e-mail', 'mail'}):
-        return 'email'
-    if any(
-        _message_matches_term(normalized, term)
-        for term in {'telefone', 'fone', 'ligacao', 'ligação', 'ligar', 'ligo', 'fax'}
-    ):
-        return 'telefone'
-    return None
-
-
-def _count_public_contact_subjects(message: str) -> int:
-    normalized = _normalize_text(message)
-    subject_term_groups: tuple[set[str], ...] = (
-        {'secretaria', 'secretaria escolar'},
-        {'financeiro', 'mensalidade', 'boleto', 'boletos'},
-        {'direcao', 'direção', 'diretoria', 'diretor', 'diretora'},
-        {'coordenacao', 'coordenação', 'coordenador', 'coordenadora'},
-        {'admissoes', 'admissões', 'matricula', 'matrícula', 'tour', 'visita'},
-        {'orientacao educacional', 'orientação educacional', 'socioemocional', 'bullying'},
-    )
-    count = 0
-    for terms in subject_term_groups:
-        if any(_message_matches_term(normalized, term) for term in terms):
-            count += 1
-    return count
 
 
 def _is_public_social_query(message: str) -> bool:
@@ -1030,114 +1030,6 @@ def _format_public_date_text(value: Any) -> str:
     return str(value or 'data nao informada').strip() or 'data nao informada'
 
 
-def _format_contact_origin(label: str | None, channel: str) -> str:
-    cleaned = (label or '').strip().lower()
-    if not cleaned:
-        return ''
-    if channel == 'telefone':
-        return f'na {cleaned}'
-    return f'pela {cleaned}'
-
-
-def _wants_contact_list(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'quais',
-            'lista',
-            'todos',
-            'todas',
-            'contatos',
-            'canais',
-            'telefones',
-            'emails',
-            'e-mails',
-        }
-    )
-
-
-def _contact_is_general_school_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    return any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'da escola',
-            'pra escola',
-            'para a escola',
-            'do colegio',
-            'do colégio',
-            'geral',
-            'institucional',
-            'principal',
-        }
-    )
-
-
-def _select_primary_contact_entry(
-    profile: dict[str, Any],
-    channel: str,
-    message: str,
-    *,
-    preferred_labels: list[str] | None = None,
-) -> dict[str, str] | None:
-    entries = _contact_entries(profile, channel)
-    if not entries:
-        return None
-
-    normalized = _normalize_text(message)
-    normalized_preferred = [_normalize_text(label) for label in preferred_labels or [] if label]
-    for entry in entries:
-        label = _normalize_text(entry.get('label', ''))
-        if label and label in normalized:
-            return entry
-
-    for preferred_label in normalized_preferred:
-        for entry in entries:
-            label = _normalize_text(entry.get('label', ''))
-            if label == preferred_label:
-                return entry
-
-    label_aliases = {
-        'direcao': {'direcao', 'direção', 'diretoria', 'diretora', 'diretor'},
-        'secretaria': {'secretaria', 'secretaria escolar', 'secretaria digital'},
-        'orientacao educacional': {
-            'orientacao educacional',
-            'orientação educacional',
-            'bullying',
-            'socioemocional',
-        },
-        'financeiro': {
-            'financeiro',
-            'boleto',
-            'boletos',
-            'mensalidade',
-            'fatura',
-            'faturas',
-            'contrato',
-        },
-        'admissoes': {'admissoes', 'admissões', 'matricula', 'matrícula', 'visita', 'tour'},
-    }
-    for entry in entries:
-        label = _normalize_text(entry.get('label', ''))
-        aliases = label_aliases.get(label, set())
-        if aliases and any(_message_matches_term(normalized, alias) for alias in aliases):
-            return entry
-
-    if _contact_is_general_school_query(message):
-        priorities_by_channel = {
-            'telefone': ['secretaria'],
-            'email': ['secretaria'],
-            'whatsapp': ['secretaria digital', 'atendimento comercial'],
-        }
-        for preferred_label in priorities_by_channel.get(channel, []):
-            for entry in entries:
-                if _normalize_text(entry.get('label', '')) == preferred_label:
-                    return entry
-
-    return entries[0]
-
-
 def _leadership_inventory(profile: dict[str, Any]) -> list[dict[str, Any]]:
     leadership = profile.get('leadership_team')
     return (
@@ -1312,102 +1204,6 @@ def _requested_public_attributes(message: str) -> tuple[str, ...]:
     add_if_present('name', {'nome', 'quem e', 'quem é'})
     add_if_present('contact', {'contato', 'canal', 'como falo', 'como falar', 'falar com'})
     return tuple(ordered_matches)
-
-
-def _is_public_teacher_identity_query(message: str) -> bool:
-    normalized = _normalize_text(message)
-    if not any(
-        _message_matches_term(normalized, term)
-        for term in {'prof', 'professor', 'professora', 'docente'}
-    ):
-        return False
-    if _requested_public_attribute(message) in {'name', 'whatsapp', 'email', 'phone', 'contact'}:
-        return True
-    if (
-        any(_message_matches_term(normalized, term) for term in {'nome', 'contato', 'canal'})
-        and any(
-            _message_matches_term(normalized, term)
-            for term in {'publico', 'público', 'coordenacao', 'coordenação'}
-        )
-    ):
-        return True
-    return any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'falar com',
-            'quero falar com',
-            'conversar com',
-            'falar direto com',
-            'falar diretamente com',
-        }
-    )
-
-
-def _is_public_teacher_directory_follow_up(
-    message: str,
-    conversation_context: dict[str, Any] | None,
-) -> bool:
-    normalized = _normalize_text(message)
-    if not normalized:
-        return False
-    recent_focus = _recent_trace_focus(conversation_context) or {}
-    if isinstance(recent_focus, dict):
-        active_task = str(recent_focus.get('active_task', '') or '').strip()
-        if active_task == 'public:teacher_directory':
-            return any(
-                _message_matches_term(normalized, term)
-                for term in {
-                    'esse contato',
-                    'esse canal',
-                    'divulga esse contato',
-                    'divulga esse canal',
-                    'coordenação',
-                    'coordenacao',
-                    'procurar a coordenação',
-                    'procurar a coordenacao',
-                    'manda procurar',
-                }
-            )
-    if not _recent_messages_mention(conversation_context, {'professor', 'professora', 'docente'}):
-        return False
-    return any(
-        _message_matches_term(normalized, term)
-        for term in {
-            'esse contato',
-            'esse canal',
-            'divulga esse contato',
-            'divulga esse canal',
-            'a escola divulga',
-            'coordenação',
-            'coordenacao',
-            'procurar a coordenação',
-            'procurar a coordenacao',
-            'manda procurar',
-        }
-    )
-
-
-def _extract_teacher_subject(message: str) -> str | None:
-    normalized = _normalize_text(message)
-    patterns = [
-        r'prof(?:essor|essora)?\s+de\s+(.+)',
-        r'docente\s+de\s+(.+)',
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, normalized)
-        if not match:
-            continue
-        subject = re.split(
-            r'\b(?:ou|e|mas|pela?|pelo|se|senao|senão|para)\b|[?!,;.:]',
-            match.group(1),
-            maxsplit=1,
-        )[0].strip(' ?.')
-        subject = re.sub(r'\b(?:se nao|senão|senao)\b.*$', '', subject).strip(' ?.')
-        if len(subject.split()) > 3:
-            subject = ' '.join(subject.split()[:3]).strip(' ?.')
-        if subject:
-            return subject
-    return None
 
 
 def _humanize_service_eta(eta: str) -> str:

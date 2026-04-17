@@ -17,6 +17,7 @@ from ai_orchestrator import (
     python_functions_native_runtime,
 )
 import ai_orchestrator.public_feature_runtime as public_feature_runtime
+import ai_orchestrator.public_contact_runtime as public_contact_runtime
 import ai_orchestrator.public_service_routing_runtime as public_service_routing_runtime
 import ai_orchestrator.workflow_runtime as workflow_runtime
 from ai_orchestrator.extracted_module_contracts import refresh_extracted_module_contract
@@ -214,6 +215,19 @@ def test_workflow_runtime_uses_explicit_public_feature_and_service_imports() -> 
     assert (
         workflow_runtime._service_matches_from_message
         is public_service_routing_runtime._service_matches_from_message
+    )
+
+
+def test_public_profile_runtime_uses_explicit_contact_and_teacher_imports() -> None:
+    assert public_profile_runtime._requested_contact_channel is public_contact_runtime._requested_contact_channel
+    assert public_profile_runtime._contact_value is public_contact_runtime._contact_value
+    assert (
+        public_profile_runtime._is_public_teacher_identity_query
+        is public_contact_runtime._is_public_teacher_identity_query
+    )
+    assert (
+        public_profile_runtime._is_public_teacher_directory_follow_up
+        is public_contact_runtime._is_public_teacher_directory_follow_up
     )
 
 
