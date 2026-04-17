@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405
-
-LOCAL_EXTRACTED_NAMES = {'match_public_canonical_lane'}
-
-from . import public_doc_knowledge as _native
+from .public_doc_knowledge import (
+    _looks_like_public_conduct_policy_query,
+    _normalize_space,
+)
 
 
 def _is_leadership_specific_query(message: str) -> bool:
@@ -28,16 +27,7 @@ def _is_leadership_specific_query(message: str) -> bool:
         return False
     return _requested_public_attribute(message) is not None
 
-
-def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
-
-
 def match_public_canonical_lane(message: str) -> str | None:
-    _refresh_native_namespace()
     normalized = _normalize_space(message).lower()
     if not normalized:
         return None

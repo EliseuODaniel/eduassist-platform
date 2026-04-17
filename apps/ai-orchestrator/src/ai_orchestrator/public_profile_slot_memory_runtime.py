@@ -1,12 +1,7 @@
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405
-
 """Conversation slot memory extracted from public_profile_runtime.py."""
 
-LOCAL_EXTRACTED_NAMES = {'_build_conversation_slot_memory'}
-
-from . import public_profile_runtime as _native
 from .conversation_focus_runtime import _recent_conversation_focus
 from .intent_analysis_runtime import (
     _derive_active_entity,
@@ -44,12 +39,10 @@ from .student_scope_runtime import (
     _recent_student_from_context,
     _student_focus_candidate,
 )
-
-def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+from .models import ConversationSlotMemory, PublicInstitutionPlan, QueryDomain
+from .runtime_core import resolve_entity_hints
+from .runtime_core_constants import SUPPORT_FINANCE_TERMS
+from typing import Any
 
 def _build_conversation_slot_memory_impl(
     *,
@@ -60,7 +53,6 @@ def _build_conversation_slot_memory_impl(
     public_plan: PublicInstitutionPlan | None = None,
     preview: Any | None = None,
 ) -> ConversationSlotMemory:
-    _refresh_native_namespace()
     focus = _recent_conversation_focus(conversation_context) or {}
     protocol_code = str(focus.get('protocol_code', '') or '').strip() or None
     focus_kind = str(focus.get('kind', '') or '').strip() or None

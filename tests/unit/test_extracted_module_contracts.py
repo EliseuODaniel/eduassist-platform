@@ -3,6 +3,13 @@ from __future__ import annotations
 from ai_orchestrator import (
     graph,
     llamaindex_native_runtime,
+    langgraph_public_compound_runtime,
+    langgraph_message_workflow,
+    langgraph_public_retrieval_runtime,
+    public_doc_knowledge,
+    public_doc_lane_match_runtime,
+    public_profile_runtime,
+    public_profile_slot_memory_runtime,
     python_functions_native_runtime,
 )
 from ai_orchestrator.extracted_module_contracts import refresh_extracted_module_contract
@@ -86,3 +93,29 @@ def test_contract_refresh_binds_only_declared_graph_symbols() -> None:
     )
     assert 'structured_tool_call' not in namespace
     assert namespace['_append_path'] is graph._append_path
+
+
+def test_public_doc_lane_match_runtime_uses_explicit_imports() -> None:
+    assert public_doc_lane_match_runtime._normalize_space is public_doc_knowledge._normalize_space
+    assert (
+        public_doc_lane_match_runtime._looks_like_public_conduct_policy_query
+        is public_doc_knowledge._looks_like_public_conduct_policy_query
+    )
+
+
+def test_langgraph_public_retrieval_runtime_uses_explicit_imports() -> None:
+    assert langgraph_public_retrieval_runtime.LangGraphMessageState is langgraph_message_workflow.LangGraphMessageState
+    assert langgraph_public_retrieval_runtime._delegate_runtime is langgraph_message_workflow._delegate_runtime
+
+
+def test_public_profile_slot_memory_runtime_uses_explicit_imports() -> None:
+    assert (
+        public_profile_slot_memory_runtime.PublicInstitutionPlan
+        is public_profile_runtime.PublicInstitutionPlan
+    )
+    assert public_profile_slot_memory_runtime.QueryDomain is public_profile_runtime.QueryDomain
+
+
+def test_langgraph_public_compound_runtime_uses_explicit_imports() -> None:
+    assert langgraph_public_compound_runtime.LangGraphMessageState is langgraph_message_workflow.LangGraphMessageState
+    assert langgraph_public_compound_runtime._delegate_runtime is langgraph_message_workflow._delegate_runtime

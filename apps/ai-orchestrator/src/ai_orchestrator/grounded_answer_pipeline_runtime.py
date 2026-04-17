@@ -1,18 +1,67 @@
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405
-
 """Grounded answer experience pipeline extracted from grounded_answer_experience.py."""
 
-LOCAL_EXTRACTED_NAMES = {'apply_grounded_answer_experience'}
+import asyncio
+from typing import Any
 
-from . import grounded_answer_experience as _native
-
-def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+from .conversation_answer_state import build_focus_summary, resolve_answer_focus
+from .grounded_answer_experience import (
+    _actor_summary,
+    _answer_experience_changed,
+    _answer_experience_pipeline_enabled,
+    _answer_experience_settings,
+    _attempt_second_retrieval,
+    _build_evidence_lines,
+    _build_supplemental_focus,
+    _cached_focus_slot_memory,
+    _clarify_after_retry_message,
+    _context_repair_enabled,
+    _conversation_external_id,
+    _dedupe_preserve_order,
+    _deterministic_context_repair_plan,
+    _deterministic_protected_academic_direct_answer,
+    _deterministic_protected_attendance_direct_answer,
+    _deterministic_protected_finance_direct_answer,
+    _deterministic_public_calendar_followup,
+    _deterministic_public_capacity_followup,
+    _deterministic_public_direct_answer,
+    _eligible_reason,
+    _extract_recent_user_messages,
+    _fallback_retry_query,
+    _fetch_actor_context,
+    _fetch_conversation_context,
+    _fetch_public_school_profile,
+    _filtered_recent_messages,
+    _is_restricted_document_no_match_response,
+    _localize_surface_labels_for_request,
+    _looks_like_internal_document_query,
+    _looks_like_student_resolution_failure,
+    _merge_conversation_context_with_cached_focus,
+    _normalize_context_repair_plan,
+    _normalize_text,
+    _preserve_deterministic_answer_surface,
+    _question_mentions_unasked_attendance_scope,
+    _recent_family_attendance_context,
+    _response_has_terminal_semantic_ingress,
+    _retry_visibility_for_response,
+    _should_attempt_context_repair,
+    _should_prefer_supplemental_focus,
+    _store_focus_cache,
+    _terminal_semantic_ingress_act,
+    _validated_answer_experience_text,
+)
+from .llm_provider import (
+    compose_grounded_answer_experience_with_provider,
+    plan_context_repair_with_provider,
+)
+from .models import (
+    AccessTier,
+    MessageResponse,
+    MessageResponseRequest,
+    OrchestrationMode,
+    RetrievalBackend,
+)
 
 
 def _is_admin_finance_combined_query(message: str) -> bool:
@@ -28,7 +77,6 @@ async def apply_grounded_answer_experience(
     stack_name: str,
     forced_reason: str | None = None,
 ) -> MessageResponse:
-    _refresh_native_namespace()
     reason = forced_reason or _eligible_reason(
         request=request,
         response=response,
