@@ -2,16 +2,31 @@ from __future__ import annotations
 
 # ruff: noqa: F401,F403,F405
 
-LOCAL_EXTRACTED_NAMES = {'maybe_execute_llamaindex_native_preflight'}
+from typing import Any
 
-from . import llamaindex_native_plan_runtime as _native
-
-
-def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+from . import runtime as rt
+from .evidence_pack import (
+    build_direct_answer_evidence_pack,
+    build_structured_tool_evidence_pack,
+)
+from .llamaindex_kernel import KernelPlan, KernelReflection, KernelRunResult
+from .llamaindex_native_runtime import (
+    _compose_external_live_query_answer,
+    _looks_like_external_live_query,
+    _should_use_llamaindex_protected_records_fast_path,
+    _should_use_llamaindex_teacher_schedule_direct,
+    _should_use_llamaindex_teacher_scope_guidance,
+)
+from .llamaindex_native_support_runtime import _build_llamaindex_direct_result
+from .models import (
+    AccessTier,
+    IntentClassification,
+    MessageResponse,
+    MessageResponseRequest,
+    OrchestrationMode,
+    QueryDomain,
+    RetrievalBackend,
+)
 
 
 async def maybe_execute_llamaindex_native_preflight(
@@ -27,7 +42,6 @@ async def maybe_execute_llamaindex_native_preflight(
     school_profile: dict[str, Any] | None,
     started_at: float,
 ) -> KernelRunResult | None:
-    _refresh_native_namespace()
     recent_focus = rt._recent_conversation_focus(conversation_context)
     if (
         recent_focus

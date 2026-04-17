@@ -1,31 +1,35 @@
 from __future__ import annotations
-
 # ruff: noqa: F401,F403,F405
-
 """Native LlamaIndex execution plan extracted from llamaindex_native_runtime.py."""
-
 LOCAL_EXTRACTED_NAMES = {'maybe_execute_llamaindex_native_plan'}
 
 from . import llamaindex_native_runtime as _native
+from .candidate_builder import build_response_candidate
+from .candidate_chooser import choose_best_candidate
+from .extracted_module_contracts import refresh_extracted_module_contract
+from .final_polish_policy import build_final_polish_decision
+from .llamaindex_native_plan_contract import LLAMAINDEX_NATIVE_PLAN_CONTRACT
+from .llamaindex_local_llm import polish_llamaindex_with_provider, revise_llamaindex_with_provider, verify_llamaindex_answer_against_contract
 from .llamaindex_native_preflight_runtime import maybe_execute_llamaindex_native_preflight
+from .llamaindex_retrieval_probe import build_public_evidence_probe
+from .response_cache import get_cached_public_response, store_cached_public_response
 from .semantic_ingress_runtime import (
-    apply_turn_frame_preview,
-    build_turn_frame_public_plan,
-    is_terminal_semantic_ingress_plan,
-    maybe_resolve_semantic_ingress_plan,
-    maybe_resolve_turn_frame,
-    resolve_turn_frame_authenticated_flag,
+    apply_semantic_ingress_preview, apply_turn_frame_preview, build_semantic_ingress_public_plan,
+    build_turn_frame_public_plan, is_terminal_semantic_ingress_plan, maybe_resolve_semantic_ingress_plan,
+    maybe_resolve_turn_frame, resolve_turn_frame_authenticated_flag,
 )
-from .turn_frame_policy import (
-    is_external_public_facility_turn_frame,
-    is_scope_boundary_turn_frame,
-)
+from .serving_policy import LoadSnapshot, build_public_serving_policy
+from .serving_telemetry import get_stack_telemetry_snapshot
+from .turn_frame_policy import is_external_public_facility_turn_frame, is_scope_boundary_turn_frame
 
 def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+    refresh_extracted_module_contract(
+        native_module=_native,
+        namespace=globals(),
+        contract_names=LLAMAINDEX_NATIVE_PLAN_CONTRACT,
+        local_extracted_names=LOCAL_EXTRACTED_NAMES,
+        contract_label='llamaindex_native_plan_runtime',
+    )
 
 async def maybe_execute_llamaindex_native_plan(
     *,

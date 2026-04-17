@@ -7,13 +7,37 @@ from __future__ import annotations
 LOCAL_EXTRACTED_NAMES = {'_maybe_execute_llamaindex_restricted_doc_fast_path', '_resolve_early_llamaindex_public_answer', '_build_llamaindex_direct_result', '_build_public_retrieval_query_engine', '_maybe_execute_llamaindex_agent_workflow'}
 
 from . import llamaindex_native_runtime as _native
-from .models import RetrievalProfile
+from .extracted_module_contracts import refresh_extracted_module_contract
+from .llamaindex_native_support_contract import LLAMAINDEX_NATIVE_SUPPORT_CONTRACT
+from .llamaindex_retrieval import (
+    compose_restricted_document_grounded_answer_for_query,
+    compose_restricted_document_no_match_answer,
+    retrieve_relevant_restricted_hits_with_fallback,
+)
+from .models import MessageEvidenceSupport, RetrievalProfile
+
+from llama_index.core.agent.workflow import AgentWorkflow
+from llama_index.core.indices.vector_store.retrievers.auto_retriever import (
+    VectorIndexAutoRetriever,
+)
+from llama_index.core.memory import Memory
+from llama_index.core.query_engine import CitationQueryEngine
+from llama_index.core.vector_stores.types import (
+    FilterOperator,
+    MetadataFilter,
+    MetadataFilters,
+    MetadataInfo,
+    VectorStoreInfo,
+)
 
 def _refresh_native_namespace() -> None:
-    for name, value in vars(_native).items():
-        if name.startswith('__') or name in LOCAL_EXTRACTED_NAMES:
-            continue
-        globals()[name] = value
+    refresh_extracted_module_contract(
+        native_module=_native,
+        namespace=globals(),
+        contract_names=LLAMAINDEX_NATIVE_SUPPORT_CONTRACT,
+        local_extracted_names=LOCAL_EXTRACTED_NAMES,
+        contract_label='llamaindex_native_support_runtime',
+    )
 
 async def _maybe_execute_llamaindex_restricted_doc_fast_path(
     *,
