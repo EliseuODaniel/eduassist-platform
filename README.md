@@ -35,6 +35,15 @@ Na prática:
 - worktrees temporários não devem sobreviver ao merge ou abandono da branch;
 - protótipos antigos e estudos locais não devem competir com este repositório como se fossem outra versão oficial do sistema.
 
+## Estado recente de hardening
+
+Alguns débitos arquiteturais importantes já foram fechados no baseline atual:
+
+- o antigo `runtime_core.py` deixou de concentrar um bloco monolítico de constantes e expressões; a superfície pesada foi extraída para `runtime_core_constants.py`;
+- o retrieval híbrido agora combina fusão lexical+densa com `late interaction` e `cross-encoder rerank`, em vez de depender apenas do score híbrido inicial;
+- a identidade interna entre serviços ficou `SPIFFE-ready`, sem quebrar o modo local baseado em token;
+- o repositório passou a proteger módulos críticos com testes de `hotspot budget`, para evitar que wrappers e runtimes extraídos cresçam silenciosamente de novo.
+
 ## Comece por aqui
 
 Se você está chegando agora ao repositório, a ordem mais útil é:
