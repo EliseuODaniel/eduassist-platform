@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from ai_orchestrator import (
+    graph,
     llamaindex_native_runtime,
     python_functions_native_runtime,
 )
 from ai_orchestrator.extracted_module_contracts import refresh_extracted_module_contract
+from ai_orchestrator.graph_classification_contract import GRAPH_CLASSIFICATION_CONTRACT
+from ai_orchestrator.graph_execution_contract import GRAPH_EXECUTION_CONTRACT
 from ai_orchestrator.llamaindex_native_plan_contract import LLAMAINDEX_NATIVE_PLAN_CONTRACT
 from ai_orchestrator.llamaindex_native_support_contract import LLAMAINDEX_NATIVE_SUPPORT_CONTRACT
 from ai_orchestrator.python_functions_native_plan_contract import PYTHON_FUNCTIONS_NATIVE_PLAN_CONTRACT
@@ -27,6 +30,16 @@ def test_llamaindex_native_plan_contract_symbols_exist() -> None:
 
 def test_llamaindex_native_support_contract_symbols_exist() -> None:
     missing = [name for name in LLAMAINDEX_NATIVE_SUPPORT_CONTRACT if not hasattr(llamaindex_native_runtime, name)]
+    assert not missing
+
+
+def test_graph_classification_contract_symbols_exist() -> None:
+    missing = [name for name in GRAPH_CLASSIFICATION_CONTRACT if not hasattr(graph, name)]
+    assert not missing
+
+
+def test_graph_execution_contract_symbols_exist() -> None:
+    missing = [name for name in GRAPH_EXECUTION_CONTRACT if not hasattr(graph, name)]
     assert not missing
 
 
@@ -60,3 +73,16 @@ def test_contract_refresh_binds_only_declared_specialist_symbols() -> None:
     )
     assert 'build_fast_path_answer' not in namespace
     assert namespace['match_public_canonical_lane'] is fast_path_answers.match_public_canonical_lane
+
+
+def test_contract_refresh_binds_only_declared_graph_symbols() -> None:
+    namespace: dict[str, object] = {}
+    refresh_extracted_module_contract(
+        native_module=graph,
+        namespace=namespace,
+        contract_names=GRAPH_EXECUTION_CONTRACT,
+        local_extracted_names=frozenset({'structured_tool_call', 'get_graph_blueprint'}),
+        contract_label='graph_execution_runtime',
+    )
+    assert 'structured_tool_call' not in namespace
+    assert namespace['_append_path'] is graph._append_path
