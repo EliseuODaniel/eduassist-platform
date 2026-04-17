@@ -451,6 +451,29 @@ def _looks_like_calendar_week_query(message: str) -> bool:
     )
 
 
+def _looks_like_holiday_calendar_query(message: str) -> bool:
+    normalized = _normalize_text(message)
+    if not any(term in normalized for term in {'feriado', 'feriados'}):
+        return False
+    return any(
+        term in normalized
+        for term in {
+            'ano',
+            'desse ano',
+            'deste ano',
+            'este ano',
+            'calendario',
+            'calendário',
+            'ano letivo',
+            'escola',
+            'colegio',
+            'colégio',
+            'quais',
+            'lista',
+        }
+    )
+
+
 def _looks_like_timeline_lifecycle_query(message: str) -> bool:
     normalized = _normalize_text(message)
     has_between_markers = (

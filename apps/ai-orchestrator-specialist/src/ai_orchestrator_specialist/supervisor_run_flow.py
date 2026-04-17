@@ -247,6 +247,8 @@ async def _maybe_apply_public_answer_composer(
             'auth_guidance',
             'capabilities',
             'language_preference',
+            'unavailable',
+            'no_match',
         )
     ):
         return answer, metadata

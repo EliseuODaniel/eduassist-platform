@@ -1220,6 +1220,18 @@ def _is_public_calendar_event_query(message: str) -> bool:
     if any(
         _message_matches_term(normalized, term)
         for term in {
+            'feriado',
+            'feriados',
+            'feriado do ano',
+            'feriados do ano',
+            'feriados desse ano',
+            'feriados deste ano',
+        }
+    ):
+        return True
+    if any(
+        _message_matches_term(normalized, term)
+        for term in {
             'proximo evento',
             'próximo evento',
             'proxima reuniao',
@@ -3915,6 +3927,10 @@ def _event_query_tokens(message: str, focus_hint: str | None = None) -> set[str]
             'publicos',
             'amanha',
             'hoje',
+            'ano',
+            'desse',
+            'deste',
+            'este',
             'escola',
             'colegio',
         }
@@ -3939,6 +3955,7 @@ def _select_public_calendar_events(
     focus_hint: str | None,
 ) -> list[dict[str, Any]]:
     normalized = _normalize_text(message)
+    holiday_query = any(_message_matches_term(normalized, term) for term in {'feriado', 'feriados'})
     tokens = _event_query_tokens(message, focus_hint)
     scored: list[tuple[int, dict[str, Any]]] = []
     for event in events:
@@ -3965,6 +3982,10 @@ def _select_public_calendar_events(
             _message_matches_term(normalized, term) for term in {'visita', 'tour', 'guiada'}
         ) and ('visita' in haystack or 'open_house' in haystack):
             score += 3
+        if any(
+            _message_matches_term(normalized, term) for term in {'feriado', 'feriados'}
+        ) and any(term in haystack for term in {'feriado', 'holiday', 'recesso'}):
+            score += 4
         if score > 0:
             scored.append((score, event))
     if scored:
@@ -3976,6 +3997,8 @@ def _select_public_calendar_events(
             )
         )
         return [item for _score, item in scored[:2]]
+    if holiday_query:
+        return []
     sorted_events = sorted(
         events,
         key=lambda event: (
@@ -3988,7 +4011,16 @@ def _select_public_calendar_events(
 
 def _handle_public_calendar_events(context: PublicProfileContext) -> str:
     events = context.profile.get('public_calendar_events')
+    holiday_query = any(
+        _message_matches_term(_normalize_text(context.source_message), term)
+        for term in {'feriado', 'feriados'}
+    )
     if not isinstance(events, list) or not events:
+        if holiday_query:
+            return (
+                f'Hoje eu nao tenho uma lista oficial de feriados publicada no calendario publico de '
+                f'{context.school_reference}.'
+            )
         return f'Hoje a base publica de eventos de {context.school_reference} nao trouxe agenda estruturada para esse pedido.'
 
     selected = _select_public_calendar_events(
@@ -3997,6 +4029,12 @@ def _handle_public_calendar_events(context: PublicProfileContext) -> str:
         focus_hint=context.semantic_plan.focus_hint if context.semantic_plan else None,
     )
     if not selected:
+        if holiday_query:
+            return (
+                f'Hoje eu ainda nao tenho uma lista oficial de feriados publicada no calendario publico de '
+                f'{context.school_reference}. O que esta disponivel aqui sao eventos publicos como inicio das aulas, '
+                'reunioes e visitas.'
+            )
         return f'Hoje eu nao encontrei um evento publico especifico para esse pedido em {context.school_reference}.'
 
     if len(selected) == 1:

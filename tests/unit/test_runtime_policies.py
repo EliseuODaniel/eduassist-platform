@@ -2511,6 +2511,47 @@ def test_public_profile_answer_prefers_explicit_school_year_start_over_recent_en
     assert '6 de outubro de 2025' not in lowered
 
 
+def test_public_profile_answer_holiday_query_without_structured_holidays_returns_grounded_unavailable_answer() -> None:
+    answer = _compose_public_profile_answer(
+        {
+            'school_name': 'Colegio Horizonte',
+            'public_calendar_events': [
+                {
+                    'title': 'Inicio do ano letivo Fundamental II e Ensino Medio',
+                    'description': 'Recepcao das turmas com orientacoes iniciais.',
+                    'category': 'academic',
+                    'audience': 'public',
+                    'starts_at': '2026-02-02T10:30:00Z',
+                },
+                {
+                    'title': 'Reuniao geral de pais e responsaveis',
+                    'description': 'Apresentacao do planejamento do primeiro bimestre.',
+                    'category': 'meeting',
+                    'audience': 'public',
+                    'starts_at': '2026-03-28T12:00:00Z',
+                },
+            ],
+        },
+        'Quais os feriados desse ano?',
+        actor=None,
+        original_message='Quais os feriados desse ano?',
+        conversation_context=None,
+        semantic_plan=PublicInstitutionPlan(
+            conversation_act='calendar_events',
+            required_tools=('get_public_school_profile',),
+            fetch_profile=True,
+            semantic_source='semantic_ingress_llm',
+            focus_hint='feriados',
+            requested_attribute='public_calendar_events',
+            use_conversation_context=False,
+        ),
+    )
+
+    lowered = answer.lower()
+    assert 'nao tenho uma lista oficial de feriados' in lowered
+    assert 'inicio do ano letivo' not in lowered
+
+
 def test_public_profile_answer_prefers_explicit_documents_over_inherited_pricing_semantic_plan() -> None:
     answer = _compose_public_profile_answer(
         {

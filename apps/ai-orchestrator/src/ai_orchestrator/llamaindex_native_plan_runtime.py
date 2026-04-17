@@ -11,6 +11,8 @@ from .llamaindex_native_preflight_runtime import maybe_execute_llamaindex_native
 from .semantic_ingress_runtime import (
     apply_turn_frame_preview,
     build_turn_frame_public_plan,
+    is_terminal_semantic_ingress_plan,
+    maybe_resolve_semantic_ingress_plan,
     maybe_resolve_turn_frame,
     resolve_turn_frame_authenticated_flag,
 )

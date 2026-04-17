@@ -208,6 +208,8 @@ _SCHOOL_SCOPE_TERMS = {
     'documentos',
     'calendario',
     'calendário',
+    'feriado',
+    'feriados',
     'aulas',
     'professor',
     'professora',
@@ -633,6 +635,19 @@ def looks_like_high_confidence_public_school_faq(message: str | None) -> bool:
     normalized = normalize_ingress_text(message)
     if not normalized:
         return False
+    if any(_contains_term(normalized, term) for term in {'feriado', 'feriados'}) and any(
+        _contains_term(normalized, term)
+        for term in {
+            'ano',
+            'desse ano',
+            'deste ano',
+            'este ano',
+            'calendario',
+            'calendário',
+            'ano letivo',
+        }
+    ):
+        return True
     if (
         any(_contains_term(normalized, term) for term in {'calendario', 'calendário', 'agenda', 'eventos'})
         and any(_contains_term(normalized, term) for term in {'familias', 'famílias', 'responsaveis', 'responsáveis'})
