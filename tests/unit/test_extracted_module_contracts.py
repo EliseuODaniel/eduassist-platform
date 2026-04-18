@@ -3,11 +3,13 @@ from __future__ import annotations
 from ai_orchestrator import (
     graph,
     grounded_answer_experience,
+    intent_analysis_runtime,
     llamaindex_native_runtime,
     langgraph_public_compound_runtime,
     langgraph_message_workflow,
     langgraph_public_retrieval_runtime,
     public_doc_knowledge,
+    runtime_api,
     public_doc_lane_match_runtime,
     public_profile_runtime,
     public_profile_routes_runtime,
@@ -218,6 +220,39 @@ def test_public_profile_slot_memory_runtime_uses_explicit_imports() -> None:
         is public_profile_runtime.PublicInstitutionPlan
     )
     assert public_profile_slot_memory_runtime.QueryDomain is public_profile_runtime.QueryDomain
+
+
+def test_runtime_api_resolves_slot_memory_builder_explicitly() -> None:
+    assert (
+        runtime_api._resolve_build_conversation_slot_memory()
+        is public_profile_runtime._build_conversation_slot_memory
+    )
+
+
+def test_public_pricing_projection_wrappers_preserve_conversation_context_signature() -> None:
+    prompt = 'quanto eu pagaria de matricula e mensalidade para 3 filhos?'
+    conversation_context = {
+        'tool_calls': [],
+        'recent_messages': [],
+    }
+    expected = intent_analysis_runtime._is_explicit_public_pricing_projection_query(
+        prompt,
+        conversation_context=conversation_context,
+    )
+    assert (
+        public_profile_runtime._is_explicit_public_pricing_projection_query(
+            prompt,
+            conversation_context=conversation_context,
+        )
+        is expected
+    )
+    assert (
+        public_followup_preservation_runtime._is_explicit_public_pricing_projection_query(
+            prompt,
+            conversation_context=conversation_context,
+        )
+        is expected
+    )
 
 
 def test_langgraph_public_compound_runtime_uses_explicit_imports() -> None:

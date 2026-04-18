@@ -24,6 +24,12 @@ def _export_runtime_core_namespace() -> None:
 _export_runtime_core_namespace()
 
 
+def _resolve_build_conversation_slot_memory():
+    from .public_profile_runtime import _build_conversation_slot_memory as _impl
+
+    return _impl
+
+
 async def _api_core_get(
     *,
     settings: Any,
@@ -230,7 +236,7 @@ async def _persist_operational_trace(
         return
 
     actor_user_id = actor.get('user_id') if isinstance(actor, dict) else None
-    slot_memory = _build_conversation_slot_memory(
+    slot_memory = _resolve_build_conversation_slot_memory()(
         actor=actor,
         profile=school_profile,
         conversation_context=conversation_context,

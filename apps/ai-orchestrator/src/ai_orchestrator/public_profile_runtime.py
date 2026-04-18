@@ -281,8 +281,15 @@ def _extract_salient_terms(message: str) -> tuple[str, ...]:
     return _intent_analysis_impl('_extract_salient_terms')(message)
 
 
-def _is_explicit_public_pricing_projection_query(message: str) -> bool:
-    return _intent_analysis_impl('_is_explicit_public_pricing_projection_query')(message)
+def _is_explicit_public_pricing_projection_query(
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> bool:
+    return _intent_analysis_impl('_is_explicit_public_pricing_projection_query')(
+        message,
+        conversation_context=conversation_context,
+    )
 
 
 def _is_assistant_identity_query(message: str) -> bool:

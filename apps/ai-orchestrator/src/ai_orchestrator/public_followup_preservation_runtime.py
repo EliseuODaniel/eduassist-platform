@@ -11,8 +11,15 @@ def _intent_analysis_impl(name: str):
     return getattr(_intent_analysis_runtime, name)
 
 
-def _is_explicit_public_pricing_projection_query(message: str) -> bool:
-    return _intent_analysis_impl('_is_explicit_public_pricing_projection_query')(message)
+def _is_explicit_public_pricing_projection_query(
+    message: str,
+    *,
+    conversation_context: dict[str, Any] | None = None,
+) -> bool:
+    return _intent_analysis_impl('_is_explicit_public_pricing_projection_query')(
+        message,
+        conversation_context=conversation_context,
+    )
 
 
 def _message_matches_term(message: str, term: str) -> bool:
