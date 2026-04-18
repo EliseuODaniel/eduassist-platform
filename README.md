@@ -262,6 +262,20 @@ make compose-up-dedicated-core-qwen3-4b-local
 make compose-up-dedicated-core-gemini-flash-lite
 ```
 
+### Modo seguro para benchmark local
+
+Quando a meta for comparar stacks e modelos no notebook local, o fluxo seguro não é subir tudo e medir ao mesmo tempo. O procedimento recomendado é:
+
+1. um modelo por vez;
+2. uma stack por vez;
+3. `telegram-gateway` e `cloudflared` desligados durante a bateria pesada;
+4. artefatos temporários em `/dev/shm` ou outro diretório temporário;
+5. copiar os relatórios finais para `docs/architecture/` só no fim.
+
+Isso reduz a chance de saturar o SSD/NVMe em `100%` por escrita contínua e também evita começar a rodada antes de a troca de modelo realmente ter sido aplicada.
+
+O passo a passo detalhado ficou documentado em [docs/operations/local-development.md](docs/operations/local-development.md), na seção de bring-up seguro e benchmark local.
+
 Os profiles locais usam um endpoint `OpenAI-compatible` servido por `llama.cpp`:
 
 - `gemma4e4b_local`: `Gemma 4 E4B` em `Q4_K_M`

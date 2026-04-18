@@ -252,6 +252,111 @@ Validação operacional recomendada:
 - `make telegram-edge-readiness`
 - `make promotion-gate-check`
 
+## 9. Bring-up seguro para evitar os erros observados
+
+Os erros operacionais mais caros já observados no ambiente local vieram de duas causas:
+
+- rodar benchmark longo com muitos serviços ativos ao mesmo tempo, gerando saturação de I/O no SSD/NVMe;
+- alternar runtime/modelo e começar a testar antes de confirmar health real de todos os containers relevantes.
+
+Para evitar repetir isso, o baseline operacional recomendado agora é este.
+
+### 9.1 Modo diário seguro
+
+Para desenvolvimento diário, Telegram e smoke funcional:
+
+1. subir apenas a base dedicada do modelo desejado:
+   - `make compose-up-dedicated-core-gemma4e4b-local`
+   - ou `make compose-up-dedicated-core-qwen3-4b-local`
+2. esperar `healthz` real dos serviços:
+   - `api-core`
+   - `ai-orchestrator`
+   - runtime dedicado alvo
+   - `telegram-gateway` se o teste envolver Telegram
+3. só depois rodar:
+   - `make smoke-dedicated`
+   - `make smoke-telegram-dedicated`
+   - ou testes manuais por endpoint/Telegram
+
+Regra prática:
+
+- não confiar apenas no `docker ps`;
+- confirmar também os endpoints `/healthz` e, quando necessário, `/v1/status`.
+
+### 9.2 Modo seguro para benchmark local
+
+Quando a meta for rodar bateria longa de comparação entre stacks e modelos no notebook local, usar o fluxo abaixo.
+
+#### Regra principal
+
+Rodar:
+
+- uma stack por vez;
+- um modelo por vez;
+- com artefatos temporários fora do caminho principal de disco, preferencialmente em `/dev/shm`.
+
+Essa estratégia reduz muito a chance de deixar o SSD/NVMe em `100%` de uso contínuo.
+
+#### Antes da bateria
+
+1. parar serviços que não participam do benchmark naquele momento:
+   - `telegram-gateway`
+   - `cloudflared`
+   - stacks que não serão medidas naquela execução
+   - o container da LLM que não será usado
+2. manter ativos apenas:
+   - `postgres`
+   - `redis`
+   - `qdrant`
+   - `minio`
+   - `keycloak`
+   - `opa`
+   - `api-core`
+   - `ai-orchestrator`
+   - a stack sob teste
+   - a LLM sob teste
+
+#### Ordem recomendada
+
+1. subir ou recriar a infraestrutura no modelo desejado:
+   - `make compose-up-dedicated-core-gemma4e4b-local`
+   - ou `make compose-up-dedicated-core-qwen3-4b-local`
+2. confirmar `/healthz` de:
+   - `8005`, `8006`, `8007`, `8008` apenas para as stacks realmente usadas
+3. rodar a bateria de uma stack;
+4. salvar artefatos intermediários em `/dev/shm`;
+5. parar essa stack;
+6. subir a próxima stack;
+7. repetir;
+8. só ao final consolidar os relatórios no repositório.
+
+#### O que não fazer
+
+- não manter `Gemma` e `Qwen` ativos ao mesmo tempo no notebook local;
+- não manter Telegram, tunnel público e as quatro stacks em benchmark pesado ao mesmo tempo;
+- não escrever continuamente relatórios parciais grandes no repositório durante a medição;
+- não trocar modelo e disparar bateria antes de o novo runtime responder `ready=true`.
+
+### 9.3 Troca segura de modelo
+
+Para alternar entre `Gemma` e `Qwen` sem repetir os erros anteriores:
+
+1. subir o profile desejado;
+2. parar explicitamente o container da LLM não usada;
+3. esperar `ready=true` no runtime dedicado;
+4. confirmar `/v1/status` do `specialist` ou da stack alvo para verificar o `llmModelProfile` efetivo;
+5. só então rodar benchmark ou teste manual.
+
+### 9.4 Checklist mínimo antes de qualquer bateria final
+
+- `docker ps` mostra apenas os containers necessários para a rodada;
+- o modelo ativo é o modelo realmente esperado;
+- o runtime alvo responde `ready=true`;
+- o endpoint real de resposta devolve um smoke correto;
+- Telegram e tunnel público estão desligados se a rodada for benchmark pesado local;
+- os arquivos temporários da rodada vão para `/dev/shm` ou diretório temporário equivalente;
+- os artefatos finais só são copiados para `docs/architecture/` depois que a rodada termina.
+
 Política operacional atual:
 
 - `ai-orchestrator` deve ser tratado como `control plane/router`, não como entrypoint principal de serving;
