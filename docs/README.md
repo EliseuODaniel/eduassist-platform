@@ -24,6 +24,7 @@ Este diretório concentra a documentação formal do projeto.
 - [Operação local](operations/local-development.md)
 - [Layout local do workspace](operations/local-workspace-layout.md)
 - [Workflow de Codex, MCP, Skills e AGENTS.md](operations/codex-workflow.md)
+- [Visual Atlas interativo](visual-atlas/README.md)
 - [Experimentos futuros](experiments/README.md)
 - [Pesquisa de tecnologias de IA](research/ai-technology-review.md)
 - [Roadmap de implementação](roadmap/implementation-roadmap.md)
