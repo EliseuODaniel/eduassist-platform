@@ -2051,6 +2051,11 @@ def compose_restricted_document_no_match_answer(query: str) -> str:
             'de negociacao financeira com a familia para esse recorte. '
             'Na pratica, o proximo passo e validar essa orientacao com o financeiro responsavel.'
         )
+    if ('negoci' in normalized or 'financeir' in normalized) and ('familia' in normalized or 'família' in normalized):
+        return (
+            'Consultei os documentos internos disponiveis, mas nao encontrei um criterio interno especifico '
+            'de negociacao financeira com a familia para esse recorte.'
+        )
     return (
         'Consultei os documentos internos disponiveis, mas nao encontrei uma orientacao restrita '
         f'especifica para: "{normalized_query}". '
